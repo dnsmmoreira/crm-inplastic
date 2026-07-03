@@ -127,6 +127,8 @@ const NAV = [
   { to: "/agente-ia", label: "Agente IA", icon: Bot },
   { to: "/contatos", label: "Contatos", icon: Users },
   { to: "/tarefas", label: "Tarefas", icon: CheckSquare },
+  { to: "/propostas", label: "Propostas", icon: FileText },
+  { to: "/produtos", label: "Produtos", icon: Package },
 ] as const;
 
 function AppShell({ children }: { children: ReactNode }) {
