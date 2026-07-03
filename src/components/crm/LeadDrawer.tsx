@@ -222,7 +222,75 @@ export function LeadDrawer({
               </ol>
             </TabsContent>
 
+            <TabsContent value="ia" className="mt-4 space-y-3">
+              <div className="rounded-lg border bg-gradient-to-br from-primary/10 to-transparent p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <div className="h-9 w-9 rounded-lg bg-primary text-primary-foreground flex items-center justify-center">
+                      <Bot className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-sm">Agente IA · atuando neste lead</div>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Envia follow-ups quando o lead fica sem resposta e agenda reuniões na agenda do vendedor automaticamente.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      runFollowUp(lead.id);
+                      toast.success("IA enviou follow-up via WhatsApp");
+                    }}
+                  >
+                    <Zap className="h-3.5 w-3.5 mr-1.5" /> Rodar follow-up
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      const free = calendar.find((c) => c.status === "livre");
+                      if (!free) return toast.error("Sem horários livres na agenda.");
+                      bookSlot(free.id, lead.id, `Call — ${lead.contactName} (${lead.company})`);
+                      toast.success("IA agendou reunião", {
+                        description: format(new Date(free.date), "dd MMM 'às' HH:mm", { locale: ptBR }),
+                      });
+                    }}
+                  >
+                    <CalendarCheck className="h-3.5 w-3.5 mr-1.5" /> Agendar via IA
+                  </Button>
+                </div>
+              </div>
+
+              {(lead.aiActions?.length ?? 0) === 0 ? (
+                <div className="text-sm text-muted-foreground italic text-center py-6">
+                  A IA ainda não executou ações neste lead.
+                </div>
+              ) : (
+                <ol className="relative ml-3 space-y-4 border-l border-primary/30 pl-5">
+                  {lead.aiActions!.map((a) => (
+                    <li key={a.id} className="relative">
+                      <span className="absolute -left-[27px] flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                        <Sparkles className="h-3 w-3" />
+                      </span>
+                      <div className="text-xs text-muted-foreground">
+                        {a.type === "followup" ? "Follow-up automático" :
+                         a.type === "schedule" ? "Reunião agendada" :
+                         a.type === "qualify" ? "Qualificação" : "Resposta IA"} ·{" "}
+                        {format(new Date(a.date), "dd MMM 'às' HH:mm", { locale: ptBR })}
+                      </div>
+                      <div className="text-sm">{a.content}</div>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </TabsContent>
+
             <TabsContent value="tarefas" className="mt-4 space-y-3">
+
               <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
                 <Input
                   placeholder="Nova tarefa (ex: Ligar para João na terça)"
