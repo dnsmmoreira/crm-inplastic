@@ -194,12 +194,6 @@ function PropostaDetalhe() {
           <Button variant="outline" className="gap-2" onClick={() => { setStatus(proposal.id, "recusada"); }}>
             <XCircle className="h-4 w-4" /> Recusar
           </Button>
-          <Button className="gap-2" onClick={() => window.print()}>
-            <Printer className="h-4 w-4" /> Imprimir / PDF
-          </Button>
-        </div>
-      </div>
-
           <Button
             variant={dirty ? "default" : "outline"}
             className="gap-2"
