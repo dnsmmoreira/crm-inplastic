@@ -75,13 +75,32 @@ function PropostaDetalhe() {
   const updateProposal = useCrm((s) => s.updateProposal);
   const setStatus = useCrm((s) => s.setProposalStatus);
   const [addProduct, setAddProduct] = useState("");
-  const [addQty, setAddQty] = useState(1);
+  const [addQty, setAddQty] = useState<number | "">(1);
   const [addPrice, setAddPrice] = useState<number | "">("");
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
+  const [rowErrors, setRowErrors] = useState<Record<string, { field: "description" | "quantity" | "unitPrice"; message: string } | null>>({});
 
   const totals = useMemo(() => (proposal ? proposalTotals(proposal) : null), [proposal]);
   const owner = proposal ? USERS.find((u) => u.id === proposal.ownerId) : null;
   const selectedProduct = useMemo(() => products.find((p) => p.id === addProduct), [products, addProduct]);
+
+  const validateAndUpdateItem = (
+    itemId: string,
+    field: "description" | "quantity" | "unitPrice",
+    raw: string,
+  ) => {
+    const value = field === "description" ? raw : Number(raw);
+    const parsed = itemSchema.shape[field].safeParse(value);
+    if (!parsed.success) {
+      setRowErrors((prev) => ({ ...prev, [itemId]: { field, message: parsed.error.issues[0]?.message ?? "Valor inválido" } }));
+      // Still reflect the raw value in the store so the user sees what they typed
+      updateItem(proposal!.id, itemId, { [field]: value } as never);
+      return;
+    }
+    setRowErrors((prev) => ({ ...prev, [itemId]: null }));
+    updateItem(proposal!.id, itemId, { [field]: parsed.data } as never);
+  };
 
   if (!proposal || !lead) {
     return (
