@@ -378,6 +378,11 @@ function PropostaDetalhe() {
                 Gerenciar catálogo →
               </Link>
             </div>
+            {addError && (
+              <p className="mt-2 text-xs text-destructive flex items-center gap-1.5">
+                <AlertCircle className="h-3 w-3" /> {addError}
+              </p>
+            )}
           </CardContent>
         </Card>
 
