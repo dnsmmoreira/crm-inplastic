@@ -190,13 +190,19 @@ function LeadCard({
         <CalendarIcon className="h-3 w-3 shrink-0" />
         <span>Último contato {format(new Date(lead.lastContact), "dd MMM", { locale: ptBR })}</span>
       </div>
-      {lead.tags.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1">
-          {lead.tags.slice(0, 2).map((t) => (
-            <Badge key={t} variant="outline" className="text-[10px] px-1.5 py-0">{t}</Badge>
-          ))}
-        </div>
-      )}
+      {(() => {
+        const t = leadTemperature(lead);
+        return (
+          <div className="mt-2 flex flex-wrap items-center gap-1">
+            <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${t.className}`} title={t.hint}>
+              <span className="mr-1">{t.emoji}</span>{t.label} · {t.days}d
+            </Badge>
+            {lead.tags.slice(0, 2).map((tag) => (
+              <Badge key={tag} variant="outline" className="text-[10px] px-1.5 py-0">{tag}</Badge>
+            ))}
+          </div>
+        );
+      })()}
     </div>
   );
 }
