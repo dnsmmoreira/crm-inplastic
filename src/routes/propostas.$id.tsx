@@ -106,6 +106,7 @@ function PropostaDetalhe() {
 
   const paymentTerms = useCrm((s) => s.paymentTerms);
   const activePaymentTerms = useMemo(() => paymentTerms.filter((t) => t.active), [paymentTerms]);
+  const maxDiscount = useMaxDiscountForCurrentUser();
   const _addItem = useCrm((s) => s.addProposalItem);
   const _updateItem = useCrm((s) => s.updateProposalItem);
   const _removeItem = useCrm((s) => s.removeProposalItem);
