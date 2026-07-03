@@ -200,6 +200,7 @@ async function doSave() {
     paymentTerms: state.paymentTerms,
     emitters: state.emitters,
     defaultEmitterId: state.defaultEmitterId,
+    maxDiscountPercentVendedor: state.maxDiscountPercentVendedor,
   };
   const systemJson = JSON.stringify(systemPayload);
   if (systemJson !== lastSystemSavedJson && currentRole === "admin") {
