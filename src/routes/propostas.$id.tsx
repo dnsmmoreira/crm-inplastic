@@ -326,7 +326,14 @@ function PropostaDetalhe() {
               </div>
               <div className="w-24">
                 <Label>Qtd</Label>
-                <Input type="number" min={1} value={addQty} onChange={(e) => setAddQty(Number(e.target.value))} />
+                <Input
+                  type="number"
+                  min={1}
+                  step="1"
+                  value={addQty}
+                  className={addError && (addQty === "" || Number(addQty) <= 0) ? "border-destructive" : ""}
+                  onChange={(e) => setAddQty(e.target.value === "" ? "" : Number(e.target.value))}
+                />
               </div>
               <div className="w-32">
                 <Label>Preço un. (R$)</Label>
@@ -341,14 +348,21 @@ function PropostaDetalhe() {
               </div>
               <Button
                 onClick={() => {
-                  if (!addProduct || addQty <= 0) { toast.error("Selecione produto e quantidade"); return; }
-                  addItem(proposal.id, addProduct, addQty);
-                  // Override initial price if user changed it
-                  if (addPrice !== "" && selectedProduct && addPrice !== selectedProduct.defaultPrice) {
-                    // Find the item just added (last in list) and patch price
+                  const qty = addQty === "" ? NaN : Number(addQty);
+                  const price = addPrice === "" ? (selectedProduct?.defaultPrice ?? NaN) : Number(addPrice);
+                  const parsed = addItemSchema.safeParse({ productId: addProduct, quantity: qty, unitPrice: price });
+                  if (!parsed.success) {
+                    const msg = parsed.error.issues[0]?.message ?? "Dados inválidos";
+                    setAddError(msg);
+                    toast.error(msg);
+                    return;
+                  }
+                  setAddError(null);
+                  addItem(proposal.id, parsed.data.productId, parsed.data.quantity);
+                  if (selectedProduct && parsed.data.unitPrice !== selectedProduct.defaultPrice) {
                     const current = useCrm.getState().proposals.find((p) => p.id === proposal.id);
                     const last = current?.items[current.items.length - 1];
-                    if (last) updateItem(proposal.id, last.id, { unitPrice: Number(addPrice) });
+                    if (last) updateItem(proposal.id, last.id, { unitPrice: parsed.data.unitPrice });
                   }
                   setAddProduct("");
                   setAddQty(1);
@@ -358,6 +372,7 @@ function PropostaDetalhe() {
                 className="gap-2"
               >
                 <Plus className="h-4 w-4" /> Adicionar
+
               </Button>
               <Link to="/produtos" className="text-xs text-primary hover:underline ml-2 self-center">
                 Gerenciar catálogo →
