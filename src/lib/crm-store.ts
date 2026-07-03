@@ -622,6 +622,8 @@ type CrmState = {
   proposals: Proposal[];
   emitters: EmitterProfile[];
   defaultEmitterId: string;
+  maxDiscountPercentVendedor: number; // limite (%) para desconto por vendedor; ADM só define
+  setMaxDiscountPercentVendedor: (pct: number) => void;
   setDefaultEmitter: (id: string) => void;
   updateEmitter: (id: string, patch: Partial<Omit<EmitterProfile, "id">>) => void;
 
