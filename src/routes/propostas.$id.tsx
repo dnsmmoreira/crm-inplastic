@@ -780,6 +780,11 @@ function PropostaDetalhe() {
                 </p>
               </div>
 
+              <div className="rounded-md border-l-4 border-amber-500 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-800">
+                <span className="font-semibold">Válido após aprovação financeira.</span>
+              </div>
+
+
               {(() => {
                 const term = paymentTerms.find((t: PaymentTerm) => t.id === proposal.paymentTermId);
                 if (!term) return (
