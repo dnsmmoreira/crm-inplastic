@@ -40,6 +40,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
   Table,
   TableBody,
   TableCell,
@@ -217,13 +228,36 @@ function PropostaDetalhe() {
                         {formatBRL(it.quantity * it.unitPrice)}
                       </TableCell>
                       <TableCell>
-                        <Button size="icon" variant="ghost" onClick={() => {
-                          removeItem(proposal.id, it.id);
-                          setRowErrors((prev) => { const n = { ...prev }; delete n[it.id]; return n; });
-                          toast.success("Item removido");
-                        }}>
-                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button size="icon" variant="ghost" aria-label="Remover item">
+                              <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Remover item da proposta?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                {it.description || "Item sem descrição"}
+                                {it.sku ? ` (${it.sku})` : ""} — {it.quantity} {it.unit} · {formatBRL(it.quantity * it.unitPrice)}.
+                                <br />Esta ação não pode ser desfeita.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                onClick={() => {
+                                  removeItem(proposal.id, it.id);
+                                  setRowErrors((prev) => { const n = { ...prev }; delete n[it.id]; return n; });
+                                  toast.success("Item removido");
+                                }}
+                              >
+                                Remover
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </TableCell>
                     </TableRow>
                   );
