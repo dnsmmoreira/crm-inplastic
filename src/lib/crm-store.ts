@@ -933,38 +933,8 @@ export const useCrm = create<CrmState>()(
         })),
       resetPaymentTerms: () => set({ paymentTerms: DEFAULT_PAYMENT_TERMS }),
     }),
-    {
-      name: "pdp-crm-v5",
-      merge: (persisted, current) => {
-        const p = (persisted ?? {}) as Partial<CrmState>;
-        const emitters =
-          p.emitters && p.emitters.length > 0 ? p.emitters : DEFAULT_EMITTERS;
-        const defaultEmitterId =
-          p.defaultEmitterId && emitters.some((e) => e.id === p.defaultEmitterId)
-            ? p.defaultEmitterId
-            : emitters[0].id;
-        const proposals = (p.proposals ?? current.proposals).map((pr) => ({
-          ...pr,
-          emitterId: pr.emitterId && emitters.some((e) => e.id === pr.emitterId)
-            ? pr.emitterId
-            : defaultEmitterId,
-        }));
-        return {
-          ...current,
-          ...p,
-          emitters,
-          defaultEmitterId,
-          proposals,
-          paymentTerms:
-            p.paymentTerms && p.paymentTerms.length > 0 ? p.paymentTerms : DEFAULT_PAYMENT_TERMS,
-        } as CrmState;
-      },
-    },
-
-
-
-  ),
 );
+
 
 export const formatBRL = (n: number) =>
   n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
