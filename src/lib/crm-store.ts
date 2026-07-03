@@ -528,6 +528,9 @@ export const PAYMENT_TERMS = DEFAULT_PAYMENT_TERMS;
 
 
 export type EmitterProfile = {
+  id: string;
+  brand: string;             // nome fantasia / marca curta usada no cabeçalho
+  tagline?: string;          // subtítulo abaixo da marca no documento
   legalName: string;
   cnpj: string;
   ie: string;
@@ -538,16 +541,51 @@ export type EmitterProfile = {
   website: string;
 };
 
-const defaultEmitter: EmitterProfile = {
-  legalName: "Pallet de Plástico Indústria e Comércio LTDA",
-  cnpj: "00.000.000/0001-00",
-  ie: "000.000.000.000",
-  address: "Av. Industrial, 1000 — Distrito Industrial — São Paulo/SP — CEP 00000-000",
-  phone: "(11) 4000-0000",
-  whatsapp: "(11) 90000-0000",
-  email: "vendas@palletdeplastico.com.br",
-  website: "www.palletdeplastico.com.br",
-};
+export const DEFAULT_EMITTERS: EmitterProfile[] = [
+  {
+    id: "taoplast",
+    brand: "PALLET DE PLÁSTICO",
+    tagline: "Indústria e comércio de produtos plásticos",
+    legalName: "TAOPLAST Indústria e Comércio de Produtos Plásticos LTDA",
+    cnpj: "00.000.000/0001-00",
+    ie: "000.000.000.000",
+    address: "Av. Industrial, 1000 — Distrito Industrial — São Paulo/SP — CEP 00000-000",
+    phone: "(11) 4000-0000",
+    whatsapp: "(11) 90000-0000",
+    email: "vendas@palletdeplastico.com.br",
+    website: "www.palletdeplastico.com.br",
+  },
+  {
+    id: "inplastic",
+    brand: "INPLASTIC",
+    tagline: "Comércio de produtos plásticos",
+    legalName: "INPLASTIC Comércio de Produtos Plásticos LTDA – ME",
+    cnpj: "19.959.992/0001-07",
+    ie: "143.366.452.110",
+    address: "Rua Capitão Busse, 854 — Parque Edu Chaves — São Paulo/SP — CEP 02232-050",
+    phone: "(11) 2372-2225",
+    whatsapp: "(11) 2372-2225",
+    email: "inplastic@inplastic.com.br",
+    website: "www.inplastic.com.br",
+  },
+  {
+    id: "licitaplas",
+    brand: "LICITAPLAS",
+    tagline: "Comércio de plásticos",
+    legalName: "LICITAPLAS Comércio de Plásticos LTDA (Limitada Unipessoal – ME)",
+    cnpj: "39.871.995/0001-00",
+    ie: "—",
+    address: "Rua Luis Sergio Person, 223 — Parque Mandaqui — São Paulo/SP — CEP 02422-230",
+    phone: "(11) 2372-2225",
+    whatsapp: "(11) 2372-2225",
+    email: "contato@licitaplas.com.br",
+    website: "www.licitaplas.com.br",
+  },
+];
+
+const DEFAULT_EMITTER_ID = DEFAULT_EMITTERS[0].id;
+
+
 
 
 type CrmState = {
