@@ -887,3 +887,19 @@ export const useBestSellerOfMonth = () => {
   }, [leads]);
 };
 
+
+export const useVisibleProposals = () => {
+  const proposals = useCrm((s) => s.proposals);
+  const user = useCurrentUser();
+  return useMemo(
+    () => (user.role === "admin" ? proposals : proposals.filter((p) => p.ownerId === user.id)),
+    [proposals, user],
+  );
+};
+
+export const proposalTotals = (p: Proposal) => {
+  const subtotal = p.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
+  const total = subtotal + (p.transport.freightValue || 0);
+  const qty = p.items.reduce((s, i) => s + i.quantity, 0);
+  return { subtotal, total, qty, count: p.items.length };
+};
