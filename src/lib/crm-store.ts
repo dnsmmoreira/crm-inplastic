@@ -862,8 +862,39 @@ export const useCrm = create<CrmState>()(
         set((s) => ({
           proposals: s.proposals.map((p) => (p.id === id ? { ...p, status } : p)),
         })),
+
+      // ============ Payment Terms (ADM catalogue) ============
+      paymentTerms: DEFAULT_PAYMENT_TERMS,
+      addPaymentTerm: (t) => {
+        const id = uid();
+        set((s) => ({ paymentTerms: [...s.paymentTerms, { ...t, id }] }));
+        return id;
+      },
+      updatePaymentTerm: (id, patch) =>
+        set((s) => ({
+          paymentTerms: s.paymentTerms.map((t) => (t.id === id ? { ...t, ...patch } : t)),
+        })),
+      removePaymentTerm: (id) =>
+        set((s) => ({ paymentTerms: s.paymentTerms.filter((t) => t.id !== id) })),
+      togglePaymentTermActive: (id) =>
+        set((s) => ({
+          paymentTerms: s.paymentTerms.map((t) => (t.id === id ? { ...t, active: !t.active } : t)),
+        })),
+      resetPaymentTerms: () => set({ paymentTerms: DEFAULT_PAYMENT_TERMS }),
     }),
-    { name: "pdp-crm-v4" },
+    {
+      name: "pdp-crm-v4",
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as Partial<CrmState>;
+        return {
+          ...current,
+          ...p,
+          paymentTerms:
+            p.paymentTerms && p.paymentTerms.length > 0 ? p.paymentTerms : DEFAULT_PAYMENT_TERMS,
+        } as CrmState;
+      },
+    },
+
 
   ),
 );
