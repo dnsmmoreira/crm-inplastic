@@ -112,9 +112,13 @@ function DashboardPage() {
     <div className="p-4 md:p-8 space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl md:text-3xl font-semibold">Dashboard</h1>
+          <h1 className="text-2xl md:text-3xl font-semibold">
+            Olá, {user.name.split(" ")[0]}
+          </h1>
           <p className="text-sm text-muted-foreground">
-            Visão geral dos leads e propostas — <span className="font-medium">palletdeplastico.com.br</span>
+            {isAdmin
+              ? "Visão de administrador — todos os leads e propostas"
+              : "Seu painel — leads e propostas atribuídos a você"}
           </p>
         </div>
         <NewLeadDialog
@@ -125,6 +129,9 @@ function DashboardPage() {
           }
         />
       </div>
+
+      <BestSellerCard />
+
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Kpi
