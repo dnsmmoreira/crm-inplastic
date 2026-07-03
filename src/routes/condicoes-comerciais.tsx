@@ -260,6 +260,8 @@ function CondicoesComerciais() {
 
       <CatalogueEditor kind="tags" />
       <CatalogueEditor kind="segments" />
+      <FreightConfigEditor />
+
 
       <Card>
         <CardHeader>
