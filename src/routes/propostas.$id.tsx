@@ -24,10 +24,10 @@ import {
   formatBRL,
   proposalTotals,
   USERS,
-  PAYMENT_TERMS,
   type ProposalStatus,
   type PaymentTerm,
 } from "@/lib/crm-store";
+
 
 /** Build display installments (equal split) from an ADM payment term and the proposal total. */
 function buildTermInstallments(term: PaymentTerm | undefined, total: number) {
@@ -94,6 +94,8 @@ function PropostaDetalhe() {
   const lead = useCrm((s) => (proposal ? s.leads.find((l) => l.id === proposal.leadId) : undefined));
   const products = useCrm((s) => s.products);
   const emitter = useCrm((s) => s.emitter);
+  const paymentTerms = useCrm((s) => s.paymentTerms);
+  const activePaymentTerms = useMemo(() => paymentTerms.filter((t) => t.active), [paymentTerms]);
   const _addItem = useCrm((s) => s.addProposalItem);
   const _updateItem = useCrm((s) => s.updateProposalItem);
   const _removeItem = useCrm((s) => s.removeProposalItem);
@@ -570,7 +572,7 @@ function PropostaDetalhe() {
                 >
                   <SelectTrigger><SelectValue placeholder="Escolha uma condição cadastrada" /></SelectTrigger>
                   <SelectContent className="max-h-80">
-                    {PAYMENT_TERMS.map((t) => (
+                    {activePaymentTerms.map((t: PaymentTerm) => (
                       <SelectItem key={t.id} value={t.id}>
                         <span className="font-medium">{t.label}</span>
                         <span className="text-muted-foreground text-xs ml-2">· {t.method}</span>
@@ -584,7 +586,7 @@ function PropostaDetalhe() {
               </div>
 
               {(() => {
-                const term = PAYMENT_TERMS.find((t) => t.id === proposal.paymentTermId);
+                const term = paymentTerms.find((t: PaymentTerm) => t.id === proposal.paymentTermId);
                 if (!term) return (
                   <p className="text-xs text-muted-foreground italic">Nenhuma condição selecionada.</p>
                 );
@@ -731,7 +733,7 @@ function PropostaDetalhe() {
           <div>
             <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Condições comerciais</div>
             {(() => {
-              const term = PAYMENT_TERMS.find((t) => t.id === proposal.paymentTermId);
+              const term = paymentTerms.find((t: PaymentTerm) => t.id === proposal.paymentTermId);
               const rows = buildTermInstallments(term, totals?.total ?? 0);
               if (!term) {
                 return <div className="text-[11px] italic text-muted-foreground">A combinar.</div>;

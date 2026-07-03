@@ -19,13 +19,14 @@ import {
   Bot,
   Package,
   FileText,
+  Settings2,
 } from "lucide-react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
-import { useCrm, USERS, useCurrentUser } from "@/lib/crm-store";
+import { useCrm, USERS, useCurrentUser, useIsAdmin } from "@/lib/crm-store";
 import {
   Select,
   SelectContent,
@@ -121,18 +122,21 @@ function RootShell({ children }: { children: ReactNode }) {
 }
 
 const NAV = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/pipeline", label: "Funil de Vendas", icon: KanbanSquare },
-  { to: "/canais", label: "Canais de Entrada", icon: MessageSquare },
-  { to: "/agente-ia", label: "Agente IA", icon: Bot },
-  { to: "/contatos", label: "Contatos", icon: Users },
-  { to: "/tarefas", label: "Tarefas", icon: CheckSquare },
-  { to: "/propostas", label: "Propostas", icon: FileText },
-  { to: "/produtos", label: "Produtos", icon: Package },
+  { to: "/", label: "Dashboard", icon: LayoutDashboard, adminOnly: false },
+  { to: "/pipeline", label: "Funil de Vendas", icon: KanbanSquare, adminOnly: false },
+  { to: "/canais", label: "Canais de Entrada", icon: MessageSquare, adminOnly: false },
+  { to: "/agente-ia", label: "Agente IA", icon: Bot, adminOnly: false },
+  { to: "/contatos", label: "Contatos", icon: Users, adminOnly: false },
+  { to: "/tarefas", label: "Tarefas", icon: CheckSquare, adminOnly: false },
+  { to: "/propostas", label: "Propostas", icon: FileText, adminOnly: false },
+  { to: "/produtos", label: "Produtos", icon: Package, adminOnly: false },
+  { to: "/condicoes-comerciais", label: "Condições Comerciais", icon: Settings2, adminOnly: true },
 ] as const;
 
 function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isAdmin = useIsAdmin();
+  const nav = NAV.filter((n) => !n.adminOnly || isAdmin);
   return (
     <div className="flex min-h-screen bg-background text-foreground">
       <aside className="hidden md:flex w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground">
@@ -146,7 +150,7 @@ function AppShell({ children }: { children: ReactNode }) {
           </div>
         </div>
         <nav className="flex-1 space-y-1 p-3">
-          {NAV.map((item) => {
+          {nav.map((item) => {
             const active = pathname === item.to;
             const Icon = item.icon;
             return (
@@ -184,7 +188,7 @@ function AppShell({ children }: { children: ReactNode }) {
           </div>
         </header>
         <nav className="md:hidden flex overflow-x-auto border-b bg-card">
-          {NAV.map((item) => {
+          {nav.map((item) => {
             const active = pathname === item.to;
             const Icon = item.icon;
             return (

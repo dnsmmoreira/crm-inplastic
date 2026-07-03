@@ -13,6 +13,7 @@ import { Route as TarefasRouteImport } from './routes/tarefas'
 import { Route as ProdutosRouteImport } from './routes/produtos'
 import { Route as PipelineRouteImport } from './routes/pipeline'
 import { Route as ContatosRouteImport } from './routes/contatos'
+import { Route as CondicoesComerciaisRouteImport } from './routes/condicoes-comerciais'
 import { Route as CanaisRouteImport } from './routes/canais'
 import { Route as AgenteIaRouteImport } from './routes/agente-ia'
 import { Route as IndexRouteImport } from './routes/index'
@@ -37,6 +38,11 @@ const PipelineRoute = PipelineRouteImport.update({
 const ContatosRoute = ContatosRouteImport.update({
   id: '/contatos',
   path: '/contatos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CondicoesComerciaisRoute = CondicoesComerciaisRouteImport.update({
+  id: '/condicoes-comerciais',
+  path: '/condicoes-comerciais',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CanaisRoute = CanaisRouteImport.update({
@@ -69,6 +75,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/agente-ia': typeof AgenteIaRoute
   '/canais': typeof CanaisRoute
+  '/condicoes-comerciais': typeof CondicoesComerciaisRoute
   '/contatos': typeof ContatosRoute
   '/pipeline': typeof PipelineRoute
   '/produtos': typeof ProdutosRoute
@@ -80,6 +87,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/agente-ia': typeof AgenteIaRoute
   '/canais': typeof CanaisRoute
+  '/condicoes-comerciais': typeof CondicoesComerciaisRoute
   '/contatos': typeof ContatosRoute
   '/pipeline': typeof PipelineRoute
   '/produtos': typeof ProdutosRoute
@@ -92,6 +100,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/agente-ia': typeof AgenteIaRoute
   '/canais': typeof CanaisRoute
+  '/condicoes-comerciais': typeof CondicoesComerciaisRoute
   '/contatos': typeof ContatosRoute
   '/pipeline': typeof PipelineRoute
   '/produtos': typeof ProdutosRoute
@@ -105,6 +114,7 @@ export interface FileRouteTypes {
     | '/'
     | '/agente-ia'
     | '/canais'
+    | '/condicoes-comerciais'
     | '/contatos'
     | '/pipeline'
     | '/produtos'
@@ -116,6 +126,7 @@ export interface FileRouteTypes {
     | '/'
     | '/agente-ia'
     | '/canais'
+    | '/condicoes-comerciais'
     | '/contatos'
     | '/pipeline'
     | '/produtos'
@@ -127,6 +138,7 @@ export interface FileRouteTypes {
     | '/'
     | '/agente-ia'
     | '/canais'
+    | '/condicoes-comerciais'
     | '/contatos'
     | '/pipeline'
     | '/produtos'
@@ -139,6 +151,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AgenteIaRoute: typeof AgenteIaRoute
   CanaisRoute: typeof CanaisRoute
+  CondicoesComerciaisRoute: typeof CondicoesComerciaisRoute
   ContatosRoute: typeof ContatosRoute
   PipelineRoute: typeof PipelineRoute
   ProdutosRoute: typeof ProdutosRoute
@@ -175,6 +188,13 @@ declare module '@tanstack/react-router' {
       path: '/contatos'
       fullPath: '/contatos'
       preLoaderRoute: typeof ContatosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/condicoes-comerciais': {
+      id: '/condicoes-comerciais'
+      path: '/condicoes-comerciais'
+      fullPath: '/condicoes-comerciais'
+      preLoaderRoute: typeof CondicoesComerciaisRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/canais': {
@@ -219,6 +239,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AgenteIaRoute: AgenteIaRoute,
   CanaisRoute: CanaisRoute,
+  CondicoesComerciaisRoute: CondicoesComerciaisRoute,
   ContatosRoute: ContatosRoute,
   PipelineRoute: PipelineRoute,
   ProdutosRoute: ProdutosRoute,
