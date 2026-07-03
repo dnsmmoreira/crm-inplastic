@@ -80,11 +80,11 @@ function PropostaDetalhe() {
   const lead = useCrm((s) => (proposal ? s.leads.find((l) => l.id === proposal.leadId) : undefined));
   const products = useCrm((s) => s.products);
   const emitter = useCrm((s) => s.emitter);
-  const addItem = useCrm((s) => s.addProposalItem);
-  const updateItem = useCrm((s) => s.updateProposalItem);
-  const removeItem = useCrm((s) => s.removeProposalItem);
-  const updateProposal = useCrm((s) => s.updateProposal);
-  const setStatus = useCrm((s) => s.setProposalStatus);
+  const _addItem = useCrm((s) => s.addProposalItem);
+  const _updateItem = useCrm((s) => s.updateProposalItem);
+  const _removeItem = useCrm((s) => s.removeProposalItem);
+  const _updateProposal = useCrm((s) => s.updateProposal);
+  const _setStatus = useCrm((s) => s.setProposalStatus);
   const [addProduct, setAddProduct] = useState("");
   const [addQty, setAddQty] = useState<number | "">(1);
   const [addPrice, setAddPrice] = useState<number | "">("");
