@@ -16,6 +16,7 @@ import {
   DEFAULT_PAYMENT_TERMS,
   DEFAULT_LEAD_TAGS,
   DEFAULT_LEAD_SEGMENTS,
+  DEFAULT_FREIGHT_CONFIG,
   type Lead,
   type Task,
   type Proposal,
@@ -23,6 +24,7 @@ import {
   type EmitterProfile,
   type PaymentTerm,
   type AgentSettings,
+  type FreightConfig,
 } from "@/lib/crm-store";
 
 type SystemPayload = {
@@ -33,6 +35,7 @@ type SystemPayload = {
   maxDiscountPercentVendedor?: number;
   leadTags?: string[];
   leadSegments?: string[];
+  freightConfig?: FreightConfig;
 };
 
 type UserPayload = {
@@ -104,6 +107,7 @@ export async function hydrateCrmForUser(userId: string, role: "admin" | "vendedo
       typeof sys.maxDiscountPercentVendedor === "number" ? sys.maxDiscountPercentVendedor : 3,
     leadTags: sys.leadTags?.length ? sys.leadTags : DEFAULT_LEAD_TAGS,
     leadSegments: sys.leadSegments?.length ? sys.leadSegments : DEFAULT_LEAD_SEGMENTS,
+    freightConfig: sys.freightConfig ?? DEFAULT_FREIGHT_CONFIG,
   };
 
   // Se o sistema está vazio e o usuário é admin, grava o seed inicial (a RLS impede vendedor).
@@ -159,6 +163,7 @@ export async function hydrateCrmForUser(userId: string, role: "admin" | "vendedo
     maxDiscountPercentVendedor: systemState.maxDiscountPercentVendedor,
     leadTags: systemState.leadTags,
     leadSegments: systemState.leadSegments,
+    freightConfig: systemState.freightConfig,
     leads,
     tasks,
     proposals,
@@ -211,6 +216,7 @@ async function doSave() {
     maxDiscountPercentVendedor: state.maxDiscountPercentVendedor,
     leadTags: state.leadTags,
     leadSegments: state.leadSegments,
+    freightConfig: state.freightConfig,
   };
   const systemJson = JSON.stringify(systemPayload);
   if (systemJson !== lastSystemSavedJson && currentRole === "admin") {

@@ -30,6 +30,8 @@ import {
   type ProposalStatus,
   type PaymentTerm,
 } from "@/lib/crm-store";
+import { calculateFreightDistance } from "@/lib/freight.functions";
+import { useServerFn } from "@tanstack/react-start";
 
 
 /** Build display installments (equal split) from an ADM payment term and the proposal total. */
@@ -142,6 +144,9 @@ function PropostaDetalhe() {
   const [addError, setAddError] = useState<string | null>(null);
   const [rowErrors, setRowErrors] = useState<Record<string, { field: "description" | "quantity" | "unitPrice"; message: string } | null>>({});
   const [dirty, setDirty] = useState(false);
+  const freightConfig = useCrm((s) => s.freightConfig);
+  const [freightLoading, setFreightLoading] = useState(false);
+  const calcFreight = useServerFn(calculateFreightDistance);
 
   const totals = useMemo(() => (proposal ? proposalTotals(proposal) : null), [proposal]);
   const owner = proposal ? USERS.find((u) => u.id === proposal.ownerId) : null;
@@ -721,9 +726,78 @@ function PropostaDetalhe() {
                     Somado ao total da proposta. Deixe zero enquanto for apenas estimativa.
                   </p>
                 </div>
+
+                <div className="col-span-2 mt-1 rounded-md border bg-muted/30 p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-semibold uppercase tracking-wide">Cálculo automático por CEP</Label>
+                    <span className="text-[10px] text-muted-foreground">
+                      Origem: {freightConfig.originCep} · {freightConfig.originAddress}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="col-span-2">
+                      <Label>CEP de entrega</Label>
+                      <Input
+                        value={proposal.transport.deliveryCep ?? ""}
+                        onChange={(e) => updateProposal(proposal.id, { transport: { ...proposal.transport, deliveryCep: e.target.value } })}
+                        placeholder="00000-000"
+                      />
+                    </div>
+                    <div className="flex items-end">
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="w-full"
+                        disabled={freightLoading || !proposal.transport.deliveryCep}
+                        onClick={async () => {
+                          try {
+                            setFreightLoading(true);
+                            const res = await calcFreight({
+                              data: {
+                                originCep: freightConfig.originCep,
+                                destinationCep: proposal.transport.deliveryCep!,
+                              },
+                            });
+                            const cubicKg = proposal.transport.cubageM3 * freightConfig.cubageFactorKgPerM3;
+                            const taxableKg = Math.max(proposal.transport.grossWeightKg, cubicKg);
+                            const value = +(taxableKg * res.distanceKm * freightConfig.rateBRLPerKgKm).toFixed(2);
+                            updateProposal(proposal.id, {
+                              transport: {
+                                ...proposal.transport,
+                                deliveryAddress: res.destinationAddress,
+                                distanceKm: res.distanceKm,
+                                approxFreightValue: value,
+                              },
+                            });
+                            toast.success(`Distância: ${res.distanceKm} km`, {
+                              description: `Peso taxável ${taxableKg.toFixed(0)}kg → ${formatBRL(value)}`,
+                            });
+                          } catch (err) {
+                            toast.error("Falha ao calcular frete", {
+                              description: err instanceof Error ? err.message : "Verifique o CEP",
+                            });
+                          } finally {
+                            setFreightLoading(false);
+                          }
+                        }}
+                      >
+                        {freightLoading ? "Calculando..." : "Calcular"}
+                      </Button>
+                    </div>
+                  </div>
+                  {proposal.transport.distanceKm != null && (
+                    <div className="text-xs text-muted-foreground space-y-0.5">
+                      <div>📍 {proposal.transport.deliveryAddress}</div>
+                      <div>
+                        Distância: <strong>{proposal.transport.distanceKm} km</strong> · Tarifa: {freightConfig.rateBRLPerKgKm.toFixed(4)} R$/kg·km · Fator cubagem: {freightConfig.cubageFactorKgPerM3} kg/m³
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>
+
 
 
           <Card>
