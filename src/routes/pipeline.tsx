@@ -11,16 +11,25 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { Plus, Package, Calendar as CalendarIcon, Search } from "lucide-react";
+import { Plus, Package, Calendar as CalendarIcon, Search, ArrowDownUp, X } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useCrm, STAGES, formatBRL, leadTemperature, followupTemperature, type Lead, type StageId, useVisibleLeads } from "@/lib/crm-store";
+import { useCrm, STAGES, formatBRL, leadTemperature, followupTemperature, type Lead, type StageId, type FollowupLevel, useVisibleLeads } from "@/lib/crm-store";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Toggle } from "@/components/ui/toggle";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { NewLeadDialog, LeadDrawer } from "@/components/crm/LeadDrawer";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+
+type SortMode = "default" | "urgency" | "urgency-desc";
+const AGENDA_FILTERS: { level: FollowupLevel; label: string; emoji: string }[] = [
+  { level: "urgent", label: "Urgente", emoji: "🔥" },
+  { level: "attention", label: "Atenção", emoji: "⚠️" },
+  { level: "scheduled", label: "Agendado", emoji: "❄️" },
+];
 
 export const Route = createFileRoute("/pipeline")({
   component: PipelinePage,
@@ -38,24 +47,51 @@ function PipelinePage() {
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
+  const [agendaFilter, setAgendaFilter] = useState<Set<FollowupLevel>>(new Set());
+  const [sortMode, setSortMode] = useState<SortMode>("default");
+
+  const toggleAgenda = (lvl: FollowupLevel) =>
+    setAgendaFilter((prev) => {
+      const next = new Set(prev);
+      if (next.has(lvl)) next.delete(lvl);
+      else next.add(lvl);
+      return next;
+    });
+
   const filtered = useMemo(() => {
-    if (!search) return leads;
     const q = search.toLowerCase();
-    return leads.filter(
-      (l) =>
-        l.company.toLowerCase().includes(q) ||
+    return leads.filter((l) => {
+      if (q && !(l.company.toLowerCase().includes(q) ||
         l.contactName.toLowerCase().includes(q) ||
-        l.product.toLowerCase().includes(q),
-    );
-  }, [leads, search]);
+        l.product.toLowerCase().includes(q))) return false;
+      if (agendaFilter.size > 0) {
+        const lvl = followupTemperature(l).level;
+        if (!agendaFilter.has(lvl)) return false;
+      }
+      return true;
+    });
+  }, [leads, search, agendaFilter]);
 
   const byStage = useMemo(() => {
+    const rank: Record<FollowupLevel, number> = { urgent: 0, attention: 1, scheduled: 2, ok: 3 };
     const map: Record<StageId, Lead[]> = {
       atendimento: [], novo: [], qualificacao: [], proposta: [], negociacao: [], ganho: [], perdido: [],
     };
     filtered.forEach((l) => map[l.stage].push(l));
+    if (sortMode !== "default") {
+      const dir = sortMode === "urgency" ? 1 : -1;
+      (Object.keys(map) as StageId[]).forEach((k) => {
+        map[k] = [...map[k]].sort((a, b) => {
+          const fa = followupTemperature(a);
+          const fb = followupTemperature(b);
+          const r = (rank[fa.level] - rank[fb.level]) * dir;
+          if (r !== 0) return r;
+          return ((fb.overdueDays ?? -Infinity) - (fa.overdueDays ?? -Infinity)) * dir;
+        });
+      });
+    }
     return map;
-  }, [filtered]);
+  }, [filtered, sortMode]);
 
   const active = activeId ? leads.find((l) => l.id === activeId) : null;
 
@@ -91,6 +127,48 @@ function PipelinePage() {
             />
           </div>
           <NewLeadDialog trigger={<Button className="gap-2"><Plus className="h-4 w-4" />Novo</Button>} />
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-2">
+        <span className="text-xs font-medium text-muted-foreground px-2">Agenda:</span>
+        {AGENDA_FILTERS.map((f) => {
+          const active = agendaFilter.has(f.level);
+          return (
+            <Toggle
+              key={f.level}
+              pressed={active}
+              onPressedChange={() => toggleAgenda(f.level)}
+              size="sm"
+              className="h-7 gap-1 text-xs data-[state=on]:bg-primary/15 data-[state=on]:text-primary"
+            >
+              <span>{f.emoji}</span>
+              {f.label}
+            </Toggle>
+          );
+        })}
+        {agendaFilter.size > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1 text-xs"
+            onClick={() => setAgendaFilter(new Set())}
+          >
+            <X className="h-3 w-3" /> Limpar
+          </Button>
+        )}
+        <div className="ml-auto flex items-center gap-2">
+          <ArrowDownUp className="h-3.5 w-3.5 text-muted-foreground" />
+          <Select value={sortMode} onValueChange={(v) => setSortMode(v as SortMode)}>
+            <SelectTrigger className="h-7 w-[200px] text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="default">Ordem padrão</SelectItem>
+              <SelectItem value="urgency">Mais urgente primeiro</SelectItem>
+              <SelectItem value="urgency-desc">Menos urgente primeiro</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
