@@ -142,12 +142,19 @@ function PropostaDetalhe() {
               <TableBody>
                 {proposal.items.map((it) => (
                   <TableRow key={it.id}>
-                    <TableCell className="font-medium">{it.description}</TableCell>
+                    <TableCell>
+                      <Input
+                        value={it.description}
+                        onChange={(e) => updateItem(proposal.id, it.id, { description: e.target.value })}
+                        className="font-medium"
+                      />
+                    </TableCell>
                     <TableCell className="font-mono text-xs">{it.sku}</TableCell>
                     <TableCell>{it.unit}</TableCell>
                     <TableCell>
                       <Input
                         type="number"
+                        min={0}
                         value={it.quantity}
                         onChange={(e) => updateItem(proposal.id, it.id, { quantity: Number(e.target.value) })}
                       />
@@ -156,15 +163,16 @@ function PropostaDetalhe() {
                       <Input
                         type="number"
                         step="0.01"
+                        min={0}
                         value={it.unitPrice}
                         onChange={(e) => updateItem(proposal.id, it.id, { unitPrice: Number(e.target.value) })}
                       />
                     </TableCell>
-                    <TableCell className="text-right font-semibold">
+                    <TableCell className="text-right font-semibold whitespace-nowrap">
                       {formatBRL(it.quantity * it.unitPrice)}
                     </TableCell>
                     <TableCell>
-                      <Button size="icon" variant="ghost" onClick={() => removeItem(proposal.id, it.id)}>
+                      <Button size="icon" variant="ghost" onClick={() => { removeItem(proposal.id, it.id); toast.success("Item removido"); }}>
                         <Trash2 className="h-3.5 w-3.5 text-destructive" />
                       </Button>
                     </TableCell>
@@ -173,46 +181,127 @@ function PropostaDetalhe() {
                 {proposal.items.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-6">
-                      Nenhum item ainda. Adicione produtos abaixo.
+                      Nenhum item ainda. Busque um produto abaixo pelo SKU ou nome.
                     </TableCell>
                   </TableRow>
                 )}
               </TableBody>
             </Table>
 
+            {totals && (
+              <div className="flex justify-end gap-6 text-sm mt-3 pr-2">
+                <span className="text-muted-foreground">Subtotal itens:</span>
+                <span className="font-semibold">{formatBRL(totals.subtotal)}</span>
+              </div>
+            )}
+
             <div className="flex flex-wrap items-end gap-2 mt-4 border-t pt-4">
-              <div className="flex-1 min-w-[200px]">
-                <Label>Adicionar produto do catálogo</Label>
-                <Select value={addProduct} onValueChange={setAddProduct}>
-                  <SelectTrigger><SelectValue placeholder="Selecione um produto" /></SelectTrigger>
-                  <SelectContent>
-                    {products.filter((p) => p.active).map((p) => (
-                      <SelectItem key={p.id} value={p.id}>{p.sku} — {p.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="flex-1 min-w-[240px]">
+                <Label>Buscar produto (SKU ou nome)</Label>
+                <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={pickerOpen}
+                      className="w-full justify-between font-normal"
+                    >
+                      {selectedProduct ? (
+                        <span className="truncate">
+                          <span className="font-mono text-xs mr-2">{selectedProduct.sku}</span>
+                          {selectedProduct.name}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground flex items-center gap-2">
+                          <Search className="h-3.5 w-3.5" /> Digite SKU ou nome do produto...
+                        </span>
+                      )}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[420px] p-0" align="start">
+                    <Command
+                      filter={(value, search) => {
+                        const p = products.find((x) => x.id === value);
+                        if (!p) return 0;
+                        const hay = `${p.sku} ${p.name} ${p.ncm}`.toLowerCase();
+                        return hay.includes(search.toLowerCase()) ? 1 : 0;
+                      }}
+                    >
+                      <CommandInput placeholder="Buscar por SKU, nome ou NCM..." />
+                      <CommandList>
+                        <CommandEmpty>Nenhum produto encontrado.</CommandEmpty>
+                        <CommandGroup heading="Catálogo">
+                          {products.filter((p) => p.active).map((p) => (
+                            <CommandItem
+                              key={p.id}
+                              value={p.id}
+                              onSelect={() => {
+                                setAddProduct(p.id);
+                                setAddPrice(p.defaultPrice);
+                                setPickerOpen(false);
+                              }}
+                            >
+                              <Check className={cn("mr-2 h-4 w-4", addProduct === p.id ? "opacity-100" : "opacity-0")} />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-mono text-xs text-muted-foreground">{p.sku}</span>
+                                  <span className="font-medium truncate">{p.name}</span>
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {p.unit} · NCM {p.ncm} · {formatBRL(p.defaultPrice)}
+                                </div>
+                              </div>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
               <div className="w-24">
                 <Label>Qtd</Label>
-                <Input type="number" value={addQty} onChange={(e) => setAddQty(Number(e.target.value))} />
+                <Input type="number" min={1} value={addQty} onChange={(e) => setAddQty(Number(e.target.value))} />
+              </div>
+              <div className="w-32">
+                <Label>Preço un. (R$)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min={0}
+                  value={addPrice}
+                  placeholder={selectedProduct ? String(selectedProduct.defaultPrice) : "0,00"}
+                  onChange={(e) => setAddPrice(e.target.value === "" ? "" : Number(e.target.value))}
+                />
               </div>
               <Button
                 onClick={() => {
                   if (!addProduct || addQty <= 0) { toast.error("Selecione produto e quantidade"); return; }
                   addItem(proposal.id, addProduct, addQty);
+                  // Override initial price if user changed it
+                  if (addPrice !== "" && selectedProduct && addPrice !== selectedProduct.defaultPrice) {
+                    // Find the item just added (last in list) and patch price
+                    const current = useCrm.getState().proposals.find((p) => p.id === proposal.id);
+                    const last = current?.items[current.items.length - 1];
+                    if (last) updateItem(proposal.id, last.id, { unitPrice: Number(addPrice) });
+                  }
                   setAddProduct("");
                   setAddQty(1);
+                  setAddPrice("");
+                  toast.success("Item adicionado");
                 }}
                 className="gap-2"
               >
                 <Plus className="h-4 w-4" /> Adicionar
               </Button>
-              <Link to="/produtos" className="text-xs text-primary hover:underline ml-2">
+              <Link to="/produtos" className="text-xs text-primary hover:underline ml-2 self-center">
                 Gerenciar catálogo →
               </Link>
             </div>
           </CardContent>
         </Card>
+
 
         <div className="space-y-4">
           <Card>
