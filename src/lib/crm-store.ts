@@ -365,6 +365,149 @@ const defaultAgent: AgentSettings = {
   tone: "consultivo",
 };
 
+export type ProductUnit = "Un" | "Kg" | "Cj";
+export const PRODUCT_UNITS: ProductUnit[] = ["Un", "Kg", "Cj"];
+
+export type Product = {
+  id: string;
+  sku: string;
+  name: string;
+  description: string;
+  unit: ProductUnit;
+  weightKg: number;      // peso unitário
+  heightCm: number;
+  widthCm: number;
+  lengthCm: number;
+  ncm: string;
+  defaultPrice: number;  // preço unitário sugerido
+  active: boolean;
+};
+
+const seedProducts: Product[] = [
+  {
+    id: "p-pbr1210",
+    sku: "PBR-1210",
+    name: "Pallet PBR 1210 Preto",
+    description: "Pallet plástico padrão PBR 1000x1200mm, cor preta, alta resistência.",
+    unit: "Un",
+    weightKg: 18,
+    heightCm: 14,
+    widthCm: 100,
+    lengthCm: 120,
+    ncm: "3923.10.90",
+    defaultPrice: 185,
+    active: true,
+  },
+  {
+    id: "p-exp1210",
+    sku: "EXP-1210",
+    name: "Pallet Exportação 1210",
+    description: "Pallet plástico para exportação, dispensa NIMF-15, empilhável.",
+    unit: "Un",
+    weightKg: 16,
+    heightCm: 15,
+    widthCm: 100,
+    lengthCm: 120,
+    ncm: "3923.10.90",
+    defaultPrice: 210,
+    active: true,
+  },
+  {
+    id: "p-hig1210",
+    sku: "HIG-1210",
+    name: "Pallet Higiênico 1210",
+    description: "Pallet higiênico para frigoríficos e farmacêutica, superfície fechada.",
+    unit: "Un",
+    weightKg: 22,
+    heightCm: 15,
+    widthCm: 100,
+    lengthCm: 120,
+    ncm: "3923.10.90",
+    defaultPrice: 245,
+    active: true,
+  },
+  {
+    id: "p-ref1210",
+    sku: "REF-1210",
+    name: "Pallet Reforçado 1210",
+    description: "Pallet reforçado para cargas até 2.000 kg, indústria pesada.",
+    unit: "Un",
+    weightKg: 25,
+    heightCm: 15,
+    widthCm: 100,
+    lengthCm: 120,
+    ncm: "3923.10.90",
+    defaultPrice: 275,
+    active: true,
+  },
+];
+
+// ============ Propostas comerciais ============
+
+export type ProposalItem = {
+  id: string;
+  productId: string;
+  description: string; // snapshot
+  sku: string;         // snapshot
+  unit: ProductUnit;
+  quantity: number;
+  unitPrice: number;
+};
+
+export type PaymentInstallment = {
+  id: string;
+  days: number;
+  amount: number;
+  notes: string;
+};
+
+export type TransportInfo = {
+  carrier: string;
+  freightPayer: "CIF" | "FOB";
+  grossWeightKg: number;
+  volumes: number;
+  freightValue: number;
+};
+
+export type ProposalStatus = "rascunho" | "enviada" | "aprovada" | "recusada";
+
+export type Proposal = {
+  id: string;
+  number: string;           // ex: 2026-0001
+  leadId: string;
+  ownerId: string;
+  createdAt: string;
+  status: ProposalStatus;
+  validityDays: number;
+  items: ProposalItem[];
+  installments: PaymentInstallment[];
+  transport: TransportInfo;
+  observations: string;
+};
+
+export type EmitterProfile = {
+  legalName: string;
+  cnpj: string;
+  ie: string;
+  address: string;
+  phone: string;
+  whatsapp: string;
+  email: string;
+  website: string;
+};
+
+const defaultEmitter: EmitterProfile = {
+  legalName: "Pallet de Plástico Indústria e Comércio LTDA",
+  cnpj: "00.000.000/0001-00",
+  ie: "000.000.000.000",
+  address: "Av. Industrial, 1000 — Distrito Industrial — São Paulo/SP — CEP 00000-000",
+  phone: "(11) 4000-0000",
+  whatsapp: "(11) 90000-0000",
+  email: "vendas@palletdeplastico.com.br",
+  website: "www.palletdeplastico.com.br",
+};
+
+
 type CrmState = {
   leads: Lead[];
   tasks: Task[];
