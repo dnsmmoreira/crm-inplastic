@@ -484,7 +484,9 @@ export type Proposal = {
   transport: TransportInfo;
   observations: string;
   paymentTermId?: string;   // ADM-managed payment term chosen by seller
+  emitterId: string;        // qual CNPJ do grupo emite esta proposta
 };
+
 
 export type PaymentMethod = "Boleto" | "PIX" | "Depósito em Conta" | "Cartão" | "Dinheiro";
 
@@ -526,6 +528,9 @@ export const PAYMENT_TERMS = DEFAULT_PAYMENT_TERMS;
 
 
 export type EmitterProfile = {
+  id: string;
+  brand: string;             // nome fantasia / marca curta usada no cabeçalho
+  tagline?: string;          // subtítulo abaixo da marca no documento
   legalName: string;
   cnpj: string;
   ie: string;
@@ -536,16 +541,51 @@ export type EmitterProfile = {
   website: string;
 };
 
-const defaultEmitter: EmitterProfile = {
-  legalName: "Pallet de Plástico Indústria e Comércio LTDA",
-  cnpj: "00.000.000/0001-00",
-  ie: "000.000.000.000",
-  address: "Av. Industrial, 1000 — Distrito Industrial — São Paulo/SP — CEP 00000-000",
-  phone: "(11) 4000-0000",
-  whatsapp: "(11) 90000-0000",
-  email: "vendas@palletdeplastico.com.br",
-  website: "www.palletdeplastico.com.br",
-};
+export const DEFAULT_EMITTERS: EmitterProfile[] = [
+  {
+    id: "taoplast",
+    brand: "PALLET DE PLÁSTICO",
+    tagline: "Indústria e comércio de produtos plásticos",
+    legalName: "TAOPLAST Indústria e Comércio de Produtos Plásticos LTDA",
+    cnpj: "00.000.000/0001-00",
+    ie: "000.000.000.000",
+    address: "Av. Industrial, 1000 — Distrito Industrial — São Paulo/SP — CEP 00000-000",
+    phone: "(11) 4000-0000",
+    whatsapp: "(11) 90000-0000",
+    email: "vendas@palletdeplastico.com.br",
+    website: "www.palletdeplastico.com.br",
+  },
+  {
+    id: "inplastic",
+    brand: "INPLASTIC",
+    tagline: "Comércio de produtos plásticos",
+    legalName: "INPLASTIC Comércio de Produtos Plásticos LTDA – ME",
+    cnpj: "19.959.992/0001-07",
+    ie: "143.366.452.110",
+    address: "Rua Capitão Busse, 854 — Parque Edu Chaves — São Paulo/SP — CEP 02232-050",
+    phone: "(11) 2372-2225",
+    whatsapp: "(11) 2372-2225",
+    email: "inplastic@inplastic.com.br",
+    website: "www.inplastic.com.br",
+  },
+  {
+    id: "licitaplas",
+    brand: "LICITAPLAS",
+    tagline: "Comércio de plásticos",
+    legalName: "LICITAPLAS Comércio de Plásticos LTDA (Limitada Unipessoal – ME)",
+    cnpj: "39.871.995/0001-00",
+    ie: "—",
+    address: "Rua Luis Sergio Person, 223 — Parque Mandaqui — São Paulo/SP — CEP 02422-230",
+    phone: "(11) 2372-2225",
+    whatsapp: "(11) 2372-2225",
+    email: "contato@licitaplas.com.br",
+    website: "www.licitaplas.com.br",
+  },
+];
+
+const DEFAULT_EMITTER_ID = DEFAULT_EMITTERS[0].id;
+
+
 
 
 type CrmState = {
@@ -578,8 +618,11 @@ type CrmState = {
   removeProduct: (id: string) => void;
   // Propostas
   proposals: Proposal[];
-  emitter: EmitterProfile;
-  updateEmitter: (patch: Partial<EmitterProfile>) => void;
+  emitters: EmitterProfile[];
+  defaultEmitterId: string;
+  setDefaultEmitter: (id: string) => void;
+  updateEmitter: (id: string, patch: Partial<Omit<EmitterProfile, "id">>) => void;
+
   createProposal: (leadId: string, ownerId?: string) => string;
   updateProposal: (id: string, patch: Partial<Proposal>) => void;
   removeProposal: (id: string) => void;
@@ -783,8 +826,13 @@ export const useCrm = create<CrmState>()(
 
       // ============ Propostas ============
       proposals: [],
-      emitter: defaultEmitter,
-      updateEmitter: (patch) => set((s) => ({ emitter: { ...s.emitter, ...patch } })),
+      emitters: DEFAULT_EMITTERS,
+      defaultEmitterId: DEFAULT_EMITTER_ID,
+      setDefaultEmitter: (id) => set({ defaultEmitterId: id }),
+      updateEmitter: (id, patch) =>
+        set((s) => ({
+          emitters: s.emitters.map((e) => (e.id === id ? { ...e, ...patch } : e)),
+        })),
       createProposal: (leadId, ownerId) => {
         const id = uid();
         const year = new Date().getFullYear();
@@ -798,6 +846,7 @@ export const useCrm = create<CrmState>()(
           createdAt: new Date().toISOString(),
           status: "rascunho",
           validityDays: 15,
+          emitterId: get().defaultEmitterId,
           items: [],
           installments: [
             { id: uid(), days: 28, amount: 0, notes: "Boleto — 28 dias" },
@@ -815,6 +864,7 @@ export const useCrm = create<CrmState>()(
         set((s) => ({ proposals: [proposal, ...s.proposals] }));
         return id;
       },
+
       updateProposal: (id, patch) =>
         set((s) => ({ proposals: s.proposals.map((p) => (p.id === id ? { ...p, ...patch } : p)) })),
       removeProposal: (id) =>
@@ -883,17 +933,33 @@ export const useCrm = create<CrmState>()(
       resetPaymentTerms: () => set({ paymentTerms: DEFAULT_PAYMENT_TERMS }),
     }),
     {
-      name: "pdp-crm-v4",
+      name: "pdp-crm-v5",
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<CrmState>;
+        const emitters =
+          p.emitters && p.emitters.length > 0 ? p.emitters : DEFAULT_EMITTERS;
+        const defaultEmitterId =
+          p.defaultEmitterId && emitters.some((e) => e.id === p.defaultEmitterId)
+            ? p.defaultEmitterId
+            : emitters[0].id;
+        const proposals = (p.proposals ?? current.proposals).map((pr) => ({
+          ...pr,
+          emitterId: pr.emitterId && emitters.some((e) => e.id === pr.emitterId)
+            ? pr.emitterId
+            : defaultEmitterId,
+        }));
         return {
           ...current,
           ...p,
+          emitters,
+          defaultEmitterId,
+          proposals,
           paymentTerms:
             p.paymentTerms && p.paymentTerms.length > 0 ? p.paymentTerms : DEFAULT_PAYMENT_TERMS,
         } as CrmState;
       },
     },
+
 
 
   ),

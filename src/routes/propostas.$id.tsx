@@ -93,7 +93,16 @@ function PropostaDetalhe() {
   const proposal = useCrm((s) => s.proposals.find((p) => p.id === id));
   const lead = useCrm((s) => (proposal ? s.leads.find((l) => l.id === proposal.leadId) : undefined));
   const products = useCrm((s) => s.products);
-  const emitter = useCrm((s) => s.emitter);
+  const emitters = useCrm((s) => s.emitters);
+  const defaultEmitterId = useCrm((s) => s.defaultEmitterId);
+  const emitter = useMemo(
+    () =>
+      emitters.find((e) => e.id === proposal?.emitterId) ??
+      emitters.find((e) => e.id === defaultEmitterId) ??
+      emitters[0],
+    [emitters, proposal?.emitterId, defaultEmitterId],
+  );
+
   const paymentTerms = useCrm((s) => s.paymentTerms);
   const activePaymentTerms = useMemo(() => paymentTerms.filter((t) => t.active), [paymentTerms]);
   const _addItem = useCrm((s) => s.addProposalItem);
@@ -562,7 +571,37 @@ function PropostaDetalhe() {
           </Card>
 
           <Card>
+            <CardHeader><CardTitle className="text-base">Empresa emissora</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+              <Select
+                value={proposal.emitterId}
+                onValueChange={(v) => updateProposal(proposal.id, { emitterId: v })}
+              >
+                <SelectTrigger><SelectValue placeholder="Selecione o CNPJ emissor" /></SelectTrigger>
+                <SelectContent>
+                  {emitters.map((e) => (
+                    <SelectItem key={e.id} value={e.id}>
+                      <span className="font-medium">{e.brand}</span>
+                      <span className="text-muted-foreground text-xs ml-2">· CNPJ {e.cnpj}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="rounded-md border bg-muted/30 p-3 text-[11px] leading-relaxed">
+                <div className="font-medium text-sm">{emitter.legalName}</div>
+                <div>CNPJ: {emitter.cnpj} · IE: {emitter.ie}</div>
+                <div>{emitter.address}</div>
+                <div>Tel: {emitter.phone} · {emitter.email}</div>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Define qual CNPJ do grupo aparece no cabeçalho da proposta impressa.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
             <CardHeader><CardTitle className="text-base">Condições comerciais</CardTitle></CardHeader>
+
             <CardContent className="space-y-3">
               <div>
                 <Label>Condição de pagamento</Label>
@@ -640,8 +679,9 @@ function PropostaDetalhe() {
       <div className="bg-white text-[13px] leading-snug border rounded-lg p-8 md:p-10 shadow-sm print:border-0 print:shadow-none print:rounded-none print:p-6 print:text-[11px]" id="proposta-print">
         <div className="flex items-start justify-between border-b pb-4 mb-4">
           <div>
-            <div className="text-xl font-display font-bold text-primary">PALLET DE PLÁSTICO</div>
-            <div className="text-[11px] text-muted-foreground">Indústria e comércio de produtos plásticos</div>
+            <div className="text-xl font-display font-bold text-primary">{emitter.brand}</div>
+            <div className="text-[11px] text-muted-foreground">{emitter.tagline ?? ""}</div>
+
             <div className="mt-2 text-[11px] leading-relaxed">
               <div className="font-medium">{emitter.legalName}</div>
               <div>CNPJ: {emitter.cnpj} · IE: {emitter.ie}</div>
