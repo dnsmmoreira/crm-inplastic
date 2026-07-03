@@ -17,6 +17,8 @@ import {
   Boxes,
   MessageSquare,
   Bot,
+  Package,
+  FileText,
 } from "lucide-react";
 
 import appCss from "../styles.css?url";
