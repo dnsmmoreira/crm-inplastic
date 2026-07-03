@@ -30,6 +30,8 @@ import {
   type ProposalStatus,
   type PaymentTerm,
 } from "@/lib/crm-store";
+import { calculateFreightDistance } from "@/lib/freight.functions";
+import { useServerFn } from "@tanstack/react-start";
 
 
 /** Build display installments (equal split) from an ADM payment term and the proposal total. */
