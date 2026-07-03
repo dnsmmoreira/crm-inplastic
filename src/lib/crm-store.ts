@@ -587,6 +587,14 @@ type CrmState = {
   updateProposalItem: (proposalId: string, itemId: string, patch: Partial<ProposalItem>) => void;
   removeProposalItem: (proposalId: string, itemId: string) => void;
   setProposalStatus: (id: string, status: ProposalStatus) => void;
+  // Payment terms (ADM-managed catalogue)
+  paymentTerms: PaymentTerm[];
+  addPaymentTerm: (t: Omit<PaymentTerm, "id">) => string;
+  updatePaymentTerm: (id: string, patch: Partial<Omit<PaymentTerm, "id">>) => void;
+  removePaymentTerm: (id: string) => void;
+  togglePaymentTermActive: (id: string) => void;
+  resetPaymentTerms: () => void;
+
 };
 
 const uid = () => Math.random().toString(36).slice(2, 10);
