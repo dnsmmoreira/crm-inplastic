@@ -96,7 +96,15 @@ export function LeadDrawer({
               <SheetDescription className="mt-1">
                 {lead.contactName} · Lead desde {format(new Date(lead.createdAt), "dd MMM yyyy", { locale: ptBR })}
               </SheetDescription>
-              <div className="mt-3 flex flex-wrap gap-1.5">
+              <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                {(() => {
+                  const t = leadTemperature(lead);
+                  return (
+                    <Badge variant="outline" className={`text-xs ${t.className}`} title={t.hint}>
+                      <span className="mr-1">{t.emoji}</span>{t.label} · {t.hint}
+                    </Badge>
+                  );
+                })()}
                 {lead.tags.map((t) => (
                   <Badge key={t} variant="secondary" className="text-xs">
                     {t}
