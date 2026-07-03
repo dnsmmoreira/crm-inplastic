@@ -200,8 +200,52 @@ function PropostaDetalhe() {
         </div>
       </div>
 
+          <Button
+            variant={dirty ? "default" : "outline"}
+            className="gap-2"
+            disabled={!dirty}
+            onClick={() => { setDirty(false); toast.success("Alterações salvas"); }}
+          >
+            <CheckCircle2 className="h-4 w-4" /> Salvar
+          </Button>
+          <Button className="gap-2" onClick={() => window.print()}>
+            <Printer className="h-4 w-4" /> Imprimir / PDF
+          </Button>
+        </div>
+      </div>
+
+      {/* Confirm dialog for in-app navigation while dirty */}
+      <AlertDialog
+        open={blocker.status === "blocked"}
+        onOpenChange={(open) => { if (!open && blocker.status === "blocked") blocker.reset(); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sair sem salvar?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você tem alterações nesta proposta que ainda não foram salvas. Se sair agora, elas continuam no rascunho, mas nenhum aviso será mostrado ao vendedor.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => blocker.status === "blocked" && blocker.reset()}>
+              Continuar editando
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                setDirty(false);
+                if (blocker.status === "blocked") blocker.proceed();
+              }}
+            >
+              Sair sem salvar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Editor — hidden on print */}
       <div className="grid gap-4 lg:grid-cols-3 print:hidden">
+
         <Card className="lg:col-span-2">
           <CardHeader><CardTitle className="text-base">Itens da proposta</CardTitle></CardHeader>
           <CardContent>
