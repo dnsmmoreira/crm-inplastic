@@ -56,15 +56,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const u = await loadAuthUser(nextSession.user);
         setUser(u);
+        try {
+          await hydrateCrmForUser(u.id, u.role);
+        } catch (err) {
+          console.error("hydrateCrmForUser failed", err);
+        }
       } catch (e) {
         console.error("loadAuthUser failed", e);
         setUser(null);
       }
     } else {
       setUser(null);
+      clearCrmState();
     }
     setLoading(false);
   }, []);
+
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
