@@ -679,8 +679,9 @@ function PropostaDetalhe() {
       <div className="bg-white text-[13px] leading-snug border rounded-lg p-8 md:p-10 shadow-sm print:border-0 print:shadow-none print:rounded-none print:p-6 print:text-[11px]" id="proposta-print">
         <div className="flex items-start justify-between border-b pb-4 mb-4">
           <div>
-            <div className="text-xl font-display font-bold text-primary">PALLET DE PLÁSTICO</div>
-            <div className="text-[11px] text-muted-foreground">Indústria e comércio de produtos plásticos</div>
+            <div className="text-xl font-display font-bold text-primary">{emitter.brand}</div>
+            <div className="text-[11px] text-muted-foreground">{emitter.tagline ?? ""}</div>
+
             <div className="mt-2 text-[11px] leading-relaxed">
               <div className="font-medium">{emitter.legalName}</div>
               <div>CNPJ: {emitter.cnpj} · IE: {emitter.ie}</div>
