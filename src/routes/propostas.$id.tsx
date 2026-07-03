@@ -164,6 +164,11 @@ function PropostaDetalhe() {
             <div className="flex items-center gap-2">
               <h1 className="text-xl md:text-2xl font-semibold">Proposta {proposal.number}</h1>
               <Badge variant={s.variant}>{s.label}</Badge>
+              {dirty && (
+                <Badge variant="outline" className="border-amber-500 text-amber-600 gap-1">
+                  <AlertCircle className="h-3 w-3" /> Alterações não salvas
+                </Badge>
+              )}
             </div>
             <p className="text-xs text-muted-foreground">
               Criada em {format(new Date(proposal.createdAt), "dd/MM/yyyy", { locale: ptBR })} · Vendedor: {owner?.name ?? "—"}
