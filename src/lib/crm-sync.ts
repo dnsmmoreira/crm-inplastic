@@ -16,6 +16,7 @@ import {
   DEFAULT_PAYMENT_TERMS,
   DEFAULT_LEAD_TAGS,
   DEFAULT_LEAD_SEGMENTS,
+  DEFAULT_FREIGHT_CONFIG,
   type Lead,
   type Task,
   type Proposal,
@@ -23,6 +24,7 @@ import {
   type EmitterProfile,
   type PaymentTerm,
   type AgentSettings,
+  type FreightConfig,
 } from "@/lib/crm-store";
 
 type SystemPayload = {
@@ -33,6 +35,7 @@ type SystemPayload = {
   maxDiscountPercentVendedor?: number;
   leadTags?: string[];
   leadSegments?: string[];
+  freightConfig?: FreightConfig;
 };
 
 type UserPayload = {
