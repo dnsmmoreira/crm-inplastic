@@ -1,69 +1,94 @@
-## Objetivo
+# Etapa B — Isolamento de dados por usuário
 
-Transformar o CRM (hoje em `localStorage` com "trocador de usuário" fake) em um sistema multiusuário real com login, onde:
+Hoje todo o CRM roda em `localStorage` no navegador de cada pessoa. Cada usuário
+tem uma "cópia" isolada dos dados por acidente (é o browser dele), o que quebra
+o objetivo: admin ver tudo, vendedor ver só o dele, todos vendo os mesmos
+cadastros globais (produtos, condições, empresas do grupo).
 
-- Cada vendedor entra com **e-mail e senha próprios**
-- Cada vendedor vê **somente seus** leads, propostas, tarefas e pedidos
-- **Admin** vê tudo e é o único que edita produtos, condições comerciais, empresas do grupo e cadastros de usuários
+Esta etapa move os dados para o banco, com regras de acesso aplicadas no
+servidor via RLS.
 
----
+## Modelo de dados
 
-## Passo 1 — Ativar Lovable Cloud
+Tabelas **por vendedor** (com `owner_id uuid` = quem criou):
 
-Habilita banco de dados PostgreSQL, autenticação (e-mail/senha + Google opcional) e storage. Sem isso não há como ter login real nem dados compartilhados de forma segura.
+- `leads` — clientes/oportunidades (Empresa, contato, produto, valor, etapa, tags, notas, próximas ações)
+- `lead_interactions` — histórico de contato de cada lead
+- `lead_ai_actions` — ações que o Agente IA executou
+- `tarefas` — to-dos ligados a leads
+- `propostas` + `proposta_itens` + `proposta_parcelas` — orçamentos
+- `pedidos` + `pedido_itens` — pedidos emitidos a partir de propostas
 
-## Passo 2 — Modelagem do banco (tabelas + RLS)
+Tabelas **globais** (compartilhadas, só admin edita):
 
-Criar as tabelas correspondentes ao `crm-store` de hoje, todas com uma coluna `owner_id uuid` (dono do registro) e Row-Level Security ativa:
+- `produtos` — catálogo (SKU, dimensões, preço padrão, NCM…)
+- `condicoes_pagamento` — formas de pagamento configuráveis pelo admin
+- `emitters` — CNPJs do grupo (TAOPLAST, INPLASTIC, LICITAPLAS)
 
-- `profiles` (id, nome, avatar_color) — criado automaticamente no signup via trigger
-- `user_roles` (user_id, role) — tabela separada com enum `app_role` (`admin`, `vendedor`), acessada via função `has_role()` security definer (padrão seguro, evita escalada de privilégio)
-- `leads`, `contatos`, `tarefas`, `propostas`, `proposta_itens`, `pedidos` — cada uma com `owner_id`
-- `produtos`, `condicoes_comerciais`, `emitters` (empresas do grupo) — cadastros globais, só admin edita
+Não migramos (permanecem locais por serem simulações do MVP):
 
-**Regras de acesso (RLS):**
+- Mensagens WhatsApp e slots de agenda da tela "Canais/Agente IA" — hoje são dados de demonstração; migração fica para quando integrar canal real.
+
+## Regras de acesso (RLS)
 
 | Tabela | Vendedor | Admin |
 |---|---|---|
-| leads / contatos / tarefas / propostas / pedidos | vê/edita só onde `owner_id = auth.uid()` | vê e edita tudo |
+| leads / interações / ações IA / tarefas / propostas / itens / parcelas / pedidos | vê e edita só onde `owner_id = auth.uid()` | vê e edita tudo |
 | produtos / condições / empresas | só leitura | leitura + escrita |
-| user_roles / profiles | vê o próprio | gerencia todos |
 
-Toda tabela terá `GRANT` explícito para `authenticated` + `service_role`.
+`ownership` de propostas e pedidos é derivada do lead (uma proposta de um lead
+do Bruno pertence ao Bruno). Ao criar uma proposta, o `owner_id` é gravado
+automaticamente = usuário logado.
 
-## Passo 3 — Telas de autenticação
+## Camada de acesso (código)
 
-- Rota pública `/auth` com abas **Entrar** e **Cadastrar** (e-mail/senha)
-- Rota `/reset-password` para redefinição
-- Layout `_authenticated/` gerenciado que protege o restante do app
-- Ao entrar, se ainda não tiver papel, recebe `vendedor` por padrão (trigger). O primeiro usuário criado (ou um convidado manualmente) vira `admin`
+Substituo o `crm-store` (Zustand + localStorage) por hooks baseados em
+TanStack Query + `createServerFn` autenticadas:
 
-## Passo 4 — Tela admin de usuários (`/usuarios`)
+- `useLeads()`, `useLead(id)`, `useCreateLead()`, `useUpdateLead()`…
+- `useTarefas()`, `usePropostas()`, `useProposta(id)`, `usePedidos()`…
+- `useProdutos()`, `useCondicoesPagamento()`, `useEmpresas()` (com mutations
+  bloqueadas pra não-admin no servidor).
 
-Só admin acessa. Permite:
-- Listar vendedores cadastrados
-- Convidar novos por e-mail
-- Promover/rebaixar entre `admin` e `vendedor`
-- Desativar acesso
+Todas as consultas passam pelo Supabase com a sessão do usuário → RLS aplica
+o filtro por `owner_id` automaticamente. Zero lógica de "esconder" no
+front-end.
 
-## Passo 5 — Migrar o `crm-store` para o banco
+## Migração de dados atuais
 
-Substituir o Zustand + localStorage por consultas via `createServerFn` autenticadas:
-- Todas as leituras/gravações passam a usar a sessão do usuário logado (RLS aplica automaticamente o filtro por `owner_id`)
-- Sumir com o `UserSwitcher` da barra lateral (agora mostra o usuário real logado + botão sair)
-- `useIsAdmin()` passa a consultar a tabela `user_roles` via função `has_role`
-- Gates de UI existentes (menus admin-only) continuam funcionando, mas a segurança de verdade fica no banco
+Faço **seed inicial** direto na migração do banco:
+- Produtos, condições de pagamento e empresas do grupo (dados globais atuais)
+- Não migro leads/propostas/pedidos do localStorage — hoje são dados de teste
+  ("Frigorífico Sul", "AgroExport" etc.) e cada usuário só tinha no próprio
+  navegador. Começamos com base limpa; a equipe cadastra os reais.
 
-## Passo 6 — Publicar
+Se você quiser preservar algum lead específico do que já cadastrou, me diga
+e eu abro uma tela de importação, mas o padrão é começar limpo.
 
-Depois que login + isolamento por vendedor estiverem funcionando, publicamos. Você entra como primeiro admin, promove sua equipe e compartilha o link — cada um cria/entra com a própria conta.
+## Rotas afetadas
 
----
+- `pipeline.tsx`, `contatos.tsx`, `tarefas.tsx`, `propostas.index.tsx`,
+  `propostas.$id.tsx`, `produtos.tsx`, `condicoes-comerciais.tsx`,
+  `empresas.tsx`, `index.tsx` (dashboard), `agente-ia.tsx`, `canais.tsx`
+- Todas passam a ler do banco via hooks acima; nenhuma muda visualmente.
 
-## Observações técnicas importantes
+## Ordem de execução
 
-- **Dados atuais do localStorage não migram automaticamente.** Se tiver leads/propostas cadastrados hoje que precisa preservar, me avise antes que eu adiciono uma tela de importação; caso contrário começamos do zero (recomendado, já que hoje é ambiente de teste).
-- Login social (Google) posso adicionar junto ou depois — me diga se quer já no primeiro deploy.
-- Escopo é grande, então vou entregar em duas etapas dentro deste plano: **(A)** Cloud + auth + tela `/auth` + tabelas + RLS + tela de usuários; **(B)** migração completa do store e remoção do `localStorage`. Publicamos entre as duas se quiser validar o login antes.
+1. **Migração SQL** — cria todas as tabelas, RLS, políticas, grants + seed
+   dos cadastros globais.
+2. **Camada de servidor** — `*.functions.ts` com `createServerFn +
+   requireSupabaseAuth` para cada entidade + hooks React Query.
+3. **Substituição do store** — trocar `useCrm(...)` por hooks novos em todas as
+   telas listadas. `crm-store.ts` deixa de existir.
+4. **Verificação** — smoke test: login como admin cria lead, promove segundo
+   usuário a vendedor, ele só enxerga o dele.
+5. **Publicar** — subir para produção e compartilhar link com a equipe.
 
-Confirmar para eu começar pela etapa A?
+## Escopo e tempo
+
+É uma reescrita grande da camada de dados. Nada muda visualmente pro usuário
+final, mas mexe em ~10 rotas. Prefiro fazer em **um bloco só** pra não deixar
+o app quebrado no meio (metade lendo localStorage, metade banco). Ao terminar
+avaliamos qualquer ajuste antes de publicar.
+
+Confirma que posso seguir por aqui, começando pela migração SQL?
