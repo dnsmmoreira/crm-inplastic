@@ -28,6 +28,7 @@ type SystemPayload = {
   paymentTerms?: PaymentTerm[];
   emitters?: EmitterProfile[];
   defaultEmitterId?: string;
+  maxDiscountPercentVendedor?: number;
 };
 
 type UserPayload = {
