@@ -15,6 +15,8 @@ import {
   Users,
   CheckSquare,
   Boxes,
+  MessageSquare,
+  Bot,
 } from "lucide-react";
 
 import appCss from "../styles.css?url";
