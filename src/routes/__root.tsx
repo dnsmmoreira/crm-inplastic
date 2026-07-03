@@ -154,7 +154,9 @@ function AppShell({ children }: { children: ReactNode }) {
             );
           })}
         </nav>
+        <UserSwitcher />
         <div className="p-4 text-xs text-sidebar-foreground/50 border-t border-sidebar-border">
+
           v1.0 · palletdeplastico.com.br
         </div>
       </aside>
