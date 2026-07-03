@@ -19,6 +19,7 @@ import {
   Bot,
   Package,
   FileText,
+  Settings2,
 } from "lucide-react";
 
 import appCss from "../styles.css?url";
