@@ -47,24 +47,51 @@ function PipelinePage() {
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
+  const [agendaFilter, setAgendaFilter] = useState<Set<FollowupLevel>>(new Set());
+  const [sortMode, setSortMode] = useState<SortMode>("default");
+
+  const toggleAgenda = (lvl: FollowupLevel) =>
+    setAgendaFilter((prev) => {
+      const next = new Set(prev);
+      if (next.has(lvl)) next.delete(lvl);
+      else next.add(lvl);
+      return next;
+    });
+
   const filtered = useMemo(() => {
-    if (!search) return leads;
     const q = search.toLowerCase();
-    return leads.filter(
-      (l) =>
-        l.company.toLowerCase().includes(q) ||
+    return leads.filter((l) => {
+      if (q && !(l.company.toLowerCase().includes(q) ||
         l.contactName.toLowerCase().includes(q) ||
-        l.product.toLowerCase().includes(q),
-    );
-  }, [leads, search]);
+        l.product.toLowerCase().includes(q))) return false;
+      if (agendaFilter.size > 0) {
+        const lvl = followupTemperature(l).level;
+        if (!agendaFilter.has(lvl)) return false;
+      }
+      return true;
+    });
+  }, [leads, search, agendaFilter]);
 
   const byStage = useMemo(() => {
+    const rank: Record<FollowupLevel, number> = { urgent: 0, attention: 1, scheduled: 2, ok: 3 };
     const map: Record<StageId, Lead[]> = {
       atendimento: [], novo: [], qualificacao: [], proposta: [], negociacao: [], ganho: [], perdido: [],
     };
     filtered.forEach((l) => map[l.stage].push(l));
+    if (sortMode !== "default") {
+      const dir = sortMode === "urgency" ? 1 : -1;
+      (Object.keys(map) as StageId[]).forEach((k) => {
+        map[k] = [...map[k]].sort((a, b) => {
+          const fa = followupTemperature(a);
+          const fb = followupTemperature(b);
+          const r = (rank[fa.level] - rank[fb.level]) * dir;
+          if (r !== 0) return r;
+          return ((fb.overdueDays ?? -Infinity) - (fa.overdueDays ?? -Infinity)) * dir;
+        });
+      });
+    }
     return map;
-  }, [filtered]);
+  }, [filtered, sortMode]);
 
   const active = activeId ? leads.find((l) => l.id === activeId) : null;
 
