@@ -1,5 +1,17 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { useMemo } from "react";
+
+export type UserRole = "admin" | "vendedor";
+export type User = { id: string; name: string; role: UserRole; avatarColor: string };
+
+export const USERS: User[] = [
+  { id: "u-admin", name: "Ana (Admin)", role: "admin", avatarColor: "#0f766e" },
+  { id: "u-bruno", name: "Bruno Vendas", role: "vendedor", avatarColor: "#2563eb" },
+  { id: "u-carla", name: "Carla Vendas", role: "vendedor", avatarColor: "#db2777" },
+  { id: "u-diego", name: "Diego Vendas", role: "vendedor", avatarColor: "#ea580c" },
+];
+
 
 export type StageId =
   | "atendimento"
