@@ -38,6 +38,27 @@ export type Database = {
         }
         Relationships: []
       }
+      system_workspace: {
+        Row: {
+          created_at: string
+          data: Json
+          id: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json
+          id?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          id?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -55,6 +76,27 @@ export type Database = {
           created_at?: string
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_workspaces: {
+        Row: {
+          created_at: string
+          data: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
