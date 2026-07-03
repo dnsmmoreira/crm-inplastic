@@ -826,8 +826,13 @@ export const useCrm = create<CrmState>()(
 
       // ============ Propostas ============
       proposals: [],
-      emitter: defaultEmitter,
-      updateEmitter: (patch) => set((s) => ({ emitter: { ...s.emitter, ...patch } })),
+      emitters: DEFAULT_EMITTERS,
+      defaultEmitterId: DEFAULT_EMITTER_ID,
+      setDefaultEmitter: (id) => set({ defaultEmitterId: id }),
+      updateEmitter: (id, patch) =>
+        set((s) => ({
+          emitters: s.emitters.map((e) => (e.id === id ? { ...e, ...patch } : e)),
+        })),
       createProposal: (leadId, ownerId) => {
         const id = uid();
         const year = new Date().getFullYear();
@@ -841,6 +846,7 @@ export const useCrm = create<CrmState>()(
           createdAt: new Date().toISOString(),
           status: "rascunho",
           validityDays: 15,
+          emitterId: get().defaultEmitterId,
           items: [],
           installments: [
             { id: uid(), days: 28, amount: 0, notes: "Boleto — 28 dias" },
@@ -858,6 +864,7 @@ export const useCrm = create<CrmState>()(
         set((s) => ({ proposals: [proposal, ...s.proposals] }));
         return id;
       },
+
       updateProposal: (id, patch) =>
         set((s) => ({ proposals: s.proposals.map((p) => (p.id === id ? { ...p, ...patch } : p)) })),
       removeProposal: (id) =>
