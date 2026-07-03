@@ -47,7 +47,10 @@ export const Route = createFileRoute("/")({
 function DashboardPage() {
   const leads = useVisibleLeads();
   const tasks = useVisibleTasks();
+  const user = useCurrentUser();
+  const isAdmin = user.role === "admin";
   const [openLead, setOpenLead] = useState<string | null>(null);
+
 
   const kpis = useMemo(() => {
     const active = leads.filter((l) => l.stage !== "perdido");
