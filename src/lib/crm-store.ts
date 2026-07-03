@@ -1026,7 +1026,13 @@ export const useCrm = create<CrmState>()(
         }),
       removeLeadSegment: (seg) =>
         set((s) => ({ leadSegments: s.leadSegments.filter((x) => x !== seg) })),
+
+      // ============ Freight config ============
+      freightConfig: DEFAULT_FREIGHT_CONFIG,
+      setFreightConfig: (patch) =>
+        set((s) => ({ freightConfig: { ...s.freightConfig, ...patch } })),
     }),
+);
 );
 
 
