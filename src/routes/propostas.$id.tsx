@@ -24,8 +24,22 @@ import {
   formatBRL,
   proposalTotals,
   USERS,
+  PAYMENT_TERMS,
   type ProposalStatus,
+  type PaymentTerm,
 } from "@/lib/crm-store";
+
+/** Build display installments (equal split) from an ADM payment term and the proposal total. */
+function buildTermInstallments(term: PaymentTerm | undefined, total: number) {
+  if (!term) return [];
+  const n = term.splits.length;
+  const base = Math.floor((total / n) * 100) / 100;
+  const remainder = Math.round((total - base * n) * 100) / 100;
+  return term.splits.map((days, i) => ({
+    days,
+    amount: i === n - 1 ? +(base + remainder).toFixed(2) : base,
+  }));
+}
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
