@@ -647,7 +647,7 @@ function PropostaDetalhe() {
                 />
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <div>
+                <div className="col-span-2">
                   <Label>Frete por conta</Label>
                   <Select
                     value={proposal.transport.freightPayer}
@@ -655,25 +655,41 @@ function PropostaDetalhe() {
                   >
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="CIF">CIF (emitente)</SelectItem>
-                      <SelectItem value="FOB">FOB (cliente)</SelectItem>
+                      <SelectItem value="FOB">FOB (cliente) · padrão</SelectItem>
+                      <SelectItem value="CIF">CIF (emitente) · requer aprovação</SelectItem>
                     </SelectContent>
                   </Select>
+                  {proposal.transport.freightPayer === "CIF" && (
+                    <p className="mt-1 text-[11px] text-amber-700 flex items-start gap-1">
+                      <AlertCircle className="h-3 w-3 mt-0.5 shrink-0" />
+                      Frete CIF exige autorização do supervisor. O pedido só será gerado após liberação do ADM.
+                    </p>
+                  )}
                 </div>
                 <div>
-                  <Label>Valor frete (R$)</Label>
+                  <Label className="flex items-center gap-1">
+                    Peso bruto (kg)
+                    <span className="text-[10px] font-normal text-muted-foreground">auto</span>
+                  </Label>
                   <Input
-                    type="number" step="0.01"
-                    value={proposal.transport.freightValue}
-                    onChange={(e) => updateProposal(proposal.id, { transport: { ...proposal.transport, freightValue: Number(e.target.value) } })}
+                    type="number"
+                    value={proposal.transport.grossWeightKg}
+                    readOnly
+                    className="bg-muted/50"
+                    title="Calculado a partir do peso unitário × quantidade dos itens"
                   />
                 </div>
                 <div>
-                  <Label>Peso bruto (kg)</Label>
+                  <Label className="flex items-center gap-1">
+                    Cubagem (m³)
+                    <span className="text-[10px] font-normal text-muted-foreground">auto</span>
+                  </Label>
                   <Input
-                    type="number" step="0.01"
-                    value={proposal.transport.grossWeightKg}
-                    onChange={(e) => updateProposal(proposal.id, { transport: { ...proposal.transport, grossWeightKg: Number(e.target.value) } })}
+                    type="number"
+                    value={proposal.transport.cubageM3}
+                    readOnly
+                    className="bg-muted/50"
+                    title="Calculada a partir das dimensões do produto × quantidade"
                   />
                 </div>
                 <div>
@@ -684,9 +700,31 @@ function PropostaDetalhe() {
                     onChange={(e) => updateProposal(proposal.id, { transport: { ...proposal.transport, volumes: Number(e.target.value) } })}
                   />
                 </div>
+                <div>
+                  <Label>Valor frete aproximado (R$)</Label>
+                  <Input
+                    type="number" step="0.01"
+                    value={proposal.transport.approxFreightValue}
+                    onChange={(e) => updateProposal(proposal.id, { transport: { ...proposal.transport, approxFreightValue: Number(e.target.value) || 0 } })}
+                    placeholder="Estimativa do vendedor"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <Label>Valor frete definitivo (R$)</Label>
+                  <Input
+                    type="number" step="0.01"
+                    value={proposal.transport.freightValue}
+                    onChange={(e) => updateProposal(proposal.id, { transport: { ...proposal.transport, freightValue: Number(e.target.value) || 0 } })}
+                    placeholder="Confirmado com transportadora — entra no total"
+                  />
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Somado ao total da proposta. Deixe zero enquanto for apenas estimativa.
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>
+
 
           <Card>
             <CardHeader><CardTitle className="text-base">Empresa emissora</CardTitle></CardHeader>
