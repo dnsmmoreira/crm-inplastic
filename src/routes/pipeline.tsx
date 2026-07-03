@@ -130,6 +130,48 @@ function PipelinePage() {
         </div>
       </div>
 
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-2">
+        <span className="text-xs font-medium text-muted-foreground px-2">Agenda:</span>
+        {AGENDA_FILTERS.map((f) => {
+          const active = agendaFilter.has(f.level);
+          return (
+            <Toggle
+              key={f.level}
+              pressed={active}
+              onPressedChange={() => toggleAgenda(f.level)}
+              size="sm"
+              className="h-7 gap-1 text-xs data-[state=on]:bg-primary/15 data-[state=on]:text-primary"
+            >
+              <span>{f.emoji}</span>
+              {f.label}
+            </Toggle>
+          );
+        })}
+        {agendaFilter.size > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1 text-xs"
+            onClick={() => setAgendaFilter(new Set())}
+          >
+            <X className="h-3 w-3" /> Limpar
+          </Button>
+        )}
+        <div className="ml-auto flex items-center gap-2">
+          <ArrowDownUp className="h-3.5 w-3.5 text-muted-foreground" />
+          <Select value={sortMode} onValueChange={(v) => setSortMode(v as SortMode)}>
+            <SelectTrigger className="h-7 w-[200px] text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="default">Ordem padrão</SelectItem>
+              <SelectItem value="urgency">Mais urgente primeiro</SelectItem>
+              <SelectItem value="urgency-desc">Menos urgente primeiro</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
       <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
         <div className="flex gap-4 overflow-x-auto pb-4 -mx-4 md:-mx-8 px-4 md:px-8">
           {STAGES.map((stage) => (
