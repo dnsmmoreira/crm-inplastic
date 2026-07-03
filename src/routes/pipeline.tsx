@@ -11,16 +11,25 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { Plus, Package, Calendar as CalendarIcon, Search } from "lucide-react";
+import { Plus, Package, Calendar as CalendarIcon, Search, ArrowDownUp, X } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useCrm, STAGES, formatBRL, leadTemperature, followupTemperature, type Lead, type StageId, useVisibleLeads } from "@/lib/crm-store";
+import { useCrm, STAGES, formatBRL, leadTemperature, followupTemperature, type Lead, type StageId, type FollowupLevel, useVisibleLeads } from "@/lib/crm-store";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Toggle } from "@/components/ui/toggle";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { NewLeadDialog, LeadDrawer } from "@/components/crm/LeadDrawer";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+
+type SortMode = "default" | "urgency" | "urgency-desc";
+const AGENDA_FILTERS: { level: FollowupLevel; label: string; emoji: string }[] = [
+  { level: "urgent", label: "Urgente", emoji: "🔥" },
+  { level: "attention", label: "Atenção", emoji: "⚠️" },
+  { level: "scheduled", label: "Agendado", emoji: "❄️" },
+];
 
 export const Route = createFileRoute("/pipeline")({
   component: PipelinePage,
