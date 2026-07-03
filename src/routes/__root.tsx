@@ -222,23 +222,18 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <AuthGate>
-          <AppShell>
-            <Outlet />
-          </AppShell>
-        </AuthGate>
+        <AuthGate />
       </AuthProvider>
       <Toaster position="top-right" />
     </QueryClientProvider>
   );
 }
 
-function AuthGate({ children }: { children: ReactNode }) {
+function AuthGate() {
   const { user, loading } = useAuth();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const isAuthRoute = pathname === "/auth";
 
-  if (isAuthRoute) return <Outlet />;
+  if (pathname === "/auth") return <Outlet />;
 
   if (loading) {
     return (
@@ -249,10 +244,7 @@ function AuthGate({ children }: { children: ReactNode }) {
   }
 
   if (!user) {
-    // Render the auth route inline (avoids SSR redirect loop with localStorage session)
-    if (typeof window !== "undefined") {
-      window.location.replace("/auth");
-    }
+    if (typeof window !== "undefined") window.location.replace("/auth");
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="text-sm text-muted-foreground">Redirecionando…</div>
@@ -260,7 +252,7 @@ function AuthGate({ children }: { children: ReactNode }) {
     );
   }
 
-  return <>{children}</>;
+  return <AppShell><Outlet /></AppShell>;
 }
 
 function UserBadge() {
