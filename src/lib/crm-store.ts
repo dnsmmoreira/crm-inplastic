@@ -982,3 +982,36 @@ export const proposalTotals = (p: Proposal) => {
   const qty = p.items.reduce((s, i) => s + i.quantity, 0);
   return { subtotal, total, qty, count: p.items.length };
 };
+
+export type TemperatureLevel = "hot" | "warm" | "cold" | "frozen";
+export type Temperature = {
+  level: TemperatureLevel;
+  label: string;
+  days: number;
+  emoji: string;
+  className: string;
+  hint: string;
+};
+
+/** Lead temperature based on inactivity (days since lastContact). */
+export const leadTemperature = (
+  lead: Pick<Lead, "lastContact" | "createdAt" | "stage">,
+): Temperature => {
+  const ref = new Date(lead.lastContact ?? lead.createdAt).getTime();
+  const days = Math.max(0, Math.floor((Date.now() - ref) / 86400000));
+  const hint = days === 0 ? "Contato hoje" : `${days} dia${days === 1 ? "" : "s"} sem contato`;
+  if (lead.stage === "perdido")
+    return { level: "frozen", label: "Congelado", days, emoji: "🧊",
+      className: "bg-slate-500/15 text-slate-600 border-slate-500/30", hint };
+  if (lead.stage === "ganho" || days <= 2)
+    return { level: "hot", label: "Quente", days, emoji: "🔥",
+      className: "bg-red-500/15 text-red-600 border-red-500/30", hint };
+  if (days <= 5)
+    return { level: "warm", label: "Morno", days, emoji: "☀️",
+      className: "bg-amber-500/15 text-amber-700 border-amber-500/30", hint };
+  if (days <= 14)
+    return { level: "cold", label: "Frio", days, emoji: "❄️",
+      className: "bg-blue-500/15 text-blue-600 border-blue-500/30", hint };
+  return { level: "frozen", label: "Congelado", days, emoji: "🧊",
+    className: "bg-slate-500/15 text-slate-600 border-slate-500/30", hint };
+};
