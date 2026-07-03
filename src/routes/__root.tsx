@@ -26,7 +26,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
-import { useCrm, USERS, useCurrentUser } from "@/lib/crm-store";
+import { useCrm, USERS, useCurrentUser, useIsAdmin } from "@/lib/crm-store";
 import {
   Select,
   SelectContent,
