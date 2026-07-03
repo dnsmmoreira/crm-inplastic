@@ -50,7 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const hydrate = useCallback(async (nextSession: Session | null) => {
+  const hydrate = useCallback(async (nextSession: Session | null, opts?: { clearOnEmpty?: boolean }) => {
     setSession(nextSession);
     if (nextSession?.user) {
       try {
@@ -63,9 +63,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch (e) {
         console.error("loadAuthUser failed", e);
-        setUser(null);
+        // Não zera o user aqui — se já tinha um user carregado, mantém.
+        // Uma falha transitória em profiles/user_roles não deve deslogar.
       }
-    } else {
+    } else if (opts?.clearOnEmpty) {
       setUser(null);
       clearCrmState();
     }
@@ -74,25 +75,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 
   useEffect(() => {
-    let initialized = false;
     const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
-      // Ignora eventos ruidosos que não representam mudança real de identidade,
-      // pra não limpar o user por causa de INITIAL_SESSION/TOKEN_REFRESHED sem sessão.
-      if (event === "TOKEN_REFRESHED" && s) {
-        setSession(s);
+      // SIGNED_OUT é o único caso em que limpamos o usuário.
+      if (event === "SIGNED_OUT") {
+        setTimeout(() => { void hydrate(null, { clearOnEmpty: true }); }, 0);
         return;
       }
-      if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") {
+      // Só (re)hidrata quando temos sessão real. Ignora INITIAL_SESSION vazio,
+      // TOKEN_REFRESHED vazio, etc., pra não redirecionar durante navegação.
+      if (!s) return;
+      if (event === "TOKEN_REFRESHED") {
+        setSession(s);
         return;
       }
       setTimeout(() => { void hydrate(s); }, 0);
     });
     supabase.auth.getSession().then(({ data }) => {
-      initialized = true;
-      void hydrate(data.session);
+      // Na primeira montagem, se não houver sessão, aí sim limpamos (sem redirect infinito).
+      void hydrate(data.session, { clearOnEmpty: true });
     });
-    return () => { sub.subscription.unsubscribe(); void initialized; };
+    return () => { sub.subscription.unsubscribe(); };
   }, [hydrate]);
+
 
 
   const refresh = useCallback(async () => {
