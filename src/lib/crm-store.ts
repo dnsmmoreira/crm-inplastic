@@ -483,7 +483,42 @@ export type Proposal = {
   installments: PaymentInstallment[];
   transport: TransportInfo;
   observations: string;
+  paymentTermId?: string;   // ADM-managed payment term chosen by seller
 };
+
+export type PaymentMethod = "Boleto" | "PIX" | "Depósito em Conta" | "Cartão" | "Dinheiro";
+
+export type PaymentTerm = {
+  id: string;
+  label: string;             // ex: "Boleto 30/60/90 dias"
+  method: PaymentMethod;
+  splits: number[];          // days per installment; [0] = à vista
+  notes?: string;
+};
+
+/** 20 condições comerciais mais usadas — gerenciadas pelo administrador. */
+export const PAYMENT_TERMS: PaymentTerm[] = [
+  { id: "pix-avista",        label: "PIX à vista",                       method: "PIX",                splits: [0],              notes: "Com 3% de desconto" },
+  { id: "pix-7",             label: "PIX 7 dias",                        method: "PIX",                splits: [7] },
+  { id: "pix-14",            label: "PIX 14 dias",                       method: "PIX",                splits: [14] },
+  { id: "pix-28",            label: "PIX 28 dias",                       method: "PIX",                splits: [28] },
+  { id: "dinheiro-avista",   label: "Dinheiro à vista",                  method: "Dinheiro",           splits: [0],              notes: "Com 5% de desconto" },
+  { id: "dep-avista",        label: "Depósito em Conta à vista",         method: "Depósito em Conta",  splits: [0] },
+  { id: "dep-15",            label: "Depósito em Conta 15 dias",         method: "Depósito em Conta",  splits: [15] },
+  { id: "boleto-avista",     label: "Boleto à vista",                    method: "Boleto",             splits: [0] },
+  { id: "boleto-14",         label: "Boleto 14 dias",                    method: "Boleto",             splits: [14] },
+  { id: "boleto-21",         label: "Boleto 21 dias",                    method: "Boleto",             splits: [21] },
+  { id: "boleto-28",         label: "Boleto 28 dias",                    method: "Boleto",             splits: [28] },
+  { id: "boleto-30",         label: "Boleto 30 dias",                    method: "Boleto",             splits: [30] },
+  { id: "boleto-2x-30-60",   label: "Boleto 2x — 30/60 dias",            method: "Boleto",             splits: [30, 60] },
+  { id: "boleto-3x-30-60-90",label: "Boleto 3x — 30/60/90 dias",         method: "Boleto",             splits: [30, 60, 90] },
+  { id: "boleto-4x",         label: "Boleto 4x — 30/60/90/120 dias",     method: "Boleto",             splits: [30, 60, 90, 120] },
+  { id: "boleto-6x",         label: "Boleto 6x — 30 a 180 dias",         method: "Boleto",             splits: [30, 60, 90, 120, 150, 180] },
+  { id: "boleto-entrada-30", label: "Boleto — entrada + 30 dias",        method: "Boleto",             splits: [0, 30] },
+  { id: "cartao-avista",     label: "Cartão à vista",                    method: "Cartão",             splits: [0] },
+  { id: "cartao-3x",         label: "Cartão 3x sem juros",               method: "Cartão",             splits: [0, 30, 60] },
+  { id: "cartao-6x",         label: "Cartão 6x sem juros",               method: "Cartão",             splits: [0, 30, 60, 90, 120, 150] },
+];
 
 export type EmitterProfile = {
   legalName: string;
