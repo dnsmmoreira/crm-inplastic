@@ -17,6 +17,8 @@ import {
   Boxes,
   MessageSquare,
   Bot,
+  Package,
+  FileText,
 } from "lucide-react";
 
 import appCss from "../styles.css?url";
@@ -125,6 +127,8 @@ const NAV = [
   { to: "/agente-ia", label: "Agente IA", icon: Bot },
   { to: "/contatos", label: "Contatos", icon: Users },
   { to: "/tarefas", label: "Tarefas", icon: CheckSquare },
+  { to: "/propostas", label: "Propostas", icon: FileText },
+  { to: "/produtos", label: "Produtos", icon: Package },
 ] as const;
 
 function AppShell({ children }: { children: ReactNode }) {

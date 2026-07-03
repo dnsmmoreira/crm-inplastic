@@ -10,15 +10,28 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TarefasRouteImport } from './routes/tarefas'
+import { Route as PropostasRouteImport } from './routes/propostas'
+import { Route as ProdutosRouteImport } from './routes/produtos'
 import { Route as PipelineRouteImport } from './routes/pipeline'
 import { Route as ContatosRouteImport } from './routes/contatos'
 import { Route as CanaisRouteImport } from './routes/canais'
 import { Route as AgenteIaRouteImport } from './routes/agente-ia'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PropostasIdRouteImport } from './routes/propostas.$id'
 
 const TarefasRoute = TarefasRouteImport.update({
   id: '/tarefas',
   path: '/tarefas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PropostasRoute = PropostasRouteImport.update({
+  id: '/propostas',
+  path: '/propostas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProdutosRoute = ProdutosRouteImport.update({
+  id: '/produtos',
+  path: '/produtos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PipelineRoute = PipelineRouteImport.update({
@@ -46,6 +59,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PropostasIdRoute = PropostasIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => PropostasRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -53,7 +71,10 @@ export interface FileRoutesByFullPath {
   '/canais': typeof CanaisRoute
   '/contatos': typeof ContatosRoute
   '/pipeline': typeof PipelineRoute
+  '/produtos': typeof ProdutosRoute
+  '/propostas': typeof PropostasRouteWithChildren
   '/tarefas': typeof TarefasRoute
+  '/propostas/$id': typeof PropostasIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -61,7 +82,10 @@ export interface FileRoutesByTo {
   '/canais': typeof CanaisRoute
   '/contatos': typeof ContatosRoute
   '/pipeline': typeof PipelineRoute
+  '/produtos': typeof ProdutosRoute
+  '/propostas': typeof PropostasRouteWithChildren
   '/tarefas': typeof TarefasRoute
+  '/propostas/$id': typeof PropostasIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -70,7 +94,10 @@ export interface FileRoutesById {
   '/canais': typeof CanaisRoute
   '/contatos': typeof ContatosRoute
   '/pipeline': typeof PipelineRoute
+  '/produtos': typeof ProdutosRoute
+  '/propostas': typeof PropostasRouteWithChildren
   '/tarefas': typeof TarefasRoute
+  '/propostas/$id': typeof PropostasIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -80,9 +107,21 @@ export interface FileRouteTypes {
     | '/canais'
     | '/contatos'
     | '/pipeline'
+    | '/produtos'
+    | '/propostas'
     | '/tarefas'
+    | '/propostas/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/agente-ia' | '/canais' | '/contatos' | '/pipeline' | '/tarefas'
+  to:
+    | '/'
+    | '/agente-ia'
+    | '/canais'
+    | '/contatos'
+    | '/pipeline'
+    | '/produtos'
+    | '/propostas'
+    | '/tarefas'
+    | '/propostas/$id'
   id:
     | '__root__'
     | '/'
@@ -90,7 +129,10 @@ export interface FileRouteTypes {
     | '/canais'
     | '/contatos'
     | '/pipeline'
+    | '/produtos'
+    | '/propostas'
     | '/tarefas'
+    | '/propostas/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -99,6 +141,8 @@ export interface RootRouteChildren {
   CanaisRoute: typeof CanaisRoute
   ContatosRoute: typeof ContatosRoute
   PipelineRoute: typeof PipelineRoute
+  ProdutosRoute: typeof ProdutosRoute
+  PropostasRoute: typeof PropostasRouteWithChildren
   TarefasRoute: typeof TarefasRoute
 }
 
@@ -109,6 +153,20 @@ declare module '@tanstack/react-router' {
       path: '/tarefas'
       fullPath: '/tarefas'
       preLoaderRoute: typeof TarefasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/propostas': {
+      id: '/propostas'
+      path: '/propostas'
+      fullPath: '/propostas'
+      preLoaderRoute: typeof PropostasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/produtos': {
+      id: '/produtos'
+      path: '/produtos'
+      fullPath: '/produtos'
+      preLoaderRoute: typeof ProdutosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pipeline': {
@@ -146,8 +204,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/propostas/$id': {
+      id: '/propostas/$id'
+      path: '/$id'
+      fullPath: '/propostas/$id'
+      preLoaderRoute: typeof PropostasIdRouteImport
+      parentRoute: typeof PropostasRoute
+    }
   }
 }
+
+interface PropostasRouteChildren {
+  PropostasIdRoute: typeof PropostasIdRoute
+}
+
+const PropostasRouteChildren: PropostasRouteChildren = {
+  PropostasIdRoute: PropostasIdRoute,
+}
+
+const PropostasRouteWithChildren = PropostasRoute._addFileChildren(
+  PropostasRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -155,6 +232,8 @@ const rootRouteChildren: RootRouteChildren = {
   CanaisRoute: CanaisRoute,
   ContatosRoute: ContatosRoute,
   PipelineRoute: PipelineRoute,
+  ProdutosRoute: ProdutosRoute,
+  PropostasRoute: PropostasRouteWithChildren,
   TarefasRoute: TarefasRoute,
 }
 export const routeTree = rootRouteImport

@@ -365,6 +365,149 @@ const defaultAgent: AgentSettings = {
   tone: "consultivo",
 };
 
+export type ProductUnit = "Un" | "Kg" | "Cj";
+export const PRODUCT_UNITS: ProductUnit[] = ["Un", "Kg", "Cj"];
+
+export type Product = {
+  id: string;
+  sku: string;
+  name: string;
+  description: string;
+  unit: ProductUnit;
+  weightKg: number;      // peso unitário
+  heightCm: number;
+  widthCm: number;
+  lengthCm: number;
+  ncm: string;
+  defaultPrice: number;  // preço unitário sugerido
+  active: boolean;
+};
+
+const seedProducts: Product[] = [
+  {
+    id: "p-pbr1210",
+    sku: "PBR-1210",
+    name: "Pallet PBR 1210 Preto",
+    description: "Pallet plástico padrão PBR 1000x1200mm, cor preta, alta resistência.",
+    unit: "Un",
+    weightKg: 18,
+    heightCm: 14,
+    widthCm: 100,
+    lengthCm: 120,
+    ncm: "3923.10.90",
+    defaultPrice: 185,
+    active: true,
+  },
+  {
+    id: "p-exp1210",
+    sku: "EXP-1210",
+    name: "Pallet Exportação 1210",
+    description: "Pallet plástico para exportação, dispensa NIMF-15, empilhável.",
+    unit: "Un",
+    weightKg: 16,
+    heightCm: 15,
+    widthCm: 100,
+    lengthCm: 120,
+    ncm: "3923.10.90",
+    defaultPrice: 210,
+    active: true,
+  },
+  {
+    id: "p-hig1210",
+    sku: "HIG-1210",
+    name: "Pallet Higiênico 1210",
+    description: "Pallet higiênico para frigoríficos e farmacêutica, superfície fechada.",
+    unit: "Un",
+    weightKg: 22,
+    heightCm: 15,
+    widthCm: 100,
+    lengthCm: 120,
+    ncm: "3923.10.90",
+    defaultPrice: 245,
+    active: true,
+  },
+  {
+    id: "p-ref1210",
+    sku: "REF-1210",
+    name: "Pallet Reforçado 1210",
+    description: "Pallet reforçado para cargas até 2.000 kg, indústria pesada.",
+    unit: "Un",
+    weightKg: 25,
+    heightCm: 15,
+    widthCm: 100,
+    lengthCm: 120,
+    ncm: "3923.10.90",
+    defaultPrice: 275,
+    active: true,
+  },
+];
+
+// ============ Propostas comerciais ============
+
+export type ProposalItem = {
+  id: string;
+  productId: string;
+  description: string; // snapshot
+  sku: string;         // snapshot
+  unit: ProductUnit;
+  quantity: number;
+  unitPrice: number;
+};
+
+export type PaymentInstallment = {
+  id: string;
+  days: number;
+  amount: number;
+  notes: string;
+};
+
+export type TransportInfo = {
+  carrier: string;
+  freightPayer: "CIF" | "FOB";
+  grossWeightKg: number;
+  volumes: number;
+  freightValue: number;
+};
+
+export type ProposalStatus = "rascunho" | "enviada" | "aprovada" | "recusada";
+
+export type Proposal = {
+  id: string;
+  number: string;           // ex: 2026-0001
+  leadId: string;
+  ownerId: string;
+  createdAt: string;
+  status: ProposalStatus;
+  validityDays: number;
+  items: ProposalItem[];
+  installments: PaymentInstallment[];
+  transport: TransportInfo;
+  observations: string;
+};
+
+export type EmitterProfile = {
+  legalName: string;
+  cnpj: string;
+  ie: string;
+  address: string;
+  phone: string;
+  whatsapp: string;
+  email: string;
+  website: string;
+};
+
+const defaultEmitter: EmitterProfile = {
+  legalName: "Pallet de Plástico Indústria e Comércio LTDA",
+  cnpj: "00.000.000/0001-00",
+  ie: "000.000.000.000",
+  address: "Av. Industrial, 1000 — Distrito Industrial — São Paulo/SP — CEP 00000-000",
+  phone: "(11) 4000-0000",
+  whatsapp: "(11) 90000-0000",
+  email: "vendas@palletdeplastico.com.br",
+  website: "www.palletdeplastico.com.br",
+};
+
+
 type CrmState = {
   leads: Lead[];
   tasks: Task[];
@@ -388,6 +531,22 @@ type CrmState = {
   updateAgent: (patch: Partial<AgentSettings>) => void;
   bookSlotWithAi: (slotId: string, leadId: string, title: string) => void;
   runAiFollowUp: (leadId: string) => void;
+  // Produtos
+  products: Product[];
+  addProduct: (p: Omit<Product, "id">) => string;
+  updateProduct: (id: string, patch: Partial<Product>) => void;
+  removeProduct: (id: string) => void;
+  // Propostas
+  proposals: Proposal[];
+  emitter: EmitterProfile;
+  updateEmitter: (patch: Partial<EmitterProfile>) => void;
+  createProposal: (leadId: string, ownerId?: string) => string;
+  updateProposal: (id: string, patch: Partial<Proposal>) => void;
+  removeProposal: (id: string) => void;
+  addProposalItem: (proposalId: string, productId: string, quantity: number) => void;
+  updateProposalItem: (proposalId: string, itemId: string, patch: Partial<ProposalItem>) => void;
+  removeProposalItem: (proposalId: string, itemId: string) => void;
+  setProposalStatus: (id: string, status: ProposalStatus) => void;
 };
 
 const uid = () => Math.random().toString(36).slice(2, 10);
@@ -561,8 +720,103 @@ export const useCrm = create<CrmState>()(
           ),
         }));
       },
+
+      // ============ Produtos ============
+      products: seedProducts,
+      addProduct: (p) => {
+        const id = uid();
+        set((s) => ({ products: [{ ...p, id }, ...s.products] }));
+        return id;
+      },
+      updateProduct: (id, patch) =>
+        set((s) => ({ products: s.products.map((p) => (p.id === id ? { ...p, ...patch } : p)) })),
+      removeProduct: (id) =>
+        set((s) => ({ products: s.products.filter((p) => p.id !== id) })),
+
+      // ============ Propostas ============
+      proposals: [],
+      emitter: defaultEmitter,
+      updateEmitter: (patch) => set((s) => ({ emitter: { ...s.emitter, ...patch } })),
+      createProposal: (leadId, ownerId) => {
+        const id = uid();
+        const year = new Date().getFullYear();
+        const existing = get().proposals.filter((p) => p.number.startsWith(`${year}-`)).length;
+        const number = `${year}-${String(existing + 1).padStart(4, "0")}`;
+        const proposal: Proposal = {
+          id,
+          number,
+          leadId,
+          ownerId: ownerId ?? get().currentUserId,
+          createdAt: new Date().toISOString(),
+          status: "rascunho",
+          validityDays: 15,
+          items: [],
+          installments: [
+            { id: uid(), days: 28, amount: 0, notes: "Boleto — 28 dias" },
+          ],
+          transport: {
+            carrier: "A definir",
+            freightPayer: "CIF",
+            grossWeightKg: 0,
+            volumes: 0,
+            freightValue: 0,
+          },
+          observations:
+            "Proposta comercial válida por 15 dias. Preços em reais, impostos inclusos conforme legislação vigente. Prazo de entrega a combinar após aprovação.",
+        };
+        set((s) => ({ proposals: [proposal, ...s.proposals] }));
+        return id;
+      },
+      updateProposal: (id, patch) =>
+        set((s) => ({ proposals: s.proposals.map((p) => (p.id === id ? { ...p, ...patch } : p)) })),
+      removeProposal: (id) =>
+        set((s) => ({ proposals: s.proposals.filter((p) => p.id !== id) })),
+      addProposalItem: (proposalId, productId, quantity) => {
+        const product = get().products.find((p) => p.id === productId);
+        if (!product) return;
+        set((s) => ({
+          proposals: s.proposals.map((p) =>
+            p.id === proposalId
+              ? {
+                  ...p,
+                  items: [
+                    ...p.items,
+                    {
+                      id: uid(),
+                      productId: product.id,
+                      description: product.name,
+                      sku: product.sku,
+                      unit: product.unit,
+                      quantity,
+                      unitPrice: product.defaultPrice,
+                    },
+                  ],
+                }
+              : p,
+          ),
+        }));
+      },
+      updateProposalItem: (proposalId, itemId, patch) =>
+        set((s) => ({
+          proposals: s.proposals.map((p) =>
+            p.id === proposalId
+              ? { ...p, items: p.items.map((it) => (it.id === itemId ? { ...it, ...patch } : it)) }
+              : p,
+          ),
+        })),
+      removeProposalItem: (proposalId, itemId) =>
+        set((s) => ({
+          proposals: s.proposals.map((p) =>
+            p.id === proposalId ? { ...p, items: p.items.filter((it) => it.id !== itemId) } : p,
+          ),
+        })),
+      setProposalStatus: (id, status) =>
+        set((s) => ({
+          proposals: s.proposals.map((p) => (p.id === id ? { ...p, status } : p)),
+        })),
     }),
-    { name: "pdp-crm-v3" },
+    { name: "pdp-crm-v4" },
+
   ),
 );
 
@@ -633,3 +887,19 @@ export const useBestSellerOfMonth = () => {
   }, [leads]);
 };
 
+
+export const useVisibleProposals = () => {
+  const proposals = useCrm((s) => s.proposals);
+  const user = useCurrentUser();
+  return useMemo(
+    () => (user.role === "admin" ? proposals : proposals.filter((p) => p.ownerId === user.id)),
+    [proposals, user],
+  );
+};
+
+export const proposalTotals = (p: Proposal) => {
+  const subtotal = p.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
+  const total = subtotal + (p.transport.freightValue || 0);
+  const qty = p.items.reduce((s, i) => s + i.quantity, 0);
+  return { subtotal, total, qty, count: p.items.length };
+};
