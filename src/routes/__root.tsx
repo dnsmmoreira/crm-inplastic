@@ -133,6 +133,8 @@ const NAV = [
   { to: "/propostas", label: "Propostas", icon: FileText, adminOnly: false },
   { to: "/produtos", label: "Produtos", icon: Package, adminOnly: false },
   { to: "/condicoes-comerciais", label: "Condições Comerciais", icon: Settings2, adminOnly: true },
+  { to: "/empresas", label: "Empresas do Grupo", icon: Building2, adminOnly: true },
+
 ] as const;
 
 function AppShell({ children }: { children: ReactNode }) {
