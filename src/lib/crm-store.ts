@@ -971,7 +971,6 @@ export const formatBRL = (n: number) =>
 
 // Current user is derived from the authenticated session (see src/hooks/use-auth.tsx).
 // Legacy USERS array is kept only to display owner names on seeded/legacy records.
-import { useAuth } from "@/hooks/use-auth";
 
 export const useCurrentUser = (): User => {
   const { user } = useAuth();
