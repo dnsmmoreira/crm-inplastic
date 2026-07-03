@@ -484,7 +484,9 @@ export type Proposal = {
   transport: TransportInfo;
   observations: string;
   paymentTermId?: string;   // ADM-managed payment term chosen by seller
+  emitterId: string;        // qual CNPJ do grupo emite esta proposta
 };
+
 
 export type PaymentMethod = "Boleto" | "PIX" | "Depósito em Conta" | "Cartão" | "Dinheiro";
 
