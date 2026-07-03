@@ -385,9 +385,27 @@ function PropostaDetalhe() {
             </Table>
 
             {totals && (
-              <div className="flex justify-end gap-6 text-sm mt-3 pr-2">
-                <span className="text-muted-foreground">Subtotal itens:</span>
-                <span className="font-semibold">{formatBRL(totals.subtotal)}</span>
+              <div className="mt-3 pr-2 space-y-1 text-sm">
+                <div className="flex justify-end gap-6">
+                  <span className="text-muted-foreground">Subtotal itens:</span>
+                  <span className="font-semibold w-32 text-right">{formatBRL(totals.subtotal)}</span>
+                </div>
+                {totals.discountPercent > 0 && (
+                  <div className="flex justify-end gap-6 text-emerald-700">
+                    <span>Desconto ({totals.discountPercent}%):</span>
+                    <span className="font-semibold w-32 text-right">− {formatBRL(totals.discountAmount)}</span>
+                  </div>
+                )}
+                {proposal.transport.freightValue > 0 && (
+                  <div className="flex justify-end gap-6">
+                    <span className="text-muted-foreground">Frete:</span>
+                    <span className="font-semibold w-32 text-right">{formatBRL(proposal.transport.freightValue)}</span>
+                  </div>
+                )}
+                <div className="flex justify-end gap-6 pt-1 border-t">
+                  <span className="text-muted-foreground">Total:</span>
+                  <span className="font-bold text-primary w-32 text-right">{formatBRL(totals.total)}</span>
+                </div>
               </div>
             )}
 
