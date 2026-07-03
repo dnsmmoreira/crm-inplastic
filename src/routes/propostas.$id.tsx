@@ -23,6 +23,7 @@ import {
   useCrm,
   formatBRL,
   proposalTotals,
+  useMaxDiscountForCurrentUser,
   USERS,
   type ProposalStatus,
   type PaymentTerm,
