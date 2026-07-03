@@ -209,6 +209,8 @@ async function doSave() {
     emitters: state.emitters,
     defaultEmitterId: state.defaultEmitterId,
     maxDiscountPercentVendedor: state.maxDiscountPercentVendedor,
+    leadTags: state.leadTags,
+    leadSegments: state.leadSegments,
   };
   const systemJson = JSON.stringify(systemPayload);
   if (systemJson !== lastSystemSavedJson && currentRole === "admin") {
