@@ -281,36 +281,52 @@ function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Próximos retornos</CardTitle>
-            <CardDescription>Follow-ups programados com leads</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {upcomingFollowups.length === 0 && (
-              <p className="text-sm text-muted-foreground italic">Nenhum retorno programado.</p>
-            )}
-            {upcomingFollowups.map((l) => (
-              <button
-                key={l.id}
-                onClick={() => setOpenLead(l.id)}
-                className="w-full text-left flex items-center justify-between rounded-md border p-3 hover:bg-accent/50 transition-colors"
-              >
-                <div className="min-w-0">
-                  <div className="text-sm font-medium truncate">{l.company}</div>
-                  <div className="text-xs text-muted-foreground truncate">{l.product} · {formatBRL(l.estimatedValue)}</div>
-                </div>
-                <Badge variant="outline">
-                  {isToday(new Date(l.nextFollowUp!))
-                    ? "Hoje"
-                    : isTomorrow(new Date(l.nextFollowUp!))
-                      ? "Amanhã"
-                      : format(new Date(l.nextFollowUp!), "dd MMM", { locale: ptBR })}
-                </Badge>
-              </button>
-            ))}
-          </CardContent>
-        </Card>
+        {(() => {
+          const activeLeads = leads.filter((l) => l.stage !== "ganho" && l.stage !== "perdido");
+          const rank = { urgent: 0, attention: 1, scheduled: 2, ok: 3 } as const;
+          const withTemp = activeLeads
+            .map((l) => ({ l, f: followupTemperature(l) }))
+            .sort((a, b) => {
+              const r = rank[a.f.level] - rank[b.f.level];
+              if (r !== 0) return r;
+              return (b.f.overdueDays ?? -Infinity) - (a.f.overdueDays ?? -Infinity);
+            });
+          const urgentCount = withTemp.filter((x) => x.f.level === "urgent").length;
+          const attentionCount = withTemp.filter((x) => x.f.level === "attention").length;
+          const items = withTemp.slice(0, 6);
+          return (
+            <Card>
+              <CardHeader>
+                <CardTitle>Agenda de retornos</CardTitle>
+                <CardDescription>
+                  {urgentCount} urgente(s) · {attentionCount} para hoje/atrasado(s)
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {items.length === 0 && (
+                  <p className="text-sm text-muted-foreground italic">Nenhum lead ativo.</p>
+                )}
+                {items.map(({ l, f }) => (
+                  <button
+                    key={l.id}
+                    onClick={() => setOpenLead(l.id)}
+                    className="w-full text-left flex items-center justify-between rounded-md border p-3 hover:bg-accent/50 transition-colors"
+                  >
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium truncate">{l.company}</div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        {l.product} · {formatBRL(l.estimatedValue)}
+                      </div>
+                    </div>
+                    <Badge variant="outline" className={`shrink-0 ${f.className}`} title={f.hint}>
+                      <span className="mr-1">{f.emoji}</span>{f.label}
+                    </Badge>
+                  </button>
+                ))}
+              </CardContent>
+            </Card>
+          );
+        })()}
       </div>
 
       <LeadDrawer leadId={openLead} open={!!openLead} onOpenChange={(o) => !o && setOpenLead(null)} />
