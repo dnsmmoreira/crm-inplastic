@@ -1,7 +1,7 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 import { useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
+
 
 export type UserRole = "admin" | "vendedor";
 export type User = { id: string; name: string; role: UserRole; avatarColor: string };
