@@ -74,13 +74,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 
   useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
-      // Defer to avoid deadlocks in the callback
+    let initialized = false;
+    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
+      // Ignora eventos ruidosos que não representam mudança real de identidade,
+      // pra não limpar o user por causa de INITIAL_SESSION/TOKEN_REFRESHED sem sessão.
+      if (event === "TOKEN_REFRESHED" && s) {
+        setSession(s);
+        return;
+      }
+      if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") {
+        return;
+      }
       setTimeout(() => { void hydrate(s); }, 0);
     });
-    supabase.auth.getSession().then(({ data }) => { void hydrate(data.session); });
-    return () => { sub.subscription.unsubscribe(); };
+    supabase.auth.getSession().then(({ data }) => {
+      initialized = true;
+      void hydrate(data.session);
+    });
+    return () => { sub.subscription.unsubscribe(); void initialized; };
   }, [hydrate]);
+
 
   const refresh = useCallback(async () => {
     const { data } = await supabase.auth.getSession();

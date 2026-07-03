@@ -239,6 +239,9 @@ function AuthGate() {
 
   if (pathname === "/auth") return <Outlet />;
 
+  // Enquanto o Supabase não terminou a restauração inicial da sessão, mostramos loading.
+  // Isso evita redirecionar pra /auth num flash logo depois do login, quando o cliente
+  // ainda não hidratou o user a partir do localStorage.
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -248,16 +251,24 @@ function AuthGate() {
   }
 
   if (!user) {
-    if (typeof window !== "undefined") window.location.replace("/auth");
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="text-sm text-muted-foreground">Redirecionando…</div>
-      </div>
-    );
+    return <RedirectToAuth />;
   }
 
   return <AppShell><Outlet /></AppShell>;
 }
+
+function RedirectToAuth() {
+  const router = useRouter();
+  useEffect(() => {
+    void router.navigate({ to: "/auth", replace: true });
+  }, [router]);
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background">
+      <div className="text-sm text-muted-foreground">Redirecionando…</div>
+    </div>
+  );
+}
+
 
 function UserBadge() {
   const { user, signOut } = useAuth();
