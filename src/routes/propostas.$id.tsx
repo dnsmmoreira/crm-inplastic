@@ -1,9 +1,24 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ArrowLeft, Plus, Trash2, Printer, Send, CheckCircle2, XCircle, Check, ChevronsUpDown, Search } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Printer, Send, CheckCircle2, XCircle, Check, ChevronsUpDown, Search, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import { z } from "zod";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+
+const MAX_QTY = 100_000;
+const MAX_PRICE = 10_000_000;
+const MAX_DESC = 200;
+
+const itemSchema = z.object({
+  description: z.string().trim().min(1, "Descrição não pode ficar vazia").max(MAX_DESC, `Descrição deve ter até ${MAX_DESC} caracteres`),
+  quantity: z.number({ invalid_type_error: "Quantidade inválida" }).finite("Quantidade inválida").positive("Quantidade deve ser maior que zero").max(MAX_QTY, `Quantidade máxima: ${MAX_QTY.toLocaleString("pt-BR")}`),
+  unitPrice: z.number({ invalid_type_error: "Preço inválido" }).finite("Preço inválido").nonnegative("Preço não pode ser negativo").max(MAX_PRICE, "Preço acima do limite permitido"),
+});
+
+const addItemSchema = itemSchema.pick({ quantity: true, unitPrice: true }).extend({
+  productId: z.string().min(1, "Selecione um produto do catálogo"),
+});
 import {
   useCrm,
   formatBRL,
@@ -60,13 +75,32 @@ function PropostaDetalhe() {
   const updateProposal = useCrm((s) => s.updateProposal);
   const setStatus = useCrm((s) => s.setProposalStatus);
   const [addProduct, setAddProduct] = useState("");
-  const [addQty, setAddQty] = useState(1);
+  const [addQty, setAddQty] = useState<number | "">(1);
   const [addPrice, setAddPrice] = useState<number | "">("");
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
+  const [rowErrors, setRowErrors] = useState<Record<string, { field: "description" | "quantity" | "unitPrice"; message: string } | null>>({});
 
   const totals = useMemo(() => (proposal ? proposalTotals(proposal) : null), [proposal]);
   const owner = proposal ? USERS.find((u) => u.id === proposal.ownerId) : null;
   const selectedProduct = useMemo(() => products.find((p) => p.id === addProduct), [products, addProduct]);
+
+  const validateAndUpdateItem = (
+    itemId: string,
+    field: "description" | "quantity" | "unitPrice",
+    raw: string,
+  ) => {
+    const value = field === "description" ? raw : Number(raw);
+    const parsed = itemSchema.shape[field].safeParse(value);
+    if (!parsed.success) {
+      setRowErrors((prev) => ({ ...prev, [itemId]: { field, message: parsed.error.issues[0]?.message ?? "Valor inválido" } }));
+      // Still reflect the raw value in the store so the user sees what they typed
+      updateItem(proposal!.id, itemId, { [field]: value } as never);
+      return;
+    }
+    setRowErrors((prev) => ({ ...prev, [itemId]: null }));
+    updateItem(proposal!.id, itemId, { [field]: parsed.data } as never);
+  };
 
   if (!proposal || !lead) {
     return (
@@ -140,44 +174,74 @@ function PropostaDetalhe() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {proposal.items.map((it) => (
-                  <TableRow key={it.id}>
-                    <TableCell>
-                      <Input
-                        value={it.description}
-                        onChange={(e) => updateItem(proposal.id, it.id, { description: e.target.value })}
-                        className="font-medium"
-                      />
-                    </TableCell>
-                    <TableCell className="font-mono text-xs">{it.sku}</TableCell>
-                    <TableCell>{it.unit}</TableCell>
-                    <TableCell>
-                      <Input
-                        type="number"
-                        min={0}
-                        value={it.quantity}
-                        onChange={(e) => updateItem(proposal.id, it.id, { quantity: Number(e.target.value) })}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        min={0}
-                        value={it.unitPrice}
-                        onChange={(e) => updateItem(proposal.id, it.id, { unitPrice: Number(e.target.value) })}
-                      />
-                    </TableCell>
-                    <TableCell className="text-right font-semibold whitespace-nowrap">
-                      {formatBRL(it.quantity * it.unitPrice)}
-                    </TableCell>
-                    <TableCell>
-                      <Button size="icon" variant="ghost" onClick={() => { removeItem(proposal.id, it.id); toast.success("Item removido"); }}>
-                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                      </Button>
+                {proposal.items.map((it) => {
+                  const err = rowErrors[it.id];
+                  const cls = (field: "description" | "quantity" | "unitPrice") =>
+                    err?.field === field ? "border-destructive focus-visible:ring-destructive" : "";
+                  return (
+                    <TableRow key={it.id}>
+                      <TableCell>
+                        <Input
+                          value={it.description}
+                          maxLength={MAX_DESC}
+                          onChange={(e) => validateAndUpdateItem(it.id, "description", e.target.value)}
+                          className={cn("font-medium", cls("description"))}
+                          aria-invalid={err?.field === "description"}
+                        />
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">{it.sku}</TableCell>
+                      <TableCell>{it.unit}</TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          min={1}
+                          step="1"
+                          value={it.quantity}
+                          onChange={(e) => validateAndUpdateItem(it.id, "quantity", e.target.value)}
+                          className={cls("quantity")}
+                          aria-invalid={err?.field === "quantity"}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min={0}
+                          value={it.unitPrice}
+                          onChange={(e) => validateAndUpdateItem(it.id, "unitPrice", e.target.value)}
+                          className={cls("unitPrice")}
+                          aria-invalid={err?.field === "unitPrice"}
+                        />
+                      </TableCell>
+                      <TableCell className="text-right font-semibold whitespace-nowrap">
+                        {formatBRL(it.quantity * it.unitPrice)}
+                      </TableCell>
+                      <TableCell>
+                        <Button size="icon" variant="ghost" onClick={() => {
+                          removeItem(proposal.id, it.id);
+                          setRowErrors((prev) => { const n = { ...prev }; delete n[it.id]; return n; });
+                          toast.success("Item removido");
+                        }}>
+                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+                {Object.values(rowErrors).some(Boolean) && (
+                  <TableRow>
+                    <TableCell colSpan={7} className="bg-destructive/5 py-2">
+                      <ul className="text-xs text-destructive space-y-0.5">
+                        {Object.entries(rowErrors).map(([id, e]) => e ? (
+                          <li key={id} className="flex items-center gap-1.5">
+                            <AlertCircle className="h-3 w-3" /> {e.message}
+                          </li>
+                        ) : null)}
+                      </ul>
                     </TableCell>
                   </TableRow>
-                ))}
+                )}
+
                 {proposal.items.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-6">
@@ -262,7 +326,14 @@ function PropostaDetalhe() {
               </div>
               <div className="w-24">
                 <Label>Qtd</Label>
-                <Input type="number" min={1} value={addQty} onChange={(e) => setAddQty(Number(e.target.value))} />
+                <Input
+                  type="number"
+                  min={1}
+                  step="1"
+                  value={addQty}
+                  className={addError && (addQty === "" || Number(addQty) <= 0) ? "border-destructive" : ""}
+                  onChange={(e) => setAddQty(e.target.value === "" ? "" : Number(e.target.value))}
+                />
               </div>
               <div className="w-32">
                 <Label>Preço un. (R$)</Label>
@@ -277,14 +348,21 @@ function PropostaDetalhe() {
               </div>
               <Button
                 onClick={() => {
-                  if (!addProduct || addQty <= 0) { toast.error("Selecione produto e quantidade"); return; }
-                  addItem(proposal.id, addProduct, addQty);
-                  // Override initial price if user changed it
-                  if (addPrice !== "" && selectedProduct && addPrice !== selectedProduct.defaultPrice) {
-                    // Find the item just added (last in list) and patch price
+                  const qty = addQty === "" ? NaN : Number(addQty);
+                  const price = addPrice === "" ? (selectedProduct?.defaultPrice ?? NaN) : Number(addPrice);
+                  const parsed = addItemSchema.safeParse({ productId: addProduct, quantity: qty, unitPrice: price });
+                  if (!parsed.success) {
+                    const msg = parsed.error.issues[0]?.message ?? "Dados inválidos";
+                    setAddError(msg);
+                    toast.error(msg);
+                    return;
+                  }
+                  setAddError(null);
+                  addItem(proposal.id, parsed.data.productId, parsed.data.quantity);
+                  if (selectedProduct && parsed.data.unitPrice !== selectedProduct.defaultPrice) {
                     const current = useCrm.getState().proposals.find((p) => p.id === proposal.id);
                     const last = current?.items[current.items.length - 1];
-                    if (last) updateItem(proposal.id, last.id, { unitPrice: Number(addPrice) });
+                    if (last) updateItem(proposal.id, last.id, { unitPrice: parsed.data.unitPrice });
                   }
                   setAddProduct("");
                   setAddQty(1);
@@ -294,11 +372,17 @@ function PropostaDetalhe() {
                 className="gap-2"
               >
                 <Plus className="h-4 w-4" /> Adicionar
+
               </Button>
               <Link to="/produtos" className="text-xs text-primary hover:underline ml-2 self-center">
                 Gerenciar catálogo →
               </Link>
             </div>
+            {addError && (
+              <p className="mt-2 text-xs text-destructive flex items-center gap-1.5">
+                <AlertCircle className="h-3 w-3" /> {addError}
+              </p>
+            )}
           </CardContent>
         </Card>
 
