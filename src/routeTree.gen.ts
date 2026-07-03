@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TarefasRouteImport } from './routes/tarefas'
 import { Route as ProdutosRouteImport } from './routes/produtos'
 import { Route as PipelineRouteImport } from './routes/pipeline'
+import { Route as EmpresasRouteImport } from './routes/empresas'
 import { Route as ContatosRouteImport } from './routes/contatos'
 import { Route as CondicoesComerciaisRouteImport } from './routes/condicoes-comerciais'
 import { Route as CanaisRouteImport } from './routes/canais'
@@ -33,6 +34,11 @@ const ProdutosRoute = ProdutosRouteImport.update({
 const PipelineRoute = PipelineRouteImport.update({
   id: '/pipeline',
   path: '/pipeline',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EmpresasRoute = EmpresasRouteImport.update({
+  id: '/empresas',
+  path: '/empresas',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ContatosRoute = ContatosRouteImport.update({
@@ -77,6 +83,7 @@ export interface FileRoutesByFullPath {
   '/canais': typeof CanaisRoute
   '/condicoes-comerciais': typeof CondicoesComerciaisRoute
   '/contatos': typeof ContatosRoute
+  '/empresas': typeof EmpresasRoute
   '/pipeline': typeof PipelineRoute
   '/produtos': typeof ProdutosRoute
   '/tarefas': typeof TarefasRoute
@@ -89,6 +96,7 @@ export interface FileRoutesByTo {
   '/canais': typeof CanaisRoute
   '/condicoes-comerciais': typeof CondicoesComerciaisRoute
   '/contatos': typeof ContatosRoute
+  '/empresas': typeof EmpresasRoute
   '/pipeline': typeof PipelineRoute
   '/produtos': typeof ProdutosRoute
   '/tarefas': typeof TarefasRoute
@@ -102,6 +110,7 @@ export interface FileRoutesById {
   '/canais': typeof CanaisRoute
   '/condicoes-comerciais': typeof CondicoesComerciaisRoute
   '/contatos': typeof ContatosRoute
+  '/empresas': typeof EmpresasRoute
   '/pipeline': typeof PipelineRoute
   '/produtos': typeof ProdutosRoute
   '/tarefas': typeof TarefasRoute
@@ -116,6 +125,7 @@ export interface FileRouteTypes {
     | '/canais'
     | '/condicoes-comerciais'
     | '/contatos'
+    | '/empresas'
     | '/pipeline'
     | '/produtos'
     | '/tarefas'
@@ -128,6 +138,7 @@ export interface FileRouteTypes {
     | '/canais'
     | '/condicoes-comerciais'
     | '/contatos'
+    | '/empresas'
     | '/pipeline'
     | '/produtos'
     | '/tarefas'
@@ -140,6 +151,7 @@ export interface FileRouteTypes {
     | '/canais'
     | '/condicoes-comerciais'
     | '/contatos'
+    | '/empresas'
     | '/pipeline'
     | '/produtos'
     | '/tarefas'
@@ -153,6 +165,7 @@ export interface RootRouteChildren {
   CanaisRoute: typeof CanaisRoute
   CondicoesComerciaisRoute: typeof CondicoesComerciaisRoute
   ContatosRoute: typeof ContatosRoute
+  EmpresasRoute: typeof EmpresasRoute
   PipelineRoute: typeof PipelineRoute
   ProdutosRoute: typeof ProdutosRoute
   TarefasRoute: typeof TarefasRoute
@@ -181,6 +194,13 @@ declare module '@tanstack/react-router' {
       path: '/pipeline'
       fullPath: '/pipeline'
       preLoaderRoute: typeof PipelineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/empresas': {
+      id: '/empresas'
+      path: '/empresas'
+      fullPath: '/empresas'
+      preLoaderRoute: typeof EmpresasRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/contatos': {
@@ -241,6 +261,7 @@ const rootRouteChildren: RootRouteChildren = {
   CanaisRoute: CanaisRoute,
   CondicoesComerciaisRoute: CondicoesComerciaisRoute,
   ContatosRoute: ContatosRoute,
+  EmpresasRoute: EmpresasRoute,
   PipelineRoute: PipelineRoute,
   ProdutosRoute: ProdutosRoute,
   TarefasRoute: TarefasRoute,
