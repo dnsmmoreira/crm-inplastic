@@ -1015,3 +1015,58 @@ export const leadTemperature = (
   return { level: "frozen", label: "Congelado", days, emoji: "🧊",
     className: "bg-slate-500/15 text-slate-600 border-slate-500/30", hint };
 };
+
+export type FollowupLevel = "urgent" | "attention" | "scheduled" | "ok";
+export type FollowupTemperature = {
+  level: FollowupLevel;
+  label: string;
+  emoji: string;
+  className: string;
+  hint: string;
+  /** Positive = overdue days, negative = days until, null = no followup */
+  overdueDays: number | null;
+};
+
+/** Agenda temperature: urgência de retorno baseada em nextFollowUp e inatividade. */
+export const followupTemperature = (
+  lead: Pick<Lead, "nextFollowUp" | "lastContact" | "createdAt" | "stage">,
+): FollowupTemperature => {
+  if (lead.stage === "ganho" || lead.stage === "perdido") {
+    return { level: "ok", label: "Encerrado", emoji: "✓",
+      className: "bg-slate-500/15 text-slate-600 border-slate-500/30",
+      hint: "Lead encerrado", overdueDays: null };
+  }
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const inactivity = Math.floor(
+    (Date.now() - new Date(lead.lastContact ?? lead.createdAt).getTime()) / 86400000,
+  );
+
+  if (!lead.nextFollowUp) {
+    if (inactivity > 7)
+      return { level: "urgent", label: "Sem retorno", emoji: "🔥",
+        className: "bg-red-500/15 text-red-600 border-red-500/30",
+        hint: `Sem agenda · ${inactivity}d sem contato`, overdueDays: inactivity };
+    return { level: "attention", label: "Sem agenda", emoji: "⚠️",
+      className: "bg-amber-500/15 text-amber-700 border-amber-500/30",
+      hint: "Nenhum follow-up programado", overdueDays: null };
+  }
+
+  const due = new Date(lead.nextFollowUp); due.setHours(0, 0, 0, 0);
+  const diff = Math.floor((today.getTime() - due.getTime()) / 86400000);
+
+  if (diff > 3)
+    return { level: "urgent", label: "Atrasado", emoji: "🔥",
+      className: "bg-red-500/15 text-red-600 border-red-500/30",
+      hint: `Follow-up atrasado ${diff}d`, overdueDays: diff };
+  if (diff >= 1)
+    return { level: "attention", label: "Atrasado", emoji: "⚠️",
+      className: "bg-amber-500/15 text-amber-700 border-amber-500/30",
+      hint: `Follow-up atrasado ${diff}d`, overdueDays: diff };
+  if (diff === 0)
+    return { level: "attention", label: "Hoje", emoji: "📅",
+      className: "bg-amber-500/15 text-amber-700 border-amber-500/30",
+      hint: "Retorno hoje", overdueDays: 0 };
+  return { level: "scheduled", label: "Agendado", emoji: "❄️",
+    className: "bg-blue-500/15 text-blue-600 border-blue-500/30",
+    hint: `Retorno em ${-diff}d`, overdueDays: diff };
+};
