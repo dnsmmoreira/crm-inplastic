@@ -43,6 +43,7 @@ import {
   STAGES,
   PRODUCTS,
   formatBRL,
+  leadTemperature,
   type Lead,
   type Interaction,
 } from "@/lib/crm-store";
