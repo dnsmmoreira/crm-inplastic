@@ -531,6 +531,22 @@ type CrmState = {
   updateAgent: (patch: Partial<AgentSettings>) => void;
   bookSlotWithAi: (slotId: string, leadId: string, title: string) => void;
   runAiFollowUp: (leadId: string) => void;
+  // Produtos
+  products: Product[];
+  addProduct: (p: Omit<Product, "id">) => string;
+  updateProduct: (id: string, patch: Partial<Product>) => void;
+  removeProduct: (id: string) => void;
+  // Propostas
+  proposals: Proposal[];
+  emitter: EmitterProfile;
+  updateEmitter: (patch: Partial<EmitterProfile>) => void;
+  createProposal: (leadId: string, ownerId?: string) => string;
+  updateProposal: (id: string, patch: Partial<Proposal>) => void;
+  removeProposal: (id: string) => void;
+  addProposalItem: (proposalId: string, productId: string, quantity: number) => void;
+  updateProposalItem: (proposalId: string, itemId: string, patch: Partial<ProposalItem>) => void;
+  removeProposalItem: (proposalId: string, itemId: string) => void;
+  setProposalStatus: (id: string, status: ProposalStatus) => void;
 };
 
 const uid = () => Math.random().toString(36).slice(2, 10);
