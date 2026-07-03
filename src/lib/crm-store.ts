@@ -562,9 +562,74 @@ export const useCrm = create<CrmState>()(
         }));
       },
     }),
-    { name: "pdp-crm-v2" },
+    { name: "pdp-crm-v3" },
   ),
 );
 
 export const formatBRL = (n: number) =>
   n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+
+export const useCurrentUser = () => {
+  const id = useCrm((s) => s.currentUserId);
+  return USERS.find((u) => u.id === id) ?? USERS[0];
+};
+
+export const useIsAdmin = () => useCurrentUser().role === "admin";
+
+export const useVisibleLeads = () => {
+  const leads = useCrm((s) => s.leads);
+  const user = useCurrentUser();
+  return useMemo(
+    () => (user.role === "admin" ? leads : leads.filter((l) => l.ownerId === user.id)),
+    [leads, user],
+  );
+};
+
+export const useVisibleTasks = () => {
+  const tasks = useCrm((s) => s.tasks);
+  const leads = useVisibleLeads();
+  return useMemo(() => {
+    const ids = new Set(leads.map((l) => l.id));
+    return tasks.filter((t) => ids.has(t.leadId));
+  }, [tasks, leads]);
+};
+
+/** Best seller of the current month, based on ganho leads. */
+export const useBestSellerOfMonth = () => {
+  const leads = useCrm((s) => s.leads);
+  return useMemo(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth();
+    const totals = new Map<string, { value: number; deals: number }>();
+    leads.forEach((l) => {
+      if (l.stage !== "ganho") return;
+      const d = new Date(l.lastContact ?? l.createdAt);
+      if (d.getFullYear() !== y || d.getMonth() !== m) return;
+      const cur = totals.get(l.ownerId) ?? { value: 0, deals: 0 };
+      cur.value += l.estimatedValue;
+      cur.deals += 1;
+      totals.set(l.ownerId, cur);
+    });
+    // Fallback: if no wins this month, use last 90 days
+    if (totals.size === 0) {
+      const cutoff = Date.now() - 90 * 86400000;
+      leads.forEach((l) => {
+        if (l.stage !== "ganho") return;
+        if (new Date(l.lastContact ?? l.createdAt).getTime() < cutoff) return;
+        const cur = totals.get(l.ownerId) ?? { value: 0, deals: 0 };
+        cur.value += l.estimatedValue;
+        cur.deals += 1;
+        totals.set(l.ownerId, cur);
+      });
+    }
+    let bestId: string | null = null;
+    let best = { value: 0, deals: 0 };
+    totals.forEach((v, k) => {
+      if (v.value > best.value) { best = v; bestId = k; }
+    });
+    const user = bestId ? USERS.find((u) => u.id === bestId) : null;
+    return user ? { user, value: best.value, deals: best.deals } : null;
+  }, [leads]);
+};
+
