@@ -68,11 +68,13 @@ export type Lead = {
   contactName: string;
   email: string;
   phone: string;
-  product: ProductType;
+  product: string;
+  productId?: string;
   quantity: number;
   estimatedValue: number;
   stage: StageId;
   tags: string[];
+  segment?: string;
   source: string;
   createdAt: string;
   lastContact: string;
@@ -82,6 +84,29 @@ export type Lead = {
   aiActions?: AiAction[];
   ownerId: string;
 };
+
+export const DEFAULT_LEAD_TAGS: string[] = [
+  "Recorrente",
+  "Alto Valor",
+  "Exportação",
+  "Urgente",
+  "Indicação",
+  "Novo Cliente",
+];
+
+export const DEFAULT_LEAD_SEGMENTS: string[] = [
+  "Ind Alimentos",
+  "Ind Farmaceutica",
+  "Hospitais",
+  "Supermercado",
+  "Atacarejo",
+  "Farmacia",
+  "Ind Cosmetico",
+  "Agropecuaria",
+  "Energia",
+  "Orgão Publico",
+];
+
 
 export type Task = {
   id: string;
