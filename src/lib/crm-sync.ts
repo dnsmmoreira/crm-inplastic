@@ -96,6 +96,8 @@ export async function hydrateCrmForUser(userId: string, role: "admin" | "vendedo
       sys.defaultEmitterId && (sys.emitters ?? DEFAULT_EMITTERS).some((e) => e.id === sys.defaultEmitterId)
         ? sys.defaultEmitterId
         : (sys.emitters ?? DEFAULT_EMITTERS)[0].id,
+    maxDiscountPercentVendedor:
+      typeof sys.maxDiscountPercentVendedor === "number" ? sys.maxDiscountPercentVendedor : 3,
   };
 
   // Se o sistema está vazio e o usuário é admin, grava o seed inicial (a RLS impede vendedor).
