@@ -618,8 +618,11 @@ type CrmState = {
   removeProduct: (id: string) => void;
   // Propostas
   proposals: Proposal[];
-  emitter: EmitterProfile;
-  updateEmitter: (patch: Partial<EmitterProfile>) => void;
+  emitters: EmitterProfile[];
+  defaultEmitterId: string;
+  setDefaultEmitter: (id: string) => void;
+  updateEmitter: (id: string, patch: Partial<Omit<EmitterProfile, "id">>) => void;
+
   createProposal: (leadId: string, ownerId?: string) => string;
   updateProposal: (id: string, patch: Partial<Proposal>) => void;
   removeProposal: (id: string) => void;
