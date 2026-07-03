@@ -1033,7 +1033,6 @@ export const useCrm = create<CrmState>()(
         set((s) => ({ freightConfig: { ...s.freightConfig, ...patch } })),
     }),
 );
-);
 
 
 export const formatBRL = (n: number) =>
