@@ -1,5 +1,5 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { createFileRoute, Link, useNavigate, useBlocker } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Plus, Trash2, Printer, Send, CheckCircle2, XCircle, Check, ChevronsUpDown, Search, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -80,21 +80,49 @@ function PropostaDetalhe() {
   const lead = useCrm((s) => (proposal ? s.leads.find((l) => l.id === proposal.leadId) : undefined));
   const products = useCrm((s) => s.products);
   const emitter = useCrm((s) => s.emitter);
-  const addItem = useCrm((s) => s.addProposalItem);
-  const updateItem = useCrm((s) => s.updateProposalItem);
-  const removeItem = useCrm((s) => s.removeProposalItem);
-  const updateProposal = useCrm((s) => s.updateProposal);
-  const setStatus = useCrm((s) => s.setProposalStatus);
+  const _addItem = useCrm((s) => s.addProposalItem);
+  const _updateItem = useCrm((s) => s.updateProposalItem);
+  const _removeItem = useCrm((s) => s.removeProposalItem);
+  const _updateProposal = useCrm((s) => s.updateProposal);
+  const _setStatus = useCrm((s) => s.setProposalStatus);
   const [addProduct, setAddProduct] = useState("");
   const [addQty, setAddQty] = useState<number | "">(1);
   const [addPrice, setAddPrice] = useState<number | "">("");
   const [pickerOpen, setPickerOpen] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
   const [rowErrors, setRowErrors] = useState<Record<string, { field: "description" | "quantity" | "unitPrice"; message: string } | null>>({});
+  const [dirty, setDirty] = useState(false);
 
   const totals = useMemo(() => (proposal ? proposalTotals(proposal) : null), [proposal]);
   const owner = proposal ? USERS.find((u) => u.id === proposal.ownerId) : null;
   const selectedProduct = useMemo(() => products.find((p) => p.id === addProduct), [products, addProduct]);
+
+  // Warn on tab close/refresh while there are unsaved edits
+  useEffect(() => {
+    if (!dirty) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [dirty]);
+
+  // Intercept in-app navigation while dirty; render our own confirm dialog
+  const blocker = useBlocker({
+    shouldBlockFn: () => dirty,
+    withResolver: true,
+    enableBeforeUnload: false, // handled above with a friendlier message
+  });
+
+  const markDirty = () => setDirty(true);
+
+  // Wrappers: auto-mark the proposal as dirty on any mutation
+  const addItem: typeof _addItem = (...a) => { markDirty(); return _addItem(...a); };
+  const updateItem: typeof _updateItem = (...a) => { markDirty(); return _updateItem(...a); };
+  const removeItem: typeof _removeItem = (...a) => { markDirty(); return _removeItem(...a); };
+  const updateProposal: typeof _updateProposal = (...a) => { markDirty(); return _updateProposal(...a); };
+  const setStatus: typeof _setStatus = (...a) => { markDirty(); return _setStatus(...a); };
 
   const validateAndUpdateItem = (
     itemId: string,
@@ -136,6 +164,11 @@ function PropostaDetalhe() {
             <div className="flex items-center gap-2">
               <h1 className="text-xl md:text-2xl font-semibold">Proposta {proposal.number}</h1>
               <Badge variant={s.variant}>{s.label}</Badge>
+              {dirty && (
+                <Badge variant="outline" className="border-amber-500 text-amber-600 gap-1">
+                  <AlertCircle className="h-3 w-3" /> Alterações não salvas
+                </Badge>
+              )}
             </div>
             <p className="text-xs text-muted-foreground">
               Criada em {format(new Date(proposal.createdAt), "dd/MM/yyyy", { locale: ptBR })} · Vendedor: {owner?.name ?? "—"}
@@ -161,14 +194,52 @@ function PropostaDetalhe() {
           <Button variant="outline" className="gap-2" onClick={() => { setStatus(proposal.id, "recusada"); }}>
             <XCircle className="h-4 w-4" /> Recusar
           </Button>
+          <Button
+            variant={dirty ? "default" : "outline"}
+            className="gap-2"
+            disabled={!dirty}
+            onClick={() => { setDirty(false); toast.success("Alterações salvas"); }}
+          >
+            <CheckCircle2 className="h-4 w-4" /> Salvar
+          </Button>
           <Button className="gap-2" onClick={() => window.print()}>
             <Printer className="h-4 w-4" /> Imprimir / PDF
           </Button>
         </div>
       </div>
 
+      {/* Confirm dialog for in-app navigation while dirty */}
+      <AlertDialog
+        open={blocker.status === "blocked"}
+        onOpenChange={(open) => { if (!open && blocker.status === "blocked") blocker.reset(); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sair sem salvar?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você tem alterações nesta proposta que ainda não foram salvas. Se sair agora, elas continuam no rascunho, mas nenhum aviso será mostrado ao vendedor.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => blocker.status === "blocked" && blocker.reset()}>
+              Continuar editando
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                setDirty(false);
+                if (blocker.status === "blocked") blocker.proceed();
+              }}
+            >
+              Sair sem salvar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Editor — hidden on print */}
       <div className="grid gap-4 lg:grid-cols-3 print:hidden">
+
         <Card className="lg:col-span-2">
           <CardHeader><CardTitle className="text-base">Itens da proposta</CardTitle></CardHeader>
           <CardContent>
