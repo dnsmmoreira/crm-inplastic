@@ -135,6 +135,8 @@ const NAV = [
 
 function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isAdmin = useIsAdmin();
+  const nav = NAV.filter((n) => !n.adminOnly || isAdmin);
   return (
     <div className="flex min-h-screen bg-background text-foreground">
       <aside className="hidden md:flex w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground">
