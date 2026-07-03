@@ -174,44 +174,74 @@ function PropostaDetalhe() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {proposal.items.map((it) => (
-                  <TableRow key={it.id}>
-                    <TableCell>
-                      <Input
-                        value={it.description}
-                        onChange={(e) => updateItem(proposal.id, it.id, { description: e.target.value })}
-                        className="font-medium"
-                      />
-                    </TableCell>
-                    <TableCell className="font-mono text-xs">{it.sku}</TableCell>
-                    <TableCell>{it.unit}</TableCell>
-                    <TableCell>
-                      <Input
-                        type="number"
-                        min={0}
-                        value={it.quantity}
-                        onChange={(e) => updateItem(proposal.id, it.id, { quantity: Number(e.target.value) })}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        min={0}
-                        value={it.unitPrice}
-                        onChange={(e) => updateItem(proposal.id, it.id, { unitPrice: Number(e.target.value) })}
-                      />
-                    </TableCell>
-                    <TableCell className="text-right font-semibold whitespace-nowrap">
-                      {formatBRL(it.quantity * it.unitPrice)}
-                    </TableCell>
-                    <TableCell>
-                      <Button size="icon" variant="ghost" onClick={() => { removeItem(proposal.id, it.id); toast.success("Item removido"); }}>
-                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                      </Button>
+                {proposal.items.map((it) => {
+                  const err = rowErrors[it.id];
+                  const cls = (field: "description" | "quantity" | "unitPrice") =>
+                    err?.field === field ? "border-destructive focus-visible:ring-destructive" : "";
+                  return (
+                    <TableRow key={it.id}>
+                      <TableCell>
+                        <Input
+                          value={it.description}
+                          maxLength={MAX_DESC}
+                          onChange={(e) => validateAndUpdateItem(it.id, "description", e.target.value)}
+                          className={cn("font-medium", cls("description"))}
+                          aria-invalid={err?.field === "description"}
+                        />
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">{it.sku}</TableCell>
+                      <TableCell>{it.unit}</TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          min={1}
+                          step="1"
+                          value={it.quantity}
+                          onChange={(e) => validateAndUpdateItem(it.id, "quantity", e.target.value)}
+                          className={cls("quantity")}
+                          aria-invalid={err?.field === "quantity"}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min={0}
+                          value={it.unitPrice}
+                          onChange={(e) => validateAndUpdateItem(it.id, "unitPrice", e.target.value)}
+                          className={cls("unitPrice")}
+                          aria-invalid={err?.field === "unitPrice"}
+                        />
+                      </TableCell>
+                      <TableCell className="text-right font-semibold whitespace-nowrap">
+                        {formatBRL(it.quantity * it.unitPrice)}
+                      </TableCell>
+                      <TableCell>
+                        <Button size="icon" variant="ghost" onClick={() => {
+                          removeItem(proposal.id, it.id);
+                          setRowErrors((prev) => { const n = { ...prev }; delete n[it.id]; return n; });
+                          toast.success("Item removido");
+                        }}>
+                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+                {Object.values(rowErrors).some(Boolean) && (
+                  <TableRow>
+                    <TableCell colSpan={7} className="bg-destructive/5 py-2">
+                      <ul className="text-xs text-destructive space-y-0.5">
+                        {Object.entries(rowErrors).map(([id, e]) => e ? (
+                          <li key={id} className="flex items-center gap-1.5">
+                            <AlertCircle className="h-3 w-3" /> {e.message}
+                          </li>
+                        ) : null)}
+                      </ul>
                     </TableCell>
                   </TableRow>
-                ))}
+                )}
+
                 {proposal.items.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-6">
