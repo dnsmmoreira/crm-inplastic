@@ -571,7 +571,37 @@ function PropostaDetalhe() {
           </Card>
 
           <Card>
+            <CardHeader><CardTitle className="text-base">Empresa emissora</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+              <Select
+                value={proposal.emitterId}
+                onValueChange={(v) => updateProposal(proposal.id, { emitterId: v })}
+              >
+                <SelectTrigger><SelectValue placeholder="Selecione o CNPJ emissor" /></SelectTrigger>
+                <SelectContent>
+                  {emitters.map((e) => (
+                    <SelectItem key={e.id} value={e.id}>
+                      <span className="font-medium">{e.brand}</span>
+                      <span className="text-muted-foreground text-xs ml-2">· CNPJ {e.cnpj}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="rounded-md border bg-muted/30 p-3 text-[11px] leading-relaxed">
+                <div className="font-medium text-sm">{emitter.legalName}</div>
+                <div>CNPJ: {emitter.cnpj} · IE: {emitter.ie}</div>
+                <div>{emitter.address}</div>
+                <div>Tel: {emitter.phone} · {emitter.email}</div>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Define qual CNPJ do grupo aparece no cabeçalho da proposta impressa.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
             <CardHeader><CardTitle className="text-base">Condições comerciais</CardTitle></CardHeader>
+
             <CardContent className="space-y-3">
               <div>
                 <Label>Condição de pagamento</Label>
