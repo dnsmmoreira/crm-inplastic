@@ -13,7 +13,7 @@ import {
   Mail,
   ChevronRight,
 } from "lucide-react";
-import { useCrm, type CalendarSlot } from "@/lib/crm-store";
+import { useCrm, type CalendarSlot, useVisibleLeads } from "@/lib/crm-store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";

@@ -21,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useCrm, STAGES, formatBRL, type StageId } from "@/lib/crm-store";
+import { useCrm, STAGES, formatBRL, type StageId, useVisibleLeads } from "@/lib/crm-store";
 import { NewLeadDialog, LeadDrawer } from "@/components/crm/LeadDrawer";
 import { Card } from "@/components/ui/card";
 
