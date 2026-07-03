@@ -14,6 +14,8 @@ import {
   useCrm,
   DEFAULT_EMITTERS,
   DEFAULT_PAYMENT_TERMS,
+  DEFAULT_LEAD_TAGS,
+  DEFAULT_LEAD_SEGMENTS,
   type Lead,
   type Task,
   type Proposal,
@@ -29,6 +31,8 @@ type SystemPayload = {
   emitters?: EmitterProfile[];
   defaultEmitterId?: string;
   maxDiscountPercentVendedor?: number;
+  leadTags?: string[];
+  leadSegments?: string[];
 };
 
 type UserPayload = {
