@@ -44,6 +44,7 @@ import {
   PRODUCTS,
   formatBRL,
   leadTemperature,
+  followupTemperature,
   type Lead,
   type Interaction,
 } from "@/lib/crm-store";
