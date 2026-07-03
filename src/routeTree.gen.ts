@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as UsuariosRouteImport } from './routes/usuarios'
 import { Route as TarefasRouteImport } from './routes/tarefas'
 import { Route as ProdutosRouteImport } from './routes/produtos'
 import { Route as PipelineRouteImport } from './routes/pipeline'
@@ -16,11 +17,17 @@ import { Route as EmpresasRouteImport } from './routes/empresas'
 import { Route as ContatosRouteImport } from './routes/contatos'
 import { Route as CondicoesComerciaisRouteImport } from './routes/condicoes-comerciais'
 import { Route as CanaisRouteImport } from './routes/canais'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AgenteIaRouteImport } from './routes/agente-ia'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PropostasIndexRouteImport } from './routes/propostas.index'
 import { Route as PropostasIdRouteImport } from './routes/propostas.$id'
 
+const UsuariosRoute = UsuariosRouteImport.update({
+  id: '/usuarios',
+  path: '/usuarios',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TarefasRoute = TarefasRouteImport.update({
   id: '/tarefas',
   path: '/tarefas',
@@ -56,6 +63,11 @@ const CanaisRoute = CanaisRouteImport.update({
   path: '/canais',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AgenteIaRoute = AgenteIaRouteImport.update({
   id: '/agente-ia',
   path: '/agente-ia',
@@ -80,6 +92,7 @@ const PropostasIdRoute = PropostasIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/agente-ia': typeof AgenteIaRoute
+  '/auth': typeof AuthRoute
   '/canais': typeof CanaisRoute
   '/condicoes-comerciais': typeof CondicoesComerciaisRoute
   '/contatos': typeof ContatosRoute
@@ -87,12 +100,14 @@ export interface FileRoutesByFullPath {
   '/pipeline': typeof PipelineRoute
   '/produtos': typeof ProdutosRoute
   '/tarefas': typeof TarefasRoute
+  '/usuarios': typeof UsuariosRoute
   '/propostas/$id': typeof PropostasIdRoute
   '/propostas/': typeof PropostasIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/agente-ia': typeof AgenteIaRoute
+  '/auth': typeof AuthRoute
   '/canais': typeof CanaisRoute
   '/condicoes-comerciais': typeof CondicoesComerciaisRoute
   '/contatos': typeof ContatosRoute
@@ -100,6 +115,7 @@ export interface FileRoutesByTo {
   '/pipeline': typeof PipelineRoute
   '/produtos': typeof ProdutosRoute
   '/tarefas': typeof TarefasRoute
+  '/usuarios': typeof UsuariosRoute
   '/propostas/$id': typeof PropostasIdRoute
   '/propostas': typeof PropostasIndexRoute
 }
@@ -107,6 +123,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/agente-ia': typeof AgenteIaRoute
+  '/auth': typeof AuthRoute
   '/canais': typeof CanaisRoute
   '/condicoes-comerciais': typeof CondicoesComerciaisRoute
   '/contatos': typeof ContatosRoute
@@ -114,6 +131,7 @@ export interface FileRoutesById {
   '/pipeline': typeof PipelineRoute
   '/produtos': typeof ProdutosRoute
   '/tarefas': typeof TarefasRoute
+  '/usuarios': typeof UsuariosRoute
   '/propostas/$id': typeof PropostasIdRoute
   '/propostas/': typeof PropostasIndexRoute
 }
@@ -122,6 +140,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/agente-ia'
+    | '/auth'
     | '/canais'
     | '/condicoes-comerciais'
     | '/contatos'
@@ -129,12 +148,14 @@ export interface FileRouteTypes {
     | '/pipeline'
     | '/produtos'
     | '/tarefas'
+    | '/usuarios'
     | '/propostas/$id'
     | '/propostas/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/agente-ia'
+    | '/auth'
     | '/canais'
     | '/condicoes-comerciais'
     | '/contatos'
@@ -142,12 +163,14 @@ export interface FileRouteTypes {
     | '/pipeline'
     | '/produtos'
     | '/tarefas'
+    | '/usuarios'
     | '/propostas/$id'
     | '/propostas'
   id:
     | '__root__'
     | '/'
     | '/agente-ia'
+    | '/auth'
     | '/canais'
     | '/condicoes-comerciais'
     | '/contatos'
@@ -155,6 +178,7 @@ export interface FileRouteTypes {
     | '/pipeline'
     | '/produtos'
     | '/tarefas'
+    | '/usuarios'
     | '/propostas/$id'
     | '/propostas/'
   fileRoutesById: FileRoutesById
@@ -162,6 +186,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AgenteIaRoute: typeof AgenteIaRoute
+  AuthRoute: typeof AuthRoute
   CanaisRoute: typeof CanaisRoute
   CondicoesComerciaisRoute: typeof CondicoesComerciaisRoute
   ContatosRoute: typeof ContatosRoute
@@ -169,12 +194,20 @@ export interface RootRouteChildren {
   PipelineRoute: typeof PipelineRoute
   ProdutosRoute: typeof ProdutosRoute
   TarefasRoute: typeof TarefasRoute
+  UsuariosRoute: typeof UsuariosRoute
   PropostasIdRoute: typeof PropostasIdRoute
   PropostasIndexRoute: typeof PropostasIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/usuarios': {
+      id: '/usuarios'
+      path: '/usuarios'
+      fullPath: '/usuarios'
+      preLoaderRoute: typeof UsuariosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tarefas': {
       id: '/tarefas'
       path: '/tarefas'
@@ -224,6 +257,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CanaisRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/agente-ia': {
       id: '/agente-ia'
       path: '/agente-ia'
@@ -258,6 +298,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AgenteIaRoute: AgenteIaRoute,
+  AuthRoute: AuthRoute,
   CanaisRoute: CanaisRoute,
   CondicoesComerciaisRoute: CondicoesComerciaisRoute,
   ContatosRoute: ContatosRoute,
@@ -265,9 +306,20 @@ const rootRouteChildren: RootRouteChildren = {
   PipelineRoute: PipelineRoute,
   ProdutosRoute: ProdutosRoute,
   TarefasRoute: TarefasRoute,
+  UsuariosRoute: UsuariosRoute,
   PropostasIdRoute: PropostasIdRoute,
   PropostasIndexRoute: PropostasIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

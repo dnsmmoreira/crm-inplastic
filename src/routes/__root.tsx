@@ -21,6 +21,8 @@ import {
   FileText,
   Settings2,
   Building2,
+  LogOut,
+  UserCog,
 } from "lucide-react";
 
 
@@ -28,14 +30,9 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
-import { useCrm, USERS, useCurrentUser, useIsAdmin } from "@/lib/crm-store";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { useIsAdmin } from "@/lib/crm-store";
+import { AuthProvider, useAuth } from "@/hooks/use-auth";
+import { Button } from "@/components/ui/button";
 
 function NotFoundComponent() {
   return (
@@ -134,6 +131,7 @@ const NAV = [
   { to: "/produtos", label: "Produtos", icon: Package, adminOnly: false },
   { to: "/condicoes-comerciais", label: "Condições Comerciais", icon: Settings2, adminOnly: true },
   { to: "/empresas", label: "Empresas do Grupo", icon: Building2, adminOnly: true },
+  { to: "/usuarios", label: "Usuários", icon: UserCog, adminOnly: true },
 
 ] as const;
 
@@ -174,7 +172,7 @@ function AppShell({ children }: { children: ReactNode }) {
             );
           })}
         </nav>
-        <UserSwitcher />
+        <UserBadge />
         <div className="p-4 text-xs text-sidebar-foreground/50 border-t border-sidebar-border">
 
           v1.0 · palletdeplastico.com.br
@@ -223,26 +221,52 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AppShell>
-        <Outlet />
-      </AppShell>
+      <AuthProvider>
+        <AuthGate />
+      </AuthProvider>
       <Toaster position="top-right" />
     </QueryClientProvider>
   );
 }
 
-function UserSwitcher() {
-  const user = useCurrentUser();
-  const setCurrentUser = useCrm((s) => s.setCurrentUser);
-  const initials = user.name.split(" ").map((p) => p[0]).slice(0, 2).join("");
+function AuthGate() {
+  const { user, loading } = useAuth();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+
+  if (pathname === "/auth") return <Outlet />;
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="text-sm text-muted-foreground">Carregando…</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    if (typeof window !== "undefined") window.location.replace("/auth");
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="text-sm text-muted-foreground">Redirecionando…</div>
+      </div>
+    );
+  }
+
+  return <AppShell><Outlet /></AppShell>;
+}
+
+function UserBadge() {
+  const { user, signOut } = useAuth();
+  if (!user) return null;
+  const initials = user.name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase();
   return (
     <div className="border-t border-sidebar-border p-3 space-y-2">
       <div className="flex items-center gap-2 px-1">
         <div
-          className="flex h-8 w-8 items-center justify-center rounded-full text-white text-xs font-semibold"
+          className="flex h-8 w-8 items-center justify-center rounded-full text-white text-xs font-semibold shrink-0"
           style={{ background: user.avatarColor }}
         >
-          {initials}
+          {initials || "?"}
         </div>
         <div className="min-w-0 flex-1">
           <div className="text-xs font-medium truncate text-sidebar-foreground">{user.name}</div>
@@ -251,18 +275,16 @@ function UserSwitcher() {
           </div>
         </div>
       </div>
-      <Select value={user.id} onValueChange={setCurrentUser}>
-        <SelectTrigger className="h-8 bg-sidebar-accent/40 border-sidebar-border text-xs text-sidebar-foreground">
-          <SelectValue placeholder="Trocar usuário" />
-        </SelectTrigger>
-        <SelectContent>
-          {USERS.map((u) => (
-            <SelectItem key={u.id} value={u.id}>
-              {u.name} {u.role === "admin" ? "· admin" : ""}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <Button
+        variant="outline"
+        size="sm"
+        className="w-full h-8 bg-sidebar-accent/40 border-sidebar-border text-xs text-sidebar-foreground hover:bg-sidebar-accent"
+        onClick={() => { void signOut(); }}
+      >
+        <LogOut className="h-3 w-3 mr-2" />
+        Sair
+      </Button>
     </div>
   );
 }
+

@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { useMemo } from "react";
+import { useAuth } from "@/hooks/use-auth";
 
 export type UserRole = "admin" | "vendedor";
 export type User = { id: string; name: string; role: UserRole; avatarColor: string };
@@ -968,12 +969,21 @@ export const useCrm = create<CrmState>()(
 export const formatBRL = (n: number) =>
   n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 
-export const useCurrentUser = () => {
-  const id = useCrm((s) => s.currentUserId);
-  return USERS.find((u) => u.id === id) ?? USERS[0];
+// Current user is derived from the authenticated session (see src/hooks/use-auth.tsx).
+// Legacy USERS array is kept only to display owner names on seeded/legacy records.
+
+export const useCurrentUser = (): User => {
+  const { user } = useAuth();
+  if (user) {
+    return { id: user.id, name: user.name, role: user.role, avatarColor: user.avatarColor };
+  }
+  return { id: "__anon__", name: "Convidado", role: "vendedor", avatarColor: "#64748b" };
 };
 
-export const useIsAdmin = () => useCurrentUser().role === "admin";
+export const useIsAdmin = () => {
+  const { user } = useAuth();
+  return user?.role === "admin";
+};
 
 export const useVisibleLeads = () => {
   const leads = useCrm((s) => s.leads);
