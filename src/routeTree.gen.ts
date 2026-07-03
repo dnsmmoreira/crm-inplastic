@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TarefasRouteImport } from './routes/tarefas'
 import { Route as PipelineRouteImport } from './routes/pipeline'
 import { Route as ContatosRouteImport } from './routes/contatos'
+import { Route as CanaisRouteImport } from './routes/canais'
 import { Route as IndexRouteImport } from './routes/index'
 
 const TarefasRoute = TarefasRouteImport.update({
@@ -29,6 +30,11 @@ const ContatosRoute = ContatosRouteImport.update({
   path: '/contatos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CanaisRoute = CanaisRouteImport.update({
+  id: '/canais',
+  path: '/canais',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -37,12 +43,14 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/canais': typeof CanaisRoute
   '/contatos': typeof ContatosRoute
   '/pipeline': typeof PipelineRoute
   '/tarefas': typeof TarefasRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/canais': typeof CanaisRoute
   '/contatos': typeof ContatosRoute
   '/pipeline': typeof PipelineRoute
   '/tarefas': typeof TarefasRoute
@@ -50,20 +58,22 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/canais': typeof CanaisRoute
   '/contatos': typeof ContatosRoute
   '/pipeline': typeof PipelineRoute
   '/tarefas': typeof TarefasRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/contatos' | '/pipeline' | '/tarefas'
+  fullPaths: '/' | '/canais' | '/contatos' | '/pipeline' | '/tarefas'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/contatos' | '/pipeline' | '/tarefas'
-  id: '__root__' | '/' | '/contatos' | '/pipeline' | '/tarefas'
+  to: '/' | '/canais' | '/contatos' | '/pipeline' | '/tarefas'
+  id: '__root__' | '/' | '/canais' | '/contatos' | '/pipeline' | '/tarefas'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CanaisRoute: typeof CanaisRoute
   ContatosRoute: typeof ContatosRoute
   PipelineRoute: typeof PipelineRoute
   TarefasRoute: typeof TarefasRoute
@@ -92,6 +102,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ContatosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/canais': {
+      id: '/canais'
+      path: '/canais'
+      fullPath: '/canais'
+      preLoaderRoute: typeof CanaisRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -104,6 +121,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CanaisRoute: CanaisRoute,
   ContatosRoute: ContatosRoute,
   PipelineRoute: PipelineRoute,
   TarefasRoute: TarefasRoute,
