@@ -682,6 +682,38 @@ function PropostaDetalhe() {
               })()}
 
               <div>
+                <div className="flex items-baseline justify-between">
+                  <Label>Desconto (%)</Label>
+                  <span className="text-[11px] text-muted-foreground">
+                    Limite: <span className="font-medium text-foreground">{maxDiscount}%</span>
+                  </span>
+                </div>
+                <Input
+                  type="number"
+                  step="0.1"
+                  min={0}
+                  max={maxDiscount}
+                  value={proposal.discountPercent ?? 0}
+                  onChange={(e) => {
+                    const raw = Number(e.target.value);
+                    if (!Number.isFinite(raw) || raw < 0) {
+                      updateProposal(proposal.id, { discountPercent: 0 });
+                      return;
+                    }
+                    if (raw > maxDiscount) {
+                      toast.error(`Desconto máximo permitido: ${maxDiscount}%. Fale com o administrador para aumentar o limite.`);
+                      updateProposal(proposal.id, { discountPercent: maxDiscount });
+                      return;
+                    }
+                    updateProposal(proposal.id, { discountPercent: raw });
+                  }}
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Aplicado sobre o subtotal dos itens. Frete não entra no cálculo.
+                </p>
+              </div>
+
+              <div>
                 <Label>Validade (dias)</Label>
                 <Input type="number" value={proposal.validityDays} onChange={(e) => updateProposal(proposal.id, { validityDays: Number(e.target.value) })} />
               </div>
