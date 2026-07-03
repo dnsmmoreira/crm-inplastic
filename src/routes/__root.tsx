@@ -218,3 +218,39 @@ function RootComponent() {
     </QueryClientProvider>
   );
 }
+
+function UserSwitcher() {
+  const user = useCurrentUser();
+  const setCurrentUser = useCrm((s) => s.setCurrentUser);
+  const initials = user.name.split(" ").map((p) => p[0]).slice(0, 2).join("");
+  return (
+    <div className="border-t border-sidebar-border p-3 space-y-2">
+      <div className="flex items-center gap-2 px-1">
+        <div
+          className="flex h-8 w-8 items-center justify-center rounded-full text-white text-xs font-semibold"
+          style={{ background: user.avatarColor }}
+        >
+          {initials}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="text-xs font-medium truncate text-sidebar-foreground">{user.name}</div>
+          <div className="text-[10px] uppercase tracking-wider text-sidebar-foreground/60">
+            {user.role === "admin" ? "Administrador" : "Vendedor"}
+          </div>
+        </div>
+      </div>
+      <Select value={user.id} onValueChange={setCurrentUser}>
+        <SelectTrigger className="h-8 bg-sidebar-accent/40 border-sidebar-border text-xs text-sidebar-foreground">
+          <SelectValue placeholder="Trocar usuário" />
+        </SelectTrigger>
+        <SelectContent>
+          {USERS.map((u) => (
+            <SelectItem key={u.id} value={u.id}>
+              {u.name} {u.role === "admin" ? "· admin" : ""}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
