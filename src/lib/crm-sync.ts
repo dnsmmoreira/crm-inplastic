@@ -157,6 +157,8 @@ export async function hydrateCrmForUser(userId: string, role: "admin" | "vendedo
     emitters: systemState.emitters,
     defaultEmitterId: systemState.defaultEmitterId,
     maxDiscountPercentVendedor: systemState.maxDiscountPercentVendedor,
+    leadTags: systemState.leadTags,
+    leadSegments: systemState.leadSegments,
     leads,
     tasks,
     proposals,
