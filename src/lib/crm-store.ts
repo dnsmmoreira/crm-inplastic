@@ -495,6 +495,23 @@ export type TransportInfo = {
   volumes: number;
   freightValue: number;           // valor definitivo (usado para total)
   approxFreightValue: number;     // valor aproximado informado pelo vendedor
+  deliveryCep?: string;           // CEP de entrega
+  deliveryAddress?: string;       // endereço resolvido pela API
+  distanceKm?: number;            // distância rodoviária origem → destino
+};
+
+export type FreightConfig = {
+  originCep: string;
+  originAddress: string;
+  rateBRLPerKgKm: number;         // R$ por kg transportado por km
+  cubageFactorKgPerM3: number;    // fator de cubagem rodoviário (padrão 300 kg/m³)
+};
+
+export const DEFAULT_FREIGHT_CONFIG: FreightConfig = {
+  originCep: "22320-050",
+  originAddress: "Rio de Janeiro - RJ",
+  rateBRLPerKgKm: 0.001,
+  cubageFactorKgPerM3: 300,
 };
 
 export type ProposalStatus =
