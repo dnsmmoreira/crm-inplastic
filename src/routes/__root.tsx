@@ -15,6 +15,8 @@ import {
   Users,
   CheckSquare,
   Boxes,
+  MessageSquare,
+  Bot,
 } from "lucide-react";
 
 import appCss from "../styles.css?url";
@@ -111,6 +113,8 @@ function RootShell({ children }: { children: ReactNode }) {
 const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/pipeline", label: "Funil de Vendas", icon: KanbanSquare },
+  { to: "/canais", label: "Canais de Entrada", icon: MessageSquare },
+  { to: "/agente-ia", label: "Agente IA", icon: Bot },
   { to: "/contatos", label: "Contatos", icon: Users },
   { to: "/tarefas", label: "Tarefas", icon: CheckSquare },
 ] as const;
