@@ -81,12 +81,33 @@ export const Route = createFileRoute("/propostas/$id")({
   component: PropostaDetalhe,
 });
 
-const STATUS_META: Record<ProposalStatus, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
+const STATUS_META: Record<ProposalStatus, { label: string; variant: "default" | "secondary" | "outline" | "destructive"; className?: string }> = {
   rascunho: { label: "Rascunho", variant: "outline" },
   enviada: { label: "Enviada", variant: "secondary" },
+  aguardando_aprovacao: { label: "Aguardando aprovação ADM", variant: "outline", className: "border-amber-500 text-amber-700 bg-amber-500/10" },
   aprovada: { label: "Aprovada", variant: "default" },
   recusada: { label: "Recusada", variant: "destructive" },
+  pedido: { label: "Pedido gerado", variant: "default", className: "bg-emerald-600 hover:bg-emerald-600" },
 };
+
+/** Peso e cubagem calculados a partir dos itens da proposta e do catálogo de produtos. */
+function computeAutoTransport(
+  items: { productId: string; quantity: number }[],
+  products: { id: string; weightKg: number; heightCm: number; widthCm: number; lengthCm: number }[],
+) {
+  let weight = 0;
+  let cubageCm3 = 0;
+  for (const it of items) {
+    const p = products.find((x) => x.id === it.productId);
+    if (!p) continue;
+    weight += (p.weightKg || 0) * (it.quantity || 0);
+    cubageCm3 += (p.heightCm || 0) * (p.widthCm || 0) * (p.lengthCm || 0) * (it.quantity || 0);
+  }
+  return {
+    grossWeightKg: +weight.toFixed(2),
+    cubageM3: +(cubageCm3 / 1_000_000).toFixed(3),
+  };
+}
 
 function PropostaDetalhe() {
   const { id } = Route.useParams();
