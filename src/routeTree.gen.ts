@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as UsuariosRouteImport } from './routes/usuarios'
 import { Route as TarefasRouteImport } from './routes/tarefas'
 import { Route as ProdutosRouteImport } from './routes/produtos'
 import { Route as PipelineRouteImport } from './routes/pipeline'
@@ -22,6 +23,11 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as PropostasIndexRouteImport } from './routes/propostas.index'
 import { Route as PropostasIdRouteImport } from './routes/propostas.$id'
 
+const UsuariosRoute = UsuariosRouteImport.update({
+  id: '/usuarios',
+  path: '/usuarios',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TarefasRoute = TarefasRouteImport.update({
   id: '/tarefas',
   path: '/tarefas',
@@ -94,6 +100,7 @@ export interface FileRoutesByFullPath {
   '/pipeline': typeof PipelineRoute
   '/produtos': typeof ProdutosRoute
   '/tarefas': typeof TarefasRoute
+  '/usuarios': typeof UsuariosRoute
   '/propostas/$id': typeof PropostasIdRoute
   '/propostas/': typeof PropostasIndexRoute
 }
@@ -108,6 +115,7 @@ export interface FileRoutesByTo {
   '/pipeline': typeof PipelineRoute
   '/produtos': typeof ProdutosRoute
   '/tarefas': typeof TarefasRoute
+  '/usuarios': typeof UsuariosRoute
   '/propostas/$id': typeof PropostasIdRoute
   '/propostas': typeof PropostasIndexRoute
 }
@@ -123,6 +131,7 @@ export interface FileRoutesById {
   '/pipeline': typeof PipelineRoute
   '/produtos': typeof ProdutosRoute
   '/tarefas': typeof TarefasRoute
+  '/usuarios': typeof UsuariosRoute
   '/propostas/$id': typeof PropostasIdRoute
   '/propostas/': typeof PropostasIndexRoute
 }
@@ -139,6 +148,7 @@ export interface FileRouteTypes {
     | '/pipeline'
     | '/produtos'
     | '/tarefas'
+    | '/usuarios'
     | '/propostas/$id'
     | '/propostas/'
   fileRoutesByTo: FileRoutesByTo
@@ -153,6 +163,7 @@ export interface FileRouteTypes {
     | '/pipeline'
     | '/produtos'
     | '/tarefas'
+    | '/usuarios'
     | '/propostas/$id'
     | '/propostas'
   id:
@@ -167,6 +178,7 @@ export interface FileRouteTypes {
     | '/pipeline'
     | '/produtos'
     | '/tarefas'
+    | '/usuarios'
     | '/propostas/$id'
     | '/propostas/'
   fileRoutesById: FileRoutesById
@@ -182,12 +194,20 @@ export interface RootRouteChildren {
   PipelineRoute: typeof PipelineRoute
   ProdutosRoute: typeof ProdutosRoute
   TarefasRoute: typeof TarefasRoute
+  UsuariosRoute: typeof UsuariosRoute
   PropostasIdRoute: typeof PropostasIdRoute
   PropostasIndexRoute: typeof PropostasIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/usuarios': {
+      id: '/usuarios'
+      path: '/usuarios'
+      fullPath: '/usuarios'
+      preLoaderRoute: typeof UsuariosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tarefas': {
       id: '/tarefas'
       path: '/tarefas'
@@ -286,6 +306,7 @@ const rootRouteChildren: RootRouteChildren = {
   PipelineRoute: PipelineRoute,
   ProdutosRoute: ProdutosRoute,
   TarefasRoute: TarefasRoute,
+  UsuariosRoute: UsuariosRoute,
   PropostasIdRoute: PropostasIdRoute,
   PropostasIndexRoute: PropostasIndexRoute,
 }
