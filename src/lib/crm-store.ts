@@ -408,6 +408,7 @@ export const useCrm = create<CrmState>()(
           leads: [
             {
               ...l,
+              ownerId: l.ownerId ?? get().currentUserId,
               id,
               createdAt: new Date().toISOString(),
               lastContact: new Date().toISOString(),
