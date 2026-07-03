@@ -36,7 +36,7 @@ import {
 import { useMemo, useState } from "react";
 import { format, isToday, isTomorrow, isBefore, startOfMonth, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useCrm, STAGES, formatBRL, useVisibleLeads, useVisibleTasks, useBestSellerOfMonth, useCurrentUser } from "@/lib/crm-store";
+import { useCrm, STAGES, formatBRL, useVisibleLeads, useVisibleTasks, useBestSellerOfMonth, useCurrentUser, followupTemperature } from "@/lib/crm-store";
 import { NewLeadDialog, LeadDrawer } from "@/components/crm/LeadDrawer";
 import { Link } from "@tanstack/react-router";
 
