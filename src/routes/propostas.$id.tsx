@@ -61,9 +61,12 @@ function PropostaDetalhe() {
   const setStatus = useCrm((s) => s.setProposalStatus);
   const [addProduct, setAddProduct] = useState("");
   const [addQty, setAddQty] = useState(1);
+  const [addPrice, setAddPrice] = useState<number | "">("");
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const totals = useMemo(() => (proposal ? proposalTotals(proposal) : null), [proposal]);
   const owner = proposal ? USERS.find((u) => u.id === proposal.ownerId) : null;
+  const selectedProduct = useMemo(() => products.find((p) => p.id === addProduct), [products, addProduct]);
 
   if (!proposal || !lead) {
     return (
