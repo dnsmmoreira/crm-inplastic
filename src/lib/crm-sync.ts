@@ -216,6 +216,7 @@ async function doSave() {
     maxDiscountPercentVendedor: state.maxDiscountPercentVendedor,
     leadTags: state.leadTags,
     leadSegments: state.leadSegments,
+    freightConfig: state.freightConfig,
   };
   const systemJson = JSON.stringify(systemPayload);
   if (systemJson !== lastSystemSavedJson && currentRole === "admin") {
