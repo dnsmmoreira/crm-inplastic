@@ -70,6 +70,9 @@ export function LeadDrawer({
   const removeLead = useCrm((s) => s.removeLead);
   const addInteraction = useCrm((s) => s.addInteraction);
   const addTask = useCrm((s) => s.addTask);
+  const runFollowUp = useCrm((s) => s.runAiFollowUp);
+  const bookSlot = useCrm((s) => s.bookSlotWithAi);
+  const calendar = useCrm((s) => s.calendar);
 
   const [newInt, setNewInt] = useState<{ type: Interaction["type"]; content: string }>({
     type: "call",
