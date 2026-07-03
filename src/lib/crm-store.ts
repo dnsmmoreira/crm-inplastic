@@ -486,6 +486,7 @@ export type Proposal = {
   observations: string;
   paymentTermId?: string;   // ADM-managed payment term chosen by seller
   emitterId: string;        // qual CNPJ do grupo emite esta proposta
+  discountPercent: number;  // % de desconto aplicado sobre o subtotal (limite gerido pelo ADM)
 };
 
 
@@ -621,6 +622,8 @@ type CrmState = {
   proposals: Proposal[];
   emitters: EmitterProfile[];
   defaultEmitterId: string;
+  maxDiscountPercentVendedor: number; // limite (%) para desconto por vendedor; ADM só define
+  setMaxDiscountPercentVendedor: (pct: number) => void;
   setDefaultEmitter: (id: string) => void;
   updateEmitter: (id: string, patch: Partial<Omit<EmitterProfile, "id">>) => void;
 
@@ -829,6 +832,9 @@ export const useCrm = create<CrmState>()(
       proposals: [],
       emitters: DEFAULT_EMITTERS,
       defaultEmitterId: DEFAULT_EMITTER_ID,
+      maxDiscountPercentVendedor: 3,
+      setMaxDiscountPercentVendedor: (pct) =>
+        set({ maxDiscountPercentVendedor: Math.max(0, Math.min(100, pct)) }),
       setDefaultEmitter: (id) => set({ defaultEmitterId: id }),
       updateEmitter: (id, patch) =>
         set((s) => ({
@@ -861,6 +867,7 @@ export const useCrm = create<CrmState>()(
           },
           observations:
             "Proposta comercial válida por 15 dias. Preços em reais, impostos inclusos conforme legislação vigente. Prazo de entrega a combinar após aprovação.",
+          discountPercent: 0,
         };
         set((s) => ({ proposals: [proposal, ...s.proposals] }));
         return id;
@@ -1024,9 +1031,19 @@ export const useVisibleProposals = () => {
 
 export const proposalTotals = (p: Proposal) => {
   const subtotal = p.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
-  const total = subtotal + (p.transport.freightValue || 0);
+  const pct = Math.max(0, Math.min(100, p.discountPercent ?? 0));
+  const discountAmount = +(subtotal * (pct / 100)).toFixed(2);
+  const subtotalAfterDiscount = +(subtotal - discountAmount).toFixed(2);
+  const total = subtotalAfterDiscount + (p.transport.freightValue || 0);
   const qty = p.items.reduce((s, i) => s + i.quantity, 0);
-  return { subtotal, total, qty, count: p.items.length };
+  return { subtotal, discountPercent: pct, discountAmount, subtotalAfterDiscount, total, qty, count: p.items.length };
+};
+
+/** Limite máximo de desconto (%) que um vendedor pode aplicar em uma proposta. Configurável pelo admin. */
+export const useMaxDiscountForCurrentUser = () => {
+  const max = useCrm((s) => s.maxDiscountPercentVendedor);
+  const user = useCurrentUser();
+  return user.role === "admin" ? 100 : max;
 };
 
 export type TemperatureLevel = "hot" | "warm" | "cold" | "frozen";

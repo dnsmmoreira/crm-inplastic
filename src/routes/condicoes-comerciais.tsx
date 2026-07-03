@@ -95,6 +95,8 @@ function CondicoesComerciais() {
   const removeTerm = useCrm((s) => s.removePaymentTerm);
   const toggleActive = useCrm((s) => s.togglePaymentTermActive);
   const resetTerms = useCrm((s) => s.resetPaymentTerms);
+  const maxDiscount = useCrm((s) => s.maxDiscountPercentVendedor);
+  const setMaxDiscount = useCrm((s) => s.setMaxDiscountPercentVendedor);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<PaymentTerm | null>(null);
@@ -225,6 +227,36 @@ function CondicoesComerciais() {
           </Button>
         </div>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Limite de desconto do vendedor</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="w-40">
+              <Label>Desconto máximo (%)</Label>
+              <Input
+                type="number"
+                step="0.1"
+                min={0}
+                max={100}
+                value={maxDiscount}
+                onChange={(e) => {
+                  const raw = Number(e.target.value);
+                  if (!Number.isFinite(raw) || raw < 0) return setMaxDiscount(0);
+                  if (raw > 100) return setMaxDiscount(100);
+                  setMaxDiscount(raw);
+                }}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground max-w-md">
+              Percentual máximo que um vendedor pode aplicar como desconto em uma proposta comercial.
+              Administradores não têm limite. Alteração vale para propostas criadas a partir de agora.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

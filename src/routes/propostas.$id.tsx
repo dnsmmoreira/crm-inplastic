@@ -23,6 +23,7 @@ import {
   useCrm,
   formatBRL,
   proposalTotals,
+  useMaxDiscountForCurrentUser,
   USERS,
   type ProposalStatus,
   type PaymentTerm,
@@ -105,6 +106,7 @@ function PropostaDetalhe() {
 
   const paymentTerms = useCrm((s) => s.paymentTerms);
   const activePaymentTerms = useMemo(() => paymentTerms.filter((t) => t.active), [paymentTerms]);
+  const maxDiscount = useMaxDiscountForCurrentUser();
   const _addItem = useCrm((s) => s.addProposalItem);
   const _updateItem = useCrm((s) => s.updateProposalItem);
   const _removeItem = useCrm((s) => s.removeProposalItem);
@@ -383,9 +385,27 @@ function PropostaDetalhe() {
             </Table>
 
             {totals && (
-              <div className="flex justify-end gap-6 text-sm mt-3 pr-2">
-                <span className="text-muted-foreground">Subtotal itens:</span>
-                <span className="font-semibold">{formatBRL(totals.subtotal)}</span>
+              <div className="mt-3 pr-2 space-y-1 text-sm">
+                <div className="flex justify-end gap-6">
+                  <span className="text-muted-foreground">Subtotal itens:</span>
+                  <span className="font-semibold w-32 text-right">{formatBRL(totals.subtotal)}</span>
+                </div>
+                {totals.discountPercent > 0 && (
+                  <div className="flex justify-end gap-6 text-emerald-700">
+                    <span>Desconto ({totals.discountPercent}%):</span>
+                    <span className="font-semibold w-32 text-right">− {formatBRL(totals.discountAmount)}</span>
+                  </div>
+                )}
+                {proposal.transport.freightValue > 0 && (
+                  <div className="flex justify-end gap-6">
+                    <span className="text-muted-foreground">Frete:</span>
+                    <span className="font-semibold w-32 text-right">{formatBRL(proposal.transport.freightValue)}</span>
+                  </div>
+                )}
+                <div className="flex justify-end gap-6 pt-1 border-t">
+                  <span className="text-muted-foreground">Total:</span>
+                  <span className="font-bold text-primary w-32 text-right">{formatBRL(totals.total)}</span>
+                </div>
               </div>
             )}
 
@@ -662,6 +682,38 @@ function PropostaDetalhe() {
               })()}
 
               <div>
+                <div className="flex items-baseline justify-between">
+                  <Label>Desconto (%)</Label>
+                  <span className="text-[11px] text-muted-foreground">
+                    Limite: <span className="font-medium text-foreground">{maxDiscount}%</span>
+                  </span>
+                </div>
+                <Input
+                  type="number"
+                  step="0.1"
+                  min={0}
+                  max={maxDiscount}
+                  value={proposal.discountPercent ?? 0}
+                  onChange={(e) => {
+                    const raw = Number(e.target.value);
+                    if (!Number.isFinite(raw) || raw < 0) {
+                      updateProposal(proposal.id, { discountPercent: 0 });
+                      return;
+                    }
+                    if (raw > maxDiscount) {
+                      toast.error(`Desconto máximo permitido: ${maxDiscount}%. Fale com o administrador para aumentar o limite.`);
+                      updateProposal(proposal.id, { discountPercent: maxDiscount });
+                      return;
+                    }
+                    updateProposal(proposal.id, { discountPercent: raw });
+                  }}
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Aplicado sobre o subtotal dos itens. Frete não entra no cálculo.
+                </p>
+              </div>
+
+              <div>
                 <Label>Validade (dias)</Label>
                 <Input type="number" value={proposal.validityDays} onChange={(e) => updateProposal(proposal.id, { validityDays: Number(e.target.value) })} />
               </div>
@@ -754,6 +806,7 @@ function PropostaDetalhe() {
               <th className="border p-1.5">Nº de Itens</th>
               <th className="border p-1.5">Soma das Qtdes</th>
               <th className="border p-1.5">Subtotal dos itens</th>
+              <th className="border p-1.5">Desconto</th>
               <th className="border p-1.5">Frete</th>
               <th className="border p-1.5">Total da proposta</th>
             </tr>
@@ -763,11 +816,17 @@ function PropostaDetalhe() {
               <td className="border p-1.5 text-center">{totals?.count}</td>
               <td className="border p-1.5 text-center">{totals?.qty.toLocaleString("pt-BR")}</td>
               <td className="border p-1.5 text-right">{formatBRL(totals?.subtotal ?? 0)}</td>
+              <td className="border p-1.5 text-right">
+                {(totals?.discountPercent ?? 0) > 0
+                  ? `− ${formatBRL(totals?.discountAmount ?? 0)} (${totals?.discountPercent}%)`
+                  : "—"}
+              </td>
               <td className="border p-1.5 text-right">{formatBRL(proposal.transport.freightValue)}</td>
               <td className="border p-1.5 text-right font-bold text-primary">{formatBRL(totals?.total ?? 0)}</td>
             </tr>
           </tbody>
         </table>
+
 
         <div className="grid grid-cols-2 gap-6 mb-4">
           <div>
