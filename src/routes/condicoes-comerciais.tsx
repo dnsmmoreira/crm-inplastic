@@ -258,6 +258,26 @@ function CondicoesComerciais() {
         </CardContent>
       </Card>
 
+      <CatalogueEditor
+        title="Tags de Leads"
+        description="Etiquetas que o vendedor pode aplicar ao cadastrar um novo lead."
+        items={useCrm.getState().leadTags}
+        selector={(s) => s.leadTags}
+        onAdd={(v) => useCrm.getState().addLeadTag(v)}
+        onRemove={(v) => useCrm.getState().removeLeadTag(v)}
+        placeholder="Ex: VIP"
+      />
+
+      <CatalogueEditor
+        title="Segmentos de mercado"
+        description="Segmentos disponíveis no cadastro de leads."
+        items={useCrm.getState().leadSegments}
+        selector={(s) => s.leadSegments}
+        onAdd={(v) => useCrm.getState().addLeadSegment(v)}
+        onRemove={(v) => useCrm.getState().removeLeadSegment(v)}
+        placeholder="Ex: Varejo"
+      />
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Catálogo</CardTitle>
