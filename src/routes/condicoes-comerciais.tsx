@@ -504,3 +504,56 @@ function CatalogueEditor({ kind }: { kind: "tags" | "segments" }) {
   );
 }
 
+function FreightConfigEditor() {
+  const cfg = useCrm((s) => s.freightConfig);
+  const setCfg = useCrm((s) => s.setFreightConfig);
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Cálculo de frete (rodoviário)</CardTitle>
+        <p className="text-xs text-muted-foreground">
+          Origem, tarifa e fator de cubagem usados para estimar o frete de propostas com CEP de entrega.
+          Fórmula: <strong>maior(peso real, cubagem × fator)</strong> × distância (km) × tarifa (R$/kg/km).
+        </p>
+      </CardHeader>
+      <CardContent className="grid gap-3 md:grid-cols-2">
+        <div>
+          <Label>CEP de origem</Label>
+          <Input
+            value={cfg.originCep}
+            onChange={(e) => setCfg({ originCep: e.target.value })}
+            placeholder="00000-000"
+          />
+        </div>
+        <div>
+          <Label>Endereço de origem (referência)</Label>
+          <Input
+            value={cfg.originAddress}
+            onChange={(e) => setCfg({ originAddress: e.target.value })}
+            placeholder="Rua, cidade / UF"
+          />
+        </div>
+        <div>
+          <Label>Tarifa (R$ por kg × km)</Label>
+          <Input
+            type="number" step="0.0001" min={0}
+            value={cfg.rateBRLPerKgKm}
+            onChange={(e) => setCfg({ rateBRLPerKgKm: Math.max(0, Number(e.target.value) || 0) })}
+          />
+          <p className="text-[11px] text-muted-foreground mt-1">Referência de mercado: R$ 0,0008 a R$ 0,0015.</p>
+        </div>
+        <div>
+          <Label>Fator de cubagem (kg por m³)</Label>
+          <Input
+            type="number" step="1" min={0}
+            value={cfg.cubageFactorKgPerM3}
+            onChange={(e) => setCfg({ cubageFactorKgPerM3: Math.max(0, Number(e.target.value) || 0) })}
+          />
+          <p className="text-[11px] text-muted-foreground mt-1">Padrão ANTT rodoviário: 300 kg/m³.</p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+
