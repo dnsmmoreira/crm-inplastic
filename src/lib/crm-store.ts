@@ -1,5 +1,17 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { useMemo } from "react";
+
+export type UserRole = "admin" | "vendedor";
+export type User = { id: string; name: string; role: UserRole; avatarColor: string };
+
+export const USERS: User[] = [
+  { id: "u-admin", name: "Ana (Admin)", role: "admin", avatarColor: "#0f766e" },
+  { id: "u-bruno", name: "Bruno Vendas", role: "vendedor", avatarColor: "#2563eb" },
+  { id: "u-carla", name: "Carla Vendas", role: "vendedor", avatarColor: "#db2777" },
+  { id: "u-diego", name: "Diego Vendas", role: "vendedor", avatarColor: "#ea580c" },
+];
+
 
 export type StageId =
   | "atendimento"
@@ -67,6 +79,7 @@ export type Lead = {
   notes: string;
   interactions: Interaction[];
   aiActions?: AiAction[];
+  ownerId: string;
 };
 
 export type Task = {
@@ -127,6 +140,7 @@ const seedLeads: Lead[] = [
     stage: "negociacao",
     tags: ["Frigorífico", "Recorrente"],
     source: "Formulário Site",
+    ownerId: "u-bruno",
     createdAt: iso(-45),
     lastContact: iso(-2),
     nextFollowUp: iso(1),
@@ -154,6 +168,7 @@ const seedLeads: Lead[] = [
     stage: "proposta",
     tags: ["Química", "Exportação"],
     source: "Formulário Site",
+    ownerId: "u-carla",
     createdAt: iso(-20),
     lastContact: iso(-5),
     nextFollowUp: iso(3),
@@ -179,6 +194,7 @@ const seedLeads: Lead[] = [
     stage: "qualificacao",
     tags: ["Logística"],
     source: "Formulário Site",
+    ownerId: "u-bruno",
     createdAt: iso(-7),
     lastContact: iso(-1),
     nextFollowUp: iso(2),
@@ -201,6 +217,7 @@ const seedLeads: Lead[] = [
     stage: "novo",
     tags: ["Exportação", "Agro", "Alto Valor"],
     source: "Formulário Site",
+    ownerId: "u-diego",
     createdAt: iso(-1),
     lastContact: iso(-1),
     nextFollowUp: iso(1),
@@ -224,6 +241,7 @@ const seedLeads: Lead[] = [
     stage: "ganho",
     tags: ["Farma"],
     source: "Formulário Site",
+    ownerId: "u-carla",
     createdAt: iso(-90),
     lastContact: iso(-3),
     notes: "Fechado! Entrega em 2 lotes.",
@@ -244,6 +262,7 @@ const seedLeads: Lead[] = [
     stage: "negociacao",
     tags: ["Bebidas"],
     source: "Formulário Site",
+    ownerId: "u-bruno",
     createdAt: iso(-60),
     lastContact: iso(-7),
     nextFollowUp: iso(2),
@@ -266,6 +285,7 @@ const seedLeads: Lead[] = [
     stage: "proposta",
     tags: ["Indústria Pesada"],
     source: "Formulário Site",
+    ownerId: "u-diego",
     createdAt: iso(-35),
     lastContact: iso(-4),
     nextFollowUp: iso(4),
@@ -351,7 +371,9 @@ type CrmState = {
   whatsapp: WhatsappMessage[];
   calendar: CalendarSlot[];
   agent: AgentSettings;
-  addLead: (l: Omit<Lead, "id" | "createdAt" | "lastContact" | "interactions">) => string;
+  currentUserId: string;
+  setCurrentUser: (id: string) => void;
+  addLead: (l: Omit<Lead, "id" | "createdAt" | "lastContact" | "interactions" | "ownerId"> & { ownerId?: string }) => string;
   updateLead: (id: string, patch: Partial<Lead>) => void;
   removeLead: (id: string) => void;
   moveLead: (id: string, stage: StageId) => void;
@@ -378,12 +400,15 @@ export const useCrm = create<CrmState>()(
       whatsapp: seedWhatsapp,
       calendar: seedCalendar,
       agent: defaultAgent,
+      currentUserId: "u-admin",
+      setCurrentUser: (id) => set({ currentUserId: id }),
       addLead: (l) => {
         const id = uid();
         set((s) => ({
           leads: [
             {
               ...l,
+              ownerId: l.ownerId ?? get().currentUserId,
               id,
               createdAt: new Date().toISOString(),
               lastContact: new Date().toISOString(),
@@ -461,6 +486,7 @@ export const useCrm = create<CrmState>()(
               stage: "atendimento",
               tags: ["WhatsApp"],
               source: "WhatsApp",
+              ownerId: get().currentUserId,
               createdAt: nowIso,
               lastContact: msg.receivedAt,
               notes: `Primeira mensagem: "${msg.message}"`,
@@ -536,9 +562,74 @@ export const useCrm = create<CrmState>()(
         }));
       },
     }),
-    { name: "pdp-crm-v2" },
+    { name: "pdp-crm-v3" },
   ),
 );
 
 export const formatBRL = (n: number) =>
   n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+
+export const useCurrentUser = () => {
+  const id = useCrm((s) => s.currentUserId);
+  return USERS.find((u) => u.id === id) ?? USERS[0];
+};
+
+export const useIsAdmin = () => useCurrentUser().role === "admin";
+
+export const useVisibleLeads = () => {
+  const leads = useCrm((s) => s.leads);
+  const user = useCurrentUser();
+  return useMemo(
+    () => (user.role === "admin" ? leads : leads.filter((l) => l.ownerId === user.id)),
+    [leads, user],
+  );
+};
+
+export const useVisibleTasks = () => {
+  const tasks = useCrm((s) => s.tasks);
+  const leads = useVisibleLeads();
+  return useMemo(() => {
+    const ids = new Set(leads.map((l) => l.id));
+    return tasks.filter((t) => ids.has(t.leadId));
+  }, [tasks, leads]);
+};
+
+/** Best seller of the current month, based on ganho leads. */
+export const useBestSellerOfMonth = () => {
+  const leads = useCrm((s) => s.leads);
+  return useMemo(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth();
+    const totals = new Map<string, { value: number; deals: number }>();
+    leads.forEach((l) => {
+      if (l.stage !== "ganho") return;
+      const d = new Date(l.lastContact ?? l.createdAt);
+      if (d.getFullYear() !== y || d.getMonth() !== m) return;
+      const cur = totals.get(l.ownerId) ?? { value: 0, deals: 0 };
+      cur.value += l.estimatedValue;
+      cur.deals += 1;
+      totals.set(l.ownerId, cur);
+    });
+    // Fallback: if no wins this month, use last 90 days
+    if (totals.size === 0) {
+      const cutoff = Date.now() - 90 * 86400000;
+      leads.forEach((l) => {
+        if (l.stage !== "ganho") return;
+        if (new Date(l.lastContact ?? l.createdAt).getTime() < cutoff) return;
+        const cur = totals.get(l.ownerId) ?? { value: 0, deals: 0 };
+        cur.value += l.estimatedValue;
+        cur.deals += 1;
+        totals.set(l.ownerId, cur);
+      });
+    }
+    let bestId: string | null = null;
+    let best = { value: 0, deals: 0 };
+    totals.forEach((v, k) => {
+      if (v.value > best.value) { best = v; bestId = k; }
+    });
+    const user = bestId ? USERS.find((u) => u.id === bestId) : null;
+    return user ? { user, value: best.value, deals: best.deals } : null;
+  }, [leads]);
+};
+

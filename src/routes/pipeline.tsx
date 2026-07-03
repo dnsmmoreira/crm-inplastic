@@ -14,7 +14,7 @@ import {
 import { Plus, Package, Calendar as CalendarIcon, Search } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useCrm, STAGES, formatBRL, type Lead, type StageId } from "@/lib/crm-store";
+import { useCrm, STAGES, formatBRL, type Lead, type StageId, useVisibleLeads } from "@/lib/crm-store";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -30,7 +30,7 @@ export const Route = createFileRoute("/pipeline")({
 });
 
 function PipelinePage() {
-  const leads = useCrm((s) => s.leads);
+  const leads = useVisibleLeads();
   const moveLead = useCrm((s) => s.moveLead);
   const [openLead, setOpenLead] = useState<string | null>(null);
   const [search, setSearch] = useState("");

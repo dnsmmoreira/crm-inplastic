@@ -36,7 +36,7 @@ import {
 import { useMemo, useState } from "react";
 import { format, isToday, isTomorrow, isBefore, startOfMonth, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useCrm, STAGES, formatBRL } from "@/lib/crm-store";
+import { useCrm, STAGES, formatBRL, useVisibleLeads, useVisibleTasks, useBestSellerOfMonth, useCurrentUser } from "@/lib/crm-store";
 import { NewLeadDialog, LeadDrawer } from "@/components/crm/LeadDrawer";
 import { Link } from "@tanstack/react-router";
 
@@ -45,9 +45,12 @@ export const Route = createFileRoute("/")({
 });
 
 function DashboardPage() {
-  const leads = useCrm((s) => s.leads);
-  const tasks = useCrm((s) => s.tasks);
+  const leads = useVisibleLeads();
+  const tasks = useVisibleTasks();
+  const user = useCurrentUser();
+  const isAdmin = user.role === "admin";
   const [openLead, setOpenLead] = useState<string | null>(null);
+
 
   const kpis = useMemo(() => {
     const active = leads.filter((l) => l.stage !== "perdido");
@@ -112,9 +115,13 @@ function DashboardPage() {
     <div className="p-4 md:p-8 space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl md:text-3xl font-semibold">Dashboard</h1>
+          <h1 className="text-2xl md:text-3xl font-semibold">
+            Olá, {user.name.split(" ")[0]}
+          </h1>
           <p className="text-sm text-muted-foreground">
-            Visão geral dos leads e propostas — <span className="font-medium">palletdeplastico.com.br</span>
+            {isAdmin
+              ? "Visão de administrador — todos os leads e propostas"
+              : "Seu painel — leads e propostas atribuídos a você"}
           </p>
         </div>
         <NewLeadDialog
@@ -125,6 +132,9 @@ function DashboardPage() {
           }
         />
       </div>
+
+      <BestSellerCard />
+
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Kpi
@@ -339,6 +349,49 @@ function Kpi({
           <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${toneClass} shrink-0`}>
             <Icon className="h-5 w-5" />
           </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function BestSellerCard() {
+  const best = useBestSellerOfMonth();
+  const monthLabel = format(new Date(), "MMMM 'de' yyyy", { locale: ptBR });
+  if (!best) {
+    return (
+      <Card className="border-dashed">
+        <CardContent className="p-5 text-sm text-muted-foreground">
+          Ainda não há vendas fechadas em {monthLabel}. O ranking do melhor vendedor aparecerá aqui.
+        </CardContent>
+      </Card>
+    );
+  }
+  const initials = best.user.name.split(" ").map((p) => p[0]).slice(0, 2).join("");
+  return (
+    <Card className="relative overflow-hidden border-primary/30 bg-gradient-to-r from-primary/5 via-transparent to-transparent">
+      <CardContent className="p-5 flex items-center gap-4">
+        <div
+          className="flex h-14 w-14 items-center justify-center rounded-full text-white font-display text-lg font-semibold shadow"
+          style={{ background: best.user.avatarColor }}
+        >
+          {initials}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <Badge className="bg-amber-500/15 text-amber-700 hover:bg-amber-500/15 border-amber-500/30">
+              🏆 Melhor vendedor do mês
+            </Badge>
+            <span className="text-xs text-muted-foreground capitalize">{monthLabel}</span>
+          </div>
+          <div className="mt-1 font-display text-xl font-semibold truncate">{best.user.name}</div>
+          <div className="text-xs text-muted-foreground">
+            {best.deals} negócio(s) fechado(s) · visível para toda a equipe
+          </div>
+        </div>
+        <div className="hidden sm:block text-right">
+          <div className="text-xs uppercase tracking-wider text-muted-foreground">Receita</div>
+          <div className="font-display text-xl font-semibold text-primary">{formatBRL(best.value)}</div>
         </div>
       </CardContent>
     </Card>

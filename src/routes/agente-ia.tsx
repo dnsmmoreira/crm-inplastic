@@ -13,7 +13,7 @@ import {
   Mail,
   ChevronRight,
 } from "lucide-react";
-import { useCrm, type CalendarSlot } from "@/lib/crm-store";
+import { useCrm, type CalendarSlot, useVisibleLeads } from "@/lib/crm-store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -43,7 +43,7 @@ function AgenteIaPage() {
   const agent = useCrm((s) => s.agent);
   const update = useCrm((s) => s.updateAgent);
   const calendar = useCrm((s) => s.calendar);
-  const leads = useCrm((s) => s.leads);
+  const leads = useVisibleLeads();
   const bookSlot = useCrm((s) => s.bookSlotWithAi);
   const runFollowUp = useCrm((s) => s.runAiFollowUp);
   const [openLead, setOpenLead] = useState<string | null>(null);

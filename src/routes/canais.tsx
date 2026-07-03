@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { MessageSquare, Phone, Zap, UserPlus, X, CheckCircle2, Radio } from "lucide-react";
-import { useCrm, type WhatsappMessage } from "@/lib/crm-store";
+import { useCrm, type WhatsappMessage, useVisibleLeads } from "@/lib/crm-store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -32,7 +32,7 @@ function CanaisPage() {
   const receive = useCrm((s) => s.receiveWhatsapp);
   const convert = useCrm((s) => s.convertWhatsappToLead);
   const ignore = useCrm((s) => s.ignoreWhatsapp);
-  const leads = useCrm((s) => s.leads);
+  const leads = useVisibleLeads();
   const [autoCapture, setAutoCapture] = useState(true);
   const [simulate, setSimulate] = useState(false);
   const [openLead, setOpenLead] = useState<string | null>(null);
