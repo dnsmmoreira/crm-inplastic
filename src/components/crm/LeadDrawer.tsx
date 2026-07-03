@@ -158,8 +158,9 @@ export function LeadDrawer({
           <Separator />
 
           <Tabs defaultValue="hist">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="hist">Histórico</TabsTrigger>
+              <TabsTrigger value="ia" className="gap-1"><Sparkles className="h-3 w-3" />IA</TabsTrigger>
               <TabsTrigger value="tarefas">Tarefas</TabsTrigger>
               <TabsTrigger value="notas">Notas</TabsTrigger>
             </TabsList>
