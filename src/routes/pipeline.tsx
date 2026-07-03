@@ -14,7 +14,7 @@ import {
 import { Plus, Package, Calendar as CalendarIcon, Search } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useCrm, STAGES, formatBRL, type Lead, type StageId, useVisibleLeads } from "@/lib/crm-store";
+import { useCrm, STAGES, formatBRL, leadTemperature, type Lead, type StageId, useVisibleLeads } from "@/lib/crm-store";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -190,13 +190,19 @@ function LeadCard({
         <CalendarIcon className="h-3 w-3 shrink-0" />
         <span>Último contato {format(new Date(lead.lastContact), "dd MMM", { locale: ptBR })}</span>
       </div>
-      {lead.tags.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1">
-          {lead.tags.slice(0, 2).map((t) => (
-            <Badge key={t} variant="outline" className="text-[10px] px-1.5 py-0">{t}</Badge>
-          ))}
-        </div>
-      )}
+      {(() => {
+        const t = leadTemperature(lead);
+        return (
+          <div className="mt-2 flex flex-wrap items-center gap-1">
+            <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${t.className}`} title={t.hint}>
+              <span className="mr-1">{t.emoji}</span>{t.label} · {t.days}d
+            </Badge>
+            {lead.tags.slice(0, 2).map((tag) => (
+              <Badge key={tag} variant="outline" className="text-[10px] px-1.5 py-0">{tag}</Badge>
+            ))}
+          </div>
+        );
+      })()}
     </div>
   );
 }
