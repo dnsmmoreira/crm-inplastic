@@ -91,10 +91,31 @@ function PropostaDetalhe() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
   const [rowErrors, setRowErrors] = useState<Record<string, { field: "description" | "quantity" | "unitPrice"; message: string } | null>>({});
+  const [dirty, setDirty] = useState(false);
 
   const totals = useMemo(() => (proposal ? proposalTotals(proposal) : null), [proposal]);
   const owner = proposal ? USERS.find((u) => u.id === proposal.ownerId) : null;
   const selectedProduct = useMemo(() => products.find((p) => p.id === addProduct), [products, addProduct]);
+
+  // Warn on tab close/refresh while there are unsaved edits
+  useEffect(() => {
+    if (!dirty) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [dirty]);
+
+  // Intercept in-app navigation while dirty; render our own confirm dialog
+  const blocker = useBlocker({
+    shouldBlockFn: () => dirty,
+    withResolver: true,
+    enableBeforeUnload: false, // handled above with a friendlier message
+  });
+
+  const markDirty = () => setDirty(true);
 
   const validateAndUpdateItem = (
     itemId: string,
