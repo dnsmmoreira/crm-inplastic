@@ -24,10 +24,10 @@ import {
   formatBRL,
   proposalTotals,
   USERS,
-  PAYMENT_TERMS,
   type ProposalStatus,
   type PaymentTerm,
 } from "@/lib/crm-store";
+
 
 /** Build display installments (equal split) from an ADM payment term and the proposal total. */
 function buildTermInstallments(term: PaymentTerm | undefined, total: number) {
