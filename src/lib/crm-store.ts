@@ -371,7 +371,9 @@ type CrmState = {
   whatsapp: WhatsappMessage[];
   calendar: CalendarSlot[];
   agent: AgentSettings;
-  addLead: (l: Omit<Lead, "id" | "createdAt" | "lastContact" | "interactions">) => string;
+  currentUserId: string;
+  setCurrentUser: (id: string) => void;
+  addLead: (l: Omit<Lead, "id" | "createdAt" | "lastContact" | "interactions" | "ownerId"> & { ownerId?: string }) => string;
   updateLead: (id: string, patch: Partial<Lead>) => void;
   removeLead: (id: string) => void;
   moveLead: (id: string, stage: StageId) => void;
@@ -398,6 +400,8 @@ export const useCrm = create<CrmState>()(
       whatsapp: seedWhatsapp,
       calendar: seedCalendar,
       agent: defaultAgent,
+      currentUserId: "u-admin",
+      setCurrentUser: (id) => set({ currentUserId: id }),
       addLead: (l) => {
         const id = uid();
         set((s) => ({
