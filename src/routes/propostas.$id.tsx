@@ -562,41 +562,64 @@ function PropostaDetalhe() {
           <Card>
             <CardHeader><CardTitle className="text-base">Condições comerciais</CardTitle></CardHeader>
             <CardContent className="space-y-3">
-              {proposal.installments.map((inst) => (
-                <div key={inst.id} className="grid grid-cols-6 gap-2 items-end">
-                  <div>
-                    <Label className="text-xs">Dias</Label>
-                    <Input type="number" value={inst.days} onChange={(e) => updateProposal(proposal.id, {
-                      installments: proposal.installments.map((i) => i.id === inst.id ? { ...i, days: Number(e.target.value) } : i),
-                    })} />
+              <div>
+                <Label>Condição de pagamento</Label>
+                <Select
+                  value={proposal.paymentTermId ?? ""}
+                  onValueChange={(v) => updateProposal(proposal.id, { paymentTermId: v })}
+                >
+                  <SelectTrigger><SelectValue placeholder="Escolha uma condição cadastrada" /></SelectTrigger>
+                  <SelectContent className="max-h-80">
+                    {PAYMENT_TERMS.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        <span className="font-medium">{t.label}</span>
+                        <span className="text-muted-foreground text-xs ml-2">· {t.method}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Somente o administrador pode cadastrar novas condições.
+                </p>
+              </div>
+
+              {(() => {
+                const term = PAYMENT_TERMS.find((t) => t.id === proposal.paymentTermId);
+                if (!term) return (
+                  <p className="text-xs text-muted-foreground italic">Nenhuma condição selecionada.</p>
+                );
+                const rows = buildTermInstallments(term, totals?.total ?? 0);
+                return (
+                  <div className="rounded-md border bg-muted/30">
+                    <div className="px-3 py-2 border-b flex items-center justify-between text-xs">
+                      <span className="font-medium">{term.label}</span>
+                      <span className="text-muted-foreground">{term.method}</span>
+                    </div>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="h-8">Parcela</TableHead>
+                          <TableHead className="h-8">Vencimento</TableHead>
+                          <TableHead className="h-8 text-right">Valor</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {rows.map((r, i) => (
+                          <TableRow key={i} className="text-xs">
+                            <TableCell className="py-1.5">{i + 1}/{rows.length}</TableCell>
+                            <TableCell className="py-1.5">{r.days === 0 ? "à vista" : `${r.days} dias`}</TableCell>
+                            <TableCell className="py-1.5 text-right font-medium">{formatBRL(r.amount)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    {term.notes && (
+                      <div className="px-3 py-2 border-t text-[11px] text-muted-foreground">{term.notes}</div>
+                    )}
                   </div>
-                  <div className="col-span-2">
-                    <Label className="text-xs">Valor (R$)</Label>
-                    <Input type="number" step="0.01" value={inst.amount} onChange={(e) => updateProposal(proposal.id, {
-                      installments: proposal.installments.map((i) => i.id === inst.id ? { ...i, amount: Number(e.target.value) } : i),
-                    })} />
-                  </div>
-                  <div className="col-span-2">
-                    <Label className="text-xs">Obs.</Label>
-                    <Input value={inst.notes} onChange={(e) => updateProposal(proposal.id, {
-                      installments: proposal.installments.map((i) => i.id === inst.id ? { ...i, notes: e.target.value } : i),
-                    })} />
-                  </div>
-                  <Button size="icon" variant="ghost" onClick={() => updateProposal(proposal.id, {
-                    installments: proposal.installments.filter((i) => i.id !== inst.id),
-                  })}>
-                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                  </Button>
-                </div>
-              ))}
-              <Button
-                variant="outline" size="sm" className="gap-2"
-                onClick={() => updateProposal(proposal.id, {
-                  installments: [...proposal.installments, { id: Math.random().toString(36).slice(2, 10), days: 30, amount: 0, notes: "" }],
-                })}
-              >
-                <Plus className="h-3 w-3" /> Nova parcela
-              </Button>
+                );
+              })()}
+
               <div>
                 <Label>Validade (dias)</Label>
                 <Input type="number" value={proposal.validityDays} onChange={(e) => updateProposal(proposal.id, { validityDays: Number(e.target.value) })} />
@@ -607,6 +630,7 @@ function PropostaDetalhe() {
               </div>
             </CardContent>
           </Card>
+
         </div>
       </div>
 
