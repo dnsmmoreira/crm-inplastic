@@ -730,24 +730,37 @@ function PropostaDetalhe() {
         <div className="grid grid-cols-2 gap-6 mb-4">
           <div>
             <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Condições comerciais</div>
-            <table className="w-full text-[11px] border-collapse">
-              <thead>
-                <tr className="bg-muted/60">
-                  <th className="border p-1.5 text-left">Dias</th>
-                  <th className="border p-1.5 text-right">Valor</th>
-                  <th className="border p-1.5 text-left">Obs.</th>
-                </tr>
-              </thead>
-              <tbody>
-                {proposal.installments.map((i) => (
-                  <tr key={i.id}>
-                    <td className="border p-1.5">{i.days}</td>
-                    <td className="border p-1.5 text-right">{formatBRL(i.amount)}</td>
-                    <td className="border p-1.5">{i.notes}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            {(() => {
+              const term = PAYMENT_TERMS.find((t) => t.id === proposal.paymentTermId);
+              const rows = buildTermInstallments(term, totals?.total ?? 0);
+              if (!term) {
+                return <div className="text-[11px] italic text-muted-foreground">A combinar.</div>;
+              }
+              return (
+                <>
+                  <div className="text-[11px] mb-1"><span className="font-semibold">{term.label}</span> · {term.method}</div>
+                  <table className="w-full text-[11px] border-collapse">
+                    <thead>
+                      <tr className="bg-muted/60">
+                        <th className="border p-1.5 text-left w-12">Nº</th>
+                        <th className="border p-1.5 text-left">Vencimento</th>
+                        <th className="border p-1.5 text-right">Valor</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((r, i) => (
+                        <tr key={i}>
+                          <td className="border p-1.5">{i + 1}/{rows.length}</td>
+                          <td className="border p-1.5">{r.days === 0 ? "à vista" : `${r.days} dias`}</td>
+                          <td className="border p-1.5 text-right">{formatBRL(r.amount)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {term.notes && <div className="text-[10px] text-muted-foreground mt-1">{term.notes}</div>}
+                </>
+              );
+            })()}
           </div>
           <div>
             <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Transportador</div>
