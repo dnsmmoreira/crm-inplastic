@@ -144,6 +144,9 @@ function PropostaDetalhe() {
   const [addError, setAddError] = useState<string | null>(null);
   const [rowErrors, setRowErrors] = useState<Record<string, { field: "description" | "quantity" | "unitPrice"; message: string } | null>>({});
   const [dirty, setDirty] = useState(false);
+  const freightConfig = useCrm((s) => s.freightConfig);
+  const [freightLoading, setFreightLoading] = useState(false);
+  const calcFreight = useServerFn(calculateFreightDistance);
 
   const totals = useMemo(() => (proposal ? proposalTotals(proposal) : null), [proposal]);
   const owner = proposal ? USERS.find((u) => u.id === proposal.ownerId) : null;
