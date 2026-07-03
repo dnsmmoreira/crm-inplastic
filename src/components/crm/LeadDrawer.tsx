@@ -433,35 +433,60 @@ import {
 
 export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
   const addLead = useCrm((s) => s.addLead);
+  const products = useCrm((s) => s.products);
+  const leadTags = useCrm((s) => s.leadTags);
+  const leadSegments = useCrm((s) => s.leadSegments);
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({
+  const initial = {
     company: "",
     contactName: "",
     email: "",
     phone: "",
-    product: PRODUCTS[0],
-    quantity: 100,
-    estimatedValue: 20000,
+    productId: "",
+    quantity: 0,
+    estimatedValue: 0,
     stage: "novo" as Lead["stage"],
-    tags: "",
+    segment: "",
+    tags: [] as string[],
     notes: "",
-  });
+  };
+  const [form, setForm] = useState(initial);
+
+  const selectedProduct = products.find((p) => p.id === form.productId);
+
+  // recalcula valor estimado quando produto ou quantidade mudam
+  const recalc = (productId: string, quantity: number) => {
+    const prod = products.find((p) => p.id === productId);
+    return prod ? prod.defaultPrice * (quantity || 0) : 0;
+  };
+
+  const toggleTag = (t: string) =>
+    setForm((f) => ({
+      ...f,
+      tags: f.tags.includes(t) ? f.tags.filter((x) => x !== t) : [...f.tags, t],
+    }));
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setForm(initial); }}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Novo lead</DialogTitle>
         </DialogHeader>
         <div className="grid grid-cols-2 gap-3">
           <div className="col-span-2">
             <Label>Empresa</Label>
-            <Input value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} />
+            <Input
+              value={form.company}
+              onChange={(e) => setForm({ ...form, company: e.target.value.toUpperCase() })}
+            />
           </div>
           <div>
             <Label>Contato</Label>
-            <Input value={form.contactName} onChange={(e) => setForm({ ...form, contactName: e.target.value })} />
+            <Input
+              value={form.contactName}
+              onChange={(e) => setForm({ ...form, contactName: e.target.value.toUpperCase() })}
+            />
           </div>
           <div>
             <Label>Telefone</Label>
@@ -469,26 +494,60 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
           </div>
           <div className="col-span-2">
             <Label>E-mail</Label>
-            <Input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+            <Input
+              type="email"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value.toLowerCase() })}
+            />
           </div>
-          <div>
-            <Label>Produto</Label>
-            <Select value={form.product} onValueChange={(v) => setForm({ ...form, product: v as Lead["product"] })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+          <div className="col-span-2">
+            <Label>Segmento</Label>
+            <Select value={form.segment} onValueChange={(v) => setForm({ ...form, segment: v })}>
+              <SelectTrigger><SelectValue placeholder="Selecione um segmento" /></SelectTrigger>
               <SelectContent>
-                {PRODUCTS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                {leadSegments.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="col-span-2">
+            <Label>Produto</Label>
+            <Select
+              value={form.productId}
+              onValueChange={(v) =>
+                setForm((f) => ({ ...f, productId: v, estimatedValue: recalc(v, f.quantity) }))
+              }
+            >
+              <SelectTrigger><SelectValue placeholder="Selecione um produto" /></SelectTrigger>
+              <SelectContent>
+                {products.filter((p) => p.active).map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.sku} — {p.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
           <div>
             <Label>Quantidade</Label>
-            <Input type="number" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: Number(e.target.value) })} />
+            <Input
+              type="number"
+              min={0}
+              value={form.quantity}
+              onChange={(e) => {
+                const q = Number(e.target.value) || 0;
+                setForm((f) => ({ ...f, quantity: q, estimatedValue: recalc(f.productId, q) }));
+              }}
+            />
           </div>
           <div>
             <Label>Valor estimado (R$)</Label>
-            <Input type="number" value={form.estimatedValue} onChange={(e) => setForm({ ...form, estimatedValue: Number(e.target.value) })} />
+            <Input
+              type="number"
+              value={form.estimatedValue}
+              onChange={(e) => setForm({ ...form, estimatedValue: Number(e.target.value) || 0 })}
+            />
           </div>
-          <div>
+          <div className="col-span-2">
             <Label>Etapa</Label>
             <Select value={form.stage} onValueChange={(v) => setForm({ ...form, stage: v as Lead["stage"] })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -498,8 +557,31 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
             </Select>
           </div>
           <div className="col-span-2">
-            <Label>Tags (separadas por vírgula)</Label>
-            <Input value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} />
+            <Label>Tags</Label>
+            <div className="mt-1 flex flex-wrap gap-1.5">
+              {leadTags.length === 0 && (
+                <span className="text-xs text-muted-foreground italic">
+                  Nenhuma tag cadastrada. Peça ao administrador em Condições Comerciais.
+                </span>
+              )}
+              {leadTags.map((t) => {
+                const active = form.tags.includes(t);
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => toggleTag(t)}
+                    className={`text-xs rounded-full border px-2.5 py-1 transition ${
+                      active
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background hover:bg-muted"
+                    }`}
+                  >
+                    {t}
+                  </button>
+                );
+              })}
+            </div>
           </div>
           <div className="col-span-2">
             <Label>Observações</Label>
@@ -510,23 +592,25 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
           <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
           <Button
             onClick={() => {
-              if (!form.company) { toast.error("Informe a empresa"); return; }
+              if (!form.company.trim()) { toast.error("Informe a empresa"); return; }
               addLead({
-                company: form.company,
-                contactName: form.contactName,
-                email: form.email,
+                company: form.company.trim(),
+                contactName: form.contactName.trim(),
+                email: form.email.trim(),
                 phone: form.phone,
-                product: form.product,
+                product: selectedProduct ? selectedProduct.name : "",
+                productId: selectedProduct?.id,
                 quantity: form.quantity,
                 estimatedValue: form.estimatedValue,
                 stage: form.stage,
-                tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean),
+                segment: form.segment || undefined,
+                tags: form.tags,
                 source: "Manual",
                 notes: form.notes,
               });
               toast.success("Lead criado");
               setOpen(false);
-              setForm({ ...form, company: "", contactName: "", email: "", phone: "", tags: "", notes: "" });
+              setForm(initial);
             }}
           >
             Criar lead
@@ -536,3 +620,4 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
     </Dialog>
   );
 }
+

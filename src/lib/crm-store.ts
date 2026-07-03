@@ -68,11 +68,13 @@ export type Lead = {
   contactName: string;
   email: string;
   phone: string;
-  product: ProductType;
+  product: string;
+  productId?: string;
   quantity: number;
   estimatedValue: number;
   stage: StageId;
   tags: string[];
+  segment?: string;
   source: string;
   createdAt: string;
   lastContact: string;
@@ -82,6 +84,29 @@ export type Lead = {
   aiActions?: AiAction[];
   ownerId: string;
 };
+
+export const DEFAULT_LEAD_TAGS: string[] = [
+  "Recorrente",
+  "Alto Valor",
+  "Exportação",
+  "Urgente",
+  "Indicação",
+  "Novo Cliente",
+];
+
+export const DEFAULT_LEAD_SEGMENTS: string[] = [
+  "Ind Alimentos",
+  "Ind Farmaceutica",
+  "Hospitais",
+  "Supermercado",
+  "Atacarejo",
+  "Farmacia",
+  "Ind Cosmetico",
+  "Agropecuaria",
+  "Energia",
+  "Orgão Publico",
+];
+
 
 export type Task = {
   id: string;
@@ -641,6 +666,13 @@ type CrmState = {
   removePaymentTerm: (id: string) => void;
   togglePaymentTermActive: (id: string) => void;
   resetPaymentTerms: () => void;
+  // Lead tags & segments (ADM-managed catalogue)
+  leadTags: string[];
+  leadSegments: string[];
+  addLeadTag: (t: string) => void;
+  removeLeadTag: (t: string) => void;
+  addLeadSegment: (s: string) => void;
+  removeLeadSegment: (s: string) => void;
 
 };
 
@@ -939,6 +971,26 @@ export const useCrm = create<CrmState>()(
           paymentTerms: s.paymentTerms.map((t) => (t.id === id ? { ...t, active: !t.active } : t)),
         })),
       resetPaymentTerms: () => set({ paymentTerms: DEFAULT_PAYMENT_TERMS }),
+
+      // ============ Lead tags & segments ============
+      leadTags: DEFAULT_LEAD_TAGS,
+      leadSegments: DEFAULT_LEAD_SEGMENTS,
+      addLeadTag: (t) =>
+        set((s) => {
+          const v = t.trim();
+          if (!v || s.leadTags.some((x) => x.toLowerCase() === v.toLowerCase())) return s;
+          return { leadTags: [...s.leadTags, v] };
+        }),
+      removeLeadTag: (t) =>
+        set((s) => ({ leadTags: s.leadTags.filter((x) => x !== t) })),
+      addLeadSegment: (seg) =>
+        set((s) => {
+          const v = seg.trim();
+          if (!v || s.leadSegments.some((x) => x.toLowerCase() === v.toLowerCase())) return s;
+          return { leadSegments: [...s.leadSegments, v] };
+        }),
+      removeLeadSegment: (seg) =>
+        set((s) => ({ leadSegments: s.leadSegments.filter((x) => x !== seg) })),
     }),
 );
 

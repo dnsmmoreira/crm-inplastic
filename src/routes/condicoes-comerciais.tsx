@@ -258,6 +258,9 @@ function CondicoesComerciais() {
         </CardContent>
       </Card>
 
+      <CatalogueEditor kind="tags" />
+      <CatalogueEditor kind="segments" />
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Catálogo</CardTitle>
@@ -429,3 +432,73 @@ function CondicoesComerciais() {
     </div>
   );
 }
+
+function CatalogueEditor({ kind }: { kind: "tags" | "segments" }) {
+  const items = useCrm((s) => (kind === "tags" ? s.leadTags : s.leadSegments));
+  const add = useCrm((s) => (kind === "tags" ? s.addLeadTag : s.addLeadSegment));
+  const remove = useCrm((s) => (kind === "tags" ? s.removeLeadTag : s.removeLeadSegment));
+  const [value, setValue] = useState("");
+
+  const title = kind === "tags" ? "Tags de Leads" : "Segmentos de mercado";
+  const description =
+    kind === "tags"
+      ? "Etiquetas selecionáveis pelo vendedor no cadastro de um novo lead."
+      : "Segmentos disponíveis no cadastro de leads.";
+  const placeholder = kind === "tags" ? "Ex: VIP" : "Ex: Varejo";
+
+  const submit = () => {
+    const v = value.trim();
+    if (!v) return;
+    if (items.some((x) => x.toLowerCase() === v.toLowerCase())) {
+      toast.error("Já existe");
+      return;
+    }
+    add(v);
+    setValue("");
+    toast.success("Adicionado");
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">{title}</CardTitle>
+        <p className="text-xs text-muted-foreground">{description}</p>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex gap-2">
+          <Input
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submit(); } }}
+            placeholder={placeholder}
+          />
+          <Button onClick={submit} size="sm">
+            <Plus className="h-4 w-4 mr-1" /> Adicionar
+          </Button>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {items.length === 0 && (
+            <span className="text-xs text-muted-foreground italic">Nenhum item cadastrado.</span>
+          )}
+          {items.map((item) => (
+            <span
+              key={item}
+              className="inline-flex items-center gap-1 rounded-full border bg-muted/40 pl-2.5 pr-1 py-0.5 text-xs"
+            >
+              {item}
+              <button
+                type="button"
+                onClick={() => remove(item)}
+                className="rounded-full hover:bg-destructive/10 p-0.5 text-muted-foreground hover:text-destructive"
+                aria-label={`Remover ${item}`}
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+

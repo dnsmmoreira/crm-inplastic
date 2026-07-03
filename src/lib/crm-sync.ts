@@ -14,6 +14,8 @@ import {
   useCrm,
   DEFAULT_EMITTERS,
   DEFAULT_PAYMENT_TERMS,
+  DEFAULT_LEAD_TAGS,
+  DEFAULT_LEAD_SEGMENTS,
   type Lead,
   type Task,
   type Proposal,
@@ -29,6 +31,8 @@ type SystemPayload = {
   emitters?: EmitterProfile[];
   defaultEmitterId?: string;
   maxDiscountPercentVendedor?: number;
+  leadTags?: string[];
+  leadSegments?: string[];
 };
 
 type UserPayload = {
@@ -98,6 +102,8 @@ export async function hydrateCrmForUser(userId: string, role: "admin" | "vendedo
         : (sys.emitters ?? DEFAULT_EMITTERS)[0].id,
     maxDiscountPercentVendedor:
       typeof sys.maxDiscountPercentVendedor === "number" ? sys.maxDiscountPercentVendedor : 3,
+    leadTags: sys.leadTags?.length ? sys.leadTags : DEFAULT_LEAD_TAGS,
+    leadSegments: sys.leadSegments?.length ? sys.leadSegments : DEFAULT_LEAD_SEGMENTS,
   };
 
   // Se o sistema está vazio e o usuário é admin, grava o seed inicial (a RLS impede vendedor).
@@ -151,6 +157,8 @@ export async function hydrateCrmForUser(userId: string, role: "admin" | "vendedo
     emitters: systemState.emitters,
     defaultEmitterId: systemState.defaultEmitterId,
     maxDiscountPercentVendedor: systemState.maxDiscountPercentVendedor,
+    leadTags: systemState.leadTags,
+    leadSegments: systemState.leadSegments,
     leads,
     tasks,
     proposals,
@@ -201,6 +209,8 @@ async function doSave() {
     emitters: state.emitters,
     defaultEmitterId: state.defaultEmitterId,
     maxDiscountPercentVendedor: state.maxDiscountPercentVendedor,
+    leadTags: state.leadTags,
+    leadSegments: state.leadSegments,
   };
   const systemJson = JSON.stringify(systemPayload);
   if (systemJson !== lastSystemSavedJson && currentRole === "admin") {
