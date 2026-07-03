@@ -163,6 +163,7 @@ export async function hydrateCrmForUser(userId: string, role: "admin" | "vendedo
     maxDiscountPercentVendedor: systemState.maxDiscountPercentVendedor,
     leadTags: systemState.leadTags,
     leadSegments: systemState.leadSegments,
+    freightConfig: systemState.freightConfig,
     leads,
     tasks,
     proposals,
