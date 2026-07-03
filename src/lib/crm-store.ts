@@ -481,6 +481,7 @@ export const useCrm = create<CrmState>()(
               stage: "atendimento",
               tags: ["WhatsApp"],
               source: "WhatsApp",
+              ownerId: get().currentUserId,
               createdAt: nowIso,
               lastContact: msg.receivedAt,
               notes: `Primeira mensagem: "${msg.message}"`,
