@@ -221,26 +221,60 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AppShell>
-        <Outlet />
-      </AppShell>
+      <AuthProvider>
+        <AuthGate>
+          <AppShell>
+            <Outlet />
+          </AppShell>
+        </AuthGate>
+      </AuthProvider>
       <Toaster position="top-right" />
     </QueryClientProvider>
   );
 }
 
-function UserSwitcher() {
-  const user = useCurrentUser();
-  const setCurrentUser = useCrm((s) => s.setCurrentUser);
-  const initials = user.name.split(" ").map((p) => p[0]).slice(0, 2).join("");
+function AuthGate({ children }: { children: ReactNode }) {
+  const { user, loading } = useAuth();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isAuthRoute = pathname === "/auth";
+
+  if (isAuthRoute) return <Outlet />;
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="text-sm text-muted-foreground">Carregando…</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    // Render the auth route inline (avoids SSR redirect loop with localStorage session)
+    if (typeof window !== "undefined") {
+      window.location.replace("/auth");
+    }
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="text-sm text-muted-foreground">Redirecionando…</div>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+}
+
+function UserBadge() {
+  const { user, signOut } = useAuth();
+  if (!user) return null;
+  const initials = user.name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase();
   return (
     <div className="border-t border-sidebar-border p-3 space-y-2">
       <div className="flex items-center gap-2 px-1">
         <div
-          className="flex h-8 w-8 items-center justify-center rounded-full text-white text-xs font-semibold"
+          className="flex h-8 w-8 items-center justify-center rounded-full text-white text-xs font-semibold shrink-0"
           style={{ background: user.avatarColor }}
         >
-          {initials}
+          {initials || "?"}
         </div>
         <div className="min-w-0 flex-1">
           <div className="text-xs font-medium truncate text-sidebar-foreground">{user.name}</div>
@@ -249,18 +283,16 @@ function UserSwitcher() {
           </div>
         </div>
       </div>
-      <Select value={user.id} onValueChange={setCurrentUser}>
-        <SelectTrigger className="h-8 bg-sidebar-accent/40 border-sidebar-border text-xs text-sidebar-foreground">
-          <SelectValue placeholder="Trocar usuário" />
-        </SelectTrigger>
-        <SelectContent>
-          {USERS.map((u) => (
-            <SelectItem key={u.id} value={u.id}>
-              {u.name} {u.role === "admin" ? "· admin" : ""}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <Button
+        variant="outline"
+        size="sm"
+        className="w-full h-8 bg-sidebar-accent/40 border-sidebar-border text-xs text-sidebar-foreground hover:bg-sidebar-accent"
+        onClick={() => { void signOut(); }}
+      >
+        <LogOut className="h-3 w-3 mr-2" />
+        Sair
+      </Button>
     </div>
   );
 }
+
