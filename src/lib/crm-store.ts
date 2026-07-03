@@ -666,6 +666,13 @@ type CrmState = {
   removePaymentTerm: (id: string) => void;
   togglePaymentTermActive: (id: string) => void;
   resetPaymentTerms: () => void;
+  // Lead tags & segments (ADM-managed catalogue)
+  leadTags: string[];
+  leadSegments: string[];
+  addLeadTag: (t: string) => void;
+  removeLeadTag: (t: string) => void;
+  addLeadSegment: (s: string) => void;
+  removeLeadSegment: (s: string) => void;
 
 };
 
