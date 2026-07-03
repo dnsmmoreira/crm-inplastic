@@ -651,7 +651,7 @@ export const useCrm = create<CrmState>()(
 
       calendar: seedCalendar,
       agent: defaultAgent,
-      currentUserId: "u-admin",
+      currentUserId: "",
       setCurrentUser: (id) => set({ currentUserId: id }),
       addLead: (l) => {
         const id = uid();
