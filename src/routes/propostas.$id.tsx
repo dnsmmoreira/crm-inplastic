@@ -146,6 +146,28 @@ function PropostaDetalhe() {
   const totals = useMemo(() => (proposal ? proposalTotals(proposal) : null), [proposal]);
   const owner = proposal ? USERS.find((u) => u.id === proposal.ownerId) : null;
   const selectedProduct = useMemo(() => products.find((p) => p.id === addProduct), [products, addProduct]);
+  const isAdmin = useIsAdmin();
+  const currentUser = useCurrentUser();
+  const approver = proposal?.approvedByUserId ? USERS.find((u) => u.id === proposal.approvedByUserId) : null;
+
+  // Auto-recalcula peso e cubagem a partir do catálogo sempre que os itens mudam.
+  const autoTransport = useMemo(
+    () => (proposal ? computeAutoTransport(proposal.items, products) : null),
+    [proposal, products],
+  );
+  useEffect(() => {
+    if (!proposal || !autoTransport) return;
+    const t = proposal.transport;
+    if (t.grossWeightKg === autoTransport.grossWeightKg && t.cubageM3 === autoTransport.cubageM3) return;
+    _updateProposal(proposal.id, {
+      transport: {
+        ...t,
+        grossWeightKg: autoTransport.grossWeightKg,
+        cubageM3: autoTransport.cubageM3,
+      },
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoTransport?.grossWeightKg, autoTransport?.cubageM3, proposal?.id]);
 
   // Warn on tab close/refresh while there are unsaved edits
   useEffect(() => {
