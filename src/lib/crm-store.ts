@@ -720,8 +720,103 @@ export const useCrm = create<CrmState>()(
           ),
         }));
       },
+
+      // ============ Produtos ============
+      products: seedProducts,
+      addProduct: (p) => {
+        const id = uid();
+        set((s) => ({ products: [{ ...p, id }, ...s.products] }));
+        return id;
+      },
+      updateProduct: (id, patch) =>
+        set((s) => ({ products: s.products.map((p) => (p.id === id ? { ...p, ...patch } : p)) })),
+      removeProduct: (id) =>
+        set((s) => ({ products: s.products.filter((p) => p.id !== id) })),
+
+      // ============ Propostas ============
+      proposals: [],
+      emitter: defaultEmitter,
+      updateEmitter: (patch) => set((s) => ({ emitter: { ...s.emitter, ...patch } })),
+      createProposal: (leadId, ownerId) => {
+        const id = uid();
+        const year = new Date().getFullYear();
+        const existing = get().proposals.filter((p) => p.number.startsWith(`${year}-`)).length;
+        const number = `${year}-${String(existing + 1).padStart(4, "0")}`;
+        const proposal: Proposal = {
+          id,
+          number,
+          leadId,
+          ownerId: ownerId ?? get().currentUserId,
+          createdAt: new Date().toISOString(),
+          status: "rascunho",
+          validityDays: 15,
+          items: [],
+          installments: [
+            { id: uid(), days: 28, amount: 0, notes: "Boleto — 28 dias" },
+          ],
+          transport: {
+            carrier: "A definir",
+            freightPayer: "CIF",
+            grossWeightKg: 0,
+            volumes: 0,
+            freightValue: 0,
+          },
+          observations:
+            "Proposta comercial válida por 15 dias. Preços em reais, impostos inclusos conforme legislação vigente. Prazo de entrega a combinar após aprovação.",
+        };
+        set((s) => ({ proposals: [proposal, ...s.proposals] }));
+        return id;
+      },
+      updateProposal: (id, patch) =>
+        set((s) => ({ proposals: s.proposals.map((p) => (p.id === id ? { ...p, ...patch } : p)) })),
+      removeProposal: (id) =>
+        set((s) => ({ proposals: s.proposals.filter((p) => p.id !== id) })),
+      addProposalItem: (proposalId, productId, quantity) => {
+        const product = get().products.find((p) => p.id === productId);
+        if (!product) return;
+        set((s) => ({
+          proposals: s.proposals.map((p) =>
+            p.id === proposalId
+              ? {
+                  ...p,
+                  items: [
+                    ...p.items,
+                    {
+                      id: uid(),
+                      productId: product.id,
+                      description: product.name,
+                      sku: product.sku,
+                      unit: product.unit,
+                      quantity,
+                      unitPrice: product.defaultPrice,
+                    },
+                  ],
+                }
+              : p,
+          ),
+        }));
+      },
+      updateProposalItem: (proposalId, itemId, patch) =>
+        set((s) => ({
+          proposals: s.proposals.map((p) =>
+            p.id === proposalId
+              ? { ...p, items: p.items.map((it) => (it.id === itemId ? { ...it, ...patch } : it)) }
+              : p,
+          ),
+        })),
+      removeProposalItem: (proposalId, itemId) =>
+        set((s) => ({
+          proposals: s.proposals.map((p) =>
+            p.id === proposalId ? { ...p, items: p.items.filter((it) => it.id !== itemId) } : p,
+          ),
+        })),
+      setProposalStatus: (id, status) =>
+        set((s) => ({
+          proposals: s.proposals.map((p) => (p.id === id ? { ...p, status } : p)),
+        })),
     }),
-    { name: "pdp-crm-v3" },
+    { name: "pdp-crm-v4" },
+
   ),
 );
 
