@@ -971,6 +971,26 @@ export const useCrm = create<CrmState>()(
           paymentTerms: s.paymentTerms.map((t) => (t.id === id ? { ...t, active: !t.active } : t)),
         })),
       resetPaymentTerms: () => set({ paymentTerms: DEFAULT_PAYMENT_TERMS }),
+
+      // ============ Lead tags & segments ============
+      leadTags: DEFAULT_LEAD_TAGS,
+      leadSegments: DEFAULT_LEAD_SEGMENTS,
+      addLeadTag: (t) =>
+        set((s) => {
+          const v = t.trim();
+          if (!v || s.leadTags.some((x) => x.toLowerCase() === v.toLowerCase())) return s;
+          return { leadTags: [...s.leadTags, v] };
+        }),
+      removeLeadTag: (t) =>
+        set((s) => ({ leadTags: s.leadTags.filter((x) => x !== t) })),
+      addLeadSegment: (seg) =>
+        set((s) => {
+          const v = seg.trim();
+          if (!v || s.leadSegments.some((x) => x.toLowerCase() === v.toLowerCase())) return s;
+          return { leadSegments: [...s.leadSegments, v] };
+        }),
+      removeLeadSegment: (seg) =>
+        set((s) => ({ leadSegments: s.leadSegments.filter((x) => x !== seg) })),
     }),
 );
 
