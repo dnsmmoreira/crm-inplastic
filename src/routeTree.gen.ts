@@ -10,23 +10,18 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TarefasRouteImport } from './routes/tarefas'
-import { Route as PropostasRouteImport } from './routes/propostas'
 import { Route as ProdutosRouteImport } from './routes/produtos'
 import { Route as PipelineRouteImport } from './routes/pipeline'
 import { Route as ContatosRouteImport } from './routes/contatos'
 import { Route as CanaisRouteImport } from './routes/canais'
 import { Route as AgenteIaRouteImport } from './routes/agente-ia'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PropostasIndexRouteImport } from './routes/propostas.index'
 import { Route as PropostasIdRouteImport } from './routes/propostas.$id'
 
 const TarefasRoute = TarefasRouteImport.update({
   id: '/tarefas',
   path: '/tarefas',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PropostasRoute = PropostasRouteImport.update({
-  id: '/propostas',
-  path: '/propostas',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProdutosRoute = ProdutosRouteImport.update({
@@ -59,10 +54,15 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PropostasIndexRoute = PropostasIndexRouteImport.update({
+  id: '/propostas/',
+  path: '/propostas/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PropostasIdRoute = PropostasIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => PropostasRoute,
+  id: '/propostas/$id',
+  path: '/propostas/$id',
+  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -72,9 +72,9 @@ export interface FileRoutesByFullPath {
   '/contatos': typeof ContatosRoute
   '/pipeline': typeof PipelineRoute
   '/produtos': typeof ProdutosRoute
-  '/propostas': typeof PropostasRouteWithChildren
   '/tarefas': typeof TarefasRoute
   '/propostas/$id': typeof PropostasIdRoute
+  '/propostas/': typeof PropostasIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -83,9 +83,9 @@ export interface FileRoutesByTo {
   '/contatos': typeof ContatosRoute
   '/pipeline': typeof PipelineRoute
   '/produtos': typeof ProdutosRoute
-  '/propostas': typeof PropostasRouteWithChildren
   '/tarefas': typeof TarefasRoute
   '/propostas/$id': typeof PropostasIdRoute
+  '/propostas': typeof PropostasIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -95,9 +95,9 @@ export interface FileRoutesById {
   '/contatos': typeof ContatosRoute
   '/pipeline': typeof PipelineRoute
   '/produtos': typeof ProdutosRoute
-  '/propostas': typeof PropostasRouteWithChildren
   '/tarefas': typeof TarefasRoute
   '/propostas/$id': typeof PropostasIdRoute
+  '/propostas/': typeof PropostasIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -108,9 +108,9 @@ export interface FileRouteTypes {
     | '/contatos'
     | '/pipeline'
     | '/produtos'
-    | '/propostas'
     | '/tarefas'
     | '/propostas/$id'
+    | '/propostas/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -119,9 +119,9 @@ export interface FileRouteTypes {
     | '/contatos'
     | '/pipeline'
     | '/produtos'
-    | '/propostas'
     | '/tarefas'
     | '/propostas/$id'
+    | '/propostas'
   id:
     | '__root__'
     | '/'
@@ -130,9 +130,9 @@ export interface FileRouteTypes {
     | '/contatos'
     | '/pipeline'
     | '/produtos'
-    | '/propostas'
     | '/tarefas'
     | '/propostas/$id'
+    | '/propostas/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -142,8 +142,9 @@ export interface RootRouteChildren {
   ContatosRoute: typeof ContatosRoute
   PipelineRoute: typeof PipelineRoute
   ProdutosRoute: typeof ProdutosRoute
-  PropostasRoute: typeof PropostasRouteWithChildren
   TarefasRoute: typeof TarefasRoute
+  PropostasIdRoute: typeof PropostasIdRoute
+  PropostasIndexRoute: typeof PropostasIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -153,13 +154,6 @@ declare module '@tanstack/react-router' {
       path: '/tarefas'
       fullPath: '/tarefas'
       preLoaderRoute: typeof TarefasRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/propostas': {
-      id: '/propostas'
-      path: '/propostas'
-      fullPath: '/propostas'
-      preLoaderRoute: typeof PropostasRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/produtos': {
@@ -204,27 +198,22 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/propostas/': {
+      id: '/propostas/'
+      path: '/propostas'
+      fullPath: '/propostas/'
+      preLoaderRoute: typeof PropostasIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/propostas/$id': {
       id: '/propostas/$id'
-      path: '/$id'
+      path: '/propostas/$id'
       fullPath: '/propostas/$id'
       preLoaderRoute: typeof PropostasIdRouteImport
-      parentRoute: typeof PropostasRoute
+      parentRoute: typeof rootRouteImport
     }
   }
 }
-
-interface PropostasRouteChildren {
-  PropostasIdRoute: typeof PropostasIdRoute
-}
-
-const PropostasRouteChildren: PropostasRouteChildren = {
-  PropostasIdRoute: PropostasIdRoute,
-}
-
-const PropostasRouteWithChildren = PropostasRoute._addFileChildren(
-  PropostasRouteChildren,
-)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -233,8 +222,9 @@ const rootRouteChildren: RootRouteChildren = {
   ContatosRoute: ContatosRoute,
   PipelineRoute: PipelineRoute,
   ProdutosRoute: ProdutosRoute,
-  PropostasRoute: PropostasRouteWithChildren,
   TarefasRoute: TarefasRoute,
+  PropostasIdRoute: PropostasIdRoute,
+  PropostasIndexRoute: PropostasIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
