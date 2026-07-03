@@ -644,11 +644,11 @@ type CrmState = {
 const uid = () => Math.random().toString(36).slice(2, 10);
 
 export const useCrm = create<CrmState>()(
-  persist(
-    (set, get) => ({
-      leads: seedLeads,
-      tasks: seedTasks,
+  (set, get) => ({
+      leads: [],
+      tasks: [],
       whatsapp: seedWhatsapp,
+
       calendar: seedCalendar,
       agent: defaultAgent,
       currentUserId: "u-admin",
