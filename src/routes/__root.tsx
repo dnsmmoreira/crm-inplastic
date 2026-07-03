@@ -122,14 +122,15 @@ function RootShell({ children }: { children: ReactNode }) {
 }
 
 const NAV = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/pipeline", label: "Funil de Vendas", icon: KanbanSquare },
-  { to: "/canais", label: "Canais de Entrada", icon: MessageSquare },
-  { to: "/agente-ia", label: "Agente IA", icon: Bot },
-  { to: "/contatos", label: "Contatos", icon: Users },
-  { to: "/tarefas", label: "Tarefas", icon: CheckSquare },
-  { to: "/propostas", label: "Propostas", icon: FileText },
-  { to: "/produtos", label: "Produtos", icon: Package },
+  { to: "/", label: "Dashboard", icon: LayoutDashboard, adminOnly: false },
+  { to: "/pipeline", label: "Funil de Vendas", icon: KanbanSquare, adminOnly: false },
+  { to: "/canais", label: "Canais de Entrada", icon: MessageSquare, adminOnly: false },
+  { to: "/agente-ia", label: "Agente IA", icon: Bot, adminOnly: false },
+  { to: "/contatos", label: "Contatos", icon: Users, adminOnly: false },
+  { to: "/tarefas", label: "Tarefas", icon: CheckSquare, adminOnly: false },
+  { to: "/propostas", label: "Propostas", icon: FileText, adminOnly: false },
+  { to: "/produtos", label: "Produtos", icon: Package, adminOnly: false },
+  { to: "/condicoes-comerciais", label: "Condições Comerciais", icon: Settings2, adminOnly: true },
 ] as const;
 
 function AppShell({ children }: { children: ReactNode }) {
