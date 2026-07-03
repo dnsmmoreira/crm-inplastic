@@ -235,7 +235,12 @@ function PropostaDetalhe() {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl md:text-2xl font-semibold">Proposta {proposal.number}</h1>
-              <Badge variant={s.variant}>{s.label}</Badge>
+              <Badge variant={s.variant} className={s.className}>{s.label}</Badge>
+              {proposal.transport.freightPayer === "CIF" && proposal.status !== "pedido" && (
+                <Badge variant="outline" className="border-amber-500 text-amber-700 bg-amber-500/10 gap-1">
+                  <AlertCircle className="h-3 w-3" /> CIF · requer aprovação do supervisor
+                </Badge>
+              )}
               {dirty && (
                 <Badge variant="outline" className="border-amber-500 text-amber-600 gap-1">
                   <AlertCircle className="h-3 w-3" /> Alterações não salvas
@@ -244,25 +249,72 @@ function PropostaDetalhe() {
             </div>
             <p className="text-xs text-muted-foreground">
               Criada em {format(new Date(proposal.createdAt), "dd/MM/yyyy", { locale: ptBR })} · Vendedor: {owner?.name ?? "—"}
+              {proposal.approvedAt && approver && (
+                <> · Aprovada por <span className="font-medium text-foreground">{approver.name}</span> em {format(new Date(proposal.approvedAt), "dd/MM/yyyy HH:mm", { locale: ptBR })}</>
+              )}
             </p>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Select value={proposal.status} onValueChange={(v) => setStatus(proposal.id, v as ProposalStatus)}>
-            <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="rascunho">Rascunho</SelectItem>
-              <SelectItem value="enviada">Enviada</SelectItem>
-              <SelectItem value="aprovada">Aprovada</SelectItem>
-              <SelectItem value="recusada">Recusada</SelectItem>
-            </SelectContent>
-          </Select>
           <Button variant="outline" className="gap-2" onClick={() => { setStatus(proposal.id, "enviada"); toast.success("Marcada como enviada"); }}>
             <Send className="h-4 w-4" /> Enviar
           </Button>
-          <Button variant="outline" className="gap-2" onClick={() => { setStatus(proposal.id, "aprovada"); toast.success("Proposta aprovada!"); }}>
-            <CheckCircle2 className="h-4 w-4" /> Aprovar
-          </Button>
+
+          {/* Fechar pedido: se CIF envia p/ aprovação, se FOB gera direto */}
+          {proposal.status !== "pedido" && proposal.status !== "aguardando_aprovacao" && (
+            <Button
+              variant="default"
+              className="gap-2"
+              onClick={() => {
+                if (proposal.items.length === 0) { toast.error("Adicione ao menos um item antes de fechar o pedido."); return; }
+                if (proposal.transport.freightPayer === "CIF") {
+                  _updateProposal(proposal.id, {
+                    status: "aguardando_aprovacao",
+                    approvalRequestedAt: new Date().toISOString(),
+                    approvalReason: "Frete CIF requer autorização do supervisor",
+                  });
+                  setDirty(false);
+                  toast.success("Enviado ao supervisor ADM", {
+                    description: "O pedido só será gerado após a liberação. Você será avisado na sua lista de propostas.",
+                  });
+                } else {
+                  _updateProposal(proposal.id, {
+                    status: "pedido",
+                    orderCreatedAt: new Date().toISOString(),
+                  });
+                  setDirty(false);
+                  toast.success("Pedido gerado", { description: "Frete FOB · gerado sem necessidade de aprovação." });
+                }
+              }}
+            >
+              <CheckCircle2 className="h-4 w-4" /> Fechar pedido
+            </Button>
+          )}
+
+          {/* ADM libera pedidos aguardando aprovação */}
+          {proposal.status === "aguardando_aprovacao" && isAdmin && (
+            <Button
+              className="gap-2 bg-emerald-600 hover:bg-emerald-700"
+              onClick={() => {
+                _updateProposal(proposal.id, {
+                  status: "pedido",
+                  approvedByUserId: currentUser.id,
+                  approvedAt: new Date().toISOString(),
+                  orderCreatedAt: new Date().toISOString(),
+                });
+                setDirty(false);
+                toast.success("Pedido liberado", { description: `Vendedor ${owner?.name ?? ""} será notificado na sua lista.` });
+              }}
+            >
+              <CheckCircle2 className="h-4 w-4" /> Aprovar liberação
+            </Button>
+          )}
+          {proposal.status === "aguardando_aprovacao" && !isAdmin && (
+            <Badge variant="outline" className="border-amber-500 text-amber-700 bg-amber-500/10 gap-1 self-center px-3 py-1.5">
+              <AlertCircle className="h-3.5 w-3.5" /> Aguardando liberação do supervisor
+            </Badge>
+          )}
+
           <Button variant="outline" className="gap-2" onClick={() => { setStatus(proposal.id, "recusada"); }}>
             <XCircle className="h-4 w-4" /> Recusar
           </Button>
@@ -279,6 +331,7 @@ function PropostaDetalhe() {
           </Button>
         </div>
       </div>
+
 
       {/* Confirm dialog for in-app navigation while dirty */}
       <AlertDialog
