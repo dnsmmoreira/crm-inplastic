@@ -95,6 +95,8 @@ function CondicoesComerciais() {
   const removeTerm = useCrm((s) => s.removePaymentTerm);
   const toggleActive = useCrm((s) => s.togglePaymentTermActive);
   const resetTerms = useCrm((s) => s.resetPaymentTerms);
+  const maxDiscount = useCrm((s) => s.maxDiscountPercentVendedor);
+  const setMaxDiscount = useCrm((s) => s.setMaxDiscountPercentVendedor);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<PaymentTerm | null>(null);
