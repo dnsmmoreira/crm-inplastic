@@ -486,6 +486,7 @@ export type Proposal = {
   observations: string;
   paymentTermId?: string;   // ADM-managed payment term chosen by seller
   emitterId: string;        // qual CNPJ do grupo emite esta proposta
+  discountPercent: number;  // % de desconto aplicado sobre o subtotal (limite gerido pelo ADM)
 };
 
 
