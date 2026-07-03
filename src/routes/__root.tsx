@@ -21,6 +21,8 @@ import {
   FileText,
   Settings2,
   Building2,
+  LogOut,
+  UserCog,
 } from "lucide-react";
 
 
@@ -28,14 +30,9 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
-import { useCrm, USERS, useCurrentUser, useIsAdmin } from "@/lib/crm-store";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { useIsAdmin } from "@/lib/crm-store";
+import { AuthProvider, useAuth } from "@/hooks/use-auth";
+import { Button } from "@/components/ui/button";
 
 function NotFoundComponent() {
   return (
