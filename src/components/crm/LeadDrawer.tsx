@@ -31,6 +31,10 @@ import {
   Users2,
   Trash2,
   Plus,
+  Sparkles,
+  Bot,
+  CalendarCheck,
+  Zap,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
