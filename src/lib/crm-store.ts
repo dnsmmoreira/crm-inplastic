@@ -703,6 +703,9 @@ type CrmState = {
   removeLeadTag: (t: string) => void;
   addLeadSegment: (s: string) => void;
   removeLeadSegment: (s: string) => void;
+  // Freight config (ADM-managed)
+  freightConfig: FreightConfig;
+  setFreightConfig: (patch: Partial<FreightConfig>) => void;
 
 };
 
