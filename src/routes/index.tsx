@@ -106,10 +106,8 @@ function DashboardPage() {
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
   const overdueTasks = tasks.filter((t) => !t.done && isBefore(new Date(t.dueDate), new Date()) && !isToday(new Date(t.dueDate)));
 
-  const upcomingFollowups = leads
-    .filter((l) => l.nextFollowUp && new Date(l.nextFollowUp) >= new Date(new Date().setHours(0, 0, 0, 0)))
-    .sort((a, b) => (a.nextFollowUp || "").localeCompare(b.nextFollowUp || ""))
-    .slice(0, 6);
+
+
 
   return (
     <div className="p-4 md:p-8 space-y-6">
