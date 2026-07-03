@@ -24,6 +24,8 @@ import {
   formatBRL,
   proposalTotals,
   useMaxDiscountForCurrentUser,
+  useIsAdmin,
+  useCurrentUser,
   USERS,
   type ProposalStatus,
   type PaymentTerm,
