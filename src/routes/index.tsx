@@ -34,7 +34,7 @@ import {
   CircleAlert,
 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { format, isToday, isTomorrow, isBefore, startOfMonth, subMonths } from "date-fns";
+import { format, isToday, isBefore, startOfMonth, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useCrm, STAGES, formatBRL, useVisibleLeads, useVisibleTasks, useBestSellerOfMonth, useCurrentUser, followupTemperature } from "@/lib/crm-store";
 import { NewLeadDialog, LeadDrawer } from "@/components/crm/LeadDrawer";
