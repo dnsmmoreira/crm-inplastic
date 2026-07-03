@@ -806,6 +806,7 @@ function PropostaDetalhe() {
               <th className="border p-1.5">Nº de Itens</th>
               <th className="border p-1.5">Soma das Qtdes</th>
               <th className="border p-1.5">Subtotal dos itens</th>
+              <th className="border p-1.5">Desconto</th>
               <th className="border p-1.5">Frete</th>
               <th className="border p-1.5">Total da proposta</th>
             </tr>
@@ -815,11 +816,17 @@ function PropostaDetalhe() {
               <td className="border p-1.5 text-center">{totals?.count}</td>
               <td className="border p-1.5 text-center">{totals?.qty.toLocaleString("pt-BR")}</td>
               <td className="border p-1.5 text-right">{formatBRL(totals?.subtotal ?? 0)}</td>
+              <td className="border p-1.5 text-right">
+                {(totals?.discountPercent ?? 0) > 0
+                  ? `− ${formatBRL(totals?.discountAmount ?? 0)} (${totals?.discountPercent}%)`
+                  : "—"}
+              </td>
               <td className="border p-1.5 text-right">{formatBRL(proposal.transport.freightValue)}</td>
               <td className="border p-1.5 text-right font-bold text-primary">{formatBRL(totals?.total ?? 0)}</td>
             </tr>
           </tbody>
         </table>
+
 
         <div className="grid grid-cols-2 gap-6 mb-4">
           <div>
