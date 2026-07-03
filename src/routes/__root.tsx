@@ -150,7 +150,7 @@ function AppShell({ children }: { children: ReactNode }) {
           </div>
         </div>
         <nav className="flex-1 space-y-1 p-3">
-          {NAV.map((item) => {
+          {nav.map((item) => {
             const active = pathname === item.to;
             const Icon = item.icon;
             return (
@@ -188,7 +188,7 @@ function AppShell({ children }: { children: ReactNode }) {
           </div>
         </header>
         <nav className="md:hidden flex overflow-x-auto border-b bg-card">
-          {NAV.map((item) => {
+          {nav.map((item) => {
             const active = pathname === item.to;
             const Icon = item.icon;
             return (
