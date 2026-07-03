@@ -79,6 +79,7 @@ export type Lead = {
   notes: string;
   interactions: Interaction[];
   aiActions?: AiAction[];
+  ownerId: string;
 };
 
 export type Task = {
