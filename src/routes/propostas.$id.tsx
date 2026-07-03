@@ -1,9 +1,24 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ArrowLeft, Plus, Trash2, Printer, Send, CheckCircle2, XCircle, Check, ChevronsUpDown, Search } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Printer, Send, CheckCircle2, XCircle, Check, ChevronsUpDown, Search, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import { z } from "zod";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+
+const MAX_QTY = 100_000;
+const MAX_PRICE = 10_000_000;
+const MAX_DESC = 200;
+
+const itemSchema = z.object({
+  description: z.string().trim().min(1, "Descrição não pode ficar vazia").max(MAX_DESC, `Descrição deve ter até ${MAX_DESC} caracteres`),
+  quantity: z.number({ invalid_type_error: "Quantidade inválida" }).finite("Quantidade inválida").positive("Quantidade deve ser maior que zero").max(MAX_QTY, `Quantidade máxima: ${MAX_QTY.toLocaleString("pt-BR")}`),
+  unitPrice: z.number({ invalid_type_error: "Preço inválido" }).finite("Preço inválido").nonnegative("Preço não pode ser negativo").max(MAX_PRICE, "Preço acima do limite permitido"),
+});
+
+const addItemSchema = itemSchema.pick({ quantity: true, unitPrice: true }).extend({
+  productId: z.string().min(1, "Selecione um produto do catálogo"),
+});
 import {
   useCrm,
   formatBRL,
