@@ -27,8 +27,8 @@ export const Route = createFileRoute("/tarefas")({
 });
 
 function TasksPage() {
-  const tasks = useCrm((s) => s.tasks);
-  const leads = useCrm((s) => s.leads);
+  const tasks = useVisibleTasks();
+  const leads = useVisibleLeads();
   const addTask = useCrm((s) => s.addTask);
   const toggleTask = useCrm((s) => s.toggleTask);
   const removeTask = useCrm((s) => s.removeTask);

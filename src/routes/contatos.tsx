@@ -33,7 +33,7 @@ export const Route = createFileRoute("/contatos")({
 });
 
 function ContactsPage() {
-  const leads = useCrm((s) => s.leads);
+  const leads = useVisibleLeads();
   const [search, setSearch] = useState("");
   const [stage, setStage] = useState<StageId | "all">("all");
   const [tag, setTag] = useState<string>("all");

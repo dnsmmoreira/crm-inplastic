@@ -43,7 +43,7 @@ function AgenteIaPage() {
   const agent = useCrm((s) => s.agent);
   const update = useCrm((s) => s.updateAgent);
   const calendar = useCrm((s) => s.calendar);
-  const leads = useCrm((s) => s.leads);
+  const leads = useVisibleLeads();
   const bookSlot = useCrm((s) => s.bookSlotWithAi);
   const runFollowUp = useCrm((s) => s.runAiFollowUp);
   const [openLead, setOpenLead] = useState<string | null>(null);

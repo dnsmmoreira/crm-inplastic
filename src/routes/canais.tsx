@@ -32,7 +32,7 @@ function CanaisPage() {
   const receive = useCrm((s) => s.receiveWhatsapp);
   const convert = useCrm((s) => s.convertWhatsappToLead);
   const ignore = useCrm((s) => s.ignoreWhatsapp);
-  const leads = useCrm((s) => s.leads);
+  const leads = useVisibleLeads();
   const [autoCapture, setAutoCapture] = useState(true);
   const [simulate, setSimulate] = useState(false);
   const [openLead, setOpenLead] = useState<string | null>(null);

@@ -45,8 +45,8 @@ export const Route = createFileRoute("/")({
 });
 
 function DashboardPage() {
-  const leads = useCrm((s) => s.leads);
-  const tasks = useCrm((s) => s.tasks);
+  const leads = useVisibleLeads();
+  const tasks = useVisibleTasks();
   const [openLead, setOpenLead] = useState<string | null>(null);
 
   const kpis = useMemo(() => {

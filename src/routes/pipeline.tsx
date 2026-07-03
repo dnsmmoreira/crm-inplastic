@@ -30,7 +30,7 @@ export const Route = createFileRoute("/pipeline")({
 });
 
 function PipelinePage() {
-  const leads = useCrm((s) => s.leads);
+  const leads = useVisibleLeads();
   const moveLead = useCrm((s) => s.moveLead);
   const [openLead, setOpenLead] = useState<string | null>(null);
   const [search, setSearch] = useState("");
