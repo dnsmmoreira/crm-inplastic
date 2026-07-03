@@ -93,7 +93,16 @@ function PropostaDetalhe() {
   const proposal = useCrm((s) => s.proposals.find((p) => p.id === id));
   const lead = useCrm((s) => (proposal ? s.leads.find((l) => l.id === proposal.leadId) : undefined));
   const products = useCrm((s) => s.products);
-  const emitter = useCrm((s) => s.emitter);
+  const emitters = useCrm((s) => s.emitters);
+  const defaultEmitterId = useCrm((s) => s.defaultEmitterId);
+  const emitter = useMemo(
+    () =>
+      emitters.find((e) => e.id === proposal?.emitterId) ??
+      emitters.find((e) => e.id === defaultEmitterId) ??
+      emitters[0],
+    [emitters, proposal?.emitterId, defaultEmitterId],
+  );
+
   const paymentTerms = useCrm((s) => s.paymentTerms);
   const activePaymentTerms = useMemo(() => paymentTerms.filter((t) => t.active), [paymentTerms]);
   const _addItem = useCrm((s) => s.addProposalItem);
