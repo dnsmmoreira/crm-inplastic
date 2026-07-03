@@ -51,7 +51,7 @@ function PipelinePage() {
 
   const byStage = useMemo(() => {
     const map: Record<StageId, Lead[]> = {
-      novo: [], qualificacao: [], proposta: [], negociacao: [], ganho: [], perdido: [],
+      atendimento: [], novo: [], qualificacao: [], proposta: [], negociacao: [], ganho: [], perdido: [],
     };
     filtered.forEach((l) => map[l.stage].push(l));
     return map;
