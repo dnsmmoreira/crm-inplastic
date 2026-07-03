@@ -862,6 +862,7 @@ export const useCrm = create<CrmState>()(
           },
           observations:
             "Proposta comercial válida por 15 dias. Preços em reais, impostos inclusos conforme legislação vigente. Prazo de entrega a combinar após aprovação.",
+          discountPercent: 0,
         };
         set((s) => ({ proposals: [proposal, ...s.proposals] }));
         return id;
