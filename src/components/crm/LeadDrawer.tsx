@@ -44,6 +44,7 @@ import {
   PRODUCTS,
   formatBRL,
   leadTemperature,
+  followupTemperature,
   type Lead,
   type Interaction,
 } from "@/lib/crm-store";
@@ -99,10 +100,16 @@ export function LeadDrawer({
               <div className="mt-3 flex flex-wrap items-center gap-1.5">
                 {(() => {
                   const t = leadTemperature(lead);
+                  const f = followupTemperature(lead);
                   return (
-                    <Badge variant="outline" className={`text-xs ${t.className}`} title={t.hint}>
-                      <span className="mr-1">{t.emoji}</span>{t.label} · {t.hint}
-                    </Badge>
+                    <>
+                      <Badge variant="outline" className={`text-xs ${t.className}`} title={t.hint}>
+                        <span className="mr-1">{t.emoji}</span>{t.label} · {t.hint}
+                      </Badge>
+                      <Badge variant="outline" className={`text-xs ${f.className}`} title={f.hint}>
+                        <span className="mr-1">{f.emoji}</span>Agenda: {f.label} · {f.hint}
+                      </Badge>
+                    </>
                   );
                 })()}
                 {lead.tags.map((t) => (
