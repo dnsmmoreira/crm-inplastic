@@ -47,8 +47,10 @@ export const Route = createFileRoute("/propostas/")({
 const STATUS_META: Record<ProposalStatus, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
   rascunho: { label: "Rascunho", variant: "outline" },
   enviada: { label: "Enviada", variant: "secondary" },
+  aguardando_aprovacao: { label: "Aguardando aprovação", variant: "outline" },
   aprovada: { label: "Aprovada", variant: "default" },
   recusada: { label: "Recusada", variant: "destructive" },
+  pedido: { label: "Pedido", variant: "default" },
 };
 
 function PropostasPage() {

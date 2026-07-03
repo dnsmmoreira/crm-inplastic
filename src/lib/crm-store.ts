@@ -491,11 +491,19 @@ export type TransportInfo = {
   carrier: string;
   freightPayer: "CIF" | "FOB";
   grossWeightKg: number;
+  cubageM3: number;               // volume cúbico total (m³)
   volumes: number;
-  freightValue: number;
+  freightValue: number;           // valor definitivo (usado para total)
+  approxFreightValue: number;     // valor aproximado informado pelo vendedor
 };
 
-export type ProposalStatus = "rascunho" | "enviada" | "aprovada" | "recusada";
+export type ProposalStatus =
+  | "rascunho"
+  | "enviada"
+  | "aguardando_aprovacao"   // CIF fechado pelo vendedor, aguardando ADM
+  | "aprovada"
+  | "recusada"
+  | "pedido";                // pedido efetivamente gerado (após aprovação ou FOB direto)
 
 export type Proposal = {
   id: string;
@@ -512,6 +520,11 @@ export type Proposal = {
   paymentTermId?: string;   // ADM-managed payment term chosen by seller
   emitterId: string;        // qual CNPJ do grupo emite esta proposta
   discountPercent: number;  // % de desconto aplicado sobre o subtotal (limite gerido pelo ADM)
+  approvalRequestedAt?: string;
+  approvalReason?: string;
+  approvedByUserId?: string;
+  approvedAt?: string;
+  orderCreatedAt?: string;
 };
 
 
@@ -892,10 +905,12 @@ export const useCrm = create<CrmState>()(
           ],
           transport: {
             carrier: "A definir",
-            freightPayer: "CIF",
+            freightPayer: "FOB",
             grossWeightKg: 0,
+            cubageM3: 0,
             volumes: 0,
             freightValue: 0,
+            approxFreightValue: 0,
           },
           observations:
             "Proposta comercial válida por 15 dias. Preços em reais, impostos inclusos conforme legislação vigente. Prazo de entrega a combinar após aprovação.",

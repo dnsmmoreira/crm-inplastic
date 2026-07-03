@@ -24,6 +24,8 @@ import {
   formatBRL,
   proposalTotals,
   useMaxDiscountForCurrentUser,
+  useIsAdmin,
+  useCurrentUser,
   USERS,
   type ProposalStatus,
   type PaymentTerm,
@@ -81,12 +83,33 @@ export const Route = createFileRoute("/propostas/$id")({
   component: PropostaDetalhe,
 });
 
-const STATUS_META: Record<ProposalStatus, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
+const STATUS_META: Record<ProposalStatus, { label: string; variant: "default" | "secondary" | "outline" | "destructive"; className?: string }> = {
   rascunho: { label: "Rascunho", variant: "outline" },
   enviada: { label: "Enviada", variant: "secondary" },
+  aguardando_aprovacao: { label: "Aguardando aprovação ADM", variant: "outline", className: "border-amber-500 text-amber-700 bg-amber-500/10" },
   aprovada: { label: "Aprovada", variant: "default" },
   recusada: { label: "Recusada", variant: "destructive" },
+  pedido: { label: "Pedido gerado", variant: "default", className: "bg-emerald-600 hover:bg-emerald-600" },
 };
+
+/** Peso e cubagem calculados a partir dos itens da proposta e do catálogo de produtos. */
+function computeAutoTransport(
+  items: { productId: string; quantity: number }[],
+  products: { id: string; weightKg: number; heightCm: number; widthCm: number; lengthCm: number }[],
+) {
+  let weight = 0;
+  let cubageCm3 = 0;
+  for (const it of items) {
+    const p = products.find((x) => x.id === it.productId);
+    if (!p) continue;
+    weight += (p.weightKg || 0) * (it.quantity || 0);
+    cubageCm3 += (p.heightCm || 0) * (p.widthCm || 0) * (p.lengthCm || 0) * (it.quantity || 0);
+  }
+  return {
+    grossWeightKg: +weight.toFixed(2),
+    cubageM3: +(cubageCm3 / 1_000_000).toFixed(3),
+  };
+}
 
 function PropostaDetalhe() {
   const { id } = Route.useParams();
@@ -123,6 +146,28 @@ function PropostaDetalhe() {
   const totals = useMemo(() => (proposal ? proposalTotals(proposal) : null), [proposal]);
   const owner = proposal ? USERS.find((u) => u.id === proposal.ownerId) : null;
   const selectedProduct = useMemo(() => products.find((p) => p.id === addProduct), [products, addProduct]);
+  const isAdmin = useIsAdmin();
+  const currentUser = useCurrentUser();
+  const approver = proposal?.approvedByUserId ? USERS.find((u) => u.id === proposal.approvedByUserId) : null;
+
+  // Auto-recalcula peso e cubagem a partir do catálogo sempre que os itens mudam.
+  const autoTransport = useMemo(
+    () => (proposal ? computeAutoTransport(proposal.items, products) : null),
+    [proposal, products],
+  );
+  useEffect(() => {
+    if (!proposal || !autoTransport) return;
+    const t = proposal.transport;
+    if (t.grossWeightKg === autoTransport.grossWeightKg && t.cubageM3 === autoTransport.cubageM3) return;
+    _updateProposal(proposal.id, {
+      transport: {
+        ...t,
+        grossWeightKg: autoTransport.grossWeightKg,
+        cubageM3: autoTransport.cubageM3,
+      },
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoTransport?.grossWeightKg, autoTransport?.cubageM3, proposal?.id]);
 
   // Warn on tab close/refresh while there are unsaved edits
   useEffect(() => {
@@ -190,7 +235,12 @@ function PropostaDetalhe() {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl md:text-2xl font-semibold">Proposta {proposal.number}</h1>
-              <Badge variant={s.variant}>{s.label}</Badge>
+              <Badge variant={s.variant} className={s.className}>{s.label}</Badge>
+              {proposal.transport.freightPayer === "CIF" && proposal.status !== "pedido" && (
+                <Badge variant="outline" className="border-amber-500 text-amber-700 bg-amber-500/10 gap-1">
+                  <AlertCircle className="h-3 w-3" /> CIF · requer aprovação do supervisor
+                </Badge>
+              )}
               {dirty && (
                 <Badge variant="outline" className="border-amber-500 text-amber-600 gap-1">
                   <AlertCircle className="h-3 w-3" /> Alterações não salvas
@@ -199,25 +249,72 @@ function PropostaDetalhe() {
             </div>
             <p className="text-xs text-muted-foreground">
               Criada em {format(new Date(proposal.createdAt), "dd/MM/yyyy", { locale: ptBR })} · Vendedor: {owner?.name ?? "—"}
+              {proposal.approvedAt && approver && (
+                <> · Aprovada por <span className="font-medium text-foreground">{approver.name}</span> em {format(new Date(proposal.approvedAt), "dd/MM/yyyy HH:mm", { locale: ptBR })}</>
+              )}
             </p>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Select value={proposal.status} onValueChange={(v) => setStatus(proposal.id, v as ProposalStatus)}>
-            <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="rascunho">Rascunho</SelectItem>
-              <SelectItem value="enviada">Enviada</SelectItem>
-              <SelectItem value="aprovada">Aprovada</SelectItem>
-              <SelectItem value="recusada">Recusada</SelectItem>
-            </SelectContent>
-          </Select>
           <Button variant="outline" className="gap-2" onClick={() => { setStatus(proposal.id, "enviada"); toast.success("Marcada como enviada"); }}>
             <Send className="h-4 w-4" /> Enviar
           </Button>
-          <Button variant="outline" className="gap-2" onClick={() => { setStatus(proposal.id, "aprovada"); toast.success("Proposta aprovada!"); }}>
-            <CheckCircle2 className="h-4 w-4" /> Aprovar
-          </Button>
+
+          {/* Fechar pedido: se CIF envia p/ aprovação, se FOB gera direto */}
+          {proposal.status !== "pedido" && proposal.status !== "aguardando_aprovacao" && (
+            <Button
+              variant="default"
+              className="gap-2"
+              onClick={() => {
+                if (proposal.items.length === 0) { toast.error("Adicione ao menos um item antes de fechar o pedido."); return; }
+                if (proposal.transport.freightPayer === "CIF") {
+                  _updateProposal(proposal.id, {
+                    status: "aguardando_aprovacao",
+                    approvalRequestedAt: new Date().toISOString(),
+                    approvalReason: "Frete CIF requer autorização do supervisor",
+                  });
+                  setDirty(false);
+                  toast.success("Enviado ao supervisor ADM", {
+                    description: "O pedido só será gerado após a liberação. Você será avisado na sua lista de propostas.",
+                  });
+                } else {
+                  _updateProposal(proposal.id, {
+                    status: "pedido",
+                    orderCreatedAt: new Date().toISOString(),
+                  });
+                  setDirty(false);
+                  toast.success("Pedido gerado", { description: "Frete FOB · gerado sem necessidade de aprovação." });
+                }
+              }}
+            >
+              <CheckCircle2 className="h-4 w-4" /> Fechar pedido
+            </Button>
+          )}
+
+          {/* ADM libera pedidos aguardando aprovação */}
+          {proposal.status === "aguardando_aprovacao" && isAdmin && (
+            <Button
+              className="gap-2 bg-emerald-600 hover:bg-emerald-700"
+              onClick={() => {
+                _updateProposal(proposal.id, {
+                  status: "pedido",
+                  approvedByUserId: currentUser.id,
+                  approvedAt: new Date().toISOString(),
+                  orderCreatedAt: new Date().toISOString(),
+                });
+                setDirty(false);
+                toast.success("Pedido liberado", { description: `Vendedor ${owner?.name ?? ""} será notificado na sua lista.` });
+              }}
+            >
+              <CheckCircle2 className="h-4 w-4" /> Aprovar liberação
+            </Button>
+          )}
+          {proposal.status === "aguardando_aprovacao" && !isAdmin && (
+            <Badge variant="outline" className="border-amber-500 text-amber-700 bg-amber-500/10 gap-1 self-center px-3 py-1.5">
+              <AlertCircle className="h-3.5 w-3.5" /> Aguardando liberação do supervisor
+            </Badge>
+          )}
+
           <Button variant="outline" className="gap-2" onClick={() => { setStatus(proposal.id, "recusada"); }}>
             <XCircle className="h-4 w-4" /> Recusar
           </Button>
@@ -234,6 +331,7 @@ function PropostaDetalhe() {
           </Button>
         </div>
       </div>
+
 
       {/* Confirm dialog for in-app navigation while dirty */}
       <AlertDialog
@@ -549,7 +647,7 @@ function PropostaDetalhe() {
                 />
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <div>
+                <div className="col-span-2">
                   <Label>Frete por conta</Label>
                   <Select
                     value={proposal.transport.freightPayer}
@@ -557,25 +655,41 @@ function PropostaDetalhe() {
                   >
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="CIF">CIF (emitente)</SelectItem>
-                      <SelectItem value="FOB">FOB (cliente)</SelectItem>
+                      <SelectItem value="FOB">FOB (cliente) · padrão</SelectItem>
+                      <SelectItem value="CIF">CIF (emitente) · requer aprovação</SelectItem>
                     </SelectContent>
                   </Select>
+                  {proposal.transport.freightPayer === "CIF" && (
+                    <p className="mt-1 text-[11px] text-amber-700 flex items-start gap-1">
+                      <AlertCircle className="h-3 w-3 mt-0.5 shrink-0" />
+                      Frete CIF exige autorização do supervisor. O pedido só será gerado após liberação do ADM.
+                    </p>
+                  )}
                 </div>
                 <div>
-                  <Label>Valor frete (R$)</Label>
+                  <Label className="flex items-center gap-1">
+                    Peso bruto (kg)
+                    <span className="text-[10px] font-normal text-muted-foreground">auto</span>
+                  </Label>
                   <Input
-                    type="number" step="0.01"
-                    value={proposal.transport.freightValue}
-                    onChange={(e) => updateProposal(proposal.id, { transport: { ...proposal.transport, freightValue: Number(e.target.value) } })}
+                    type="number"
+                    value={proposal.transport.grossWeightKg}
+                    readOnly
+                    className="bg-muted/50"
+                    title="Calculado a partir do peso unitário × quantidade dos itens"
                   />
                 </div>
                 <div>
-                  <Label>Peso bruto (kg)</Label>
+                  <Label className="flex items-center gap-1">
+                    Cubagem (m³)
+                    <span className="text-[10px] font-normal text-muted-foreground">auto</span>
+                  </Label>
                   <Input
-                    type="number" step="0.01"
-                    value={proposal.transport.grossWeightKg}
-                    onChange={(e) => updateProposal(proposal.id, { transport: { ...proposal.transport, grossWeightKg: Number(e.target.value) } })}
+                    type="number"
+                    value={proposal.transport.cubageM3}
+                    readOnly
+                    className="bg-muted/50"
+                    title="Calculada a partir das dimensões do produto × quantidade"
                   />
                 </div>
                 <div>
@@ -586,9 +700,31 @@ function PropostaDetalhe() {
                     onChange={(e) => updateProposal(proposal.id, { transport: { ...proposal.transport, volumes: Number(e.target.value) } })}
                   />
                 </div>
+                <div>
+                  <Label>Valor frete aproximado (R$)</Label>
+                  <Input
+                    type="number" step="0.01"
+                    value={proposal.transport.approxFreightValue}
+                    onChange={(e) => updateProposal(proposal.id, { transport: { ...proposal.transport, approxFreightValue: Number(e.target.value) || 0 } })}
+                    placeholder="Estimativa do vendedor"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <Label>Valor frete definitivo (R$)</Label>
+                  <Input
+                    type="number" step="0.01"
+                    value={proposal.transport.freightValue}
+                    onChange={(e) => updateProposal(proposal.id, { transport: { ...proposal.transport, freightValue: Number(e.target.value) || 0 } })}
+                    placeholder="Confirmado com transportadora — entra no total"
+                  />
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Somado ao total da proposta. Deixe zero enquanto for apenas estimativa.
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>
+
 
           <Card>
             <CardHeader><CardTitle className="text-base">Empresa emissora</CardTitle></CardHeader>
@@ -643,6 +779,11 @@ function PropostaDetalhe() {
                   Somente o administrador pode cadastrar novas condições.
                 </p>
               </div>
+
+              <div className="rounded-md border-l-4 border-amber-500 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-800">
+                <span className="font-semibold">Válido após aprovação financeira.</span>
+              </div>
+
 
               {(() => {
                 const term = paymentTerms.find((t: PaymentTerm) => t.id === proposal.paymentTermId);
@@ -862,6 +1003,9 @@ function PropostaDetalhe() {
                 </>
               );
             })()}
+            <div className="mt-2 text-[11px] font-semibold text-amber-800 border-l-4 border-amber-500 bg-amber-500/10 px-2 py-1">
+              Válido após aprovação financeira.
+            </div>
           </div>
           <div>
             <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Transportador</div>
@@ -870,7 +1014,9 @@ function PropostaDetalhe() {
                 <tr><td className="border p-1.5 bg-muted/40 font-medium w-32">Nome</td><td className="border p-1.5">{proposal.transport.carrier}</td></tr>
                 <tr><td className="border p-1.5 bg-muted/40 font-medium">Frete por conta</td><td className="border p-1.5">{proposal.transport.freightPayer}</td></tr>
                 <tr><td className="border p-1.5 bg-muted/40 font-medium">Peso Bruto (kg)</td><td className="border p-1.5">{proposal.transport.grossWeightKg}</td></tr>
+                <tr><td className="border p-1.5 bg-muted/40 font-medium">Cubagem (m³)</td><td className="border p-1.5">{proposal.transport.cubageM3}</td></tr>
                 <tr><td className="border p-1.5 bg-muted/40 font-medium">Qtd Volumes</td><td className="border p-1.5">{proposal.transport.volumes}</td></tr>
+                <tr><td className="border p-1.5 bg-muted/40 font-medium">Frete aproximado</td><td className="border p-1.5">{formatBRL(proposal.transport.approxFreightValue ?? 0)}</td></tr>
               </tbody>
             </table>
           </div>
