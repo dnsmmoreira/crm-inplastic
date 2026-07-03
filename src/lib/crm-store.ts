@@ -832,6 +832,9 @@ export const useCrm = create<CrmState>()(
       proposals: [],
       emitters: DEFAULT_EMITTERS,
       defaultEmitterId: DEFAULT_EMITTER_ID,
+      maxDiscountPercentVendedor: 3,
+      setMaxDiscountPercentVendedor: (pct) =>
+        set({ maxDiscountPercentVendedor: Math.max(0, Math.min(100, pct)) }),
       setDefaultEmitter: (id) => set({ defaultEmitterId: id }),
       updateEmitter: (id, patch) =>
         set((s) => ({
