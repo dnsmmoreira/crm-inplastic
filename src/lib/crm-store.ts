@@ -905,10 +905,12 @@ export const useCrm = create<CrmState>()(
           ],
           transport: {
             carrier: "A definir",
-            freightPayer: "CIF",
+            freightPayer: "FOB",
             grossWeightKg: 0,
+            cubageM3: 0,
             volumes: 0,
             freightValue: 0,
+            approxFreightValue: 0,
           },
           observations:
             "Proposta comercial válida por 15 dias. Preços em reais, impostos inclusos conforme legislação vigente. Prazo de entrega a combinar após aprovação.",
