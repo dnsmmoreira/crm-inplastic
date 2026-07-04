@@ -63,6 +63,21 @@ function PropostasPage() {
   const [statusFilter, setStatusFilter] = useState<"all" | ProposalStatus>("all");
   const [openNew, setOpenNew] = useState(false);
   const [selectedLead, setSelectedLead] = useState<string>("");
+  const [leadSearch, setLeadSearch] = useState("");
+
+  const leadResults = useMemo(() => {
+    const t = leadSearch.toLowerCase().trim();
+    const digits = leadSearch.replace(/\D/g, "");
+    if (!t) return leads.slice(0, 50);
+    return leads.filter((l) => {
+      const cnpjDigits = (l.cnpj ?? "").replace(/\D/g, "");
+      return (
+        l.company.toLowerCase().includes(t) ||
+        l.contactName.toLowerCase().includes(t) ||
+        (digits.length >= 2 && cnpjDigits.includes(digits))
+      );
+    }).slice(0, 50);
+  }, [leads, leadSearch]);
 
   const filtered = useMemo(() => {
     const t = q.toLowerCase().trim();
