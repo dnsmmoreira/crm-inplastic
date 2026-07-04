@@ -70,7 +70,12 @@ export const lookupCnpj = createServerFn({ method: "POST" })
       token,
     )}&cnpj=${data.cnpj}&plugin=RF`;
 
-    const res = await fetch(url);
+    const res = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; TaoPlastCRM/1.0)",
+        Accept: "application/json",
+      },
+    });
     if (!res.ok) {
       const body = await res.text();
       throw new Error(`Erro na consulta (${res.status}): ${body.slice(0, 200)}`);
