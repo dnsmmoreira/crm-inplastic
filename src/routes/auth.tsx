@@ -32,7 +32,7 @@ function AuthPage() {
             <Boxes className="h-6 w-6" />
           </div>
           <div className="text-center">
-            <h1 className="font-display text-xl font-semibold">Pallet de Plástico · CRM</h1>
+            <h1 className="font-display text-xl font-semibold">INPLASTIC - CRM</h1>
             <p className="text-sm text-white/60">Entre com sua conta corporativa</p>
           </div>
         </div>
