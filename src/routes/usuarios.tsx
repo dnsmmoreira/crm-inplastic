@@ -1,13 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
-import { ShieldAlert, Users, Shield, User as UserIcon, Loader2 } from "lucide-react";
+import { ShieldAlert, Users, Shield, User as UserIcon, Loader2, Mail, Send } from "lucide-react";
 import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, type AppRole } from "@/hooks/use-auth";
+import { inviteUser } from "@/lib/invites.functions";
 
 export const Route = createFileRoute("/usuarios")({
   component: UsuariosPage,
