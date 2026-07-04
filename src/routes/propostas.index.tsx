@@ -170,44 +170,23 @@ function PropostasPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={openNew} onOpenChange={setOpenNew}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Nova proposta comercial</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <Label>Cliente (lead)</Label>
-              <Select value={selectedLead} onValueChange={setSelectedLead}>
-                <SelectTrigger><SelectValue placeholder="Selecione um lead" /></SelectTrigger>
-                <SelectContent>
-                  {leads.map((l) => (
-                    <SelectItem key={l.id} value={l.id}>{l.company} — {l.contactName}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {leads.length === 0 && (
-                <p className="text-xs text-muted-foreground mt-2">
-                  Você não tem leads visíveis. Crie um lead primeiro em <Link to="/pipeline" className="text-primary underline">Funil de Vendas</Link>.
-                </p>
-              )}
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setOpenNew(false)}>Cancelar</Button>
-            <Button
-              disabled={!selectedLead}
-              onClick={() => {
-                const id = createProposal(selectedLead);
-                setOpenNew(false);
-                setSelectedLead("");
-                toast.success("Proposta criada — adicione os itens");
-                navigate({ to: "/propostas/$id", params: { id } });
-              }}
-            >
-              Criar proposta
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <NewProposalDialog
+        open={openNew}
+        onOpenChange={(o) => {
+          setOpenNew(o);
+          if (!o) setSelectedLead("");
+        }}
+        leads={leads}
+        selectedLead={selectedLead}
+        setSelectedLead={setSelectedLead}
+        onCreate={() => {
+          const id = createProposal(selectedLead);
+          setOpenNew(false);
+          setSelectedLead("");
+          toast.success("Proposta criada — adicione os itens");
+          navigate({ to: "/propostas/$id", params: { id } });
+        }}
+      />
     </div>
   );
 }
