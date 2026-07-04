@@ -14,7 +14,7 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
-  const { user, loading, signIn, signUp } = useAuth();
+  const { user, loading, signIn } = useAuth();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   useEffect(() => {
@@ -37,22 +37,11 @@ function AuthPage() {
         </div>
 
         <div className="rounded-xl bg-card p-6 shadow-xl">
-          <Tabs defaultValue="signin">
-            <TabsList className="grid grid-cols-2 w-full mb-4">
-              <TabsTrigger value="signin">Entrar</TabsTrigger>
-              <TabsTrigger value="signup">Criar conta</TabsTrigger>
-            </TabsList>
-            <TabsContent value="signin">
-              <SignInForm onSubmit={signIn} />
-            </TabsContent>
-            <TabsContent value="signup">
-              <SignUpForm onSubmit={signUp} />
-            </TabsContent>
-          </Tabs>
+          <SignInForm onSubmit={signIn} />
         </div>
 
         <p className="text-center text-xs text-white/40 mt-4">
-          Primeiro usuário cadastrado se torna administrador.
+          Novo por aqui? Peça um convite ao administrador do CRM.
         </p>
       </div>
     </div>
