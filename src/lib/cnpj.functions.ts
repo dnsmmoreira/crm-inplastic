@@ -25,29 +25,33 @@ export type CnpjLookupResult = {
   };
 };
 
-type CnpjaResponse = {
-  taxId: string;
-  founded?: string;
-  company?: {
-    name?: string;
-    size?: { text?: string };
-    equity?: number;
-  };
-  alias?: string;
-  status?: { text?: string };
-  mainActivity?: { id?: number; text?: string };
-  address?: {
-    zip?: string;
-    street?: string;
-    number?: string;
-    details?: string;
-    district?: string;
-    city?: string;
-    state?: string;
-  };
-  phones?: Array<{ area?: string; number?: string }>;
-  emails?: Array<{ address?: string }>;
-  registrations?: Array<{ state?: string; number?: string; enabled?: boolean }>;
+// SintegraWS — https://www.sintegraws.com.br
+// Endpoint: GET /api/v1/execute-api.php?token=...&cnpj=...&plugin=RF
+type SintegraResponse = {
+  code?: number | string;
+  status?: string;
+  message?: string;
+  nome?: string;
+  fantasia?: string;
+  cnpj?: string;
+  inscricao_estadual?: string;
+  situacao_cadastral?: string;
+  data_situacao_cadastral?: string;
+  data_inicio_atividade?: string;
+  cnae_principal_codigo?: string;
+  cnae_principal_descricao?: string;
+  natureza_juridica?: string;
+  logradouro?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  municipio?: string;
+  uf?: string;
+  cep?: string;
+  email?: string;
+  telefone?: string;
+  capital_social?: string | number;
+  porte_empresa?: string;
 };
 
 export const lookupCnpj = createServerFn({ method: "POST" })
@@ -58,48 +62,62 @@ export const lookupCnpj = createServerFn({ method: "POST" })
     return { cnpj: digits };
   })
   .handler(async ({ data }): Promise<CnpjLookupResult> => {
-    const apiKey = process.env.CNPJA_API_KEY;
-    if (!apiKey) throw new Error("CNPJA_API_KEY não configurada");
+    // Reaproveita a mesma secret já cadastrada (CNPJA_API_KEY = token do SintegraWS)
+    const token = process.env.CNPJA_API_KEY;
+    if (!token) throw new Error("Token do SintegraWS não configurado");
 
-    const url = `https://api.cnpja.com/office/${data.cnpj}?registrations=BR&simples=false`;
-    const res = await fetch(url, {
-      headers: { Authorization: apiKey },
-    });
+    const url = `https://www.sintegraws.com.br/api/v1/execute-api.php?token=${encodeURIComponent(
+      token,
+    )}&cnpj=${data.cnpj}&plugin=RF`;
 
-    if (res.status === 404) throw new Error("CNPJ não encontrado");
-    if (res.status === 401 || res.status === 403) throw new Error("Chave da API CNPJá inválida");
+    const res = await fetch(url);
     if (!res.ok) {
       const body = await res.text();
       throw new Error(`Erro na consulta (${res.status}): ${body.slice(0, 200)}`);
     }
 
-    const json = (await res.json()) as CnpjaResponse;
-    const addr = json.address ?? {};
-    const activePhone = json.phones?.[0];
-    const activeEmail = json.emails?.[0]?.address ?? "";
-    const activeIE = json.registrations?.find((r) => r.enabled) ?? json.registrations?.[0];
+    const json = (await res.json()) as SintegraResponse;
+
+    // SintegraWS retorna code/status quando dá erro (ex.: token inválido, sem créditos, CNPJ não encontrado)
+    const codeNum = typeof json.code === "string" ? Number(json.code) : json.code;
+    if (json.status && json.status !== "OK" && !json.nome) {
+      throw new Error(json.message || `Falha SintegraWS (status ${json.status})`);
+    }
+    if (codeNum && codeNum !== 1 && !json.nome) {
+      throw new Error(json.message || `Falha SintegraWS (code ${codeNum})`);
+    }
+    if (!json.nome) {
+      throw new Error(json.message || "CNPJ não encontrado");
+    }
+
+    const capital =
+      typeof json.capital_social === "number"
+        ? json.capital_social
+        : json.capital_social
+          ? Number(String(json.capital_social).replace(/[^\d.,-]/g, "").replace(",", ".")) || null
+          : null;
 
     return {
       cnpj: data.cnpj,
-      razaoSocial: json.company?.name ?? "",
-      nomeFantasia: json.alias ?? "",
-      inscricaoEstadual: activeIE?.number ?? "",
-      situacao: json.status?.text ?? "",
-      porte: json.company?.size?.text ?? "",
-      cnaePrincipal: json.mainActivity?.text ?? "",
-      cnaeCodigo: json.mainActivity?.id ? String(json.mainActivity.id) : "",
-      capitalSocial: json.company?.equity ?? null,
-      dataAbertura: json.founded ?? "",
-      email: activeEmail,
-      telefone: activePhone ? `(${activePhone.area ?? ""}) ${activePhone.number ?? ""}`.trim() : "",
+      razaoSocial: json.nome ?? "",
+      nomeFantasia: json.fantasia ?? "",
+      inscricaoEstadual: json.inscricao_estadual ?? "",
+      situacao: json.situacao_cadastral ?? "",
+      porte: json.porte_empresa ?? "",
+      cnaePrincipal: json.cnae_principal_descricao ?? "",
+      cnaeCodigo: json.cnae_principal_codigo ?? "",
+      capitalSocial: capital,
+      dataAbertura: json.data_inicio_atividade ?? "",
+      email: json.email ?? "",
+      telefone: json.telefone ?? "",
       endereco: {
-        cep: addr.zip ?? "",
-        logradouro: addr.street ?? "",
-        numero: addr.number ?? "",
-        complemento: addr.details ?? "",
-        bairro: addr.district ?? "",
-        cidade: addr.city ?? "",
-        uf: addr.state ?? "",
+        cep: json.cep ?? "",
+        logradouro: json.logradouro ?? "",
+        numero: json.numero ?? "",
+        complemento: json.complemento ?? "",
+        bairro: json.bairro ?? "",
+        cidade: json.municipio ?? "",
+        uf: json.uf ?? "",
       },
     };
   });
