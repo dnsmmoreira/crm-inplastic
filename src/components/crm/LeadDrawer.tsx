@@ -438,10 +438,30 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
   const leadSegments = useCrm((s) => s.leadSegments);
   const [open, setOpen] = useState(false);
   const initial = {
+    // Fiscal
+    cnpj: "",
+    razaoSocial: "",
     company: "",
+    nomeFantasia: "",
+    inscricaoEstadual: "",
+    inscricaoMunicipal: "",
+    // Contato
     contactName: "",
     email: "",
     phone: "",
+    telefoneFixo: "",
+    whatsapp: "",
+    emailFinanceiro: "",
+    site: "",
+    // Endereço
+    cep: "",
+    logradouro: "",
+    numero: "",
+    complemento: "",
+    bairro: "",
+    cidade: "",
+    uf: "",
+    // Comercial
     productId: "",
     quantity: 0,
     estimatedValue: 0,
@@ -449,12 +469,20 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
     segment: "",
     tags: [] as string[],
     notes: "",
+    // Qualificação
+    porte: "",
+    cnaePrincipal: "",
+    faturamentoEstimado: 0,
+    numFuncionarios: 0,
+    decisorNome: "",
+    decisorCargo: "",
   };
   const [form, setForm] = useState(initial);
+  const [lookingUp, setLookingUp] = useState(false);
+  const lookupCnpjFn = useServerFn(lookupCnpj);
 
   const selectedProduct = products.find((p) => p.id === form.productId);
 
-  // recalcula valor estimado quando produto ou quantidade mudam
   const recalc = (productId: string, quantity: number) => {
     const prod = products.find((p) => p.id === productId);
     return prod ? prod.defaultPrice * (quantity || 0) : 0;
@@ -466,128 +494,301 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
       tags: f.tags.includes(t) ? f.tags.filter((x) => x !== t) : [...f.tags, t],
     }));
 
+  const formatCnpj = (v: string) => {
+    const d = v.replace(/\D/g, "").slice(0, 14);
+    return d
+      .replace(/^(\d{2})(\d)/, "$1.$2")
+      .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+      .replace(/\.(\d{3})(\d)/, ".$1/$2")
+      .replace(/(\d{4})(\d)/, "$1-$2");
+  };
+
+  const handleCnpjLookup = async () => {
+    const digits = form.cnpj.replace(/\D/g, "");
+    if (digits.length !== 14) {
+      toast.error("CNPJ inválido — informe 14 dígitos");
+      return;
+    }
+    setLookingUp(true);
+    try {
+      const r = await lookupCnpjFn({ data: { cnpj: digits } });
+      setForm((f) => ({
+        ...f,
+        razaoSocial: r.razaoSocial,
+        company: (r.nomeFantasia || r.razaoSocial).toUpperCase(),
+        nomeFantasia: r.nomeFantasia,
+        inscricaoEstadual: r.inscricaoEstadual,
+        email: f.email || r.email.toLowerCase(),
+        phone: f.phone || r.telefone,
+        telefoneFixo: r.telefone,
+        cep: r.endereco.cep,
+        logradouro: r.endereco.logradouro,
+        numero: r.endereco.numero,
+        complemento: r.endereco.complemento,
+        bairro: r.endereco.bairro,
+        cidade: r.endereco.cidade,
+        uf: r.endereco.uf,
+        porte: r.porte,
+        cnaePrincipal: r.cnaePrincipal,
+      }));
+      toast.success("Dados do CNPJ preenchidos");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao consultar CNPJ");
+    } finally {
+      setLookingUp(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setForm(initial); }}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Novo lead</DialogTitle>
         </DialogHeader>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="col-span-2">
-            <Label>Empresa</Label>
+
+        {/* Bloco: Consulta CNPJ */}
+        <div className="rounded-lg border bg-muted/30 p-3">
+          <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+            Consulta automática (CNPJá)
+          </Label>
+          <div className="mt-1 flex gap-2">
             <Input
-              value={form.company}
-              onChange={(e) => setForm({ ...form, company: e.target.value.toUpperCase() })}
+              placeholder="00.000.000/0000-00"
+              value={form.cnpj}
+              onChange={(e) => setForm({ ...form, cnpj: formatCnpj(e.target.value) })}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleCnpjLookup(); } }}
             />
+            <Button type="button" onClick={handleCnpjLookup} disabled={lookingUp}>
+              {lookingUp ? "Buscando..." : "Buscar"}
+            </Button>
           </div>
-          <div>
-            <Label>Contato</Label>
-            <Input
-              value={form.contactName}
-              onChange={(e) => setForm({ ...form, contactName: e.target.value.toUpperCase() })}
-            />
-          </div>
-          <div>
-            <Label>Telefone</Label>
-            <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-          </div>
-          <div className="col-span-2">
-            <Label>E-mail</Label>
-            <Input
-              type="email"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value.toLowerCase() })}
-            />
-          </div>
-          <div className="col-span-2">
-            <Label>Segmento</Label>
-            <Select value={form.segment} onValueChange={(v) => setForm({ ...form, segment: v })}>
-              <SelectTrigger><SelectValue placeholder="Selecione um segmento" /></SelectTrigger>
-              <SelectContent>
-                {leadSegments.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="col-span-2">
-            <Label>Produto</Label>
-            <Select
-              value={form.productId}
-              onValueChange={(v) =>
-                setForm((f) => ({ ...f, productId: v, estimatedValue: recalc(v, f.quantity) }))
-              }
-            >
-              <SelectTrigger><SelectValue placeholder="Selecione um produto" /></SelectTrigger>
-              <SelectContent>
-                {products.filter((p) => p.active).map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.sku} — {p.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>Quantidade</Label>
-            <Input
-              type="number"
-              min={0}
-              value={form.quantity}
-              onChange={(e) => {
-                const q = Number(e.target.value) || 0;
-                setForm((f) => ({ ...f, quantity: q, estimatedValue: recalc(f.productId, q) }));
-              }}
-            />
-          </div>
-          <div>
-            <Label>Valor estimado (R$)</Label>
-            <Input
-              type="number"
-              value={form.estimatedValue}
-              onChange={(e) => setForm({ ...form, estimatedValue: Number(e.target.value) || 0 })}
-            />
-          </div>
-          <div className="col-span-2">
-            <Label>Etapa</Label>
-            <Select value={form.stage} onValueChange={(v) => setForm({ ...form, stage: v as Lead["stage"] })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {STAGES.map((s) => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="col-span-2">
-            <Label>Tags</Label>
-            <div className="mt-1 flex flex-wrap gap-1.5">
-              {leadTags.length === 0 && (
-                <span className="text-xs text-muted-foreground italic">
-                  Nenhuma tag cadastrada. Peça ao administrador em Condições Comerciais.
-                </span>
-              )}
-              {leadTags.map((t) => {
-                const active = form.tags.includes(t);
-                return (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => toggleTag(t)}
-                    className={`text-xs rounded-full border px-2.5 py-1 transition ${
-                      active
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-background hover:bg-muted"
-                    }`}
-                  >
-                    {t}
-                  </button>
-                );
-              })}
+          <p className="mt-1.5 text-[11px] text-muted-foreground">
+            Preenche razão social, endereço, IE, porte e CNAE automaticamente.
+          </p>
+        </div>
+
+        {/* Bloco: Dados fiscais */}
+        <div className="mt-2">
+          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Dados fiscais</div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2">
+              <Label>Razão social</Label>
+              <Input value={form.razaoSocial} onChange={(e) => setForm({ ...form, razaoSocial: e.target.value })} />
+            </div>
+            <div>
+              <Label>Nome fantasia</Label>
+              <Input value={form.nomeFantasia} onChange={(e) => setForm({ ...form, nomeFantasia: e.target.value })} />
+            </div>
+            <div>
+              <Label>Empresa (exibição) *</Label>
+              <Input
+                value={form.company}
+                onChange={(e) => setForm({ ...form, company: e.target.value.toUpperCase() })}
+              />
+            </div>
+            <div>
+              <Label>Inscrição Estadual</Label>
+              <Input value={form.inscricaoEstadual} onChange={(e) => setForm({ ...form, inscricaoEstadual: e.target.value })} />
+            </div>
+            <div>
+              <Label>Inscrição Municipal</Label>
+              <Input value={form.inscricaoMunicipal} onChange={(e) => setForm({ ...form, inscricaoMunicipal: e.target.value })} />
             </div>
           </div>
-          <div className="col-span-2">
-            <Label>Observações</Label>
-            <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+        </div>
+
+        {/* Bloco: Endereço */}
+        <div className="mt-2">
+          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Endereço</div>
+          <div className="grid grid-cols-6 gap-3">
+            <div className="col-span-2">
+              <Label>CEP</Label>
+              <Input value={form.cep} onChange={(e) => setForm({ ...form, cep: e.target.value })} />
+            </div>
+            <div className="col-span-4">
+              <Label>Logradouro</Label>
+              <Input value={form.logradouro} onChange={(e) => setForm({ ...form, logradouro: e.target.value })} />
+            </div>
+            <div className="col-span-1">
+              <Label>Nº</Label>
+              <Input value={form.numero} onChange={(e) => setForm({ ...form, numero: e.target.value })} />
+            </div>
+            <div className="col-span-2">
+              <Label>Complemento</Label>
+              <Input value={form.complemento} onChange={(e) => setForm({ ...form, complemento: e.target.value })} />
+            </div>
+            <div className="col-span-3">
+              <Label>Bairro</Label>
+              <Input value={form.bairro} onChange={(e) => setForm({ ...form, bairro: e.target.value })} />
+            </div>
+            <div className="col-span-4">
+              <Label>Cidade</Label>
+              <Input value={form.cidade} onChange={(e) => setForm({ ...form, cidade: e.target.value })} />
+            </div>
+            <div className="col-span-2">
+              <Label>UF</Label>
+              <Input maxLength={2} value={form.uf} onChange={(e) => setForm({ ...form, uf: e.target.value.toUpperCase() })} />
+            </div>
           </div>
         </div>
+
+        {/* Bloco: Contato */}
+        <div className="mt-2">
+          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Contato</div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Contato principal</Label>
+              <Input value={form.contactName} onChange={(e) => setForm({ ...form, contactName: e.target.value.toUpperCase() })} />
+            </div>
+            <div>
+              <Label>Cargo do contato</Label>
+              <Input value={form.decisorCargo} onChange={(e) => setForm({ ...form, decisorCargo: e.target.value })} />
+            </div>
+            <div>
+              <Label>Telefone principal</Label>
+              <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+            </div>
+            <div>
+              <Label>WhatsApp</Label>
+              <Input value={form.whatsapp} onChange={(e) => setForm({ ...form, whatsapp: e.target.value })} />
+            </div>
+            <div>
+              <Label>Telefone fixo</Label>
+              <Input value={form.telefoneFixo} onChange={(e) => setForm({ ...form, telefoneFixo: e.target.value })} />
+            </div>
+            <div>
+              <Label>Site</Label>
+              <Input value={form.site} onChange={(e) => setForm({ ...form, site: e.target.value })} />
+            </div>
+            <div>
+              <Label>E-mail comercial</Label>
+              <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value.toLowerCase() })} />
+            </div>
+            <div>
+              <Label>E-mail financeiro</Label>
+              <Input type="email" value={form.emailFinanceiro} onChange={(e) => setForm({ ...form, emailFinanceiro: e.target.value.toLowerCase() })} />
+            </div>
+          </div>
+        </div>
+
+        {/* Bloco: Qualificação */}
+        <div className="mt-2">
+          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Qualificação comercial</div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Porte</Label>
+              <Input value={form.porte} onChange={(e) => setForm({ ...form, porte: e.target.value })} />
+            </div>
+            <div>
+              <Label>CNAE principal</Label>
+              <Input value={form.cnaePrincipal} onChange={(e) => setForm({ ...form, cnaePrincipal: e.target.value })} />
+            </div>
+            <div>
+              <Label>Faturamento estimado (R$/ano)</Label>
+              <Input type="number" min={0} value={form.faturamentoEstimado} onChange={(e) => setForm({ ...form, faturamentoEstimado: Number(e.target.value) || 0 })} />
+            </div>
+            <div>
+              <Label>Nº de funcionários</Label>
+              <Input type="number" min={0} value={form.numFuncionarios} onChange={(e) => setForm({ ...form, numFuncionarios: Number(e.target.value) || 0 })} />
+            </div>
+            <div className="col-span-2">
+              <Label>Decisor (nome)</Label>
+              <Input value={form.decisorNome} onChange={(e) => setForm({ ...form, decisorNome: e.target.value })} />
+            </div>
+          </div>
+        </div>
+
+        {/* Bloco: Oportunidade */}
+        <div className="mt-2">
+          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Oportunidade</div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2">
+              <Label>Segmento</Label>
+              <Select value={form.segment} onValueChange={(v) => setForm({ ...form, segment: v })}>
+                <SelectTrigger><SelectValue placeholder="Selecione um segmento" /></SelectTrigger>
+                <SelectContent>
+                  {leadSegments.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="col-span-2">
+              <Label>Produto</Label>
+              <Select
+                value={form.productId}
+                onValueChange={(v) =>
+                  setForm((f) => ({ ...f, productId: v, estimatedValue: recalc(v, f.quantity) }))
+                }
+              >
+                <SelectTrigger><SelectValue placeholder="Selecione um produto" /></SelectTrigger>
+                <SelectContent>
+                  {products.filter((p) => p.active).map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.sku} — {p.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Quantidade</Label>
+              <Input
+                type="number"
+                min={0}
+                value={form.quantity}
+                onChange={(e) => {
+                  const q = Number(e.target.value) || 0;
+                  setForm((f) => ({ ...f, quantity: q, estimatedValue: recalc(f.productId, q) }));
+                }}
+              />
+            </div>
+            <div>
+              <Label>Valor estimado (R$)</Label>
+              <Input
+                type="number"
+                value={form.estimatedValue}
+                onChange={(e) => setForm({ ...form, estimatedValue: Number(e.target.value) || 0 })}
+              />
+            </div>
+            <div className="col-span-2">
+              <Label>Etapa</Label>
+              <Select value={form.stage} onValueChange={(v) => setForm({ ...form, stage: v as Lead["stage"] })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {STAGES.map((s) => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="col-span-2">
+              <Label>Tags</Label>
+              <div className="mt-1 flex flex-wrap gap-1.5">
+                {leadTags.length === 0 && (
+                  <span className="text-xs text-muted-foreground italic">
+                    Nenhuma tag cadastrada. Peça ao administrador em Condições Comerciais.
+                  </span>
+                )}
+                {leadTags.map((t) => {
+                  const active = form.tags.includes(t);
+                  return (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => toggleTag(t)}
+                      className={`text-xs rounded-full border px-2.5 py-1 transition ${
+                        active ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted"
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="col-span-2">
+              <Label>Observações</Label>
+              <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+            </div>
+          </div>
+        </div>
+
         <DialogFooter>
           <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
           <Button
@@ -607,6 +808,25 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
                 tags: form.tags,
                 source: "Manual",
                 notes: form.notes,
+                cnpj: form.cnpj || undefined,
+                razaoSocial: form.razaoSocial || undefined,
+                nomeFantasia: form.nomeFantasia || undefined,
+                inscricaoEstadual: form.inscricaoEstadual || undefined,
+                inscricaoMunicipal: form.inscricaoMunicipal || undefined,
+                endereco: (form.cep || form.logradouro || form.cidade) ? {
+                  cep: form.cep, logradouro: form.logradouro, numero: form.numero,
+                  complemento: form.complemento, bairro: form.bairro, cidade: form.cidade, uf: form.uf,
+                } : undefined,
+                emailFinanceiro: form.emailFinanceiro || undefined,
+                telefoneFixo: form.telefoneFixo || undefined,
+                whatsapp: form.whatsapp || undefined,
+                site: form.site || undefined,
+                porte: form.porte || undefined,
+                cnaePrincipal: form.cnaePrincipal || undefined,
+                faturamentoEstimado: form.faturamentoEstimado || undefined,
+                numFuncionarios: form.numFuncionarios || undefined,
+                decisorNome: form.decisorNome || undefined,
+                decisorCargo: form.decisorCargo || undefined,
               });
               toast.success("Lead criado");
               setOpen(false);
@@ -620,4 +840,5 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
     </Dialog>
   );
 }
+
 
