@@ -62,6 +62,16 @@ export type AiAction = {
   content: string;
 };
 
+export type LeadAddress = {
+  cep?: string;
+  logradouro?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  cidade?: string;
+  uf?: string;
+};
+
 export type Lead = {
   id: string;
   company: string;
@@ -83,7 +93,28 @@ export type Lead = {
   interactions: Interaction[];
   aiActions?: AiAction[];
   ownerId: string;
+  // Dados fiscais
+  cnpj?: string;
+  razaoSocial?: string;
+  nomeFantasia?: string;
+  inscricaoEstadual?: string;
+  inscricaoMunicipal?: string;
+  // Endereço
+  endereco?: LeadAddress;
+  // Contato ampliado
+  emailFinanceiro?: string;
+  telefoneFixo?: string;
+  whatsapp?: string;
+  site?: string;
+  // Qualificação comercial
+  porte?: string;
+  cnaePrincipal?: string;
+  faturamentoEstimado?: number;
+  numFuncionarios?: number;
+  decisorNome?: string;
+  decisorCargo?: string;
 };
+
 
 export const DEFAULT_LEAD_TAGS: string[] = [
   "Recorrente",
