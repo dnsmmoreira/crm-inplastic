@@ -34,7 +34,7 @@ const AGENDA_FILTERS: { level: FollowupLevel; label: string; emoji: string }[] =
 export const Route = createFileRoute("/pipeline")({
   component: PipelinePage,
   head: () => ({
-    meta: [{ title: "Funil de Vendas — CRM Pallet de Plástico" }],
+    meta: [{ title: "Funil de Vendas — INPLASTIC - CRM" }],
   }),
 });
 

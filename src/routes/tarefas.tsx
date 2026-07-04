@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/tarefas")({
   component: TasksPage,
   head: () => ({
-    meta: [{ title: "Tarefas — CRM Pallet de Plástico" }],
+    meta: [{ title: "Tarefas — INPLASTIC - CRM" }],
   }),
 });
 

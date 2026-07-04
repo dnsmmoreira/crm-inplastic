@@ -35,7 +35,7 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/agente-ia")({
   component: AgenteIaPage,
   head: () => ({
-    meta: [{ title: "Agente IA — CRM Pallet de Plástico" }],
+    meta: [{ title: "Agente IA — INPLASTIC - CRM" }],
   }),
 });
 

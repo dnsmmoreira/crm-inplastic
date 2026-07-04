@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/canais")({
   component: CanaisPage,
   head: () => ({
-    meta: [{ title: "Canais de Entrada — CRM Pallet de Plástico" }],
+    meta: [{ title: "Canais de Entrada — INPLASTIC - CRM" }],
   }),
 });
 

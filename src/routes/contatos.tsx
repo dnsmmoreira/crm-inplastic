@@ -28,7 +28,7 @@ import { Card } from "@/components/ui/card";
 export const Route = createFileRoute("/contatos")({
   component: ContactsPage,
   head: () => ({
-    meta: [{ title: "Contatos — CRM Pallet de Plástico" }],
+    meta: [{ title: "Contatos — INPLASTIC - CRM" }],
   }),
 });
 

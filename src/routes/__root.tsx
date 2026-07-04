@@ -151,7 +151,7 @@ function AppShell({ children }: { children: ReactNode }) {
             <Boxes className="h-5 w-5" />
           </div>
           <div className="leading-tight">
-            <div className="font-display text-sm font-semibold">Pallet de Plástico</div>
+            <div className="font-display text-sm font-semibold">INPLASTIC - CRM</div>
             <div className="text-[11px] uppercase tracking-wider text-sidebar-foreground/60">CRM Interno</div>
           </div>
         </div>
