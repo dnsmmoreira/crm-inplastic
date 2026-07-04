@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
-import { ShieldAlert, Users, Shield, User as UserIcon, Loader2, Mail, Send } from "lucide-react";
+import { ShieldAlert, Users, Shield, User as UserIcon, Loader2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 
@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, type AppRole } from "@/hooks/use-auth";
-import { inviteUser } from "@/lib/invites.functions";
+import { createUser } from "@/lib/invites.functions";
 
 export const Route = createFileRoute("/usuarios")({
   component: UsuariosPage,
@@ -59,7 +59,6 @@ function UsuariosPage() {
   const setRole = async (userId: string, role: AppRole) => {
     setSaving(userId);
     try {
-      // remove existing rows, insert desired one (roles are unique per user+role)
       await supabase.from("user_roles").delete().eq("user_id", userId);
       const { error } = await supabase.from("user_roles").insert({ user_id: userId, role });
       if (error) throw error;
@@ -104,7 +103,7 @@ function UsuariosPage() {
         </div>
       </div>
 
-      <InviteCard onInvited={load} />
+      <CreateUserCard onCreated={load} />
 
       <Card className="mt-6">
         <CardHeader>
@@ -164,16 +163,17 @@ function UsuariosPage() {
       </Card>
 
       <p className="text-xs text-muted-foreground mt-4">
-        Envie um convite acima e a pessoa receberá um e-mail com o link para ativar a conta e definir a própria senha.
+        Após criar o usuário acima, informe o e-mail e a senha definidos para que ele acesse o CRM.
       </p>
     </div>
   );
 }
 
-function InviteCard({ onInvited }: { onInvited: () => Promise<void> | void }) {
-  const invite = useServerFn(inviteUser);
+function CreateUserCard({ onCreated }: { onCreated: () => Promise<void> | void }) {
+  const create = useServerFn(createUser);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
+  const [password, setPassword] = useState("");
   const [role, setRole] = useState<AppRole>("vendedor");
   const [busy, setBusy] = useState(false);
 
@@ -181,21 +181,15 @@ function InviteCard({ onInvited }: { onInvited: () => Promise<void> | void }) {
     e.preventDefault();
     setBusy(true);
     try {
-      await invite({
-        data: {
-          email,
-          name,
-          role,
-          redirectTo: `${window.location.origin}/aceitar-convite`,
-        },
-      });
-      toast.success(`Convite enviado para ${email}`);
+      await create({ data: { email, name, password, role } });
+      toast.success(`Usuário ${email} criado com sucesso`);
       setEmail("");
       setName("");
+      setPassword("");
       setRole("vendedor");
-      await onInvited();
+      await onCreated();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Falha ao enviar convite");
+      toast.error(err instanceof Error ? err.message : "Falha ao criar usuário");
     } finally {
       setBusy(false);
     }
@@ -205,23 +199,35 @@ function InviteCard({ onInvited }: { onInvited: () => Promise<void> | void }) {
     <Card>
       <CardHeader>
         <CardTitle className="text-base flex items-center gap-2">
-          <Mail className="h-4 w-4 text-primary" /> Convidar novo usuário
+          <UserPlus className="h-4 w-4 text-primary" /> Cadastrar novo usuário
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <form onSubmit={submit} className="grid gap-3 md:grid-cols-[1fr_1fr_160px_auto] md:items-end">
+        <form onSubmit={submit} className="grid gap-3 md:grid-cols-2">
           <div className="space-y-1">
-            <Label htmlFor="inv-name">Nome</Label>
-            <Input id="inv-name" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome do vendedor" />
+            <Label htmlFor="cu-name">Nome</Label>
+            <Input id="cu-name" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome do vendedor" />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="inv-email">E-mail</Label>
-            <Input id="inv-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="pessoa@empresa.com" />
+            <Label htmlFor="cu-email">E-mail</Label>
+            <Input id="cu-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="pessoa@empresa.com" />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="inv-role">Papel</Label>
+            <Label htmlFor="cu-password">Senha inicial</Label>
+            <Input
+              id="cu-password"
+              type="text"
+              required
+              minLength={6}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Mínimo 6 caracteres"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="cu-role">Papel</Label>
             <select
-              id="inv-role"
+              id="cu-role"
               value={role}
               onChange={(e) => setRole(e.target.value as AppRole)}
               className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
@@ -230,10 +236,12 @@ function InviteCard({ onInvited }: { onInvited: () => Promise<void> | void }) {
               <option value="admin">Administrador</option>
             </select>
           </div>
-          <Button type="submit" disabled={busy} className="gap-1">
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            Enviar convite
-          </Button>
+          <div className="md:col-span-2 flex justify-end">
+            <Button type="submit" disabled={busy} className="gap-1">
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
+              Criar usuário
+            </Button>
+          </div>
         </form>
       </CardContent>
     </Card>
