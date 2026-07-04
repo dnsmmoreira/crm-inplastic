@@ -104,7 +104,9 @@ function UsuariosPage() {
         </div>
       </div>
 
-      <Card>
+      <InviteCard onInvited={load} />
+
+      <Card className="mt-6">
         <CardHeader>
           <CardTitle className="text-base">Equipe cadastrada</CardTitle>
         </CardHeader>
