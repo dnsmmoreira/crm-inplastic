@@ -63,6 +63,21 @@ function PropostasPage() {
   const [statusFilter, setStatusFilter] = useState<"all" | ProposalStatus>("all");
   const [openNew, setOpenNew] = useState(false);
   const [selectedLead, setSelectedLead] = useState<string>("");
+  const [leadSearch, setLeadSearch] = useState("");
+
+  const leadResults = useMemo(() => {
+    const t = leadSearch.toLowerCase().trim();
+    const digits = leadSearch.replace(/\D/g, "");
+    if (!t) return leads.slice(0, 50);
+    return leads.filter((l) => {
+      const cnpjDigits = (l.cnpj ?? "").replace(/\D/g, "");
+      return (
+        l.company.toLowerCase().includes(t) ||
+        l.contactName.toLowerCase().includes(t) ||
+        (digits.length >= 2 && cnpjDigits.includes(digits))
+      );
+    }).slice(0, 50);
+  }, [leads, leadSearch]);
 
   const filtered = useMemo(() => {
     const t = q.toLowerCase().trim();
@@ -170,26 +185,46 @@ function PropostasPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={openNew} onOpenChange={setOpenNew}>
+      <Dialog open={openNew} onOpenChange={(o) => { setOpenNew(o); if (!o) { setSelectedLead(""); setLeadSearch(""); } }}>
         <DialogContent>
           <DialogHeader><DialogTitle>Nova proposta comercial</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <div>
-              <Label>Cliente (lead)</Label>
-              <Select value={selectedLead} onValueChange={setSelectedLead}>
-                <SelectTrigger><SelectValue placeholder="Selecione um lead" /></SelectTrigger>
-                <SelectContent>
-                  {leads.map((l) => (
-                    <SelectItem key={l.id} value={l.id}>{l.company} — {l.contactName}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {leads.length === 0 && (
-                <p className="text-xs text-muted-foreground mt-2">
-                  Você não tem leads visíveis. Crie um lead primeiro em <Link to="/pipeline" className="text-primary underline">Funil de Vendas</Link>.
-                </p>
-              )}
+            <Label>Buscar cliente</Label>
+            <div className="relative">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                autoFocus
+                value={leadSearch}
+                onChange={(e) => setLeadSearch(e.target.value)}
+                placeholder="Nome da empresa, contato ou CNPJ..."
+                className="pl-8"
+              />
             </div>
+            {leads.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                Você não tem leads visíveis. Crie um lead primeiro em <Link to="/pipeline" className="text-primary underline">Funil de Vendas</Link>.
+              </p>
+            ) : (
+              <div className="max-h-64 overflow-y-auto border rounded-md divide-y">
+                {leadResults.length === 0 && (
+                  <div className="p-3 text-sm text-muted-foreground text-center">Nenhum cliente encontrado.</div>
+                )}
+                {leadResults.map((l) => (
+                  <button
+                    key={l.id}
+                    type="button"
+                    onClick={() => setSelectedLead(l.id)}
+                    className={`w-full text-left p-2.5 hover:bg-accent transition-colors ${selectedLead === l.id ? "bg-accent" : ""}`}
+                  >
+                    <div className="text-sm font-medium">{l.company}</div>
+                    <div className="text-xs text-muted-foreground flex flex-wrap gap-x-2">
+                      <span>{l.contactName}</span>
+                      {l.cnpj && <span>· CNPJ {l.cnpj}</span>}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setOpenNew(false)}>Cancelar</Button>
@@ -199,6 +234,7 @@ function PropostasPage() {
                 const id = createProposal(selectedLead);
                 setOpenNew(false);
                 setSelectedLead("");
+                setLeadSearch("");
                 toast.success("Proposta criada — adicione os itens");
                 navigate({ to: "/propostas/$id", params: { id } });
               }}
