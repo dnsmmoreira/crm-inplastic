@@ -1,13 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
-import { ShieldAlert, Users, Shield, User as UserIcon, Loader2 } from "lucide-react";
+import { ShieldAlert, Users, Shield, User as UserIcon, Loader2, Mail, Send } from "lucide-react";
 import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, type AppRole } from "@/hooks/use-auth";
+import { inviteUser } from "@/lib/invites.functions";
 
 export const Route = createFileRoute("/usuarios")({
   component: UsuariosPage,
@@ -100,7 +104,9 @@ function UsuariosPage() {
         </div>
       </div>
 
-      <Card>
+      <InviteCard onInvited={load} />
+
+      <Card className="mt-6">
         <CardHeader>
           <CardTitle className="text-base">Equipe cadastrada</CardTitle>
         </CardHeader>
@@ -158,9 +164,78 @@ function UsuariosPage() {
       </Card>
 
       <p className="text-xs text-muted-foreground mt-4">
-        Para adicionar uma pessoa nova, peça para ela acessar o CRM e criar a conta com o e-mail dela na tela de login.
-        Depois você promove aqui, se necessário.
+        Envie um convite acima e a pessoa receberá um e-mail com o link para ativar a conta e definir a própria senha.
       </p>
     </div>
+  );
+}
+
+function InviteCard({ onInvited }: { onInvited: () => Promise<void> | void }) {
+  const invite = useServerFn(inviteUser);
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [role, setRole] = useState<AppRole>("vendedor");
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      await invite({
+        data: {
+          email,
+          name,
+          role,
+          redirectTo: `${window.location.origin}/aceitar-convite`,
+        },
+      });
+      toast.success(`Convite enviado para ${email}`);
+      setEmail("");
+      setName("");
+      setRole("vendedor");
+      await onInvited();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Falha ao enviar convite");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <Mail className="h-4 w-4 text-primary" /> Convidar novo usuário
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={submit} className="grid gap-3 md:grid-cols-[1fr_1fr_160px_auto] md:items-end">
+          <div className="space-y-1">
+            <Label htmlFor="inv-name">Nome</Label>
+            <Input id="inv-name" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome do vendedor" />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="inv-email">E-mail</Label>
+            <Input id="inv-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="pessoa@empresa.com" />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="inv-role">Papel</Label>
+            <select
+              id="inv-role"
+              value={role}
+              onChange={(e) => setRole(e.target.value as AppRole)}
+              className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+            >
+              <option value="vendedor">Vendedor</option>
+              <option value="admin">Administrador</option>
+            </select>
+          </div>
+          <Button type="submit" disabled={busy} className="gap-1">
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            Enviar convite
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
   );
 }
