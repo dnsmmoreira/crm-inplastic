@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { lookupCnpj } from "@/lib/cnpj.functions";
+import { useAuth } from "@/hooks/use-auth";
+
 
 import {
   Sheet,
@@ -354,21 +356,29 @@ export function LeadDrawer({
           <Separator />
 
           <div className="flex justify-between">
-            <Button
-              variant="ghost"
-              className="text-destructive hover:text-destructive"
-              onClick={() => {
-                removeLead(lead.id);
-                onOpenChange(false);
-                toast.success("Lead removido");
-              }}
-            >
-              <Trash2 className="h-4 w-4 mr-2" /> Excluir lead
-            </Button>
+            {isAdmin ? (
+              <Button
+                variant="ghost"
+                className="text-destructive hover:text-destructive"
+                onClick={() => {
+                  if (!confirm(`Excluir lead ${lead.company}? Esta ação não pode ser desfeita.`)) return;
+                  removeLead(lead.id);
+                  onOpenChange(false);
+                  toast.success("Lead removido");
+                }}
+              >
+                <Trash2 className="h-4 w-4 mr-2" /> Excluir lead
+              </Button>
+            ) : (
+              <span className="text-xs text-muted-foreground self-center">
+                Apenas administradores podem excluir leads
+              </span>
+            )}
             <div className="text-xs text-muted-foreground self-center">
               Atualizado {formatDistanceToNow(new Date(lead.lastContact), { locale: ptBR, addSuffix: true })}
             </div>
           </div>
+
         </div>
       </SheetContent>
     </Sheet>
