@@ -111,7 +111,8 @@ async function runXerife(dryRun = false): Promise<{
           owner_id: l.owner_id,
           title,
           due_date: due,
-          priority: "media",
+          kind: "followup",
+          auto_generated: true,
         });
         if (!tErr) followupsCreated++;
       }
