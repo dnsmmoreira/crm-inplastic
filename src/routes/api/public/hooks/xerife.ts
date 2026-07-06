@@ -424,10 +424,6 @@ async function runResumoDiario(force = false): Promise<{
     const total = s.leadsUrgentes.length + s.tarefasHoje.length + s.tarefasVencidas.length + s.propostasParadas.length;
     if (total === 0) continue;
     const msg = formatMsg(prof?.name ?? "vendedor", false, s);
-    if (dryRun) {
-      vendedoresNotificados++;
-      continue;
-    }
     const ok = await sendZapiText(phone, msg);
     if (ok) {
       vendedoresNotificados++;
