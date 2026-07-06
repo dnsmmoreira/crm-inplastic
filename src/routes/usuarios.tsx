@@ -162,6 +162,9 @@ function UsuariosPage() {
         </CardContent>
       </Card>
 
+      <FilaVendedoresCard vendedores={rows ?? []} />
+
+
       <div className="mt-4 rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground space-y-1">
         <p>
           <strong>Sem senha definida?</strong> Envie ao usuário o link{" "}
