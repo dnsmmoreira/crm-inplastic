@@ -137,15 +137,27 @@ export const Route = createFileRoute("/api/public/zapi/webhook")({
               console.error("whatsapp_mensagens insert failed:", msgErr);
             }
 
-            // 4) Notifica o n8n (fire-and-forget) se a IA estiver ativa.
+            // 4) Notifica o n8n se a IA estiver ativa.
+            // IMPORTANTE: no runtime Cloudflare Worker, promises não-aguardadas
+            // são canceladas ao retornar a resposta. Por isso AGUARDAMOS o fetch
+            // (com timeout curto) em vez de fire-and-forget.
             const n8nUrl = process.env.N8N_WEBHOOK_URL;
             const n8nSecret = process.env.N8N_SECRET;
+            console.log("[n8n-notify] secrets", {
+              hasUrl: !!n8nUrl,
+              hasSecret: !!n8nSecret,
+            });
             if (n8nUrl && n8nSecret) {
               const { data: conv } = await supabaseAdmin
                 .from("whatsapp_conversas")
                 .select("id, phone, lead_id, ia_ativa, status")
                 .eq("id", conversaId)
                 .maybeSingle();
+              console.log("[n8n-notify] conv state", {
+                conversaId,
+                ia_ativa: conv?.ia_ativa,
+                status: conv?.status,
+              });
               if (conv && conv.ia_ativa && conv.status === "ia_atendendo") {
                 const { data: hist } = await supabaseAdmin
                   .from("whatsapp_mensagens")
@@ -160,15 +172,27 @@ export const Route = createFileRoute("/api/public/zapi/webhook")({
                   lead_id: conv.lead_id,
                   historico,
                 };
-                // fire-and-forget — não bloqueia a resposta ao Z-API
-                void fetch(n8nUrl, {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                    "x-n8n-secret": n8nSecret,
-                  },
-                  body: JSON.stringify(payloadOut),
-                }).catch((e) => console.error("n8n notify failed:", e));
+                try {
+                  const ctrl = new AbortController();
+                  const timer = setTimeout(() => ctrl.abort(), 8000);
+                  const r = await fetch(n8nUrl, {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                      "x-n8n-secret": n8nSecret,
+                    },
+                    body: JSON.stringify(payloadOut),
+                    signal: ctrl.signal,
+                  });
+                  clearTimeout(timer);
+                  console.log("[n8n-notify] sent", {
+                    conversaId,
+                    status: r.status,
+                  });
+                } catch (e) {
+                  const msg = e instanceof Error ? e.message : String(e);
+                  console.error("[n8n-notify] failed:", msg);
+                }
               }
             }
           }
