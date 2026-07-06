@@ -993,6 +993,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      test_zapi_inbox_visibility: { Args: { _uid: string }; Returns: number }
     }
     Enums: {
       ai_action_type:
