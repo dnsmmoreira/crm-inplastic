@@ -322,6 +322,64 @@ function PropostasPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={openNewLead} onOpenChange={(o) => { setOpenNewLead(o); if (!o) resetLeadForm(); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Cadastrar novo lead</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>CNPJ</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={leadForm.cnpj}
+                  onChange={(e) => setLeadForm((f) => ({ ...f, cnpj: e.target.value }))}
+                  placeholder="00.000.000/0000-00"
+                />
+                <Button type="button" variant="outline" onClick={handleCnpjLookup} disabled={cnpjLoading}>
+                  {cnpjLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Buscar"}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">CNPJ é único no CRM — evita conflito entre vendedores.</p>
+            </div>
+            <div>
+              <Label>Empresa *</Label>
+              <Input
+                value={leadForm.company}
+                onChange={(e) => setLeadForm((f) => ({ ...f, company: e.target.value }))}
+                placeholder="Nome da empresa"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Contato</Label>
+                <Input
+                  value={leadForm.contactName}
+                  onChange={(e) => setLeadForm((f) => ({ ...f, contactName: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label>Telefone</Label>
+                <Input
+                  value={leadForm.phone}
+                  onChange={(e) => setLeadForm((f) => ({ ...f, phone: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div>
+              <Label>E-mail</Label>
+              <Input
+                type="email"
+                value={leadForm.email}
+                onChange={(e) => setLeadForm((f) => ({ ...f, email: e.target.value }))}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setOpenNewLead(false)}>Cancelar</Button>
+            <Button onClick={handleCreateLead}>Cadastrar e criar proposta</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
