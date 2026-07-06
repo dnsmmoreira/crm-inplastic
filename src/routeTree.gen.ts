@@ -20,6 +20,7 @@ import { Route as ContatosRouteImport } from './routes/contatos'
 import { Route as CondicoesComerciaisRouteImport } from './routes/condicoes-comerciais'
 import { Route as CanaisRouteImport } from './routes/canais'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AtendimentoIaRouteImport } from './routes/atendimento-ia'
 import { Route as AgenteIaRouteImport } from './routes/agente-ia'
 import { Route as AceitarConviteRouteImport } from './routes/aceitar-convite'
 import { Route as IndexRouteImport } from './routes/index'
@@ -87,6 +88,11 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AtendimentoIaRoute = AtendimentoIaRouteImport.update({
+  id: '/atendimento-ia',
+  path: '/atendimento-ia',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AgenteIaRoute = AgenteIaRouteImport.update({
   id: '/agente-ia',
   path: '/agente-ia',
@@ -150,6 +156,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/aceitar-convite': typeof AceitarConviteRoute
   '/agente-ia': typeof AgenteIaRoute
+  '/atendimento-ia': typeof AtendimentoIaRoute
   '/auth': typeof AuthRoute
   '/canais': typeof CanaisRoute
   '/condicoes-comerciais': typeof CondicoesComerciaisRoute
@@ -174,6 +181,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/aceitar-convite': typeof AceitarConviteRoute
   '/agente-ia': typeof AgenteIaRoute
+  '/atendimento-ia': typeof AtendimentoIaRoute
   '/auth': typeof AuthRoute
   '/canais': typeof CanaisRoute
   '/condicoes-comerciais': typeof CondicoesComerciaisRoute
@@ -199,6 +207,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/aceitar-convite': typeof AceitarConviteRoute
   '/agente-ia': typeof AgenteIaRoute
+  '/atendimento-ia': typeof AtendimentoIaRoute
   '/auth': typeof AuthRoute
   '/canais': typeof CanaisRoute
   '/condicoes-comerciais': typeof CondicoesComerciaisRoute
@@ -225,6 +234,7 @@ export interface FileRouteTypes {
     | '/'
     | '/aceitar-convite'
     | '/agente-ia'
+    | '/atendimento-ia'
     | '/auth'
     | '/canais'
     | '/condicoes-comerciais'
@@ -249,6 +259,7 @@ export interface FileRouteTypes {
     | '/'
     | '/aceitar-convite'
     | '/agente-ia'
+    | '/atendimento-ia'
     | '/auth'
     | '/canais'
     | '/condicoes-comerciais'
@@ -273,6 +284,7 @@ export interface FileRouteTypes {
     | '/'
     | '/aceitar-convite'
     | '/agente-ia'
+    | '/atendimento-ia'
     | '/auth'
     | '/canais'
     | '/condicoes-comerciais'
@@ -298,6 +310,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AceitarConviteRoute: typeof AceitarConviteRoute
   AgenteIaRoute: typeof AgenteIaRoute
+  AtendimentoIaRoute: typeof AtendimentoIaRoute
   AuthRoute: typeof AuthRoute
   CanaisRoute: typeof CanaisRoute
   CondicoesComerciaisRoute: typeof CondicoesComerciaisRoute
@@ -398,6 +411,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/atendimento-ia': {
+      id: '/atendimento-ia'
+      path: '/atendimento-ia'
+      fullPath: '/atendimento-ia'
+      preLoaderRoute: typeof AtendimentoIaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/agente-ia': {
       id: '/agente-ia'
       path: '/agente-ia'
@@ -482,6 +502,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AceitarConviteRoute: AceitarConviteRoute,
   AgenteIaRoute: AgenteIaRoute,
+  AtendimentoIaRoute: AtendimentoIaRoute,
   AuthRoute: AuthRoute,
   CanaisRoute: CanaisRoute,
   CondicoesComerciaisRoute: CondicoesComerciaisRoute,
