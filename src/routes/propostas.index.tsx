@@ -1,6 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Plus, FileText, Search, Trash2 } from "lucide-react";
+import { Plus, FileText, Search, Trash2, UserPlus, Loader2 } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { lookupCnpj } from "@/lib/cnpj.functions";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
