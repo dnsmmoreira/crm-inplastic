@@ -19,11 +19,19 @@ type ZapiPayload = Record<string, unknown> & {
   chatName?: string;
   text?: { message?: string };
   message?: string;
+  messageId?: string;
 };
 
 /**
  * Webhook público chamado pelo Z-API quando chegam mensagens.
  * Configure no painel Z-API em: Webhooks → Ao receber → URL deste endpoint.
+ *
+ * Efeitos:
+ *   1) Log bruto em `zapi_inbox` (para auditoria / reprocessamento).
+ *   2) Upsert em `whatsapp_conversas` (uma linha por telefone).
+ *   3) Insert em `whatsapp_mensagens` (autor='cliente', direcao='entrada').
+ *   4) O trigger de banco atualiza `last_message_at` da conversa e
+ *      `last_interaction_at` do lead vinculado (quando houver).
  */
 export const Route = createFileRoute("/api/public/zapi/webhook")({
   server: {
@@ -50,25 +58,87 @@ export const Route = createFileRoute("/api/public/zapi/webhook")({
           }
 
           const name = payload.senderName || payload.chatName || null;
+          const externalId = typeof payload.messageId === "string" ? payload.messageId : null;
 
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
           const rawJson = JSON.parse(JSON.stringify(payload)) as Record<string, unknown>;
-          const { error } = await supabaseAdmin.from("zapi_inbox").insert({
+
+          // 1) Log bruto
+          const inboxRes = await supabaseAdmin.from("zapi_inbox").insert({
             phone,
             name,
             message,
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             raw: rawJson as any,
           });
-          if (error) {
-            console.error("zapi_inbox insert failed:", error);
-            return new Response(JSON.stringify({ ok: false, error: error.message }), {
-              status: 500,
-              headers: { "Content-Type": "application/json", ...CORS },
-            });
+          if (inboxRes.error) {
+            console.error("zapi_inbox insert failed:", inboxRes.error);
           }
 
-          return Response.json({ ok: true }, { headers: CORS });
+          // 2) Upsert conversa por telefone
+          //    Se já existe → mantém status/ia_ativa/lead_id atuais.
+          //    Se não existe → cria em 'ia_atendendo' com ia_ativa=true.
+          let conversaId: string | null = null;
+          {
+            const { data: existing } = await supabaseAdmin
+              .from("whatsapp_conversas")
+              .select("id")
+              .eq("phone", phone)
+              .maybeSingle();
+
+            if (existing?.id) {
+              conversaId = existing.id;
+              // Atualiza o nome se veio no payload e a conversa não tinha
+              if (name) {
+                await supabaseAdmin
+                  .from("whatsapp_conversas")
+                  .update({ name })
+                  .eq("id", conversaId)
+                  .is("name", null);
+              }
+            } else {
+              // Tenta vincular a um lead pelo telefone_whatsapp
+              const { data: leadMatch } = await supabaseAdmin
+                .from("leads")
+                .select("id")
+                .eq("telefone_whatsapp", phone)
+                .maybeSingle();
+
+              const { data: novo, error: novoErr } = await supabaseAdmin
+                .from("whatsapp_conversas")
+                .insert({
+                  phone,
+                  name,
+                  lead_id: leadMatch?.id ?? null,
+                  status: "ia_atendendo",
+                  ia_ativa: true,
+                })
+                .select("id")
+                .single();
+              if (novoErr) {
+                console.error("whatsapp_conversas insert failed:", novoErr);
+              }
+              conversaId = novo?.id ?? null;
+            }
+          }
+
+          // 3) Grava a mensagem do cliente
+          if (conversaId) {
+            const { error: msgErr } = await supabaseAdmin
+              .from("whatsapp_mensagens")
+              .insert({
+                conversa_id: conversaId,
+                direcao: "entrada",
+                autor: "cliente",
+                conteudo: message,
+                external_id: externalId,
+              });
+            if (msgErr) {
+              console.error("whatsapp_mensagens insert failed:", msgErr);
+            }
+          }
+
+          return Response.json({ ok: true, conversaId }, { headers: CORS });
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);
           console.error("zapi webhook error:", msg);
