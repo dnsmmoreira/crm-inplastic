@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { defineTool, type ToolContext } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 
-const STAGES = ["novo", "em_atendimento", "proposta", "negociacao", "ganho", "perdido"] as const;
+const STAGES = ["atendimento", "novo", "qualificacao", "proposta", "negociacao", "ganho", "perdido"] as const;
 
 export default defineTool({
   name: "list_leads",
@@ -29,34 +29,31 @@ export default defineTool({
         auth: { persistSession: false, autoRefreshToken: false },
       },
     );
-    const { data, error } = await supabase.from("user_workspaces").select("user_id, data");
+    const max = limit ?? 50;
+    let q = supabase
+      .from("leads")
+      .select("id, company, contact_name, email, phone, stage, estimated_value, product, quantity, source, last_contact, owner_id")
+      .order("updated_at", { ascending: false })
+      .limit(max);
+    if (stage) q = q.eq("stage", stage);
+    const { data, error } = await q;
     if (error) {
       return { content: [{ type: "text", text: `Erro: ${error.message}` }], isError: true };
     }
-    const max = limit ?? 50;
-    const leads: unknown[] = [];
-    for (const row of data ?? []) {
-      const d = (row.data ?? {}) as { leads?: Array<Record<string, unknown>> };
-      for (const l of d.leads ?? []) {
-        if (stage && l.stage !== stage) continue;
-        leads.push({
-          id: l.id,
-          company: l.company,
-          contactName: l.contactName,
-          email: l.email,
-          phone: l.phone,
-          stage: l.stage,
-          estimatedValue: l.estimatedValue,
-          product: l.product,
-          quantity: l.quantity,
-          source: l.source,
-          lastContact: l.lastContact,
-          ownerId: l.ownerId,
-        });
-        if (leads.length >= max) break;
-      }
-      if (leads.length >= max) break;
-    }
+    const leads = (data ?? []).map((l) => ({
+      id: l.id,
+      company: l.company,
+      contactName: l.contact_name,
+      email: l.email,
+      phone: l.phone,
+      stage: l.stage,
+      estimatedValue: l.estimated_value,
+      product: l.product,
+      quantity: l.quantity,
+      source: l.source,
+      lastContact: l.last_contact,
+      ownerId: l.owner_id,
+    }));
     return {
       content: [{ type: "text", text: `${leads.length} lead(s) encontrado(s).` }],
       structuredContent: { leads },

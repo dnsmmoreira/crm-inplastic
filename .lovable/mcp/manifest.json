@@ -31,8 +31,9 @@
             "stage": {
               "type": "string",
               "enum": [
+                "atendimento",
                 "novo",
-                "em_atendimento",
+                "qualificacao",
                 "proposta",
                 "negociacao",
                 "ganho",

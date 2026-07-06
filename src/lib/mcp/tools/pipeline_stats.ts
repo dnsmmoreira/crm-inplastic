@@ -20,22 +20,19 @@ export default defineTool({
         auth: { persistSession: false, autoRefreshToken: false },
       },
     );
-    const { data, error } = await supabase.from("user_workspaces").select("data");
+    const { data, error } = await supabase.from("leads").select("stage, estimated_value");
     if (error) return { content: [{ type: "text", text: `Erro: ${error.message}` }], isError: true };
 
     const byStage: Record<string, { count: number; totalValue: number }> = {};
     let total = 0;
     let totalValue = 0;
-    for (const row of data ?? []) {
-      const d = (row.data ?? {}) as { leads?: Array<{ stage?: string; estimatedValue?: number }> };
-      for (const l of d.leads ?? []) {
-        const s = l.stage ?? "desconhecido";
-        byStage[s] ??= { count: 0, totalValue: 0 };
-        byStage[s].count += 1;
-        byStage[s].totalValue += Number(l.estimatedValue ?? 0);
-        total += 1;
-        totalValue += Number(l.estimatedValue ?? 0);
-      }
+    for (const l of data ?? []) {
+      const s = l.stage ?? "desconhecido";
+      byStage[s] ??= { count: 0, totalValue: 0 };
+      byStage[s].count += 1;
+      byStage[s].totalValue += Number(l.estimated_value ?? 0);
+      total += 1;
+      totalValue += Number(l.estimated_value ?? 0);
     }
     return {
       content: [

@@ -1,94 +1,98 @@
-# Etapa B — Isolamento de dados por usuário
+## Etapa 1 — Fundação de dados (migração única)
 
-Hoje todo o CRM roda em `localStorage` no navegador de cada pessoa. Cada usuário
-tem uma "cópia" isolada dos dados por acidente (é o browser dele), o que quebra
-o objetivo: admin ver tudo, vendedor ver só o dele, todos vendo os mesmos
-cadastros globais (produtos, condições, empresas do grupo).
+Cria todas as tabelas por vendedor e globais, com RLS + GRANTs, seed dos cadastros globais e substitui o store local.
 
-Esta etapa move os dados para o banco, com regras de acesso aplicadas no
-servidor via RLS.
+**Tabelas (owner_id uuid, nullable em `leads`):**
+- `leads` — colunas do plano original + `origem text`, `telefone_whatsapp text` (dígitos com DDI 55), `external_id text`, `last_interaction_at timestamptz`, `created_at`, `updated_at`. Etapa restrita ao enum canônico: `atendimento | novo | qualificacao | proposta | negociacao | ganho | perdido`.
+- `lead_interactions`, `lead_ai_actions`, `tarefas`, `propostas`, `proposta_itens`, `proposta_parcelas`, `pedidos`, `pedido_itens`.
+- Globais: `produtos`, `condicoes_pagamento`, `emitters`.
+- Trigger em `lead_interactions` e mensagens WhatsApp → atualiza `leads.last_interaction_at`.
 
-## Modelo de dados
+**RLS:**
+- Vendedor: `owner_id = auth.uid()`. Admin: tudo. Lead com `owner_id IS NULL`: só admin vê.
+- Globais: `SELECT` para authenticated, `INSERT/UPDATE/DELETE` só admin (`has_role`).
+- `service_role` com acesso total (n8n).
 
-Tabelas **por vendedor** (com `owner_id uuid` = quem criou):
+**Padronização de etapas:** troco `em_atendimento` → `atendimento` em `src/lib/mcp/tools/*` e em todo o front.
 
-- `leads` — clientes/oportunidades (Empresa, contato, produto, valor, etapa, tags, notas, próximas ações)
-- `lead_interactions` — histórico de contato de cada lead
-- `lead_ai_actions` — ações que o Agente IA executou
-- `tarefas` — to-dos ligados a leads
-- `propostas` + `proposta_itens` + `proposta_parcelas` — orçamentos
-- `pedidos` + `pedido_itens` — pedidos emitidos a partir de propostas
+**Seed:** produtos, condições e emitters dos dados hoje hardcoded em `crm-store.ts`. Base de leads/propostas/pedidos começa vazia.
 
-Tabelas **globais** (compartilhadas, só admin edita):
+**Código:**
+- Novos módulos `src/lib/leads.functions.ts`, `tarefas.functions.ts`, `propostas.functions.ts`, `pedidos.functions.ts`, `catalogo.functions.ts` — todos com `requireSupabaseAuth`.
+- Hooks TanStack Query em `src/hooks/use-*.ts` substituindo `useCrm(...)`.
+- Remoção de `src/lib/crm-store.ts` e `crm-sync.ts` após migrar todas as telas: `pipeline`, `contatos`, `tarefas`, `propostas.index`, `propostas.$id`, `produtos`, `condicoes-comerciais`, `empresas`, `index` (dashboard), `agente-ia`, `canais`, `LeadDrawer`.
+- Layout, cores e textos permanecem idênticos.
 
-- `produtos` — catálogo (SKU, dimensões, preço padrão, NCM…)
-- `condicoes_pagamento` — formas de pagamento configuráveis pelo admin
-- `emitters` — CNPJs do grupo (TAOPLAST, INPLASTIC, LICITAPLAS)
+## Etapa 2 — Canais com Z-API real
 
-Não migramos (permanecem locais por serem simulações do MVP):
+- Tabelas novas de conversa (ver Etapa 5) alimentam a tela. `zapi_inbox` continua como log bruto; o webhook passa a fazer upsert em `whatsapp_conversas` e insert em `whatsapp_mensagens (autor='cliente')` além do log.
+- Tela `/canais` reescrita: **conversas agrupadas por telefone** via Supabase Realtime (fallback polling 5s), transcript completo incluindo mensagens antigas.
+- Remove: botão "Simular msg", switch "Simular fluxo real", `RANDOM_MSGS`, autoCapture no navegador.
+- Se `phone` = `leads.telefone_whatsapp` → mostra chip do lead. Senão → botão "Criar lead a partir desta conversa" (pré-preenche nome, telefone, `origem='whatsapp'`).
+- Envio manual pela tela usa `sendWhatsapp` existente e grava com `autor='vendedor'`.
+- Card Z-API (webhook URL + testar conexão) permanece.
 
-- Mensagens WhatsApp e slots de agenda da tela "Canais/Agente IA" — hoje são dados de demonstração; migração fica para quando integrar canal real.
+## Etapa 3 — Xerife (cron determinístico)
 
-## Regras de acesso (RLS)
+**3a. Edge Function `xerife`:**
+- Roda hora a hora 07h-20h America/Sao_Paulo via `pg_cron` + `pg_net`.
+- Porta a lógica de `TemperatureLevel` e `FollowupLevel` de `crm-store.ts` para `supabase/functions/xerife/index.ts` (fonte única).
+- Varre leads ativos (`atendimento` → `negociacao`), tarefas e propostas.
 
-| Tabela | Vendedor | Admin |
-|---|---|---|
-| leads / interações / ações IA / tarefas / propostas / itens / parcelas / pedidos | vê e edita só onde `owner_id = auth.uid()` | vê e edita tudo |
-| produtos / condições / empresas | só leitura | leitura + escrita |
+**3b. Regras (configuráveis):**
+- Nova tabela `xerife_config` (singleton, editável por admin): `dias_sem_interacao_por_etapa jsonb` (default `{novo:1, qualificacao:2, proposta:3, negociacao:2}`), `proposta_enviada_dias int` (3), `tarefa_atrasada_horas int` (24), `ia_sem_resposta_horas int` (2), `resumo_diario_ativo bool`, `resumo_hora time` (08:00), `horario_comercial_inicio time`, `horario_comercial_fim time`.
+- Cria tarefa automática de follow-up para o `owner_id` (idempotente: não cria se já houver tarefa aberta do mesmo tipo no lead).
+- Toda ação → `lead_ai_actions (tipo, lead_id, descricao, criado_em)`.
 
-`ownership` de propostas e pedidos é derivada do lead (uma proposta de um lead
-do Bruno pertence ao Bruno). Ao criar uma proposta, o `owner_id` é gravado
-automaticamente = usuário logado.
+**3c. Notificações Z-API (só equipe interna, nunca para o cliente):**
+- Adiciono `profiles.telefone_whatsapp text`.
+- 08h: resumo diário por vendedor + consolidado ao admin.
+- Alertas urgentes fora do resumo: máx 1 por lead por dia (dedupe em `lead_ai_actions`).
 
-## Camada de acesso (código)
+**3d. Tela Agente IA vira "Painel do Xerife":**
+- Feed de `lead_ai_actions` (filtros lead/vendedor/período), painel por temperatura, formulário de configuração das regras (só admin).
+- Remove dados demo atuais da rota `/agente-ia`.
 
-Substituo o `crm-store` (Zustand + localStorage) por hooks baseados em
-TanStack Query + `createServerFn` autenticadas:
+## Etapa 4 — Entrada externa (n8n direto no banco)
 
-- `useLeads()`, `useLead(id)`, `useCreateLead()`, `useUpdateLead()`…
-- `useTarefas()`, `usePropostas()`, `useProposta(id)`, `usePedidos()`…
-- `useProdutos()`, `useCondicoesPagamento()`, `useEmpresas()` (com mutations
-  bloqueadas pra não-admin no servidor).
+- Sem endpoint novo. RLS já libera `service_role` para insert em `leads`, `lead_interactions`, `lead_ai_actions` com `owner_id` nulo.
+- Novo arquivo `LEADS_API.md` na raiz: schema exato, valores de etapa canônicos, payloads JSON de exemplo para leads/interações e (adicionado na Etapa 5) mensagens IA + chamada de `atribuir_proximo_vendedor`.
 
-Todas as consultas passam pelo Supabase com a sessão do usuário → RLS aplica
-o filtro por `owner_id` automaticamente. Zero lógica de "esconder" no
-front-end.
+## Etapa 5 — Atendimento IA com handoff sequencial
 
-## Migração de dados atuais
+**5a. Tabelas:**
+- `whatsapp_conversas (id, phone unique, lead_id fk nullable, status enum('ia_atendendo','humano_atendendo','qualificado','encerrado'), ia_ativa bool default true, created_at, updated_at)`.
+- `whatsapp_mensagens (id, conversa_id fk, direcao enum('entrada','saida'), autor enum('cliente','ia','vendedor'), conteudo text, created_at)`.
+- Realtime habilitado nas duas. `service_role` com escrita liberada.
+- RLS: admin vê tudo; vendedor vê conversas de leads onde `owner_id = auth.uid()`.
 
-Faço **seed inicial** direto na migração do banco:
-- Produtos, condições de pagamento e empresas do grupo (dados globais atuais)
-- Não migro leads/propostas/pedidos do localStorage — hoje são dados de teste
-  ("Frigorífico Sul", "AgroExport" etc.) e cada usuário só tinha no próprio
-  navegador. Começamos com base limpa; a equipe cadastra os reais.
+**5b. Round-robin:**
+- `fila_vendedores (user_id fk profiles, posicao int, ativo bool)` editável na tela Usuários (só admin).
+- Função `atribuir_proximo_vendedor(lead_id uuid) returns uuid` — SECURITY DEFINER, rotação circular persistente. Ao atribuir: seta `leads.owner_id`, `leads.etapa='qualificacao'`, `whatsapp_conversas.status='qualificado'`, `ia_ativa=false`.
 
-Se você quiser preservar algum lead específico do que já cadastrou, me diga
-e eu abro uma tela de importação, mas o padrão é começar limpo.
+**5c. Nova tela `/atendimento-ia` (só admin no menu):**
+- Lista de conversas ativas via Realtime, status colorido, preview da última msg, contador desde a última resposta.
+- Clique abre transcript ao vivo (cliente/IA/vendedor visualmente distintos).
+- Botão "Assumir conversa" (admin ou dono): seta `ia_ativa=false`, `status='humano_atendendo'`; libera composer que envia via `sendWhatsapp` e grava mensagem com `autor='vendedor'`.
+- Vendedores acessam a mesma tela mas veem só conversas de leads deles (RLS).
 
-## Rotas afetadas
+**5d. Documentação n8n:** anexado ao `LEADS_API.md` — esquema das conversas/mensagens, INSERT de mensagem IA, chamada de `atribuir_proximo_vendedor`, e a regra de ouro: n8n só responde se `ia_ativa=true`.
 
-- `pipeline.tsx`, `contatos.tsx`, `tarefas.tsx`, `propostas.index.tsx`,
-  `propostas.$id.tsx`, `produtos.tsx`, `condicoes-comerciais.tsx`,
-  `empresas.tsx`, `index.tsx` (dashboard), `agente-ia.tsx`, `canais.tsx`
-- Todas passam a ler do banco via hooks acima; nenhuma muda visualmente.
+## Etapa 6 — Verificação
 
-## Ordem de execução
+Smoke test manual descrito na spec (admin vs vendedor, lead sem dono, mensagem Z-API criando conversa em tempo real, assumir conversa, round-robin, xerife gerando tarefa+action, impressão de proposta). Sem publish automático. Ao final, listo concluído e pendente.
 
-1. **Migração SQL** — cria todas as tabelas, RLS, políticas, grants + seed
-   dos cadastros globais.
-2. **Camada de servidor** — `*.functions.ts` com `createServerFn +
-   requireSupabaseAuth` para cada entidade + hooks React Query.
-3. **Substituição do store** — trocar `useCrm(...)` por hooks novos em todas as
-   telas listadas. `crm-store.ts` deixa de existir.
-4. **Verificação** — smoke test: login como admin cria lead, promove segundo
-   usuário a vendedor, ele só enxerga o dele.
-5. **Publicar** — subir para produção e compartilhar link com a equipe.
+## Detalhes técnicos
 
-## Escopo e tempo
+- **Migrações separadas por etapa** (4 no total) para revisão incremental: 1) schema base + globais + seed, 2) conversas WhatsApp + realtime, 3) xerife_config + fila_vendedores + função round-robin, 4) `profiles.telefone_whatsapp` e cron.
+- **Cron via `pg_cron` + `pg_net`** chamando a Edge Function `xerife` com `apikey` do anon; guarda de horário/timezone dentro da função.
+- **Realtime** habilitado com `ALTER PUBLICATION supabase_realtime ADD TABLE ...`.
+- **Migração de código sem quebrar visual**: substituo `useCrm` por hooks um por tela, mantendo props/tipos equivalentes; `crm-store.ts` só é deletado quando nenhuma tela mais importa.
+- **Tipos**: `src/integrations/supabase/types.ts` regenera automaticamente após cada migração.
 
-É uma reescrita grande da camada de dados. Nada muda visualmente pro usuário
-final, mas mexe em ~10 rotas. Prefiro fazer em **um bloco só** pra não deixar
-o app quebrado no meio (metade lendo localStorage, metade banco). Ao terminar
-avaliamos qualquer ajuste antes de publicar.
+## Confirmações antes de executar
 
-Confirma que posso seguir por aqui, começando pela migração SQL?
+1. Perfis de usuários existentes: reaproveito `profiles` (adiciono `telefone_whatsapp`). OK?
+2. Zerar base de leads (nenhum lead real cadastrado hoje, os atuais são teste). OK?
+3. Edge Function `xerife` chamando Z-API direto (usa os secrets já configurados `ZAPI_INSTANCE_ID`, `ZAPI_TOKEN`, `ZAPI_CLIENT_TOKEN`). OK?
+4. Rota nova `/atendimento-ia` no menu lateral (posição sugerida: logo abaixo de "Canais de Entrada", ícone Radio, só admin). OK?
