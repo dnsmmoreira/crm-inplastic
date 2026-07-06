@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as UsuariosRouteImport } from './routes/usuarios'
 import { Route as TarefasRouteImport } from './routes/tarefas'
 import { Route as ProdutosRouteImport } from './routes/produtos'
+import { Route as PrimeiroAcessoRouteImport } from './routes/primeiro-acesso'
 import { Route as PipelineRouteImport } from './routes/pipeline'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as EmpresasRouteImport } from './routes/empresas'
@@ -42,6 +43,11 @@ const TarefasRoute = TarefasRouteImport.update({
 const ProdutosRoute = ProdutosRouteImport.update({
   id: '/produtos',
   path: '/produtos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrimeiroAcessoRoute = PrimeiroAcessoRouteImport.update({
+  id: '/primeiro-acesso',
+  path: '/primeiro-acesso',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PipelineRoute = PipelineRouteImport.update({
@@ -139,6 +145,7 @@ export interface FileRoutesByFullPath {
   '/empresas': typeof EmpresasRoute
   '/mcp': typeof McpRoute
   '/pipeline': typeof PipelineRoute
+  '/primeiro-acesso': typeof PrimeiroAcessoRoute
   '/produtos': typeof ProdutosRoute
   '/tarefas': typeof TarefasRoute
   '/usuarios': typeof UsuariosRoute
@@ -160,6 +167,7 @@ export interface FileRoutesByTo {
   '/empresas': typeof EmpresasRoute
   '/mcp': typeof McpRoute
   '/pipeline': typeof PipelineRoute
+  '/primeiro-acesso': typeof PrimeiroAcessoRoute
   '/produtos': typeof ProdutosRoute
   '/tarefas': typeof TarefasRoute
   '/usuarios': typeof UsuariosRoute
@@ -182,6 +190,7 @@ export interface FileRoutesById {
   '/empresas': typeof EmpresasRoute
   '/mcp': typeof McpRoute
   '/pipeline': typeof PipelineRoute
+  '/primeiro-acesso': typeof PrimeiroAcessoRoute
   '/produtos': typeof ProdutosRoute
   '/tarefas': typeof TarefasRoute
   '/usuarios': typeof UsuariosRoute
@@ -205,6 +214,7 @@ export interface FileRouteTypes {
     | '/empresas'
     | '/mcp'
     | '/pipeline'
+    | '/primeiro-acesso'
     | '/produtos'
     | '/tarefas'
     | '/usuarios'
@@ -226,6 +236,7 @@ export interface FileRouteTypes {
     | '/empresas'
     | '/mcp'
     | '/pipeline'
+    | '/primeiro-acesso'
     | '/produtos'
     | '/tarefas'
     | '/usuarios'
@@ -247,6 +258,7 @@ export interface FileRouteTypes {
     | '/empresas'
     | '/mcp'
     | '/pipeline'
+    | '/primeiro-acesso'
     | '/produtos'
     | '/tarefas'
     | '/usuarios'
@@ -269,6 +281,7 @@ export interface RootRouteChildren {
   EmpresasRoute: typeof EmpresasRoute
   McpRoute: typeof McpRoute
   PipelineRoute: typeof PipelineRoute
+  PrimeiroAcessoRoute: typeof PrimeiroAcessoRoute
   ProdutosRoute: typeof ProdutosRoute
   TarefasRoute: typeof TarefasRoute
   UsuariosRoute: typeof UsuariosRoute
@@ -301,6 +314,13 @@ declare module '@tanstack/react-router' {
       path: '/produtos'
       fullPath: '/produtos'
       preLoaderRoute: typeof ProdutosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/primeiro-acesso': {
+      id: '/primeiro-acesso'
+      path: '/primeiro-acesso'
+      fullPath: '/primeiro-acesso'
+      preLoaderRoute: typeof PrimeiroAcessoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pipeline': {
@@ -429,6 +449,7 @@ const rootRouteChildren: RootRouteChildren = {
   EmpresasRoute: EmpresasRoute,
   McpRoute: McpRoute,
   PipelineRoute: PipelineRoute,
+  PrimeiroAcessoRoute: PrimeiroAcessoRoute,
   ProdutosRoute: ProdutosRoute,
   TarefasRoute: TarefasRoute,
   UsuariosRoute: UsuariosRoute,
