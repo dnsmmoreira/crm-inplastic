@@ -1,6 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Plus, FileText, Search, Trash2 } from "lucide-react";
+import { Plus, FileText, Search, Trash2, UserPlus, Loader2 } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { lookupCnpj } from "@/lib/cnpj.functions";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -59,6 +61,7 @@ function PropostasPage() {
   const leads = useVisibleLeads();
   const removeProposal = useCrm((s) => s.removeProposal);
   const createProposal = useCrm((s) => s.createProposal);
+  const addLead = useCrm((s) => s.addLead);
   const navigate = useNavigate();
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
@@ -67,6 +70,65 @@ function PropostasPage() {
   const [openNew, setOpenNew] = useState(false);
   const [selectedLead, setSelectedLead] = useState<string>("");
   const [leadSearch, setLeadSearch] = useState("");
+  const [openNewLead, setOpenNewLead] = useState(false);
+  const [leadForm, setLeadForm] = useState({
+    company: "", cnpj: "", contactName: "", phone: "", email: "",
+  });
+  const [cnpjLoading, setCnpjLoading] = useState(false);
+  const lookupCnpjFn = useServerFn(lookupCnpj);
+
+  const resetLeadForm = () => setLeadForm({ company: "", cnpj: "", contactName: "", phone: "", email: "" });
+
+  const handleCnpjLookup = async () => {
+    const digits = leadForm.cnpj.replace(/\D/g, "");
+    if (digits.length !== 14) { toast.error("Informe um CNPJ com 14 dígitos"); return; }
+    // check duplicate before calling API
+    const dup = leads.find((l) => (l.cnpj ?? "").replace(/\D/g, "") === digits);
+    if (dup) { toast.error(`CNPJ já cadastrado para "${dup.company}"`); return; }
+    setCnpjLoading(true);
+    try {
+      const r = await lookupCnpjFn({ data: { cnpj: digits } });
+      setLeadForm((f) => ({
+        ...f,
+        company: r.nomeFantasia || r.razaoSocial || f.company,
+        phone: f.phone || r.telefone,
+        email: f.email || r.email,
+      }));
+      toast.success("Dados do CNPJ carregados");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro na consulta do CNPJ");
+    } finally {
+      setCnpjLoading(false);
+    }
+  };
+
+  const handleCreateLead = () => {
+    if (!leadForm.company.trim()) { toast.error("Informe a empresa"); return; }
+    try {
+      const id = addLead({
+        company: leadForm.company.trim(),
+        contactName: leadForm.contactName.trim(),
+        email: leadForm.email.trim(),
+        phone: leadForm.phone,
+        product: "",
+        quantity: 0,
+        estimatedValue: 0,
+        stage: "novo",
+        tags: [],
+        source: "Manual",
+        notes: "",
+        cnpj: leadForm.cnpj || undefined,
+      });
+      toast.success("Lead cadastrado");
+      setOpenNewLead(false);
+      resetLeadForm();
+      setSelectedLead(id);
+      setOpenNew(true);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao cadastrar lead");
+    }
+  };
+
 
 
   const leadResults = useMemo(() => {
@@ -120,6 +182,9 @@ function PropostasPage() {
               <SelectItem value="recusada">Recusada</SelectItem>
             </SelectContent>
           </Select>
+          <Button variant="outline" onClick={() => setOpenNewLead(true)} className="gap-2">
+            <UserPlus className="h-4 w-4" /> Cadastrar lead
+          </Button>
           <Button onClick={() => setOpenNew(true)} className="gap-2">
             <Plus className="h-4 w-4" /> Nova proposta
           </Button>
@@ -254,6 +319,64 @@ function PropostasPage() {
             >
               Criar proposta
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={openNewLead} onOpenChange={(o) => { setOpenNewLead(o); if (!o) resetLeadForm(); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Cadastrar novo lead</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>CNPJ</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={leadForm.cnpj}
+                  onChange={(e) => setLeadForm((f) => ({ ...f, cnpj: e.target.value }))}
+                  placeholder="00.000.000/0000-00"
+                />
+                <Button type="button" variant="outline" onClick={handleCnpjLookup} disabled={cnpjLoading}>
+                  {cnpjLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Buscar"}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">CNPJ é único no CRM — evita conflito entre vendedores.</p>
+            </div>
+            <div>
+              <Label>Empresa *</Label>
+              <Input
+                value={leadForm.company}
+                onChange={(e) => setLeadForm((f) => ({ ...f, company: e.target.value }))}
+                placeholder="Nome da empresa"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Contato</Label>
+                <Input
+                  value={leadForm.contactName}
+                  onChange={(e) => setLeadForm((f) => ({ ...f, contactName: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label>Telefone</Label>
+                <Input
+                  value={leadForm.phone}
+                  onChange={(e) => setLeadForm((f) => ({ ...f, phone: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div>
+              <Label>E-mail</Label>
+              <Input
+                type="email"
+                value={leadForm.email}
+                onChange={(e) => setLeadForm((f) => ({ ...f, email: e.target.value }))}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setOpenNewLead(false)}>Cancelar</Button>
+            <Button onClick={handleCreateLead}>Cadastrar e criar proposta</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

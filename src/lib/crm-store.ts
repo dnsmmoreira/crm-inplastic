@@ -754,6 +754,17 @@ export const useCrm = create<CrmState>()(
       setCurrentUser: (id) => set({ currentUserId: id }),
       addLead: (l) => {
         const id = uid();
+        const newCnpj = (l.cnpj ?? "").replace(/\D/g, "");
+        if (newCnpj) {
+          const dup = get().leads.find(
+            (x) => (x.cnpj ?? "").replace(/\D/g, "") === newCnpj,
+          );
+          if (dup) {
+            throw new Error(
+              `CNPJ já cadastrado para "${dup.company}". Solicite ao ADM a transferência do lead.`,
+            );
+          }
+        }
         set((s) => ({
           leads: [
             {
@@ -777,8 +788,20 @@ export const useCrm = create<CrmState>()(
         }));
         return id;
       },
-      updateLead: (id, patch) =>
-        set((s) => ({ leads: s.leads.map((l) => (l.id === id ? { ...l, ...patch } : l)) })),
+      updateLead: (id, patch) => {
+        if (patch.cnpj !== undefined) {
+          const newCnpj = (patch.cnpj ?? "").replace(/\D/g, "");
+          if (newCnpj) {
+            const dup = get().leads.find(
+              (x) => x.id !== id && (x.cnpj ?? "").replace(/\D/g, "") === newCnpj,
+            );
+            if (dup) {
+              throw new Error(`CNPJ já cadastrado para "${dup.company}".`);
+            }
+          }
+        }
+        set((s) => ({ leads: s.leads.map((l) => (l.id === id ? { ...l, ...patch } : l)) }));
+      },
       removeLead: (id) =>
         set((s) => ({
           leads: s.leads.filter((l) => l.id !== id),
