@@ -242,6 +242,41 @@ function RunXerifeButton({ onDone }: { onDone: () => void }) {
   );
 }
 
+function TestResumoButton() {
+  const run = useServerFn(runResumoDiarioNow);
+  const [busy, setBusy] = useState(false);
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      className="w-full"
+      disabled={busy}
+      onClick={async () => {
+        setBusy(true);
+        try {
+          const r = await run();
+          if (!r.ran) {
+            toast.info("Resumo não enviado", { description: r.reason ?? "sem dados" });
+          } else {
+            toast.success("Resumo enviado", {
+              description: `${r.vendedoresNotificados} vendedor(es) · ${r.adminsNotificados} admin(s)`,
+            });
+          }
+        } catch (e) {
+          toast.error("Falha ao enviar resumo", {
+            description: e instanceof Error ? e.message : String(e),
+          });
+        } finally {
+          setBusy(false);
+        }
+      }}
+    >
+      <Play className="h-3.5 w-3.5 mr-1.5" />
+      {busy ? "Enviando..." : "Testar resumo agora (WhatsApp)"}
+    </Button>
+  );
+}
+
 type CfgState = {
   novo: number;
   qualificacao: number;
