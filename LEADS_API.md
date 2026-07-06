@@ -1,297 +1,247 @@
-# LEADS_API — Integração externa (n8n) com o CRM INPLASTIC
+# LEADS_API — Integração n8n ↔ CRM INPLASTIC
 
-Contrato para o **n8n** (ou qualquer sistema externo) inserir leads,
-interações, ações do agente e mensagens de WhatsApp diretamente no banco do
-CRM. **Não existe endpoint HTTP intermediário** — o n8n usa o node
-**Supabase** autenticado com a **`service_role`** e escreve nas tabelas
-listadas abaixo.
+O n8n é o **cérebro de IA** do atendimento WhatsApp. Como o backend do
+CRM roda em Lovable Cloud e a `service_role` **não** é exposta para
+sistemas externos, toda comunicação n8n ↔ CRM passa por **dois endpoints
+HTTP públicos** protegidos por um segredo compartilhado (`N8N_SECRET`),
+no mesmo padrão do Xerife.
 
----
-
-## 1. Autenticação
-
-- **URL do projeto:** `https://klbkkertbwuusegtdgkw.supabase.co`
-- **Key:** `SUPABASE_SERVICE_ROLE_KEY` — armazenada como secret no CRM;
-  peça ao admin. Nunca colocar em código público ou variável `VITE_*`.
-- No node **Supabase** do n8n, escolha **Service Role** e cole a chave.
-- `service_role` **ignora RLS** — pode inserir com `owner_id = NULL` em
-  `leads`, `lead_interactions` e `lead_ai_actions` (validado no banco).
-- Todo request via Data API precisa dos headers:
-
-```
-apikey: <SERVICE_ROLE_KEY>
-Authorization: Bearer <SERVICE_ROLE_KEY>
-Content-Type: application/json
-Prefer: return=representation
-```
+Fluxo em uma linha:
+`WhatsApp → Z-API webhook → CRM grava mensagem → CRM notifica n8n → n8n pensa → n8n chama endpoints do CRM (responder / qualificar)`.
 
 ---
 
-## 2. Enums canônicos
+## 1. Segredos
 
-Use **exatamente** um destes valores:
+Configurados em **Backend → Secrets** do projeto Lovable Cloud:
 
-| Enum                 | Valores                                                                             |
-|----------------------|-------------------------------------------------------------------------------------|
+| Secret            | Origem                                       | Uso                                                                 |
+|-------------------|----------------------------------------------|---------------------------------------------------------------------|
+| `N8N_SECRET`      | gerado pelo CRM (64 hex, aleatório)          | Header `x-n8n-secret` em **ambos os sentidos** (CRM→n8n e n8n→CRM)  |
+| `N8N_WEBHOOK_URL` | você fornece (URL do webhook do fluxo n8n)   | CRM chama esta URL para notificar chegada de mensagem do cliente    |
+
+- O `N8N_SECRET` **não** aparece em código. No n8n, copie o valor a partir
+  de Backend → Secrets do CRM e use-o para (a) validar o header
+  `x-n8n-secret` que o CRM envia no webhook de saída e (b) enviá-lo de
+  volta ao chamar os endpoints do CRM.
+- Requests sem o header ou com valor divergente retornam **401**.
+
+---
+
+## 2. Notificação de saída (CRM → n8n)
+
+Quando o webhook do Z-API (`/api/public/zapi/webhook`) grava uma
+**mensagem de cliente** e a conversa está com `ia_ativa = true` e
+`status = 'ia_atendendo'`, o CRM dispara **fire-and-forget** um POST
+para `N8N_WEBHOOK_URL`.
+
+- Método: `POST`
+- Headers:
+  - `Content-Type: application/json`
+  - `x-n8n-secret: <N8N_SECRET>`
+- Body:
+
+```json
+{
+  "conversa_id": "3f0d…",
+  "phone": "5548991238877",
+  "lead_id": "b12a…",
+  "historico": [
+    { "autor": "cliente",  "conteudo": "Olá, quero cotar pallets", "created_at": "2026-07-06T14:30:00Z" },
+    { "autor": "ia",       "conteudo": "Oi! Sou o assistente…",    "created_at": "2026-07-06T14:30:02Z" }
+  ]
+}
+```
+
+Regras:
+- `historico` = últimas **20 mensagens** da conversa, ordem cronológica.
+- `lead_id` pode ser `null` (conversa ainda não virou lead).
+- O CRM **não bloqueia** a resposta ao Z-API para esperar o n8n.
+- O n8n só é notificado quando `ia_ativa = true` **e**
+  `status = 'ia_atendendo'`. Ao mudar para `humano_atendendo`,
+  `qualificado` ou `encerrado`, o CRM para de disparar (regra de ouro).
+
+---
+
+## 3. Endpoint — `POST /api/public/hooks/ia-responder`
+
+Usado pelo n8n para **responder ao cliente**. O CRM envia a mensagem via
+Z-API e registra em `whatsapp_mensagens` como `autor='ia'`,
+`direcao='saida'`.
+
+- Header: `x-n8n-secret: <N8N_SECRET>` (401 se ausente/divergente)
+- Body:
+
+```json
+{
+  "conversa_id": "3f0d…",
+  "mensagem": "Perfeito! Você prefere pallet 1200×1000 ou 1000×1200?"
+}
+```
+
+Respostas:
+
+| Status | Situação                                                              |
+|--------|-----------------------------------------------------------------------|
+| 200    | `{ "ok": true }` — mensagem enviada e persistida                       |
+| 400    | body inválido / `conversa_id` ou `mensagem` ausentes                   |
+| 401    | `x-n8n-secret` inválido                                                |
+| 404    | conversa não encontrada                                                |
+| 409    | `ia_ativa = false` — humano assumiu; o n8n **não deve** insistir      |
+| 502    | falha ao enviar via Z-API (mensagem propagada no body)                 |
+
+> Se retornar 409, o n8n deve encerrar o fluxo daquela conversa: quem
+> passa a responder é o vendedor pela UI `/atendimento-ia`.
+
+---
+
+## 4. Endpoint — `POST /api/public/hooks/ia-qualificar`
+
+Usado pelo n8n quando a IA considera o cliente **qualificado**. Cria o
+lead (se ainda não existir), marca a conversa como qualificada, desliga a
+IA e, opcionalmente, distribui para o próximo vendedor da fila.
+
+- Header: `x-n8n-secret: <N8N_SECRET>` (401 se ausente/divergente)
+- Body:
+
+```json
+{
+  "conversa_id": "3f0d…",
+  "dados": {
+    "empresa": "Frigorífico Litoral LTDA",
+    "contato": "Marcos Andrade",
+    "segmento": "Ind Alimentos",
+    "produto": "Pallet Higiênico",
+    "quantidade": 300,
+    "urgencia": "30 dias",
+    "cidade_uf": "Itajaí/SC"
+  },
+  "motivo": "Cliente com volume recorrente e prazo definido.",
+  "distribuir": true
+}
+```
+
+Comportamento:
+
+1. Se a conversa **ainda não tem lead**, cria em `public.leads` com:
+   - `company` ← `dados.empresa` (fallback: `name` da conversa ou
+     `"WhatsApp <phone>"`)
+   - `contact_name` ← `dados.contato` (fallback: `name` da conversa)
+   - `phone` e `telefone_whatsapp` ← `phone` da conversa
+   - `product`, `quantity`, `segment` ← campos correspondentes
+   - `stage = 'novo'`, `origem = 'whatsapp'`,
+     `source = 'WhatsApp IA'`, `tags = ['WhatsApp','IA']`
+   - `notes` ← concat de `motivo`, `urgencia`, `cidade_uf` e prévia da
+     última mensagem
+   - `owner_id = null` (entra na fila)
+2. Vincula `whatsapp_conversas.lead_id`, muda `status = 'qualificado'`
+   e `ia_ativa = false` (o n8n para de responder essa conversa).
+3. Se `distribuir = true`:
+   - Chama a função de banco `atribuir_proximo_vendedor(lead_id)`
+     (round-robin em `fila_vendedores.ativo = true`).
+   - Atualiza `leads.owner_id` e `stage = 'qualificacao'`.
+   - Registra em `lead_ai_actions` (`type='qualify'`) com
+     `metadata.distribuido = true` e `vendedor_id`.
+4. Se `distribuir = false` (ex.: fora do horário comercial no n8n):
+   - **Não** chama a função de fila.
+   - Registra em `lead_ai_actions` (`type='qualify'`) com
+     `metadata.aguardando_distribuicao = true`. Um job posterior (ou o
+     próprio n8n num horário programado) reprocessa com
+     `distribuir = true`.
+
+Respostas:
+
+```json
+// 200 OK — distribuído
+{ "ok": true, "lead_id": "b12a…", "vendedor_id": "8de1…", "distribuido": true }
+
+// 200 OK — aguardando distribuição
+{ "ok": true, "lead_id": "b12a…", "vendedor_id": null,   "distribuido": false }
+
+// 200 OK — tentou distribuir mas a fila estava vazia
+{ "ok": true, "lead_id": "b12a…", "vendedor_id": null, "distribuido": false,
+  "erro_distribuicao": "Nenhum vendedor ativo na fila" }
+```
+
+| Status | Situação                                        |
+|--------|-------------------------------------------------|
+| 200    | qualificação registrada (com ou sem distribuição)|
+| 400    | body inválido / `conversa_id` ausente            |
+| 401    | `x-n8n-secret` inválido                          |
+| 404    | conversa não encontrada                          |
+| 500    | falha ao criar o lead                            |
+
+---
+
+## 5. Enums canônicos (usados nos dados)
+
+| Enum                 | Valores                                                                                       |
+|----------------------|-----------------------------------------------------------------------------------------------|
 | `lead_stage`         | `atendimento` \| `novo` \| `qualificacao` \| `proposta` \| `negociacao` \| `ganho` \| `perdido` |
-| `interaction_type`   | `email` \| `call` \| `meeting` \| `note` \| `whatsapp`                              |
-| `ai_action_type`     | `followup` \| `schedule` \| `qualify` \| `reply` \| `alerta` \| `resumo`             |
-| `conversa_status`    | `ia_atendendo` \| `humano_atendendo` \| `qualificado` \| `encerrado`                |
-| `msg_direcao`        | `entrada` \| `saida`                                                                |
-| `msg_autor`          | `cliente` \| `ia` \| `vendedor`                                                     |
-
-Padrão para leads novos vindos do n8n: `stage = 'novo'`.
+| `interaction_type`   | `email` \| `call` \| `meeting` \| `note` \| `whatsapp`                                        |
+| `ai_action_type`     | `followup` \| `schedule` \| `qualify` \| `reply` \| `alerta` \| `resumo`                       |
+| `conversa_status`    | `ia_atendendo` \| `humano_atendendo` \| `qualificado` \| `encerrado`                          |
+| `msg_direcao`        | `entrada` \| `saida`                                                                          |
+| `msg_autor`          | `cliente` \| `ia` \| `vendedor`                                                               |
 
 ---
 
-## 3. Inserir Lead — `public.leads`
+## 6. Fluxo canônico WhatsApp
 
-Obrigatório: `company`. Recomenda-se sempre preencher `telefone_whatsapp`
-(digitado como só dígitos com DDI **55**) para vincular a conversa Z-API.
-
-```
-POST /rest/v1/leads
-Body:
-{
-  "company": "Frigorífico Litoral LTDA",
-  "contact_name": "Marcos Andrade",
-  "email": "marcos@frigolitoral.com.br",
-  "phone": "(48) 99123-8877",
-  "telefone_whatsapp": "5548991238877",
-  "product": "Pallet Higiênico",
-  "quantity": 300,
-  "estimated_value": 73500,
-  "stage": "novo",
-  "tags": ["Exportação"],
-  "segment": "Ind Alimentos",
-  "source": "Formulário Site",
-  "origem": "site:palletdeplastico",
-  "external_id": "form-2025-0917",
-  "cnpj": "12.345.678/0001-90",
-  "notes": "Volume ~150 un/mês, urgência 30 dias.",
-  "owner_id": null
-}
-```
-
-- `owner_id: null` → lead entra na fila de distribuição (só o admin
-  enxerga até ser atribuído).
-- `owner_id: "<uuid do vendedor>"` → lead já entra vinculado.
-- **Duplicidade de CNPJ:** índice único parcial em `cnpj`. Insert com CNPJ
-  já existente devolve erro `23505` — trate com upsert (`on_conflict=cnpj`)
-  ou log.
-- Batch: aceita array JSON. Prefira lotes ≤ 100.
-
-### Upsert por CNPJ
-
-```
-POST /rest/v1/leads?on_conflict=cnpj
-Prefer: resolution=merge-duplicates,return=representation
-```
+1. Cliente manda mensagem → Z-API → `POST /api/public/zapi/webhook`
+   grava em `whatsapp_conversas` + `whatsapp_mensagens` (autor
+   `cliente`, direção `entrada`).
+2. Se `ia_ativa = true` e `status = 'ia_atendendo'`, CRM dispara
+   fire-and-forget para `N8N_WEBHOOK_URL` com o payload da seção 2.
+3. n8n valida `x-n8n-secret`, chama o LLM com o `historico`.
+4. n8n decide:
+   - **Responder** → `POST /api/public/hooks/ia-responder`.
+   - **Qualificar** → `POST /api/public/hooks/ia-qualificar`
+     (com `distribuir = true` em horário comercial,
+     `distribuir = false` fora dele).
+5. Ao qualificar, o CRM desliga a IA da conversa e (se distribuído)
+   atribui o próximo vendedor da fila. A conversa aparece "Qualificado"
+   em `/atendimento-ia` para o vendedor dono ou para todos os admins.
 
 ---
 
-## 4. Registrar Interação — `public.lead_interactions`
+## 7. Regras que o n8n NUNCA deve violar
 
-Toda interação inserida atualiza `leads.last_interaction_at` via trigger.
-
-```
-POST /rest/v1/lead_interactions
-Body:
-{
-  "lead_id": "<uuid do lead>",
-  "type": "whatsapp",
-  "content": "Cliente pediu cotação para 500 un.",
-  "occurred_at": "2026-07-06T14:32:00-03:00",
-  "owner_id": null
-}
-```
-
-- `owner_id` é opcional (herda do lead quando exibido na UI).
-- `metadata` (jsonb) livre para anexos, IDs externos etc.
+- Só responder quando **ele mesmo** foi convocado pelo webhook de saída
+  (a conversa estava `ia_atendendo` + `ia_ativa`). Se `POST /ia-responder`
+  retornar **409**, encerre o fluxo daquela conversa.
+- Nunca chamar `ia-responder` para conversas em `humano_atendendo`,
+  `qualificado` ou `encerrado` — o vendedor já assumiu.
+- Nunca gravar direto no banco: **não há service role exposto**. Toda
+  ação passa pelos dois endpoints acima.
+- Nunca logar / repassar o `N8N_SECRET` fora do próprio nó HTTP do n8n.
+- Não inserir `lead_ai_actions` com `type='resumo'` — reservado ao
+  motor Xerife interno.
 
 ---
 
-## 5. Diário do Xerife — `public.lead_ai_actions`
+## 8. FAQ
 
-Registre ações automáticas do n8n / IA (não é usado para enviar mensagem —
-apenas registro para o painel do Xerife).
+**P: Onde configuro `N8N_SECRET` e `N8N_WEBHOOK_URL`?**
+R: No projeto Lovable Cloud, em **Backend → Secrets**. `N8N_SECRET` já
+foi gerado automaticamente (64 hex). `N8N_WEBHOOK_URL` você preenche com
+a URL do webhook do fluxo no n8n. No n8n, use o mesmo valor de
+`N8N_SECRET` para validar entradas e assinar chamadas de volta.
 
-```
-POST /rest/v1/lead_ai_actions
-Body:
-{
-  "lead_id": "<uuid ou null>",
-  "type": "qualify",
-  "content": "IA classificou como qualificado (score 0.87).",
-  "metadata": { "canal": "whatsapp", "modelo": "n8n-worker-1" }
-}
-```
-
-`type = 'resumo'` fica reservado para o **motor Xerife** — n8n não deve
-usar.
-
----
-
-## 6. Atendimento WhatsApp
-
-### 6.1 Conversas — `public.whatsapp_conversas`
-
-Uma linha por telefone.
-
-| Coluna                 | Tipo                    | Notas                                                          |
-|------------------------|-------------------------|----------------------------------------------------------------|
-| `id`                   | uuid (gerado)           | PK                                                             |
-| `phone`                | text (único)            | **só dígitos com DDI 55** (`5548991238877`)                    |
-| `name`                 | text (nullable)         | nome exibido no WhatsApp                                       |
-| `lead_id`              | uuid (nullable)         | vínculo com `leads.id`                                         |
-| `status`               | `conversa_status`       | default `ia_atendendo`                                         |
-| `ia_ativa`             | boolean                 | default `true` — **regra de ouro do n8n**                      |
-| `last_message_preview` | text                    | atualizado por trigger ao inserir mensagem                     |
-| `last_message_at`      | timestamptz             | idem                                                           |
-
-Normalmente o n8n **não precisa inserir** nesta tabela — o webhook
-`/api/public/zapi/webhook` do CRM já cria/atualiza a conversa ao receber
-mensagem do cliente. O n8n só faz `UPDATE` para mudar `status` ou
-`ia_ativa`.
-
-### 6.2 Mensagens — `public.whatsapp_mensagens`
-
-```
-POST /rest/v1/whatsapp_mensagens
-Body:
-{
-  "conversa_id": "<uuid da conversa>",
-  "direcao": "saida",
-  "autor": "ia",
-  "conteudo": "Olá! Sou o assistente da INPLASTIC. Em que posso ajudar?",
-  "external_id": null
-}
-```
-
-Ao inserir uma mensagem, o trigger `tg_touch_conversa` atualiza
-`whatsapp_conversas.last_message_at` / `last_message_preview` e, para
-mensagens de cliente, também `leads.last_interaction_at`.
-
-### 6.3 Regra de ouro para o n8n
-
-Antes de responder qualquer mensagem, leia a conversa do telefone:
-
-```sql
-SELECT ia_ativa, status FROM whatsapp_conversas WHERE phone = $1;
-```
-
-- Só responda se `ia_ativa = true`.
-- Se `status IN ('humano_atendendo', 'qualificado', 'encerrado')` →
-  **não responda**; o vendedor assumiu.
-
-### 6.4 Encerrar / desativar IA
-
-```sql
-UPDATE whatsapp_conversas
-   SET ia_ativa = false, status = 'encerrado', updated_at = now()
- WHERE id = '<uuid>';
-```
-
----
-
-## 7. Handoff e distribuição — `atribuir_proximo_vendedor`
-
-Função de banco `SECURITY DEFINER` que faz **round-robin** entre os
-vendedores da fila (`public.fila_vendedores.ativo = true`, ordenados por
-`posicao`). Ao ser chamada com o `lead_id`, ela executa **em uma única
-transação**:
-
-1. Escolhe o próximo vendedor após o último atribuído (`fila_estado`).
-2. Se chegou ao fim da fila, volta ao primeiro ativo (ciclo).
-3. Atualiza `leads.owner_id = <vendedor>` e `leads.stage = 'qualificacao'`.
-4. Atualiza a `whatsapp_conversas` vinculada ao lead:
-   `status = 'qualificado'`, `ia_ativa = false`.
-5. Retorna o `uuid` do vendedor escolhido.
-
-Se não houver vendedor ativo na fila, dispara `RAISE EXCEPTION 'Nenhum
-vendedor ativo na fila'`.
-
-### Chamada via Data API (RPC)
-
-```
-POST /rest/v1/rpc/atribuir_proximo_vendedor
-Body:
-{ "_lead_id": "<uuid do lead>" }
-```
-
-Ou via SQL/node "Supabase → Execute Query":
-
-```sql
-SELECT public.atribuir_proximo_vendedor('<uuid do lead>'::uuid);
-```
-
-**Pré-condições:**
-- O `lead_id` deve existir.
-- O lead precisa ter `telefone_whatsapp` batendo com
-  `whatsapp_conversas.phone` **antes** da chamada (para o passo 4
-  encontrar a conversa) — se não achar, o lead é atribuído normalmente
-  mas a conversa fica como está.
-
----
-
-## 8. Fluxo canônico (WhatsApp → Qualificação)
-
-1. **Webhook Z-API** insere mensagem em `whatsapp_conversas` +
-   `whatsapp_mensagens` (feito pelo CRM em `/api/public/zapi/webhook`).
-2. **n8n dispara** ao receber mensagem nova (via Supabase Realtime ou
-   polling em `whatsapp_mensagens WHERE autor = 'cliente'`).
-3. **n8n lê** `ia_ativa` da conversa. Se `false` → ignora.
-4. **n8n chama o LLM** para gerar resposta.
-5. **n8n grava** a resposta em `whatsapp_mensagens` (`autor='ia'`,
-   `direcao='saida'`).
-6. **n8n envia** via API do Z-API (`send-text`).
-7. Quando a IA classificar como qualificado:
-   1. `INSERT` em `leads` com dados coletados + `telefone_whatsapp` =
-      número da conversa + `owner_id = null`.
-   2. `SELECT atribuir_proximo_vendedor('<lead_id>')` — atribui
-      vendedor + move para `qualificacao` + libera a conversa.
-   3. Opcional: `INSERT` em `lead_ai_actions` (`type='qualify'`) com o
-      resumo da qualificação.
-
-Após isso, o vendedor vê o lead no pipeline dele e a conversa aparece
-"Qualificado" no painel `/canais`.
-
----
-
-## 9. Segurança / Regras que o n8n NÃO deve violar
-
-- **Nunca** escrever em `xerife_config`, `user_roles`, `profiles` ou
-  qualquer tabela `auth.*`.
-- **Nunca** enviar mensagem para o cliente diretamente pelo Xerife/CRM —
-  o Xerife notifica apenas a equipe interna (WhatsApp do vendedor/admin
-  com telefone cadastrado em `profiles.telefone_whatsapp`). O n8n é o
-  único autorizado a responder o cliente, e sempre respeitando a regra
-  de ouro (item 6.3).
-- **Nunca** logar a `SERVICE_ROLE_KEY` nem trafegá-la pelo browser.
-- Ao inserir `lead_ai_actions` com `type='resumo'`, evite — esse tipo
-  é reservado ao motor Xerife interno.
-
----
-
-## 10. FAQ
-
-**P: Posso inserir múltiplos leads em batch?**
-R: Sim. O endpoint aceita array JSON. Prefira lotes ≤ 100.
+**P: O CRM tenta de novo se o n8n cair?**
+R: Não. A notificação de saída é fire-and-forget. Se o n8n estava fora
+do ar, a mensagem fica só gravada e o próximo evento retoma o fluxo.
+Se precisar de retry, faça no lado do n8n (fila interna).
 
 **P: Como envio mídia (imagem/áudio)?**
-R: Nesta fase apenas texto está mapeado. Se precisar, abra pedido — o
-schema de `whatsapp_mensagens` precisa de colunas extras.
+R: Nesta fase só texto está mapeado. `whatsapp_mensagens` precisaria de
+colunas extras para mídia.
 
-**P: A IA pode enviar mensagem "espontânea" (sem estar respondendo)?**
-R: Sim — grave em `whatsapp_mensagens` (`autor='ia'`, `direcao='saida'`)
-**e** dispare o envio pela API do Z-API pelo próprio n8n.
+**P: A IA pode iniciar conversa (fora de um turno do cliente)?**
+R: Sim — o n8n pode chamar `/ia-responder` desde que a conversa exista
+e esteja `ia_ativa = true`. O CRM envia via Z-API e grava a mensagem.
 
-**P: Onde está o log bruto do Z-API?**
-R: `public.zapi_inbox` (uma linha por evento). É usado só para auditoria;
-o dado "de trabalho" é `whatsapp_conversas` + `whatsapp_mensagens`.
-
-**P: Como saber se meu insert respeitou o RLS?**
-R: `service_role` bypassa RLS. Se o insert falhar, é integridade
-(`23505` = duplicado, `23503` = FK ausente, `23514` = check violado, etc.)
-ou GRANT — nunca RLS. O CRM validou que INSERT com `owner_id = NULL` é
-aceito em `leads`, `lead_interactions` e `lead_ai_actions`.
+**P: Como sei o telefone bruto para enviar?**
+R: O CRM já usa `whatsapp_conversas.phone` internamente e normaliza
+para DDI 55 antes de mandar ao Z-API. O n8n só precisa do
+`conversa_id`.

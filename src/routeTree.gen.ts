@@ -32,6 +32,8 @@ import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as ApiPublicZapiWebhookRouteImport } from './routes/api/public/zapi/webhook'
 import { Route as ApiPublicHooksXerifeRouteImport } from './routes/api/public/hooks/xerife'
+import { Route as ApiPublicHooksIaResponderRouteImport } from './routes/api/public/hooks/ia-responder'
+import { Route as ApiPublicHooksIaQualificarRouteImport } from './routes/api/public/hooks/ia-qualificar'
 
 const UsuariosRoute = UsuariosRouteImport.update({
   id: '/usuarios',
@@ -151,6 +153,18 @@ const ApiPublicHooksXerifeRoute = ApiPublicHooksXerifeRouteImport.update({
   path: '/api/public/hooks/xerife',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksIaResponderRoute =
+  ApiPublicHooksIaResponderRouteImport.update({
+    id: '/api/public/hooks/ia-responder',
+    path: '/api/public/hooks/ia-responder',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksIaQualificarRoute =
+  ApiPublicHooksIaQualificarRouteImport.update({
+    id: '/api/public/hooks/ia-qualificar',
+    path: '/api/public/hooks/ia-qualificar',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -174,6 +188,8 @@ export interface FileRoutesByFullPath {
   '/propostas/': typeof PropostasIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/api/public/hooks/ia-qualificar': typeof ApiPublicHooksIaQualificarRoute
+  '/api/public/hooks/ia-responder': typeof ApiPublicHooksIaResponderRoute
   '/api/public/hooks/xerife': typeof ApiPublicHooksXerifeRoute
   '/api/public/zapi/webhook': typeof ApiPublicZapiWebhookRoute
 }
@@ -199,6 +215,8 @@ export interface FileRoutesByTo {
   '/propostas': typeof PropostasIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/api/public/hooks/ia-qualificar': typeof ApiPublicHooksIaQualificarRoute
+  '/api/public/hooks/ia-responder': typeof ApiPublicHooksIaResponderRoute
   '/api/public/hooks/xerife': typeof ApiPublicHooksXerifeRoute
   '/api/public/zapi/webhook': typeof ApiPublicZapiWebhookRoute
 }
@@ -225,6 +243,8 @@ export interface FileRoutesById {
   '/propostas/': typeof PropostasIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/api/public/hooks/ia-qualificar': typeof ApiPublicHooksIaQualificarRoute
+  '/api/public/hooks/ia-responder': typeof ApiPublicHooksIaResponderRoute
   '/api/public/hooks/xerife': typeof ApiPublicHooksXerifeRoute
   '/api/public/zapi/webhook': typeof ApiPublicZapiWebhookRoute
 }
@@ -252,6 +272,8 @@ export interface FileRouteTypes {
     | '/propostas/'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/api/public/hooks/ia-qualificar'
+    | '/api/public/hooks/ia-responder'
     | '/api/public/hooks/xerife'
     | '/api/public/zapi/webhook'
   fileRoutesByTo: FileRoutesByTo
@@ -277,6 +299,8 @@ export interface FileRouteTypes {
     | '/propostas'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/api/public/hooks/ia-qualificar'
+    | '/api/public/hooks/ia-responder'
     | '/api/public/hooks/xerife'
     | '/api/public/zapi/webhook'
   id:
@@ -302,6 +326,8 @@ export interface FileRouteTypes {
     | '/propostas/'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/api/public/hooks/ia-qualificar'
+    | '/api/public/hooks/ia-responder'
     | '/api/public/hooks/xerife'
     | '/api/public/zapi/webhook'
   fileRoutesById: FileRoutesById
@@ -328,6 +354,8 @@ export interface RootRouteChildren {
   PropostasIndexRoute: typeof PropostasIndexRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
+  ApiPublicHooksIaQualificarRoute: typeof ApiPublicHooksIaQualificarRoute
+  ApiPublicHooksIaResponderRoute: typeof ApiPublicHooksIaResponderRoute
   ApiPublicHooksXerifeRoute: typeof ApiPublicHooksXerifeRoute
   ApiPublicZapiWebhookRoute: typeof ApiPublicZapiWebhookRoute
 }
@@ -495,6 +523,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksXerifeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/ia-responder': {
+      id: '/api/public/hooks/ia-responder'
+      path: '/api/public/hooks/ia-responder'
+      fullPath: '/api/public/hooks/ia-responder'
+      preLoaderRoute: typeof ApiPublicHooksIaResponderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/ia-qualificar': {
+      id: '/api/public/hooks/ia-qualificar'
+      path: '/api/public/hooks/ia-qualificar'
+      fullPath: '/api/public/hooks/ia-qualificar'
+      preLoaderRoute: typeof ApiPublicHooksIaQualificarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -521,6 +563,8 @@ const rootRouteChildren: RootRouteChildren = {
   PropostasIndexRoute: PropostasIndexRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
+  ApiPublicHooksIaQualificarRoute: ApiPublicHooksIaQualificarRoute,
+  ApiPublicHooksIaResponderRoute: ApiPublicHooksIaResponderRoute,
   ApiPublicHooksXerifeRoute: ApiPublicHooksXerifeRoute,
   ApiPublicZapiWebhookRoute: ApiPublicZapiWebhookRoute,
 }
