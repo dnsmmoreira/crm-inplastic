@@ -200,10 +200,86 @@ function CanaisPage() {
             <IntegrationRow name="Instagram DM" status="pendente" />
             <IntegrationRow name="E-mail comercial" status="conectado" />
           </div>
+
+          <ZapiCard />
         </aside>
       </div>
 
       <LeadDrawer leadId={openLead} open={!!openLead} onOpenChange={(o) => !o && setOpenLead(null)} />
+    </div>
+  );
+}
+
+function ZapiCard() {
+  const check = useServerFn(zapiStatus);
+  const [state, setState] = useState<"idle" | "loading" | "ok" | "err">("idle");
+  const [info, setInfo] = useState<string>("");
+  const [webhookUrl, setWebhookUrl] = useState("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setWebhookUrl(`${window.location.origin}/api/public/zapi/webhook`);
+    }
+  }, []);
+
+  async function testar() {
+    setState("loading");
+    try {
+      const r = await check();
+      if (!r.configured) {
+        setState("err");
+        setInfo("Variáveis Z-API ausentes.");
+        return;
+      }
+      setState(r.status && r.status >= 200 && r.status < 300 ? "ok" : "err");
+      setInfo(r.raw.slice(0, 240));
+    } catch (e) {
+      setState("err");
+      setInfo(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  return (
+    <div className="rounded-xl border bg-card p-4 space-y-3">
+      <div className="flex items-center gap-2 text-sm font-medium">
+        <Wifi className="h-4 w-4 text-primary" /> Z-API (WhatsApp)
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-xs">URL do Webhook (cole no painel Z-API → "Ao receber")</Label>
+        <div className="flex gap-1.5">
+          <input
+            readOnly
+            value={webhookUrl}
+            className="flex-1 rounded-md border bg-muted/40 px-2 py-1.5 text-xs font-mono"
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              void navigator.clipboard.writeText(webhookUrl);
+              toast.success("URL copiada");
+            }}
+          >
+            <Copy className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </div>
+      <Button size="sm" variant="outline" onClick={testar} disabled={state === "loading"} className="w-full">
+        {state === "loading" ? "Testando..." : "Testar conexão"}
+      </Button>
+      {state !== "idle" && state !== "loading" && (
+        <div
+          className={cn(
+            "rounded-md border p-2 text-[11px] font-mono break-all",
+            state === "ok" ? "border-emerald-500/40 bg-emerald-500/5 text-emerald-700" : "border-red-500/40 bg-red-500/5 text-red-700",
+          )}
+        >
+          {info || (state === "ok" ? "OK" : "Erro")}
+        </div>
+      )}
+      <p className="text-[11px] text-muted-foreground">
+        Configure também "Ao enviar" e "Status da mensagem" apontando para a mesma URL se desejar registro completo.
+      </p>
     </div>
   );
 }
