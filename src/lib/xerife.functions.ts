@@ -92,3 +92,12 @@ export const runXerifeNow = createServerFn({ method: "POST" })
     const { runXerife } = await import("@/routes/api/public/hooks/xerife");
     return runXerife(true);
   });
+
+/** Dispara o Resumo Diário via WhatsApp agora. Somente admin. */
+export const runResumoDiarioNow = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context);
+    const { runResumoDiario } = await import("@/routes/api/public/hooks/xerife");
+    return runResumoDiario(false);
+  });
