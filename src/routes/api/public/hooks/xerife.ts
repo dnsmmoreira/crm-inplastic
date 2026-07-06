@@ -313,7 +313,7 @@ async function runXerife(dryRun = false): Promise<{
  * Resumo diário para cada vendedor (dados do próprio funil) + consolidado para admins.
  * Enviado por WhatsApp. Sempre respeita cfg.resumo_diario_ativo.
  */
-async function runResumoDiario(dryRun = false): Promise<{
+async function runResumoDiario(force = false): Promise<{
   ran: boolean;
   reason?: string;
   vendedoresNotificados: number;
@@ -323,6 +323,13 @@ async function runResumoDiario(dryRun = false): Promise<{
   const cfg = await loadConfig();
   if (!cfg.ativo || !cfg.resumo_diario_ativo) {
     return { ran: false, reason: "resumo desativado", vendedoresNotificados: 0, adminsNotificados: 0 };
+  }
+  if (!force) {
+    const spHour = nowInSaoPauloHour();
+    const targetHour = parseHour(cfg.resumo_hora);
+    if (spHour !== targetHour) {
+      return { ran: false, reason: `hora atual ${spHour}h ≠ resumo_hora ${targetHour}h (SP)`, vendedoresNotificados: 0, adminsNotificados: 0 };
+    }
   }
 
   const nowIso = new Date().toISOString();
@@ -417,10 +424,6 @@ async function runResumoDiario(dryRun = false): Promise<{
     const total = s.leadsUrgentes.length + s.tarefasHoje.length + s.tarefasVencidas.length + s.propostasParadas.length;
     if (total === 0) continue;
     const msg = formatMsg(prof?.name ?? "vendedor", false, s);
-    if (dryRun) {
-      vendedoresNotificados++;
-      continue;
-    }
     const ok = await sendZapiText(phone, msg);
     if (ok) {
       vendedoresNotificados++;
@@ -447,10 +450,6 @@ async function runResumoDiario(dryRun = false): Promise<{
     const phone = prof?.telefone_whatsapp?.trim();
     if (!phone) continue;
     const msg = formatMsg(prof?.name ?? "admin", true, consolidated);
-    if (dryRun) {
-      adminsNotificados++;
-      continue;
-    }
     const ok = await sendZapiText(phone, msg);
     if (ok) {
       adminsNotificados++;
@@ -488,10 +487,11 @@ export const Route = createFileRoute("/api/public/hooks/xerife")({
         try {
           const url = new URL(request.url);
           const dryRun = url.searchParams.get("dry") === "1";
+          const force = url.searchParams.get("force") === "1";
           const mode = url.searchParams.get("mode") ?? "engine";
 
           if (mode === "digest") {
-            const result = await runResumoDiario(dryRun);
+            const result = await runResumoDiario(force);
             return Response.json({ ok: true, mode, at: new Date().toISOString(), ...result });
           }
 

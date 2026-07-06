@@ -99,5 +99,5 @@ export const runResumoDiarioNow = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     await assertAdmin(context);
     const { runResumoDiario } = await import("@/routes/api/public/hooks/xerife");
-    return runResumoDiario(false);
+    return runResumoDiario(true);
   });
