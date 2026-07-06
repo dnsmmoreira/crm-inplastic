@@ -1,24 +1,25 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
-import { format, isSameDay } from "date-fns";
+import { useEffect, useState } from "react";
+import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   Bot,
-  Calendar as CalendarIcon,
   Sparkles,
   Zap,
   MessageCircle,
-  CheckCircle2,
   Clock,
-  Mail,
   ChevronRight,
+  CalendarClock,
+  AlertTriangle,
+  Settings2,
+  RefreshCw,
+  Play,
 } from "lucide-react";
-import { useCrm, type CalendarSlot, useVisibleLeads } from "@/lib/crm-store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import {
   Select,
@@ -31,291 +32,179 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { LeadDrawer } from "@/components/crm/LeadDrawer";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/use-auth";
+import { useServerFn } from "@tanstack/react-start";
+import {
+  getXerifeConfig,
+  updateXerifeConfig,
+  listAiActions,
+  runXerifeNow,
+} from "@/lib/xerife.functions";
 
 export const Route = createFileRoute("/agente-ia")({
   component: AgenteIaPage,
   head: () => ({
-    meta: [{ title: "Agente IA — INPLASTIC - CRM" }],
+    meta: [{ title: "Painel do Xerife — INPLASTIC - CRM" }],
   }),
 });
 
+type Action = {
+  id: string;
+  lead_id: string | null;
+  owner_id: string | null;
+  type: "followup" | "schedule" | "qualify" | "reply" | "alerta" | "resumo";
+  content: string;
+  metadata: unknown;
+  occurred_at: string;
+  lead_company: string | null;
+};
+
 function AgenteIaPage() {
-  const agent = useCrm((s) => s.agent);
-  const update = useCrm((s) => s.updateAgent);
-  const calendar = useCrm((s) => s.calendar);
-  const leads = useVisibleLeads();
-  const bookSlot = useCrm((s) => s.bookSlotWithAi);
-  const runFollowUp = useCrm((s) => s.runAiFollowUp);
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+
+  const listFn = useServerFn(listAiActions);
   const [openLead, setOpenLead] = useState<string | null>(null);
+  const [actions, setActions] = useState<Action[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [typeFilter, setTypeFilter] = useState<string>("all");
 
-  const staleLeads = leads
-    .filter((l) => !["ganho", "perdido"].includes(l.stage))
-    .filter((l) => {
-      const days = (Date.now() - new Date(l.lastContact).getTime()) / 86400000;
-      return days >= 2;
-    })
-    .slice(0, 6);
+  const load = async () => {
+    setLoading(true);
+    try {
+      const r = await listFn({
+        data: typeFilter === "all" ? {} : { type: typeFilter as Action["type"] },
+      });
+      setActions(r as Action[]);
+    } catch (e) {
+      toast.error("Falha ao carregar log", {
+        description: e instanceof Error ? e.message : String(e),
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const days = Array.from(new Set(calendar.map((c) => new Date(c.date).toDateString())))
-    .slice(0, 4)
-    .map((d) => new Date(d));
+  useEffect(() => {
+    void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [typeFilter]);
 
-  const totalAiActions = leads.reduce((s, l) => s + (l.aiActions?.length ?? 0), 0);
+  const counts = actions.reduce(
+    (acc, a) => {
+      acc[a.type] = (acc[a.type] ?? 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>,
+  );
 
   return (
     <div className="p-4 md:p-8 space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl md:text-3xl font-semibold flex items-center gap-2">
-            <Bot className="h-7 w-7 text-primary" /> Agente IA
+            <Bot className="h-7 w-7 text-primary" /> Painel do Xerife
           </h1>
           <p className="text-sm text-muted-foreground">
-            Assistente autônomo que faz follow-up, qualifica leads e agenda reuniões
+            Motor determinístico que varre leads, tarefas e propostas em horário comercial e
+            registra ações no diário da IA.
           </p>
         </div>
         <Badge variant="secondary" className="gap-1 h-8 px-3">
           <Sparkles className="h-3.5 w-3.5 text-primary" />
-          {totalAiActions} ações executadas
+          {actions.length} ações no período
         </Badge>
       </div>
 
-      <Tabs defaultValue="config">
+      <div className="grid gap-4 md:grid-cols-4">
+        <StatCard label="Follow-ups" value={counts.followup ?? 0} icon={<MessageCircle className="h-4 w-4" />} />
+        <StatCard label="Alertas" value={counts.alerta ?? 0} tone="warn" icon={<AlertTriangle className="h-4 w-4" />} />
+        <StatCard label="Qualificações" value={counts.qualify ?? 0} icon={<Sparkles className="h-4 w-4" />} />
+        <StatCard label="Resumos" value={counts.resumo ?? 0} tone="ok" icon={<CalendarClock className="h-4 w-4" />} />
+      </div>
+
+      <Tabs defaultValue="feed">
         <TabsList>
-          <TabsTrigger value="config">Configurações</TabsTrigger>
-          <TabsTrigger value="agenda">Agenda do Vendedor</TabsTrigger>
-          <TabsTrigger value="log">Atividade da IA</TabsTrigger>
+          <TabsTrigger value="feed">Diário do Xerife</TabsTrigger>
+          <TabsTrigger value="config" disabled={!isAdmin}>
+            Configurações {!isAdmin && "(admin)"}
+          </TabsTrigger>
         </TabsList>
 
-        {/* CONFIG */}
-        <TabsContent value="config" className="mt-6 grid gap-6 lg:grid-cols-2">
-          <section className="rounded-xl border bg-card p-5 space-y-5">
-            <header className="flex items-center gap-2">
-              <Zap className="h-4 w-4 text-primary" />
-              <h2 className="font-medium">Comportamento do Agente</h2>
-            </header>
-
-            <SettingRow
-              title="Acompanhamento Automático (Follow-up)"
-              desc="IA envia mensagem se o lead ficar sem resposta pelo tempo definido."
-              checked={agent.autoFollowUp}
-              onChange={(v) => update({ autoFollowUp: v })}
-            />
-            {agent.autoFollowUp && (
-              <div className="pl-1">
-                <Label className="text-xs">Aguardar sem resposta (horas)</Label>
-                <Input
-                  type="number"
-                  className="mt-1 w-32"
-                  value={agent.followUpDelayHours}
-                  onChange={(e) => update({ followUpDelayHours: Number(e.target.value) || 24 })}
-                />
-              </div>
-            )}
-
-            <Separator />
-
-            <SettingRow
-              title="Agendamento Autônomo"
-              desc="IA propõe e confirma reuniões nos horários livres do vendedor."
-              checked={agent.autoSchedule}
-              onChange={(v) => update({ autoSchedule: v })}
-            />
-            <SettingRow
-              title="Pré-qualificação"
-              desc="IA identifica volume, urgência e prioridade automaticamente."
-              checked={agent.autoQualify}
-              onChange={(v) => update({ autoQualify: v })}
-            />
-
-            <Separator />
-
-            <div>
-              <Label className="text-xs">Tom de voz</Label>
-              <Select value={agent.tone} onValueChange={(v) => update({ tone: v as typeof agent.tone })}>
-                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="consultivo">Consultivo (padrão)</SelectItem>
-                  <SelectItem value="direto">Direto</SelectItem>
-                  <SelectItem value="amigavel">Amigável</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </section>
-
-          <section className="rounded-xl border bg-card p-5 space-y-4">
-            <header className="flex items-center gap-2">
-              <CalendarIcon className="h-4 w-4 text-primary" />
-              <h2 className="font-medium">Integração com Agenda</h2>
-            </header>
-
-            <div className="rounded-lg border bg-gradient-to-br from-primary/5 to-transparent p-4 flex items-center gap-3">
-              <div className={cn(
-                "h-10 w-10 rounded-lg flex items-center justify-center text-white",
-                agent.calendarConnected ? "bg-emerald-500" : "bg-muted",
-              )}>
-                <CalendarIcon className="h-5 w-5" />
-              </div>
-              <div className="flex-1">
-                <div className="font-medium text-sm">
-                  {agent.calendarProvider === "google" ? "Google Calendar" : "Outlook Calendar"}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {agent.calendarConnected ? `Sincronizado com ${agent.vendorEmail}` : "Não conectado"}
-                </div>
-              </div>
-              <Switch
-                checked={agent.calendarConnected}
-                onCheckedChange={(v) => {
-                  update({ calendarConnected: v });
-                  toast[v ? "success" : "info"](v ? "Agenda conectada" : "Agenda desconectada");
-                }}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs">Provedor</Label>
-                <Select
-                  value={agent.calendarProvider}
-                  onValueChange={(v) => update({ calendarProvider: v as "google" | "outlook" })}
-                >
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+        <TabsContent value="feed" className="mt-6 space-y-4">
+          <div className="rounded-xl border bg-card p-5 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Label className="text-xs">Filtrar por tipo</Label>
+                <Select value={typeFilter} onValueChange={setTypeFilter}>
+                  <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="google">Google Calendar</SelectItem>
-                    <SelectItem value="outlook">Outlook</SelectItem>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="followup">Follow-up</SelectItem>
+                    <SelectItem value="alerta">Alerta</SelectItem>
+                    <SelectItem value="qualify">Qualificação</SelectItem>
+                    <SelectItem value="schedule">Agendamento</SelectItem>
+                    <SelectItem value="reply">Resposta</SelectItem>
+                    <SelectItem value="resumo">Resumo</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label className="text-xs">E-mail do vendedor</Label>
-                <Input
-                  className="mt-1"
-                  value={agent.vendorEmail}
-                  onChange={(e) => update({ vendorEmail: e.target.value })}
-                />
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={load} disabled={loading}>
+                  <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", loading && "animate-spin")} />
+                  Atualizar
+                </Button>
+                {isAdmin && <RunXerifeButton onDone={load} />}
               </div>
             </div>
 
-            <div className="rounded-lg border bg-muted/40 p-3 text-xs text-muted-foreground flex gap-2">
-              <Sparkles className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-              A IA lê os horários livres da agenda e propõe ao lead pelo WhatsApp. Reuniões confirmadas aparecem como "Agendado pela IA".
-            </div>
-          </section>
-        </TabsContent>
-
-        {/* AGENDA */}
-        <TabsContent value="agenda" className="mt-6 space-y-4">
-          <div className="rounded-xl border bg-card p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <CalendarIcon className="h-4 w-4 text-primary" />
-                <h2 className="font-medium">Próximos horários — {agent.vendorEmail}</h2>
-              </div>
-              <div className="flex items-center gap-3 text-xs">
-                <LegendDot color="bg-muted" label="Livre" />
-                <LegendDot color="bg-rose-400" label="Ocupado" />
-                <LegendDot color="bg-primary" label="Agendado pela IA" />
-              </div>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              {days.map((day) => (
-                <DayColumn
-                  key={day.toISOString()}
-                  day={day}
-                  slots={calendar.filter((c) => isSameDay(new Date(c.date), day))}
-                  leads={leads}
-                  onBook={(slot) => {
-                    const target = staleLeads[0] ?? leads.find((l) => !["ganho","perdido"].includes(l.stage));
-                    if (!target) return toast.error("Sem lead pendente para agendar.");
-                    bookSlot(slot.id, target.id, `Call — ${target.contactName} (${target.company})`);
-                    toast.success("IA agendou reunião", { description: target.company });
-                  }}
-                  onOpen={(id) => setOpenLead(id)}
-                />
-              ))}
-            </div>
-          </div>
-        </TabsContent>
-
-        {/* LOG */}
-        <TabsContent value="log" className="mt-6 space-y-4">
-          <div className="rounded-xl border bg-card p-5 space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="font-medium flex items-center gap-2">
-                <MessageCircle className="h-4 w-4 text-primary" /> Leads sem resposta — sugestões da IA
-              </h2>
-              <Button
-                size="sm"
-                onClick={() => {
-                  staleLeads.forEach((l) => runFollowUp(l.id));
-                  toast.success(`IA disparou ${staleLeads.length} follow-ups`);
-                }}
-                disabled={staleLeads.length === 0}
-              >
-                <Zap className="h-4 w-4 mr-1.5" /> Rodar todos
-              </Button>
-            </div>
-            <ul className="divide-y">
-              {staleLeads.map((l) => {
-                const days = Math.floor((Date.now() - new Date(l.lastContact).getTime()) / 86400000);
-                return (
-                  <li key={l.id} className="py-3 flex items-center gap-3">
-                    <div className="flex-1 min-w-0">
+            <ul className="space-y-3">
+              {actions.map((a) => (
+                <li key={a.id} className="flex items-start gap-3 rounded-lg border bg-muted/20 p-3">
+                  <div className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                    {a.type === "schedule" ? <CalendarClock className="h-4 w-4" /> :
+                     a.type === "followup" ? <MessageCircle className="h-4 w-4" /> :
+                     a.type === "qualify" ? <Sparkles className="h-4 w-4" /> :
+                     a.type === "alerta" ? <AlertTriangle className="h-4 w-4" /> :
+                     <Bot className="h-4 w-4" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    {a.lead_company && a.lead_id ? (
                       <button
-                        onClick={() => setOpenLead(l.id)}
-                        className="text-left font-medium text-sm hover:text-primary"
+                        onClick={() => setOpenLead(a.lead_id)}
+                        className="text-sm font-medium hover:text-primary text-left"
                       >
-                        {l.company}
+                        {a.lead_company} <ChevronRight className="inline h-3 w-3" />
                       </button>
-                      <div className="text-xs text-muted-foreground flex items-center gap-2">
-                        <Clock className="h-3 w-3" /> Sem contato há {days} dias · {l.contactName}
-                      </div>
+                    ) : (
+                      <span className="text-sm font-medium text-muted-foreground">Sistema</span>
+                    )}
+                    <p className="text-sm text-foreground/90">{a.content}</p>
+                    <div className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-2">
+                      <Clock className="h-3 w-3" />
+                      {format(new Date(a.occurred_at), "dd MMM 'às' HH:mm", { locale: ptBR })}
+                      <Badge variant="outline" className="text-[10px] capitalize">
+                        {a.type}
+                      </Badge>
                     </div>
-                    <Button size="sm" variant="outline" onClick={() => { runFollowUp(l.id); toast.success("IA enviou follow-up"); }}>
-                      <Mail className="h-3.5 w-3.5 mr-1.5" /> Follow-up IA
-                    </Button>
-                  </li>
-                );
-              })}
-              {staleLeads.length === 0 && (
-                <li className="py-6 text-center text-sm text-muted-foreground">
-                  Nenhum lead precisa de follow-up agora.
+                  </div>
+                </li>
+              ))}
+              {actions.length === 0 && !loading && (
+                <li className="py-8 text-center text-sm text-muted-foreground">
+                  Nenhuma ação registrada ainda.
                 </li>
               )}
             </ul>
           </div>
+        </TabsContent>
 
-          <div className="rounded-xl border bg-card p-5">
-            <h2 className="font-medium flex items-center gap-2 mb-4">
-              <Sparkles className="h-4 w-4 text-primary" /> Últimas ações executadas
-            </h2>
-            <ul className="space-y-3">
-              {leads
-                .flatMap((l) => (l.aiActions ?? []).map((a) => ({ lead: l, a })))
-                .sort((x, y) => y.a.date.localeCompare(x.a.date))
-                .slice(0, 10)
-                .map(({ lead, a }) => (
-                  <li key={a.id} className="flex items-start gap-3 rounded-lg border bg-muted/20 p-3">
-                    <div className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                      {a.type === "schedule" ? <CalendarIcon className="h-4 w-4" /> :
-                       a.type === "followup" ? <MessageCircle className="h-4 w-4" /> :
-                       a.type === "qualify" ? <Sparkles className="h-4 w-4" /> :
-                       <Bot className="h-4 w-4" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <button onClick={() => setOpenLead(lead.id)} className="text-sm font-medium hover:text-primary">
-                        {lead.company} <ChevronRight className="inline h-3 w-3" />
-                      </button>
-                      <p className="text-sm text-foreground/90">{a.content}</p>
-                      <div className="text-[11px] text-muted-foreground mt-0.5">
-                        {format(new Date(a.date), "dd MMM 'às' HH:mm", { locale: ptBR })}
-                      </div>
-                    </div>
-                  </li>
-                ))}
-            </ul>
-          </div>
+        <TabsContent value="config" className="mt-6">
+          {isAdmin ? <XerifeConfigForm /> : (
+            <div className="rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">
+              Somente administradores podem editar as regras do Xerife.
+            </div>
+          )}
         </TabsContent>
       </Tabs>
 
@@ -324,92 +213,248 @@ function AgenteIaPage() {
   );
 }
 
-function SettingRow({
-  title, desc, checked, onChange,
-}: {
-  title: string; desc: string; checked: boolean; onChange: (v: boolean) => void;
-}) {
+function RunXerifeButton({ onDone }: { onDone: () => void }) {
+  const run = useServerFn(runXerifeNow);
+  const [busy, setBusy] = useState(false);
   return (
-    <div className="flex items-start justify-between gap-4">
-      <div>
-        <Label className="text-sm font-medium">{title}</Label>
-        <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
-      </div>
-      <Switch checked={checked} onCheckedChange={onChange} />
+    <Button
+      size="sm"
+      onClick={async () => {
+        setBusy(true);
+        try {
+          const r = await run();
+          toast.success("Xerife executado", {
+            description: `${r.totalActions} ação(ões) registradas · ${r.followupsCreated} follow-up(s)`,
+          });
+          onDone();
+        } catch (e) {
+          toast.error("Falha ao executar", { description: e instanceof Error ? e.message : String(e) });
+        } finally {
+          setBusy(false);
+        }
+      }}
+      disabled={busy}
+    >
+      <Play className="h-3.5 w-3.5 mr-1.5" />
+      {busy ? "Executando..." : "Executar agora"}
+    </Button>
+  );
+}
+
+type CfgState = {
+  novo: number;
+  qualificacao: number;
+  proposta: number;
+  negociacao: number;
+  proposta_enviada_dias: number;
+  tarefa_atrasada_horas: number;
+  ia_sem_resposta_horas: number;
+  horario_comercial_inicio: string;
+  horario_comercial_fim: string;
+  resumo_diario_ativo: boolean;
+  resumo_hora: string;
+  ativo: boolean;
+};
+
+function XerifeConfigForm() {
+  const getFn = useServerFn(getXerifeConfig);
+  const saveFn = useServerFn(updateXerifeConfig);
+  const [cfg, setCfg] = useState<CfgState | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    void (async () => {
+      const r: any = await getFn();
+      if (!r) return;
+      const dias = r.dias_sem_interacao_por_etapa ?? {};
+      setCfg({
+        novo: dias.novo ?? 1,
+        qualificacao: dias.qualificacao ?? 2,
+        proposta: dias.proposta ?? 3,
+        negociacao: dias.negociacao ?? 2,
+        proposta_enviada_dias: r.proposta_enviada_dias ?? 3,
+        tarefa_atrasada_horas: r.tarefa_atrasada_horas ?? 24,
+        ia_sem_resposta_horas: r.ia_sem_resposta_horas ?? 2,
+        horario_comercial_inicio: (r.horario_comercial_inicio ?? "07:00:00").slice(0, 5),
+        horario_comercial_fim: (r.horario_comercial_fim ?? "20:00:00").slice(0, 5),
+        resumo_diario_ativo: r.resumo_diario_ativo ?? true,
+        resumo_hora: (r.resumo_hora ?? "08:00:00").slice(0, 5),
+        ativo: r.ativo ?? true,
+      });
+    })();
+  }, [getFn]);
+
+  async function save() {
+    if (!cfg) return;
+    setSaving(true);
+    try {
+      await saveFn({
+        data: {
+          dias_sem_interacao_por_etapa: {
+            novo: cfg.novo,
+            qualificacao: cfg.qualificacao,
+            proposta: cfg.proposta,
+            negociacao: cfg.negociacao,
+          },
+          proposta_enviada_dias: cfg.proposta_enviada_dias,
+          tarefa_atrasada_horas: cfg.tarefa_atrasada_horas,
+          ia_sem_resposta_horas: cfg.ia_sem_resposta_horas,
+          horario_comercial_inicio: `${cfg.horario_comercial_inicio}:00`,
+          horario_comercial_fim: `${cfg.horario_comercial_fim}:00`,
+          resumo_diario_ativo: cfg.resumo_diario_ativo,
+          resumo_hora: `${cfg.resumo_hora}:00`,
+          ativo: cfg.ativo,
+        },
+      });
+      toast.success("Configuração salva");
+    } catch (e) {
+      toast.error("Falha ao salvar", { description: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!cfg) return <div className="p-8 text-sm text-muted-foreground">Carregando...</div>;
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-2">
+      <section className="rounded-xl border bg-card p-5 space-y-4">
+        <header className="flex items-center gap-2">
+          <Zap className="h-4 w-4 text-primary" />
+          <h2 className="font-medium">Dias sem interação por etapa</h2>
+        </header>
+        <div className="grid grid-cols-2 gap-3">
+          {(["novo", "qualificacao", "proposta", "negociacao"] as const).map((s) => (
+            <div key={s}>
+              <Label className="text-xs capitalize">{s}</Label>
+              <Input
+                type="number"
+                min={1}
+                value={cfg[s]}
+                onChange={(e) => setCfg({ ...cfg, [s]: Number(e.target.value) || 1 })}
+                className="mt-1"
+              />
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-xl border bg-card p-5 space-y-4">
+        <header className="flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4 text-primary" />
+          <h2 className="font-medium">Gatilhos</h2>
+        </header>
+        <div>
+          <Label className="text-xs">Proposta enviada sem resposta (dias)</Label>
+          <Input
+            type="number" min={1} className="mt-1"
+            value={cfg.proposta_enviada_dias}
+            onChange={(e) => setCfg({ ...cfg, proposta_enviada_dias: Number(e.target.value) || 1 })}
+          />
+        </div>
+        <div>
+          <Label className="text-xs">Tarefa considerada atrasada (horas)</Label>
+          <Input
+            type="number" min={1} className="mt-1"
+            value={cfg.tarefa_atrasada_horas}
+            onChange={(e) => setCfg({ ...cfg, tarefa_atrasada_horas: Number(e.target.value) || 1 })}
+          />
+        </div>
+        <div>
+          <Label className="text-xs">IA aguarda resposta do cliente (horas)</Label>
+          <Input
+            type="number" min={1} className="mt-1"
+            value={cfg.ia_sem_resposta_horas}
+            onChange={(e) => setCfg({ ...cfg, ia_sem_resposta_horas: Number(e.target.value) || 1 })}
+          />
+        </div>
+      </section>
+
+      <section className="rounded-xl border bg-card p-5 space-y-4">
+        <header className="flex items-center gap-2">
+          <CalendarClock className="h-4 w-4 text-primary" />
+          <h2 className="font-medium">Horário comercial (America/Sao_Paulo)</h2>
+        </header>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label className="text-xs">Início</Label>
+            <Input
+              type="time" className="mt-1"
+              value={cfg.horario_comercial_inicio}
+              onChange={(e) => setCfg({ ...cfg, horario_comercial_inicio: e.target.value })}
+            />
+          </div>
+          <div>
+            <Label className="text-xs">Fim</Label>
+            <Input
+              type="time" className="mt-1"
+              value={cfg.horario_comercial_fim}
+              onChange={(e) => setCfg({ ...cfg, horario_comercial_fim: e.target.value })}
+            />
+          </div>
+        </div>
+        <Separator />
+        <div className="flex items-center justify-between">
+          <div>
+            <Label className="text-sm">Resumo diário</Label>
+            <p className="text-xs text-muted-foreground">Enviar consolidado por vendedor no início do dia.</p>
+          </div>
+          <Switch
+            checked={cfg.resumo_diario_ativo}
+            onCheckedChange={(v) => setCfg({ ...cfg, resumo_diario_ativo: v })}
+          />
+        </div>
+        <div>
+          <Label className="text-xs">Hora do resumo</Label>
+          <Input
+            type="time" className="mt-1"
+            value={cfg.resumo_hora}
+            onChange={(e) => setCfg({ ...cfg, resumo_hora: e.target.value })}
+          />
+        </div>
+      </section>
+
+      <section className="rounded-xl border bg-card p-5 space-y-4">
+        <header className="flex items-center gap-2">
+          <Settings2 className="h-4 w-4 text-primary" />
+          <h2 className="font-medium">Motor</h2>
+        </header>
+        <div className="flex items-center justify-between">
+          <div>
+            <Label className="text-sm">Xerife ativo</Label>
+            <p className="text-xs text-muted-foreground">
+              Desligue para pausar todas as execuções automáticas.
+            </p>
+          </div>
+          <Switch checked={cfg.ativo} onCheckedChange={(v) => setCfg({ ...cfg, ativo: v })} />
+        </div>
+        <div className="pt-2">
+          <Button onClick={save} disabled={saving} className="w-full">
+            {saving ? "Salvando..." : "Salvar configurações"}
+          </Button>
+        </div>
+      </section>
     </div>
   );
 }
 
-function LegendDot({ color, label }: { color: string; label: string }) {
+function StatCard({
+  label, value, tone, icon,
+}: { label: string; value: number; tone?: "ok" | "warn"; icon?: React.ReactNode }) {
   return (
-    <span className="flex items-center gap-1.5 text-muted-foreground">
-      <span className={cn("h-2.5 w-2.5 rounded-full", color)} /> {label}
-    </span>
-  );
-}
-
-function DayColumn({
-  day, slots, leads, onBook, onOpen,
-}: {
-  day: Date;
-  slots: CalendarSlot[];
-  leads: { id: string; company: string }[];
-  onBook: (s: CalendarSlot) => void;
-  onOpen: (leadId: string) => void;
-}) {
-  return (
-    <div className="rounded-lg border bg-muted/20 p-3">
-      <div className="mb-2">
-        <div className="text-xs uppercase tracking-wider text-muted-foreground">
-          {format(day, "EEEE", { locale: ptBR })}
-        </div>
-        <div className="font-display font-semibold">
-          {format(day, "dd MMM", { locale: ptBR })}
-        </div>
+    <div className="rounded-xl border bg-card p-4">
+      <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
+        {icon}
+        {label}
       </div>
-      <ul className="space-y-1.5">
-        {slots.map((s) => {
-          const lead = s.leadId ? leads.find((l) => l.id === s.leadId) : null;
-          const styles =
-            s.status === "livre"
-              ? "bg-background hover:bg-accent border-dashed"
-              : s.status === "ocupado"
-              ? "bg-rose-50 border-rose-200 text-rose-900"
-              : "bg-primary/10 border-primary/30 text-primary";
-          return (
-            <li
-              key={s.id}
-              className={cn("rounded-md border px-2.5 py-1.5 text-xs", styles)}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-medium">{format(new Date(s.date), "HH:mm")}</span>
-                <span className="text-[10px] opacity-70">{s.durationMin}min</span>
-              </div>
-              {s.status === "livre" && (
-                <button
-                  onClick={() => onBook(s)}
-                  className="mt-1 w-full text-[11px] text-primary hover:underline text-left flex items-center gap-1"
-                >
-                  <Sparkles className="h-3 w-3" /> Deixar IA agendar
-                </button>
-              )}
-              {s.status !== "livre" && (
-                <>
-                  <div className="mt-0.5 truncate">{s.title}</div>
-                  {s.status === "agendado_ia" && lead && (
-                    <button
-                      onClick={() => onOpen(lead.id)}
-                      className="mt-1 text-[10px] uppercase tracking-wider flex items-center gap-1"
-                    >
-                      <CheckCircle2 className="h-3 w-3" /> Ver lead
-                    </button>
-                  )}
-                </>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+      <div className={cn(
+        "mt-1 font-display text-3xl font-semibold",
+        tone === "ok" && "text-emerald-600",
+        tone === "warn" && "text-amber-600",
+        !tone && "text-primary",
+      )}>
+        {value}
+      </div>
     </div>
   );
 }
