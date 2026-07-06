@@ -450,10 +450,6 @@ async function runResumoDiario(force = false): Promise<{
     const phone = prof?.telefone_whatsapp?.trim();
     if (!phone) continue;
     const msg = formatMsg(prof?.name ?? "admin", true, consolidated);
-    if (dryRun) {
-      adminsNotificados++;
-      continue;
-    }
     const ok = await sendZapiText(phone, msg);
     if (ok) {
       adminsNotificados++;
