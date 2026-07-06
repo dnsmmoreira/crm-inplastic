@@ -809,40 +809,45 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
           <Button
             onClick={() => {
               if (!form.company.trim()) { toast.error("Informe a empresa"); return; }
-              addLead({
-                company: form.company.trim(),
-                contactName: form.contactName.trim(),
-                email: form.email.trim(),
-                phone: form.phone,
-                product: selectedProduct ? selectedProduct.name : "",
-                productId: selectedProduct?.id,
-                quantity: form.quantity,
-                estimatedValue: form.estimatedValue,
-                stage: form.stage,
-                segment: form.segment || undefined,
-                tags: form.tags,
-                source: "Manual",
-                notes: form.notes,
-                cnpj: form.cnpj || undefined,
-                razaoSocial: form.razaoSocial || undefined,
-                nomeFantasia: form.nomeFantasia || undefined,
-                inscricaoEstadual: form.inscricaoEstadual || undefined,
-                inscricaoMunicipal: form.inscricaoMunicipal || undefined,
-                endereco: (form.cep || form.logradouro || form.cidade) ? {
-                  cep: form.cep, logradouro: form.logradouro, numero: form.numero,
-                  complemento: form.complemento, bairro: form.bairro, cidade: form.cidade, uf: form.uf,
-                } : undefined,
-                emailFinanceiro: form.emailFinanceiro || undefined,
-                telefoneFixo: form.telefoneFixo || undefined,
-                whatsapp: form.whatsapp || undefined,
-                site: form.site || undefined,
-                porte: form.porte || undefined,
-                cnaePrincipal: form.cnaePrincipal || undefined,
-                faturamentoEstimado: form.faturamentoEstimado || undefined,
-                numFuncionarios: form.numFuncionarios || undefined,
-                decisorNome: form.decisorNome || undefined,
-                decisorCargo: form.decisorCargo || undefined,
-              });
+              try {
+                addLead({
+                  company: form.company.trim(),
+                  contactName: form.contactName.trim(),
+                  email: form.email.trim(),
+                  phone: form.phone,
+                  product: selectedProduct ? selectedProduct.name : "",
+                  productId: selectedProduct?.id,
+                  quantity: form.quantity,
+                  estimatedValue: form.estimatedValue,
+                  stage: form.stage,
+                  segment: form.segment || undefined,
+                  tags: form.tags,
+                  source: "Manual",
+                  notes: form.notes,
+                  cnpj: form.cnpj || undefined,
+                  razaoSocial: form.razaoSocial || undefined,
+                  nomeFantasia: form.nomeFantasia || undefined,
+                  inscricaoEstadual: form.inscricaoEstadual || undefined,
+                  inscricaoMunicipal: form.inscricaoMunicipal || undefined,
+                  endereco: (form.cep || form.logradouro || form.cidade) ? {
+                    cep: form.cep, logradouro: form.logradouro, numero: form.numero,
+                    complemento: form.complemento, bairro: form.bairro, cidade: form.cidade, uf: form.uf,
+                  } : undefined,
+                  emailFinanceiro: form.emailFinanceiro || undefined,
+                  telefoneFixo: form.telefoneFixo || undefined,
+                  whatsapp: form.whatsapp || undefined,
+                  site: form.site || undefined,
+                  porte: form.porte || undefined,
+                  cnaePrincipal: form.cnaePrincipal || undefined,
+                  faturamentoEstimado: form.faturamentoEstimado || undefined,
+                  numFuncionarios: form.numFuncionarios || undefined,
+                  decisorNome: form.decisorNome || undefined,
+                  decisorCargo: form.decisorCargo || undefined,
+                });
+              } catch (e) {
+                toast.error(e instanceof Error ? e.message : "Erro ao criar lead");
+                return;
+              }
               toast.success("Lead criado");
               setOpen(false);
               setForm(initial);
