@@ -136,6 +136,41 @@ export const Route = createFileRoute("/api/public/zapi/webhook")({
             if (msgErr) {
               console.error("whatsapp_mensagens insert failed:", msgErr);
             }
+
+            // 4) Notifica o n8n (fire-and-forget) se a IA estiver ativa.
+            const n8nUrl = process.env.N8N_WEBHOOK_URL;
+            const n8nSecret = process.env.N8N_SECRET;
+            if (n8nUrl && n8nSecret) {
+              const { data: conv } = await supabaseAdmin
+                .from("whatsapp_conversas")
+                .select("id, phone, lead_id, ia_ativa, status")
+                .eq("id", conversaId)
+                .maybeSingle();
+              if (conv && conv.ia_ativa && conv.status === "ia_atendendo") {
+                const { data: hist } = await supabaseAdmin
+                  .from("whatsapp_mensagens")
+                  .select("autor, conteudo, created_at")
+                  .eq("conversa_id", conversaId)
+                  .order("created_at", { ascending: false })
+                  .limit(20);
+                const historico = (hist ?? []).slice().reverse();
+                const payloadOut = {
+                  conversa_id: conv.id,
+                  phone: conv.phone,
+                  lead_id: conv.lead_id,
+                  historico,
+                };
+                // fire-and-forget — não bloqueia a resposta ao Z-API
+                void fetch(n8nUrl, {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    "x-n8n-secret": n8nSecret,
+                  },
+                  body: JSON.stringify(payloadOut),
+                }).catch((e) => console.error("n8n notify failed:", e));
+              }
+            }
           }
 
           return Response.json({ ok: true, conversaId }, { headers: CORS });
