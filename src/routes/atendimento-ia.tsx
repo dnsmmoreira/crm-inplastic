@@ -154,7 +154,7 @@ function AtendimentoIAPage() {
         />
       </div>
 
-      <LeadDrawer leadId={openLead} onClose={() => setOpenLead(null)} />
+      <LeadDrawer leadId={openLead} open={openLead !== null} onOpenChange={(o) => !o && setOpenLead(null)} />
     </div>
   );
 }
