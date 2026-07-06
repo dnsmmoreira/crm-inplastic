@@ -84,10 +84,10 @@ export const Route = createFileRoute("/api/public/hooks/ia-qualificar")({
           const contactName = dados.contato?.trim() || conv.name?.trim() || "A identificar";
           const quantidade =
             typeof dados.quantidade === "string"
-              ? Number(dados.quantidade.replace(/[^\d]/g, "")) || null
+              ? Number(dados.quantidade.replace(/[^\d]/g, "")) || undefined
               : typeof dados.quantidade === "number"
                 ? dados.quantidade
-                : null;
+                : undefined;
 
           const notesLines: string[] = [];
           if (body.motivo) notesLines.push(`IA: ${body.motivo}`);
