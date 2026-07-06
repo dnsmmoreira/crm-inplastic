@@ -313,7 +313,7 @@ async function runXerife(dryRun = false): Promise<{
  * Resumo diário para cada vendedor (dados do próprio funil) + consolidado para admins.
  * Enviado por WhatsApp. Sempre respeita cfg.resumo_diario_ativo.
  */
-async function runResumoDiario(dryRun = false): Promise<{
+async function runResumoDiario(force = false): Promise<{
   ran: boolean;
   reason?: string;
   vendedoresNotificados: number;
@@ -323,6 +323,13 @@ async function runResumoDiario(dryRun = false): Promise<{
   const cfg = await loadConfig();
   if (!cfg.ativo || !cfg.resumo_diario_ativo) {
     return { ran: false, reason: "resumo desativado", vendedoresNotificados: 0, adminsNotificados: 0 };
+  }
+  if (!force) {
+    const spHour = nowInSaoPauloHour();
+    const targetHour = parseHour(cfg.resumo_hora);
+    if (spHour !== targetHour) {
+      return { ran: false, reason: `hora atual ${spHour}h ≠ resumo_hora ${targetHour}h (SP)`, vendedoresNotificados: 0, adminsNotificados: 0 };
+    }
   }
 
   const nowIso = new Date().toISOString();
