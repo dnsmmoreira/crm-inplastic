@@ -101,6 +101,39 @@ export type Database = {
         }
         Relationships: []
       }
+      zapi_inbox: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          name: string | null
+          phone: string
+          processed: boolean
+          raw: Json | null
+          received_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          name?: string | null
+          phone: string
+          processed?: boolean
+          raw?: Json | null
+          received_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          name?: string | null
+          phone?: string
+          processed?: boolean
+          raw?: Json | null
+          received_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

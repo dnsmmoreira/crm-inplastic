@@ -29,6 +29,7 @@ import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } fr
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
+import { Route as ApiPublicZapiWebhookRouteImport } from './routes/api/public/zapi/webhook'
 
 const UsuariosRoute = UsuariosRouteImport.update({
   id: '/usuarios',
@@ -133,6 +134,11 @@ const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
   path: '/.lovable/oauth/consent',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicZapiWebhookRoute = ApiPublicZapiWebhookRouteImport.update({
+  id: '/api/public/zapi/webhook',
+  path: '/api/public/zapi/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -155,6 +161,7 @@ export interface FileRoutesByFullPath {
   '/propostas/': typeof PropostasIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/api/public/zapi/webhook': typeof ApiPublicZapiWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -177,6 +184,7 @@ export interface FileRoutesByTo {
   '/propostas': typeof PropostasIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/api/public/zapi/webhook': typeof ApiPublicZapiWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -200,6 +208,7 @@ export interface FileRoutesById {
   '/propostas/': typeof PropostasIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/api/public/zapi/webhook': typeof ApiPublicZapiWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -224,6 +233,7 @@ export interface FileRouteTypes {
     | '/propostas/'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/api/public/zapi/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -246,6 +256,7 @@ export interface FileRouteTypes {
     | '/propostas'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/api/public/zapi/webhook'
   id:
     | '__root__'
     | '/'
@@ -268,6 +279,7 @@ export interface FileRouteTypes {
     | '/propostas/'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/api/public/zapi/webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -291,6 +303,7 @@ export interface RootRouteChildren {
   PropostasIndexRoute: typeof PropostasIndexRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
+  ApiPublicZapiWebhookRoute: typeof ApiPublicZapiWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -435,6 +448,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DotlovableOauthConsentRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/zapi/webhook': {
+      id: '/api/public/zapi/webhook'
+      path: '/api/public/zapi/webhook'
+      fullPath: '/api/public/zapi/webhook'
+      preLoaderRoute: typeof ApiPublicZapiWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -460,6 +480,7 @@ const rootRouteChildren: RootRouteChildren = {
   PropostasIndexRoute: PropostasIndexRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
+  ApiPublicZapiWebhookRoute: ApiPublicZapiWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

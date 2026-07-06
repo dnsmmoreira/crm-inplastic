@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { MessageSquare, Phone, Zap, UserPlus, X, CheckCircle2, Radio } from "lucide-react";
+import { MessageSquare, Phone, Zap, UserPlus, X, CheckCircle2, Radio, Copy, Wifi } from "lucide-react";
 import { useCrm, type WhatsappMessage, useVisibleLeads } from "@/lib/crm-store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,9 @@ import { Label } from "@/components/ui/label";
 import { LeadDrawer } from "@/components/crm/LeadDrawer";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { useServerFn } from "@tanstack/react-start";
+import { zapiStatus } from "@/lib/zapi.functions";
 
 export const Route = createFileRoute("/canais")({
   component: CanaisPage,
@@ -60,6 +63,32 @@ function CanaisPage() {
         if (id) toast.success("IA capturou lead automaticamente", { description: m.name ?? m.phone });
       });
   }, [messages, autoCapture, convert, leads]);
+
+  // Poll Z-API inbox (server webhook grava aqui) e injeta no store
+  useEffect(() => {
+    let cancelled = false;
+    let lastAt = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    const seen = new Set<string>();
+    async function pull() {
+      const { data, error } = await supabase
+        .from("zapi_inbox")
+        .select("id, phone, name, message, received_at")
+        .gt("received_at", lastAt)
+        .order("received_at", { ascending: true })
+        .limit(50);
+      if (cancelled || error || !data) return;
+      for (const row of data) {
+        if (seen.has(row.id)) continue;
+        seen.add(row.id);
+        lastAt = row.received_at;
+        receive({ phone: row.phone, name: row.name ?? undefined, message: row.message });
+        toast.message("Nova mensagem (Z-API)", { description: row.name ?? row.phone });
+      }
+    }
+    void pull();
+    const t = setInterval(pull, 5000);
+    return () => { cancelled = true; clearInterval(t); };
+  }, [receive]);
 
   const stats = {
     total: messages.length,
@@ -171,10 +200,86 @@ function CanaisPage() {
             <IntegrationRow name="Instagram DM" status="pendente" />
             <IntegrationRow name="E-mail comercial" status="conectado" />
           </div>
+
+          <ZapiCard />
         </aside>
       </div>
 
       <LeadDrawer leadId={openLead} open={!!openLead} onOpenChange={(o) => !o && setOpenLead(null)} />
+    </div>
+  );
+}
+
+function ZapiCard() {
+  const check = useServerFn(zapiStatus);
+  const [state, setState] = useState<"idle" | "loading" | "ok" | "err">("idle");
+  const [info, setInfo] = useState<string>("");
+  const [webhookUrl, setWebhookUrl] = useState("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setWebhookUrl(`${window.location.origin}/api/public/zapi/webhook`);
+    }
+  }, []);
+
+  async function testar() {
+    setState("loading");
+    try {
+      const r = await check();
+      if (!r.configured) {
+        setState("err");
+        setInfo("Variáveis Z-API ausentes.");
+        return;
+      }
+      setState(r.status && r.status >= 200 && r.status < 300 ? "ok" : "err");
+      setInfo(r.raw.slice(0, 240));
+    } catch (e) {
+      setState("err");
+      setInfo(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  return (
+    <div className="rounded-xl border bg-card p-4 space-y-3">
+      <div className="flex items-center gap-2 text-sm font-medium">
+        <Wifi className="h-4 w-4 text-primary" /> Z-API (WhatsApp)
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-xs">URL do Webhook (cole no painel Z-API → "Ao receber")</Label>
+        <div className="flex gap-1.5">
+          <input
+            readOnly
+            value={webhookUrl}
+            className="flex-1 rounded-md border bg-muted/40 px-2 py-1.5 text-xs font-mono"
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              void navigator.clipboard.writeText(webhookUrl);
+              toast.success("URL copiada");
+            }}
+          >
+            <Copy className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </div>
+      <Button size="sm" variant="outline" onClick={testar} disabled={state === "loading"} className="w-full">
+        {state === "loading" ? "Testando..." : "Testar conexão"}
+      </Button>
+      {state !== "idle" && state !== "loading" && (
+        <div
+          className={cn(
+            "rounded-md border p-2 text-[11px] font-mono break-all",
+            state === "ok" ? "border-emerald-500/40 bg-emerald-500/5 text-emerald-700" : "border-red-500/40 bg-red-500/5 text-red-700",
+          )}
+        >
+          {info || (state === "ok" ? "OK" : "Erro")}
+        </div>
+      )}
+      <p className="text-[11px] text-muted-foreground">
+        Configure também "Ao enviar" e "Status da mensagem" apontando para a mesma URL se desejar registro completo.
+      </p>
     </div>
   );
 }
