@@ -23,6 +23,7 @@ import {
   Building2,
   LogOut,
   UserCog,
+  Radio,
 } from "lucide-react";
 
 
@@ -128,6 +129,7 @@ const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, adminOnly: false },
   { to: "/pipeline", label: "Funil de Vendas", icon: KanbanSquare, adminOnly: false },
   { to: "/canais", label: "Canais de Entrada", icon: MessageSquare, adminOnly: false },
+  { to: "/atendimento-ia", label: "Atendimento IA", icon: Radio, adminOnly: true },
   { to: "/agente-ia", label: "Agente IA", icon: Bot, adminOnly: false },
   { to: "/contatos", label: "Contatos", icon: Users, adminOnly: false },
   { to: "/tarefas", label: "Tarefas", icon: CheckSquare, adminOnly: false },
