@@ -1,0 +1,2 @@
+DROP POLICY IF EXISTS "authenticated read inbox" ON public.zapi_inbox;
+CREATE POLICY "admins read inbox" ON public.zapi_inbox FOR SELECT TO authenticated USING (has_role(auth.uid(), 'admin'::app_role));
