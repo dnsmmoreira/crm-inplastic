@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
-import { ShieldAlert, Users, Shield, User as UserIcon, Loader2, UserPlus } from "lucide-react";
+import { ShieldAlert, Users, Shield, User as UserIcon, Loader2, UserPlus, ListOrdered, ArrowUp, ArrowDown, Trash2, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 
@@ -9,9 +9,11 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, type AppRole } from "@/hooks/use-auth";
 import { createUser } from "@/lib/invites.functions";
+import { listFila, addFilaMember, removeFilaMember, toggleFilaAtivo, reorderFila } from "@/lib/fila.functions";
 
 export const Route = createFileRoute("/usuarios")({
   component: UsuariosPage,
@@ -162,6 +164,9 @@ function UsuariosPage() {
         </CardContent>
       </Card>
 
+      <FilaVendedoresCard vendedores={rows ?? []} />
+
+
       <div className="mt-4 rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground space-y-1">
         <p>
           <strong>Sem senha definida?</strong> Envie ao usuário o link{" "}
@@ -264,3 +269,164 @@ function CreateUserCard({ onCreated }: { onCreated: () => Promise<void> | void }
   );
 }
 
+
+type FilaRow = { user_id: string; posicao: number; ativo: boolean; name: string; avatar_color: string };
+
+function FilaVendedoresCard({ vendedores }: { vendedores: Row[] }) {
+  const list = useServerFn(listFila);
+  const add = useServerFn(addFilaMember);
+  const remove = useServerFn(removeFilaMember);
+  const toggle = useServerFn(toggleFilaAtivo);
+  const reorder = useServerFn(reorderFila);
+
+  const [rows, setRows] = useState<FilaRow[] | null>(null);
+  const [selUser, setSelUser] = useState<string>("");
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      const r = await list();
+      setRows(r as FilaRow[]);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao carregar fila");
+    }
+  }, [list]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const naFila = new Set((rows ?? []).map((r) => r.user_id));
+  const disponiveis = vendedores.filter((v) => !naFila.has(v.id));
+
+  const handleAdd = async () => {
+    if (!selUser) return;
+    setBusy("add");
+    try {
+      await add({ data: { userId: selUser } });
+      setSelUser("");
+      await load();
+      toast.success("Vendedor adicionado à fila");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha");
+    } finally { setBusy(null); }
+  };
+
+  const handleRemove = async (userId: string) => {
+    setBusy(userId);
+    try {
+      await remove({ data: { userId } });
+      await load();
+      toast.success("Removido da fila");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha");
+    } finally { setBusy(null); }
+  };
+
+  const handleToggle = async (userId: string, ativo: boolean) => {
+    setBusy(userId);
+    try {
+      await toggle({ data: { userId, ativo } });
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha");
+    } finally { setBusy(null); }
+  };
+
+  const move = async (idx: number, dir: -1 | 1) => {
+    if (!rows) return;
+    const next = idx + dir;
+    if (next < 0 || next >= rows.length) return;
+    const newOrder = [...rows];
+    [newOrder[idx], newOrder[next]] = [newOrder[next], newOrder[idx]];
+    setRows(newOrder);
+    setBusy("reorder");
+    try {
+      await reorder({ data: { order: newOrder.map((r) => r.user_id) } });
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao reordenar");
+      await load();
+    } finally { setBusy(null); }
+  };
+
+  return (
+    <Card className="mt-6">
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <ListOrdered className="h-4 w-4 text-primary" /> Fila de distribuição (round-robin)
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-xs text-muted-foreground">
+          Ordem em que os leads qualificados serão atribuídos automaticamente. Vendedores <strong>inativos</strong> são pulados.
+        </p>
+
+        <div className="flex flex-wrap gap-2 items-end">
+          <div className="flex-1 min-w-[200px] space-y-1">
+            <Label>Adicionar vendedor</Label>
+            <select
+              value={selUser}
+              onChange={(e) => setSelUser(e.target.value)}
+              className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+            >
+              <option value="">Selecione…</option>
+              {disponiveis.map((v) => (
+                <option key={v.id} value={v.id}>{v.name} ({v.role})</option>
+              ))}
+            </select>
+          </div>
+          <Button onClick={handleAdd} disabled={!selUser || busy === "add"} className="gap-1">
+            {busy === "add" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+            Adicionar
+          </Button>
+        </div>
+
+        {!rows ? (
+          <div className="text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Carregando…</div>
+        ) : rows.length === 0 ? (
+          <div className="text-sm text-muted-foreground p-4 rounded border border-dashed text-center">
+            Nenhum vendedor na fila. Adicione ao menos um para que a IA consiga qualificar leads.
+          </div>
+        ) : (
+          <ul className="divide-y border rounded-lg">
+            {rows.map((r, idx) => (
+              <li key={r.user_id} className="flex items-center gap-3 p-3">
+                <div className="text-xs font-mono w-6 text-muted-foreground text-center">{idx + 1}</div>
+                <div
+                  className="h-8 w-8 rounded-full flex items-center justify-center text-white text-xs font-semibold shrink-0"
+                  style={{ background: r.avatar_color }}
+                >
+                  {r.name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase() || "?"}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium truncate">{r.name}</div>
+                  <div className="text-[11px] text-muted-foreground">Posição {r.posicao}</div>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  <span className={r.ativo ? "text-emerald-600" : "text-muted-foreground"}>
+                    {r.ativo ? "Ativo" : "Inativo"}
+                  </span>
+                  <Switch
+                    checked={r.ativo}
+                    disabled={busy === r.user_id}
+                    onCheckedChange={(v) => handleToggle(r.user_id, v)}
+                  />
+                </div>
+                <div className="flex gap-1">
+                  <Button size="icon" variant="ghost" disabled={idx === 0 || busy !== null} onClick={() => move(idx, -1)}>
+                    <ArrowUp className="h-4 w-4" />
+                  </Button>
+                  <Button size="icon" variant="ghost" disabled={idx === rows.length - 1 || busy !== null} onClick={() => move(idx, 1)}>
+                    <ArrowDown className="h-4 w-4" />
+                  </Button>
+                  <Button size="icon" variant="ghost" disabled={busy === r.user_id} onClick={() => handleRemove(r.user_id)}>
+                    {busy === r.user_id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4 text-destructive" />}
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
