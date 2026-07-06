@@ -61,6 +61,7 @@ function PropostasPage() {
   const leads = useVisibleLeads();
   const removeProposal = useCrm((s) => s.removeProposal);
   const createProposal = useCrm((s) => s.createProposal);
+  const addLead = useCrm((s) => s.addLead);
   const navigate = useNavigate();
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
@@ -69,6 +70,65 @@ function PropostasPage() {
   const [openNew, setOpenNew] = useState(false);
   const [selectedLead, setSelectedLead] = useState<string>("");
   const [leadSearch, setLeadSearch] = useState("");
+  const [openNewLead, setOpenNewLead] = useState(false);
+  const [leadForm, setLeadForm] = useState({
+    company: "", cnpj: "", contactName: "", phone: "", email: "",
+  });
+  const [cnpjLoading, setCnpjLoading] = useState(false);
+  const lookupCnpjFn = useServerFn(lookupCnpj);
+
+  const resetLeadForm = () => setLeadForm({ company: "", cnpj: "", contactName: "", phone: "", email: "" });
+
+  const handleCnpjLookup = async () => {
+    const digits = leadForm.cnpj.replace(/\D/g, "");
+    if (digits.length !== 14) { toast.error("Informe um CNPJ com 14 dígitos"); return; }
+    // check duplicate before calling API
+    const dup = leads.find((l) => (l.cnpj ?? "").replace(/\D/g, "") === digits);
+    if (dup) { toast.error(`CNPJ já cadastrado para "${dup.company}"`); return; }
+    setCnpjLoading(true);
+    try {
+      const r = await lookupCnpjFn({ data: { cnpj: digits } });
+      setLeadForm((f) => ({
+        ...f,
+        company: r.nomeFantasia || r.razaoSocial || f.company,
+        phone: f.phone || r.telefone,
+        email: f.email || r.email,
+      }));
+      toast.success("Dados do CNPJ carregados");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro na consulta do CNPJ");
+    } finally {
+      setCnpjLoading(false);
+    }
+  };
+
+  const handleCreateLead = () => {
+    if (!leadForm.company.trim()) { toast.error("Informe a empresa"); return; }
+    try {
+      const id = addLead({
+        company: leadForm.company.trim(),
+        contactName: leadForm.contactName.trim(),
+        email: leadForm.email.trim(),
+        phone: leadForm.phone,
+        product: "",
+        quantity: 0,
+        estimatedValue: 0,
+        stage: "novo",
+        tags: [],
+        source: "Manual",
+        notes: "",
+        cnpj: leadForm.cnpj || undefined,
+      });
+      toast.success("Lead cadastrado");
+      setOpenNewLead(false);
+      resetLeadForm();
+      setSelectedLead(id);
+      setOpenNew(true);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao cadastrar lead");
+    }
+  };
+
 
 
   const leadResults = useMemo(() => {
