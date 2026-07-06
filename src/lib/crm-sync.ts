@@ -449,11 +449,11 @@ async function loadAll(userId: string) {
     defaultEmitterId?: string;
     maxDiscountPercentVendedor?: number;
   };
-  const sys = ((sysRow?.data ?? {}) as SysPayload) ?? {};
+  const sys = (sysRow?.data ?? {}) as SysPayload;
   snapshot.systemJson = JSON.stringify(sys);
 
   type UserPayload = { agent?: AgentSettings };
-  const usr = ((userRow?.data ?? {}) as UserPayload) ?? {};
+  const usr = (userRow?.data ?? {}) as UserPayload;
   snapshot.userJson = JSON.stringify(usr);
 
   // ---- produtos ----
