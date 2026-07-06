@@ -49,19 +49,17 @@ export const sendWhatsapp = createServerFn({ method: "POST" })
 /**
  * Verifica o estado da instância Z-API (conectado, phone, etc).
  */
-export const zapiStatus = createServerFn({ method: "GET" })
+export const zapiStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async () => {
     const instanceId = process.env.ZAPI_INSTANCE_ID;
     const token = process.env.ZAPI_TOKEN;
     const clientToken = process.env.ZAPI_CLIENT_TOKEN;
     if (!instanceId || !token || !clientToken) {
-      return { configured: false as const };
+      return { configured: false, raw: "" };
     }
     const url = `https://api.z-api.io/instances/${instanceId}/token/${token}/status`;
     const res = await fetch(url, { headers: { "Client-Token": clientToken } });
-    const body = await res.text();
-    let parsed: Record<string, unknown> = {};
-    try { parsed = JSON.parse(body) as Record<string, unknown>; } catch { /* ignore */ }
-    return { configured: true as const, status: res.status, data: parsed };
+    const raw = await res.text();
+    return { configured: true, status: res.status, raw };
   });

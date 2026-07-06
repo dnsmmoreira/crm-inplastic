@@ -52,11 +52,13 @@ export const Route = createFileRoute("/api/public/zapi/webhook")({
           const name = payload.senderName || payload.chatName || null;
 
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+          const rawJson = JSON.parse(JSON.stringify(payload)) as Record<string, unknown>;
           const { error } = await supabaseAdmin.from("zapi_inbox").insert({
             phone,
             name,
             message,
-            raw: payload as unknown as Record<string, unknown>,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            raw: rawJson as any,
           });
           if (error) {
             console.error("zapi_inbox insert failed:", error);
