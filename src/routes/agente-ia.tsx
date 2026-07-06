@@ -39,6 +39,7 @@ import {
   updateXerifeConfig,
   listAiActions,
   runXerifeNow,
+  runResumoDiarioNow,
 } from "@/lib/xerife.functions";
 
 export const Route = createFileRoute("/agente-ia")({
