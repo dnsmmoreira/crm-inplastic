@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { MessageSquare, Phone, Zap, UserPlus, X, CheckCircle2, Radio } from "lucide-react";
+import { MessageSquare, Phone, Zap, UserPlus, X, CheckCircle2, Radio, Copy, Wifi } from "lucide-react";
 import { useCrm, type WhatsappMessage, useVisibleLeads } from "@/lib/crm-store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,9 @@ import { Label } from "@/components/ui/label";
 import { LeadDrawer } from "@/components/crm/LeadDrawer";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { useServerFn } from "@tanstack/react-start";
+import { zapiStatus } from "@/lib/zapi.functions";
 
 export const Route = createFileRoute("/canais")({
   component: CanaisPage,
@@ -60,6 +63,32 @@ function CanaisPage() {
         if (id) toast.success("IA capturou lead automaticamente", { description: m.name ?? m.phone });
       });
   }, [messages, autoCapture, convert, leads]);
+
+  // Poll Z-API inbox (server webhook grava aqui) e injeta no store
+  useEffect(() => {
+    let cancelled = false;
+    let lastAt = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    const seen = new Set<string>();
+    async function pull() {
+      const { data, error } = await supabase
+        .from("zapi_inbox")
+        .select("id, phone, name, message, received_at")
+        .gt("received_at", lastAt)
+        .order("received_at", { ascending: true })
+        .limit(50);
+      if (cancelled || error || !data) return;
+      for (const row of data) {
+        if (seen.has(row.id)) continue;
+        seen.add(row.id);
+        lastAt = row.received_at;
+        receive({ phone: row.phone, name: row.name ?? undefined, message: row.message });
+        toast.message("Nova mensagem (Z-API)", { description: row.name ?? row.phone });
+      }
+    }
+    void pull();
+    const t = setInterval(pull, 5000);
+    return () => { cancelled = true; clearInterval(t); };
+  }, [receive]);
 
   const stats = {
     total: messages.length,
