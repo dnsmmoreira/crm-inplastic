@@ -30,6 +30,7 @@ import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as ApiPublicZapiWebhookRouteImport } from './routes/api/public/zapi/webhook'
+import { Route as ApiPublicHooksXerifeRouteImport } from './routes/api/public/hooks/xerife'
 
 const UsuariosRoute = UsuariosRouteImport.update({
   id: '/usuarios',
@@ -139,6 +140,11 @@ const ApiPublicZapiWebhookRoute = ApiPublicZapiWebhookRouteImport.update({
   path: '/api/public/zapi/webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksXerifeRoute = ApiPublicHooksXerifeRouteImport.update({
+  id: '/api/public/hooks/xerife',
+  path: '/api/public/hooks/xerife',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -161,6 +167,7 @@ export interface FileRoutesByFullPath {
   '/propostas/': typeof PropostasIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/api/public/hooks/xerife': typeof ApiPublicHooksXerifeRoute
   '/api/public/zapi/webhook': typeof ApiPublicZapiWebhookRoute
 }
 export interface FileRoutesByTo {
@@ -184,6 +191,7 @@ export interface FileRoutesByTo {
   '/propostas': typeof PropostasIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/api/public/hooks/xerife': typeof ApiPublicHooksXerifeRoute
   '/api/public/zapi/webhook': typeof ApiPublicZapiWebhookRoute
 }
 export interface FileRoutesById {
@@ -208,6 +216,7 @@ export interface FileRoutesById {
   '/propostas/': typeof PropostasIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/api/public/hooks/xerife': typeof ApiPublicHooksXerifeRoute
   '/api/public/zapi/webhook': typeof ApiPublicZapiWebhookRoute
 }
 export interface FileRouteTypes {
@@ -233,6 +242,7 @@ export interface FileRouteTypes {
     | '/propostas/'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/api/public/hooks/xerife'
     | '/api/public/zapi/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -256,6 +266,7 @@ export interface FileRouteTypes {
     | '/propostas'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/api/public/hooks/xerife'
     | '/api/public/zapi/webhook'
   id:
     | '__root__'
@@ -279,6 +290,7 @@ export interface FileRouteTypes {
     | '/propostas/'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/api/public/hooks/xerife'
     | '/api/public/zapi/webhook'
   fileRoutesById: FileRoutesById
 }
@@ -303,6 +315,7 @@ export interface RootRouteChildren {
   PropostasIndexRoute: typeof PropostasIndexRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
+  ApiPublicHooksXerifeRoute: typeof ApiPublicHooksXerifeRoute
   ApiPublicZapiWebhookRoute: typeof ApiPublicZapiWebhookRoute
 }
 
@@ -455,6 +468,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicZapiWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/xerife': {
+      id: '/api/public/hooks/xerife'
+      path: '/api/public/hooks/xerife'
+      fullPath: '/api/public/hooks/xerife'
+      preLoaderRoute: typeof ApiPublicHooksXerifeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -480,6 +500,7 @@ const rootRouteChildren: RootRouteChildren = {
   PropostasIndexRoute: PropostasIndexRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
+  ApiPublicHooksXerifeRoute: ApiPublicHooksXerifeRoute,
   ApiPublicZapiWebhookRoute: ApiPublicZapiWebhookRoute,
 }
 export const routeTree = rootRouteImport
