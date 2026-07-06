@@ -1,19 +1,35 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { MessageSquare, Phone, Zap, UserPlus, X, CheckCircle2, Radio, Copy, Wifi } from "lucide-react";
-import { useCrm, type WhatsappMessage, useVisibleLeads } from "@/lib/crm-store";
+import {
+  MessageSquare,
+  Phone,
+  Zap,
+  UserPlus,
+  Radio,
+  Copy,
+  Wifi,
+  Send,
+  Bot,
+  User as UserIcon,
+  CheckCircle2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { LeadDrawer } from "@/components/crm/LeadDrawer";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import { zapiStatus } from "@/lib/zapi.functions";
+import { sendConversaMessage, createLeadFromConversa } from "@/lib/canais.functions";
+import type { Database } from "@/integrations/supabase/types";
+
+type Conversa = Database["public"]["Tables"]["whatsapp_conversas"]["Row"];
+type Mensagem = Database["public"]["Tables"]["whatsapp_mensagens"]["Row"];
 
 export const Route = createFileRoute("/canais")({
   component: CanaisPage,
@@ -22,79 +38,53 @@ export const Route = createFileRoute("/canais")({
   }),
 });
 
-const RANDOM_MSGS: Omit<WhatsappMessage, "id" | "receivedAt" | "status">[] = [
-  { phone: "(48) 99123-8877", name: "Cervejaria Litoral", message: "Preciso de 300 pallets standard para a nova linha. Prazo 30 dias." },
-  { phone: "(11) 97744-9911", message: "Vocês entregam em SP capital? Volume ~150 un/mês." },
-  { phone: "(85) 98876-5544", name: "AgroCE Distribuidora", message: "Boa tarde! Quero cotação de pallet exportação para conteinerização." },
-  { phone: "(31) 3211-4477", message: "Pallet reforçado suporta 2 toneladas dinâmicas?" },
-  { phone: "(51) 99900-2233", name: "Frigo Serrano", message: "Olá, queremos amostra do pallet higiênico antes de fechar." },
-];
-
 function CanaisPage() {
-  const messages = useCrm((s) => s.whatsapp);
-  const receive = useCrm((s) => s.receiveWhatsapp);
-  const convert = useCrm((s) => s.convertWhatsappToLead);
-  const ignore = useCrm((s) => s.ignoreWhatsapp);
-  const leads = useVisibleLeads();
-  const [autoCapture, setAutoCapture] = useState(true);
-  const [simulate, setSimulate] = useState(false);
+  const [conversas, setConversas] = useState<Conversa[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [openLead, setOpenLead] = useState<string | null>(null);
 
-  // Simulated incoming message stream
-  useEffect(() => {
-    if (!simulate) return;
-    const t = setInterval(() => {
-      const m = RANDOM_MSGS[Math.floor(Math.random() * RANDOM_MSGS.length)];
-      receive(m);
-      toast.message("Nova mensagem no WhatsApp", { description: m.name ?? m.phone });
-    }, 6000);
-    return () => clearInterval(t);
-  }, [simulate, receive]);
-
-  // Auto-capture unknown numbers into pipeline
-  useEffect(() => {
-    if (!autoCapture) return;
-    const known = new Set(leads.map((l) => l.phone.replace(/\D/g, "")));
-    messages
-      .filter((m) => m.status === "novo" && !known.has(m.phone.replace(/\D/g, "")))
-      .slice(0, 1)
-      .forEach((m) => {
-        const id = convert(m.id);
-        if (id) toast.success("IA capturou lead automaticamente", { description: m.name ?? m.phone });
-      });
-  }, [messages, autoCapture, convert, leads]);
-
-  // Poll Z-API inbox (server webhook grava aqui) e injeta no store
-  useEffect(() => {
-    let cancelled = false;
-    let lastAt = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-    const seen = new Set<string>();
-    async function pull() {
-      const { data, error } = await supabase
-        .from("zapi_inbox")
-        .select("id, phone, name, message, received_at")
-        .gt("received_at", lastAt)
-        .order("received_at", { ascending: true })
-        .limit(50);
-      if (cancelled || error || !data) return;
-      for (const row of data) {
-        if (seen.has(row.id)) continue;
-        seen.add(row.id);
-        lastAt = row.received_at;
-        receive({ phone: row.phone, name: row.name ?? undefined, message: row.message });
-        toast.message("Nova mensagem (Z-API)", { description: row.name ?? row.phone });
-      }
+  const loadConversas = useCallback(async () => {
+    const { data, error } = await supabase
+      .from("whatsapp_conversas")
+      .select("*")
+      .order("last_message_at", { ascending: false, nullsFirst: false })
+      .limit(200);
+    if (error) {
+      console.error(error);
+      return;
     }
-    void pull();
-    const t = setInterval(pull, 5000);
-    return () => { cancelled = true; clearInterval(t); };
-  }, [receive]);
+    setConversas(data ?? []);
+  }, []);
 
-  const stats = {
-    total: messages.length,
-    novos: messages.filter((m) => m.status === "novo").length,
-    convertidos: messages.filter((m) => m.status === "convertido").length,
-  };
+  // Realtime + fallback polling
+  useEffect(() => {
+    void loadConversas();
+    const channel = supabase
+      .channel("canais-conversas")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "whatsapp_conversas" },
+        () => void loadConversas(),
+      )
+      .subscribe();
+    const t = setInterval(loadConversas, 5000);
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(t);
+    };
+  }, [loadConversas]);
+
+  const selected = useMemo(
+    () => conversas.find((c) => c.id === selectedId) ?? null,
+    [conversas, selectedId],
+  );
+
+  const stats = useMemo(() => {
+    const total = conversas.length;
+    const semLead = conversas.filter((c) => !c.lead_id).length;
+    const iaAtiva = conversas.filter((c) => c.ia_ativa).length;
+    return { total, semLead, iaAtiva };
+  }, [conversas]);
 
   return (
     <div className="p-4 md:p-8 space-y-6">
@@ -104,109 +94,336 @@ function CanaisPage() {
             <MessageSquare className="h-7 w-7 text-primary" /> Canais de Entrada
           </h1>
           <p className="text-sm text-muted-foreground">
-            Feed em tempo real do WhatsApp comercial · captura automática de leads
+            Conversas de WhatsApp em tempo real · integração Z-API
           </p>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={() => {
-              const m = RANDOM_MSGS[Math.floor(Math.random() * RANDOM_MSGS.length)];
-              receive(m);
-              toast.message("Mensagem recebida", { description: m.name ?? m.phone });
-            }}
-          >
-            <MessageSquare className="h-4 w-4 mr-2" /> Simular msg
-          </Button>
         </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <StatCard label="Mensagens totais" value={stats.total} />
-        <StatCard label="Aguardando triagem" value={stats.novos} tone="warn" />
-        <StatCard label="Leads capturados" value={stats.convertidos} tone="ok" />
+        <StatCard label="Conversas" value={stats.total} />
+        <StatCard label="Sem lead vinculado" value={stats.semLead} tone="warn" />
+        <StatCard label="IA atendendo" value={stats.iaAtiva} tone="ok" />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-        <div className="rounded-xl border bg-card overflow-hidden">
-          <div className="flex items-center justify-between border-b bg-muted/50 px-4 py-3">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-70" />
-                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
-              </span>
-              WhatsApp Business · Ao vivo
-            </div>
-            <span className="text-xs text-muted-foreground">{messages.length} mensagens</span>
-          </div>
-          <ul className="divide-y max-h-[560px] overflow-y-auto">
-            {messages.map((m) => (
-              <MessageRow
-                key={m.id}
-                m={m}
-                onConvert={() => {
-                  const id = convert(m.id);
-                  if (id) {
-                    toast.success("Lead criado no Kanban (Em Atendimento)");
-                    setOpenLead(id);
-                  }
-                }}
-                onIgnore={() => {
-                  ignore(m.id);
-                  toast.info("Mensagem ignorada");
-                }}
-                onOpen={() => m.leadId && setOpenLead(m.leadId)}
-              />
-            ))}
-            {messages.length === 0 && (
-              <li className="p-10 text-center text-sm text-muted-foreground">
-                Nenhuma mensagem ainda.
-              </li>
-            )}
-          </ul>
-        </div>
+      <div className="grid gap-6 lg:grid-cols-[320px_1fr_320px]">
+        <ConversationList
+          conversas={conversas}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+        />
+
+        <ConversationPanel
+          conversa={selected}
+          onOpenLead={(id) => setOpenLead(id)}
+          onLeadCreated={() => void loadConversas()}
+        />
 
         <aside className="space-y-4">
-          <div className="rounded-xl border bg-card p-4 space-y-4">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <Zap className="h-4 w-4 text-primary" /> Automações
-            </div>
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <Label className="text-sm">Captura automática</Label>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Cria card em "Em Atendimento" quando chega msg de número desconhecido.
-                </p>
-              </div>
-              <Switch checked={autoCapture} onCheckedChange={setAutoCapture} />
-            </div>
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <Label className="text-sm">Simular fluxo real</Label>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Recebe uma msg mockada a cada 6s.
-                </p>
-              </div>
-              <Switch checked={simulate} onCheckedChange={setSimulate} />
-            </div>
-          </div>
-
           <div className="rounded-xl border bg-gradient-to-br from-primary/10 to-transparent p-4 space-y-2">
             <div className="flex items-center gap-2 text-sm font-medium">
               <Radio className="h-4 w-4 text-primary" /> Integrações
             </div>
-            <IntegrationRow name="WhatsApp Business API" status="conectado" />
-            <IntegrationRow name="Formulário do site" status="conectado" />
+            <IntegrationRow name="WhatsApp Business (Z-API)" status="conectado" />
+            <IntegrationRow name="Formulário do site" status="pendente" />
             <IntegrationRow name="Instagram DM" status="pendente" />
-            <IntegrationRow name="E-mail comercial" status="conectado" />
           </div>
 
           <ZapiCard />
         </aside>
       </div>
 
-      <LeadDrawer leadId={openLead} open={!!openLead} onOpenChange={(o) => !o && setOpenLead(null)} />
+      <LeadDrawer
+        leadId={openLead}
+        open={!!openLead}
+        onOpenChange={(o) => !o && setOpenLead(null)}
+      />
     </div>
+  );
+}
+
+function ConversationList({
+  conversas,
+  selectedId,
+  onSelect,
+}: {
+  conversas: Conversa[];
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <div className="rounded-xl border bg-card overflow-hidden">
+      <div className="flex items-center justify-between border-b bg-muted/50 px-4 py-3">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-70" />
+            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+          </span>
+          Conversas
+        </div>
+        <span className="text-xs text-muted-foreground">{conversas.length}</span>
+      </div>
+      <ul className="divide-y max-h-[600px] overflow-y-auto">
+        {conversas.map((c) => {
+          const label = c.name?.trim() || c.phone;
+          const initial = label.slice(0, 1).toUpperCase();
+          const preview = c.last_message_preview ?? "—";
+          const when = c.last_message_at
+            ? formatDistanceToNow(new Date(c.last_message_at), { locale: ptBR, addSuffix: true })
+            : "sem mensagens";
+          return (
+            <li key={c.id}>
+              <button
+                type="button"
+                onClick={() => onSelect(c.id)}
+                className={cn(
+                  "w-full text-left flex items-start gap-3 p-3 hover:bg-muted/30 transition-colors",
+                  selectedId === c.id && "bg-muted/50",
+                )}
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 font-semibold shrink-0">
+                  {initial}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-medium text-sm truncate">{label}</span>
+                    <span className="text-[10px] text-muted-foreground shrink-0">{when}</span>
+                  </div>
+                  <p className="mt-0.5 text-xs text-muted-foreground truncate">{preview}</p>
+                  <div className="mt-1 flex items-center gap-1.5">
+                    {c.lead_id ? (
+                      <Badge variant="secondary" className="text-[10px] gap-1">
+                        <CheckCircle2 className="h-3 w-3" /> Lead
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-[10px]">Sem lead</Badge>
+                    )}
+                    <StatusChip status={c.status} />
+                  </div>
+                </div>
+              </button>
+            </li>
+          );
+        })}
+        {conversas.length === 0 && (
+          <li className="p-10 text-center text-sm text-muted-foreground">
+            Nenhuma conversa ainda.
+          </li>
+        )}
+      </ul>
+    </div>
+  );
+}
+
+function ConversationPanel({
+  conversa,
+  onOpenLead,
+  onLeadCreated,
+}: {
+  conversa: Conversa | null;
+  onOpenLead: (id: string) => void;
+  onLeadCreated: () => void;
+}) {
+  const [mensagens, setMensagens] = useState<Mensagem[]>([]);
+  const [text, setText] = useState("");
+  const [sending, setSending] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  const send = useServerFn(sendConversaMessage);
+  const createLead = useServerFn(createLeadFromConversa);
+
+  const loadMensagens = useCallback(async (conversaId: string) => {
+    const { data, error } = await supabase
+      .from("whatsapp_mensagens")
+      .select("*")
+      .eq("conversa_id", conversaId)
+      .order("created_at", { ascending: true })
+      .limit(500);
+    if (error) {
+      console.error(error);
+      return;
+    }
+    setMensagens(data ?? []);
+  }, []);
+
+  useEffect(() => {
+    if (!conversa) {
+      setMensagens([]);
+      return;
+    }
+    const conversaId = conversa.id;
+    void loadMensagens(conversaId);
+    const channel = supabase
+      .channel(`canais-mensagens-${conversaId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "whatsapp_mensagens",
+          filter: `conversa_id=eq.${conversaId}`,
+        },
+        () => void loadMensagens(conversaId),
+      )
+      .subscribe();
+    const t = setInterval(() => void loadMensagens(conversaId), 5000);
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(t);
+    };
+  }, [conversa, loadMensagens]);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+  }, [mensagens]);
+
+  if (!conversa) {
+    return (
+      <div className="rounded-xl border bg-card flex items-center justify-center min-h-[600px]">
+        <div className="text-center text-sm text-muted-foreground p-8">
+          <MessageSquare className="h-10 w-10 mx-auto mb-3 text-muted-foreground/50" />
+          Selecione uma conversa para visualizar o histórico.
+        </div>
+      </div>
+    );
+  }
+
+  async function handleSend() {
+    if (!conversa) return;
+    if (!text.trim()) return;
+    setSending(true);
+    try {
+      await send({ data: { conversaId: conversa.id, message: text.trim() } });
+      setText("");
+      void loadMensagens(conversa.id);
+    } catch (e) {
+      toast.error("Falha ao enviar", { description: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setSending(false);
+    }
+  }
+
+  async function handleCreateLead() {
+    if (!conversa) return;
+    setCreating(true);
+    try {
+      const r = await createLead({ data: { conversaId: conversa.id } });
+      toast.success("Lead criado", { description: "Vinculado à conversa." });
+      onLeadCreated();
+      onOpenLead(r.leadId);
+    } catch (e) {
+      toast.error("Falha ao criar lead", { description: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  const label = conversa.name?.trim() || conversa.phone;
+
+  return (
+    <div className="rounded-xl border bg-card flex flex-col min-h-[600px] max-h-[720px]">
+      <div className="flex items-center justify-between gap-3 border-b bg-muted/40 px-4 py-3">
+        <div className="min-w-0">
+          <div className="font-medium text-sm truncate">{label}</div>
+          <div className="text-xs text-muted-foreground flex items-center gap-1">
+            <Phone className="h-3 w-3" />
+            {conversa.phone}
+            <StatusChip status={conversa.status} className="ml-2" />
+          </div>
+        </div>
+        <div className="flex gap-2 shrink-0">
+          {conversa.lead_id ? (
+            <Button size="sm" variant="outline" onClick={() => onOpenLead(conversa.lead_id!)}>
+              Ver lead
+            </Button>
+          ) : (
+            <Button size="sm" onClick={handleCreateLead} disabled={creating} className="gap-1">
+              <UserPlus className="h-3.5 w-3.5" />
+              {creating ? "Criando..." : "Criar lead"}
+            </Button>
+          )}
+        </div>
+      </div>
+
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-2 bg-muted/10">
+        {mensagens.map((m) => (
+          <MessageBubble key={m.id} m={m} />
+        ))}
+        {mensagens.length === 0 && (
+          <div className="text-center text-xs text-muted-foreground py-10">
+            Sem mensagens nesta conversa.
+          </div>
+        )}
+      </div>
+
+      <div className="border-t p-3 flex gap-2">
+        <Textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Digite uma mensagem..."
+          rows={2}
+          className="resize-none text-sm"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              void handleSend();
+            }
+          }}
+        />
+        <Button onClick={handleSend} disabled={sending || !text.trim()} className="self-end gap-1">
+          <Send className="h-4 w-4" />
+          {sending ? "..." : "Enviar"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function MessageBubble({ m }: { m: Mensagem }) {
+  const isOutgoing = m.direcao === "saida";
+  const isBot = m.autor === "ia";
+  return (
+    <div className={cn("flex", isOutgoing ? "justify-end" : "justify-start")}>
+      <div
+        className={cn(
+          "max-w-[80%] rounded-lg px-3 py-2 text-sm shadow-sm",
+          isOutgoing
+            ? isBot
+              ? "bg-primary/10 text-foreground border border-primary/30"
+              : "bg-emerald-500 text-white"
+            : "bg-card border",
+        )}
+      >
+        <div className="flex items-center gap-1 text-[10px] opacity-80 mb-0.5">
+          {isBot ? <Bot className="h-3 w-3" /> : <UserIcon className="h-3 w-3" />}
+          <span className="capitalize">{m.autor}</span>
+          <span>·</span>
+          <span>{format(new Date(m.created_at), "HH:mm")}</span>
+        </div>
+        <div className="whitespace-pre-wrap break-words">{m.conteudo}</div>
+      </div>
+    </div>
+  );
+}
+
+function StatusChip({
+  status,
+  className,
+}: {
+  status: Conversa["status"];
+  className?: string;
+}) {
+  const map: Record<Conversa["status"], { label: string; cls: string }> = {
+    ia_atendendo: { label: "IA", cls: "border-blue-500/50 text-blue-700" },
+    humano_atendendo: { label: "Humano", cls: "border-emerald-500/50 text-emerald-700" },
+    qualificado: { label: "Qualificado", cls: "border-violet-500/50 text-violet-700" },
+    encerrado: { label: "Encerrado", cls: "border-muted-foreground/40 text-muted-foreground" },
+  };
+  const it = map[status];
+  return (
+    <Badge variant="outline" className={cn("text-[10px]", it.cls, className)}>
+      {it.label}
+    </Badge>
   );
 }
 
@@ -264,27 +481,44 @@ function ZapiCard() {
           </Button>
         </div>
       </div>
-      <Button size="sm" variant="outline" onClick={testar} disabled={state === "loading"} className="w-full">
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={testar}
+        disabled={state === "loading"}
+        className="w-full"
+      >
         {state === "loading" ? "Testando..." : "Testar conexão"}
       </Button>
       {state !== "idle" && state !== "loading" && (
         <div
           className={cn(
             "rounded-md border p-2 text-[11px] font-mono break-all",
-            state === "ok" ? "border-emerald-500/40 bg-emerald-500/5 text-emerald-700" : "border-red-500/40 bg-red-500/5 text-red-700",
+            state === "ok"
+              ? "border-emerald-500/40 bg-emerald-500/5 text-emerald-700"
+              : "border-red-500/40 bg-red-500/5 text-red-700",
           )}
         >
           {info || (state === "ok" ? "OK" : "Erro")}
         </div>
       )}
       <p className="text-[11px] text-muted-foreground">
-        Configure também "Ao enviar" e "Status da mensagem" apontando para a mesma URL se desejar registro completo.
+        Configure também "Ao enviar" e "Status da mensagem" apontando para a mesma URL se desejar
+        registro completo.
       </p>
     </div>
   );
 }
 
-function StatCard({ label, value, tone }: { label: string; value: number; tone?: "ok" | "warn" }) {
+function StatCard({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone?: "ok" | "warn";
+}) {
   return (
     <div className="rounded-xl border bg-card p-4">
       <div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
@@ -302,68 +536,13 @@ function StatCard({ label, value, tone }: { label: string; value: number; tone?:
   );
 }
 
-function MessageRow({
-  m,
-  onConvert,
-  onIgnore,
-  onOpen,
+function IntegrationRow({
+  name,
+  status,
 }: {
-  m: WhatsappMessage;
-  onConvert: () => void;
-  onIgnore: () => void;
-  onOpen: () => void;
+  name: string;
+  status: "conectado" | "pendente";
 }) {
-  const initial = (m.name ?? m.phone).slice(0, 1).toUpperCase();
-  return (
-    <li className="flex items-start gap-3 p-4 hover:bg-muted/30 transition-colors">
-      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 font-semibold shrink-0">
-        {initial}
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-medium text-sm">{m.name ?? "Número desconhecido"}</span>
-          <span className="text-xs text-muted-foreground flex items-center gap-1">
-            <Phone className="h-3 w-3" />
-            {m.phone}
-          </span>
-          {m.status === "convertido" && (
-            <Badge variant="secondary" className="text-[10px] gap-1">
-              <CheckCircle2 className="h-3 w-3" /> Lead criado
-            </Badge>
-          )}
-          {m.status === "ignorado" && (
-            <Badge variant="outline" className="text-[10px]">Ignorado</Badge>
-          )}
-        </div>
-        <p className="mt-1 text-sm text-foreground/90">{m.message}</p>
-        <div className="mt-1 text-[11px] text-muted-foreground">
-          {formatDistanceToNow(new Date(m.receivedAt), { locale: ptBR, addSuffix: true })} ·{" "}
-          {format(new Date(m.receivedAt), "HH:mm")}
-        </div>
-      </div>
-      <div className="flex flex-col gap-1.5 shrink-0">
-        {m.status === "novo" ? (
-          <>
-            <Button size="sm" onClick={onConvert} className="gap-1">
-              <UserPlus className="h-3.5 w-3.5" /> Criar lead
-            </Button>
-            <Button size="sm" variant="ghost" onClick={onIgnore}>
-              <X className="h-3.5 w-3.5" />
-            </Button>
-          </>
-        ) : (
-          m.leadId && (
-            <Button size="sm" variant="outline" onClick={onOpen}>
-              Ver lead
-            </Button>
-          )
-        )}
-      </div>
-    </li>
-  );
-}
-
-function IntegrationRow({ name, status }: { name: string; status: "conectado" | "pendente" }) {
   return (
     <div className="flex items-center justify-between text-sm">
       <span>{name}</span>
@@ -371,7 +550,9 @@ function IntegrationRow({ name, status }: { name: string; status: "conectado" | 
         variant="outline"
         className={cn(
           "text-[10px]",
-          status === "conectado" ? "border-emerald-500/50 text-emerald-700" : "border-amber-500/50 text-amber-700",
+          status === "conectado"
+            ? "border-emerald-500/50 text-emerald-700"
+            : "border-amber-500/50 text-amber-700",
         )}
       >
         {status}
