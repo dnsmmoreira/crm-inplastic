@@ -902,8 +902,8 @@ async function syncCollection<T>(opts: {
   snapshot: Map<string, string>;
   toKey: (item: T) => string;
   toJson: (item: T) => string;
-  upsert: (items: T[]) => Promise<{ error: unknown }>;
-  del: (ids: string[]) => Promise<{ error: unknown }>;
+  upsert: (items: T[]) => PromiseLike<{ error: unknown }>;
+  del: (ids: string[]) => PromiseLike<{ error: unknown }>;
 }) {
   const { current, snapshot: snap, toKey, toJson, upsert, del } = opts;
   const currentIds = new Set<string>();
