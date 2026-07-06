@@ -73,6 +73,8 @@ export function LeadDrawer({
   onOpenChange: (o: boolean) => void;
 }) {
   const lead = useCrm((s) => s.leads.find((l) => l.id === leadId));
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
   const updateLead = useCrm((s) => s.updateLead);
   const removeLead = useCrm((s) => s.removeLead);
   const addInteraction = useCrm((s) => s.addInteraction);

@@ -59,11 +59,14 @@ function PropostasPage() {
   const removeProposal = useCrm((s) => s.removeProposal);
   const createProposal = useCrm((s) => s.createProposal);
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | ProposalStatus>("all");
   const [openNew, setOpenNew] = useState(false);
   const [selectedLead, setSelectedLead] = useState<string>("");
   const [leadSearch, setLeadSearch] = useState("");
+
 
   const leadResults = useMemo(() => {
     const t = leadSearch.toLowerCase().trim();
@@ -156,20 +159,29 @@ function PropostasPage() {
                     <TableCell className="text-right font-semibold">{formatBRL(t.total)}</TableCell>
                     <TableCell><Badge variant={s.variant}>{s.label}</Badge></TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (confirm(`Remover proposta ${p.number}?`)) {
-                            removeProposal(p.id);
-                            toast.success("Proposta removida");
-                          }
-                        }}
-                      >
-                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                      </Button>
+                      {(() => {
+                        const isLocked = (p.status === "aprovada" || p.status === "pedido") && !isAdmin;
+                        return (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            disabled={isLocked}
+                            title={isLocked ? "Apenas administradores podem excluir pedidos aprovados" : "Excluir proposta"}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (isLocked) return;
+                              if (confirm(`Remover proposta ${p.number}?`)) {
+                                removeProposal(p.id);
+                                toast.success("Proposta removida");
+                              }
+                            }}
+                          >
+                            <Trash2 className={`h-3.5 w-3.5 ${isLocked ? "text-muted-foreground" : "text-destructive"}`} />
+                          </Button>
+                        );
+                      })()}
                     </TableCell>
+
                   </TableRow>
                 );
               })}
