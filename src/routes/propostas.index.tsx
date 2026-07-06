@@ -182,6 +182,9 @@ function PropostasPage() {
               <SelectItem value="recusada">Recusada</SelectItem>
             </SelectContent>
           </Select>
+          <Button variant="outline" onClick={() => setOpenNewLead(true)} className="gap-2">
+            <UserPlus className="h-4 w-4" /> Cadastrar lead
+          </Button>
           <Button onClick={() => setOpenNew(true)} className="gap-2">
             <Plus className="h-4 w-4" /> Nova proposta
           </Button>
