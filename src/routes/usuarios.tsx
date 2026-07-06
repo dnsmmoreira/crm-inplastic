@@ -162,12 +162,18 @@ function UsuariosPage() {
         </CardContent>
       </Card>
 
-      <p className="text-xs text-muted-foreground mt-4">
-        Após criar o usuário acima, informe o e-mail e a senha definidos para que ele acesse o CRM.
-      </p>
+      <div className="mt-4 rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground space-y-1">
+        <p>
+          <strong>Sem senha definida?</strong> Envie ao usuário o link{" "}
+          <Link to="/primeiro-acesso" className="text-primary underline">/primeiro-acesso</Link>
+          {" "}— ele digita o e-mail cadastrado e cria a própria senha (funciona uma única vez).
+        </p>
+        <p>Se você definir uma senha inicial no formulário acima, o usuário já pode entrar direto pela tela de login com esse e-mail e senha.</p>
+      </div>
     </div>
   );
 }
+
 
 function CreateUserCard({ onCreated }: { onCreated: () => Promise<void> | void }) {
   const create = useServerFn(createUser);
@@ -179,10 +185,20 @@ function CreateUserCard({ onCreated }: { onCreated: () => Promise<void> | void }
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (password && password.length < 6) {
+      toast.error("Senha inicial precisa ter pelo menos 6 caracteres (ou deixe em branco).");
+      return;
+    }
     setBusy(true);
     try {
-      await create({ data: { email, name, password, role } });
-      toast.success(`Usuário ${email} criado com sucesso`);
+      const res = await create({ data: { email, name, password: password || undefined, role } });
+      if (res.requiresFirstAccess) {
+        toast.success(`Usuário ${email} criado`, {
+          description: "Envie o link /primeiro-acesso para ele definir a senha.",
+        });
+      } else {
+        toast.success(`Usuário ${email} criado com senha definida`);
+      }
       setEmail("");
       setName("");
       setPassword("");
@@ -213,15 +229,15 @@ function CreateUserCard({ onCreated }: { onCreated: () => Promise<void> | void }
             <Input id="cu-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="pessoa@empresa.com" />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="cu-password">Senha inicial</Label>
+            <Label htmlFor="cu-password">
+              Senha inicial <span className="text-muted-foreground font-normal">(opcional)</span>
+            </Label>
             <Input
               id="cu-password"
               type="text"
-              required
-              minLength={6}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Mínimo 6 caracteres"
+              placeholder="Deixe vazio → usuário define via /primeiro-acesso"
             />
           </div>
           <div className="space-y-1">
@@ -247,3 +263,4 @@ function CreateUserCard({ onCreated }: { onCreated: () => Promise<void> | void }
     </Card>
   );
 }
+
