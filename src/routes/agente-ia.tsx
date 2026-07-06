@@ -413,6 +413,7 @@ function XerifeConfigForm() {
             onChange={(e) => setCfg({ ...cfg, resumo_hora: e.target.value })}
           />
         </div>
+        <TestResumoButton />
       </section>
 
       <section className="rounded-xl border bg-card p-5 space-y-4">
