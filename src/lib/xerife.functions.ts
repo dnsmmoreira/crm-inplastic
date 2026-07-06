@@ -53,7 +53,7 @@ export const listAiActions = createServerFn({ method: "GET" })
     z
       .object({
         leadId: z.string().uuid().optional(),
-        type: z.string().optional(),
+        type: z.enum(["followup", "schedule", "qualify", "reply", "alerta", "resumo"]).optional(),
         limit: z.number().int().min(1).max(200).optional(),
       })
       .parse(data ?? {}),
