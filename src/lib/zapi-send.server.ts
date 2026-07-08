@@ -32,6 +32,10 @@ export async function sendZapiText(
   const clientToken = process.env.ZAPI_CLIENT_TOKEN;
   const tag = ctx ? `[zapi:${ctx}]` : "[zapi]";
 
+  console.log(
+    `${tag} env instance=${!!instanceId}(${instanceId?.length ?? 0}) token=${!!token}(${token?.length ?? 0}) clientToken=${!!clientToken}(${clientToken?.length ?? 0})`,
+  );
+
   if (!instanceId || !token || !clientToken) {
     console.error(
       `${tag} secrets ausentes — instance=${!!instanceId} token=${!!token} clientToken=${!!clientToken}`,
