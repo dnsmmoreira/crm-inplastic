@@ -186,6 +186,72 @@ Respostas:
 
 ---
 
+## 4.1. Endpoint — `POST /api/public/hooks/ia-urgente`
+
+Usado pelo n8n quando um lead é qualificado como **URGENTE fora do
+horário comercial**. Cria o lead (se ainda não existir), envia um alerta
+via WhatsApp para o número da diretoria (secret `WHATSAPP_DIRETORIA`) e
+registra em `lead_ai_actions` com `type='alerta'`.
+
+- Header: `x-n8n-secret: <N8N_SECRET>` (401 se ausente/divergente)
+- Body:
+
+```json
+{
+  "conversa_id": "3f0d…",
+  "dados": {
+    "empresa": "Frigorífico Litoral LTDA",
+    "contato": "Marcos Andrade",
+    "segmento": "Ind Alimentos",
+    "produto": "Pallet Higiênico",
+    "quantidade": 300,
+    "urgencia": "hoje",
+    "cidade_uf": "Itajaí/SC"
+  },
+  "motivo": "Cliente precisa fechar hoje, linha parada."
+}
+```
+
+Comportamento:
+
+1. Se a conversa ainda não tem lead, cria em `public.leads` (mesma
+   lógica do `ia-qualificar`, `tags = ['WhatsApp','IA','Urgente']`) e
+   vincula à conversa. **Não** altera `status`/`ia_ativa` — o n8n segue
+   qualificando/respondendo pelos outros endpoints se quiser.
+2. Monta a mensagem:
+
+   ```
+   🔴 LEAD URGENTE (fora do horário)
+   Empresa: {empresa}
+   Contato: {contato}
+   Precisa de: {produto} {quantidade}
+   Urgência: {motivo}
+   Conversa no CRM: crm.inplastic.com.br
+   ```
+
+3. Se `WHATSAPP_DIRETORIA` estiver configurado, envia via Z-API
+   (`sendZapiText`, mesmo caminho do envio manual). Caso o envio falhe
+   ou o secret não esteja configurado, **não quebra** — apenas registra.
+4. Insere em `lead_ai_actions` (`type='alerta'`) com
+   `metadata.escalacao='urgente_fora_horario'`, `enviado`,
+   `diretoria_configurada` e o payload `dados`/`motivo`.
+
+Respostas:
+
+| Status | Situação                                                             |
+|--------|----------------------------------------------------------------------|
+| 200    | `{ ok, lead_id, enviado, diretoria_configurada, envio_erro? }`        |
+| 400    | body inválido / `conversa_id` ausente                                |
+| 401    | `x-n8n-secret` inválido                                              |
+| 404    | conversa não encontrada                                              |
+| 500    | falha ao criar o lead                                                |
+
+> Este endpoint **não** substitui `ia-qualificar`. Fluxo típico fora do
+> horário: `ia-urgente` (alerta imediato à diretoria) + `ia-qualificar`
+> com `distribuir=false` (lead entra na fila para distribuição depois).
+
+---
+
 ## 6. Fluxo canônico WhatsApp
 
 1. Cliente manda mensagem → Z-API → `POST /api/public/zapi/webhook`
@@ -199,6 +265,8 @@ Respostas:
    - **Qualificar** → `POST /api/public/hooks/ia-qualificar`
      (com `distribuir = true` em horário comercial,
      `distribuir = false` fora dele).
+   - **Urgente fora do horário** → `POST /api/public/hooks/ia-urgente`
+     (alerta imediato à diretoria via `WHATSAPP_DIRETORIA`).
 5. Ao qualificar, o CRM desliga a IA da conversa e (se distribuído)
    atribui o próximo vendedor da fila. A conversa aparece "Qualificado"
    em `/atendimento-ia` para o vendedor dono ou para todos os admins.
