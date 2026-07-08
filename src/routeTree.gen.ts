@@ -32,6 +32,7 @@ import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as ApiPublicZapiWebhookRouteImport } from './routes/api/public/zapi/webhook'
 import { Route as ApiPublicHooksXerifeRouteImport } from './routes/api/public/hooks/xerife'
+import { Route as ApiPublicHooksIaUrgenteRouteImport } from './routes/api/public/hooks/ia-urgente'
 import { Route as ApiPublicHooksIaResponderRouteImport } from './routes/api/public/hooks/ia-responder'
 import { Route as ApiPublicHooksIaQualificarRouteImport } from './routes/api/public/hooks/ia-qualificar'
 
@@ -153,6 +154,11 @@ const ApiPublicHooksXerifeRoute = ApiPublicHooksXerifeRouteImport.update({
   path: '/api/public/hooks/xerife',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksIaUrgenteRoute = ApiPublicHooksIaUrgenteRouteImport.update({
+  id: '/api/public/hooks/ia-urgente',
+  path: '/api/public/hooks/ia-urgente',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicHooksIaResponderRoute =
   ApiPublicHooksIaResponderRouteImport.update({
     id: '/api/public/hooks/ia-responder',
@@ -190,6 +196,7 @@ export interface FileRoutesByFullPath {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/hooks/ia-qualificar': typeof ApiPublicHooksIaQualificarRoute
   '/api/public/hooks/ia-responder': typeof ApiPublicHooksIaResponderRoute
+  '/api/public/hooks/ia-urgente': typeof ApiPublicHooksIaUrgenteRoute
   '/api/public/hooks/xerife': typeof ApiPublicHooksXerifeRoute
   '/api/public/zapi/webhook': typeof ApiPublicZapiWebhookRoute
 }
@@ -217,6 +224,7 @@ export interface FileRoutesByTo {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/hooks/ia-qualificar': typeof ApiPublicHooksIaQualificarRoute
   '/api/public/hooks/ia-responder': typeof ApiPublicHooksIaResponderRoute
+  '/api/public/hooks/ia-urgente': typeof ApiPublicHooksIaUrgenteRoute
   '/api/public/hooks/xerife': typeof ApiPublicHooksXerifeRoute
   '/api/public/zapi/webhook': typeof ApiPublicZapiWebhookRoute
 }
@@ -245,6 +253,7 @@ export interface FileRoutesById {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/hooks/ia-qualificar': typeof ApiPublicHooksIaQualificarRoute
   '/api/public/hooks/ia-responder': typeof ApiPublicHooksIaResponderRoute
+  '/api/public/hooks/ia-urgente': typeof ApiPublicHooksIaUrgenteRoute
   '/api/public/hooks/xerife': typeof ApiPublicHooksXerifeRoute
   '/api/public/zapi/webhook': typeof ApiPublicZapiWebhookRoute
 }
@@ -274,6 +283,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/api/public/hooks/ia-qualificar'
     | '/api/public/hooks/ia-responder'
+    | '/api/public/hooks/ia-urgente'
     | '/api/public/hooks/xerife'
     | '/api/public/zapi/webhook'
   fileRoutesByTo: FileRoutesByTo
@@ -301,6 +311,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/api/public/hooks/ia-qualificar'
     | '/api/public/hooks/ia-responder'
+    | '/api/public/hooks/ia-urgente'
     | '/api/public/hooks/xerife'
     | '/api/public/zapi/webhook'
   id:
@@ -328,6 +339,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/api/public/hooks/ia-qualificar'
     | '/api/public/hooks/ia-responder'
+    | '/api/public/hooks/ia-urgente'
     | '/api/public/hooks/xerife'
     | '/api/public/zapi/webhook'
   fileRoutesById: FileRoutesById
@@ -356,6 +368,7 @@ export interface RootRouteChildren {
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiPublicHooksIaQualificarRoute: typeof ApiPublicHooksIaQualificarRoute
   ApiPublicHooksIaResponderRoute: typeof ApiPublicHooksIaResponderRoute
+  ApiPublicHooksIaUrgenteRoute: typeof ApiPublicHooksIaUrgenteRoute
   ApiPublicHooksXerifeRoute: typeof ApiPublicHooksXerifeRoute
   ApiPublicZapiWebhookRoute: typeof ApiPublicZapiWebhookRoute
 }
@@ -523,6 +536,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksXerifeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/ia-urgente': {
+      id: '/api/public/hooks/ia-urgente'
+      path: '/api/public/hooks/ia-urgente'
+      fullPath: '/api/public/hooks/ia-urgente'
+      preLoaderRoute: typeof ApiPublicHooksIaUrgenteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/ia-responder': {
       id: '/api/public/hooks/ia-responder'
       path: '/api/public/hooks/ia-responder'
@@ -565,6 +585,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiPublicHooksIaQualificarRoute: ApiPublicHooksIaQualificarRoute,
   ApiPublicHooksIaResponderRoute: ApiPublicHooksIaResponderRoute,
+  ApiPublicHooksIaUrgenteRoute: ApiPublicHooksIaUrgenteRoute,
   ApiPublicHooksXerifeRoute: ApiPublicHooksXerifeRoute,
   ApiPublicZapiWebhookRoute: ApiPublicZapiWebhookRoute,
 }
