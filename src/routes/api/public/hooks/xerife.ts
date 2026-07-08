@@ -26,44 +26,18 @@ function parseHour(hhmm: string): number {
   return Number(hhmm.slice(0, 2));
 }
 
-function onlyDigits(s: string) {
-  return s.replace(/\D/g, "");
-}
-
-function normalizePhoneBR(phone: string) {
-  let p = onlyDigits(phone);
-  if (!p.startsWith("55") && p.length <= 11) p = `55${p}`;
-  return p;
-}
-
 /**
  * Envia mensagem WhatsApp direto via Z-API (uso interno do Xerife).
  * NUNCA envia para cliente/lead — apenas para vendedores/admins da equipe.
+ * Usa o mesmo helper compartilhado (`sendZapiText`) do envio manual e do ia-responder.
  */
 async function sendZapiText(phoneRaw: string, message: string): Promise<boolean> {
-  const instanceId = process.env.ZAPI_INSTANCE_ID;
-  const token = process.env.ZAPI_TOKEN;
-  const clientToken = process.env.ZAPI_CLIENT_TOKEN;
-  if (!instanceId || !token || !clientToken) {
-    console.warn("[xerife] Z-API não configurado; pulei envio.");
-    return false;
-  }
-  const phone = normalizePhoneBR(phoneRaw);
-  const url = `https://api.z-api.io/instances/${instanceId}/token/${token}/send-text`;
   try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Client-Token": clientToken },
-      body: JSON.stringify({ phone, message }),
-    });
-    if (!res.ok) {
-      const body = await res.text();
-      console.error(`[xerife] Z-API [${res.status}]: ${body}`);
-      return false;
-    }
+    const { sendZapiText: send } = await import("@/lib/zapi-send.server");
+    await send(phoneRaw, message, "xerife");
     return true;
   } catch (e) {
-    console.error("[xerife] Z-API erro:", e);
+    console.error("[xerife] Z-API erro:", e instanceof Error ? e.message : String(e));
     return false;
   }
 }
