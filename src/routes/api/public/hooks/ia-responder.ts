@@ -64,7 +64,8 @@ export const Route = createFileRoute("/api/public/hooks/ia-responder")({
         }
 
         try {
-          await sendZapiText(conv.phone, mensagem);
+          const { sendZapiText } = await import("@/lib/zapi-send.server");
+          await sendZapiText(conv.phone, mensagem, "ia-responder");
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);
           console.error("ia-responder envio Z-API falhou:", msg);
