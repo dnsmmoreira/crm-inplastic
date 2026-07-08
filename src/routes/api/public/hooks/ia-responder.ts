@@ -6,34 +6,6 @@ const CORS = {
   "Access-Control-Allow-Headers": "Content-Type, x-n8n-secret",
 } as const;
 
-function onlyDigits(s: string) {
-  return String(s ?? "").replace(/\D/g, "");
-}
-function normalizePhoneBR(phone: string) {
-  let p = onlyDigits(phone);
-  if (!p.startsWith("55") && p.length <= 11) p = `55${p}`;
-  return p;
-}
-
-async function sendZapiText(phoneRaw: string, message: string): Promise<void> {
-  const instanceId = process.env.ZAPI_INSTANCE_ID;
-  const token = process.env.ZAPI_TOKEN;
-  const clientToken = process.env.ZAPI_CLIENT_TOKEN;
-  if (!instanceId || !token || !clientToken) {
-    throw new Error("Z-API não configurado.");
-  }
-  const phone = normalizePhoneBR(phoneRaw);
-  const url = `https://api.z-api.io/instances/${instanceId}/token/${token}/send-text`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "Client-Token": clientToken },
-    body: JSON.stringify({ phone, message }),
-  });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Z-API [${res.status}]: ${body}`);
-  }
-}
 
 /**
  * Endpoint chamado pelo n8n para responder ao cliente via WhatsApp.
