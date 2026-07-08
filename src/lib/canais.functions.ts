@@ -30,25 +30,8 @@ export const sendConversaMessage = createServerFn({ method: "POST" })
       .maybeSingle();
     if (cErr || !conversa) throw new Error("Conversa não encontrada ou sem permissão.");
 
-    const instanceId = process.env.ZAPI_INSTANCE_ID;
-    const token = process.env.ZAPI_TOKEN;
-    const clientToken = process.env.ZAPI_CLIENT_TOKEN;
-    if (!instanceId || !token || !clientToken) {
-      throw new Error("Z-API não configurado (variáveis ausentes).");
-    }
-
-    const phone = normalizePhoneBR(conversa.phone);
-    const url = `https://api.z-api.io/instances/${instanceId}/token/${token}/send-text`;
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Client-Token": clientToken },
-      body: JSON.stringify({ phone, message: data.message }),
-    });
-    const body = await res.text();
-    if (!res.ok) {
-      console.error(`Z-API send-text [${res.status}]: ${body}`);
-      throw new Error(`Z-API [${res.status}]: ${body}`);
-    }
+    const { sendZapiText } = await import("./zapi-send.server");
+    await sendZapiText(conversa.phone, data.message, "sendConversaMessage");
 
     const { error: mErr } = await supabase.from("whatsapp_mensagens").insert({
       conversa_id: data.conversaId,
