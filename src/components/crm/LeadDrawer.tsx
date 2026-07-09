@@ -179,7 +179,63 @@ export function LeadDrawer({
             </div>
           </div>
 
+          {(lead.cnpj || lead.razaoSocial || lead.dataAbertura || lead.capitalSocial || lead.socios?.length || lead.suframa?.length) && (
+            <>
+              <Separator />
+              <div className="space-y-3">
+                <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Cadastro fiscal</div>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  {lead.cnpj && <InfoRow icon={Building2} label="CNPJ" value={lead.cnpj} />}
+                  {lead.razaoSocial && <InfoRow icon={Building2} label="Razão social" value={lead.razaoSocial} />}
+                  {lead.dataAbertura && <InfoRow icon={Calendar} label="Abertura" value={lead.dataAbertura} />}
+                  {lead.capitalSocial ? <InfoRow icon={Package} label="Capital social" value={formatBRL(lead.capitalSocial)} /> : null}
+                  {lead.naturezaJuridica && <InfoRow icon={Building2} label="Natureza jurídica" value={lead.naturezaJuridica} />}
+                  {lead.porte && <InfoRow icon={Users2} label="Porte" value={lead.porte} />}
+                  {lead.cnaePrincipal && <div className="col-span-2"><InfoRow icon={Package} label="CNAE principal" value={lead.cnaePrincipal} /></div>}
+                  {lead.simplesOptante !== undefined && (
+                    <InfoRow
+                      icon={Sparkles}
+                      label="Simples Nacional"
+                      value={lead.simplesOptante ? `Optante${lead.simplesDesde ? ` desde ${lead.simplesDesde}` : ""}` : "Não optante"}
+                    />
+                  )}
+                </div>
+                {lead.suframa && lead.suframa.length > 0 && (
+                  <div>
+                    <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1">SUFRAMA</div>
+                    <ul className="space-y-1 text-sm">
+                      {lead.suframa.map((s, i) => (
+                        <li key={i} className="rounded border bg-muted/30 px-2 py-1 flex justify-between">
+                          <span className="font-mono">{s.numero}</span>
+                          <span className="text-xs text-muted-foreground">{s.status}{s.desde ? ` · desde ${s.desde}` : ""}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {lead.socios && lead.socios.length > 0 && (
+                  <div>
+                    <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1">Quadro societário ({lead.socios.length})</div>
+                    <ul className="space-y-1 text-sm">
+                      {lead.socios.map((s, i) => (
+                        <li key={i} className="rounded border bg-muted/30 px-2 py-1">
+                          <div className="font-medium">{s.nome}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {s.qualificacao}
+                            {s.desde ? ` · entrou em ${s.desde}` : ""}
+                            {s.taxId ? ` · ${s.taxId}` : ""}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
           <Separator />
+
 
           <Tabs defaultValue="hist">
             <TabsList className="grid w-full grid-cols-4">
