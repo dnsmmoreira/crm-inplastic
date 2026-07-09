@@ -15,6 +15,7 @@ import { Plus, Package, Calendar as CalendarIcon, Search, ArrowDownUp, X } from 
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useCrm, STAGES, formatBRL, leadTemperature, followupTemperature, type Lead, type StageId, type FollowupLevel, useVisibleLeads } from "@/lib/crm-store";
+import { computeLeadScore } from "@/lib/lead-score";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -242,6 +243,11 @@ function LeadCard({
   dragging?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: lead.id });
+  const sc = computeLeadScore(lead);
+  const stripe =
+    sc.level === "alto" ? "border-l-4 border-l-emerald-500"
+    : sc.level === "medio" ? "border-l-4 border-l-amber-500"
+    : "border-l-4 border-l-rose-500";
   return (
     <div
       ref={setNodeRef}
@@ -250,6 +256,7 @@ function LeadCard({
       onClick={() => !isDragging && onOpen(lead.id)}
       className={cn(
         "group cursor-grab active:cursor-grabbing rounded-lg border bg-card p-3 shadow-sm hover:shadow-md hover:border-primary/50 transition-all",
+        stripe,
         isDragging && "opacity-30",
         dragging && "shadow-xl rotate-2",
       )}
@@ -273,6 +280,13 @@ function LeadCard({
         const f = followupTemperature(lead);
         return (
           <div className="mt-2 flex flex-wrap items-center gap-1">
+            <Badge
+              variant="outline"
+              className={`text-[10px] px-1.5 py-0 ${sc.className}`}
+              title={sc.reasons.map((r) => `${r.ok ? "✓" : "•"} ${r.text}`).join("\n")}
+            >
+              <span className="mr-1">{sc.emoji}</span>Score {sc.score}
+            </Badge>
             <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${t.className}`} title={t.hint}>
               <span className="mr-1">{t.emoji}</span>{t.label} · {t.days}d
             </Badge>
