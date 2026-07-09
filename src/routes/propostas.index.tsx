@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { Plus, FileText, Search, Trash2, UserPlus, Loader2 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { lookupCnpj } from "@/lib/cnpj.functions";
+import { isValidCnpj } from "@/lib/cnpj";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -82,6 +83,7 @@ function PropostasPage() {
   const handleCnpjLookup = async () => {
     const digits = leadForm.cnpj.replace(/\D/g, "");
     if (digits.length !== 14) { toast.error("Informe um CNPJ com 14 dígitos"); return; }
+    if (!isValidCnpj(digits)) { toast.error("CNPJ inválido — confira os dígitos"); return; }
     // check duplicate before calling API
     const dup = leads.find((l) => (l.cnpj ?? "").replace(/\D/g, "") === digits);
     if (dup) { toast.error(`CNPJ já cadastrado para "${dup.company}"`); return; }

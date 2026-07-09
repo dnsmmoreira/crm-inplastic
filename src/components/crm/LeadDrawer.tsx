@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { lookupCnpj } from "@/lib/cnpj.functions";
+import { isValidCnpj } from "@/lib/cnpj";
 import { useAuth } from "@/hooks/use-auth";
 
 
@@ -524,6 +525,10 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
       toast.error("CNPJ inválido — informe 14 dígitos");
       return;
     }
+    if (!isValidCnpj(digits)) {
+      toast.error("CNPJ inválido — confira os dígitos verificadores");
+      return;
+    }
     setLookingUp(true);
     try {
       const r = await lookupCnpjFn({ data: { cnpj: digits } });
@@ -565,7 +570,7 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
         {/* Bloco: Consulta CNPJ */}
         <div className="rounded-lg border bg-muted/30 p-3">
           <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-            Consulta automática (SintegraWS)
+            Consulta automática (CNPJá)
           </Label>
           <div className="mt-1 flex gap-2">
             <Input
