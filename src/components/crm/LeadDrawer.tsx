@@ -945,6 +945,14 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
                   numFuncionarios: form.numFuncionarios || undefined,
                   decisorNome: form.decisorNome || undefined,
                   decisorCargo: form.decisorCargo || undefined,
+                  dataAbertura: form.dataAbertura || undefined,
+                  capitalSocial: form.capitalSocial || undefined,
+                  naturezaJuridica: form.naturezaJuridica || undefined,
+                  simplesOptante: form.simplesOptante ?? undefined,
+                  simplesDesde: form.simplesDesde || undefined,
+                  suframa: form.suframa.length ? form.suframa : undefined,
+                  socios: form.socios.length ? form.socios : undefined,
+
                 });
               } catch (e) {
                 toast.error(e instanceof Error ? e.message : "Erro ao criar lead");
