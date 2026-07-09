@@ -525,6 +525,10 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
       toast.error("CNPJ inválido — informe 14 dígitos");
       return;
     }
+    if (!isValidCnpj(digits)) {
+      toast.error("CNPJ inválido — confira os dígitos verificadores");
+      return;
+    }
     setLookingUp(true);
     try {
       const r = await lookupCnpjFn({ data: { cnpj: digits } });
