@@ -635,6 +635,8 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
         cidade: r.endereco.cidade,
         uf: r.endereco.uf,
         porte: r.porte,
+        faturamentoEstimado: f.faturamentoEstimado || faturamentoTetoPorPorte(r.porte) || 0,
+
         cnaePrincipal: r.cnaePrincipal,
         segment: f.segment || matchedSegment,
         dataAbertura: r.dataAbertura,
