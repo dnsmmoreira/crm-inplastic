@@ -15,6 +15,7 @@ import { Plus, Package, Calendar as CalendarIcon, Search, ArrowDownUp, X } from 
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useCrm, STAGES, formatBRL, leadTemperature, followupTemperature, type Lead, type StageId, type FollowupLevel, useVisibleLeads } from "@/lib/crm-store";
+import { computeLeadScore } from "@/lib/lead-score";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
