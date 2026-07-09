@@ -104,7 +104,7 @@ export const lookupCnpj = createServerFn({ method: "POST" })
     const token = process.env.CNPJA_API_KEY;
     if (!token) throw new Error("Token do CNPJá não configurado (CNPJA_API_KEY)");
 
-    const url = `https://api.cnpja.com/office/${data.cnpj}?registrations=BR`;
+    const url = `https://api.cnpja.com/office/${data.cnpj}?registrations=BR&simples=true&suframa=true`;
 
     const res = await fetch(url, {
       headers: {
@@ -148,6 +148,20 @@ export const lookupCnpj = createServerFn({ method: "POST" })
           ? Number(String(json.company.equity).replace(/[^\d.,-]/g, "").replace(",", ".")) || null
           : null;
 
+    const socios: CnpjSocio[] = (json.company?.members ?? []).map((m) => ({
+      nome: m.person?.name ?? "",
+      qualificacao: m.role?.text ?? "",
+      desde: m.since ?? "",
+      taxId: m.person?.taxId,
+    })).filter((s) => s.nome);
+
+    const suframa: CnpjSuframa[] = (json.suframa ?? []).map((s) => ({
+      numero: s.number ?? "",
+      status: s.status?.text ?? "",
+      desde: s.since ?? s.approvalDate ?? "",
+      aprovado: Boolean(s.approved),
+    })).filter((s) => s.numero);
+
     return {
       cnpj: data.cnpj,
       razaoSocial: json.company.name ?? "",
@@ -158,9 +172,15 @@ export const lookupCnpj = createServerFn({ method: "POST" })
       cnaePrincipal: json.mainActivity?.text ?? "",
       cnaeCodigo: json.mainActivity?.id ? String(json.mainActivity.id) : "",
       capitalSocial: capital,
+      naturezaJuridica: json.company?.nature?.text ?? "",
+      simplesOptante: json.company?.simples?.optant ?? null,
+      simplesDesde: json.company?.simples?.since ?? "",
+      simeiOptante: json.company?.simei?.optant ?? null,
       dataAbertura: json.founded ?? "",
       email: json.emails?.[0]?.address ?? "",
       telefone,
+      socios,
+      suframa,
       endereco: {
         cep: json.address?.zip ?? "",
         logradouro: json.address?.street ?? "",
@@ -172,3 +192,4 @@ export const lookupCnpj = createServerFn({ method: "POST" })
       },
     };
   });
+
