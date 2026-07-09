@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { Plus, FileText, Search, Trash2, UserPlus, Loader2 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { lookupCnpj } from "@/lib/cnpj.functions";
+import { isValidCnpj } from "@/lib/cnpj";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
