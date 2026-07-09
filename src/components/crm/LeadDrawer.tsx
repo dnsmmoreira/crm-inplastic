@@ -55,6 +55,8 @@ import {
   type Interaction,
 } from "@/lib/crm-store";
 import { toast } from "sonner";
+import { computeLeadScore, faturamentoTetoPorPorte } from "@/lib/lead-score";
+
 
 const TYPE_META: Record<Interaction["type"], { label: string; icon: typeof Mail }> = {
   email: { label: "E-mail", icon: Mail },
@@ -109,6 +111,7 @@ export function LeadDrawer({
                 {(() => {
                   const t = leadTemperature(lead);
                   const f = followupTemperature(lead);
+                  const sc = computeLeadScore(lead);
                   return (
                     <>
                       <Badge variant="outline" className={`text-xs ${t.className}`} title={t.hint}>
@@ -116,6 +119,13 @@ export function LeadDrawer({
                       </Badge>
                       <Badge variant="outline" className={`text-xs ${f.className}`} title={f.hint}>
                         <span className="mr-1">{f.emoji}</span>Agenda: {f.label} · {f.hint}
+                      </Badge>
+                      <Badge
+                        variant="outline"
+                        className={`text-xs ${sc.className}`}
+                        title={sc.reasons.map((r) => `${r.ok ? "✓" : "•"} ${r.text}`).join("\n")}
+                      >
+                        <span className="mr-1">{sc.emoji}</span>Score {sc.score} · {sc.label}
                       </Badge>
                     </>
                   );
@@ -126,6 +136,7 @@ export function LeadDrawer({
                   </Badge>
                 ))}
               </div>
+
             </div>
             <div className="text-right shrink-0">
               <div className="text-xs text-muted-foreground">Valor estimado</div>
@@ -624,6 +635,8 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
         cidade: r.endereco.cidade,
         uf: r.endereco.uf,
         porte: r.porte,
+        faturamentoEstimado: f.faturamentoEstimado || faturamentoTetoPorPorte(r.porte) || 0,
+
         cnaePrincipal: r.cnaePrincipal,
         segment: f.segment || matchedSegment,
         dataAbertura: r.dataAbertura,
