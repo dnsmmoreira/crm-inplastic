@@ -492,6 +492,15 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
     numFuncionarios: 0,
     decisorNome: "",
     decisorCargo: "",
+    // Fiscal complementar (CNPJá)
+    dataAbertura: "",
+    capitalSocial: 0,
+    naturezaJuridica: "",
+    simplesOptante: null as boolean | null,
+    simplesDesde: "",
+    suframa: [] as { numero: string; status: string; desde: string; aprovado: boolean }[],
+    socios: [] as { nome: string; qualificacao: string; desde: string; taxId?: string }[],
+
   };
   const [form, setForm] = useState(initial);
   const [lookingUp, setLookingUp] = useState(false);
@@ -561,7 +570,15 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
         porte: r.porte,
         cnaePrincipal: r.cnaePrincipal,
         segment: f.segment || matchedSegment,
+        dataAbertura: r.dataAbertura,
+        capitalSocial: r.capitalSocial ?? 0,
+        naturezaJuridica: r.naturezaJuridica,
+        simplesOptante: r.simplesOptante,
+        simplesDesde: r.simplesDesde,
+        suframa: r.suframa,
+        socios: r.socios,
       }));
+
 
       toast.success("Dados do CNPJ preenchidos");
     } catch (e) {
