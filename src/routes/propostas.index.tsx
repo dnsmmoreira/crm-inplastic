@@ -82,6 +82,7 @@ function PropostasPage() {
   const handleCnpjLookup = async () => {
     const digits = leadForm.cnpj.replace(/\D/g, "");
     if (digits.length !== 14) { toast.error("Informe um CNPJ com 14 dígitos"); return; }
+    if (!isValidCnpj(digits)) { toast.error("CNPJ inválido — confira os dígitos"); return; }
     // check duplicate before calling API
     const dup = leads.find((l) => (l.cnpj ?? "").replace(/\D/g, "") === digits);
     if (dup) { toast.error(`CNPJ já cadastrado para "${dup.company}"`); return; }
