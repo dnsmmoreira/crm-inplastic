@@ -532,6 +532,15 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
     setLookingUp(true);
     try {
       const r = await lookupCnpjFn({ data: { cnpj: digits } });
+      // Tenta mapear segmento a partir do CNAE (match por palavra no nome do segmento)
+      const cnaeLower = (r.cnaePrincipal || "").toLowerCase();
+      const matchedSegment =
+        leadSegments.find((s) => cnaeLower.includes(s.toLowerCase())) ||
+        leadSegments.find((s) => {
+          const first = s.toLowerCase().split(/\s+/)[0];
+          return first.length > 3 && cnaeLower.includes(first);
+        }) ||
+        "";
       setForm((f) => ({
         ...f,
         razaoSocial: r.razaoSocial,
@@ -540,6 +549,7 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
         inscricaoEstadual: r.inscricaoEstadual,
         email: f.email || r.email.toLowerCase(),
         phone: f.phone || r.telefone,
+        telefoneWhatsapp: f.telefoneWhatsapp || r.telefone,
         telefoneFixo: r.telefone,
         cep: r.endereco.cep,
         logradouro: r.endereco.logradouro,
@@ -550,7 +560,9 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
         uf: r.endereco.uf,
         porte: r.porte,
         cnaePrincipal: r.cnaePrincipal,
+        segment: f.segment || matchedSegment,
       }));
+
       toast.success("Dados do CNPJ preenchidos");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Falha ao consultar CNPJ");
