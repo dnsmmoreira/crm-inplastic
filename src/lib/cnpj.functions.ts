@@ -2,6 +2,20 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { isValidCnpj, onlyDigitsCnpj } from "@/lib/cnpj";
 
+export type CnpjSocio = {
+  nome: string;
+  qualificacao: string;
+  desde: string;
+  taxId?: string;
+};
+
+export type CnpjSuframa = {
+  numero: string;
+  status: string;
+  desde: string;
+  aprovado: boolean;
+};
+
 export type CnpjLookupResult = {
   cnpj: string;
   razaoSocial: string;
@@ -12,9 +26,15 @@ export type CnpjLookupResult = {
   cnaePrincipal: string;
   cnaeCodigo: string;
   capitalSocial: number | null;
+  naturezaJuridica: string;
+  simplesOptante: boolean | null;
+  simplesDesde: string;
+  simeiOptante: boolean | null;
   dataAbertura: string;
   email: string;
   telefone: string;
+  socios: CnpjSocio[];
+  suframa: CnpjSuframa[];
   endereco: {
     cep: string;
     logradouro: string;
@@ -25,6 +45,7 @@ export type CnpjLookupResult = {
     uf: string;
   };
 };
+
 
 // CNPJá — https://cnpja.com/docs/api
 // Endpoint: GET https://api.cnpja.com/office/{cnpj}?registrations=BR
@@ -39,6 +60,14 @@ type CnpjaOffice = {
     name?: string;
     size?: { text?: string };
     equity?: number | string;
+    nature?: { id?: number | string; text?: string };
+    simples?: { optant?: boolean; since?: string };
+    simei?: { optant?: boolean; since?: string };
+    members?: Array<{
+      since?: string;
+      role?: { id?: number | string; text?: string };
+      person?: { name?: string; taxId?: string; type?: string };
+    }>;
   };
   address?: {
     zip?: string;
@@ -53,7 +82,15 @@ type CnpjaOffice = {
   emails?: Array<{ address?: string }>;
   mainActivity?: { id?: number | string; text?: string };
   registrations?: Array<{ state?: string; number?: string; enabled?: boolean }>;
+  suframa?: Array<{
+    number?: string;
+    since?: string;
+    approved?: boolean;
+    approvalDate?: string;
+    status?: { text?: string };
+  }>;
 };
+
 
 export const lookupCnpj = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
