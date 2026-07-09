@@ -549,7 +549,7 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
         inscricaoEstadual: r.inscricaoEstadual,
         email: f.email || r.email.toLowerCase(),
         phone: f.phone || r.telefone,
-        telefoneWhatsapp: f.telefoneWhatsapp || r.telefone,
+        whatsapp: f.whatsapp || r.telefone,
         telefoneFixo: r.telefone,
         cep: r.endereco.cep,
         logradouro: r.endereco.logradouro,
