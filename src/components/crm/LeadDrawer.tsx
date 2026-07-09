@@ -179,7 +179,63 @@ export function LeadDrawer({
             </div>
           </div>
 
+          {(lead.cnpj || lead.razaoSocial || lead.dataAbertura || lead.capitalSocial || lead.socios?.length || lead.suframa?.length) && (
+            <>
+              <Separator />
+              <div className="space-y-3">
+                <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Cadastro fiscal</div>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  {lead.cnpj && <InfoRow icon={Building2} label="CNPJ" value={lead.cnpj} />}
+                  {lead.razaoSocial && <InfoRow icon={Building2} label="Razão social" value={lead.razaoSocial} />}
+                  {lead.dataAbertura && <InfoRow icon={Calendar} label="Abertura" value={lead.dataAbertura} />}
+                  {lead.capitalSocial ? <InfoRow icon={Package} label="Capital social" value={formatBRL(lead.capitalSocial)} /> : null}
+                  {lead.naturezaJuridica && <InfoRow icon={Building2} label="Natureza jurídica" value={lead.naturezaJuridica} />}
+                  {lead.porte && <InfoRow icon={Users2} label="Porte" value={lead.porte} />}
+                  {lead.cnaePrincipal && <div className="col-span-2"><InfoRow icon={Package} label="CNAE principal" value={lead.cnaePrincipal} /></div>}
+                  {lead.simplesOptante !== undefined && (
+                    <InfoRow
+                      icon={Sparkles}
+                      label="Simples Nacional"
+                      value={lead.simplesOptante ? `Optante${lead.simplesDesde ? ` desde ${lead.simplesDesde}` : ""}` : "Não optante"}
+                    />
+                  )}
+                </div>
+                {lead.suframa && lead.suframa.length > 0 && (
+                  <div>
+                    <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1">SUFRAMA</div>
+                    <ul className="space-y-1 text-sm">
+                      {lead.suframa.map((s, i) => (
+                        <li key={i} className="rounded border bg-muted/30 px-2 py-1 flex justify-between">
+                          <span className="font-mono">{s.numero}</span>
+                          <span className="text-xs text-muted-foreground">{s.status}{s.desde ? ` · desde ${s.desde}` : ""}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {lead.socios && lead.socios.length > 0 && (
+                  <div>
+                    <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1">Quadro societário ({lead.socios.length})</div>
+                    <ul className="space-y-1 text-sm">
+                      {lead.socios.map((s, i) => (
+                        <li key={i} className="rounded border bg-muted/30 px-2 py-1">
+                          <div className="font-medium">{s.nome}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {s.qualificacao}
+                            {s.desde ? ` · entrou em ${s.desde}` : ""}
+                            {s.taxId ? ` · ${s.taxId}` : ""}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
           <Separator />
+
 
           <Tabs defaultValue="hist">
             <TabsList className="grid w-full grid-cols-4">
@@ -492,6 +548,15 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
     numFuncionarios: 0,
     decisorNome: "",
     decisorCargo: "",
+    // Fiscal complementar (CNPJá)
+    dataAbertura: "",
+    capitalSocial: 0,
+    naturezaJuridica: "",
+    simplesOptante: null as boolean | null,
+    simplesDesde: "",
+    suframa: [] as { numero: string; status: string; desde: string; aprovado: boolean }[],
+    socios: [] as { nome: string; qualificacao: string; desde: string; taxId?: string }[],
+
   };
   const [form, setForm] = useState(initial);
   const [lookingUp, setLookingUp] = useState(false);
@@ -561,7 +626,15 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
         porte: r.porte,
         cnaePrincipal: r.cnaePrincipal,
         segment: f.segment || matchedSegment,
+        dataAbertura: r.dataAbertura,
+        capitalSocial: r.capitalSocial ?? 0,
+        naturezaJuridica: r.naturezaJuridica,
+        simplesOptante: r.simplesOptante,
+        simplesDesde: r.simplesDesde,
+        suframa: r.suframa,
+        socios: r.socios,
       }));
+
 
       toast.success("Dados do CNPJ preenchidos");
     } catch (e) {
@@ -731,6 +804,74 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
           </div>
         </div>
 
+        {/* Bloco: Cadastro fiscal complementar */}
+        <div className="mt-2">
+          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Cadastro fiscal (CNPJá)</div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Data de abertura</Label>
+              <Input type="date" value={form.dataAbertura} onChange={(e) => setForm({ ...form, dataAbertura: e.target.value })} />
+            </div>
+            <div>
+              <Label>Capital social (R$)</Label>
+              <Input type="number" min={0} value={form.capitalSocial} onChange={(e) => setForm({ ...form, capitalSocial: Number(e.target.value) || 0 })} />
+            </div>
+            <div className="col-span-2">
+              <Label>Natureza jurídica</Label>
+              <Input value={form.naturezaJuridica} onChange={(e) => setForm({ ...form, naturezaJuridica: e.target.value })} />
+            </div>
+            <div className="col-span-2 flex items-center gap-3">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={form.simplesOptante === true}
+                  onChange={(e) => setForm({ ...form, simplesOptante: e.target.checked })}
+                />
+                Optante pelo Simples Nacional
+              </label>
+              {form.simplesOptante && (
+                <Input
+                  type="date"
+                  className="w-44"
+                  value={form.simplesDesde ? form.simplesDesde.slice(0, 10) : ""}
+                  onChange={(e) => setForm({ ...form, simplesDesde: e.target.value })}
+                />
+              )}
+            </div>
+            {form.suframa.length > 0 && (
+              <div className="col-span-2">
+                <Label>SUFRAMA</Label>
+                <ul className="mt-1 space-y-1 text-sm">
+                  {form.suframa.map((s, i) => (
+                    <li key={i} className="rounded border bg-muted/30 px-2 py-1 flex justify-between">
+                      <span className="font-mono">{s.numero}</span>
+                      <span className="text-xs text-muted-foreground">{s.status}{s.desde ? ` · desde ${s.desde}` : ""}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {form.socios.length > 0 && (
+              <div className="col-span-2">
+                <Label>Quadro societário ({form.socios.length})</Label>
+                <ul className="mt-1 space-y-1 text-sm">
+                  {form.socios.map((s, i) => (
+                    <li key={i} className="rounded border bg-muted/30 px-2 py-1">
+                      <div className="font-medium">{s.nome}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {s.qualificacao}
+                        {s.desde ? ` · entrou em ${s.desde}` : ""}
+                        {s.taxId ? ` · ${s.taxId}` : ""}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </div>
+
+
         {/* Bloco: Oportunidade */}
         <div className="mt-2">
           <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Oportunidade</div>
@@ -860,6 +1001,14 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
                   numFuncionarios: form.numFuncionarios || undefined,
                   decisorNome: form.decisorNome || undefined,
                   decisorCargo: form.decisorCargo || undefined,
+                  dataAbertura: form.dataAbertura || undefined,
+                  capitalSocial: form.capitalSocial || undefined,
+                  naturezaJuridica: form.naturezaJuridica || undefined,
+                  simplesOptante: form.simplesOptante ?? undefined,
+                  simplesDesde: form.simplesDesde || undefined,
+                  suframa: form.suframa.length ? form.suframa : undefined,
+                  socios: form.socios.length ? form.socios : undefined,
+
                 });
               } catch (e) {
                 toast.error(e instanceof Error ? e.message : "Erro ao criar lead");

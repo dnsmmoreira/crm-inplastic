@@ -113,6 +113,15 @@ export type Lead = {
   numFuncionarios?: number;
   decisorNome?: string;
   decisorCargo?: string;
+  // Cadastro fiscal complementar (CNPJá)
+  dataAbertura?: string;
+  capitalSocial?: number;
+  naturezaJuridica?: string;
+  simplesOptante?: boolean;
+  simplesDesde?: string;
+  suframa?: { numero: string; status: string; desde: string; aprovado: boolean }[];
+  socios?: { nome: string; qualificacao: string; desde: string; taxId?: string }[];
+
 };
 
 
