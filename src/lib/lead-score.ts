@@ -35,10 +35,10 @@ function yearsSince(iso?: string): number | undefined {
 }
 
 export function computeLeadScore(lead: Pick<Lead,
-  "dataAbertura" | "situacao" extends never ? never : never
-  | "capitalSocial" | "porte" | "simplesOptante" | "inscricaoEstadual"
-  | "socios" | "cnpj" | "razaoSocial"
+  "dataAbertura" | "capitalSocial" | "porte" | "simplesOptante"
+  | "inscricaoEstadual" | "socios" | "cnpj" | "razaoSocial"
 > & { situacao?: string }): LeadScore {
+
   const reasons: { ok: boolean; text: string }[] = [];
   let score = 50; // baseline neutro
 
