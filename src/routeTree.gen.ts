@@ -13,6 +13,7 @@ import { Route as UsuariosRouteImport } from './routes/usuarios'
 import { Route as TarefasRouteImport } from './routes/tarefas'
 import { Route as ProdutosRouteImport } from './routes/produtos'
 import { Route as PrimeiroAcessoRouteImport } from './routes/primeiro-acesso'
+import { Route as PlacarRouteImport } from './routes/placar'
 import { Route as PipelineRouteImport } from './routes/pipeline'
 import { Route as MinhaAgendaRouteImport } from './routes/minha-agenda'
 import { Route as McpRouteImport } from './routes/mcp'
@@ -59,6 +60,11 @@ const ProdutosRoute = ProdutosRouteImport.update({
 const PrimeiroAcessoRoute = PrimeiroAcessoRouteImport.update({
   id: '/primeiro-acesso',
   path: '/primeiro-acesso',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlacarRoute = PlacarRouteImport.update({
+  id: '/placar',
+  path: '/placar',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PipelineRoute = PipelineRouteImport.update({
@@ -219,6 +225,7 @@ export interface FileRoutesByFullPath {
   '/mcp': typeof McpRoute
   '/minha-agenda': typeof MinhaAgendaRoute
   '/pipeline': typeof PipelineRoute
+  '/placar': typeof PlacarRoute
   '/primeiro-acesso': typeof PrimeiroAcessoRoute
   '/produtos': typeof ProdutosRoute
   '/tarefas': typeof TarefasRoute
@@ -252,6 +259,7 @@ export interface FileRoutesByTo {
   '/mcp': typeof McpRoute
   '/minha-agenda': typeof MinhaAgendaRoute
   '/pipeline': typeof PipelineRoute
+  '/placar': typeof PlacarRoute
   '/primeiro-acesso': typeof PrimeiroAcessoRoute
   '/produtos': typeof ProdutosRoute
   '/tarefas': typeof TarefasRoute
@@ -286,6 +294,7 @@ export interface FileRoutesById {
   '/mcp': typeof McpRoute
   '/minha-agenda': typeof MinhaAgendaRoute
   '/pipeline': typeof PipelineRoute
+  '/placar': typeof PlacarRoute
   '/primeiro-acesso': typeof PrimeiroAcessoRoute
   '/produtos': typeof ProdutosRoute
   '/tarefas': typeof TarefasRoute
@@ -321,6 +330,7 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/minha-agenda'
     | '/pipeline'
+    | '/placar'
     | '/primeiro-acesso'
     | '/produtos'
     | '/tarefas'
@@ -354,6 +364,7 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/minha-agenda'
     | '/pipeline'
+    | '/placar'
     | '/primeiro-acesso'
     | '/produtos'
     | '/tarefas'
@@ -387,6 +398,7 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/minha-agenda'
     | '/pipeline'
+    | '/placar'
     | '/primeiro-acesso'
     | '/produtos'
     | '/tarefas'
@@ -421,6 +433,7 @@ export interface RootRouteChildren {
   McpRoute: typeof McpRoute
   MinhaAgendaRoute: typeof MinhaAgendaRoute
   PipelineRoute: typeof PipelineRoute
+  PlacarRoute: typeof PlacarRoute
   PrimeiroAcessoRoute: typeof PrimeiroAcessoRoute
   ProdutosRoute: typeof ProdutosRoute
   TarefasRoute: typeof TarefasRoute
@@ -470,6 +483,13 @@ declare module '@tanstack/react-router' {
       path: '/primeiro-acesso'
       fullPath: '/primeiro-acesso'
       preLoaderRoute: typeof PrimeiroAcessoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/placar': {
+      id: '/placar'
+      path: '/placar'
+      fullPath: '/placar'
+      preLoaderRoute: typeof PlacarRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pipeline': {
@@ -677,6 +697,7 @@ const rootRouteChildren: RootRouteChildren = {
   McpRoute: McpRoute,
   MinhaAgendaRoute: MinhaAgendaRoute,
   PipelineRoute: PipelineRoute,
+  PlacarRoute: PlacarRoute,
   PrimeiroAcessoRoute: PrimeiroAcessoRoute,
   ProdutosRoute: ProdutosRoute,
   TarefasRoute: TarefasRoute,

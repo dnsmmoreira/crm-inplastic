@@ -101,6 +101,23 @@ async function runFechamento(force = false): Promise<{
   placarPorVendedor.slice(0, 15).forEach((p, i) => {
     dLines.push(`${i + 1}. ${p.name} — ✅ ${p.feitas} · ↪️ ${p.roladas}`);
   });
+
+  // Top 3 do Placar de Vendedores (fonte única)
+  try {
+    const { data: rankRows } = await sb.rpc("placar_vendedores" as any, { _periodo: "mes" });
+    const top3 = ((rankRows ?? []) as any[]).filter((r) => Number(r.score) > 0).slice(0, 3);
+    if (top3.length) {
+      dLines.push("");
+      dLines.push("🏆 *Placar do mês*");
+      const medals = ["🥇", "🥈", "🥉"];
+      top3.forEach((r, i) => {
+        dLines.push(`${medals[i]} ${r.nome} — ${Number(r.score).toFixed(0)} pts`);
+      });
+    }
+  } catch (e) {
+    console.error("[xerife-fechamento] placar_vendedores falhou:", e);
+  }
+
   if (placarPorVendedor.length) diretoriaNotificada = await notifyDiretoria(dLines.join("\n"));
 
   return { vendedoresNotificados, tarefasRoladas, diretoriaNotificada };

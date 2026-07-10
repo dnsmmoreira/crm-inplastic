@@ -419,11 +419,27 @@ async function runResumoDiario(force = false): Promise<{
 
   // Admins (visão consolidada)
   const consolidated = await statsForOwner(null);
+
+  // Top 3 do Placar de Vendedores (fonte única) — anexado ao resumo dos admins
+  let placarBlock = "";
+  try {
+    const { data: rankRows } = await supabaseAdmin.rpc("placar_vendedores" as any, { _periodo: "mes" });
+    const top3 = ((rankRows ?? []) as any[]).filter((r) => Number(r.score) > 0).slice(0, 3);
+    if (top3.length) {
+      const medals = ["🥇", "🥈", "🥉"];
+      const lines = ["", "🏆 *Placar do mês*"];
+      top3.forEach((r, i) => lines.push(`${medals[i]} ${r.nome} — ${Number(r.score).toFixed(0)} pts`));
+      placarBlock = lines.join("\n");
+    }
+  } catch (e) {
+    console.error("[xerife resumo] placar_vendedores falhou:", e);
+  }
+
   for (const uid of adminIds) {
     const prof: any = profileById.get(uid);
     const phone = prof?.telefone_whatsapp?.trim();
     if (!phone) continue;
-    const msg = formatMsg(prof?.name ?? "admin", true, consolidated);
+    const msg = formatMsg(prof?.name ?? "admin", true, consolidated) + (placarBlock ? "\n" + placarBlock : "");
     const ok = await sendZapiText(phone, msg);
     if (ok) {
       adminsNotificados++;
