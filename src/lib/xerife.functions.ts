@@ -22,17 +22,98 @@ export const getXerifeConfig = createServerFn({ method: "GET" })
     return data;
   });
 
-const configSchema = z.object({
-  dias_sem_interacao_por_etapa: z.record(z.string(), z.number()).optional(),
-  proposta_enviada_dias: z.number().int().min(1).max(60).optional(),
-  tarefa_atrasada_horas: z.number().int().min(1).max(720).optional(),
-  ia_sem_resposta_horas: z.number().int().min(1).max(720).optional(),
-  horario_comercial_inicio: z.string().optional(),
-  horario_comercial_fim: z.string().optional(),
-  resumo_diario_ativo: z.boolean().optional(),
-  resumo_hora: z.string().optional(),
-  ativo: z.boolean().optional(),
-});
+const timeStr = z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/, "hora inválida (HH:MM)");
+const diasEtapaSchema = z
+  .record(z.string(), z.number().int().min(1).max(90))
+  .refine(
+    (v) =>
+      Object.keys(v).every((k) =>
+        ["novo", "qualificacao", "proposta", "negociacao", "atendimento"].includes(k),
+      ),
+    { message: "etapa inválida" },
+  );
+
+const configSchema = z
+  .object({
+    // SLAs
+    sla_primeiro_contato_min: z.number().int().min(1).max(240).optional(),
+    sla_primeiro_contato_escalar_min: z.number().int().min(1).max(480).optional(),
+    sla_resposta_whatsapp_horas: z.number().int().min(1).max(72).optional(),
+    sla_resposta_whatsapp_escalar_horas: z.number().int().min(1).max(168).optional(),
+    tarefa_atrasada_horas: z.number().int().min(1).max(720).optional(),
+    ia_sem_resposta_horas: z.number().int().min(1).max(720).optional(),
+
+    // Cadência
+    dias_sem_interacao_por_etapa: diasEtapaSchema.optional(),
+    max_dias_etapa: diasEtapaSchema.optional(),
+    cadencia_proposta_dias: z.array(z.number().int().min(1).max(90)).min(1).max(10).optional(),
+    proposta_enviada_dias: z.number().int().min(1).max(60).optional(),
+
+    // Carteira
+    carteira_alerta_dias: z.number().int().min(1).max(365).optional(),
+    carteira_critico_dias: z.number().int().min(1).max(365).optional(),
+    reciclagem_perdidos_dias: z.number().int().min(1).max(365).optional(),
+
+    // Pós-venda
+    pos_venda_dias: z.array(z.number().int().min(1).max(365)).min(1).max(10).optional(),
+
+    // Agenda
+    meta_atividades_dia: z.number().int().min(1).max(100).optional(),
+    dias_uteis_inicio: timeStr.optional(),
+    dias_uteis_fim: timeStr.optional(),
+    horario_comercial_inicio: timeStr.optional(),
+    horario_comercial_fim: timeStr.optional(),
+    resumo_diario_ativo: z.boolean().optional(),
+    resumo_hora: timeStr.optional(),
+
+    // Motor
+    ativo: z.boolean().optional(),
+  })
+  .refine(
+    (d) =>
+      d.sla_primeiro_contato_escalar_min == null ||
+      d.sla_primeiro_contato_min == null ||
+      d.sla_primeiro_contato_escalar_min > d.sla_primeiro_contato_min,
+    { message: "Escalonar deve ser > SLA de 1º contato", path: ["sla_primeiro_contato_escalar_min"] },
+  )
+  .refine(
+    (d) =>
+      d.sla_resposta_whatsapp_escalar_horas == null ||
+      d.sla_resposta_whatsapp_horas == null ||
+      d.sla_resposta_whatsapp_escalar_horas > d.sla_resposta_whatsapp_horas,
+    { message: "Escalonar deve ser > SLA de resposta", path: ["sla_resposta_whatsapp_escalar_horas"] },
+  )
+  .refine(
+    (d) =>
+      d.carteira_critico_dias == null ||
+      d.carteira_alerta_dias == null ||
+      d.carteira_critico_dias > d.carteira_alerta_dias,
+    { message: "Crítico deve ser > alerta", path: ["carteira_critico_dias"] },
+  )
+  .refine(
+    (d) =>
+      d.cadencia_proposta_dias == null ||
+      d.cadencia_proposta_dias.every((n, i, a) => i === 0 || n > a[i - 1]!),
+    { message: "Cadência deve ser crescente", path: ["cadencia_proposta_dias"] },
+  )
+  .refine(
+    (d) =>
+      d.pos_venda_dias == null ||
+      d.pos_venda_dias.every((n, i, a) => i === 0 || n > a[i - 1]!),
+    { message: "Pós-venda deve ser crescente", path: ["pos_venda_dias"] },
+  )
+  .refine(
+    (d) =>
+      !d.dias_uteis_inicio || !d.dias_uteis_fim || d.dias_uteis_inicio < d.dias_uteis_fim,
+    { message: "Início deve ser antes do fim", path: ["dias_uteis_fim"] },
+  )
+  .refine(
+    (d) =>
+      !d.horario_comercial_inicio ||
+      !d.horario_comercial_fim ||
+      d.horario_comercial_inicio < d.horario_comercial_fim,
+    { message: "Início deve ser antes do fim", path: ["horario_comercial_fim"] },
+  );
 
 export const updateXerifeConfig = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
