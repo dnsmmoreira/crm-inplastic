@@ -122,8 +122,15 @@ async function runFechamento(force = false): Promise<{
       const faixa = Number(r.meta_faixa ?? 0);
       if (![50, 80, 100, 120].includes(faixa)) continue;
       const regra = `meta_faixa_${faixa}`;
-      const already = await alreadyActed(sb, regra, r.vendedor_id, 24 * 60);
-      if (already) continue;
+      // dedupe por (regra, vendedor_id) na janela de 30 dias — evita re-notificar no mesmo mês
+      const since = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
+      const { count: already } = await sb
+        .from("xerife_log")
+        .select("id", { count: "exact", head: true })
+        .eq("regra", regra)
+        .eq("vendedor_id", r.vendedor_id)
+        .gte("created_at", since);
+      if ((already ?? 0) > 0) continue;
 
       const meta = Number(r.meta_valor ?? 0);
       const ganho = Number(r.ganhos_valor ?? 0);
@@ -143,7 +150,7 @@ async function runFechamento(force = false): Promise<{
       await notifyOwner(r.vendedor_id, linhasVendedor.join("\n"));
       // Para o grupo/diretoria: SEM valores em R$ — só nome + faixa em %
       faixasCruzadasGrupo.push({ nome: r.nome, faixa });
-      await logAction(sb, { regra, vendedor_id: r.vendedor_id, payload: { faixa, pct } });
+      await logAction(sb, { regra, vendedorId: r.vendedor_id, acao: "notificado", payload: { faixa, pct } });
     }
   } catch (e) {
     console.error("[xerife-fechamento] placar_vendedores falhou:", e);
