@@ -968,6 +968,12 @@ export type Database = {
           id: number
           max_dias_etapa: Json
           meta_atividades_dia: number
+          placar_peso_carteira_60: number
+          placar_peso_ganho: number
+          placar_peso_pos_venda: number
+          placar_peso_proposta: number
+          placar_peso_sla_estourado: number
+          placar_peso_tarefa: number
           pos_venda_dias: number[]
           proposta_enviada_dias: number
           reciclagem_perdidos_dias: number
@@ -994,6 +1000,12 @@ export type Database = {
           id?: number
           max_dias_etapa?: Json
           meta_atividades_dia?: number
+          placar_peso_carteira_60?: number
+          placar_peso_ganho?: number
+          placar_peso_pos_venda?: number
+          placar_peso_proposta?: number
+          placar_peso_sla_estourado?: number
+          placar_peso_tarefa?: number
           pos_venda_dias?: number[]
           proposta_enviada_dias?: number
           reciclagem_perdidos_dias?: number
@@ -1020,6 +1032,12 @@ export type Database = {
           id?: number
           max_dias_etapa?: Json
           meta_atividades_dia?: number
+          placar_peso_carteira_60?: number
+          placar_peso_ganho?: number
+          placar_peso_pos_venda?: number
+          placar_peso_proposta?: number
+          placar_peso_sla_estourado?: number
+          placar_peso_tarefa?: number
           pos_venda_dias?: number[]
           proposta_enviada_dias?: number
           reciclagem_perdidos_dias?: number
@@ -1120,6 +1138,28 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      placar_vendedores: {
+        Args: { _periodo?: string }
+        Returns: {
+          avatar_color: string
+          carteira_45_60: number
+          carteira_60_mais: number
+          conversao: number
+          ganhos_qtd: number
+          ganhos_valor: number
+          leads_contatados: number
+          nome: string
+          perdas_qtd: number
+          pos_venda_no_prazo_pct: number
+          posicao: number
+          propostas_qtd: number
+          score: number
+          score_periodo_anterior: number
+          slas_estourados: number
+          tempo_medio_primeira_resposta_min: number
+          vendedor_id: string
+        }[]
       }
     }
     Enums: {
