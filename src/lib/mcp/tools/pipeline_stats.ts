@@ -1,11 +1,13 @@
 import { createClient } from "@supabase/supabase-js";
 import { defineTool, type ToolContext } from "@lovable.dev/mcp-js";
 
+const STAGE_ORDER = ["atendimento", "novo", "qualificacao", "proposta", "negociacao", "ganho", "perdido"];
+
 export default defineTool({
   name: "pipeline_stats",
   title: "Estatísticas do pipeline",
   description:
-    "Retorna a contagem de leads e o valor total estimado por estágio do pipeline, para o usuário autenticado.",
+    "Retorna, para o usuário autenticado, a contagem de leads e o valor estimado por estágio do pipeline, além dos totais gerais.",
   inputSchema: {},
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async (_input, ctx: ToolContext) => {
@@ -34,13 +36,18 @@ export default defineTool({
       total += 1;
       totalValue += Number(l.estimated_value ?? 0);
     }
+
+    const ordered = [
+      ...STAGE_ORDER.filter((s) => byStage[s]),
+      ...Object.keys(byStage).filter((s) => !STAGE_ORDER.includes(s)),
+    ];
+    const linhas = ordered.map((s) => {
+      const v = byStage[s];
+      return `• ${s}: ${v.count} lead(s) · R$ ${v.totalValue.toLocaleString("pt-BR")}`;
+    });
+    const text = `Pipeline — total ${total} lead(s) · R$ ${totalValue.toLocaleString("pt-BR")}\n${linhas.join("\n")}`;
     return {
-      content: [
-        {
-          type: "text",
-          text: `Total de leads: ${total} · Valor estimado: R$ ${totalValue.toLocaleString("pt-BR")}`,
-        },
-      ],
+      content: [{ type: "text", text }],
       structuredContent: { total, totalValue, byStage },
     };
   },

@@ -19,7 +19,7 @@
       {
         "name": "list_leads",
         "title": "Listar leads",
-        "description": "Lista os leads visíveis para o usuário autenticado no CRM INPLASTIC. Admins veem todos; vendedores veem apenas os próprios. Suporta filtro por estágio e limite.",
+        "description": "Lista leads visíveis para o usuário autenticado no CRM INPLASTIC (admin vê tudo; vendedor vê os próprios). Retorna nome do contato, empresa, estágio, vendedor, valor estimado, criação, último contato, mudança de etapa e dias sem contato. Filtros: estágio e limite.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -56,7 +56,7 @@
       {
         "name": "list_tasks",
         "title": "Listar tarefas",
-        "description": "Lista tarefas do CRM visíveis ao usuário autenticado, com filtro opcional por status (pendente/concluida).",
+        "description": "Lista tarefas do CRM visíveis ao usuário autenticado (admin vê todas; vendedor vê as próprias). Retorna título, tipo, prioridade, status, vendedor, lead/cliente vinculado, data prevista e escalonamentos.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -69,8 +69,13 @@
               "type": "string",
               "enum": [
                 "pendente",
-                "concluida"
+                "concluida",
+                "adiada"
               ]
+            },
+            "tipo": {
+              "type": "string",
+              "description": "Filtrar por tipo (ex: follow_up, cadencia_proposta, pos_venda_*)"
             },
             "limit": {
               "type": "integer",
@@ -86,7 +91,7 @@
       {
         "name": "pipeline_stats",
         "title": "Estatísticas do pipeline",
-        "description": "Retorna a contagem de leads e o valor total estimado por estágio do pipeline, para o usuário autenticado.",
+        "description": "Retorna, para o usuário autenticado, a contagem de leads e o valor estimado por estágio do pipeline, além dos totais gerais.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
