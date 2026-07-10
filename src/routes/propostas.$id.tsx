@@ -265,36 +265,42 @@ function PropostaDetalhe() {
             <Send className="h-4 w-4" /> Enviar
           </Button>
 
-          {/* Fechar pedido: se CIF envia p/ aprovação, se FOB gera direto */}
+          {/* Fechar pedido: sempre requer autorização do ADM. Admin gera direto. */}
           {proposal.status !== "pedido" && proposal.status !== "aguardando_aprovacao" && (
             <Button
               variant="default"
               className="gap-2"
               onClick={() => {
                 if (proposal.items.length === 0) { toast.error("Adicione ao menos um item antes de fechar o pedido."); return; }
-                if (proposal.transport.freightPayer === "CIF") {
-                  _updateProposal(proposal.id, {
-                    status: "aguardando_aprovacao",
-                    approvalRequestedAt: new Date().toISOString(),
-                    approvalReason: "Frete CIF requer autorização do supervisor",
-                  });
-                  setDirty(false);
-                  toast.success("Enviado ao supervisor ADM", {
-                    description: "O pedido só será gerado após a liberação. Você será avisado na sua lista de propostas.",
-                  });
-                } else {
+                if (isAdmin) {
                   _updateProposal(proposal.id, {
                     status: "pedido",
+                    approvedByUserId: currentUser.id,
+                    approvedAt: new Date().toISOString(),
                     orderCreatedAt: new Date().toISOString(),
                   });
                   setDirty(false);
-                  toast.success("Pedido gerado", { description: "Frete FOB · gerado sem necessidade de aprovação." });
+                  toast.success("Pedido gerado", { description: "Liberado diretamente pelo administrador." });
+                } else {
+                  _updateProposal(proposal.id, {
+                    status: "aguardando_aprovacao",
+                    approvalRequestedAt: new Date().toISOString(),
+                    approvalReason:
+                      proposal.transport.freightPayer === "CIF"
+                        ? "Frete CIF requer autorização do supervisor"
+                        : "Geração de pedido requer autorização do supervisor",
+                  });
+                  setDirty(false);
+                  toast.success("Enviado ao supervisor ADM", {
+                    description: "O pedido só será gerado após liberação do administrador.",
+                  });
                 }
               }}
             >
-              <CheckCircle2 className="h-4 w-4" /> Fechar pedido
+              <CheckCircle2 className="h-4 w-4" /> {isAdmin ? "Gerar pedido" : "Solicitar pedido"}
             </Button>
           )}
+
 
           {/* ADM libera pedidos aguardando aprovação */}
           {proposal.status === "aguardando_aprovacao" && isAdmin && (
