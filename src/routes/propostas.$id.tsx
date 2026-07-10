@@ -496,6 +496,90 @@ function PropostaDetalhe() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Vendedor solicita alteração de pedido fechado */}
+      <AlertDialog open={editReqOpen} onOpenChange={setEditReqOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <ShieldAlert className="h-4 w-4 text-amber-600" />
+              Solicitar alteração do pedido {proposal.number}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              O pedido já foi fechado. Descreva o motivo da alteração — o supervisor ADM receberá a solicitação e decidirá se libera a edição.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="edit-reason">Motivo</Label>
+            <Textarea
+              id="edit-reason"
+              rows={4}
+              maxLength={500}
+              value={editReqReason}
+              onChange={(e) => setEditReqReason(e.target.value)}
+              placeholder="Ex.: cliente pediu troca de quantidade do item X; corrigir CEP de entrega..."
+            />
+            <p className="text-[11px] text-muted-foreground">{editReqReason.length}/500</p>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const reason = editReqReason.trim();
+                if (reason.length < 5) { toast.error("Descreva o motivo com pelo menos 5 caracteres."); return; }
+                _updateProposal(proposal.id, {
+                  editRequestedAt: new Date().toISOString(),
+                  editRequestReason: reason,
+                  editRequestedByUserId: currentUser.id,
+                });
+                setEditReqOpen(false);
+                toast.success("Solicitação enviada ao ADM", { description: "Você será avisado quando a edição for liberada." });
+              }}
+            >
+              Enviar solicitação
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ADM libera a edição do pedido */}
+      <AlertDialog open={releaseOpen} onOpenChange={setReleaseOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Unlock className="h-4 w-4 text-emerald-600" />
+              Liberar edição do pedido {proposal.number}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {editRequested && editRequester ? (
+                <>Vendedor <span className="font-medium text-foreground">{editRequester.name}</span> pediu:
+                  <span className="block mt-1 rounded border bg-muted/40 p-2 text-foreground italic">"{proposal.editRequestReason}"</span>
+                </>
+              ) : (
+                <>Você vai desbloquear este pedido para edição. Depois que o vendedor salvar, o pedido volta a ficar bloqueado automaticamente.</>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-emerald-600 hover:bg-emerald-700"
+              onClick={() => {
+                _updateProposal(proposal.id, {
+                  editUnlockedAt: new Date().toISOString(),
+                  editUnlockedByUserId: currentUser.id,
+                });
+                setReleaseOpen(false);
+                toast.success("Edição liberada", { description: `${editRequester?.name ?? owner?.name ?? "Vendedor"} já pode alterar o pedido.` });
+              }}
+            >
+              Liberar edição
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+
+
       {/* Editor — hidden on print */}
       <div className="grid gap-4 lg:grid-cols-3 print:hidden">
 
