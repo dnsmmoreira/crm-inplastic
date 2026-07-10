@@ -31,6 +31,7 @@ import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as ApiPublicZapiWebhookRouteImport } from './routes/api/public/zapi/webhook'
+import { Route as ApiPublicHooksXerifeEngineRouteImport } from './routes/api/public/hooks/xerife-engine'
 import { Route as ApiPublicHooksXerifeRouteImport } from './routes/api/public/hooks/xerife'
 import { Route as ApiPublicHooksIaUrgenteRouteImport } from './routes/api/public/hooks/ia-urgente'
 import { Route as ApiPublicHooksIaResponderRouteImport } from './routes/api/public/hooks/ia-responder'
@@ -149,6 +150,12 @@ const ApiPublicZapiWebhookRoute = ApiPublicZapiWebhookRouteImport.update({
   path: '/api/public/zapi/webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksXerifeEngineRoute =
+  ApiPublicHooksXerifeEngineRouteImport.update({
+    id: '/api/public/hooks/xerife-engine',
+    path: '/api/public/hooks/xerife-engine',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksXerifeRoute = ApiPublicHooksXerifeRouteImport.update({
   id: '/api/public/hooks/xerife',
   path: '/api/public/hooks/xerife',
@@ -198,6 +205,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/ia-responder': typeof ApiPublicHooksIaResponderRoute
   '/api/public/hooks/ia-urgente': typeof ApiPublicHooksIaUrgenteRoute
   '/api/public/hooks/xerife': typeof ApiPublicHooksXerifeRoute
+  '/api/public/hooks/xerife-engine': typeof ApiPublicHooksXerifeEngineRoute
   '/api/public/zapi/webhook': typeof ApiPublicZapiWebhookRoute
 }
 export interface FileRoutesByTo {
@@ -226,6 +234,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/ia-responder': typeof ApiPublicHooksIaResponderRoute
   '/api/public/hooks/ia-urgente': typeof ApiPublicHooksIaUrgenteRoute
   '/api/public/hooks/xerife': typeof ApiPublicHooksXerifeRoute
+  '/api/public/hooks/xerife-engine': typeof ApiPublicHooksXerifeEngineRoute
   '/api/public/zapi/webhook': typeof ApiPublicZapiWebhookRoute
 }
 export interface FileRoutesById {
@@ -255,6 +264,7 @@ export interface FileRoutesById {
   '/api/public/hooks/ia-responder': typeof ApiPublicHooksIaResponderRoute
   '/api/public/hooks/ia-urgente': typeof ApiPublicHooksIaUrgenteRoute
   '/api/public/hooks/xerife': typeof ApiPublicHooksXerifeRoute
+  '/api/public/hooks/xerife-engine': typeof ApiPublicHooksXerifeEngineRoute
   '/api/public/zapi/webhook': typeof ApiPublicZapiWebhookRoute
 }
 export interface FileRouteTypes {
@@ -285,6 +295,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/ia-responder'
     | '/api/public/hooks/ia-urgente'
     | '/api/public/hooks/xerife'
+    | '/api/public/hooks/xerife-engine'
     | '/api/public/zapi/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -313,6 +324,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/ia-responder'
     | '/api/public/hooks/ia-urgente'
     | '/api/public/hooks/xerife'
+    | '/api/public/hooks/xerife-engine'
     | '/api/public/zapi/webhook'
   id:
     | '__root__'
@@ -341,6 +353,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/ia-responder'
     | '/api/public/hooks/ia-urgente'
     | '/api/public/hooks/xerife'
+    | '/api/public/hooks/xerife-engine'
     | '/api/public/zapi/webhook'
   fileRoutesById: FileRoutesById
 }
@@ -370,6 +383,7 @@ export interface RootRouteChildren {
   ApiPublicHooksIaResponderRoute: typeof ApiPublicHooksIaResponderRoute
   ApiPublicHooksIaUrgenteRoute: typeof ApiPublicHooksIaUrgenteRoute
   ApiPublicHooksXerifeRoute: typeof ApiPublicHooksXerifeRoute
+  ApiPublicHooksXerifeEngineRoute: typeof ApiPublicHooksXerifeEngineRoute
   ApiPublicZapiWebhookRoute: typeof ApiPublicZapiWebhookRoute
 }
 
@@ -529,6 +543,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicZapiWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/xerife-engine': {
+      id: '/api/public/hooks/xerife-engine'
+      path: '/api/public/hooks/xerife-engine'
+      fullPath: '/api/public/hooks/xerife-engine'
+      preLoaderRoute: typeof ApiPublicHooksXerifeEngineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/xerife': {
       id: '/api/public/hooks/xerife'
       path: '/api/public/hooks/xerife'
@@ -587,6 +608,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksIaResponderRoute: ApiPublicHooksIaResponderRoute,
   ApiPublicHooksIaUrgenteRoute: ApiPublicHooksIaUrgenteRoute,
   ApiPublicHooksXerifeRoute: ApiPublicHooksXerifeRoute,
+  ApiPublicHooksXerifeEngineRoute: ApiPublicHooksXerifeEngineRoute,
   ApiPublicZapiWebhookRoute: ApiPublicZapiWebhookRoute,
 }
 export const routeTree = rootRouteImport
