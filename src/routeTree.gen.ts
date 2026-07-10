@@ -31,7 +31,10 @@ import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as ApiPublicZapiWebhookRouteImport } from './routes/api/public/zapi/webhook'
+import { Route as ApiPublicHooksXerifeFechamentoRouteImport } from './routes/api/public/hooks/xerife-fechamento'
 import { Route as ApiPublicHooksXerifeEngineRouteImport } from './routes/api/public/hooks/xerife-engine'
+import { Route as ApiPublicHooksXerifeCheckpointRouteImport } from './routes/api/public/hooks/xerife-checkpoint'
+import { Route as ApiPublicHooksXerifeAgendaDiariaRouteImport } from './routes/api/public/hooks/xerife-agenda-diaria'
 import { Route as ApiPublicHooksXerifeRouteImport } from './routes/api/public/hooks/xerife'
 import { Route as ApiPublicHooksIaUrgenteRouteImport } from './routes/api/public/hooks/ia-urgente'
 import { Route as ApiPublicHooksIaResponderRouteImport } from './routes/api/public/hooks/ia-responder'
@@ -150,10 +153,28 @@ const ApiPublicZapiWebhookRoute = ApiPublicZapiWebhookRouteImport.update({
   path: '/api/public/zapi/webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksXerifeFechamentoRoute =
+  ApiPublicHooksXerifeFechamentoRouteImport.update({
+    id: '/api/public/hooks/xerife-fechamento',
+    path: '/api/public/hooks/xerife-fechamento',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksXerifeEngineRoute =
   ApiPublicHooksXerifeEngineRouteImport.update({
     id: '/api/public/hooks/xerife-engine',
     path: '/api/public/hooks/xerife-engine',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksXerifeCheckpointRoute =
+  ApiPublicHooksXerifeCheckpointRouteImport.update({
+    id: '/api/public/hooks/xerife-checkpoint',
+    path: '/api/public/hooks/xerife-checkpoint',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksXerifeAgendaDiariaRoute =
+  ApiPublicHooksXerifeAgendaDiariaRouteImport.update({
+    id: '/api/public/hooks/xerife-agenda-diaria',
+    path: '/api/public/hooks/xerife-agenda-diaria',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiPublicHooksXerifeRoute = ApiPublicHooksXerifeRouteImport.update({
@@ -205,7 +226,10 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/ia-responder': typeof ApiPublicHooksIaResponderRoute
   '/api/public/hooks/ia-urgente': typeof ApiPublicHooksIaUrgenteRoute
   '/api/public/hooks/xerife': typeof ApiPublicHooksXerifeRoute
+  '/api/public/hooks/xerife-agenda-diaria': typeof ApiPublicHooksXerifeAgendaDiariaRoute
+  '/api/public/hooks/xerife-checkpoint': typeof ApiPublicHooksXerifeCheckpointRoute
   '/api/public/hooks/xerife-engine': typeof ApiPublicHooksXerifeEngineRoute
+  '/api/public/hooks/xerife-fechamento': typeof ApiPublicHooksXerifeFechamentoRoute
   '/api/public/zapi/webhook': typeof ApiPublicZapiWebhookRoute
 }
 export interface FileRoutesByTo {
@@ -234,7 +258,10 @@ export interface FileRoutesByTo {
   '/api/public/hooks/ia-responder': typeof ApiPublicHooksIaResponderRoute
   '/api/public/hooks/ia-urgente': typeof ApiPublicHooksIaUrgenteRoute
   '/api/public/hooks/xerife': typeof ApiPublicHooksXerifeRoute
+  '/api/public/hooks/xerife-agenda-diaria': typeof ApiPublicHooksXerifeAgendaDiariaRoute
+  '/api/public/hooks/xerife-checkpoint': typeof ApiPublicHooksXerifeCheckpointRoute
   '/api/public/hooks/xerife-engine': typeof ApiPublicHooksXerifeEngineRoute
+  '/api/public/hooks/xerife-fechamento': typeof ApiPublicHooksXerifeFechamentoRoute
   '/api/public/zapi/webhook': typeof ApiPublicZapiWebhookRoute
 }
 export interface FileRoutesById {
@@ -264,7 +291,10 @@ export interface FileRoutesById {
   '/api/public/hooks/ia-responder': typeof ApiPublicHooksIaResponderRoute
   '/api/public/hooks/ia-urgente': typeof ApiPublicHooksIaUrgenteRoute
   '/api/public/hooks/xerife': typeof ApiPublicHooksXerifeRoute
+  '/api/public/hooks/xerife-agenda-diaria': typeof ApiPublicHooksXerifeAgendaDiariaRoute
+  '/api/public/hooks/xerife-checkpoint': typeof ApiPublicHooksXerifeCheckpointRoute
   '/api/public/hooks/xerife-engine': typeof ApiPublicHooksXerifeEngineRoute
+  '/api/public/hooks/xerife-fechamento': typeof ApiPublicHooksXerifeFechamentoRoute
   '/api/public/zapi/webhook': typeof ApiPublicZapiWebhookRoute
 }
 export interface FileRouteTypes {
@@ -295,7 +325,10 @@ export interface FileRouteTypes {
     | '/api/public/hooks/ia-responder'
     | '/api/public/hooks/ia-urgente'
     | '/api/public/hooks/xerife'
+    | '/api/public/hooks/xerife-agenda-diaria'
+    | '/api/public/hooks/xerife-checkpoint'
     | '/api/public/hooks/xerife-engine'
+    | '/api/public/hooks/xerife-fechamento'
     | '/api/public/zapi/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -324,7 +357,10 @@ export interface FileRouteTypes {
     | '/api/public/hooks/ia-responder'
     | '/api/public/hooks/ia-urgente'
     | '/api/public/hooks/xerife'
+    | '/api/public/hooks/xerife-agenda-diaria'
+    | '/api/public/hooks/xerife-checkpoint'
     | '/api/public/hooks/xerife-engine'
+    | '/api/public/hooks/xerife-fechamento'
     | '/api/public/zapi/webhook'
   id:
     | '__root__'
@@ -353,7 +389,10 @@ export interface FileRouteTypes {
     | '/api/public/hooks/ia-responder'
     | '/api/public/hooks/ia-urgente'
     | '/api/public/hooks/xerife'
+    | '/api/public/hooks/xerife-agenda-diaria'
+    | '/api/public/hooks/xerife-checkpoint'
     | '/api/public/hooks/xerife-engine'
+    | '/api/public/hooks/xerife-fechamento'
     | '/api/public/zapi/webhook'
   fileRoutesById: FileRoutesById
 }
@@ -383,7 +422,10 @@ export interface RootRouteChildren {
   ApiPublicHooksIaResponderRoute: typeof ApiPublicHooksIaResponderRoute
   ApiPublicHooksIaUrgenteRoute: typeof ApiPublicHooksIaUrgenteRoute
   ApiPublicHooksXerifeRoute: typeof ApiPublicHooksXerifeRoute
+  ApiPublicHooksXerifeAgendaDiariaRoute: typeof ApiPublicHooksXerifeAgendaDiariaRoute
+  ApiPublicHooksXerifeCheckpointRoute: typeof ApiPublicHooksXerifeCheckpointRoute
   ApiPublicHooksXerifeEngineRoute: typeof ApiPublicHooksXerifeEngineRoute
+  ApiPublicHooksXerifeFechamentoRoute: typeof ApiPublicHooksXerifeFechamentoRoute
   ApiPublicZapiWebhookRoute: typeof ApiPublicZapiWebhookRoute
 }
 
@@ -543,11 +585,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicZapiWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/xerife-fechamento': {
+      id: '/api/public/hooks/xerife-fechamento'
+      path: '/api/public/hooks/xerife-fechamento'
+      fullPath: '/api/public/hooks/xerife-fechamento'
+      preLoaderRoute: typeof ApiPublicHooksXerifeFechamentoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/xerife-engine': {
       id: '/api/public/hooks/xerife-engine'
       path: '/api/public/hooks/xerife-engine'
       fullPath: '/api/public/hooks/xerife-engine'
       preLoaderRoute: typeof ApiPublicHooksXerifeEngineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/xerife-checkpoint': {
+      id: '/api/public/hooks/xerife-checkpoint'
+      path: '/api/public/hooks/xerife-checkpoint'
+      fullPath: '/api/public/hooks/xerife-checkpoint'
+      preLoaderRoute: typeof ApiPublicHooksXerifeCheckpointRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/xerife-agenda-diaria': {
+      id: '/api/public/hooks/xerife-agenda-diaria'
+      path: '/api/public/hooks/xerife-agenda-diaria'
+      fullPath: '/api/public/hooks/xerife-agenda-diaria'
+      preLoaderRoute: typeof ApiPublicHooksXerifeAgendaDiariaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/hooks/xerife': {
@@ -608,7 +671,10 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksIaResponderRoute: ApiPublicHooksIaResponderRoute,
   ApiPublicHooksIaUrgenteRoute: ApiPublicHooksIaUrgenteRoute,
   ApiPublicHooksXerifeRoute: ApiPublicHooksXerifeRoute,
+  ApiPublicHooksXerifeAgendaDiariaRoute: ApiPublicHooksXerifeAgendaDiariaRoute,
+  ApiPublicHooksXerifeCheckpointRoute: ApiPublicHooksXerifeCheckpointRoute,
   ApiPublicHooksXerifeEngineRoute: ApiPublicHooksXerifeEngineRoute,
+  ApiPublicHooksXerifeFechamentoRoute: ApiPublicHooksXerifeFechamentoRoute,
   ApiPublicZapiWebhookRoute: ApiPublicZapiWebhookRoute,
 }
 export const routeTree = rootRouteImport
