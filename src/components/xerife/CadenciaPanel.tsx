@@ -17,6 +17,7 @@ import {
   getCadenciaSnapshot,
   type CadenciaSnapshot,
 } from "@/lib/xerife-cadencia.functions";
+import { XerifeSimulator } from "./XerifeSimulator";
 
 const TIPO_LABEL: Record<string, string> = {
   follow_up: "Follow-up",
