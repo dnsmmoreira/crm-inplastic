@@ -37,7 +37,7 @@ export function PlacarWidget() {
             </span>
           </div>
         </CardHeader>
-        <CardContent className="pt-0">
+        <CardContent className="pt-0 space-y-3">
           {isLoading ? (
             <div className="text-sm text-muted-foreground">Carregando…</div>
           ) : top.length === 0 ? (
@@ -62,7 +62,10 @@ export function PlacarWidget() {
                       .slice(0, 2)
                       .join("")}
                   </div>
-                  <div className="flex-1 min-w-0 font-medium truncate">{v.nome}</div>
+                  <div className="flex-1 min-w-0 font-medium truncate flex items-center gap-1.5">
+                    {v.nome}
+                    {v.meta_batida && <span title="Meta do mês batida" className="text-xs">🎯</span>}
+                  </div>
                   <div className="font-display font-semibold text-primary">
                     {v.score.toFixed(0)} pts
                   </div>
@@ -70,6 +73,27 @@ export function PlacarWidget() {
               ))}
             </ul>
           )}
+          {(() => {
+            const self = (data?.vendedores ?? []).find((v) => v.vendedor_id === data?.callerId);
+            if (!self || self.meta_valor == null || self.meta_valor <= 0) return null;
+            const pct = Math.min(100, self.meta_pct ?? 0);
+            return (
+              <div className="rounded-md border bg-background/70 p-2.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">Sua meta do mês</span>
+                  <span className={self.meta_batida ? "text-emerald-600 font-semibold" : "font-medium"}>
+                    {(self.meta_pct ?? 0).toFixed(0)}%
+                  </span>
+                </div>
+                <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className={self.meta_batida ? "h-full bg-emerald-500" : "h-full bg-primary"}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })()}
         </CardContent>
       </Card>
     </Link>
