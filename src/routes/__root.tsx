@@ -25,6 +25,7 @@ import {
   UserCog,
   Radio,
   ClipboardList,
+  Trophy,
 } from "lucide-react";
 
 
