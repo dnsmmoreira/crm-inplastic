@@ -889,6 +889,45 @@ export type Database = {
         }
         Relationships: []
       }
+      vendedor_metas_historico: {
+        Row: {
+          ano: number
+          atingido_pct: number
+          bateu: boolean
+          ganhos_qtd: number
+          ganhos_valor: number
+          id: string
+          mes: number
+          meta_valor: number
+          snapshot_at: string
+          user_id: string
+        }
+        Insert: {
+          ano: number
+          atingido_pct?: number
+          bateu?: boolean
+          ganhos_qtd?: number
+          ganhos_valor?: number
+          id?: string
+          mes: number
+          meta_valor?: number
+          snapshot_at?: string
+          user_id: string
+        }
+        Update: {
+          ano?: number
+          atingido_pct?: number
+          bateu?: boolean
+          ganhos_qtd?: number
+          ganhos_valor?: number
+          id?: string
+          mes?: number
+          meta_valor?: number
+          snapshot_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       whatsapp_conversas: {
         Row: {
           created_at: string
@@ -989,6 +1028,7 @@ export type Database = {
           id: number
           max_dias_etapa: Json
           meta_atividades_dia: number
+          placar_dias_sem_proposta_limite: number
           placar_peso_carteira_60: number
           placar_peso_ganho: number
           placar_peso_meta_batida: number
@@ -1022,6 +1062,7 @@ export type Database = {
           id?: number
           max_dias_etapa?: Json
           meta_atividades_dia?: number
+          placar_dias_sem_proposta_limite?: number
           placar_peso_carteira_60?: number
           placar_peso_ganho?: number
           placar_peso_meta_batida?: number
@@ -1055,6 +1096,7 @@ export type Database = {
           id?: number
           max_dias_etapa?: Json
           meta_atividades_dia?: number
+          placar_dias_sem_proposta_limite?: number
           placar_peso_carteira_60?: number
           placar_peso_ganho?: number
           placar_peso_meta_batida?: number
@@ -1170,10 +1212,14 @@ export type Database = {
           carteira_45_60: number
           carteira_60_mais: number
           conversao: number
+          dias_sem_proposta: number
+          dias_sem_proposta_limite: number
           ganhos_qtd: number
           ganhos_valor: number
           leads_contatados: number
           meta_batida: boolean
+          meta_faixa: number
+          meta_pace_esperado_pct: number
           meta_pct: number
           meta_valor: number
           nome: string
@@ -1187,6 +1233,10 @@ export type Database = {
           tempo_medio_primeira_resposta_min: number
           vendedor_id: string
         }[]
+      }
+      snapshot_metas_mes: {
+        Args: { _ano: number; _mes: number }
+        Returns: number
       }
     }
     Enums: {
