@@ -24,6 +24,7 @@ import {
   LogOut,
   UserCog,
   Radio,
+  ClipboardList,
 } from "lucide-react";
 
 
@@ -133,6 +134,7 @@ const NAV = [
   { to: "/agente-ia", label: "Agente IA", icon: Bot, adminOnly: false },
   { to: "/contatos", label: "Contatos", icon: Users, adminOnly: false },
   { to: "/tarefas", label: "Tarefas", icon: CheckSquare, adminOnly: false },
+  { to: "/minha-agenda", label: "Minha Agenda", icon: ClipboardList, adminOnly: false },
   { to: "/propostas", label: "Propostas", icon: FileText, adminOnly: false },
   { to: "/produtos", label: "Produtos", icon: Package, adminOnly: false },
   { to: "/condicoes-comerciais", label: "Condições Comerciais", icon: Settings2, adminOnly: true },

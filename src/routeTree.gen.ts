@@ -14,6 +14,7 @@ import { Route as TarefasRouteImport } from './routes/tarefas'
 import { Route as ProdutosRouteImport } from './routes/produtos'
 import { Route as PrimeiroAcessoRouteImport } from './routes/primeiro-acesso'
 import { Route as PipelineRouteImport } from './routes/pipeline'
+import { Route as MinhaAgendaRouteImport } from './routes/minha-agenda'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as EmpresasRouteImport } from './routes/empresas'
 import { Route as ContatosRouteImport } from './routes/contatos'
@@ -63,6 +64,11 @@ const PrimeiroAcessoRoute = PrimeiroAcessoRouteImport.update({
 const PipelineRoute = PipelineRouteImport.update({
   id: '/pipeline',
   path: '/pipeline',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MinhaAgendaRoute = MinhaAgendaRouteImport.update({
+  id: '/minha-agenda',
+  path: '/minha-agenda',
   getParentRoute: () => rootRouteImport,
 } as any)
 const McpRoute = McpRouteImport.update({
@@ -211,6 +217,7 @@ export interface FileRoutesByFullPath {
   '/contatos': typeof ContatosRoute
   '/empresas': typeof EmpresasRoute
   '/mcp': typeof McpRoute
+  '/minha-agenda': typeof MinhaAgendaRoute
   '/pipeline': typeof PipelineRoute
   '/primeiro-acesso': typeof PrimeiroAcessoRoute
   '/produtos': typeof ProdutosRoute
@@ -243,6 +250,7 @@ export interface FileRoutesByTo {
   '/contatos': typeof ContatosRoute
   '/empresas': typeof EmpresasRoute
   '/mcp': typeof McpRoute
+  '/minha-agenda': typeof MinhaAgendaRoute
   '/pipeline': typeof PipelineRoute
   '/primeiro-acesso': typeof PrimeiroAcessoRoute
   '/produtos': typeof ProdutosRoute
@@ -276,6 +284,7 @@ export interface FileRoutesById {
   '/contatos': typeof ContatosRoute
   '/empresas': typeof EmpresasRoute
   '/mcp': typeof McpRoute
+  '/minha-agenda': typeof MinhaAgendaRoute
   '/pipeline': typeof PipelineRoute
   '/primeiro-acesso': typeof PrimeiroAcessoRoute
   '/produtos': typeof ProdutosRoute
@@ -310,6 +319,7 @@ export interface FileRouteTypes {
     | '/contatos'
     | '/empresas'
     | '/mcp'
+    | '/minha-agenda'
     | '/pipeline'
     | '/primeiro-acesso'
     | '/produtos'
@@ -342,6 +352,7 @@ export interface FileRouteTypes {
     | '/contatos'
     | '/empresas'
     | '/mcp'
+    | '/minha-agenda'
     | '/pipeline'
     | '/primeiro-acesso'
     | '/produtos'
@@ -374,6 +385,7 @@ export interface FileRouteTypes {
     | '/contatos'
     | '/empresas'
     | '/mcp'
+    | '/minha-agenda'
     | '/pipeline'
     | '/primeiro-acesso'
     | '/produtos'
@@ -407,6 +419,7 @@ export interface RootRouteChildren {
   ContatosRoute: typeof ContatosRoute
   EmpresasRoute: typeof EmpresasRoute
   McpRoute: typeof McpRoute
+  MinhaAgendaRoute: typeof MinhaAgendaRoute
   PipelineRoute: typeof PipelineRoute
   PrimeiroAcessoRoute: typeof PrimeiroAcessoRoute
   ProdutosRoute: typeof ProdutosRoute
@@ -464,6 +477,13 @@ declare module '@tanstack/react-router' {
       path: '/pipeline'
       fullPath: '/pipeline'
       preLoaderRoute: typeof PipelineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/minha-agenda': {
+      id: '/minha-agenda'
+      path: '/minha-agenda'
+      fullPath: '/minha-agenda'
+      preLoaderRoute: typeof MinhaAgendaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mcp': {
@@ -655,6 +675,7 @@ const rootRouteChildren: RootRouteChildren = {
   ContatosRoute: ContatosRoute,
   EmpresasRoute: EmpresasRoute,
   McpRoute: McpRoute,
+  MinhaAgendaRoute: MinhaAgendaRoute,
   PipelineRoute: PipelineRoute,
   PrimeiroAcessoRoute: PrimeiroAcessoRoute,
   ProdutosRoute: ProdutosRoute,
