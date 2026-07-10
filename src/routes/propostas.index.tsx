@@ -196,6 +196,38 @@ function PropostasPage() {
         </div>
       </div>
 
+      {(() => {
+        const pending = proposals.filter((p) => p.status === "pedido" && p.editRequestedAt && !p.editUnlockedAt);
+        if (pending.length === 0) return null;
+        return (
+          <Card className="border-amber-400 bg-amber-500/5">
+            <CardContent className="py-3 flex flex-wrap items-center gap-3 text-sm">
+              <Badge variant="outline" className="border-amber-500 text-amber-700 bg-amber-500/10">
+                {isAdmin ? "ADM" : "Você"}
+              </Badge>
+              <span className="text-amber-800">
+                {isAdmin
+                  ? `${pending.length} solicitação(ões) de alteração de pedido aguardando sua liberação.`
+                  : `${pending.length} pedido(s) seu(s) aguardando liberação de alteração pelo ADM.`}
+              </span>
+              <div className="flex flex-wrap gap-1">
+                {pending.slice(0, 5).map((p) => (
+                  <Link
+                    key={p.id}
+                    to="/propostas/$id"
+                    params={{ id: p.id }}
+                    className="rounded border border-amber-500/40 bg-white px-2 py-0.5 font-mono text-xs text-amber-800 hover:bg-amber-500/10"
+                  >
+                    {p.number}
+                  </Link>
+                ))}
+                {pending.length > 5 && <span className="text-xs text-amber-700">+{pending.length - 5}</span>}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -203,6 +235,7 @@ function PropostasPage() {
             {filtered.length} proposta(s)
           </CardTitle>
         </CardHeader>
+
         <CardContent className="overflow-x-auto">
           <Table>
             <TableHeader>
