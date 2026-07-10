@@ -1,11 +1,19 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { useState } from "react";
 import { z } from "zod";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trophy, TrendingUp, TrendingDown, Minus } from "lucide-react";
-import { getPlacar, type PlacarPeriodo, type PlacarVendedor } from "@/lib/placar.functions";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { Trophy, TrendingUp, TrendingDown, Minus, Target, Settings2 } from "lucide-react";
+import { getPlacar, listMetas, setMeta, type PlacarPeriodo, type PlacarVendedor } from "@/lib/placar.functions";
 import { formatBRL } from "@/lib/crm-store";
 import { cn } from "@/lib/utils";
 
@@ -44,6 +52,10 @@ function PlacarPage() {
   const vendedores = data?.vendedores ?? [];
   const lider = vendedores.find((v) => v.score > 0) ?? null;
   const maxScore = Math.max(1, ...vendedores.map((v) => v.score));
+  const isAdmin = data?.callerIsAdmin ?? false;
+  const selfId = data?.callerId;
+  const self = vendedores.find((v) => v.vendedor_id === selfId) ?? null;
+  const showMetaCol = periodo === "mes";
 
   return (
     <div className="p-4 md:p-8 space-y-6">
@@ -57,19 +69,25 @@ function PlacarPage() {
             Fonte única de ranking · visível para todo o time
           </p>
         </div>
-        <Tabs
-          value={periodo}
-          onValueChange={(v) =>
-            navigate({ search: { periodo: v as PlacarPeriodo } })
-          }
-        >
-          <TabsList>
-            <TabsTrigger value="semana">Semana</TabsTrigger>
-            <TabsTrigger value="mes">Mês</TabsTrigger>
-            <TabsTrigger value="trimestre">Trimestre</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div className="flex items-center gap-2">
+          {isAdmin && <MetasAdminDialog />}
+          <Tabs
+            value={periodo}
+            onValueChange={(v) => navigate({ search: { periodo: v as PlacarPeriodo } })}
+          >
+            <TabsList>
+              <TabsTrigger value="semana">Semana</TabsTrigger>
+              <TabsTrigger value="mes">Mês</TabsTrigger>
+              <TabsTrigger value="trimestre">Trimestre</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
       </div>
+
+      {/* Minha meta (vendedor logado, período = mês) */}
+      {self && showMetaCol && self.meta_valor != null && self.meta_valor > 0 && (
+        <MinhaMetaCard v={self} />
+      )}
 
       {/* Hero do líder */}
       {lider ? (
@@ -122,6 +140,7 @@ function PlacarPage() {
                   <Th className="text-right">Score</Th>
                   <Th>Progresso</Th>
                   <Th className="text-right">Ganhos</Th>
+                  {showMetaCol && <Th className="text-right">Meta</Th>}
                   <Th className="text-right">Propostas</Th>
                   <Th className="text-right">Conv.</Th>
                   <Th className="text-right">Perdas</Th>
@@ -134,7 +153,13 @@ function PlacarPage() {
               </thead>
               <tbody>
                 {vendedores.map((v) => (
-                  <Row key={v.vendedor_id} v={v} maxScore={maxScore} lider={lider?.vendedor_id === v.vendedor_id} />
+                  <Row
+                    key={v.vendedor_id}
+                    v={v}
+                    maxScore={maxScore}
+                    lider={lider?.vendedor_id === v.vendedor_id}
+                    showMetaCol={showMetaCol}
+                  />
                 ))}
               </tbody>
             </table>
@@ -143,17 +168,61 @@ function PlacarPage() {
       </Card>
 
       <p className="text-xs text-muted-foreground">
-        Pesos configuráveis em Xerife → Config. Dados atualizados automaticamente ao abrir a página.
+        Meta em R$ é individual (apenas você vê a sua; admin vê todas). Bater 100% no mês soma bônus no score.
       </p>
     </div>
   );
 }
 
-function Row({ v, maxScore, lider }: { v: PlacarVendedor; maxScore: number; lider: boolean }) {
+function MinhaMetaCard({ v }: { v: PlacarVendedor }) {
+  const meta = v.meta_valor ?? 0;
+  const pct = v.meta_pct ?? 0;
+  const faltando = Math.max(0, meta - v.ganhos_valor);
+  const cls = v.meta_batida
+    ? "border-emerald-500/40 bg-emerald-50/60"
+    : pct >= 70
+      ? "border-primary/40 bg-primary/5"
+      : "border-border";
+  return (
+    <Card className={cn("border", cls)}>
+      <CardContent className="p-5 flex flex-wrap items-center gap-4">
+        <Target className={cn("h-6 w-6", v.meta_batida ? "text-emerald-600" : "text-primary")} />
+        <div className="flex-1 min-w-[220px]">
+          <div className="text-xs uppercase tracking-wider text-muted-foreground">Sua meta do mês</div>
+          <div className="mt-0.5 font-display text-lg font-semibold">
+            {formatBRL(v.ganhos_valor)} <span className="text-muted-foreground text-sm font-normal">de {formatBRL(meta)}</span>
+          </div>
+          <div className="mt-2 h-2 rounded-full bg-muted overflow-hidden">
+            <div
+              className={cn("h-full rounded-full", v.meta_batida ? "bg-emerald-500" : "bg-primary")}
+              style={{ width: `${Math.min(100, pct)}%` }}
+            />
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="font-display text-xl font-semibold">
+            {pct.toFixed(0)}%
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {v.meta_batida ? "🎉 meta batida" : `faltam ${formatBRL(faltando)}`}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function Row({
+  v, maxScore, lider, showMetaCol,
+}: {
+  v: PlacarVendedor;
+  maxScore: number;
+  lider: boolean;
+  showMetaCol: boolean;
+}) {
   const medal = MEDALS[v.posicao];
   const delta = v.score - v.score_periodo_anterior;
-  const trend =
-    delta > 0.5 ? "up" : delta < -0.5 ? "down" : "flat";
+  const trend = delta > 0.5 ? "up" : delta < -0.5 ? "down" : "flat";
   const carteira = v.carteira_60_mais > 0
     ? { text: `${v.carteira_60_mais} · 60d+`, cls: "text-destructive font-semibold" }
     : v.carteira_45_60 > 0
@@ -173,6 +242,9 @@ function Row({ v, maxScore, lider }: { v: PlacarVendedor; maxScore: number; lide
             {initials(v.nome)}
           </div>
           <span className="font-medium">{v.nome}</span>
+          {v.meta_batida && (
+            <span title="Meta do mês batida" className="text-xs">🎯</span>
+          )}
         </div>
       </Td>
       <Td className="text-right">
@@ -195,6 +267,22 @@ function Row({ v, maxScore, lider }: { v: PlacarVendedor; maxScore: number; lide
         <div className="font-medium">{v.ganhos_qtd}</div>
         <div className="text-xs text-muted-foreground">{formatBRL(v.ganhos_valor)}</div>
       </Td>
+      {showMetaCol && (
+        <Td className="text-right whitespace-nowrap min-w-[130px]">
+          {v.meta_valor == null ? (
+            <span className="text-muted-foreground italic text-xs">privado</span>
+          ) : v.meta_valor === 0 ? (
+            <span className="text-muted-foreground">—</span>
+          ) : (
+            <div className="inline-flex flex-col items-end">
+              <span className={cn("font-medium", v.meta_batida && "text-emerald-600")}>
+                {(v.meta_pct ?? 0).toFixed(0)}%
+              </span>
+              <span className="text-xs text-muted-foreground">de {formatBRL(v.meta_valor)}</span>
+            </div>
+          )}
+        </Td>
+      )}
       <Td className="text-right">{v.propostas_qtd}</Td>
       <Td className="text-right">
         {v.conversao === null ? "—" : `${v.conversao.toFixed(1)}%`}
@@ -218,6 +306,84 @@ function Row({ v, maxScore, lider }: { v: PlacarVendedor; maxScore: number; lide
         {v.pos_venda_no_prazo_pct === null ? "—" : `${v.pos_venda_no_prazo_pct.toFixed(0)}%`}
       </Td>
     </tr>
+  );
+}
+
+function MetasAdminDialog() {
+  const [open, setOpen] = useState(false);
+  const qc = useQueryClient();
+  const fetchMetas = useServerFn(listMetas);
+  const saveMeta = useServerFn(setMeta);
+  const { data: metas } = useQuery({
+    queryKey: ["placar", "metas"],
+    queryFn: () => fetchMetas(),
+    enabled: open,
+  });
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+
+  const mutation = useMutation({
+    mutationFn: async ({ user_id, valor }: { user_id: string; valor: number }) =>
+      saveMeta({ data: { user_id, meta_valor_mensal: valor } }),
+    onSuccess: () => {
+      toast.success("Meta atualizada");
+      qc.invalidateQueries({ queryKey: ["placar"] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao salvar"),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm" className="gap-2">
+          <Settings2 className="h-4 w-4" />
+          Metas
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Metas mensais (R$)</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          {(metas ?? []).map((m: any) => {
+            const current = drafts[m.user_id] ?? String(m.meta_valor_mensal ?? 0);
+            return (
+              <div key={m.user_id} className="flex items-center gap-3">
+                <div
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-white text-xs font-semibold shrink-0"
+                  style={{ background: m.avatar_color }}
+                >
+                  {initials(m.nome)}
+                </div>
+                <Label className="flex-1 truncate">{m.nome}</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  step={1000}
+                  className="w-40"
+                  value={current}
+                  onChange={(e) => setDrafts((s) => ({ ...s, [m.user_id]: e.target.value }))}
+                />
+                <Button
+                  size="sm"
+                  disabled={mutation.isPending}
+                  onClick={() =>
+                    mutation.mutate({ user_id: m.user_id, valor: Number(current) || 0 })
+                  }
+                >
+                  Salvar
+                </Button>
+              </div>
+            );
+          })}
+          {(metas ?? []).length === 0 && (
+            <p className="text-sm text-muted-foreground">Nenhum vendedor cadastrado.</p>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setOpen(false)}>Fechar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
