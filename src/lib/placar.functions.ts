@@ -24,9 +24,30 @@ export type PlacarVendedor = {
   /** % atingido da meta (null quando período != mês OU sem meta OU sem permissão). */
   meta_pct: number | null;
   meta_batida: boolean;
+  /** Faixa cruzada da meta: 0 · 50 · 80 · 100 · 120. */
+  meta_faixa: number;
+  /** % dos dias úteis do mês já decorridos (pace esperado). Null fora de "mês". */
+  meta_pace_esperado_pct: number | null;
+  /** Dias desde a última proposta enviada (null se nunca). */
+  dias_sem_proposta: number | null;
+  /** Limite configurado para alertar (B2B). */
+  dias_sem_proposta_limite: number;
   score: number;
   score_periodo_anterior: number;
   posicao: number;
+};
+
+export type MetaHistoricoRow = {
+  user_id: string;
+  nome: string;
+  avatar_color: string;
+  ano: number;
+  mes: number;
+  meta_valor: number;
+  ganhos_valor: number;
+  ganhos_qtd: number;
+  atingido_pct: number;
+  bateu: boolean;
 };
 
 const inputSchema = z.object({
@@ -68,6 +89,11 @@ export const getPlacar = createServerFn({ method: "GET" })
         meta_valor: canSeeMeta ? (r.meta_valor == null ? 0 : Number(r.meta_valor)) : null,
         meta_pct: canSeeMeta && r.meta_pct != null ? Number(r.meta_pct) : null,
         meta_batida: Boolean(r.meta_batida),
+        meta_faixa: Number(r.meta_faixa ?? 0),
+        meta_pace_esperado_pct:
+          r.meta_pace_esperado_pct == null ? null : Number(r.meta_pace_esperado_pct),
+        dias_sem_proposta: r.dias_sem_proposta == null ? null : Number(r.dias_sem_proposta),
+        dias_sem_proposta_limite: Number(r.dias_sem_proposta_limite ?? 14),
         score: Number(r.score ?? 0),
         score_periodo_anterior: Number(r.score_periodo_anterior ?? 0),
         posicao: Number(r.posicao ?? 0),
@@ -141,4 +167,72 @@ export const setMeta = createServerFn({ method: "POST" })
       );
     if (error) throw new Error(error.message);
     return { ok: true };
+  });
+
+/**
+ * Histórico mensal de metas.
+ * Vendedor recebe SÓ o próprio histórico. Admin recebe todos.
+ * `meses` = quantidade de meses fechados para trás (default 6).
+ */
+export const listMetasHistorico = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z.object({ meses: z.number().int().min(1).max(24).default(6) }).parse(data ?? {}),
+  )
+  .handler(async ({ data, context }): Promise<MetaHistoricoRow[]> => {
+    const { supabase, userId } = context;
+    const { data: isAdmin } = await supabase.rpc("has_role" as any, {
+      _user_id: userId,
+      _role: "admin",
+    });
+
+    let q = supabase
+      .from("vendedor_metas_historico" as any)
+      .select("user_id, ano, mes, meta_valor, ganhos_valor, ganhos_qtd, atingido_pct, bateu")
+      .order("ano", { ascending: false })
+      .order("mes", { ascending: false })
+      .limit(data.meses * 10);
+    if (!isAdmin) q = q.eq("user_id", userId);
+    const { data: rows, error } = await q;
+    if (error) throw new Error(error.message);
+
+    const ids = Array.from(new Set(((rows ?? []) as any[]).map((r) => r.user_id)));
+    const { data: profs } = await supabase
+      .from("profiles")
+      .select("id, name, avatar_color")
+      .in("id", ids.length ? ids : ["00000000-0000-0000-0000-000000000000"]);
+    const pmap = new Map((profs ?? []).map((p: any) => [p.id, p]));
+    return ((rows ?? []) as any[]).map((r) => ({
+      user_id: r.user_id,
+      nome: (pmap.get(r.user_id) as any)?.name ?? "Vendedor",
+      avatar_color: (pmap.get(r.user_id) as any)?.avatar_color ?? "#2563eb",
+      ano: Number(r.ano),
+      mes: Number(r.mes),
+      meta_valor: Number(r.meta_valor),
+      ganhos_valor: Number(r.ganhos_valor),
+      ganhos_qtd: Number(r.ganhos_qtd),
+      atingido_pct: Number(r.atingido_pct),
+      bateu: Boolean(r.bateu),
+    }));
+  });
+
+/** Admin: snapshot manual de um mês (ex.: recalcular). */
+export const snapshotMes = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z.object({ ano: z.number().int(), mes: z.number().int().min(1).max(12) }).parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: isAdmin } = await supabase.rpc("has_role" as any, {
+      _user_id: userId,
+      _role: "admin",
+    });
+    if (!isAdmin) throw new Error("Forbidden");
+    const { data: n, error } = await supabase.rpc("snapshot_metas_mes" as any, {
+      _ano: data.ano,
+      _mes: data.mes,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true, linhas: Number(n ?? 0) };
   });
