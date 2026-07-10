@@ -32,7 +32,7 @@ const PERIODO_LABEL: Record<PlacarPeriodo, string> = {
 };
 
 function PlacarPage() {
-  const { periodo } = Route.useSearch();
+  const { periodo } = Route.useSearch() as { periodo: PlacarPeriodo };
   const navigate = useNavigate({ from: Route.fullPath });
   const fetchPlacar = useServerFn(getPlacar);
   const { data, isLoading } = useQuery({
