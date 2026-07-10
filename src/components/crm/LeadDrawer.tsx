@@ -885,9 +885,9 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
         </div>
 
 
-        {/* Bloco: Oportunidade */}
+        {/* Bloco: Classificação & anotações (produto/valor entram via proposta) */}
         <div className="mt-2">
-          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Oportunidade</div>
+          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Classificação</div>
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
               <Label>Segmento</Label>
@@ -895,51 +895,6 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
                 <SelectTrigger><SelectValue placeholder="Selecione um segmento" /></SelectTrigger>
                 <SelectContent>
                   {leadSegments.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="col-span-2">
-              <Label>Produto</Label>
-              <Select
-                value={form.productId}
-                onValueChange={(v) =>
-                  setForm((f) => ({ ...f, productId: v, estimatedValue: recalc(v, f.quantity) }))
-                }
-              >
-                <SelectTrigger><SelectValue placeholder="Selecione um produto" /></SelectTrigger>
-                <SelectContent>
-                  {products.filter((p) => p.active).map((p) => (
-                    <SelectItem key={p.id} value={p.id}>{p.sku} — {p.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Quantidade</Label>
-              <Input
-                type="number"
-                min={0}
-                value={form.quantity}
-                onChange={(e) => {
-                  const q = Number(e.target.value) || 0;
-                  setForm((f) => ({ ...f, quantity: q, estimatedValue: recalc(f.productId, q) }));
-                }}
-              />
-            </div>
-            <div>
-              <Label>Valor estimado (R$)</Label>
-              <Input
-                type="number"
-                value={form.estimatedValue}
-                onChange={(e) => setForm({ ...form, estimatedValue: Number(e.target.value) || 0 })}
-              />
-            </div>
-            <div className="col-span-2">
-              <Label>Etapa</Label>
-              <Select value={form.stage} onValueChange={(v) => setForm({ ...form, stage: v as Lead["stage"] })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {STAGES.map((s) => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -972,8 +927,12 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
               <Label>Observações</Label>
               <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
             </div>
+            <p className="col-span-2 text-[11px] text-muted-foreground">
+              Produto, quantidade e valor são registrados na proposta comercial após a qualificação — não no cadastro do lead.
+            </p>
           </div>
         </div>
+
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
