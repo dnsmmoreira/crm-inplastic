@@ -211,9 +211,10 @@ async function runEngine(
       if (l.created_at && l.created_at < escalarIso) {
         const escRegra = "A1_escalado";
         if (!(await alreadyActed(sb, escRegra, l.id, 24))) {
-          await notifyDiretoria(
+          await alertDiretoria(
             `🚨 Lead sem contato há +${cfg.sla_primeiro_contato_escalar_min}min úteis\n\n` +
             `Cliente: ${l.company}\nMotivo: vendedor não fez primeiro contato\n${crmLeadLink(l.id)}`,
+            { regra: escRegra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id },
           );
           await log(sb, {
             regra: escRegra, leadId: l.id, vendedorId: l.owner_id,
@@ -310,9 +311,10 @@ async function runEngine(
       if (l.ultima_msg_cliente_at < escalarIso) {
         const escRegra = "A3_escalado";
         if (!(await alreadyActed(sb, escRegra, l.id, 24))) {
-          await notifyDiretoria(
+          await alertDiretoria(
             `🚨 Cliente sem resposta +${cfg.sla_resposta_whatsapp_escalar_horas}h úteis\n\n` +
             `Cliente: ${l.company}\n${crmLeadLink(l.id)}`,
+            { regra: escRegra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id },
           );
           await log(sb, {
             regra: escRegra, leadId: l.id, vendedorId: l.owner_id,
@@ -416,8 +418,9 @@ async function runEngine(
           prioridade: 1,
         });
       }
-      await notifyDiretoria(
+      await alertDiretoria(
         `🔴 Cliente ganho abandonado +${cfg.carteira_critico_dias}d\n\n${l.company}\n${crmLeadLink(l.id)}`,
+        { regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id },
       );
       await log(sb, {
         regra, leadId: l.id, clienteId: l.id, vendedorId: l.owner_id,
