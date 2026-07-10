@@ -1,98 +1,86 @@
-## Etapa 1 — Fundação de dados (migração única)
+# Xerife 2.0 — Motor de Cadência
 
-Cria todas as tabelas por vendedor e globais, com RLS + GRANTs, seed dos cadastros globais e substitui o store local.
+Evolução (não substituição) do Xerife atual: mantém o hook `/api/public/hooks/xerife`, o `xerife_config`, o resumo diário e o painel `/agente-ia`. Amplia dados, regras, agenda, notificações e UI.
 
-**Tabelas (owner_id uuid, nullable em `leads`):**
-- `leads` — colunas do plano original + `origem text`, `telefone_whatsapp text` (dígitos com DDI 55), `external_id text`, `last_interaction_at timestamptz`, `created_at`, `updated_at`. Etapa restrita ao enum canônico: `atendimento | novo | qualificacao | proposta | negociacao | ganho | perdido`.
-- `lead_interactions`, `lead_ai_actions`, `tarefas`, `propostas`, `proposta_itens`, `proposta_parcelas`, `pedidos`, `pedido_itens`.
-- Globais: `produtos`, `condicoes_pagamento`, `emitters`.
-- Trigger em `lead_interactions` e mensagens WhatsApp → atualiza `leads.last_interaction_at`.
+## Escopo por fases (entregas incrementais, cada fase é uma migração + código)
 
-**RLS:**
-- Vendedor: `owner_id = auth.uid()`. Admin: tudo. Lead com `owner_id IS NULL`: só admin vê.
-- Globais: `SELECT` para authenticated, `INSERT/UPDATE/DELETE` só admin (`has_role`).
-- `service_role` com acesso total (n8n).
+### Fase 1 — Fundação de dados (migração única)
 
-**Padronização de etapas:** troco `em_atendimento` → `atendimento` em `src/lib/mcp/tools/*` e em todo o front.
+**1a. Estender `tarefas`:**
+- Adicionar `cliente_id uuid` (nullable, refs `leads` — hoje não há tabela separada de clientes; leads em stage `ganho` são "clientes"). Se preferir manter só `lead_id`, uso `lead_id` e um flag `is_cliente` derivado do `stage`. **Confirmar abaixo.**
+- Novos campos: `tipo text` (enum abaixo), `descricao text`, `prioridade int default 3`, `hora_sugerida time`, `status text default 'pendente'` (pendente/concluida/adiada), `origem text default 'manual'` (xerife/manual), `nota_conclusao text`, `escalonamentos int default 0`, `concluida_at timestamptz`, `motivo_adiamento text`.
+- Manter `done`/`due_date`/`kind`/`title` (sincronizados via trigger: `done=true` ⇔ `status='concluida'`; `title`↔`titulo`; `kind`↔`tipo`) para não quebrar telas atuais.
+- Enum `tarefa_tipo`: `follow_up, primeiro_contato, resposta_pendente, cadencia_proposta, pos_venda_confirmacao, pos_venda_satisfacao, pos_venda_recompra, resgate_carteira, reativacao_lead, prospeccao`.
+- Trigger: bloqueia `DELETE` em tarefas com `origem='xerife' AND tipo LIKE 'pos_venda_%'`; bloqueia `UPDATE status='concluida'` sem `nota_conclusao` para essas mesmas.
 
-**Seed:** produtos, condições e emitters dos dados hoje hardcoded em `crm-store.ts`. Base de leads/propostas/pedidos começa vazia.
+**1b. Campos em `leads`:**
+- `etapa_changed_at timestamptz` + trigger que atualiza no `UPDATE OF stage`.
+- `last_contact_at timestamptz` + trigger em: `lead_interactions INSERT`, `whatsapp_mensagens INSERT WHERE autor='vendedor'`, `tarefas UPDATE status→concluida`.
+- `ultima_msg_cliente_at`, `ultima_msg_vendedor_at` via trigger em `whatsapp_mensagens`.
+- `proposta_enviada_at` via trigger no `UPDATE OF stage → 'proposta'`.
+- `esfriando bool default false`.
 
-**Código:**
-- Novos módulos `src/lib/leads.functions.ts`, `tarefas.functions.ts`, `propostas.functions.ts`, `pedidos.functions.ts`, `catalogo.functions.ts` — todos com `requireSupabaseAuth`.
-- Hooks TanStack Query em `src/hooks/use-*.ts` substituindo `useCrm(...)`.
-- Remoção de `src/lib/crm-store.ts` e `crm-sync.ts` após migrar todas as telas: `pipeline`, `contatos`, `tarefas`, `propostas.index`, `propostas.$id`, `produtos`, `condicoes-comerciais`, `empresas`, `index` (dashboard), `agente-ia`, `canais`, `LeadDrawer`.
-- Layout, cores e textos permanecem idênticos.
+**1c. `xerife_config` — adicionar colunas:**
+`sla_primeiro_contato_min` (15), `sla_primeiro_contato_escalar_min` (60), `sla_resposta_whatsapp_horas` (2), `sla_resposta_whatsapp_escalar_horas` (4), `max_dias_etapa jsonb` (novo=1, qualificacao=2, proposta=3, negociacao=5), `cadencia_proposta_dias int[]` ([2,5,10,15]), `carteira_alerta_dias` (45), `carteira_critico_dias` (60), `reciclagem_perdidos_dias` (90), `pos_venda_dias int[]` ([3,15,45]), `meta_atividades_dia` (15), `dias_uteis_inicio time` (08:00), `dias_uteis_fim time` (18:00).
 
-## Etapa 2 — Canais com Z-API real
+**1d. Nova tabela `xerife_log`:**
+`id, regra text, lead_id, cliente_id, vendedor_id, acao_tomada text, payload jsonb, created_at`. Índice `(regra, lead_id, created_at)`. Usado para idempotência (dedupe 24h) e auditoria.
 
-- Tabelas novas de conversa (ver Etapa 5) alimentam a tela. `zapi_inbox` continua como log bruto; o webhook passa a fazer upsert em `whatsapp_conversas` e insert em `whatsapp_mensagens (autor='cliente')` além do log.
-- Tela `/canais` reescrita: **conversas agrupadas por telefone** via Supabase Realtime (fallback polling 5s), transcript completo incluindo mensagens antigas.
-- Remove: botão "Simular msg", switch "Simular fluxo real", `RANDOM_MSGS`, autoCapture no navegador.
-- Se `phone` = `leads.telefone_whatsapp` → mostra chip do lead. Senão → botão "Criar lead a partir desta conversa" (pré-preenche nome, telefone, `origem='whatsapp'`).
-- Envio manual pela tela usa `sendWhatsapp` existente e grava com `autor='vendedor'`.
-- Card Z-API (webhook URL + testar conexão) permanece.
+Todas as tabelas novas: GRANT authenticated + service_role; RLS por owner/admin.
 
-## Etapa 3 — Xerife (cron determinístico)
+### Fase 2 — Engine `xerife-engine` (a cada 15min, 07–20h SP)
 
-**3a. Edge Function `xerife`:**
-- Roda hora a hora 07h-20h America/Sao_Paulo via `pg_cron` + `pg_net`.
-- Porta a lógica de `TemperatureLevel` e `FollowupLevel` de `crm-store.ts` para `supabase/functions/xerife/index.ts` (fonte única).
-- Varre leads ativos (`atendimento` → `negociacao`), tarefas e propostas.
+Reescrever `runXerife` em `src/routes/api/public/hooks/xerife.ts` mantendo o endpoint atual. Cron pg_cron: `*/15 7-20 * * 1-5` (dias úteis).
 
-**3b. Regras (configuráveis):**
-- Nova tabela `xerife_config` (singleton, editável por admin): `dias_sem_interacao_por_etapa jsonb` (default `{novo:1, qualificacao:2, proposta:3, negociacao:2}`), `proposta_enviada_dias int` (3), `tarefa_atrasada_horas int` (24), `ia_sem_resposta_horas int` (2), `resumo_diario_ativo bool`, `resumo_hora time` (08:00), `horario_comercial_inicio time`, `horario_comercial_fim time`.
-- Cria tarefa automática de follow-up para o `owner_id` (idempotente: não cria se já houver tarefa aberta do mesmo tipo no lead).
-- Toda ação → `lead_ai_actions (tipo, lead_id, descricao, criado_em)`.
+Helpers em `src/lib/xerife/*.server.ts`:
+- `businessTime.ts` — cálculo de minutos/horas úteis SP (seg-sex, janela config).
+- `dedupe.ts` — checa `xerife_log` últimas 24h + tarefa pendente equivalente.
+- `notify.ts` — Z-API para vendedor (via `profiles.telefone_whatsapp`) e diretoria (`WHATSAPP_DIRETORIA`).
+- `rules/` — um arquivo por bloco:
+  - `a1-primeiro-contato.ts`, `a2-lead-parado.ts`, `a3-sem-resposta.ts`, `a4-cadencia-proposta.ts`
+  - `b1-carteira-45.ts`, `b2-carteira-60.ts`, `b3-reciclagem-perdidos.ts`
+  - `c-pos-venda.ts` (gera as 3 tarefas quando `stage → ganho`)
+  - Cada regra: query alvo → dedupe → cria tarefa/alerta → log.
 
-**3c. Notificações Z-API (só equipe interna, nunca para o cliente):**
-- Adiciono `profiles.telefone_whatsapp text`.
-- 08h: resumo diário por vendedor + consolidado ao admin.
-- Alertas urgentes fora do resumo: máx 1 por lead por dia (dedupe em `lead_ai_actions`).
+### Fase 3 — Agenda full-time (3 novos endpoints públicos + cron)
 
-**3d. Tela Agente IA vira "Painel do Xerife":**
-- Feed de `lead_ai_actions` (filtros lead/vendedor/período), painel por temperatura, formulário de configuração das regras (só admin).
-- Remove dados demo atuais da rota `/agente-ia`.
+Rotas em `src/routes/api/public/hooks/`:
+- `xerife-agenda-diaria.ts` (07:30 SP dias úteis) — para cada vendedor: ordena pendentes por (escalonamento desc, prioridade asc, tipo weight), completa até `meta_atividades_dia` puxando `resgate_carteira`/`reativacao_lead` mais antigas com `data_prevista` no futuro (antecipa para hoje). Envia lista numerada via Z-API.
+- `xerife-checkpoint.ts` (13:00 SP) — resumo do que ainda está pendente hoje.
+- `xerife-fechamento.ts` (18:00 SP) — rola pendentes para amanhã (`prioridade -=1`, `escalonamentos +=1`), envia placar ao vendedor e ao Denis.
+- Estender `runResumoDiario` existente (08h) com: ranking vendedores, tempo médio 1ª resposta, SLAs abertos, esfriando, carteira 60d+.
 
-## Etapa 4 — Entrada externa (n8n direto no banco)
+pg_cron novos jobs chamando cada endpoint com `apikey` do anon.
 
-- Sem endpoint novo. RLS já libera `service_role` para insert em `leads`, `lead_interactions`, `lead_ai_actions` com `owner_id` nulo.
-- Novo arquivo `LEADS_API.md` na raiz: schema exato, valores de etapa canônicos, payloads JSON de exemplo para leads/interações e (adicionado na Etapa 5) mensagens IA + chamada de `atribuir_proximo_vendedor`.
+### Fase 4 — UI
 
-## Etapa 5 — Atendimento IA com handoff sequencial
+- **Nova rota `/minha-agenda`** (visível a todos os vendedores; menu lateral abaixo de "Tarefas"):
+  - Lista tarefas de hoje ordenadas por prioridade, chip de tipo, motivo (`descricao`).
+  - Botão **Concluir** → modal com campo `nota_conclusao` (obrigatório para pós-venda).
+  - Botão **Adiar** → modal com motivo + nova data; incrementa `escalonamentos`.
+  - Ao concluir, atualiza `leads.last_contact_at` (trigger cuida).
+- **Badge dias-sem-contato** nos cards de lead (`pipeline`, `contatos`, `LeadDrawer`): verde <30, amarelo 30-45, laranja 45-60, vermelho 60+.
+- **Painel gestor** — nova aba em `/agente-ia` "Cadência": SLAs estourados abertos, tarefas pendentes por vendedor, carteira em risco, esfriando. Só admin.
+- **Config admin** — estender formulário atual de `xerife_config` com os novos campos (agrupados: SLAs / Cadência / Carteira / Pós-venda / Agenda).
 
-**5a. Tabelas:**
-- `whatsapp_conversas (id, phone unique, lead_id fk nullable, status enum('ia_atendendo','humano_atendendo','qualificado','encerrado'), ia_ativa bool default true, created_at, updated_at)`.
-- `whatsapp_mensagens (id, conversa_id fk, direcao enum('entrada','saida'), autor enum('cliente','ia','vendedor'), conteudo text, created_at)`.
-- Realtime habilitado nas duas. `service_role` com escrita liberada.
-- RLS: admin vê tudo; vendedor vê conversas de leads onde `owner_id = auth.uid()`.
+### Fase 5 — Compatibilidade e testes
 
-**5b. Round-robin:**
-- `fila_vendedores (user_id fk profiles, posicao int, ativo bool)` editável na tela Usuários (só admin).
-- Função `atribuir_proximo_vendedor(lead_id uuid) returns uuid` — SECURITY DEFINER, rotação circular persistente. Ao atribuir: seta `leads.owner_id`, `leads.etapa='qualificacao'`, `whatsapp_conversas.status='qualificado'`, `ia_ativa=false`.
-
-**5c. Nova tela `/atendimento-ia` (só admin no menu):**
-- Lista de conversas ativas via Realtime, status colorido, preview da última msg, contador desde a última resposta.
-- Clique abre transcript ao vivo (cliente/IA/vendedor visualmente distintos).
-- Botão "Assumir conversa" (admin ou dono): seta `ia_ativa=false`, `status='humano_atendendo'`; libera composer que envia via `sendWhatsapp` e grava mensagem com `autor='vendedor'`.
-- Vendedores acessam a mesma tela mas veem só conversas de leads deles (RLS).
-
-**5d. Documentação n8n:** anexado ao `LEADS_API.md` — esquema das conversas/mensagens, INSERT de mensagem IA, chamada de `atribuir_proximo_vendedor`, e a regra de ouro: n8n só responde se `ia_ativa=true`.
-
-## Etapa 6 — Verificação
-
-Smoke test manual descrito na spec (admin vs vendedor, lead sem dono, mensagem Z-API criando conversa em tempo real, assumir conversa, round-robin, xerife gerando tarefa+action, impressão de proposta). Sem publish automático. Ao final, listo concluído e pendente.
+- Página `/tarefas` atual continua funcionando (usa `title/due_date/done`).
+- Server fns `tarefas.functions.ts` ganham `concluirTarefa({id, nota})` e `adiarTarefa({id, motivo, nova_data})`.
+- Backfill único (migração ou insert): setar `etapa_changed_at = updated_at`, `last_contact_at = last_interaction_at`, `proposta_enviada_at` para leads em stage `proposta`.
 
 ## Detalhes técnicos
 
-- **Migrações separadas por etapa** (4 no total) para revisão incremental: 1) schema base + globais + seed, 2) conversas WhatsApp + realtime, 3) xerife_config + fila_vendedores + função round-robin, 4) `profiles.telefone_whatsapp` e cron.
-- **Cron via `pg_cron` + `pg_net`** chamando a Edge Function `xerife` com `apikey` do anon; guarda de horário/timezone dentro da função.
-- **Realtime** habilitado com `ALTER PUBLICATION supabase_realtime ADD TABLE ...`.
-- **Migração de código sem quebrar visual**: substituo `useCrm` por hooks um por tela, mantendo props/tipos equivalentes; `crm-store.ts` só é deletado quando nenhuma tela mais importa.
-- **Tipos**: `src/integrations/supabase/types.ts` regenera automaticamente após cada migração.
+- Timezone SP: usar `AT TIME ZONE 'America/Sao_Paulo'` no SQL; helper JS com `Intl.DateTimeFormat`.
+- Idempotência: toda regra grava em `xerife_log` com chave lógica `(regra, lead_id, janela)`; antes de agir, `SELECT ... WHERE created_at > now() - interval '24h'`.
+- Fluxo Lucas preservado: pular leads com `whatsapp_conversas.ia_ativa=true` nas regras A1/A3.
+- Omie: gatilho de pós-venda dispara junto ao mesmo evento que hoje gera pedido (não altero Omie).
+- Z-API: reuso `sendZapiText` de `src/lib/zapi-send.server.ts`; templates curtos com link `https://crm.inplastic.com.br/pipeline?lead={id}`.
+- Todos os cron jobs via `pg_cron`+`pg_net` chamando `/api/public/hooks/*` com header `apikey`.
 
 ## Confirmações antes de executar
 
-1. Perfis de usuários existentes: reaproveito `profiles` (adiciono `telefone_whatsapp`). OK?
-2. Zerar base de leads (nenhum lead real cadastrado hoje, os atuais são teste). OK?
-3. Edge Function `xerife` chamando Z-API direto (usa os secrets já configurados `ZAPI_INSTANCE_ID`, `ZAPI_TOKEN`, `ZAPI_CLIENT_TOKEN`). OK?
-4. Rota nova `/atendimento-ia` no menu lateral (posição sugerida: logo abaixo de "Canais de Entrada", ícone Radio, só admin). OK?
+1. **Modelo "cliente"**: hoje não existe tabela `clientes` — leads em `stage='ganho'` são clientes. Uso `lead_id` em tarefas com um filtro por stage, OK? (Alternativa: criar `clientes` separada — maior refactor.)
+2. **Rota `/minha-agenda`** no menu abaixo de "Tarefas", visível a todos. OK?
+3. **Cron a cada 15min** só em dias úteis 07-20h — OK reduzir custo assim vs. 24/7?
+4. **Pós-venda D+3/15/45**: gatilho no `UPDATE stage → 'ganho'` (trigger no banco), não depende de pedido no Omie. OK?
