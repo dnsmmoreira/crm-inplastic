@@ -189,7 +189,16 @@ export const runXerifeEngineNow = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     await assertAdmin(context);
     const { runXerifeEngine } = await import("@/routes/api/public/hooks/xerife-engine");
-    return runXerifeEngine(true);
+    return runXerifeEngine({ force: true });
+  });
+
+/** Simula o Xerife Engine com a configuração atual, sem gravar nada. Somente admin. */
+export const simulateXerifeEngine = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context);
+    const { runXerifeEngine } = await import("@/routes/api/public/hooks/xerife-engine");
+    return runXerifeEngine({ force: true, dryRun: true });
   });
 
 /** Dispara Agenda Diária agora (07:30). Somente admin. */
