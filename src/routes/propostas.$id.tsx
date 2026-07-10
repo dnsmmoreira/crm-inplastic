@@ -307,9 +307,11 @@ function PropostaDetalhe() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" className="gap-2" onClick={() => { setStatus(proposal.id, "enviada"); toast.success("Marcada como enviada"); }}>
-            <Send className="h-4 w-4" /> Enviar
-          </Button>
+          {!isPedido && (
+            <Button variant="outline" className="gap-2" onClick={() => { setStatus(proposal.id, "enviada"); toast.success("Marcada como enviada"); }}>
+              <Send className="h-4 w-4" /> Enviar
+            </Button>
+          )}
 
           {/* Fechar pedido: sempre requer autorização do ADM. Admin gera direto. */}
           {proposal.status !== "pedido" && proposal.status !== "aguardando_aprovacao" && (
@@ -372,14 +374,88 @@ function PropostaDetalhe() {
             </Badge>
           )}
 
-          <Button variant="outline" className="gap-2" onClick={() => { setStatus(proposal.id, "recusada"); }}>
-            <XCircle className="h-4 w-4" /> Recusar
-          </Button>
+          {/* Pedido fechado: vendedor solicita alteração; ADM libera/recusa/re-bloqueia */}
+          {isPedido && !editUnlocked && !editRequested && !isAdmin && (
+            <Button
+              variant="outline"
+              className="gap-2 border-amber-500 text-amber-700 hover:bg-amber-500/10"
+              onClick={() => { setEditReqReason(""); setEditReqOpen(true); }}
+            >
+              <ShieldAlert className="h-4 w-4" /> Solicitar alteração
+            </Button>
+          )}
+          {isPedido && editRequested && !isAdmin && (
+            <Button
+              variant="ghost"
+              className="gap-2 text-muted-foreground"
+              onClick={() => {
+                _updateProposal(proposal.id, { editRequestedAt: undefined, editRequestReason: undefined, editRequestedByUserId: undefined });
+                toast.success("Solicitação de alteração cancelada");
+              }}
+            >
+              <XCircle className="h-4 w-4" /> Cancelar solicitação
+            </Button>
+          )}
+          {isPedido && !editUnlocked && isAdmin && (
+            <Button
+              className="gap-2 bg-emerald-600 hover:bg-emerald-700"
+              onClick={() => setReleaseOpen(true)}
+            >
+              <Unlock className="h-4 w-4" /> {editRequested ? "Liberar alteração" : "Desbloquear edição"}
+            </Button>
+          )}
+          {isPedido && editRequested && isAdmin && (
+            <Button
+              variant="outline"
+              className="gap-2 border-destructive text-destructive hover:bg-destructive/10"
+              onClick={() => {
+                _updateProposal(proposal.id, { editRequestedAt: undefined, editRequestReason: undefined, editRequestedByUserId: undefined });
+                toast.success("Solicitação recusada", { description: `${editRequester?.name ?? "Vendedor"} foi notificado — pedido permanece bloqueado.` });
+              }}
+            >
+              <XCircle className="h-4 w-4" /> Recusar solicitação
+            </Button>
+          )}
+          {isPedido && editUnlocked && (
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() => {
+                _updateProposal(proposal.id, { editUnlockedAt: undefined, editUnlockedByUserId: undefined, editRequestedAt: undefined, editRequestReason: undefined, editRequestedByUserId: undefined });
+                setDirty(false);
+                toast.success("Pedido re-bloqueado");
+              }}
+            >
+              <Lock className="h-4 w-4" /> Re-bloquear
+            </Button>
+          )}
+
+          {!isPedido && (
+            <Button variant="outline" className="gap-2" onClick={() => { setStatus(proposal.id, "recusada"); }}>
+              <XCircle className="h-4 w-4" /> Recusar
+            </Button>
+          )}
           <Button
             variant={dirty ? "default" : "outline"}
             className="gap-2"
             disabled={!dirty}
-            onClick={() => { setDirty(false); toast.success("Alterações salvas"); }}
+            onClick={() => {
+              // Se estava editando um pedido liberado, ao salvar re-bloqueia automaticamente.
+              if (isPedido && editUnlocked) {
+                _updateProposal(proposal.id, {
+                  editUnlockedAt: undefined,
+                  editUnlockedByUserId: undefined,
+                  editRequestedAt: undefined,
+                  editRequestReason: undefined,
+                  editRequestedByUserId: undefined,
+                });
+                setDirty(false);
+                toast.success("Alterações salvas", { description: "Pedido re-bloqueado automaticamente." });
+                return;
+              }
+              setDirty(false);
+              toast.success("Alterações salvas");
+            }}
           >
             <CheckCircle2 className="h-4 w-4" /> Salvar
           </Button>
@@ -388,6 +464,7 @@ function PropostaDetalhe() {
           </Button>
         </div>
       </div>
+
 
 
       {/* Confirm dialog for in-app navigation while dirty */}
