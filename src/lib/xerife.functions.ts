@@ -101,3 +101,12 @@ export const runResumoDiarioNow = createServerFn({ method: "POST" })
     const { runResumoDiario } = await import("@/routes/api/public/hooks/xerife");
     return runResumoDiario(true);
   });
+
+/** Executa o novo Xerife Engine (Fase 2, cadência completa). Somente admin. */
+export const runXerifeEngineNow = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context);
+    const { runXerifeEngine } = await import("@/routes/api/public/hooks/xerife-engine");
+    return runXerifeEngine(true);
+  });
