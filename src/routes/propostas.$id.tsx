@@ -207,13 +207,21 @@ function PropostaDetalhe() {
   });
 
   const markDirty = () => setDirty(true);
+  const guard = () => {
+    if (readOnly) {
+      toast.error("Pedido fechado — solicite liberação do ADM para editar.");
+      return true;
+    }
+    return false;
+  };
 
-  // Wrappers: auto-mark the proposal as dirty on any mutation
-  const addItem: typeof _addItem = (...a) => { markDirty(); return _addItem(...a); };
-  const updateItem: typeof _updateItem = (...a) => { markDirty(); return _updateItem(...a); };
-  const removeItem: typeof _removeItem = (...a) => { markDirty(); return _removeItem(...a); };
-  const updateProposal: typeof _updateProposal = (...a) => { markDirty(); return _updateProposal(...a); };
-  const setStatus: typeof _setStatus = (...a) => { markDirty(); return _setStatus(...a); };
+  // Wrappers: auto-mark the proposal as dirty on any mutation e bloqueia se pedido fechado.
+  const addItem: typeof _addItem = (...a) => { if (guard()) return; markDirty(); return _addItem(...a); };
+  const updateItem: typeof _updateItem = (...a) => { if (guard()) return; markDirty(); return _updateItem(...a); };
+  const removeItem: typeof _removeItem = (...a) => { if (guard()) return; markDirty(); return _removeItem(...a); };
+  const updateProposal: typeof _updateProposal = (...a) => { if (guard()) return; markDirty(); return _updateProposal(...a); };
+  const setStatus: typeof _setStatus = (...a) => { if (guard()) return; markDirty(); return _setStatus(...a); };
+
 
   const validateAndUpdateItem = (
     itemId: string,
