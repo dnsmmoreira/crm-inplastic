@@ -23,6 +23,19 @@ import {
 import { alreadyActed, hasOpenTask, logAction } from "@/lib/xerife/dedupe.server";
 import { notifyOwner, notifyDiretoria, crmLeadLink } from "@/lib/xerife/notify.server";
 
+export type XerifePlanItem = {
+  regra: string;
+  lead_id: string;
+  lead_company: string | null;
+  owner_id: string | null;
+  tipo: string;
+  titulo: string;
+  descricao: string;
+  motivo: string;
+  prioridade: number;
+  acao: "criar_tarefa" | "notificar_diretoria" | "marcar_esfriando";
+};
+
 type Cfg = {
   ativo: boolean;
   sla_primeiro_contato_min: number;
@@ -62,18 +75,24 @@ async function loadCfg(): Promise<Cfg> {
 
 type Stats = Record<string, number>;
 
-async function runEngine(force = false): Promise<{
+async function runEngine(
+  opts: { force?: boolean; dryRun?: boolean } = {},
+): Promise<{
   ran: boolean;
   reason?: string;
   stats: Stats;
+  plan: XerifePlanItem[];
+  dryRun: boolean;
 }> {
+  const force = opts.force ?? false;
+  const dryRun = opts.dryRun ?? false;
   const { supabaseAdmin: sb } = await import("@/integrations/supabase/client.server");
   const cfg = await loadCfg();
-  if (!cfg.ativo) return { ran: false, reason: "xerife inativo", stats: {} };
+  if (!cfg.ativo) return { ran: false, reason: "xerife inativo", stats: {}, plan: [], dryRun };
 
   const win: BusinessWindow = { inicio: cfg.dias_uteis_inicio, fim: cfg.dias_uteis_fim };
   if (!force && !isBusinessNow(win)) {
-    return { ran: false, reason: "fora do horário útil SP", stats: {} };
+    return { ran: false, reason: "fora do horário útil SP", stats: {}, plan: [], dryRun };
   }
 
   const stats: Stats = {
@@ -87,16 +106,28 @@ async function runEngine(force = false): Promise<{
     c_pos_venda: 0,
   };
 
+  const plan: XerifePlanItem[] = [];
+
   async function criarTarefa(t: {
     lead_id: string;
+    lead_company: string | null;
     owner_id: string | null;
     tipo: string;
     titulo: string;
     descricao: string;
+    motivo: string;
+    regra: string;
     prioridade: number;
     horaSugerida?: string;
     dueDate?: Date;
   }) {
+    plan.push({
+      regra: t.regra, lead_id: t.lead_id, lead_company: t.lead_company,
+      owner_id: t.owner_id, tipo: t.tipo, titulo: t.titulo,
+      descricao: t.descricao, motivo: t.motivo, prioridade: t.prioridade,
+      acao: "criar_tarefa",
+    });
+    if (dryRun) return;
     await sb.from("tarefas").insert({
       lead_id: t.lead_id,
       owner_id: t.owner_id,
@@ -111,6 +142,33 @@ async function runEngine(force = false): Promise<{
       origem: "xerife",
     });
   }
+
+  const log = async (...args: Parameters<typeof logAction>) => {
+    if (dryRun) return;
+    return logAction(...args);
+  };
+  const alertDiretoria = async (
+    msg: string,
+    ctx: { regra: string; lead_id: string; lead_company: string | null; owner_id: string | null },
+  ) => {
+    plan.push({
+      regra: ctx.regra, lead_id: ctx.lead_id, lead_company: ctx.lead_company,
+      owner_id: ctx.owner_id, tipo: "alerta_diretoria", titulo: "Notificar diretoria",
+      descricao: msg, motivo: msg, prioridade: 0, acao: "notificar_diretoria",
+    });
+    if (dryRun) return;
+    await notifyDiretoria(msg);
+  };
+  const marcarEsfriando = async (leadId: string, company: string | null, ownerId: string | null, regra: string) => {
+    plan.push({
+      regra, lead_id: leadId, lead_company: company, owner_id: ownerId,
+      tipo: "esfriando", titulo: "Marcar lead como esfriando",
+      descricao: "Definir esfriando=true", motivo: "lead parado além do máximo",
+      prioridade: 3, acao: "marcar_esfriando",
+    });
+    if (dryRun) return;
+    await sb.from("leads").update({ esfriando: true }).eq("id", leadId);
+  };
 
   const now = new Date();
 
@@ -136,13 +194,14 @@ async function runEngine(force = false): Promise<{
       if (await hasOpenTask(sb, l.id, "primeiro_contato")) continue;
 
       await criarTarefa({
-        lead_id: l.id, owner_id: l.owner_id,
+        regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id,
         tipo: "primeiro_contato",
         titulo: `Primeiro contato: ${l.company}`,
         descricao: `Lead entrou há mais de ${cfg.sla_primeiro_contato_min} min úteis e não teve nenhum contato.`,
+        motivo: `Lead entrou há mais de ${cfg.sla_primeiro_contato_min} min úteis e não teve nenhum contato.`,
         prioridade: 1,
-      });
-      await logAction(sb, {
+        });
+      await log(sb, {
         regra, leadId: l.id, vendedorId: l.owner_id,
         acao: "tarefa criada",
         payload: { created_at: l.created_at, sla_min: cfg.sla_primeiro_contato_min },
@@ -153,11 +212,12 @@ async function runEngine(force = false): Promise<{
       if (l.created_at && l.created_at < escalarIso) {
         const escRegra = "A1_escalado";
         if (!(await alreadyActed(sb, escRegra, l.id, 24))) {
-          await notifyDiretoria(
+          await alertDiretoria(
             `🚨 Lead sem contato há +${cfg.sla_primeiro_contato_escalar_min}min úteis\n\n` +
             `Cliente: ${l.company}\nMotivo: vendedor não fez primeiro contato\n${crmLeadLink(l.id)}`,
+            { regra: escRegra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id },
           );
-          await logAction(sb, {
+          await log(sb, {
             regra: escRegra, leadId: l.id, vendedorId: l.owner_id,
             acao: "diretoria notificada",
             payload: { sla_escalar_min: cfg.sla_primeiro_contato_escalar_min },
@@ -187,14 +247,15 @@ async function runEngine(force = false): Promise<{
         if (await hasOpenTask(sb, l.id, "follow_up")) continue;
 
         await criarTarefa({
-          lead_id: l.id, owner_id: l.owner_id,
+          regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id,
           tipo: "follow_up",
           titulo: `Destravar ${l.company}`,
           descricao: `Lead parado em "${stage}" há +${maxDias} dias. Ligar/definir próximo passo.`,
+          motivo: `Lead parado em "${stage}" há +${maxDias} dias. Ligar/definir próximo passo.`,
           prioridade: 2,
-        });
-        await sb.from("leads").update({ esfriando: true }).eq("id", l.id);
-        await logAction(sb, {
+          });
+        await marcarEsfriando(l.id, l.company, l.owner_id, regra);
+        await log(sb, {
           regra, leadId: l.id, vendedorId: l.owner_id,
           acao: "tarefa criada + esfriando=true",
           payload: { stage, max_dias: maxDias, etapa_changed_at: l.etapa_changed_at },
@@ -236,13 +297,14 @@ async function runEngine(force = false): Promise<{
       if (await hasOpenTask(sb, l.id, "resposta_pendente")) continue;
 
       await criarTarefa({
-        lead_id: l.id, owner_id: l.owner_id,
+        regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id,
         tipo: "resposta_pendente",
         titulo: `Responder ${l.company}`,
         descricao: `Cliente enviou mensagem há +${cfg.sla_resposta_whatsapp_horas}h úteis sem resposta.`,
+        motivo: `Cliente enviou mensagem há +${cfg.sla_resposta_whatsapp_horas}h úteis sem resposta.`,
         prioridade: 1,
-      });
-      await logAction(sb, {
+        });
+      await log(sb, {
         regra, leadId: l.id, vendedorId: l.owner_id,
         acao: "tarefa criada",
         payload: { ultima_msg_cliente_at: l.ultima_msg_cliente_at, sla_h: cfg.sla_resposta_whatsapp_horas },
@@ -252,11 +314,12 @@ async function runEngine(force = false): Promise<{
       if (l.ultima_msg_cliente_at < escalarIso) {
         const escRegra = "A3_escalado";
         if (!(await alreadyActed(sb, escRegra, l.id, 24))) {
-          await notifyDiretoria(
+          await alertDiretoria(
             `🚨 Cliente sem resposta +${cfg.sla_resposta_whatsapp_escalar_horas}h úteis\n\n` +
             `Cliente: ${l.company}\n${crmLeadLink(l.id)}`,
+            { regra: escRegra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id },
           );
-          await logAction(sb, {
+          await log(sb, {
             regra: escRegra, leadId: l.id, vendedorId: l.owner_id,
             acao: "diretoria notificada",
           });
@@ -285,13 +348,14 @@ async function runEngine(force = false): Promise<{
       if (await alreadyActed(sb, regra, l.id, 22 * 60)) continue; // 22h — 1 por passo
 
       await criarTarefa({
-        lead_id: l.id, owner_id: l.owner_id,
+        regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id,
         tipo: "cadencia_proposta",
         titulo: `Follow proposta D+${passo}: ${l.company}`,
         descricao: `Proposta enviada há ${passo} dias. Cadência: ${cfg.cadencia_proposta_dias.join("/")}.`,
+        motivo: `Proposta enviada há ${passo} dias. Cadência: ${cfg.cadencia_proposta_dias.join("/")}.`,
         prioridade: 2,
-      });
-      await logAction(sb, {
+        });
+      await log(sb, {
         regra, leadId: l.id, vendedorId: l.owner_id,
         acao: "tarefa criada",
         payload: { dias_corridos: diasCorridos, cadencia: cfg.cadencia_proposta_dias },
@@ -319,13 +383,14 @@ async function runEngine(force = false): Promise<{
       if (await hasOpenTask(sb, l.id, "resgate_carteira")) continue;
 
       await criarTarefa({
-        lead_id: l.id, owner_id: l.owner_id,
+        regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id,
         tipo: "resgate_carteira",
         titulo: `Reaquecer cliente: ${l.company}`,
         descricao: `Cliente ganho sem contato há +${cfg.carteira_alerta_dias} dias.`,
+        motivo: `Cliente ganho sem contato há +${cfg.carteira_alerta_dias} dias.`,
         prioridade: 3,
-      });
-      await logAction(sb, {
+        });
+      await log(sb, {
         regra, leadId: l.id, clienteId: l.id, vendedorId: l.owner_id,
         acao: "tarefa criada",
         payload: { last_contact_at: l.last_contact_at },
@@ -351,17 +416,19 @@ async function runEngine(force = false): Promise<{
 
       if (!(await hasOpenTask(sb, l.id, "resgate_carteira"))) {
         await criarTarefa({
-          lead_id: l.id, owner_id: l.owner_id,
+          regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id,
           tipo: "resgate_carteira",
           titulo: `URGENTE reaquecer: ${l.company}`,
           descricao: `Cliente ganho sem contato há +${cfg.carteira_critico_dias} dias (crítico).`,
+          motivo: `Cliente ganho sem contato há +${cfg.carteira_critico_dias} dias (crítico).`,
           prioridade: 1,
-        });
+          });
       }
-      await notifyDiretoria(
+      await alertDiretoria(
         `🔴 Cliente ganho abandonado +${cfg.carteira_critico_dias}d\n\n${l.company}\n${crmLeadLink(l.id)}`,
+        { regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id },
       );
-      await logAction(sb, {
+      await log(sb, {
         regra, leadId: l.id, clienteId: l.id, vendedorId: l.owner_id,
         acao: "tarefa + diretoria",
         payload: { last_contact_at: l.last_contact_at },
@@ -387,13 +454,14 @@ async function runEngine(force = false): Promise<{
       if (await hasOpenTask(sb, l.id, "reativacao_lead")) continue;
 
       await criarTarefa({
-        lead_id: l.id, owner_id: l.owner_id,
+        regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id,
         tipo: "reativacao_lead",
         titulo: `Reativar lead perdido: ${l.company}`,
         descricao: `Perdido há +${cfg.reciclagem_perdidos_dias} dias. Vale nova tentativa.`,
+        motivo: `Perdido há +${cfg.reciclagem_perdidos_dias} dias. Vale nova tentativa.`,
         prioridade: 4,
-      });
-      await logAction(sb, {
+        });
+      await log(sb, {
         regra, leadId: l.id, vendedorId: l.owner_id,
         acao: "tarefa criada",
         payload: { updated_at: l.updated_at },
@@ -432,13 +500,14 @@ async function runEngine(force = false): Promise<{
         if (await hasOpenTask(sb, l.id, tipo)) continue;
 
         await criarTarefa({
-          lead_id: l.id, owner_id: l.owner_id,
+          regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id,
           tipo,
           titulo: `${titulos[tipo]}: ${l.company}`,
           descricao: `Pós-venda D+${d}. Requer nota de conclusão.`,
+          motivo: `Pós-venda D+${d}. Requer nota de conclusão.`,
           prioridade: 2,
         });
-        await logAction(sb, {
+        await log(sb, {
           regra, leadId: l.id, clienteId: l.id, vendedorId: l.owner_id,
           acao: "tarefa criada",
           payload: { d, tipo },
@@ -448,7 +517,7 @@ async function runEngine(force = false): Promise<{
     }
   }
 
-  return { ran: true, stats };
+  return { ran: true, stats, plan, dryRun };
 }
 
 export const Route = createFileRoute("/api/public/hooks/xerife-engine")({
@@ -466,7 +535,8 @@ export const Route = createFileRoute("/api/public/hooks/xerife-engine")({
         try {
           const url = new URL(request.url);
           const force = url.searchParams.get("force") === "1";
-          const result = await runEngine(force);
+          const dryRun = url.searchParams.get("dryRun") === "1";
+          const result = await runEngine({ force, dryRun });
           return Response.json({ ok: true, at: new Date().toISOString(), ...result });
         } catch (e) {
           console.error("[xerife-engine] error:", e);
