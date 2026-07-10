@@ -102,10 +102,12 @@ async function runFechamento(force = false): Promise<{
     dLines.push(`${i + 1}. ${p.name} — ✅ ${p.feitas} · ↪️ ${p.roladas}`);
   });
 
-  // Top 3 do Placar de Vendedores (fonte única)
+  // Top 3 do Placar de Vendedores (fonte única) + notificação de faixa de meta
+  const faixasCruzadasGrupo: { nome: string; faixa: number }[] = [];
   try {
     const { data: rankRows } = await sb.rpc("placar_vendedores" as any, { _periodo: "mes" });
-    const top3 = ((rankRows ?? []) as any[]).filter((r) => Number(r.score) > 0).slice(0, 3);
+    const rows = ((rankRows ?? []) as any[]);
+    const top3 = rows.filter((r) => Number(r.score) > 0).slice(0, 3);
     if (top3.length) {
       dLines.push("");
       dLines.push("🏆 *Placar do mês*");
@@ -114,13 +116,96 @@ async function runFechamento(force = false): Promise<{
         dLines.push(`${medals[i]} ${r.nome} — ${Number(r.score).toFixed(0)} pts`);
       });
     }
+
+    // Faixas de meta atingidas hoje (50/80/100/120) — dedupe por xerife_log
+    for (const r of rows) {
+      const faixa = Number(r.meta_faixa ?? 0);
+      if (![50, 80, 100, 120].includes(faixa)) continue;
+      const regra = `meta_faixa_${faixa}`;
+      // dedupe por (regra, vendedor_id) na janela de 30 dias — evita re-notificar no mesmo mês
+      const since = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
+      const { count: already } = await sb
+        .from("xerife_log")
+        .select("id", { count: "exact", head: true })
+        .eq("regra", regra)
+        .eq("vendedor_id", r.vendedor_id)
+        .gte("created_at", since);
+      if ((already ?? 0) > 0) continue;
+
+      const meta = Number(r.meta_valor ?? 0);
+      const ganho = Number(r.ganhos_valor ?? 0);
+      const pct = Number(r.meta_pct ?? 0);
+      const faltando = Math.max(0, meta - ganho);
+      const emoji = faixa === 120 ? "🚀" : faixa === 100 ? "🎯" : faixa === 80 ? "🔥" : "📈";
+      const titulo = faixa === 120 ? "Superou a meta em 120%!"
+        : faixa === 100 ? "Meta batida!"
+        : faixa === 80  ? "80% da meta atingida"
+        :                 "50% da meta atingida";
+      const linhasVendedor = [
+        `${emoji} *${titulo}*`,
+        `Você está em *${pct.toFixed(0)}%* da meta do mês.`,
+        `Fechado: ${brl(ganho)} · Meta: ${brl(meta)}`,
+        faixa >= 100 ? "Parabéns! 🎉" : `Faltam ${brl(faltando)} para bater 100%.`,
+      ];
+      await notifyOwner(r.vendedor_id, linhasVendedor.join("\n"));
+      // Para o grupo/diretoria: SEM valores em R$ — só nome + faixa em %
+      faixasCruzadasGrupo.push({ nome: r.nome, faixa });
+      await logAction(sb, { regra, vendedorId: r.vendedor_id, acao: "notificado", payload: { faixa, pct } });
+    }
   } catch (e) {
     console.error("[xerife-fechamento] placar_vendedores falhou:", e);
+  }
+
+  if (faixasCruzadasGrupo.length) {
+    dLines.push("");
+    dLines.push("🎯 *Faixas de meta batidas hoje*");
+    faixasCruzadasGrupo
+      .sort((a, b) => b.faixa - a.faixa)
+      .forEach((f) => {
+        const emoji = f.faixa === 120 ? "🚀" : f.faixa === 100 ? "🎯" : f.faixa === 80 ? "🔥" : "📈";
+        dLines.push(`${emoji} ${f.nome} — ${f.faixa}%`);
+      });
+  }
+
+  // Último dia útil do mês → snapshot do histórico
+  try {
+    if (isUltimoDiaUtilDoMes(new Date())) {
+      const now = new Date();
+      const spOffsetMs = -3 * 60 * 60 * 1000; // aprox SP UTC-3
+      const sp = new Date(now.getTime() + spOffsetMs);
+      const ano = sp.getUTCFullYear();
+      const mes = sp.getUTCMonth() + 1;
+      const { data: n } = await sb.rpc("snapshot_metas_mes" as any, { _ano: ano, _mes: mes });
+      console.log("[xerife-fechamento] snapshot mês", ano, mes, "→", n);
+    }
+  } catch (e) {
+    console.error("[xerife-fechamento] snapshot_metas_mes falhou:", e);
   }
 
   if (placarPorVendedor.length) diretoriaNotificada = await notifyDiretoria(dLines.join("\n"));
 
   return { vendedoresNotificados, tarefasRoladas, diretoriaNotificada };
+}
+
+function brl(v: number): string {
+  return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+}
+
+/** Último dia útil do mês (seg–sex, sem feriados). */
+function isUltimoDiaUtilDoMes(d: Date): boolean {
+  const dow = d.getDay();
+  if (dow === 0 || dow === 6) return false;
+  const month = d.getMonth();
+  // varre próximos dias úteis dentro do mesmo mês
+  const probe = new Date(d);
+  for (let i = 1; i <= 4; i++) {
+    probe.setDate(probe.getDate() + 1);
+    const pdow = probe.getDay();
+    if (pdow === 0 || pdow === 6) continue;
+    // achou próximo dia útil — se for outro mês, hoje é o último útil
+    return probe.getMonth() !== month;
+  }
+  return false;
 }
 
 export const Route = createFileRoute("/api/public/hooks/xerife-fechamento")({
