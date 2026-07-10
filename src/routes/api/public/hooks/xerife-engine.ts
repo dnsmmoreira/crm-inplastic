@@ -500,10 +500,11 @@ async function runEngine(
         if (await hasOpenTask(sb, l.id, tipo)) continue;
 
         await criarTarefa({
-          lead_id: l.id, owner_id: l.owner_id,
+          regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id,
           tipo,
           titulo: `${titulos[tipo]}: ${l.company}`,
           descricao: `Pós-venda D+${d}. Requer nota de conclusão.`,
+          motivo: `Pós-venda D+${d}. Requer nota de conclusão.`,
           prioridade: 2,
         });
         await log(sb, {
