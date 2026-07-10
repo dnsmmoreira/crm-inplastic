@@ -12,7 +12,7 @@
   "mcp": {
     "server": {
       "name": "inplastic-crm-mcp",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "title": "INPLASTIC CRM"
     },
     "tools": [
@@ -92,6 +92,77 @@
         "name": "pipeline_stats",
         "title": "Estatísticas do pipeline",
         "description": "Retorna, para o usuário autenticado, a contagem de leads e o valor estimado por estágio do pipeline, além dos totais gerais.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "xerife_log_recent",
+        "title": "Últimas ações do Xerife",
+        "description": "Retorna as últimas N ações do motor Xerife visíveis ao usuário autenticado (admin vê tudo; vendedor vê apenas ações contra ele). Inclui regra acionada, alvo (lead/vendedor), ação tomada e data.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "description": "Máximo de registros (padrão 50)"
+            },
+            "regra": {
+              "type": "string",
+              "description": "Filtrar por prefixo de regra (ILIKE)"
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "placar_atual",
+        "title": "Placar atual (ranking de vendedores)",
+        "description": "Ranking atual do Placar com métricas por vendedor (ganhos, propostas, conversão, SLAs estourados, carteira, meta atingida, score, posição). Período: semana, mes (padrão), trimestre.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "periodo": {
+              "type": "string",
+              "enum": [
+                "semana",
+                "mes",
+                "trimestre"
+              ],
+              "description": "Período de apuração (padrão: mes)"
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "xerife_config_view",
+        "title": "Configuração do Xerife",
+        "description": "Retorna os parâmetros atuais de configuração do motor Xerife: SLAs, cadência, carteira, pós-venda, horário comercial, agenda e pesos do placar. Somente leitura.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
