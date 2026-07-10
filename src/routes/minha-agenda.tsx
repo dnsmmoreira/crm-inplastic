@@ -126,19 +126,28 @@ function MinhaAgendaPage() {
           <div className="space-y-2">
             <Label>Nota de conclusão {isPosVenda(concluir?.tipo) && <span className="text-destructive">*</span>}</Label>
             <Textarea
-              rows={4} value={nota} onChange={(e) => setNota(e.target.value)}
+              rows={4} value={nota} onChange={(e) => setNota(e.target.value.slice(0, 2000))}
               placeholder={isPosVenda(concluir?.tipo)
-                ? "Obrigatório: o que o cliente disse? recebeu? satisfeito? interesse em recompra?"
+                ? "Obrigatório (mín. 10 caracteres): o que o cliente disse? recebeu? satisfeito? interesse em recompra?"
                 : "Opcional: resumo do que foi feito"}
             />
+            {isPosVenda(concluir?.tipo) && (
+              <p className={cn(
+                "text-xs",
+                nota.trim().length < 10 ? "text-destructive" : "text-muted-foreground",
+              )}>
+                {nota.trim().length}/2000 · mínimo 10 caracteres para pós-venda
+              </p>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => (setConcluir(null), setNota(""))}>Cancelar</Button>
             <Button
-              disabled={mConcluir.isPending || (isPosVenda(concluir?.tipo) && !nota.trim())}
+              disabled={mConcluir.isPending || (isPosVenda(concluir?.tipo) && nota.trim().length < 10)}
               onClick={() => concluir && mConcluir.mutate({ id: concluir.id, nota: nota.trim() || undefined })}
             >Concluir</Button>
           </DialogFooter>
+
         </DialogContent>
       </Dialog>
 

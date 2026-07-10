@@ -41,21 +41,43 @@ export const concluirTarefa = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({
     id: z.string().uuid(),
-    nota: z.string().max(2000).optional(),
+    nota: z.string().trim().max(2000).optional(),
   }).parse(d))
   .handler(async ({ data, context }) => {
     const { supabase } = context;
+
+    // Regra de negócio: pós-venda exige nota substancial (min 10 chars).
+    // O trigger tg_tarefas_protect também bloqueia, mas validamos aqui para
+    // devolver mensagem amigável antes do round-trip.
+    const { data: tarefa, error: readErr } = await supabase
+      .from("tarefas")
+      .select("tipo, origem, status")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (readErr) throw new Error(readErr.message);
+    if (!tarefa) throw new Error("Tarefa não encontrada");
+    if (tarefa.status === "concluida") return { ok: true };
+
+    const isPosVenda = typeof tarefa.tipo === "string" && tarefa.tipo.startsWith("pos_venda_");
+    const nota = data.nota?.trim() ?? "";
+    if (isPosVenda && nota.length < 10) {
+      throw new Error(
+        "Tarefas de pós-venda exigem nota de conclusão com pelo menos 10 caracteres descrevendo o que o cliente disse.",
+      );
+    }
+
     const { error } = await supabase
       .from("tarefas")
       .update({
         status: "concluida",
-        nota_conclusao: data.nota ?? null,
+        nota_conclusao: nota || null,
         concluida_at: new Date().toISOString(),
       })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
 
 export const adiarTarefa = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
