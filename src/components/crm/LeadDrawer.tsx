@@ -51,8 +51,10 @@ import {
   formatBRL,
   leadTemperature,
   followupTemperature,
+  proposalTotals,
   type Lead,
   type Interaction,
+  type Proposal,
 } from "@/lib/crm-store";
 import { toast } from "sonner";
 import { computeLeadScore, faturamentoTetoPorPorte } from "@/lib/lead-score";
@@ -249,8 +251,9 @@ export function LeadDrawer({
 
 
           <Tabs defaultValue="hist">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="hist">Histórico</TabsTrigger>
+              <TabsTrigger value="propostas">Propostas</TabsTrigger>
               <TabsTrigger value="ia" className="gap-1"><Sparkles className="h-3 w-3" />IA</TabsTrigger>
               <TabsTrigger value="tarefas">Tarefas</TabsTrigger>
               <TabsTrigger value="notas">Notas</TabsTrigger>
@@ -312,6 +315,12 @@ export function LeadDrawer({
                 })}
               </ol>
             </TabsContent>
+
+            <TabsContent value="propostas" className="mt-4">
+              <LeadProposals leadId={lead.id} />
+            </TabsContent>
+
+
 
             <TabsContent value="ia" className="mt-4 space-y-3">
               <div className="rounded-lg border bg-gradient-to-br from-primary/10 to-transparent p-4">
@@ -466,6 +475,69 @@ function InfoRow({ icon: Icon, label, value }: { icon: typeof Mail; label: strin
     </div>
   );
 }
+
+const PROPOSAL_STATUS_META: Record<Proposal["status"], { label: string; className: string }> = {
+  rascunho:              { label: "Rascunho",              className: "bg-muted text-muted-foreground border-muted-foreground/30" },
+  enviada:               { label: "Enviada",               className: "bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-500/40" },
+  aguardando_aprovacao:  { label: "Aguardando aprovação",  className: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/40" },
+  aprovada:              { label: "Aprovada",              className: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/40" },
+  recusada:              { label: "Recusada",              className: "bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/40" },
+  pedido:                { label: "Pedido",                className: "bg-primary/15 text-primary border-primary/40" },
+};
+
+function LeadProposals({ leadId }: { leadId: string }) {
+  const proposals = useCrm((s) =>
+    s.proposals
+      .filter((p) => p.leadId === leadId)
+      .slice()
+      .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || "")),
+  );
+  if (proposals.length === 0) {
+    return (
+      <div className="rounded-lg border bg-muted/30 p-4 text-sm text-muted-foreground italic text-center">
+        Nenhuma proposta ou pedido registrado para este lead ainda.
+      </div>
+    );
+  }
+  return (
+    <ul className="space-y-2">
+      {proposals.map((p) => {
+        const t = proposalTotals(p);
+        const meta = PROPOSAL_STATUS_META[p.status];
+        const isPedido = p.status === "pedido";
+        const dateRef = isPedido && p.orderCreatedAt ? p.orderCreatedAt : p.createdAt;
+        return (
+          <li key={p.id} className="rounded-md border bg-card p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <a
+                  href={`/propostas/${p.id}`}
+                  className="font-medium text-sm hover:underline"
+                >
+                  {isPedido ? "Pedido" : "Proposta"} #{p.number}
+                </a>
+                <div className="text-xs text-muted-foreground mt-0.5">
+                  {dateRef ? format(new Date(dateRef), "dd MMM yyyy", { locale: ptBR }) : "—"}
+                  {" · "}
+                  {t.count} {t.count === 1 ? "item" : "itens"}
+                  {t.qty > 0 ? ` · ${t.qty.toLocaleString("pt-BR")} un` : ""}
+                </div>
+              </div>
+              <div className="text-right shrink-0">
+                <Badge variant="outline" className={`text-[10px] ${meta.className}`}>
+                  {meta.label}
+                </Badge>
+                <div className="font-semibold text-sm mt-1">{formatBRL(t.total)}</div>
+              </div>
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+
 
 function LeadTasks({ leadId }: { leadId: string }) {
   const tasks = useCrm((s) => s.tasks.filter((t) => t.leadId === leadId));
@@ -885,9 +957,9 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
         </div>
 
 
-        {/* Bloco: Oportunidade */}
+        {/* Bloco: Classificação & anotações (produto/valor entram via proposta) */}
         <div className="mt-2">
-          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Oportunidade</div>
+          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Classificação</div>
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
               <Label>Segmento</Label>
@@ -895,51 +967,6 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
                 <SelectTrigger><SelectValue placeholder="Selecione um segmento" /></SelectTrigger>
                 <SelectContent>
                   {leadSegments.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="col-span-2">
-              <Label>Produto</Label>
-              <Select
-                value={form.productId}
-                onValueChange={(v) =>
-                  setForm((f) => ({ ...f, productId: v, estimatedValue: recalc(v, f.quantity) }))
-                }
-              >
-                <SelectTrigger><SelectValue placeholder="Selecione um produto" /></SelectTrigger>
-                <SelectContent>
-                  {products.filter((p) => p.active).map((p) => (
-                    <SelectItem key={p.id} value={p.id}>{p.sku} — {p.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Quantidade</Label>
-              <Input
-                type="number"
-                min={0}
-                value={form.quantity}
-                onChange={(e) => {
-                  const q = Number(e.target.value) || 0;
-                  setForm((f) => ({ ...f, quantity: q, estimatedValue: recalc(f.productId, q) }));
-                }}
-              />
-            </div>
-            <div>
-              <Label>Valor estimado (R$)</Label>
-              <Input
-                type="number"
-                value={form.estimatedValue}
-                onChange={(e) => setForm({ ...form, estimatedValue: Number(e.target.value) || 0 })}
-              />
-            </div>
-            <div className="col-span-2">
-              <Label>Etapa</Label>
-              <Select value={form.stage} onValueChange={(v) => setForm({ ...form, stage: v as Lead["stage"] })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {STAGES.map((s) => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -972,8 +999,12 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
               <Label>Observações</Label>
               <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
             </div>
+            <p className="col-span-2 text-[11px] text-muted-foreground">
+              Produto, quantidade e valor são registrados na proposta comercial após a qualificação — não no cadastro do lead.
+            </p>
           </div>
         </div>
+
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
