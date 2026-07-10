@@ -180,10 +180,13 @@ function PropostasPage() {
               <SelectItem value="all">Todos os status</SelectItem>
               <SelectItem value="rascunho">Rascunho</SelectItem>
               <SelectItem value="enviada">Enviada</SelectItem>
+              <SelectItem value="aguardando_aprovacao">Aguardando aprovação</SelectItem>
               <SelectItem value="aprovada">Aprovada</SelectItem>
+              <SelectItem value="pedido">Pedido</SelectItem>
               <SelectItem value="recusada">Recusada</SelectItem>
             </SelectContent>
           </Select>
+
           <Button variant="outline" onClick={() => setOpenNewLead(true)} className="gap-2">
             <UserPlus className="h-4 w-4" /> Cadastrar lead
           </Button>
