@@ -231,13 +231,16 @@ export type Database = {
           email: string | null
           email_financeiro: string | null
           endereco: Json | null
+          esfriando: boolean
           estimated_value: number
+          etapa_changed_at: string | null
           external_id: string | null
           faturamento_estimado: number | null
           id: string
           inscricao_estadual: string | null
           inscricao_municipal: string | null
           last_contact: string | null
+          last_contact_at: string | null
           last_interaction_at: string | null
           next_followup: string | null
           nome_fantasia: string | null
@@ -249,6 +252,7 @@ export type Database = {
           porte: string | null
           product: string | null
           product_id: string | null
+          proposta_enviada_at: string | null
           quantity: number
           razao_social: string | null
           segment: string | null
@@ -258,6 +262,8 @@ export type Database = {
           tags: string[]
           telefone_fixo: string | null
           telefone_whatsapp: string | null
+          ultima_msg_cliente_at: string | null
+          ultima_msg_vendedor_at: string | null
           updated_at: string
           whatsapp: string | null
         }
@@ -272,13 +278,16 @@ export type Database = {
           email?: string | null
           email_financeiro?: string | null
           endereco?: Json | null
+          esfriando?: boolean
           estimated_value?: number
+          etapa_changed_at?: string | null
           external_id?: string | null
           faturamento_estimado?: number | null
           id?: string
           inscricao_estadual?: string | null
           inscricao_municipal?: string | null
           last_contact?: string | null
+          last_contact_at?: string | null
           last_interaction_at?: string | null
           next_followup?: string | null
           nome_fantasia?: string | null
@@ -290,6 +299,7 @@ export type Database = {
           porte?: string | null
           product?: string | null
           product_id?: string | null
+          proposta_enviada_at?: string | null
           quantity?: number
           razao_social?: string | null
           segment?: string | null
@@ -299,6 +309,8 @@ export type Database = {
           tags?: string[]
           telefone_fixo?: string | null
           telefone_whatsapp?: string | null
+          ultima_msg_cliente_at?: string | null
+          ultima_msg_vendedor_at?: string | null
           updated_at?: string
           whatsapp?: string | null
         }
@@ -313,13 +325,16 @@ export type Database = {
           email?: string | null
           email_financeiro?: string | null
           endereco?: Json | null
+          esfriando?: boolean
           estimated_value?: number
+          etapa_changed_at?: string | null
           external_id?: string | null
           faturamento_estimado?: number | null
           id?: string
           inscricao_estadual?: string | null
           inscricao_municipal?: string | null
           last_contact?: string | null
+          last_contact_at?: string | null
           last_interaction_at?: string | null
           next_followup?: string | null
           nome_fantasia?: string | null
@@ -331,6 +346,7 @@ export type Database = {
           porte?: string | null
           product?: string | null
           product_id?: string | null
+          proposta_enviada_at?: string | null
           quantity?: number
           razao_social?: string | null
           segment?: string | null
@@ -340,6 +356,8 @@ export type Database = {
           tags?: string[]
           telefone_fixo?: string | null
           telefone_whatsapp?: string | null
+          ultima_msg_cliente_at?: string | null
+          ultima_msg_vendedor_at?: string | null
           updated_at?: string
           whatsapp?: string | null
         }
@@ -734,37 +752,67 @@ export type Database = {
       tarefas: {
         Row: {
           auto_generated: boolean
+          concluida_at: string | null
           created_at: string
+          descricao: string | null
           done: boolean
           due_date: string
+          escalonamentos: number
+          hora_sugerida: string | null
           id: string
           kind: string | null
           lead_id: string | null
+          motivo_adiamento: string | null
+          nota_conclusao: string | null
+          origem: string
           owner_id: string | null
+          prioridade: number
+          status: string
+          tipo: string | null
           title: string
           updated_at: string
         }
         Insert: {
           auto_generated?: boolean
+          concluida_at?: string | null
           created_at?: string
+          descricao?: string | null
           done?: boolean
           due_date: string
+          escalonamentos?: number
+          hora_sugerida?: string | null
           id?: string
           kind?: string | null
           lead_id?: string | null
+          motivo_adiamento?: string | null
+          nota_conclusao?: string | null
+          origem?: string
           owner_id?: string | null
+          prioridade?: number
+          status?: string
+          tipo?: string | null
           title: string
           updated_at?: string
         }
         Update: {
           auto_generated?: boolean
+          concluida_at?: string | null
           created_at?: string
+          descricao?: string | null
           done?: boolean
           due_date?: string
+          escalonamentos?: number
+          hora_sugerida?: string | null
           id?: string
           kind?: string | null
           lead_id?: string | null
+          motivo_adiamento?: string | null
+          nota_conclusao?: string | null
+          origem?: string
           owner_id?: string | null
+          prioridade?: number
+          status?: string
+          tipo?: string | null
           title?: string
           updated_at?: string
         }
@@ -908,44 +956,124 @@ export type Database = {
       xerife_config: {
         Row: {
           ativo: boolean
+          cadencia_proposta_dias: number[]
+          carteira_alerta_dias: number
+          carteira_critico_dias: number
           dias_sem_interacao_por_etapa: Json
+          dias_uteis_fim: string
+          dias_uteis_inicio: string
           horario_comercial_fim: string
           horario_comercial_inicio: string
           ia_sem_resposta_horas: number
           id: number
+          max_dias_etapa: Json
+          meta_atividades_dia: number
+          pos_venda_dias: number[]
           proposta_enviada_dias: number
+          reciclagem_perdidos_dias: number
           resumo_diario_ativo: boolean
           resumo_hora: string
+          sla_primeiro_contato_escalar_min: number
+          sla_primeiro_contato_min: number
+          sla_resposta_whatsapp_escalar_horas: number
+          sla_resposta_whatsapp_horas: number
           tarefa_atrasada_horas: number
           updated_at: string
         }
         Insert: {
           ativo?: boolean
+          cadencia_proposta_dias?: number[]
+          carteira_alerta_dias?: number
+          carteira_critico_dias?: number
           dias_sem_interacao_por_etapa?: Json
+          dias_uteis_fim?: string
+          dias_uteis_inicio?: string
           horario_comercial_fim?: string
           horario_comercial_inicio?: string
           ia_sem_resposta_horas?: number
           id?: number
+          max_dias_etapa?: Json
+          meta_atividades_dia?: number
+          pos_venda_dias?: number[]
           proposta_enviada_dias?: number
+          reciclagem_perdidos_dias?: number
           resumo_diario_ativo?: boolean
           resumo_hora?: string
+          sla_primeiro_contato_escalar_min?: number
+          sla_primeiro_contato_min?: number
+          sla_resposta_whatsapp_escalar_horas?: number
+          sla_resposta_whatsapp_horas?: number
           tarefa_atrasada_horas?: number
           updated_at?: string
         }
         Update: {
           ativo?: boolean
+          cadencia_proposta_dias?: number[]
+          carteira_alerta_dias?: number
+          carteira_critico_dias?: number
           dias_sem_interacao_por_etapa?: Json
+          dias_uteis_fim?: string
+          dias_uteis_inicio?: string
           horario_comercial_fim?: string
           horario_comercial_inicio?: string
           ia_sem_resposta_horas?: number
           id?: number
+          max_dias_etapa?: Json
+          meta_atividades_dia?: number
+          pos_venda_dias?: number[]
           proposta_enviada_dias?: number
+          reciclagem_perdidos_dias?: number
           resumo_diario_ativo?: boolean
           resumo_hora?: string
+          sla_primeiro_contato_escalar_min?: number
+          sla_primeiro_contato_min?: number
+          sla_resposta_whatsapp_escalar_horas?: number
+          sla_resposta_whatsapp_horas?: number
           tarefa_atrasada_horas?: number
           updated_at?: string
         }
         Relationships: []
+      }
+      xerife_log: {
+        Row: {
+          acao_tomada: string
+          cliente_id: string | null
+          created_at: string
+          id: string
+          lead_id: string | null
+          payload: Json
+          regra: string
+          vendedor_id: string | null
+        }
+        Insert: {
+          acao_tomada: string
+          cliente_id?: string | null
+          created_at?: string
+          id?: string
+          lead_id?: string | null
+          payload?: Json
+          regra: string
+          vendedor_id?: string | null
+        }
+        Update: {
+          acao_tomada?: string
+          cliente_id?: string | null
+          created_at?: string
+          id?: string
+          lead_id?: string | null
+          payload?: Json
+          regra?: string
+          vendedor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "xerife_log_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       zapi_inbox: {
         Row: {
