@@ -273,13 +273,37 @@ function PropostaDetalhe() {
                   <AlertCircle className="h-3 w-3" /> Alterações não salvas
                 </Badge>
               )}
+              {isPedido && !editUnlocked && !editRequested && (
+                <Badge variant="outline" className="border-slate-400 text-slate-700 bg-slate-500/10 gap-1">
+                  <Lock className="h-3 w-3" /> Pedido bloqueado para edição
+                </Badge>
+              )}
+              {editRequested && (
+                <Badge variant="outline" className="border-amber-500 text-amber-700 bg-amber-500/10 gap-1">
+                  <ShieldAlert className="h-3 w-3" /> Alteração solicitada — aguardando ADM
+                </Badge>
+              )}
+              {editUnlocked && (
+                <Badge variant="outline" className="border-emerald-500 text-emerald-700 bg-emerald-500/10 gap-1">
+                  <Unlock className="h-3 w-3" /> Edição liberada pelo ADM
+                </Badge>
+              )}
             </div>
             <p className="text-xs text-muted-foreground">
               Criada em {format(new Date(proposal.createdAt), "dd/MM/yyyy", { locale: ptBR })} · Vendedor: {owner?.name ?? "—"}
               {proposal.approvedAt && approver && (
                 <> · Aprovada por <span className="font-medium text-foreground">{approver.name}</span> em {format(new Date(proposal.approvedAt), "dd/MM/yyyy HH:mm", { locale: ptBR })}</>
               )}
+              {editRequested && editRequester && proposal.editRequestedAt && (
+                <><br />Alteração solicitada por <span className="font-medium text-foreground">{editRequester.name}</span> em {format(new Date(proposal.editRequestedAt), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                  {proposal.editRequestReason ? <> — "{proposal.editRequestReason}"</> : null}
+                </>
+              )}
+              {editUnlocked && editUnlocker && proposal.editUnlockedAt && (
+                <><br />Edição liberada por <span className="font-medium text-foreground">{editUnlocker.name}</span> em {format(new Date(proposal.editUnlockedAt), "dd/MM/yyyy HH:mm", { locale: ptBR })}</>
+              )}
             </p>
+
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
