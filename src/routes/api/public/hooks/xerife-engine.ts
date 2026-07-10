@@ -194,12 +194,13 @@ async function runEngine(
       if (await hasOpenTask(sb, l.id, "primeiro_contato")) continue;
 
       await criarTarefa({
-        lead_id: l.id, owner_id: l.owner_id,
+        regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id,
         tipo: "primeiro_contato",
         titulo: `Primeiro contato: ${l.company}`,
         descricao: `Lead entrou há mais de ${cfg.sla_primeiro_contato_min} min úteis e não teve nenhum contato.`,
+        motivo: `Lead entrou há mais de ${cfg.sla_primeiro_contato_min} min úteis e não teve nenhum contato.`,
         prioridade: 1,
-      });
+        });
       await log(sb, {
         regra, leadId: l.id, vendedorId: l.owner_id,
         acao: "tarefa criada",
@@ -246,12 +247,13 @@ async function runEngine(
         if (await hasOpenTask(sb, l.id, "follow_up")) continue;
 
         await criarTarefa({
-          lead_id: l.id, owner_id: l.owner_id,
+          regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id,
           tipo: "follow_up",
           titulo: `Destravar ${l.company}`,
           descricao: `Lead parado em "${stage}" há +${maxDias} dias. Ligar/definir próximo passo.`,
+          motivo: `Lead parado em "${stage}" há +${maxDias} dias. Ligar/definir próximo passo.`,
           prioridade: 2,
-        });
+          });
         await marcarEsfriando(l.id, l.company, l.owner_id, regra);
         await log(sb, {
           regra, leadId: l.id, vendedorId: l.owner_id,
@@ -295,12 +297,13 @@ async function runEngine(
       if (await hasOpenTask(sb, l.id, "resposta_pendente")) continue;
 
       await criarTarefa({
-        lead_id: l.id, owner_id: l.owner_id,
+        regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id,
         tipo: "resposta_pendente",
         titulo: `Responder ${l.company}`,
         descricao: `Cliente enviou mensagem há +${cfg.sla_resposta_whatsapp_horas}h úteis sem resposta.`,
+        motivo: `Cliente enviou mensagem há +${cfg.sla_resposta_whatsapp_horas}h úteis sem resposta.`,
         prioridade: 1,
-      });
+        });
       await log(sb, {
         regra, leadId: l.id, vendedorId: l.owner_id,
         acao: "tarefa criada",
@@ -345,12 +348,13 @@ async function runEngine(
       if (await alreadyActed(sb, regra, l.id, 22 * 60)) continue; // 22h — 1 por passo
 
       await criarTarefa({
-        lead_id: l.id, owner_id: l.owner_id,
+        regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id,
         tipo: "cadencia_proposta",
         titulo: `Follow proposta D+${passo}: ${l.company}`,
         descricao: `Proposta enviada há ${passo} dias. Cadência: ${cfg.cadencia_proposta_dias.join("/")}.`,
+        motivo: `Proposta enviada há ${passo} dias. Cadência: ${cfg.cadencia_proposta_dias.join("/")}.`,
         prioridade: 2,
-      });
+        });
       await log(sb, {
         regra, leadId: l.id, vendedorId: l.owner_id,
         acao: "tarefa criada",
@@ -379,12 +383,13 @@ async function runEngine(
       if (await hasOpenTask(sb, l.id, "resgate_carteira")) continue;
 
       await criarTarefa({
-        lead_id: l.id, owner_id: l.owner_id,
+        regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id,
         tipo: "resgate_carteira",
         titulo: `Reaquecer cliente: ${l.company}`,
         descricao: `Cliente ganho sem contato há +${cfg.carteira_alerta_dias} dias.`,
+        motivo: `Cliente ganho sem contato há +${cfg.carteira_alerta_dias} dias.`,
         prioridade: 3,
-      });
+        });
       await log(sb, {
         regra, leadId: l.id, clienteId: l.id, vendedorId: l.owner_id,
         acao: "tarefa criada",
@@ -411,12 +416,13 @@ async function runEngine(
 
       if (!(await hasOpenTask(sb, l.id, "resgate_carteira"))) {
         await criarTarefa({
-          lead_id: l.id, owner_id: l.owner_id,
+          regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id,
           tipo: "resgate_carteira",
           titulo: `URGENTE reaquecer: ${l.company}`,
           descricao: `Cliente ganho sem contato há +${cfg.carteira_critico_dias} dias (crítico).`,
+          motivo: `Cliente ganho sem contato há +${cfg.carteira_critico_dias} dias (crítico).`,
           prioridade: 1,
-        });
+          });
       }
       await alertDiretoria(
         `🔴 Cliente ganho abandonado +${cfg.carteira_critico_dias}d\n\n${l.company}\n${crmLeadLink(l.id)}`,
@@ -448,12 +454,13 @@ async function runEngine(
       if (await hasOpenTask(sb, l.id, "reativacao_lead")) continue;
 
       await criarTarefa({
-        lead_id: l.id, owner_id: l.owner_id,
+        regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id,
         tipo: "reativacao_lead",
         titulo: `Reativar lead perdido: ${l.company}`,
         descricao: `Perdido há +${cfg.reciclagem_perdidos_dias} dias. Vale nova tentativa.`,
+        motivo: `Perdido há +${cfg.reciclagem_perdidos_dias} dias. Vale nova tentativa.`,
         prioridade: 4,
-      });
+        });
       await log(sb, {
         regra, leadId: l.id, vendedorId: l.owner_id,
         acao: "tarefa criada",
