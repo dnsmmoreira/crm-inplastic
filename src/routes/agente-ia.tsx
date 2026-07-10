@@ -41,6 +41,7 @@ import {
   runXerifeNow,
   runResumoDiarioNow,
 } from "@/lib/xerife.functions";
+import { CadenciaPanel } from "@/components/xerife/CadenciaPanel";
 
 export const Route = createFileRoute("/agente-ia")({
   component: AgenteIaPage,
@@ -127,6 +128,9 @@ function AgenteIaPage() {
       <Tabs defaultValue="feed">
         <TabsList>
           <TabsTrigger value="feed">Diário do Xerife</TabsTrigger>
+          <TabsTrigger value="cadencia" disabled={!isAdmin}>
+            Cadência {!isAdmin && "(admin)"}
+          </TabsTrigger>
           <TabsTrigger value="config" disabled={!isAdmin}>
             Configurações {!isAdmin && "(admin)"}
           </TabsTrigger>
@@ -198,6 +202,16 @@ function AgenteIaPage() {
               )}
             </ul>
           </div>
+        </TabsContent>
+
+        <TabsContent value="cadencia" className="mt-6">
+          {isAdmin ? (
+            <CadenciaPanel onOpenLead={(id) => setOpenLead(id)} />
+          ) : (
+            <div className="rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">
+              Somente administradores podem ver o painel de cadência.
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="config" className="mt-6">
