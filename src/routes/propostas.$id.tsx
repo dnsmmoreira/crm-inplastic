@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate, useBlocker } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Plus, Trash2, Printer, Send, CheckCircle2, XCircle, Check, ChevronsUpDown, Search, AlertCircle } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Printer, Send, CheckCircle2, XCircle, Check, ChevronsUpDown, Search, AlertCircle, Lock, Unlock, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { format } from "date-fns";
@@ -154,6 +154,20 @@ function PropostaDetalhe() {
   const isAdmin = useIsAdmin();
   const currentUser = useCurrentUser();
   const approver = proposal?.approvedByUserId ? USERS.find((u) => u.id === proposal.approvedByUserId) : null;
+  const editRequester = proposal?.editRequestedByUserId ? USERS.find((u) => u.id === proposal.editRequestedByUserId) : null;
+  const editUnlocker = proposal?.editUnlockedByUserId ? USERS.find((u) => u.id === proposal.editUnlockedByUserId) : null;
+
+  // Pedido fechado é read-only, salvo se ADM liberou edição.
+  const isPedido = proposal?.status === "pedido";
+  const editUnlocked = Boolean(proposal?.editUnlockedAt);
+  const editRequested = Boolean(proposal?.editRequestedAt) && !editUnlocked;
+  const readOnly = isPedido && !editUnlocked;
+
+  // Estado de UI para diálogos de solicitação/liberação
+  const [editReqOpen, setEditReqOpen] = useState(false);
+  const [editReqReason, setEditReqReason] = useState("");
+  const [releaseOpen, setReleaseOpen] = useState(false);
+
 
   // Auto-recalcula peso e cubagem a partir do catálogo sempre que os itens mudam.
   const autoTransport = useMemo(
@@ -193,13 +207,21 @@ function PropostaDetalhe() {
   });
 
   const markDirty = () => setDirty(true);
+  const guard = () => {
+    if (readOnly) {
+      toast.error("Pedido fechado — solicite liberação do ADM para editar.");
+      return true;
+    }
+    return false;
+  };
 
-  // Wrappers: auto-mark the proposal as dirty on any mutation
-  const addItem: typeof _addItem = (...a) => { markDirty(); return _addItem(...a); };
-  const updateItem: typeof _updateItem = (...a) => { markDirty(); return _updateItem(...a); };
-  const removeItem: typeof _removeItem = (...a) => { markDirty(); return _removeItem(...a); };
-  const updateProposal: typeof _updateProposal = (...a) => { markDirty(); return _updateProposal(...a); };
-  const setStatus: typeof _setStatus = (...a) => { markDirty(); return _setStatus(...a); };
+  // Wrappers: auto-mark the proposal as dirty on any mutation e bloqueia se pedido fechado.
+  const addItem: typeof _addItem = (...a) => { if (guard()) return; markDirty(); return _addItem(...a); };
+  const updateItem: typeof _updateItem = (...a) => { if (guard()) return; markDirty(); return _updateItem(...a); };
+  const removeItem: typeof _removeItem = (...a) => { if (guard()) return; markDirty(); return _removeItem(...a); };
+  const updateProposal: typeof _updateProposal = (...a) => { if (guard()) return; markDirty(); return _updateProposal(...a); };
+  const setStatus: typeof _setStatus = (...a) => { if (guard()) return; markDirty(); return _setStatus(...a); };
+
 
   const validateAndUpdateItem = (
     itemId: string,
@@ -251,19 +273,45 @@ function PropostaDetalhe() {
                   <AlertCircle className="h-3 w-3" /> Alterações não salvas
                 </Badge>
               )}
+              {isPedido && !editUnlocked && !editRequested && (
+                <Badge variant="outline" className="border-slate-400 text-slate-700 bg-slate-500/10 gap-1">
+                  <Lock className="h-3 w-3" /> Pedido bloqueado para edição
+                </Badge>
+              )}
+              {editRequested && (
+                <Badge variant="outline" className="border-amber-500 text-amber-700 bg-amber-500/10 gap-1">
+                  <ShieldAlert className="h-3 w-3" /> Alteração solicitada — aguardando ADM
+                </Badge>
+              )}
+              {editUnlocked && (
+                <Badge variant="outline" className="border-emerald-500 text-emerald-700 bg-emerald-500/10 gap-1">
+                  <Unlock className="h-3 w-3" /> Edição liberada pelo ADM
+                </Badge>
+              )}
             </div>
             <p className="text-xs text-muted-foreground">
               Criada em {format(new Date(proposal.createdAt), "dd/MM/yyyy", { locale: ptBR })} · Vendedor: {owner?.name ?? "—"}
               {proposal.approvedAt && approver && (
                 <> · Aprovada por <span className="font-medium text-foreground">{approver.name}</span> em {format(new Date(proposal.approvedAt), "dd/MM/yyyy HH:mm", { locale: ptBR })}</>
               )}
+              {editRequested && editRequester && proposal.editRequestedAt && (
+                <><br />Alteração solicitada por <span className="font-medium text-foreground">{editRequester.name}</span> em {format(new Date(proposal.editRequestedAt), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                  {proposal.editRequestReason ? <> — "{proposal.editRequestReason}"</> : null}
+                </>
+              )}
+              {editUnlocked && editUnlocker && proposal.editUnlockedAt && (
+                <><br />Edição liberada por <span className="font-medium text-foreground">{editUnlocker.name}</span> em {format(new Date(proposal.editUnlockedAt), "dd/MM/yyyy HH:mm", { locale: ptBR })}</>
+              )}
             </p>
+
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" className="gap-2" onClick={() => { setStatus(proposal.id, "enviada"); toast.success("Marcada como enviada"); }}>
-            <Send className="h-4 w-4" /> Enviar
-          </Button>
+          {!isPedido && (
+            <Button variant="outline" className="gap-2" onClick={() => { setStatus(proposal.id, "enviada"); toast.success("Marcada como enviada"); }}>
+              <Send className="h-4 w-4" /> Enviar
+            </Button>
+          )}
 
           {/* Fechar pedido: sempre requer autorização do ADM. Admin gera direto. */}
           {proposal.status !== "pedido" && proposal.status !== "aguardando_aprovacao" && (
@@ -326,14 +374,88 @@ function PropostaDetalhe() {
             </Badge>
           )}
 
-          <Button variant="outline" className="gap-2" onClick={() => { setStatus(proposal.id, "recusada"); }}>
-            <XCircle className="h-4 w-4" /> Recusar
-          </Button>
+          {/* Pedido fechado: vendedor solicita alteração; ADM libera/recusa/re-bloqueia */}
+          {isPedido && !editUnlocked && !editRequested && !isAdmin && (
+            <Button
+              variant="outline"
+              className="gap-2 border-amber-500 text-amber-700 hover:bg-amber-500/10"
+              onClick={() => { setEditReqReason(""); setEditReqOpen(true); }}
+            >
+              <ShieldAlert className="h-4 w-4" /> Solicitar alteração
+            </Button>
+          )}
+          {isPedido && editRequested && !isAdmin && (
+            <Button
+              variant="ghost"
+              className="gap-2 text-muted-foreground"
+              onClick={() => {
+                _updateProposal(proposal.id, { editRequestedAt: undefined, editRequestReason: undefined, editRequestedByUserId: undefined });
+                toast.success("Solicitação de alteração cancelada");
+              }}
+            >
+              <XCircle className="h-4 w-4" /> Cancelar solicitação
+            </Button>
+          )}
+          {isPedido && !editUnlocked && isAdmin && (
+            <Button
+              className="gap-2 bg-emerald-600 hover:bg-emerald-700"
+              onClick={() => setReleaseOpen(true)}
+            >
+              <Unlock className="h-4 w-4" /> {editRequested ? "Liberar alteração" : "Desbloquear edição"}
+            </Button>
+          )}
+          {isPedido && editRequested && isAdmin && (
+            <Button
+              variant="outline"
+              className="gap-2 border-destructive text-destructive hover:bg-destructive/10"
+              onClick={() => {
+                _updateProposal(proposal.id, { editRequestedAt: undefined, editRequestReason: undefined, editRequestedByUserId: undefined });
+                toast.success("Solicitação recusada", { description: `${editRequester?.name ?? "Vendedor"} foi notificado — pedido permanece bloqueado.` });
+              }}
+            >
+              <XCircle className="h-4 w-4" /> Recusar solicitação
+            </Button>
+          )}
+          {isPedido && editUnlocked && (
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() => {
+                _updateProposal(proposal.id, { editUnlockedAt: undefined, editUnlockedByUserId: undefined, editRequestedAt: undefined, editRequestReason: undefined, editRequestedByUserId: undefined });
+                setDirty(false);
+                toast.success("Pedido re-bloqueado");
+              }}
+            >
+              <Lock className="h-4 w-4" /> Re-bloquear
+            </Button>
+          )}
+
+          {!isPedido && (
+            <Button variant="outline" className="gap-2" onClick={() => { setStatus(proposal.id, "recusada"); }}>
+              <XCircle className="h-4 w-4" /> Recusar
+            </Button>
+          )}
           <Button
             variant={dirty ? "default" : "outline"}
             className="gap-2"
             disabled={!dirty}
-            onClick={() => { setDirty(false); toast.success("Alterações salvas"); }}
+            onClick={() => {
+              // Se estava editando um pedido liberado, ao salvar re-bloqueia automaticamente.
+              if (isPedido && editUnlocked) {
+                _updateProposal(proposal.id, {
+                  editUnlockedAt: undefined,
+                  editUnlockedByUserId: undefined,
+                  editRequestedAt: undefined,
+                  editRequestReason: undefined,
+                  editRequestedByUserId: undefined,
+                });
+                setDirty(false);
+                toast.success("Alterações salvas", { description: "Pedido re-bloqueado automaticamente." });
+                return;
+              }
+              setDirty(false);
+              toast.success("Alterações salvas");
+            }}
           >
             <CheckCircle2 className="h-4 w-4" /> Salvar
           </Button>
@@ -342,6 +464,7 @@ function PropostaDetalhe() {
           </Button>
         </div>
       </div>
+
 
 
       {/* Confirm dialog for in-app navigation while dirty */}
@@ -372,6 +495,90 @@ function PropostaDetalhe() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Vendedor solicita alteração de pedido fechado */}
+      <AlertDialog open={editReqOpen} onOpenChange={setEditReqOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <ShieldAlert className="h-4 w-4 text-amber-600" />
+              Solicitar alteração do pedido {proposal.number}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              O pedido já foi fechado. Descreva o motivo da alteração — o supervisor ADM receberá a solicitação e decidirá se libera a edição.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="edit-reason">Motivo</Label>
+            <Textarea
+              id="edit-reason"
+              rows={4}
+              maxLength={500}
+              value={editReqReason}
+              onChange={(e) => setEditReqReason(e.target.value)}
+              placeholder="Ex.: cliente pediu troca de quantidade do item X; corrigir CEP de entrega..."
+            />
+            <p className="text-[11px] text-muted-foreground">{editReqReason.length}/500</p>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const reason = editReqReason.trim();
+                if (reason.length < 5) { toast.error("Descreva o motivo com pelo menos 5 caracteres."); return; }
+                _updateProposal(proposal.id, {
+                  editRequestedAt: new Date().toISOString(),
+                  editRequestReason: reason,
+                  editRequestedByUserId: currentUser.id,
+                });
+                setEditReqOpen(false);
+                toast.success("Solicitação enviada ao ADM", { description: "Você será avisado quando a edição for liberada." });
+              }}
+            >
+              Enviar solicitação
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ADM libera a edição do pedido */}
+      <AlertDialog open={releaseOpen} onOpenChange={setReleaseOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Unlock className="h-4 w-4 text-emerald-600" />
+              Liberar edição do pedido {proposal.number}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {editRequested && editRequester ? (
+                <>Vendedor <span className="font-medium text-foreground">{editRequester.name}</span> pediu:
+                  <span className="block mt-1 rounded border bg-muted/40 p-2 text-foreground italic">"{proposal.editRequestReason}"</span>
+                </>
+              ) : (
+                <>Você vai desbloquear este pedido para edição. Depois que o vendedor salvar, o pedido volta a ficar bloqueado automaticamente.</>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-emerald-600 hover:bg-emerald-700"
+              onClick={() => {
+                _updateProposal(proposal.id, {
+                  editUnlockedAt: new Date().toISOString(),
+                  editUnlockedByUserId: currentUser.id,
+                });
+                setReleaseOpen(false);
+                toast.success("Edição liberada", { description: `${editRequester?.name ?? owner?.name ?? "Vendedor"} já pode alterar o pedido.` });
+              }}
+            >
+              Liberar edição
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+
 
       {/* Editor — hidden on print */}
       <div className="grid gap-4 lg:grid-cols-3 print:hidden">

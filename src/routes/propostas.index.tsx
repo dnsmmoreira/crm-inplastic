@@ -180,10 +180,13 @@ function PropostasPage() {
               <SelectItem value="all">Todos os status</SelectItem>
               <SelectItem value="rascunho">Rascunho</SelectItem>
               <SelectItem value="enviada">Enviada</SelectItem>
+              <SelectItem value="aguardando_aprovacao">Aguardando aprovação</SelectItem>
               <SelectItem value="aprovada">Aprovada</SelectItem>
+              <SelectItem value="pedido">Pedido</SelectItem>
               <SelectItem value="recusada">Recusada</SelectItem>
             </SelectContent>
           </Select>
+
           <Button variant="outline" onClick={() => setOpenNewLead(true)} className="gap-2">
             <UserPlus className="h-4 w-4" /> Cadastrar lead
           </Button>
@@ -193,6 +196,38 @@ function PropostasPage() {
         </div>
       </div>
 
+      {(() => {
+        const pending = proposals.filter((p) => p.status === "pedido" && p.editRequestedAt && !p.editUnlockedAt);
+        if (pending.length === 0) return null;
+        return (
+          <Card className="border-amber-400 bg-amber-500/5">
+            <CardContent className="py-3 flex flex-wrap items-center gap-3 text-sm">
+              <Badge variant="outline" className="border-amber-500 text-amber-700 bg-amber-500/10">
+                {isAdmin ? "ADM" : "Você"}
+              </Badge>
+              <span className="text-amber-800">
+                {isAdmin
+                  ? `${pending.length} solicitação(ões) de alteração de pedido aguardando sua liberação.`
+                  : `${pending.length} pedido(s) seu(s) aguardando liberação de alteração pelo ADM.`}
+              </span>
+              <div className="flex flex-wrap gap-1">
+                {pending.slice(0, 5).map((p) => (
+                  <Link
+                    key={p.id}
+                    to="/propostas/$id"
+                    params={{ id: p.id }}
+                    className="rounded border border-amber-500/40 bg-white px-2 py-0.5 font-mono text-xs text-amber-800 hover:bg-amber-500/10"
+                  >
+                    {p.number}
+                  </Link>
+                ))}
+                {pending.length > 5 && <span className="text-xs text-amber-700">+{pending.length - 5}</span>}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -200,6 +235,7 @@ function PropostasPage() {
             {filtered.length} proposta(s)
           </CardTitle>
         </CardHeader>
+
         <CardContent className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -225,7 +261,18 @@ function PropostasPage() {
                     <TableCell>{format(new Date(p.createdAt), "dd/MM/yyyy", { locale: ptBR })}</TableCell>
                     <TableCell className="text-right">{t.count}</TableCell>
                     <TableCell className="text-right font-semibold">{formatBRL(t.total)}</TableCell>
-                    <TableCell><Badge variant={s.variant}>{s.label}</Badge></TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap items-center gap-1">
+                        <Badge variant={s.variant}>{s.label}</Badge>
+                        {p.status === "pedido" && p.editRequestedAt && !p.editUnlockedAt && (
+                          <Badge variant="outline" className="border-amber-500 text-amber-700 bg-amber-500/10 text-[10px]">alteração solicitada</Badge>
+                        )}
+                        {p.status === "pedido" && p.editUnlockedAt && (
+                          <Badge variant="outline" className="border-emerald-500 text-emerald-700 bg-emerald-500/10 text-[10px]">edição liberada</Badge>
+                        )}
+                      </div>
+                    </TableCell>
+
                     <TableCell className="text-right">
                       {(() => {
                         const isLocked = (p.status === "aprovada" || p.status === "pedido") && !isAdmin;

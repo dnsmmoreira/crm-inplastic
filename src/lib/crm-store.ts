@@ -582,7 +582,14 @@ export type Proposal = {
   approvedByUserId?: string;
   approvedAt?: string;
   orderCreatedAt?: string;
+  // Solicitação/liberação de alteração em pedido já fechado
+  editRequestedAt?: string;
+  editRequestReason?: string;
+  editRequestedByUserId?: string;
+  editUnlockedAt?: string;
+  editUnlockedByUserId?: string;
 };
+
 
 
 export type PaymentMethod = "Boleto" | "PIX" | "Depósito em Conta" | "Cartão" | "Dinheiro";
