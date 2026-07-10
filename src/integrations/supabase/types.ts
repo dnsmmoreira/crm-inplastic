@@ -868,6 +868,27 @@ export type Database = {
         }
         Relationships: []
       }
+      vendedor_metas: {
+        Row: {
+          created_at: string
+          meta_valor_mensal: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          meta_valor_mensal?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          meta_valor_mensal?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       whatsapp_conversas: {
         Row: {
           created_at: string
@@ -970,6 +991,7 @@ export type Database = {
           meta_atividades_dia: number
           placar_peso_carteira_60: number
           placar_peso_ganho: number
+          placar_peso_meta_batida: number
           placar_peso_pos_venda: number
           placar_peso_proposta: number
           placar_peso_sla_estourado: number
@@ -1002,6 +1024,7 @@ export type Database = {
           meta_atividades_dia?: number
           placar_peso_carteira_60?: number
           placar_peso_ganho?: number
+          placar_peso_meta_batida?: number
           placar_peso_pos_venda?: number
           placar_peso_proposta?: number
           placar_peso_sla_estourado?: number
@@ -1034,6 +1057,7 @@ export type Database = {
           meta_atividades_dia?: number
           placar_peso_carteira_60?: number
           placar_peso_ganho?: number
+          placar_peso_meta_batida?: number
           placar_peso_pos_venda?: number
           placar_peso_proposta?: number
           placar_peso_sla_estourado?: number
@@ -1149,6 +1173,9 @@ export type Database = {
           ganhos_qtd: number
           ganhos_valor: number
           leads_contatados: number
+          meta_batida: boolean
+          meta_pct: number
+          meta_valor: number
           nome: string
           perdas_qtd: number
           pos_venda_no_prazo_pct: number
