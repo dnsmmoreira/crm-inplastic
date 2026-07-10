@@ -154,6 +154,20 @@ function PropostaDetalhe() {
   const isAdmin = useIsAdmin();
   const currentUser = useCurrentUser();
   const approver = proposal?.approvedByUserId ? USERS.find((u) => u.id === proposal.approvedByUserId) : null;
+  const editRequester = proposal?.editRequestedByUserId ? USERS.find((u) => u.id === proposal.editRequestedByUserId) : null;
+  const editUnlocker = proposal?.editUnlockedByUserId ? USERS.find((u) => u.id === proposal.editUnlockedByUserId) : null;
+
+  // Pedido fechado é read-only, salvo se ADM liberou edição.
+  const isPedido = proposal?.status === "pedido";
+  const editUnlocked = Boolean(proposal?.editUnlockedAt);
+  const editRequested = Boolean(proposal?.editRequestedAt) && !editUnlocked;
+  const readOnly = isPedido && !editUnlocked;
+
+  // Estado de UI para diálogos de solicitação/liberação
+  const [editReqOpen, setEditReqOpen] = useState(false);
+  const [editReqReason, setEditReqReason] = useState("");
+  const [releaseOpen, setReleaseOpen] = useState(false);
+
 
   // Auto-recalcula peso e cubagem a partir do catálogo sempre que os itens mudam.
   const autoTransport = useMemo(
