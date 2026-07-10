@@ -314,6 +314,12 @@ export function LeadDrawer({
               </ol>
             </TabsContent>
 
+            <TabsContent value="propostas" className="mt-4">
+              <LeadProposals leadId={lead.id} />
+            </TabsContent>
+
+
+
             <TabsContent value="ia" className="mt-4 space-y-3">
               <div className="rounded-lg border bg-gradient-to-br from-primary/10 to-transparent p-4">
                 <div className="flex items-start justify-between gap-3">
