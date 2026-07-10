@@ -12,8 +12,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Trophy, TrendingUp, TrendingDown, Minus, Target, Settings2 } from "lucide-react";
-import { getPlacar, listMetas, setMeta, type PlacarPeriodo, type PlacarVendedor } from "@/lib/placar.functions";
+import { Trophy, TrendingUp, TrendingDown, Minus, Target, Settings2, History, AlertTriangle } from "lucide-react";
+import {
+  getPlacar, listMetas, setMeta, listMetasHistorico,
+  type PlacarPeriodo, type PlacarVendedor,
+} from "@/lib/placar.functions";
 import { formatBRL } from "@/lib/crm-store";
 import { cn } from "@/lib/utils";
 
@@ -38,6 +41,10 @@ const PERIODO_LABEL: Record<PlacarPeriodo, string> = {
   mes: "Este mês",
   trimestre: "Este trimestre",
 };
+const MESES_PT = [
+  "jan", "fev", "mar", "abr", "mai", "jun",
+  "jul", "ago", "set", "out", "nov", "dez",
+];
 
 function PlacarPage() {
   const { periodo } = Route.useSearch() as { periodo: PlacarPeriodo };
@@ -70,6 +77,7 @@ function PlacarPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <HistoricoDialog isAdmin={isAdmin} />
           {isAdmin && <MetasAdminDialog />}
           <Tabs
             value={periodo}
@@ -144,7 +152,7 @@ function PlacarPage() {
                   <Th className="text-right">Propostas</Th>
                   <Th className="text-right">Conv.</Th>
                   <Th className="text-right">Perdas</Th>
-                  <Th className="text-right">Contatados</Th>
+                  <Th className="text-right">Sem proposta</Th>
                   <Th className="text-right">1ª resp.</Th>
                   <Th className="text-right">SLAs</Th>
                   <Th className="text-right">Carteira em risco</Th>
@@ -168,7 +176,7 @@ function PlacarPage() {
       </Card>
 
       <p className="text-xs text-muted-foreground">
-        Meta em R$ é individual (apenas você vê a sua; admin vê todas). Bater 100% no mês soma bônus no score.
+        Meta em R$ é individual (apenas você vê a sua; admin vê todas). Bônus escalonado no score: 50% · 80% · 100% · 120%.
       </p>
     </div>
   );
@@ -177,26 +185,73 @@ function PlacarPage() {
 function MinhaMetaCard({ v }: { v: PlacarVendedor }) {
   const meta = v.meta_valor ?? 0;
   const pct = v.meta_pct ?? 0;
+  const pace = v.meta_pace_esperado_pct ?? 0;
   const faltando = Math.max(0, meta - v.ganhos_valor);
-  const cls = v.meta_batida
+  // Projeção só é exibida com 2+ vendas no mês (evita extrapolação de venda única em ciclo B2B)
+  const showProjecao = v.ganhos_qtd >= 2 && pace > 0;
+  const projPct = showProjecao ? Math.round((pct / pace) * 100) : null;
+  // status: adiantado se +5pp acima do pace, no pace se ±5pp, atrasado se -5pp
+  const gap = pct - pace;
+  const status: "adiantado" | "no_pace" | "atrasado" | "batida" =
+    v.meta_batida ? "batida"
+    : gap >= 5 ? "adiantado"
+    : gap <= -5 ? "atrasado"
+    : "no_pace";
+  const statusLabel = {
+    batida: "🎉 meta batida",
+    adiantado: "🚀 adiantado",
+    no_pace: "no pace do mês",
+    atrasado: "⚠️ abaixo do pace",
+  }[status];
+  const cls = status === "batida"
     ? "border-emerald-500/40 bg-emerald-50/60"
-    : pct >= 70
-      ? "border-primary/40 bg-primary/5"
-      : "border-border";
+    : status === "atrasado"
+      ? "border-destructive/40 bg-destructive/5"
+      : status === "adiantado"
+        ? "border-primary/50 bg-primary/5"
+        : "border-border";
+
   return (
     <Card className={cn("border", cls)}>
       <CardContent className="p-5 flex flex-wrap items-center gap-4">
-        <Target className={cn("h-6 w-6", v.meta_batida ? "text-emerald-600" : "text-primary")} />
-        <div className="flex-1 min-w-[220px]">
+        <Target className={cn("h-6 w-6",
+          status === "batida" ? "text-emerald-600"
+          : status === "atrasado" ? "text-destructive"
+          : "text-primary"
+        )} />
+        <div className="flex-1 min-w-[240px]">
           <div className="text-xs uppercase tracking-wider text-muted-foreground">Sua meta do mês</div>
           <div className="mt-0.5 font-display text-lg font-semibold">
             {formatBRL(v.ganhos_valor)} <span className="text-muted-foreground text-sm font-normal">de {formatBRL(meta)}</span>
           </div>
-          <div className="mt-2 h-2 rounded-full bg-muted overflow-hidden">
+          <div className="relative mt-2 h-2.5 rounded-full bg-muted overflow-hidden">
+            {/* marca do pace esperado */}
+            {pace > 0 && !v.meta_batida && (
+              <div
+                className="absolute top-0 h-full w-px bg-foreground/50"
+                style={{ left: `${Math.min(100, pace)}%` }}
+                title={`Pace esperado: ${pace.toFixed(0)}%`}
+              />
+            )}
             <div
-              className={cn("h-full rounded-full", v.meta_batida ? "bg-emerald-500" : "bg-primary")}
+              className={cn("h-full rounded-full",
+                status === "batida" ? "bg-emerald-500"
+                : status === "atrasado" ? "bg-destructive"
+                : "bg-primary"
+              )}
               style={{ width: `${Math.min(100, pct)}%` }}
             />
+          </div>
+          <div className="mt-1.5 flex items-center gap-2 text-xs text-muted-foreground">
+            <span>{statusLabel}</span>
+            {!v.meta_batida && pace > 0 && (
+              <span>· pace {pace.toFixed(0)}%</span>
+            )}
+            {showProjecao && !v.meta_batida && (
+              <span className="ml-auto font-medium text-foreground">
+                Projeção: {projPct}% da meta no fim do mês
+              </span>
+            )}
           </div>
         </div>
         <div className="text-right">
@@ -204,7 +259,7 @@ function MinhaMetaCard({ v }: { v: PlacarVendedor }) {
             {pct.toFixed(0)}%
           </div>
           <div className="text-xs text-muted-foreground">
-            {v.meta_batida ? "🎉 meta batida" : `faltam ${formatBRL(faltando)}`}
+            {v.meta_batida ? "meta atingida" : `faltam ${formatBRL(faltando)}`}
           </div>
         </div>
       </CardContent>
@@ -229,6 +284,13 @@ function Row({
       ? { text: `${v.carteira_45_60} · 45-60d`, cls: "text-amber-600 font-medium" }
       : { text: "—", cls: "text-muted-foreground" };
   const progressPct = maxScore > 0 ? Math.max(0, Math.min(100, (v.score / maxScore) * 100)) : 0;
+  const dsp = v.dias_sem_proposta;
+  const dspOver = dsp != null && dsp >= v.dias_sem_proposta_limite;
+  const dspWarn = dsp != null && dsp >= Math.max(1, v.dias_sem_proposta_limite - 3);
+  const dspCls = dsp == null ? "text-muted-foreground"
+    : dspOver ? "text-destructive font-semibold"
+    : dspWarn ? "text-amber-600 font-medium"
+    : "text-muted-foreground";
 
   return (
     <tr className={cn("border-t", lider && "bg-primary/5")}>
@@ -288,7 +350,14 @@ function Row({
         {v.conversao === null ? "—" : `${v.conversao.toFixed(1)}%`}
       </Td>
       <Td className="text-right">{v.perdas_qtd}</Td>
-      <Td className="text-right">{v.leads_contatados}</Td>
+      <Td className={cn("text-right whitespace-nowrap", dspCls)}>
+        {dsp == null ? "—" : (
+          <span className="inline-flex items-center gap-1">
+            {dspOver && <AlertTriangle className="h-3.5 w-3.5" />}
+            {dsp}d
+          </span>
+        )}
+      </Td>
       <Td className="text-right">
         {v.tempo_medio_primeira_resposta_min > 0
           ? `${fmtMinutes(v.tempo_medio_primeira_resposta_min)}`
@@ -306,6 +375,99 @@ function Row({
         {v.pos_venda_no_prazo_pct === null ? "—" : `${v.pos_venda_no_prazo_pct.toFixed(0)}%`}
       </Td>
     </tr>
+  );
+}
+
+function HistoricoDialog({ isAdmin }: { isAdmin: boolean }) {
+  const [open, setOpen] = useState(false);
+  const fetchHist = useServerFn(listMetasHistorico);
+  const { data, isLoading } = useQuery({
+    queryKey: ["placar", "historico", 6],
+    queryFn: () => fetchHist({ data: { meses: 6 } }),
+    enabled: open,
+  });
+
+  // agrupa por vendedor
+  const grupos = new Map<string, { nome: string; color: string; rows: any[] }>();
+  (data ?? []).forEach((r) => {
+    if (!grupos.has(r.user_id)) grupos.set(r.user_id, { nome: r.nome, color: r.avatar_color, rows: [] });
+    grupos.get(r.user_id)!.rows.push(r);
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm" className="gap-2">
+          <History className="h-4 w-4" />
+          Histórico
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Histórico de metas — últimos 6 meses</DialogTitle>
+        </DialogHeader>
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground">Carregando…</p>
+        ) : (data ?? []).length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Nenhum mês fechado ainda. O snapshot roda no fechamento do último dia útil do mês.
+          </p>
+        ) : (
+          <div className="space-y-5 max-h-[70vh] overflow-y-auto pr-1">
+            {Array.from(grupos.entries()).map(([uid, g]) => (
+              <div key={uid} className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <div
+                    className="flex h-7 w-7 items-center justify-center rounded-full text-white text-xs font-semibold shrink-0"
+                    style={{ background: g.color }}
+                  >
+                    {initials(g.nome)}
+                  </div>
+                  <span className="font-medium">{g.nome}</span>
+                </div>
+                <div className="overflow-x-auto rounded-md border">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground">
+                      <tr>
+                        <Th>Mês</Th>
+                        <Th className="text-right">Meta</Th>
+                        <Th className="text-right">Fechado</Th>
+                        <Th className="text-right">Vendas</Th>
+                        <Th className="text-right">Atingido</Th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {g.rows.map((r) => (
+                        <tr key={`${r.ano}-${r.mes}`} className="border-t">
+                          <Td className="capitalize">{MESES_PT[r.mes - 1]}/{String(r.ano).slice(2)}</Td>
+                          <Td className="text-right text-muted-foreground">{formatBRL(r.meta_valor)}</Td>
+                          <Td className="text-right font-medium">{formatBRL(r.ganhos_valor)}</Td>
+                          <Td className="text-right">{r.ganhos_qtd}</Td>
+                          <Td className={cn(
+                            "text-right font-medium",
+                            r.bateu ? "text-emerald-600" : r.atingido_pct < 60 ? "text-destructive" : "text-foreground",
+                          )}>
+                            {r.atingido_pct.toFixed(0)}% {r.bateu && "🎯"}
+                          </Td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        {isAdmin && (
+          <p className="text-xs text-muted-foreground">
+            Admin: snapshots são gerados automaticamente no fechamento do último dia útil de cada mês.
+          </p>
+        )}
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setOpen(false)}>Fechar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
