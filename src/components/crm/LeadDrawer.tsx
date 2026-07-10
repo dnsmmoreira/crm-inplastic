@@ -51,8 +51,10 @@ import {
   formatBRL,
   leadTemperature,
   followupTemperature,
+  proposalTotals,
   type Lead,
   type Interaction,
+  type Proposal,
 } from "@/lib/crm-store";
 import { toast } from "sonner";
 import { computeLeadScore, faturamentoTetoPorPorte } from "@/lib/lead-score";
