@@ -114,6 +114,12 @@ export function LeadDrawer({
                   const t = leadTemperature(lead);
                   const f = followupTemperature(lead);
                   const sc = computeLeadScore(lead);
+                  const dias = Math.floor((Date.now() - new Date(lead.lastContact ?? lead.createdAt).getTime()) / 86400000);
+                  const diasClass =
+                    dias >= 60 ? "bg-red-500/10 text-red-700 border-red-500/30"
+                    : dias >= 45 ? "bg-orange-500/10 text-orange-700 border-orange-500/30"
+                    : dias >= 30 ? "bg-amber-500/10 text-amber-700 border-amber-500/30"
+                    : "bg-emerald-500/10 text-emerald-700 border-emerald-500/30";
                   return (
                     <>
                       <Badge variant="outline" className={`text-xs ${t.className}`} title={t.hint}>
@@ -121,6 +127,9 @@ export function LeadDrawer({
                       </Badge>
                       <Badge variant="outline" className={`text-xs ${f.className}`} title={f.hint}>
                         <span className="mr-1">{f.emoji}</span>Agenda: {f.label} · {f.hint}
+                      </Badge>
+                      <Badge variant="outline" className={`text-xs ${diasClass}`} title="Dias desde o último contato">
+                        📅 {dias}d s/ contato
                       </Badge>
                       <Badge
                         variant="outline"
