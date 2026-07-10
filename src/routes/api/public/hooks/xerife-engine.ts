@@ -200,7 +200,7 @@ async function runEngine(
         descricao: `Lead entrou há mais de ${cfg.sla_primeiro_contato_min} min úteis e não teve nenhum contato.`,
         prioridade: 1,
       });
-      await logAction(sb, {
+      await log(sb, {
         regra, leadId: l.id, vendedorId: l.owner_id,
         acao: "tarefa criada",
         payload: { created_at: l.created_at, sla_min: cfg.sla_primeiro_contato_min },
@@ -215,7 +215,7 @@ async function runEngine(
             `🚨 Lead sem contato há +${cfg.sla_primeiro_contato_escalar_min}min úteis\n\n` +
             `Cliente: ${l.company}\nMotivo: vendedor não fez primeiro contato\n${crmLeadLink(l.id)}`,
           );
-          await logAction(sb, {
+          await log(sb, {
             regra: escRegra, leadId: l.id, vendedorId: l.owner_id,
             acao: "diretoria notificada",
             payload: { sla_escalar_min: cfg.sla_primeiro_contato_escalar_min },
@@ -251,8 +251,8 @@ async function runEngine(
           descricao: `Lead parado em "${stage}" há +${maxDias} dias. Ligar/definir próximo passo.`,
           prioridade: 2,
         });
-        await sb.from("leads").update({ esfriando: true }).eq("id", l.id);
-        await logAction(sb, {
+        await marcarEsfriando(l.id, l.company, l.owner_id, regra);
+        await log(sb, {
           regra, leadId: l.id, vendedorId: l.owner_id,
           acao: "tarefa criada + esfriando=true",
           payload: { stage, max_dias: maxDias, etapa_changed_at: l.etapa_changed_at },
@@ -300,7 +300,7 @@ async function runEngine(
         descricao: `Cliente enviou mensagem há +${cfg.sla_resposta_whatsapp_horas}h úteis sem resposta.`,
         prioridade: 1,
       });
-      await logAction(sb, {
+      await log(sb, {
         regra, leadId: l.id, vendedorId: l.owner_id,
         acao: "tarefa criada",
         payload: { ultima_msg_cliente_at: l.ultima_msg_cliente_at, sla_h: cfg.sla_resposta_whatsapp_horas },
@@ -314,7 +314,7 @@ async function runEngine(
             `🚨 Cliente sem resposta +${cfg.sla_resposta_whatsapp_escalar_horas}h úteis\n\n` +
             `Cliente: ${l.company}\n${crmLeadLink(l.id)}`,
           );
-          await logAction(sb, {
+          await log(sb, {
             regra: escRegra, leadId: l.id, vendedorId: l.owner_id,
             acao: "diretoria notificada",
           });
@@ -349,7 +349,7 @@ async function runEngine(
         descricao: `Proposta enviada há ${passo} dias. Cadência: ${cfg.cadencia_proposta_dias.join("/")}.`,
         prioridade: 2,
       });
-      await logAction(sb, {
+      await log(sb, {
         regra, leadId: l.id, vendedorId: l.owner_id,
         acao: "tarefa criada",
         payload: { dias_corridos: diasCorridos, cadencia: cfg.cadencia_proposta_dias },
@@ -383,7 +383,7 @@ async function runEngine(
         descricao: `Cliente ganho sem contato há +${cfg.carteira_alerta_dias} dias.`,
         prioridade: 3,
       });
-      await logAction(sb, {
+      await log(sb, {
         regra, leadId: l.id, clienteId: l.id, vendedorId: l.owner_id,
         acao: "tarefa criada",
         payload: { last_contact_at: l.last_contact_at },
@@ -419,7 +419,7 @@ async function runEngine(
       await notifyDiretoria(
         `🔴 Cliente ganho abandonado +${cfg.carteira_critico_dias}d\n\n${l.company}\n${crmLeadLink(l.id)}`,
       );
-      await logAction(sb, {
+      await log(sb, {
         regra, leadId: l.id, clienteId: l.id, vendedorId: l.owner_id,
         acao: "tarefa + diretoria",
         payload: { last_contact_at: l.last_contact_at },
@@ -451,7 +451,7 @@ async function runEngine(
         descricao: `Perdido há +${cfg.reciclagem_perdidos_dias} dias. Vale nova tentativa.`,
         prioridade: 4,
       });
-      await logAction(sb, {
+      await log(sb, {
         regra, leadId: l.id, vendedorId: l.owner_id,
         acao: "tarefa criada",
         payload: { updated_at: l.updated_at },
@@ -496,7 +496,7 @@ async function runEngine(
           descricao: `Pós-venda D+${d}. Requer nota de conclusão.`,
           prioridade: 2,
         });
-        await logAction(sb, {
+        await log(sb, {
           regra, leadId: l.id, clienteId: l.id, vendedorId: l.owner_id,
           acao: "tarefa criada",
           payload: { d, tipo },
@@ -506,7 +506,7 @@ async function runEngine(
     }
   }
 
-  return { ran: true, stats };
+  return { ran: true, stats, plan, dryRun };
 }
 
 export const Route = createFileRoute("/api/public/hooks/xerife-engine")({
