@@ -23,6 +23,19 @@ import {
 import { alreadyActed, hasOpenTask, logAction } from "@/lib/xerife/dedupe.server";
 import { notifyOwner, notifyDiretoria, crmLeadLink } from "@/lib/xerife/notify.server";
 
+export type XerifePlanItem = {
+  regra: string;
+  lead_id: string;
+  lead_company: string | null;
+  owner_id: string | null;
+  tipo: string;
+  titulo: string;
+  descricao: string;
+  motivo: string;
+  prioridade: number;
+  acao: "criar_tarefa" | "notificar_diretoria" | "marcar_esfriando";
+};
+
 type Cfg = {
   ativo: boolean;
   sla_primeiro_contato_min: number;
@@ -62,18 +75,24 @@ async function loadCfg(): Promise<Cfg> {
 
 type Stats = Record<string, number>;
 
-async function runEngine(force = false): Promise<{
+async function runEngine(
+  opts: { force?: boolean; dryRun?: boolean } = {},
+): Promise<{
   ran: boolean;
   reason?: string;
   stats: Stats;
+  plan: XerifePlanItem[];
+  dryRun: boolean;
 }> {
+  const force = opts.force ?? false;
+  const dryRun = opts.dryRun ?? false;
   const { supabaseAdmin: sb } = await import("@/integrations/supabase/client.server");
   const cfg = await loadCfg();
-  if (!cfg.ativo) return { ran: false, reason: "xerife inativo", stats: {} };
+  if (!cfg.ativo) return { ran: false, reason: "xerife inativo", stats: {}, plan: [], dryRun };
 
   const win: BusinessWindow = { inicio: cfg.dias_uteis_inicio, fim: cfg.dias_uteis_fim };
   if (!force && !isBusinessNow(win)) {
-    return { ran: false, reason: "fora do horário útil SP", stats: {} };
+    return { ran: false, reason: "fora do horário útil SP", stats: {}, plan: [], dryRun };
   }
 
   const stats: Stats = {
@@ -87,16 +106,28 @@ async function runEngine(force = false): Promise<{
     c_pos_venda: 0,
   };
 
+  const plan: XerifePlanItem[] = [];
+
   async function criarTarefa(t: {
     lead_id: string;
+    lead_company: string | null;
     owner_id: string | null;
     tipo: string;
     titulo: string;
     descricao: string;
+    motivo: string;
+    regra: string;
     prioridade: number;
     horaSugerida?: string;
     dueDate?: Date;
   }) {
+    plan.push({
+      regra: t.regra, lead_id: t.lead_id, lead_company: t.lead_company,
+      owner_id: t.owner_id, tipo: t.tipo, titulo: t.titulo,
+      descricao: t.descricao, motivo: t.motivo, prioridade: t.prioridade,
+      acao: "criar_tarefa",
+    });
+    if (dryRun) return;
     await sb.from("tarefas").insert({
       lead_id: t.lead_id,
       owner_id: t.owner_id,
@@ -111,6 +142,33 @@ async function runEngine(force = false): Promise<{
       origem: "xerife",
     });
   }
+
+  const log = async (...args: Parameters<typeof logAction>) => {
+    if (dryRun) return;
+    return logAction(...args);
+  };
+  const alertDiretoria = async (
+    msg: string,
+    ctx: { regra: string; lead_id: string; lead_company: string | null; owner_id: string | null },
+  ) => {
+    plan.push({
+      regra: ctx.regra, lead_id: ctx.lead_id, lead_company: ctx.lead_company,
+      owner_id: ctx.owner_id, tipo: "alerta_diretoria", titulo: "Notificar diretoria",
+      descricao: msg, motivo: msg, prioridade: 0, acao: "notificar_diretoria",
+    });
+    if (dryRun) return;
+    await notifyDiretoria(msg);
+  };
+  const marcarEsfriando = async (leadId: string, company: string | null, ownerId: string | null, regra: string) => {
+    plan.push({
+      regra, lead_id: leadId, lead_company: company, owner_id: ownerId,
+      tipo: "esfriando", titulo: "Marcar lead como esfriando",
+      descricao: "Definir esfriando=true", motivo: "lead parado além do máximo",
+      prioridade: 3, acao: "marcar_esfriando",
+    });
+    if (dryRun) return;
+    await sb.from("leads").update({ esfriando: true }).eq("id", leadId);
+  };
 
   const now = new Date();
 
