@@ -42,6 +42,7 @@ import {
   runResumoDiarioNow,
 } from "@/lib/xerife.functions";
 import { CadenciaPanel } from "@/components/xerife/CadenciaPanel";
+import { XerifeConfigForm } from "@/components/xerife/XerifeConfigForm";
 
 export const Route = createFileRoute("/agente-ia")({
   component: AgenteIaPage,
@@ -291,7 +292,6 @@ function TestResumoButton() {
   );
 }
 
-import { XerifeConfigForm } from "@/components/xerife/XerifeConfigForm";
 
 function StatCard({
   label, value, tone, icon,
