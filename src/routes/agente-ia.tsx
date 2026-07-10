@@ -5,22 +5,17 @@ import { ptBR } from "date-fns/locale";
 import {
   Bot,
   Sparkles,
-  Zap,
   MessageCircle,
   Clock,
   ChevronRight,
   CalendarClock,
   AlertTriangle,
-  Settings2,
   RefreshCw,
   Play,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
 import {
   Select,
   SelectContent,
@@ -35,8 +30,6 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useServerFn } from "@tanstack/react-start";
 import {
-  getXerifeConfig,
-  updateXerifeConfig,
   listAiActions,
   runXerifeNow,
   runResumoDiarioNow,
@@ -215,8 +208,16 @@ function AgenteIaPage() {
           )}
         </TabsContent>
 
-        <TabsContent value="config" className="mt-6">
-          {isAdmin ? <XerifeConfigForm /> : (
+        <TabsContent value="config" className="mt-6 space-y-4">
+          {isAdmin ? (
+            <>
+              <XerifeConfigForm />
+              <div className="rounded-xl border bg-card p-5">
+                <h3 className="font-medium mb-2">Testar envio</h3>
+                <TestResumoButton />
+              </div>
+            </>
+          ) : (
             <div className="rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">
               Somente administradores podem editar as regras do Xerife.
             </div>
