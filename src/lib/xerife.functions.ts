@@ -110,3 +110,30 @@ export const runXerifeEngineNow = createServerFn({ method: "POST" })
     const { runXerifeEngine } = await import("@/routes/api/public/hooks/xerife-engine");
     return runXerifeEngine(true);
   });
+
+/** Dispara Agenda Diária agora (07:30). Somente admin. */
+export const runAgendaDiariaNow = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context);
+    const { runAgendaDiaria } = await import("@/routes/api/public/hooks/xerife-agenda-diaria");
+    return runAgendaDiaria(true);
+  });
+
+/** Dispara Checkpoint agora (13:00). Somente admin. */
+export const runCheckpointNow = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context);
+    const { runCheckpoint } = await import("@/routes/api/public/hooks/xerife-checkpoint");
+    return runCheckpoint(true);
+  });
+
+/** Dispara Fechamento agora (18:00). Somente admin. */
+export const runFechamentoNow = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context);
+    const { runFechamento } = await import("@/routes/api/public/hooks/xerife-fechamento");
+    return runFechamento(true);
+  });
