@@ -234,6 +234,8 @@ export function CadenciaPanel({
           )}
         </section>
       </div>
+
+      <XerifeSimulator onOpenLead={onOpenLead} />
     </div>
   );
 }
