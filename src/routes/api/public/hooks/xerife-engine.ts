@@ -535,7 +535,8 @@ export const Route = createFileRoute("/api/public/hooks/xerife-engine")({
         try {
           const url = new URL(request.url);
           const force = url.searchParams.get("force") === "1";
-          const result = await runEngine(force);
+          const dryRun = url.searchParams.get("dryRun") === "1";
+          const result = await runEngine({ force, dryRun });
           return Response.json({ ok: true, at: new Date().toISOString(), ...result });
         } catch (e) {
           console.error("[xerife-engine] error:", e);
