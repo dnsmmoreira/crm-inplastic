@@ -261,7 +261,18 @@ function PropostasPage() {
                     <TableCell>{format(new Date(p.createdAt), "dd/MM/yyyy", { locale: ptBR })}</TableCell>
                     <TableCell className="text-right">{t.count}</TableCell>
                     <TableCell className="text-right font-semibold">{formatBRL(t.total)}</TableCell>
-                    <TableCell><Badge variant={s.variant}>{s.label}</Badge></TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap items-center gap-1">
+                        <Badge variant={s.variant}>{s.label}</Badge>
+                        {p.status === "pedido" && p.editRequestedAt && !p.editUnlockedAt && (
+                          <Badge variant="outline" className="border-amber-500 text-amber-700 bg-amber-500/10 text-[10px]">alteração solicitada</Badge>
+                        )}
+                        {p.status === "pedido" && p.editUnlockedAt && (
+                          <Badge variant="outline" className="border-emerald-500 text-emerald-700 bg-emerald-500/10 text-[10px]">edição liberada</Badge>
+                        )}
+                      </div>
+                    </TableCell>
+
                     <TableCell className="text-right">
                       {(() => {
                         const isLocked = (p.status === "aprovada" || p.status === "pedido") && !isAdmin;
