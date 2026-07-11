@@ -63,6 +63,8 @@ const empty = {
   ncm: "",
   defaultPrice: 0,
   active: true,
+  pecasPorColuna: 1,
+  family: "",
 };
 
 function ProdutosPage() {

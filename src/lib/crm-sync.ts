@@ -135,6 +135,8 @@ function rowToProduct(r: ProductRow): Product {
     ncm: r.ncm ?? "",
     defaultPrice: Number(r.default_price ?? 0),
     active: !!r.active,
+    pecasPorColuna: Number((r as unknown as { pecas_por_coluna?: number }).pecas_por_coluna ?? 1) || 1,
+    family: (r as unknown as { family?: string | null }).family ?? undefined,
   };
 }
 function productToInsert(p: Product): ProductInsert {
@@ -151,6 +153,10 @@ function productToInsert(p: Product): ProductInsert {
     ncm: p.ncm ?? null,
     default_price: p.defaultPrice,
     active: p.active,
+    // @ts-expect-error — coluna nova ainda não gerada em types.ts
+    pecas_por_coluna: p.pecasPorColuna ?? 1,
+    // @ts-expect-error — coluna nova ainda não gerada em types.ts
+    family: p.family ?? null,
   };
 }
 

@@ -1112,6 +1112,18 @@ export const useCrm = create<CrmState>()(
       freightConfig: DEFAULT_FREIGHT_CONFIG,
       setFreightConfig: (patch) =>
         set((s) => ({ freightConfig: { ...s.freightConfig, ...patch } })),
+
+      fleet: (require("@/lib/logistica") as typeof import("@/lib/logistica")).DEFAULT_FLEET,
+      setFleet: (list) => set({ fleet: list }),
+      upsertFleetVehicle: (v) =>
+        set((s) => {
+          const idx = s.fleet.findIndex((x) => x.id === v.id);
+          if (idx < 0) return { fleet: [...s.fleet, v] };
+          const next = s.fleet.slice();
+          next[idx] = v;
+          return { fleet: next };
+        }),
+      removeFleetVehicle: (id) => set((s) => ({ fleet: s.fleet.filter((v) => v.id !== id) })),
     }),
 );
 
