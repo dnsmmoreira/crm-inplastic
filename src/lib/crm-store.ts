@@ -448,6 +448,8 @@ export type Product = {
   ncm: string;
   defaultPrice: number;  // preço unitário sugerido
   active: boolean;
+  pecasPorColuna: number; // logística: quantas peças empilham por coluna
+  family?: string;        // agrupador opcional (ex.: "HV", "Container Bin")
 };
 
 const seedProducts: Product[] = [
@@ -755,6 +757,11 @@ type CrmState = {
   freightConfig: FreightConfig;
   setFreightConfig: (patch: Partial<FreightConfig>) => void;
 
+  // Frota (ADM-managed) — alimenta calculadora de logística
+  fleet: import("@/lib/logistica").FleetVehicle[];
+  setFleet: (list: import("@/lib/logistica").FleetVehicle[]) => void;
+  upsertFleetVehicle: (v: import("@/lib/logistica").FleetVehicle) => void;
+  removeFleetVehicle: (id: string) => void;
 };
 
 const uid = () =>
