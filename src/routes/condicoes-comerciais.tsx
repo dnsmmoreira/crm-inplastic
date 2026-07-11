@@ -559,4 +559,193 @@ function FreightConfigEditor() {
   );
 }
 
+// ============ Frota (calculadora de logística) ============
+
+import { Truck, Plus as PlusIcon } from "lucide-react";
+import type { FleetVehicle, FleetVehicleType } from "@/lib/logistica";
+
+const VEHICLE_TYPES: { value: FleetVehicleType; label: string }[] = [
+  { value: "vuc", label: "VUC" },
+  { value: "3_4", label: "3/4" },
+  { value: "toco", label: "Toco" },
+  { value: "truck", label: "Truck" },
+  { value: "carreta", label: "Carreta" },
+  { value: "container_20", label: "Container 20'" },
+  { value: "container_40", label: "Container 40'" },
+  { value: "bitrem", label: "Bitrem" },
+  { value: "rodotrem", label: "Rodotrem" },
+];
+
+function FrotaCard() {
+  const fleet = useCrm((s) => s.fleet);
+  const upsert = useCrm((s) => s.upsertFleetVehicle);
+  const remove = useCrm((s) => s.removeFleetVehicle);
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<FleetVehicle | null>(null);
+
+  const empty: FleetVehicle = {
+    id: "",
+    nome: "",
+    tipo: "truck",
+    comprimentoUtilM: 0,
+    larguraUtilM: 0,
+    alturaUtilM: 0,
+    capacidadeKg: 0,
+    rsPorKm: 0,
+    ativo: true,
+  };
+  const [form, setForm] = useState<FleetVehicle>(empty);
+
+  const openNew = () => {
+    setEditing(null);
+    setForm({ ...empty, id: `v-${Math.random().toString(36).slice(2, 8)}` });
+    setOpen(true);
+  };
+  const openEdit = (v: FleetVehicle) => {
+    setEditing(v);
+    setForm(v);
+    setOpen(true);
+  };
+  const save = () => {
+    if (!form.nome.trim()) {
+      toast.error("Nome obrigatório");
+      return;
+    }
+    upsert(form);
+    toast.success(editing ? "Veículo atualizado" : "Veículo cadastrado");
+    setOpen(false);
+  };
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0">
+        <div>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Truck className="h-4 w-4 text-primary" />
+            Frota — calculadora de logística
+          </CardTitle>
+          <p className="text-xs text-muted-foreground mt-1">
+            Dimensões úteis e R$/km alimentam o cálculo de peso, cubagem e frete por veículo nas propostas.
+          </p>
+        </div>
+        <Button size="sm" onClick={openNew}>
+          <PlusIcon className="h-4 w-4 mr-1" /> Veículo
+        </Button>
+      </CardHeader>
+      <CardContent className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Nome</TableHead>
+              <TableHead>Tipo</TableHead>
+              <TableHead className="text-right">C×L×A útil (m)</TableHead>
+              <TableHead className="text-right">Capac. (kg)</TableHead>
+              <TableHead className="text-right">R$/km</TableHead>
+              <TableHead>Ativo</TableHead>
+              <TableHead />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {fleet.map((v) => (
+              <TableRow key={v.id}>
+                <TableCell className="font-medium">{v.nome}</TableCell>
+                <TableCell className="text-xs text-muted-foreground">
+                  {VEHICLE_TYPES.find((t) => t.value === v.tipo)?.label ?? v.tipo}
+                </TableCell>
+                <TableCell className="text-right text-xs font-mono">
+                  {v.comprimentoUtilM.toFixed(2)}×{v.larguraUtilM.toFixed(2)}×{v.alturaUtilM.toFixed(2)}
+                </TableCell>
+                <TableCell className="text-right">{v.capacidadeKg.toLocaleString("pt-BR")}</TableCell>
+                <TableCell className="text-right">R$ {v.rsPorKm.toFixed(2)}</TableCell>
+                <TableCell>
+                  {v.ativo ? <Badge variant="secondary">Ativo</Badge> : <Badge variant="outline">Inativo</Badge>}
+                </TableCell>
+                <TableCell className="text-right">
+                  <Button size="icon" variant="ghost" onClick={() => openEdit(v)}>
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => {
+                      if (confirm(`Remover ${v.nome}?`)) {
+                        remove(v.id);
+                        toast.success("Veículo removido");
+                      }
+                    }}
+                  >
+                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+            {fleet.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-8">
+                  Nenhum veículo cadastrado.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </CardContent>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{editing ? "Editar veículo" : "Novo veículo"}</DialogTitle>
+            <DialogDescription>
+              Dimensões úteis = espaço realmente utilizável para carga (menor que as externas).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Nome</Label>
+              <Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} />
+            </div>
+            <div>
+              <Label>Tipo</Label>
+              <Select value={form.tipo} onValueChange={(v) => setForm({ ...form, tipo: v as FleetVehicleType })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {VEHICLE_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Comprimento útil (m)</Label>
+              <Input type="number" step="0.01" value={form.comprimentoUtilM} onChange={(e) => setForm({ ...form, comprimentoUtilM: Number(e.target.value) })} />
+            </div>
+            <div>
+              <Label>Largura útil (m)</Label>
+              <Input type="number" step="0.01" value={form.larguraUtilM} onChange={(e) => setForm({ ...form, larguraUtilM: Number(e.target.value) })} />
+            </div>
+            <div>
+              <Label>Altura útil (m)</Label>
+              <Input type="number" step="0.01" value={form.alturaUtilM} onChange={(e) => setForm({ ...form, alturaUtilM: Number(e.target.value) })} />
+            </div>
+            <div>
+              <Label>Capacidade (kg)</Label>
+              <Input type="number" step="1" value={form.capacidadeKg} onChange={(e) => setForm({ ...form, capacidadeKg: Number(e.target.value) })} />
+            </div>
+            <div>
+              <Label>R$ por km</Label>
+              <Input type="number" step="0.01" value={form.rsPorKm} onChange={(e) => setForm({ ...form, rsPorKm: Number(e.target.value) })} />
+            </div>
+            <div className="flex items-center gap-2 pt-6">
+              <Switch checked={form.ativo} onCheckedChange={(v) => setForm({ ...form, ativo: v })} />
+              <Label>Ativo (entra nas cotações)</Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
+            <Button onClick={save}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </Card>
+  );
+}
+
+
 
