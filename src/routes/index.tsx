@@ -39,7 +39,9 @@ import { ptBR } from "date-fns/locale";
 import { useCrm, STAGES, formatBRL, useVisibleLeads, useVisibleTasks, useCurrentUser, followupTemperature } from "@/lib/crm-store";
 import { PlacarWidget } from "@/components/placar/PlacarWidget";
 import { NewLeadDialog, LeadDrawer } from "@/components/crm/LeadDrawer";
+import { ResumoDoDia } from "@/components/dashboard/ResumoDoDia";
 import { Link } from "@tanstack/react-router";
+
 
 export const Route = createFileRoute("/")({
   component: DashboardPage,
@@ -112,7 +114,10 @@ function DashboardPage() {
 
   return (
     <div className="p-4 md:p-8 space-y-6">
+      <ResumoDoDia />
+
       <div className="flex flex-wrap items-center justify-between gap-3">
+
         <div>
           <h1 className="text-2xl md:text-3xl font-semibold">
             Olá, {user.name.split(" ")[0]}
