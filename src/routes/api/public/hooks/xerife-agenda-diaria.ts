@@ -105,7 +105,7 @@ async function runAgendaDiaria(force = false): Promise<{
       return (TIPO_ORDEM[a.tipo] ?? 99) - (TIPO_ORDEM[b.tipo] ?? 99);
     });
 
-    if (!lista.length) continue;
+    if (!lista.length) { vendedoresSemNada++; continue; }
 
     // Buscar company dos leads
     const leadIds = Array.from(new Set(lista.map((t: any) => t.lead_id).filter(Boolean)));
