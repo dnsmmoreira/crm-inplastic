@@ -16,12 +16,18 @@ function startOfTodayIso(): string {
 
 async function runCheckpoint(force = false): Promise<{ vendedoresNotificados: number }> {
   const { supabaseAdmin: sb } = await import("@/integrations/supabase/client.server");
+
+  if (!force && (await alreadyActed(sb, "checkpoint", null, 5))) {
+    return { vendedoresNotificados: 0 };
+  }
+
   const { data: vendedores } = await sb.from("user_roles").select("user_id").eq("role", "vendedor" as any);
   let vendedoresNotificados = 0;
+  let vendedoresSemNada = 0;
+  const vendedoresProcessados = (vendedores ?? []).length;
 
   for (const v of vendedores ?? []) {
     const uid = v.user_id;
-    if (!force && (await alreadyActed(sb, "checkpoint", null, 5))) break;
 
     const { data: pendentes } = await sb
       .from("tarefas")
@@ -39,7 +45,7 @@ async function runCheckpoint(force = false): Promise<{ vendedoresNotificados: nu
 
     const pend = pendentes ?? [];
     const feitas = (concluidasHoje as any)?.count ?? 0;
-    if (pend.length === 0 && feitas === 0) continue;
+    if (pend.length === 0 && feitas === 0) { vendedoresSemNada++; continue; }
 
     const criticas = pend.filter((t: any) => (t.prioridade ?? 3) <= 1 || (t.escalonamentos ?? 0) > 0);
     const lines: string[] = [];
@@ -60,6 +66,14 @@ async function runCheckpoint(force = false): Promise<{ vendedoresNotificados: nu
       });
     }
   }
+
+  // Heartbeat: sempre grava uma linha por execução (mesmo sem envio)
+  await logAction(sb, {
+    regra: "checkpoint",
+    acao: `checkpoint → ${vendedoresNotificados} enviado(s), ${vendedoresSemNada}/${vendedoresProcessados} sem nada`,
+    payload: { vendedoresNotificados, vendedoresSemNada, vendedoresProcessados },
+  });
+
   return { vendedoresNotificados };
 }
 

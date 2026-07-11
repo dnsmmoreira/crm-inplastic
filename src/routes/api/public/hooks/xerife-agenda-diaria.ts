@@ -52,12 +52,17 @@ async function runAgendaDiaria(force = false): Promise<{
   let totalTarefas = 0;
   let antecipadas = 0;
 
+  // dedupe global (mantém comportamento): se já rodou nas últimas 20h, sai antes do loop
+  if (!force && (await alreadyActed(sb, "agenda_diaria", null, 20))) {
+    return { vendedoresNotificados: 0, totalTarefas: 0, antecipadas: 0 };
+  }
+
+  let vendedoresSemNada = 0;
+  const vendedoresProcessados = (vendedores ?? []).length;
+
   for (const v of vendedores ?? []) {
     const uid = v.user_id;
-    if (!force && (await alreadyActed(sb, "agenda_diaria", null, 20))) {
-      // dedupe global — se já rodou nas últimas 20h, sai
-      break;
-    }
+
 
     // Tarefas de hoje (pendente/adiada) desse vendedor
     const { data: hoje } = await sb
@@ -100,7 +105,7 @@ async function runAgendaDiaria(force = false): Promise<{
       return (TIPO_ORDEM[a.tipo] ?? 99) - (TIPO_ORDEM[b.tipo] ?? 99);
     });
 
-    if (!lista.length) continue;
+    if (!lista.length) { vendedoresSemNada++; continue; }
 
     // Buscar company dos leads
     const leadIds = Array.from(new Set(lista.map((t: any) => t.lead_id).filter(Boolean)));
@@ -134,6 +139,13 @@ async function runAgendaDiaria(force = false): Promise<{
       });
     }
   }
+
+  // Heartbeat: sempre grava uma linha por execução (mesmo sem envio)
+  await logAction(sb, {
+    regra: "agenda_diaria",
+    acao: `agenda → ${vendedoresNotificados} enviada(s), ${totalTarefas} tarefa(s), ${vendedoresSemNada}/${vendedoresProcessados} sem nada`,
+    payload: { vendedoresNotificados, totalTarefas, antecipadas, vendedoresSemNada, vendedoresProcessados },
+  });
 
   return { vendedoresNotificados, totalTarefas, antecipadas };
 }
