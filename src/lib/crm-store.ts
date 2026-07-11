@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { DEFAULT_FLEET, type FleetVehicle } from "@/lib/logistica";
 
 
 export type UserRole = "admin" | "vendedor";
@@ -766,9 +767,9 @@ type CrmState = {
   setFreightConfig: (patch: Partial<FreightConfig>) => void;
 
   // Frota (ADM-managed) — alimenta calculadora de logística
-  fleet: import("@/lib/logistica").FleetVehicle[];
-  setFleet: (list: import("@/lib/logistica").FleetVehicle[]) => void;
-  upsertFleetVehicle: (v: import("@/lib/logistica").FleetVehicle) => void;
+  fleet: FleetVehicle[];
+  setFleet: (list: FleetVehicle[]) => void;
+  upsertFleetVehicle: (v: FleetVehicle) => void;
   removeFleetVehicle: (id: string) => void;
 };
 
@@ -1121,7 +1122,7 @@ export const useCrm = create<CrmState>()(
       setFreightConfig: (patch) =>
         set((s) => ({ freightConfig: { ...s.freightConfig, ...patch } })),
 
-      fleet: (require("@/lib/logistica") as typeof import("@/lib/logistica")).DEFAULT_FLEET,
+      fleet: DEFAULT_FLEET,
       setFleet: (list) => set({ fleet: list }),
       upsertFleetVehicle: (v) =>
         set((s) => {
