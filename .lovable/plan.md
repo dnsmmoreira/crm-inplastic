@@ -1,102 +1,94 @@
-# Placar de Vendedores — plano de implementação
+## Fase 1 — Cadastro técnico dos produtos
 
-Objetivo: criar um placar competitivo com **fonte única no banco**, consumida por três superfícies (página `/placar`, widget do Dashboard, digest do Xerife). Zero cálculo de ranking no front.
+Complementa a tabela `produtos` (que já tem SKU, nome, peso, dimensões, NCM) com o mínimo para virar coluna no caminhão:
 
----
+- `pecas_por_coluna` (int) — quantas peças empilham antes do peso/altura limitar. Vendedor não digita altura de pilha; sistema calcula: `altura_pilha = height_cm × pecas_por_coluna` e `peso_pilha = weight_kg × pecas_por_coluna`.
+- `family` (text, opcional) — agrupador para relatório ("HV", "Container Bin", "Caixa Vazada"). Não afeta cálculo.
 
-## 1. Banco — fonte única (migração)
+Volume unitário (m³) e volume da pilha ficam **calculados na UI** a partir de comprimento×largura×altura, nunca persistidos (evita divergência).
 
-### 1a. Pesos no `xerife_config`
-Adicionar colunas (com defaults) para nunca hardcodar no código:
-- `placar_peso_ganho int default 10`
-- `placar_peso_proposta int default 3`
-- `placar_peso_tarefa int default 1`
-- `placar_peso_pos_venda int default 2`
-- `placar_peso_sla_estourado int default -5`
-- `placar_peso_carteira_60 int default -3`
+Tela `/produtos` ganha:
+- Campo "Peças por coluna" com preview: "Pilha = 20 peças · altura 1,80 m · 260 kg".
+- Campo "Família" (autocomplete simples com valores já cadastrados).
 
-### 1b. Função `public.placar_vendedores(_periodo text)`
-`_periodo ∈ {'semana','mes','trimestre'}`. Retorna uma linha por vendedor com todas as colunas da tabela do placar + `score` + `score_periodo_anterior` (para seta de tendência) + `posicao`.
+## Fase 2 — Cadastro da frota (admin)
 
-Cálculos:
-- **Janela do período**: início/fim em `America/Sao_Paulo` (semana = seg-dom atual; mês = mês atual; trimestre = trimestre atual). Período anterior = mesma duração imediatamente anterior.
-- **Ganhos**: `leads` onde stage virou `ganho` no período (usar `etapa_changed_at` + `stage='ganho'`). Valor em R$ soma `estimated_value` (se coluna existe).
-- **Propostas**: `leads.proposta_enviada_at` dentro do período.
-- **Conversão**: `ganhos::float / NULLIF(propostas,0) * 100` — NULL → front mostra "—".
-- **Perdas**: `leads` com `stage='perdido'` e `etapa_changed_at` no período.
-- **Leads contatados**: `count(distinct lead_id)` de `tarefas` com `status='concluida'`, `concluida_at` no período, `assignee_id = vendedor`.
-- **Tempo médio 1ª resposta**: para leads criados no período, `min(lead_interactions.occurred_at) - leads.created_at`, média (retorna interval → converte para minutos).
-- **SLAs estourados**: `xerife_log` onde `regra IN ('A1_escalado','A3_escalado','A2_lead_parado')` no período, `vendedor_id = vendedor`.
-- **Carteira em risco**: foto atual — leads do vendedor com `stage='ganho'` e `last_contact_at < now() - 45 dias`; separar contagem 45–60 e 60+.
-- **Pós-venda em dia**: `tarefas` `tipo LIKE 'pos_venda_%'` do vendedor concluídas no período — % com `concluida_at <= due_date`.
-- **Score**: soma ponderada dos pesos do `xerife_config`; `-3 * carteira_cruzou_60_no_periodo` usa `xerife_log` (regra `B2_carteira_60`).
+Frota vive em `system_workspace.data.frota` (JSON, admin-only já protegido por RLS). Nova aba em **Condições comerciais → Frota** com CRUD dos veículos:
 
-Função `SECURITY DEFINER`, `STABLE`, `SET search_path = public`. GRANT EXECUTE para `authenticated`.
+| Campo             | Ex.: Truck        | Ex.: Carreta       | Ex.: Contêiner 20' |
+| ----------------- | ----------------- | ------------------ | ------------------ |
+| nome              | Truck             | Carreta            | Container 20'      |
+| tipo              | truck             | carreta            | container_20       |
+| comprimento_util_m| 7,5               | 14,0               | 5,9                |
+| largura_util_m    | 2,4               | 2,4                | 2,35               |
+| altura_util_m     | 2,7               | 2,9                | 2,39               |
+| capacidade_kg     | 12000             | 27000              | 22000              |
+| rs_por_km         | 6,50              | 9,20               | 11,00              |
+| ativo             | true              | true               | true               |
 
-### 1c. Limpeza da lógica antiga
-Remover `useBestSellerOfMonth` de `src/lib/crm-store.ts` **do consumo no Dashboard** (mantém o export só se outro arquivo usa — verificar; se não, deleta).
+Preset inicial já vem com **VUC · ¾ · Toco · Truck · Carreta · Container 20' · Container 40' · Bitrem · Rodotrem** — admin ajusta valores.
 
----
+## Fase 3 — Calculadora de logística
 
-## 2. Server function
+Server fn `calcularLogistica` recebe `{ itens: [{ sku, qtd }], originCep, destinationCep }` e devolve, para cada veículo ativo:
 
-`src/lib/placar.functions.ts`:
-- `getPlacar({ periodo })` com `requireSupabaseAuth` → `supabase.rpc('placar_vendedores', { _periodo })` + join com `profiles` para nome/avatarColor.
-- Retorna DTO: `{ periodo, vendedores: [...], atualizadoEm }`.
-
----
-
-## 3. Página `/placar`
-
-Nova rota `src/routes/_authenticated/placar.tsx` (visível a todos logados, sem filtro de role):
-
-- **Header**: título + Tabs de período (Semana / Mês / Trimestre — default Mês) via URL search param.
-- **Hero "Líder do mês"**: card grande com avatar, nome, score, valor em R$ ganho.
-- **Tabela**: uma linha por vendedor. Colunas conforme spec. Medalhas 🥇🥈🥉 nas 3 primeiras. Linha do líder com fundo destacado (`bg-primary/5`).
-- **Barra de progresso** por vendedor comparando score com o líder.
-- **Seta de tendência** ao lado do score (↑ verde, ↓ vermelho, — cinza) usando `score_periodo_anterior`.
-- **Célula carteira em risco**: amarela 45–60d, vermelha 60d+.
-- **Loader**: `ensureQueryData` + `useSuspenseQuery`, `staleTime: 60_000`.
-
-Novo item no menu lateral abaixo de "Minha agenda" — "Placar" 🏆.
-
----
-
-## 4. Widget do Dashboard
-
-`src/components/placar/PlacarWidget.tsx` — top 3 (medalha, nome, score), lê da mesma `getPlacar({ periodo: 'mes' })`. Card inteiro é um `<Link to="/placar">`. Estado vazio: "O ranking aparecerá aqui conforme as vendas acontecerem" + link.
-
-Substituir `<BestSellerCard />` em `src/routes/index.tsx` por `<PlacarWidget />`.
-
----
-
-## 5. Integração no Xerife (digest 08h + fechamento 18h)
-
-Nos endpoints `src/routes/api/public/hooks/xerife.ts` (resumo diário) e `xerife-fechamento.ts`, chamar `supabaseAdmin.rpc('placar_vendedores', { _periodo: 'mes' })` e anexar top 3 na mensagem WhatsApp do Denis/diretoria:
-
-```
-🏆 Placar do mês
-1º Fulano — 47 pts
-2º Beltrano — 33 pts
-3º Ciclano — 28 pts
+```text
+{
+  totalPeso_kg, totalVolume_m3, totalColunas,
+  distancia_km,   ← reutiliza calculateFreightDistance existente
+  veiculos: [
+    {
+      nome: "Truck",
+      colunasPorVeiculo,        ← floor(area_piso / footprint_sku) × pecas_por_coluna
+      veiculosNecessarios,      ← teto( colunas / colunasPorVeiculo ) OU teto( peso / capacidade_kg )
+      limitante: "volume"|"peso",
+      aproveitamento_pct,
+      freteTotal, fretePorColuna, fretePorPeca
+    }, ...
+  ]
+}
 ```
 
-Não altera regras do Xerife, fluxo Lucas nem Omie.
+Regras de cálculo:
+- **Cabimento** = `floor(comprimento_util / max(L, C)) × floor(largura_util / min(L, C))` — sistema testa também a orientação girada 90° e fica com o maior. Depois multiplica por `pecas_por_coluna`.
+- **Altura** limita colunas se `altura_pilha > altura_util_m` (avisa e reduz).
+- **Frete** = `distancia_km × rs_por_km × veiculos_necessarios`.
+- Chamada única ao Google Maps por cotação (cache por par de CEPs no cliente durante a sessão).
 
----
+## Fase 4 — UI na proposta
+
+Novo bloco "Logística" dentro de `/propostas/:id`:
+- Já lê os itens da proposta (não precisa redigitar "650 HV-6").
+- Campos: CEP origem (default da matriz) e CEP destino (default do lead).
+- Botão **Calcular** → renderiza tabela dos veículos:
+
+```text
+┌──────────────┬─────┬─────────┬──────────┬────────────┬───────────┐
+│ Veículo      │ Qtd │ Aprov.  │ Limitado │ Frete total│ R$/peça   │
+├──────────────┼─────┼─────────┼──────────┼────────────┼───────────┤
+│ Truck        │  2  │  94 %   │ volume   │ R$ 12.480  │ R$ 19,20  │
+│ Carreta      │  1  │  87 %   │ volume   │ R$  8.464  │ R$ 13,02  │  ← sugerida
+│ Container 20'│  2  │  71 %   │ volume   │ R$ 20.240  │ R$ 31,14  │
+└──────────────┴─────┴─────────┴──────────┴────────────┴───────────┘
+```
+
+- Sistema destaca automaticamente o menor R$/peça viável.
+- Botão "Adicionar frete à proposta" prefill do campo de valor de frete existente.
 
 ## Detalhes técnicos
 
-- Tudo em SP: `AT TIME ZONE 'America/Sao_Paulo'` no SQL.
-- RPC via `supabase.rpc` respeita RLS; `SECURITY DEFINER` para poder ler `xerife_log`/`tarefas` de outros vendedores (agregação transparente).
-- Query keys: `['placar', periodo]`.
-- Sem breaking change: `tarefas`, `leads`, `xerife_log`, `xerife_config` só ganham colunas, nunca mudam existentes.
+- Migração: `ALTER TABLE produtos ADD pecas_por_coluna INT NOT NULL DEFAULT 1, ADD family TEXT`.
+- Frota: schema TypeScript em `src/lib/frota.ts` + hook `useFrota()` que lê/escreve `system_workspace.data.frota` via store existente (`crm-store.ts`).
+- Cálculo puro em `src/lib/logistica.ts` (funções testáveis, sem dependência de rede).
+- Server fn `calcularLogistica` em `src/lib/logistica.functions.ts` — protege com `requireSupabaseAuth`, orquestra `calculateFreightDistance` + `logistica.ts` puro.
+- Cache in-memory de distância por par de CEPs no componente (`useRef<Map>`).
+- Sem mudanças no schema de `propostas` — o frete calculado grava no campo de valor de frete que já existe.
 
----
+## Fora do escopo desta iteração
 
-## Confirmações antes de codar
+- Restrição por NCM/ANTT (perigosos, refrigerados).
+- Otimização mista (2 truck + 1 VUC no mesmo pedido).
+- Roteirização multi-parada.
+- Tabela de frete manual por UF (você escolheu R$/km × distância).
 
-1. **Divisão por zero em conversão**: mostrar "—" quando propostas=0. OK?
-2. **Valor em R$ do ganho**: usar `leads.estimated_value` como fonte (é o campo atual). OK?
-3. **"Tempo médio 1ª resposta"**: primeira `lead_interactions` OU primeira `whatsapp_mensagens autor=vendedor` — o que vier primeiro. OK?
-4. **Score do período anterior**: mesma duração imediatamente anterior (mês passado inteiro quando período=mês). OK?
+Posso implementar direto se aprovado, ou você prefere quebrar em duas entregas (Fase 1+2 primeiro, depois 3+4)?
