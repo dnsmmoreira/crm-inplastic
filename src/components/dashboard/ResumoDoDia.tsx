@@ -146,7 +146,7 @@ export function ResumoDoDia() {
       <CardContent className="p-4 md:p-6 space-y-4">
         <div>
           <h2 className="text-xl md:text-2xl font-semibold">
-            👋 {saudacao(now.getHours())}, {primeiro}.
+            👋 {saudacao(spHour)}, {primeiro}.
           </h2>
           <p className="text-xs md:text-sm text-muted-foreground capitalize">
             {dataExtenso}
