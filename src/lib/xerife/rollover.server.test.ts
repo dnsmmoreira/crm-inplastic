@@ -87,3 +87,20 @@ describe("D3 — computeRollover", () => {
     expect(patch.escalonamentos).toBe(1);
   });
 });
+
+describe("D3 — rollover é role-agnóstico (admin e vendedor)", () => {
+  const fri = U("2026-07-10T21:00:00.000Z");
+  it("aplica patch para tarefas de admin e vendedor sem distinção", () => {
+    const tasks = [
+      { id: "t-admin", owner_id: "u-admin", role: "admin",    prioridade: 3, escalonamentos: 0 },
+      { id: "t-vend",  owner_id: "u-vend",  role: "vendedor", prioridade: 2, escalonamentos: 1 },
+    ];
+    const patches = tasks.map((t) => ({ id: t.id, patch: computeRollover(t, fri) }));
+    expect(patches[0].patch.due_date).toBe("2026-07-13T12:00:00.000Z");
+    expect(patches[0].patch.escalonamentos).toBe(1);
+    expect(patches[0].patch.prioridade).toBe(2);
+    expect(patches[1].patch.due_date).toBe("2026-07-13T12:00:00.000Z");
+    expect(patches[1].patch.escalonamentos).toBe(2);
+    expect(patches[1].patch.prioridade).toBe(1);
+  });
+});
