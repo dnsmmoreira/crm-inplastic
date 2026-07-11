@@ -228,7 +228,16 @@ function rowToLead(
     segment: r.segment ?? undefined,
     source: r.source ?? "",
     createdAt: r.created_at,
-    lastContact: r.last_contact ?? r.created_at,
+    // Consolida os dois campos: triggers do banco (WhatsApp vendedor, tarefa
+    // concluída, lead_interactions) tocam last_contact_at; mudanças de estágio
+    // e edições manuais pelo frontend gravam last_contact. Usamos o mais recente
+    // para que o card "sem resposta +24h" não acuse falso positivo.
+    lastContact: (() => {
+      const a = r.last_contact_at ? new Date(r.last_contact_at).getTime() : 0;
+      const b = r.last_contact ? new Date(r.last_contact).getTime() : 0;
+      const max = Math.max(a, b);
+      return max > 0 ? new Date(max).toISOString() : r.created_at;
+    })(),
     nextFollowUp: r.next_followup ?? undefined,
     notes: r.notes ?? "",
     interactions,
