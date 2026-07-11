@@ -164,6 +164,7 @@ export function LeadDrawer({
             <InfoRow icon={Phone} label="Telefone" value={lead.phone} />
             <InfoRow icon={Package} label="Produto" value={lead.product} />
             <InfoRow icon={Calendar} label="Último contato" value={format(new Date(lead.lastContact), "dd/MM/yyyy")} />
+            {lead.emailNfXml && <InfoRow icon={Mail} label="E-mail NF (XML)" value={lead.emailNfXml} />}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -616,6 +617,7 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
     telefoneFixo: "",
     whatsapp: "",
     emailFinanceiro: "",
+    emailNfXml: "",
     site: "",
     // Endereço
     cep: "",
@@ -637,7 +639,6 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
     porte: "",
     cnaePrincipal: "",
     faturamentoEstimado: 0,
-    numFuncionarios: 0,
     decisorNome: "",
     decisorCargo: "",
     // Fiscal complementar (CNPJá)
@@ -705,6 +706,7 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
         nomeFantasia: r.nomeFantasia,
         inscricaoEstadual: r.inscricaoEstadual,
         email: f.email || r.email.toLowerCase(),
+        emailNfXml: f.emailNfXml || (r.email ? r.email.toLowerCase() : ""),
         phone: f.phone || r.telefone,
         whatsapp: f.whatsapp || r.telefone,
         telefoneFixo: r.telefone,
@@ -868,6 +870,10 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
               <Label>E-mail financeiro</Label>
               <Input type="email" value={form.emailFinanceiro} onChange={(e) => setForm({ ...form, emailFinanceiro: e.target.value.toLowerCase() })} />
             </div>
+            <div>
+              <Label>E-mail Nota Fiscal (XML)</Label>
+              <Input type="email" value={form.emailNfXml} onChange={(e) => setForm({ ...form, emailNfXml: e.target.value.toLowerCase() })} />
+            </div>
           </div>
         </div>
 
@@ -886,10 +892,6 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
             <div>
               <Label>Faturamento estimado (R$/ano)</Label>
               <Input type="number" min={0} value={form.faturamentoEstimado} onChange={(e) => setForm({ ...form, faturamentoEstimado: Number(e.target.value) || 0 })} />
-            </div>
-            <div>
-              <Label>Nº de funcionários</Label>
-              <Input type="number" min={0} value={form.numFuncionarios} onChange={(e) => setForm({ ...form, numFuncionarios: Number(e.target.value) || 0 })} />
             </div>
             <div className="col-span-2">
               <Label>Decisor (nome)</Label>
@@ -1045,13 +1047,13 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
                     complemento: form.complemento, bairro: form.bairro, cidade: form.cidade, uf: form.uf,
                   } : undefined,
                   emailFinanceiro: form.emailFinanceiro || undefined,
+                  emailNfXml: form.emailNfXml || undefined,
                   telefoneFixo: form.telefoneFixo || undefined,
                   whatsapp: form.whatsapp || undefined,
                   site: form.site || undefined,
                   porte: form.porte || undefined,
                   cnaePrincipal: form.cnaePrincipal || undefined,
                   faturamentoEstimado: form.faturamentoEstimado || undefined,
-                  numFuncionarios: form.numFuncionarios || undefined,
                   decisorNome: form.decisorNome || undefined,
                   decisorCargo: form.decisorCargo || undefined,
                   dataAbertura: form.dataAbertura || undefined,

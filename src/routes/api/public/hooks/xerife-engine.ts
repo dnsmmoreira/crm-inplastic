@@ -50,6 +50,8 @@ type Cfg = {
   pos_venda_dias: number[];
   dias_uteis_inicio: string;
   dias_uteis_fim: string;
+  auto_atribuir_lead_orfao: boolean;
+  sla_lead_orfao_min: number;
 };
 
 async function loadCfg(): Promise<Cfg> {
@@ -70,6 +72,8 @@ async function loadCfg(): Promise<Cfg> {
     pos_venda_dias: d.pos_venda_dias ?? [3, 15, 45],
     dias_uteis_inicio: (d.dias_uteis_inicio ?? "08:00:00").slice(0, 5),
     dias_uteis_fim: (d.dias_uteis_fim ?? "18:00:00").slice(0, 5),
+    auto_atribuir_lead_orfao: d.auto_atribuir_lead_orfao ?? true,
+    sla_lead_orfao_min: d.sla_lead_orfao_min ?? 15,
   };
 }
 
@@ -96,6 +100,7 @@ async function runEngine(
   }
 
   const stats: Stats = {
+    a0_lead_orfao: 0,
     a1_primeiro_contato: 0, a1_escalado: 0,
     a2_lead_parado: 0,
     a3_sem_resposta: 0, a3_escalado: 0,
@@ -171,6 +176,58 @@ async function runEngine(
   };
 
   const now = new Date();
+
+  // ─────────────── A0: lead órfão (sem vendedor atribuído) ───────────────
+  {
+    const thresholdIso = subtractBusinessMinutes(cfg.sla_lead_orfao_min, win, now).toISOString();
+    const { data: leads } = await sb
+      .from("leads")
+      .select("id, company, owner_id, created_at, stage")
+      .is("owner_id", null)
+      .not("stage", "in", "(ganho,perdido)")
+      .lt("created_at", thresholdIso)
+      .limit(500);
+
+    for (const l of leads ?? []) {
+      const regra = "A0_lead_orfao";
+      if (await alreadyActed(sb, regra, l.id, 1)) continue;
+
+      if (cfg.auto_atribuir_lead_orfao) {
+        plan.push({
+          regra, lead_id: l.id, lead_company: l.company, owner_id: null,
+          tipo: "atribuir_vendedor", titulo: "Atribuir vendedor (round-robin)",
+          descricao: `Lead sem vendedor há +${cfg.sla_lead_orfao_min} min úteis — atribuir via fila.`,
+          motivo: `Lead sem vendedor há +${cfg.sla_lead_orfao_min} min úteis.`,
+          prioridade: 1, acao: "criar_tarefa",
+        });
+        if (!dryRun) {
+          const { data: newOwner, error: rpcErr } = await sb.rpc("atribuir_proximo_vendedor", { _lead_id: l.id });
+          if (rpcErr) {
+            await alertDiretoria(
+              `⚠️ Falha ao atribuir automaticamente lead órfão\n\nCliente: ${l.company}\nErro: ${rpcErr.message}\n${crmLeadLink(l.id)}`,
+              { regra, lead_id: l.id, lead_company: l.company, owner_id: null },
+            );
+          }
+          await log(sb, {
+            regra, leadId: l.id, vendedorId: (newOwner as string) ?? null,
+            acao: rpcErr ? "atribuição falhou → diretoria notificada" : "atribuído via round-robin",
+            payload: { sla_min: cfg.sla_lead_orfao_min, created_at: l.created_at, auto: true, erro: rpcErr?.message ?? null },
+          });
+        }
+      } else {
+        await alertDiretoria(
+          `🟡 Lead sem vendedor há +${cfg.sla_lead_orfao_min} min úteis\n\nCliente: ${l.company}\nAtribua manualmente.\n${crmLeadLink(l.id)}`,
+          { regra, lead_id: l.id, lead_company: l.company, owner_id: null },
+        );
+        await log(sb, {
+          regra, leadId: l.id, vendedorId: null,
+          acao: "diretoria notificada (atribuição manual)",
+          payload: { sla_min: cfg.sla_lead_orfao_min, created_at: l.created_at, auto: false },
+        });
+      }
+      stats.a0_lead_orfao++;
+    }
+  }
 
   // ─────────────── A1: primeiro contato (SLA em min úteis) ───────────────
   {
