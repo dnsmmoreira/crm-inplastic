@@ -5,7 +5,6 @@ import { useServerFn } from "@tanstack/react-start";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Phone, Flame, DollarSign, Target } from "lucide-react";
-import { Phone, Flame, DollarSign, Target } from "lucide-react";
 import {
   useVisibleLeads,
   useVisibleTasks,
