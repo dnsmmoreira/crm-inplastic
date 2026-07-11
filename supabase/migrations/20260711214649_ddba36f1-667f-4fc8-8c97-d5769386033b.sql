@@ -1,0 +1,3 @@
+ALTER TABLE public.produtos
+  ADD COLUMN IF NOT EXISTS pecas_por_coluna INT NOT NULL DEFAULT 1,
+  ADD COLUMN IF NOT EXISTS family TEXT;

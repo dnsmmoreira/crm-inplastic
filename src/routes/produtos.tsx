@@ -63,6 +63,8 @@ const empty = {
   ncm: "",
   defaultPrice: 0,
   active: true,
+  pecasPorColuna: 1,
+  family: "",
 };
 
 function ProdutosPage() {
@@ -283,6 +285,17 @@ function ProductDialog({
           <div>
             <Label>Preço unitário sugerido (R$)</Label>
             <Input type="number" step="0.01" value={form.defaultPrice} onChange={(e) => setForm({ ...form, defaultPrice: Number(e.target.value) })} />
+          </div>
+          <div>
+            <Label>Peças por coluna</Label>
+            <Input type="number" min={1} step="1" value={form.pecasPorColuna} onChange={(e) => setForm({ ...form, pecasPorColuna: Math.max(1, Number(e.target.value) || 1) })} />
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Pilha: {form.pecasPorColuna} pçs · altura {((form.heightCm * form.pecasPorColuna) / 100).toFixed(2)} m · {(form.weightKg * form.pecasPorColuna).toFixed(0)} kg
+            </p>
+          </div>
+          <div>
+            <Label>Família (opcional)</Label>
+            <Input value={form.family ?? ""} onChange={(e) => setForm({ ...form, family: e.target.value })} placeholder="Ex.: HV, PBR, Container Bin" />
           </div>
           <div className="flex items-center gap-2 pt-6">
             <Switch checked={form.active} onCheckedChange={(v) => setForm({ ...form, active: v })} />

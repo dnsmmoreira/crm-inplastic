@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { DEFAULT_FLEET, type FleetVehicle } from "@/lib/logistica";
 
 
 export type UserRole = "admin" | "vendedor";
@@ -448,6 +449,8 @@ export type Product = {
   ncm: string;
   defaultPrice: number;  // preço unitário sugerido
   active: boolean;
+  pecasPorColuna: number; // logística: quantas peças empilham por coluna
+  family?: string;        // agrupador opcional (ex.: "HV", "Container Bin")
 };
 
 const seedProducts: Product[] = [
@@ -464,6 +467,8 @@ const seedProducts: Product[] = [
     ncm: "3923.10.90",
     defaultPrice: 185,
     active: true,
+    pecasPorColuna: 20,
+    family: "PBR",
   },
   {
     id: "p-exp1210",
@@ -478,6 +483,8 @@ const seedProducts: Product[] = [
     ncm: "3923.10.90",
     defaultPrice: 210,
     active: true,
+    pecasPorColuna: 18,
+    family: "Exportação",
   },
   {
     id: "p-hig1210",
@@ -492,6 +499,8 @@ const seedProducts: Product[] = [
     ncm: "3923.10.90",
     defaultPrice: 245,
     active: true,
+    pecasPorColuna: 18,
+    family: "Higiênico",
   },
   {
     id: "p-ref1210",
@@ -506,6 +515,8 @@ const seedProducts: Product[] = [
     ncm: "3923.10.90",
     defaultPrice: 275,
     active: true,
+    pecasPorColuna: 15,
+    family: "Reforçado",
   },
 ];
 
@@ -755,6 +766,11 @@ type CrmState = {
   freightConfig: FreightConfig;
   setFreightConfig: (patch: Partial<FreightConfig>) => void;
 
+  // Frota (ADM-managed) — alimenta calculadora de logística
+  fleet: FleetVehicle[];
+  setFleet: (list: FleetVehicle[]) => void;
+  upsertFleetVehicle: (v: FleetVehicle) => void;
+  removeFleetVehicle: (id: string) => void;
 };
 
 const uid = () =>
@@ -1105,6 +1121,18 @@ export const useCrm = create<CrmState>()(
       freightConfig: DEFAULT_FREIGHT_CONFIG,
       setFreightConfig: (patch) =>
         set((s) => ({ freightConfig: { ...s.freightConfig, ...patch } })),
+
+      fleet: DEFAULT_FLEET,
+      setFleet: (list) => set({ fleet: list }),
+      upsertFleetVehicle: (v) =>
+        set((s) => {
+          const idx = s.fleet.findIndex((x) => x.id === v.id);
+          if (idx < 0) return { fleet: [...s.fleet, v] };
+          const next = s.fleet.slice();
+          next[idx] = v;
+          return { fleet: next };
+        }),
+      removeFleetVehicle: (id) => set((s) => ({ fleet: s.fleet.filter((v) => v.id !== id) })),
     }),
 );
 

@@ -1011,6 +1011,7 @@ function PropostaDetalhe() {
             </CardContent>
           </Card>
 
+          <LogisticaCard proposalId={proposal.id} />
 
 
           <Card>
@@ -1343,3 +1344,152 @@ function PropostaDetalhe() {
     </div>
   );
 }
+
+// ============ Logística inteligente ============
+
+import { Truck } from "lucide-react";
+import { cotarLogistica } from "@/lib/logistica.functions";
+import type { CalcResultado } from "@/lib/logistica";
+
+function LogisticaCard({ proposalId }: { proposalId: string }) {
+  const proposal = useCrm((s) => s.proposals.find((p) => p.id === proposalId));
+  const products = useCrm((s) => s.products);
+  const fleet = useCrm((s) => s.fleet);
+  const freightConfig = useCrm((s) => s.freightConfig);
+  const updateProposal = useCrm((s) => s.updateProposal);
+  const cotar = useServerFn(cotarLogistica);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<(CalcResultado & { originAddress: string; destinationAddress: string }) | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!proposal) return null;
+
+  const destCep = proposal.transport.deliveryCep ?? "";
+  const originCep = freightConfig.originCep;
+
+  const itens = useMemo(() => {
+    return proposal.items
+      .map((it) => {
+        const p = products.find((pp) => pp.id === it.productId);
+        if (!p) return null;
+        return {
+          produto: {
+            sku: p.sku,
+            name: p.name,
+            weightKg: p.weightKg,
+            heightCm: p.heightCm,
+            widthCm: p.widthCm,
+            lengthCm: p.lengthCm,
+            pecasPorColuna: p.pecasPorColuna || 1,
+          },
+          quantidade: it.quantity,
+        };
+      })
+      .filter((x): x is NonNullable<typeof x> => !!x);
+  }, [proposal.items, products]);
+
+  const canCalc = itens.length > 0 && !!destCep && !!originCep && fleet.some((v) => v.ativo);
+
+  const run = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await cotar({ data: { itens, frota: fleet, originCep, destinationCep: destCep } });
+      setResult(res);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Falha na cotação");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const aplicarFrete = (valor: number) => {
+    updateProposal(proposal.id, {
+      transport: { ...proposal.transport, freightValue: valor },
+    });
+    toast.success("Frete aplicado à proposta");
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <Truck className="h-4 w-4 text-primary" />
+          Logística inteligente
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-xs text-muted-foreground">
+          Usa os itens da proposta + dimensões cadastradas do produto para calcular peso, cubagem, mix de veículos e frete por peça.
+        </p>
+        <div className="text-xs space-y-1">
+          <div>Origem: <span className="font-mono">{originCep}</span> · {freightConfig.originAddress}</div>
+          <div>Destino: <span className="font-mono">{destCep || "— informe CEP em Transporte"}</span></div>
+          <div>Itens: {itens.length} SKU · {itens.reduce((s, i) => s + i.quantidade, 0)} peça(s)</div>
+        </div>
+        <Button size="sm" onClick={run} disabled={!canCalc || loading} className="w-full">
+          {loading ? "Calculando…" : "Calcular logística"}
+        </Button>
+        {error && (
+          <div className="text-xs text-destructive flex items-start gap-1">
+            <AlertCircle className="h-3 w-3 mt-0.5 shrink-0" />
+            {error}
+          </div>
+        )}
+        {result && (
+          <div className="space-y-2 pt-2 border-t">
+            <div className="text-xs text-muted-foreground">
+              📍 {result.destinationAddress} · <strong>{result.distanciaKm} km</strong>
+            </div>
+            <div className="text-xs flex flex-wrap gap-3">
+              <span>Peso total: <strong>{result.totalPesoKg.toLocaleString("pt-BR")} kg</strong></span>
+              <span>Cubagem: <strong>{result.totalVolumeM3.toFixed(2)} m³</strong></span>
+              <span>Peças: <strong>{result.totalPecas}</strong></span>
+            </div>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Veículo</TableHead>
+                    <TableHead className="text-right">Qtd</TableHead>
+                    <TableHead className="text-right">Aprov.</TableHead>
+                    <TableHead>Limite</TableHead>
+                    <TableHead className="text-right">Frete total</TableHead>
+                    <TableHead className="text-right">R$/peça</TableHead>
+                    <TableHead />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {result.veiculos.map((v) => {
+                    const isBest = v.vehicleId === result.melhorVeiculoId;
+                    const noFit = v.veiculosNecessarios === 0;
+                    return (
+                      <TableRow key={v.vehicleId} className={isBest ? "bg-primary/5" : ""}>
+                        <TableCell className="font-medium">
+                          {v.nome} {isBest && <Badge variant="secondary" className="ml-1 text-[10px]">melhor</Badge>}
+                        </TableCell>
+                        <TableCell className="text-right">{noFit ? "—" : v.veiculosNecessarios}</TableCell>
+                        <TableCell className="text-right">{noFit ? "—" : `${v.aproveitamentoPct}%`}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {noFit ? "não cabe" : v.limitante}
+                        </TableCell>
+                        <TableCell className="text-right">{noFit ? "—" : formatBRL(v.freteTotal)}</TableCell>
+                        <TableCell className="text-right">{noFit ? "—" : formatBRL(v.fretePorPeca)}</TableCell>
+                        <TableCell className="text-right">
+                          <Button size="sm" variant="ghost" disabled={noFit} onClick={() => aplicarFrete(v.freteTotal)}>
+                            Usar
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+

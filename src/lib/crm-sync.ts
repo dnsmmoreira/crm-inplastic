@@ -135,6 +135,8 @@ function rowToProduct(r: ProductRow): Product {
     ncm: r.ncm ?? "",
     defaultPrice: Number(r.default_price ?? 0),
     active: !!r.active,
+    pecasPorColuna: Number((r as unknown as { pecas_por_coluna?: number }).pecas_por_coluna ?? 1) || 1,
+    family: (r as unknown as { family?: string | null }).family ?? undefined,
   };
 }
 function productToInsert(p: Product): ProductInsert {
@@ -151,6 +153,8 @@ function productToInsert(p: Product): ProductInsert {
     ncm: p.ncm ?? null,
     default_price: p.defaultPrice,
     active: p.active,
+    pecas_por_coluna: p.pecasPorColuna ?? 1,
+    family: p.family ?? null,
   };
 }
 
@@ -459,6 +463,7 @@ async function loadAll(userId: string) {
     freightConfig?: FreightConfig;
     defaultEmitterId?: string;
     maxDiscountPercentVendedor?: number;
+    fleet?: import("@/lib/logistica").FleetVehicle[];
   };
   const sys = (sysRow?.data ?? {}) as SysPayload;
   snapshot.systemJson = JSON.stringify(sys);
@@ -573,6 +578,7 @@ async function loadAll(userId: string) {
     leadTags: sys.leadTags?.length ? sys.leadTags : DEFAULT_LEAD_TAGS,
     leadSegments: sys.leadSegments?.length ? sys.leadSegments : DEFAULT_LEAD_SEGMENTS,
     freightConfig: sys.freightConfig ?? DEFAULT_FREIGHT_CONFIG,
+    fleet: sys.fleet && sys.fleet.length ? sys.fleet : (await import("@/lib/logistica")).DEFAULT_FLEET,
     maxDiscountPercentVendedor:
       typeof sys.maxDiscountPercentVendedor === "number" ? sys.maxDiscountPercentVendedor : 3,
     agent: usr.agent ?? s.agent,
@@ -679,6 +685,7 @@ async function doSave() {
     freightConfig: state.freightConfig,
     defaultEmitterId: state.defaultEmitterId,
     maxDiscountPercentVendedor: state.maxDiscountPercentVendedor,
+    fleet: state.fleet,
   };
   const sysJson = JSON.stringify(sysPayload);
   if (sysJson !== snapshot.systemJson && isAdmin) {

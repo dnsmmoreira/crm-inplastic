@@ -485,11 +485,13 @@ export type Database = {
           created_at: string
           default_price: number
           description: string
+          family: string | null
           height_cm: number
           id: string
           length_cm: number
           name: string
           ncm: string | null
+          pecas_por_coluna: number
           sku: string
           unit: string
           updated_at: string
@@ -501,11 +503,13 @@ export type Database = {
           created_at?: string
           default_price?: number
           description?: string
+          family?: string | null
           height_cm?: number
           id?: string
           length_cm?: number
           name: string
           ncm?: string | null
+          pecas_por_coluna?: number
           sku: string
           unit?: string
           updated_at?: string
@@ -517,11 +521,13 @@ export type Database = {
           created_at?: string
           default_price?: number
           description?: string
+          family?: string | null
           height_cm?: number
           id?: string
           length_cm?: number
           name?: string
           ncm?: string | null
+          pecas_por_coluna?: number
           sku?: string
           unit?: string
           updated_at?: string
