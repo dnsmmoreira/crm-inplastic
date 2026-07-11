@@ -8,15 +8,35 @@ import { createFileRoute } from "@tanstack/react-router";
 import { alreadyActed, logAction } from "@/lib/xerife/dedupe.server";
 import { notifyOwner, notifyDiretoria } from "@/lib/xerife/notify.server";
 
-function startOfTodayIso(): string {
-  const d = new Date(); d.setHours(0, 0, 0, 0); return d.toISOString();
+// Timezone-aware helpers (America/Sao_Paulo, UTC-3 fixo)
+const SP_OFFSET_MS = -3 * 60 * 60 * 1000;
+function spNow(): Date { return new Date(Date.now() + SP_OFFSET_MS); }
+function endOfTodaySpIso(): string {
+  const sp = spNow();
+  // fim do dia em SP → volta pro instante UTC correspondente
+  const endSp = Date.UTC(sp.getUTCFullYear(), sp.getUTCMonth(), sp.getUTCDate(), 23, 59, 59, 999);
+  return new Date(endSp - SP_OFFSET_MS).toISOString();
 }
-function endOfTodayIso(): string {
-  const d = new Date(); d.setHours(23, 59, 59, 999); return d.toISOString();
+function startOfTodaySpIso(): string {
+  const sp = spNow();
+  const startSp = Date.UTC(sp.getUTCFullYear(), sp.getUTCMonth(), sp.getUTCDate(), 0, 0, 0, 0);
+  return new Date(startSp - SP_OFFSET_MS).toISOString();
 }
-function tomorrow9amIso(): string {
-  const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(9, 0, 0, 0); return d.toISOString();
+/** Próximo dia útil às 09:00 BRT (pula sáb/dom). */
+function nextBusinessDay9amIso(): string {
+  const sp = spNow();
+  let y = sp.getUTCFullYear(), m = sp.getUTCMonth(), d = sp.getUTCDate() + 1;
+  // avança até seg-sex
+  for (let i = 0; i < 7; i++) {
+    const probe = new Date(Date.UTC(y, m, d, 12, 0, 0)); // meio-dia UTC evita virada de dia
+    const dow = probe.getUTCDay(); // 0 dom, 6 sáb
+    if (dow !== 0 && dow !== 6) break;
+    d += 1;
+  }
+  const target = Date.UTC(y, m, d, 9, 0, 0, 0); // 09:00 em SP
+  return new Date(target - SP_OFFSET_MS).toISOString();
 }
+
 
 async function runFechamento(force = false): Promise<{
   vendedoresNotificados: number; tarefasRoladas: number; diretoriaNotificada: boolean;
