@@ -230,6 +230,7 @@ export type Database = {
           decisor_nome: string | null
           email: string | null
           email_financeiro: string | null
+          email_nf_xml: string | null
           endereco: Json | null
           esfriando: boolean
           estimated_value: number
@@ -277,6 +278,7 @@ export type Database = {
           decisor_nome?: string | null
           email?: string | null
           email_financeiro?: string | null
+          email_nf_xml?: string | null
           endereco?: Json | null
           esfriando?: boolean
           estimated_value?: number
@@ -324,6 +326,7 @@ export type Database = {
           decisor_nome?: string | null
           email?: string | null
           email_financeiro?: string | null
+          email_nf_xml?: string | null
           endereco?: Json | null
           esfriando?: boolean
           estimated_value?: number
@@ -1016,6 +1019,7 @@ export type Database = {
       xerife_config: {
         Row: {
           ativo: boolean
+          auto_atribuir_lead_orfao: boolean
           cadencia_proposta_dias: number[]
           carteira_alerta_dias: number
           carteira_critico_dias: number
@@ -1041,6 +1045,7 @@ export type Database = {
           reciclagem_perdidos_dias: number
           resumo_diario_ativo: boolean
           resumo_hora: string
+          sla_lead_orfao_min: number
           sla_primeiro_contato_escalar_min: number
           sla_primeiro_contato_min: number
           sla_resposta_whatsapp_escalar_horas: number
@@ -1050,6 +1055,7 @@ export type Database = {
         }
         Insert: {
           ativo?: boolean
+          auto_atribuir_lead_orfao?: boolean
           cadencia_proposta_dias?: number[]
           carteira_alerta_dias?: number
           carteira_critico_dias?: number
@@ -1075,6 +1081,7 @@ export type Database = {
           reciclagem_perdidos_dias?: number
           resumo_diario_ativo?: boolean
           resumo_hora?: string
+          sla_lead_orfao_min?: number
           sla_primeiro_contato_escalar_min?: number
           sla_primeiro_contato_min?: number
           sla_resposta_whatsapp_escalar_horas?: number
@@ -1084,6 +1091,7 @@ export type Database = {
         }
         Update: {
           ativo?: boolean
+          auto_atribuir_lead_orfao?: boolean
           cadencia_proposta_dias?: number[]
           carteira_alerta_dias?: number
           carteira_critico_dias?: number
@@ -1109,6 +1117,7 @@ export type Database = {
           reciclagem_perdidos_dias?: number
           resumo_diario_ativo?: boolean
           resumo_hora?: string
+          sla_lead_orfao_min?: number
           sla_primeiro_contato_escalar_min?: number
           sla_primeiro_contato_min?: number
           sla_resposta_whatsapp_escalar_horas?: number
