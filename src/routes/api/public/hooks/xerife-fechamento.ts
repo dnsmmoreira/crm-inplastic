@@ -47,49 +47,55 @@ async function runFechamento(force = false): Promise<{
     return { vendedoresNotificados: 0, tarefasRoladas: 0, diretoriaNotificada: false };
   }
 
-  const { data: vendedores } = await sb.from("user_roles").select("user_id").eq("role", "vendedor" as any);
+  // Todos os owners com tarefa pendente hoje/atrasada OU concluída hoje — não apenas vendedores.
+  // (D3 rola qualquer tarefa aberta; admins também recebem tarefas do Xerife.)
+  const endToday = endOfTodaySpIso();
+  const startToday = startOfTodaySpIso();
+
+  const { data: pendentesAll } = await sb
+    .from("tarefas")
+    .select("id, owner_id, prioridade, escalonamentos")
+    .in("status", ["pendente", "adiada"])
+    .lte("due_date", endToday)
+    .not("owner_id", "is", null);
+
+  const { data: feitasAll } = await sb
+    .from("tarefas")
+    .select("id, owner_id")
+    .eq("status", "concluida")
+    .gte("concluida_at", startToday)
+    .not("owner_id", "is", null);
+
+  const ownersSet = new Set<string>();
+  (pendentesAll ?? []).forEach((t: any) => ownersSet.add(t.owner_id));
+  (feitasAll ?? []).forEach((t: any) => ownersSet.add(t.owner_id));
 
   let vendedoresNotificados = 0;
   let tarefasRoladas = 0;
   let totalFeitasEquipe = 0;
   let totalRoladasEquipe = 0;
   const placarPorVendedor: { name: string; feitas: number; roladas: number }[] = [];
+  const nextDue = nextBusinessDay9amIso();
 
-  for (const v of vendedores ?? []) {
-    const uid = v.user_id;
+  for (const uid of ownersSet) {
+    const pendentes = (pendentesAll ?? []).filter((t: any) => t.owner_id === uid);
+    const nFeitas = (feitasAll ?? []).filter((t: any) => t.owner_id === uid).length;
+    const nRoladas = pendentes.length;
 
-    const { data: pendentes } = await sb
-      .from("tarefas")
-      .select("id, prioridade, escalonamentos")
-      .eq("owner_id", uid)
-      .in("status", ["pendente", "adiada"])
-      .lte("due_date", endOfTodayIso());
-
-    const { count: feitas } = await sb
-      .from("tarefas")
-      .select("id", { count: "exact", head: true })
-      .eq("owner_id", uid)
-      .eq("status", "concluida")
-      .gte("concluida_at", startOfTodayIso());
-
-    const nRoladas = (pendentes ?? []).length;
-
-    // Rola cada uma
-    for (const t of pendentes ?? []) {
-      const novaPri = Math.max(1, (t.prioridade ?? 3) - 1);
+    for (const t of pendentes) {
+      const novaPri = Math.max(1, ((t as any).prioridade ?? 3) - 1);
       await sb
         .from("tarefas")
         .update({
-          due_date: tomorrow9amIso(),
-          escalonamentos: (t.escalonamentos ?? 0) + 1,
+          due_date: nextDue,
+          escalonamentos: ((t as any).escalonamentos ?? 0) + 1,
           prioridade: novaPri,
           status: "pendente",
         })
-        .eq("id", t.id);
+        .eq("id", (t as any).id);
     }
     tarefasRoladas += nRoladas;
     totalRoladasEquipe += nRoladas;
-    const nFeitas = feitas ?? 0;
     totalFeitasEquipe += nFeitas;
 
     const { data: prof } = await sb.from("profiles").select("name").eq("id", uid).maybeSingle();
@@ -105,6 +111,7 @@ async function runFechamento(force = false): Promise<{
     else lines.push("\nAmanhã 07:30 chega sua nova agenda.");
     if (await notifyOwner(uid, lines.join("\n"))) vendedoresNotificados++;
   }
+
 
   await logAction(sb, {
     regra: "fechamento", acao: "rollover + placar",
