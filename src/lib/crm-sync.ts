@@ -153,9 +153,7 @@ function productToInsert(p: Product): ProductInsert {
     ncm: p.ncm ?? null,
     default_price: p.defaultPrice,
     active: p.active,
-    // @ts-expect-error — coluna nova ainda não gerada em types.ts
     pecas_por_coluna: p.pecasPorColuna ?? 1,
-    // @ts-expect-error — coluna nova ainda não gerada em types.ts
     family: p.family ?? null,
   };
 }

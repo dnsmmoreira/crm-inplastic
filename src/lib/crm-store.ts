@@ -466,6 +466,8 @@ const seedProducts: Product[] = [
     ncm: "3923.10.90",
     defaultPrice: 185,
     active: true,
+    pecasPorColuna: 20,
+    family: "PBR",
   },
   {
     id: "p-exp1210",
@@ -480,6 +482,8 @@ const seedProducts: Product[] = [
     ncm: "3923.10.90",
     defaultPrice: 210,
     active: true,
+    pecasPorColuna: 18,
+    family: "Exportação",
   },
   {
     id: "p-hig1210",
@@ -494,6 +498,8 @@ const seedProducts: Product[] = [
     ncm: "3923.10.90",
     defaultPrice: 245,
     active: true,
+    pecasPorColuna: 18,
+    family: "Higiênico",
   },
   {
     id: "p-ref1210",
@@ -508,6 +514,8 @@ const seedProducts: Product[] = [
     ncm: "3923.10.90",
     defaultPrice: 275,
     active: true,
+    pecasPorColuna: 15,
+    family: "Reforçado",
   },
 ];
 
