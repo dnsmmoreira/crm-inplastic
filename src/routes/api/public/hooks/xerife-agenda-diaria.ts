@@ -52,12 +52,17 @@ async function runAgendaDiaria(force = false): Promise<{
   let totalTarefas = 0;
   let antecipadas = 0;
 
+  // dedupe global (mantém comportamento): se já rodou nas últimas 20h, sai antes do loop
+  if (!force && (await alreadyActed(sb, "agenda_diaria", null, 20))) {
+    return { vendedoresNotificados: 0, totalTarefas: 0, antecipadas: 0 };
+  }
+
+  let vendedoresSemNada = 0;
+  const vendedoresProcessados = (vendedores ?? []).length;
+
   for (const v of vendedores ?? []) {
     const uid = v.user_id;
-    if (!force && (await alreadyActed(sb, "agenda_diaria", null, 20))) {
-      // dedupe global — se já rodou nas últimas 20h, sai
-      break;
-    }
+
 
     // Tarefas de hoje (pendente/adiada) desse vendedor
     const { data: hoje } = await sb
