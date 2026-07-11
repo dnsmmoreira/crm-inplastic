@@ -140,6 +140,13 @@ async function runAgendaDiaria(force = false): Promise<{
     }
   }
 
+  // Heartbeat: sempre grava uma linha por execução (mesmo sem envio)
+  await logAction(sb, {
+    regra: "agenda_diaria",
+    acao: `agenda → ${vendedoresNotificados} enviada(s), ${totalTarefas} tarefa(s), ${vendedoresSemNada}/${vendedoresProcessados} sem nada`,
+    payload: { vendedoresNotificados, totalTarefas, antecipadas, vendedoresSemNada, vendedoresProcessados },
+  });
+
   return { vendedoresNotificados, totalTarefas, antecipadas };
 }
 
