@@ -103,6 +103,7 @@ export type Lead = {
   endereco?: LeadAddress;
   // Contato ampliado
   emailFinanceiro?: string;
+  emailNfXml?: string;
   telefoneFixo?: string;
   whatsapp?: string;
   site?: string;
