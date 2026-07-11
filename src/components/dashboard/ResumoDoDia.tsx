@@ -5,8 +5,6 @@ import { useServerFn } from "@tanstack/react-start";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Phone, Flame, DollarSign, Target } from "lucide-react";
-import { format, isToday, isBefore, startOfDay } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import {
   useVisibleLeads,
   useVisibleTasks,
@@ -14,6 +12,36 @@ import {
   formatBRL,
 } from "@/lib/crm-store";
 import { getPlacar } from "@/lib/placar.functions";
+
+const TZ = "America/Sao_Paulo";
+
+/** Componentes de data no fuso America/Sao_Paulo. */
+function spParts(d: Date) {
+  const p = new Intl.DateTimeFormat("en-CA", {
+    timeZone: TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(d);
+  const get = (t: string) => Number(p.find((x) => x.type === t)?.value);
+  return {
+    y: get("year"),
+    m: get("month"),
+    d: get("day"),
+    h: get("hour"),
+    min: get("minute"),
+  };
+}
+
+/** Epoch ms do início do dia atual em America/Sao_Paulo. */
+function spStartOfTodayMs(now: Date) {
+  const { y, m, d } = spParts(now);
+  // SP não tem DST desde 2019: UTC-3 fixo → meia-noite SP = 03:00 UTC.
+  return Date.UTC(y, m - 1, d, 3, 0, 0, 0);
+}
 
 function saudacao(h: number) {
   if (h < 12) return "Bom dia";
@@ -29,22 +57,31 @@ export function ResumoDoDia() {
 
   const now = new Date();
   const primeiro = (user.name || "").split(" ")[0] || "por aí";
-  const dataExtenso = format(now, "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR });
+  const dataExtenso = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: TZ,
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(now);
+  const spHour = spParts(now).h;
 
-  // 1) Tarefas
+  // 1) Tarefas — "hoje" e "atrasada" calculados em America/Sao_Paulo
   const { tarefasHoje, tarefasAtrasadas } = useMemo(() => {
+    const startToday = spStartOfTodayMs(now);
+    const startTomorrow = startToday + 24 * 3600 * 1000;
     const abertas = tasks.filter((t) => !t.done);
     const hoje = abertas.filter((t) => {
-      const d = new Date(t.dueDate);
-      return isToday(d) || isBefore(d, startOfDay(now));
-    });
+      const ts = new Date(t.dueDate).getTime();
+      return ts < startTomorrow; // hoje ou atrasada
+    }).length;
     const atrasadas = abertas.filter(
-      (t) => isBefore(new Date(t.dueDate), startOfDay(now)),
-    );
-    return { tarefasHoje: hoje.length, tarefasAtrasadas: atrasadas.length };
+      (t) => new Date(t.dueDate).getTime() < startToday,
+    ).length;
+    return { tarefasHoje: hoje, tarefasAtrasadas: atrasadas };
   }, [tasks]);
 
-  // 2) Sem resposta +24h
+  // 2) Sem resposta +24h — janela absoluta, independente de fuso; exclui ganho/perdido
   const semResposta24h = useMemo(() => {
     const cutoff = Date.now() - 24 * 3600 * 1000;
     return leads.filter(
@@ -107,7 +144,7 @@ export function ResumoDoDia() {
       <CardContent className="p-4 md:p-6 space-y-4">
         <div>
           <h2 className="text-xl md:text-2xl font-semibold">
-            👋 {saudacao(now.getHours())}, {primeiro}.
+            👋 {saudacao(spHour)}, {primeiro}.
           </h2>
           <p className="text-xs md:text-sm text-muted-foreground capitalize">
             {dataExtenso}
