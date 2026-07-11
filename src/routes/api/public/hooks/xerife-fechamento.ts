@@ -53,7 +53,7 @@ async function runFechamento(force = false): Promise<{
   let totalFeitasEquipe = 0;
   let totalRoladasEquipe = 0;
   const placarPorVendedor: { name: string; feitas: number; roladas: number }[] = [];
-  const nextDue = nextBusinessDay9amIso();
+  const now = new Date();
 
   for (const uid of ownersSet) {
     const pendentes = (pendentesAll ?? []).filter((t: any) => t.owner_id === uid);
@@ -61,17 +61,10 @@ async function runFechamento(force = false): Promise<{
     const nRoladas = pendentes.length;
 
     for (const t of pendentes) {
-      const novaPri = Math.max(1, ((t as any).prioridade ?? 3) - 1);
-      await sb
-        .from("tarefas")
-        .update({
-          due_date: nextDue,
-          escalonamentos: ((t as any).escalonamentos ?? 0) + 1,
-          prioridade: novaPri,
-          status: "pendente",
-        })
-        .eq("id", (t as any).id);
+      const patch = computeRollover(t as any, now);
+      await sb.from("tarefas").update(patch).eq("id", (t as any).id);
     }
+
     tarefasRoladas += nRoladas;
     totalRoladasEquipe += nRoladas;
     totalFeitasEquipe += nFeitas;
