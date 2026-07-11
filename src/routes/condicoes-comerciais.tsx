@@ -258,6 +258,9 @@ function CondicoesComerciais() {
         </CardContent>
       </Card>
 
+      <FrotaCard />
+
+
       <CatalogueEditor kind="tags" />
       <CatalogueEditor kind="segments" />
       <FreightConfigEditor />
