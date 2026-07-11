@@ -463,6 +463,7 @@ async function loadAll(userId: string) {
     freightConfig?: FreightConfig;
     defaultEmitterId?: string;
     maxDiscountPercentVendedor?: number;
+    fleet?: import("@/lib/logistica").FleetVehicle[];
   };
   const sys = (sysRow?.data ?? {}) as SysPayload;
   snapshot.systemJson = JSON.stringify(sys);
@@ -577,6 +578,7 @@ async function loadAll(userId: string) {
     leadTags: sys.leadTags?.length ? sys.leadTags : DEFAULT_LEAD_TAGS,
     leadSegments: sys.leadSegments?.length ? sys.leadSegments : DEFAULT_LEAD_SEGMENTS,
     freightConfig: sys.freightConfig ?? DEFAULT_FREIGHT_CONFIG,
+    fleet: sys.fleet && sys.fleet.length ? sys.fleet : (await import("@/lib/logistica")).DEFAULT_FLEET,
     maxDiscountPercentVendedor:
       typeof sys.maxDiscountPercentVendedor === "number" ? sys.maxDiscountPercentVendedor : 3,
     agent: usr.agent ?? s.agent,
@@ -683,6 +685,7 @@ async function doSave() {
     freightConfig: state.freightConfig,
     defaultEmitterId: state.defaultEmitterId,
     maxDiscountPercentVendedor: state.maxDiscountPercentVendedor,
+    fleet: state.fleet,
   };
   const sysJson = JSON.stringify(sysPayload);
   if (sysJson !== snapshot.systemJson && isAdmin) {
