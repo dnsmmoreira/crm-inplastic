@@ -79,9 +79,6 @@ type Props = {
   isAdmin?: boolean;
   vendedores?: Vendedor[];
   showInternal?: boolean; // "Interno" card
-  showOmieBox?: boolean; // rastreio Omie readonly
-  omieCodInplastic?: number | null;
-  omieCodTaoplast?: number | null;
 };
 
 export function ClienteFormFields({
@@ -92,9 +89,6 @@ export function ClienteFormFields({
   isAdmin,
   vendedores,
   showInternal = true,
-  showOmieBox = false,
-  omieCodInplastic,
-  omieCodTaoplast,
 }: Props) {
   const [cnpjMasked, setCnpjMasked] = useState(formatCnpj(value.cnpj));
   const [cepMasked, setCepMasked] = useState(formatCep(value.cep ?? ""));
@@ -289,19 +283,6 @@ export function ClienteFormFields({
               />
               <span className="text-sm">Ativo</span>
             </label>
-          </CardContent>
-        </Card>
-      )}
-
-      {showOmieBox && (
-        <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-base">Rastreio Omie</CardTitle></CardHeader>
-          <CardContent className="text-sm space-y-1">
-            <div>Código Omie INPLASTIC: <span className="font-mono">{omieCodInplastic ?? "—"}</span></div>
-            <div>Código Omie TAOPLAST: <span className="font-mono">{omieCodTaoplast ?? "—"}</span></div>
-            <p className="text-xs text-muted-foreground pt-1">
-              Preenchido automaticamente quando o cliente teve pelo menos um pedido enviado ao Omie.
-            </p>
           </CardContent>
         </Card>
       )}

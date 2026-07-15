@@ -31,7 +31,7 @@ import {
   type PaymentTerm,
 } from "@/lib/crm-store";
 import { calculateFreightDistance } from "@/lib/freight.functions";
-import { gerarPedidoOmie, reenviarPedidoOmie } from "@/lib/omie.functions";
+import { gerarPedidoOmie } from "@/lib/omie.functions";
 import { useServerFn } from "@tanstack/react-start";
 
 
@@ -81,7 +81,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
-import { AddOmieItemDialog, type AddOmieItemPayload } from "@/components/propostas/AddOmieItemDialog";
+
 
 export const Route = createFileRoute("/propostas/$id")({
   component: PropostaDetalhe,
@@ -135,19 +135,19 @@ function PropostaDetalhe() {
   const activePaymentTerms = useMemo(() => paymentTerms.filter((t) => t.active), [paymentTerms]);
   const maxDiscount = useMaxDiscountForCurrentUser();
   const _addItem = useCrm((s) => s.addProposalItem);
-  const _addItemFromOmie = useCrm((s) => s.addProposalItemFromOmie);
   const _updateItem = useCrm((s) => s.updateProposalItem);
   const _removeItem = useCrm((s) => s.removeProposalItem);
   const _updateProposal = useCrm((s) => s.updateProposal);
   const _setStatus = useCrm((s) => s.setProposalStatus);
-  const [omieDialogOpen, setOmieDialogOpen] = useState(false);
+  const [productPickerOpen, setProductPickerOpen] = useState(false);
+  const [productPickerId, setProductPickerId] = useState<string>("");
+  const [productPickerQty, setProductPickerQty] = useState<number>(1);
   const [rowErrors, setRowErrors] = useState<Record<string, { field: "description" | "quantity" | "unitPrice"; message: string } | null>>({});
   const [dirty, setDirty] = useState(false);
   const freightConfig = useCrm((s) => s.freightConfig);
   const [freightLoading, setFreightLoading] = useState(false);
   const calcFreight = useServerFn(calculateFreightDistance);
   const gerarPedido = useServerFn(gerarPedidoOmie);
-  const reenviarPedido = useServerFn(reenviarPedidoOmie);
   const [omieBusy, setOmieBusy] = useState(false);
 
   const totals = useMemo(() => (proposal ? proposalTotals(proposal) : null), [proposal]);
@@ -219,7 +219,6 @@ function PropostaDetalhe() {
 
   // Wrappers: auto-mark the proposal as dirty on any mutation e bloqueia se pedido fechado.
   const addItem: typeof _addItem = (...a) => { if (guard()) return; markDirty(); return _addItem(...a); };
-  const addItemFromOmie: typeof _addItemFromOmie = (...a) => { if (guard()) return; markDirty(); return _addItemFromOmie(...a); };
   const updateItem: typeof _updateItem = (...a) => { if (guard()) return; markDirty(); return _updateItem(...a); };
   const removeItem: typeof _removeItem = (...a) => { if (guard()) return; markDirty(); return _removeItem(...a); };
   const updateProposal: typeof _updateProposal = (...a) => { if (guard()) return; markDirty(); return _updateProposal(...a); };
@@ -235,7 +234,6 @@ function PropostaDetalhe() {
     const parsed = itemSchema.shape[field].safeParse(value);
     if (!parsed.success) {
       setRowErrors((prev) => ({ ...prev, [itemId]: { field, message: parsed.error.issues[0]?.message ?? "Valor inválido" } }));
-      // Still reflect the raw value in the store so the user sees what they typed
       updateItem(proposal!.id, itemId, { [field]: value } as never);
       return;
     }
@@ -250,87 +248,38 @@ function PropostaDetalhe() {
       return;
     }
     setOmieBusy(true);
-    const t = toast.loading(requerAprovacao ? "Solicitando aprovação..." : "Gerando pedido no Omie...");
+    const t = toast.loading(requerAprovacao ? "Solicitando aprovação..." : "Gerando pedido...");
     try {
       const r = await gerarPedido({ data: { proposta_id: proposal.id, requer_aprovacao: requerAprovacao } });
       toast.dismiss(t);
       if (!r.ok) {
-        if (r.validacao_erros?.length) {
-          toast.error("Pendências antes de gerar o pedido", {
-            description: r.validacao_erros.join("\n"),
-            duration: 10000,
-          });
-        } else {
-          toast.error("Falha ao gerar pedido no Omie", {
-            description: r.omie_erro ?? "Erro desconhecido",
-            duration: 10000,
-          });
-        }
-      } else if (r.omie_status === "nao_aplicavel") {
-        toast.success("Pedido registrado", { description: "LICITAPLAS não integra ao Omie." });
-      } else if (r.omie_numero_pedido) {
-        toast.success("Pedido gerado", { description: `Omie #${r.omie_numero_pedido}` });
+        toast.error("Pendências antes de gerar o pedido", {
+          description: (r.validacao_erros ?? ["Erro desconhecido"]).join("\n"),
+          duration: 10000,
+        });
       } else if (requerAprovacao) {
         toast.success("Enviado ao supervisor ADM");
+      } else {
+        toast.success("Pedido gerado", { description: "Lead movido para Ganho." });
       }
-      // Espelha no store local (o sync do próximo tick vai puxar do DB de qualquer forma).
+      // Espelha status no store (o sync já persiste no DB).
       if (r.ok && !requerAprovacao) {
         _updateProposal(proposal.id, {
           status: "pedido",
           orderCreatedAt: new Date().toISOString(),
           approvedByUserId: currentUser.id,
           approvedAt: new Date().toISOString(),
-          omieStatus: r.omie_status === "nao_aplicavel" ? "nao_aplicavel" : "enviado",
-          omieNumeroPedido: r.omie_numero_pedido ?? null,
-          omieCodigoPedido: r.omie_codigo_pedido ?? null,
-          omieErro: null,
-        });
-      } else if (!r.ok && r.omie_status === "erro") {
-        _updateProposal(proposal.id, {
-          status: "pedido",
-          orderCreatedAt: new Date().toISOString(),
-          omieStatus: "erro",
-          omieErro: r.omie_erro ?? null,
         });
       }
       setDirty(false);
     } catch (e) {
       toast.dismiss(t);
-      toast.error("Erro ao chamar Omie", { description: e instanceof Error ? e.message : String(e) });
+      toast.error("Erro ao gerar pedido", { description: e instanceof Error ? e.message : String(e) });
     } finally {
       setOmieBusy(false);
     }
   }
 
-  async function handleReenviarPedido() {
-    if (!proposal) return;
-    setOmieBusy(true);
-    const t = toast.loading("Liberando reenvio ao Omie...");
-    try {
-      const r = await reenviarPedido({ data: { proposta_id: proposal.id, lead_id: proposal.leadId } });
-      toast.dismiss(t);
-      if (!r.ok) {
-        toast.error("Falha no reenvio", {
-          description: r.validacao_erros?.join("\n") ?? r.omie_erro ?? "Erro desconhecido",
-          duration: 10000,
-        });
-        _updateProposal(proposal.id, { omieStatus: r.omie_status === "erro" ? "erro" : null, omieErro: r.omie_erro ?? null });
-      } else {
-        toast.success("Pedido reenviado", { description: r.omie_numero_pedido ? `Omie #${r.omie_numero_pedido}` : undefined });
-        _updateProposal(proposal.id, {
-          omieStatus: r.omie_status === "nao_aplicavel" ? "nao_aplicavel" : "enviado",
-          omieNumeroPedido: r.omie_numero_pedido ?? null,
-          omieCodigoPedido: r.omie_codigo_pedido ?? null,
-          omieErro: null,
-        });
-      }
-    } catch (e) {
-      toast.dismiss(t);
-      toast.error("Erro ao reenviar", { description: e instanceof Error ? e.message : String(e) });
-    } finally {
-      setOmieBusy(false);
-    }
-  }
 
   if (!proposal || !lead) {
     return (
@@ -355,31 +304,6 @@ function PropostaDetalhe() {
             <div className="flex items-center gap-2">
               <h1 className="text-xl md:text-2xl font-semibold">Proposta {proposal.number}</h1>
               <Badge variant={s.variant} className={s.className}>{s.label}</Badge>
-              {proposal.omieStatus === "enviado" && (
-                <Badge className="bg-emerald-500/15 text-emerald-700 border-emerald-500/30 gap-1" variant="outline">
-                  ✅ Pedido Omie #{proposal.omieNumeroPedido ?? "?"}
-                </Badge>
-              )}
-              {proposal.omieStatus === "erro" && (
-                <>
-                  <Badge className="bg-red-500/15 text-red-700 border-red-500/30 gap-1" variant="outline">
-                    ❌ Erro Omie
-                  </Badge>
-                  <Button size="sm" variant="outline" disabled={omieBusy} onClick={() => void handleReenviarPedido()}>
-                    Reenviar
-                  </Button>
-                </>
-              )}
-              {proposal.omieStatus === "pendente" && (
-                <Badge className="bg-amber-500/15 text-amber-700 border-amber-500/30 animate-pulse" variant="outline">
-                  ⏳ Enviando ao Omie...
-                </Badge>
-              )}
-              {proposal.omieStatus === "nao_aplicavel" && (
-                <Badge className="bg-muted text-muted-foreground" variant="outline">
-                  ⚫ LICITAPLAS — sem Omie
-                </Badge>
-              )}
               {proposal.transport.freightPayer === "CIF" && proposal.status !== "pedido" && (
                 <Badge variant="outline" className="border-amber-500 text-amber-700 bg-amber-500/10 gap-1">
                   <AlertCircle className="h-3 w-3" /> CIF · requer aprovação do supervisor
@@ -430,7 +354,7 @@ function PropostaDetalhe() {
             </Button>
           )}
 
-          {/* Fechar pedido: admin gera direto e dispara Omie; vendedor solicita aprovação. */}
+          {/* Fechar pedido: admin gera direto; vendedor solicita aprovação. */}
           {proposal.status !== "pedido" && proposal.status !== "aguardando_aprovacao" && (
             <Button
               variant="default"
@@ -443,7 +367,7 @@ function PropostaDetalhe() {
           )}
 
 
-          {/* ADM libera pedidos aguardando aprovação — dispara Omie no ato. */}
+          {/* ADM libera pedidos aguardando aprovação — geração no ato. */}
           {proposal.status === "aguardando_aprovacao" && isAdmin && (
             <Button
               className="gap-2 bg-emerald-600 hover:bg-emerald-700"
@@ -810,42 +734,98 @@ function PropostaDetalhe() {
               </div>
             )}
 
-            <div className="mt-4 border-t pt-4 flex items-center justify-between gap-2">
+            <div className="mt-4 border-t pt-4 space-y-3">
               <div className="text-xs text-muted-foreground">
-                Itens vêm do catálogo Omie — só produtos cadastrados no Omie podem virar pedido.
+                Itens vêm do catálogo interno de produtos.
               </div>
-              <Button
-                onClick={() => {
-                  if (readOnly) {
-                    toast.error("Pedido fechado — solicite liberação do ADM para editar.");
-                    return;
-                  }
-                  setOmieDialogOpen(true);
-                }}
-                className="gap-2"
-              >
-                <Plus className="h-4 w-4" /> Adicionar produto do Omie
-              </Button>
+              <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-2 items-end">
+                <div>
+                  <Label className="text-xs">Produto</Label>
+                  <Popover open={productPickerOpen} onOpenChange={setProductPickerOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        className="w-full justify-between font-normal"
+                        disabled={readOnly}
+                      >
+                        {productPickerId
+                          ? (() => {
+                              const p = products.find((x) => x.id === productPickerId);
+                              return p ? `${p.sku} · ${p.name}` : "Selecionar produto";
+                            })()
+                          : "Selecionar produto"}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Buscar por SKU ou nome..." />
+                        <CommandList>
+                          <CommandEmpty>Nenhum produto encontrado.</CommandEmpty>
+                          <CommandGroup>
+                            {products
+                              .filter((p) => p.active)
+                              .map((p) => (
+                                <CommandItem
+                                  key={p.id}
+                                  value={`${p.sku} ${p.name}`}
+                                  onSelect={() => {
+                                    setProductPickerId(p.id);
+                                    setProductPickerOpen(false);
+                                  }}
+                                >
+                                  <Check className={cn("mr-2 h-4 w-4", productPickerId === p.id ? "opacity-100" : "opacity-0")} />
+                                  <div className="flex flex-col">
+                                    <span className="font-medium">{p.name}</span>
+                                    <span className="text-[11px] text-muted-foreground">
+                                      {p.sku} · {p.unit} · {formatBRL(p.defaultPrice)}
+                                    </span>
+                                  </div>
+                                </CommandItem>
+                              ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div>
+                  <Label className="text-xs">Qtd</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    step="1"
+                    className="w-24"
+                    value={productPickerQty}
+                    onChange={(e) => setProductPickerQty(Math.max(1, Number(e.target.value) || 1))}
+                    disabled={readOnly}
+                  />
+                </div>
+                <Button
+                  className="gap-2"
+                  disabled={readOnly || !productPickerId || productPickerQty <= 0}
+                  onClick={() => {
+                    const parsed = addItemSchema.safeParse({
+                      productId: productPickerId,
+                      quantity: productPickerQty,
+                      unitPrice: products.find((p) => p.id === productPickerId)?.defaultPrice ?? 0,
+                    });
+                    if (!parsed.success) {
+                      toast.error(parsed.error.issues[0]?.message ?? "Dados inválidos");
+                      return;
+                    }
+                    addItem(proposal.id, productPickerId, productPickerQty);
+                    setProductPickerId("");
+                    setProductPickerQty(1);
+                    toast.success("Item adicionado");
+                  }}
+                >
+                  <Plus className="h-4 w-4" /> Adicionar
+                </Button>
+              </div>
             </div>
 
-            <AddOmieItemDialog
-              open={omieDialogOpen}
-              onOpenChange={setOmieDialogOpen}
-              onAdd={(payload: AddOmieItemPayload) => {
-                addItemFromOmie(
-                  proposal.id,
-                  {
-                    omieCodigoProduto: payload.omieCodigoProduto,
-                    description: payload.description,
-                    sku: payload.sku,
-                    unit: payload.unit,
-                    unitPrice: payload.unitPrice,
-                  },
-                  payload.quantity,
-                );
-                toast.success("Item adicionado");
-              }}
-            />
 
           </CardContent>
         </Card>
@@ -1077,7 +1057,7 @@ function PropostaDetalhe() {
                   disabled={readOnly}
                 />
                 <p className="text-[11px] text-muted-foreground mt-1">
-                  Opcional. Se vazio, o Omie usa hoje + 7 dias no pedido.
+                  Opcional. Se vazio, usa hoje + 7 dias como referência.
                 </p>
               </div>
 

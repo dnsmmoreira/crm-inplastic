@@ -187,9 +187,6 @@ function ClienteDetailPage() {
                 readOnly={!canEdit}
                 isAdmin={isAdmin}
                 vendedores={vendedoresQ.data ?? []}
-                showOmieBox
-                omieCodInplastic={c.omie_codigo_cliente_inplastic}
-                omieCodTaoplast={c.omie_codigo_cliente_taoplast}
               />
               {canEdit && (
                 <div className="flex justify-end gap-2 pb-6">
@@ -230,7 +227,6 @@ function ClienteDetailPage() {
                       <TableHead>Título</TableHead>
                       <TableHead>Etapa</TableHead>
                       <TableHead className="text-right">Valor estimado</TableHead>
-                      <TableHead>Status Omie</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -242,8 +238,6 @@ function ClienteDetailPage() {
                         stage: string;
                         estimated_value: number | null;
                         created_at: string;
-                        omie_status: string | null;
-                        omie_numero_pedido: number | null;
                       };
                       return (
                         <TableRow key={row.id}>
@@ -256,13 +250,6 @@ function ClienteDetailPage() {
                             {row.estimated_value != null
                               ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(row.estimated_value)
                               : "—"}
-                          </TableCell>
-                          <TableCell>
-                            {row.omie_numero_pedido
-                              ? <Badge className="bg-emerald-500/10 text-emerald-700 border-emerald-500/30" variant="outline">Pedido #{row.omie_numero_pedido}</Badge>
-                              : row.omie_status
-                                ? <Badge variant="outline">{row.omie_status}</Badge>
-                                : "—"}
                           </TableCell>
                         </TableRow>
                       );
