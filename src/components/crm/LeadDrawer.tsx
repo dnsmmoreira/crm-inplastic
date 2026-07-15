@@ -58,6 +58,8 @@ import {
 } from "@/lib/crm-store";
 import { toast } from "sonner";
 import { computeLeadScore, faturamentoTetoPorPorte } from "@/lib/lead-score";
+import { useMoveLeadStage } from "@/hooks/use-move-lead-stage";
+import { OmieLeadSection } from "@/components/crm/OmieLeadSection";
 
 
 const TYPE_META: Record<Interaction["type"], { label: string; icon: typeof Mail }> = {
@@ -87,6 +89,7 @@ export function LeadDrawer({
   const runFollowUp = useCrm((s) => s.runAiFollowUp);
   const bookSlot = useCrm((s) => s.bookSlotWithAi);
   const calendar = useCrm((s) => s.calendar);
+  const moveLeadStage = useMoveLeadStage();
 
   const [newInt, setNewInt] = useState<{ type: Interaction["type"]; content: string }>({
     type: "call",
@@ -173,8 +176,14 @@ export function LeadDrawer({
               <Select
                 value={lead.stage}
                 onValueChange={(v) => {
-                  updateLead(lead.id, { stage: v as Lead["stage"] });
-                  toast.success("Etapa atualizada");
+                  const target = v as Lead["stage"];
+                  if (target === lead.stage) return;
+                  if (target === "ganho") {
+                    void moveLeadStage(lead.id, target, { onGanhoLabel: lead.company });
+                  } else {
+                    updateLead(lead.id, { stage: target });
+                    toast.success("Etapa atualizada");
+                  }
                 }}
               >
                 <SelectTrigger className="mt-1">
@@ -201,6 +210,10 @@ export function LeadDrawer({
               />
             </div>
           </div>
+
+          <OmieLeadSection leadId={lead.id} />
+
+
 
           {(lead.cnpj || lead.razaoSocial || lead.dataAbertura || lead.capitalSocial || lead.socios?.length || lead.suframa?.length) && (
             <>

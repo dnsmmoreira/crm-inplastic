@@ -15,6 +15,7 @@ import { Plus, Package, Calendar as CalendarIcon, Search, ArrowDownUp, X } from 
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useCrm, STAGES, formatBRL, leadTemperature, followupTemperature, type Lead, type StageId, type FollowupLevel, useVisibleLeads } from "@/lib/crm-store";
+import { useMoveLeadStage } from "@/hooks/use-move-lead-stage";
 import { computeLeadScore } from "@/lib/lead-score";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -41,7 +42,7 @@ export const Route = createFileRoute("/pipeline")({
 
 function PipelinePage() {
   const leads = useVisibleLeads();
-  const moveLead = useCrm((s) => s.moveLead);
+  const moveLeadStage = useMoveLeadStage();
   const [openLead, setOpenLead] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -104,9 +105,11 @@ function PipelinePage() {
     const stage = String(e.over.id) as StageId;
     const lead = leads.find((l) => l.id === leadId);
     if (lead && lead.stage !== stage) {
-      moveLead(leadId, stage);
-      const stageLabel = STAGES.find((s) => s.id === stage)?.label;
-      toast.success(`${lead.company} → ${stageLabel}`);
+      void moveLeadStage(leadId, stage, { onGanhoLabel: lead.company });
+      if (stage !== "ganho") {
+        const stageLabel = STAGES.find((s) => s.id === stage)?.label;
+        toast.success(`${lead.company} → ${stageLabel}`);
+      }
     }
   };
 
