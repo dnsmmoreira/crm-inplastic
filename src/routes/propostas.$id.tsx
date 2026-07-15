@@ -148,6 +148,9 @@ function PropostaDetalhe() {
   const freightConfig = useCrm((s) => s.freightConfig);
   const [freightLoading, setFreightLoading] = useState(false);
   const calcFreight = useServerFn(calculateFreightDistance);
+  const gerarPedido = useServerFn(gerarPedidoOmie);
+  const reenviarPedido = useServerFn(reenviarPedidoOmie);
+  const [omieBusy, setOmieBusy] = useState(false);
 
   const totals = useMemo(() => (proposal ? proposalTotals(proposal) : null), [proposal]);
   const owner = proposal ? USERS.find((u) => u.id === proposal.ownerId) : null;
