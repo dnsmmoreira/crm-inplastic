@@ -42,7 +42,7 @@ export const Route = createFileRoute("/pipeline")({
 
 function PipelinePage() {
   const leads = useVisibleLeads();
-  const moveLead = useCrm((s) => s.moveLead);
+  const moveLeadStage = useMoveLeadStage();
   const [openLead, setOpenLead] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
