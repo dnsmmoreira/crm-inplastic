@@ -219,7 +219,6 @@ function PropostaDetalhe() {
 
   // Wrappers: auto-mark the proposal as dirty on any mutation e bloqueia se pedido fechado.
   const addItem: typeof _addItem = (...a) => { if (guard()) return; markDirty(); return _addItem(...a); };
-  const addItemFromOmie: typeof _addItemFromOmie = (...a) => { if (guard()) return; markDirty(); return _addItemFromOmie(...a); };
   const updateItem: typeof _updateItem = (...a) => { if (guard()) return; markDirty(); return _updateItem(...a); };
   const removeItem: typeof _removeItem = (...a) => { if (guard()) return; markDirty(); return _removeItem(...a); };
   const updateProposal: typeof _updateProposal = (...a) => { if (guard()) return; markDirty(); return _updateProposal(...a); };
@@ -235,7 +234,6 @@ function PropostaDetalhe() {
     const parsed = itemSchema.shape[field].safeParse(value);
     if (!parsed.success) {
       setRowErrors((prev) => ({ ...prev, [itemId]: { field, message: parsed.error.issues[0]?.message ?? "Valor inválido" } }));
-      // Still reflect the raw value in the store so the user sees what they typed
       updateItem(proposal!.id, itemId, { [field]: value } as never);
       return;
     }
@@ -250,87 +248,38 @@ function PropostaDetalhe() {
       return;
     }
     setOmieBusy(true);
-    const t = toast.loading(requerAprovacao ? "Solicitando aprovação..." : "Gerando pedido no Omie...");
+    const t = toast.loading(requerAprovacao ? "Solicitando aprovação..." : "Gerando pedido...");
     try {
       const r = await gerarPedido({ data: { proposta_id: proposal.id, requer_aprovacao: requerAprovacao } });
       toast.dismiss(t);
       if (!r.ok) {
-        if (r.validacao_erros?.length) {
-          toast.error("Pendências antes de gerar o pedido", {
-            description: r.validacao_erros.join("\n"),
-            duration: 10000,
-          });
-        } else {
-          toast.error("Falha ao gerar pedido no Omie", {
-            description: r.omie_erro ?? "Erro desconhecido",
-            duration: 10000,
-          });
-        }
-      } else if (r.omie_status === "nao_aplicavel") {
-        toast.success("Pedido registrado", { description: "LICITAPLAS não integra ao Omie." });
-      } else if (r.omie_numero_pedido) {
-        toast.success("Pedido gerado", { description: `Omie #${r.omie_numero_pedido}` });
+        toast.error("Pendências antes de gerar o pedido", {
+          description: (r.validacao_erros ?? ["Erro desconhecido"]).join("\n"),
+          duration: 10000,
+        });
       } else if (requerAprovacao) {
         toast.success("Enviado ao supervisor ADM");
+      } else {
+        toast.success("Pedido gerado", { description: "Lead movido para Ganho." });
       }
-      // Espelha no store local (o sync do próximo tick vai puxar do DB de qualquer forma).
+      // Espelha status no store (o sync já persiste no DB).
       if (r.ok && !requerAprovacao) {
         _updateProposal(proposal.id, {
           status: "pedido",
           orderCreatedAt: new Date().toISOString(),
           approvedByUserId: currentUser.id,
           approvedAt: new Date().toISOString(),
-          omieStatus: r.omie_status === "nao_aplicavel" ? "nao_aplicavel" : "enviado",
-          omieNumeroPedido: r.omie_numero_pedido ?? null,
-          omieCodigoPedido: r.omie_codigo_pedido ?? null,
-          omieErro: null,
-        });
-      } else if (!r.ok && r.omie_status === "erro") {
-        _updateProposal(proposal.id, {
-          status: "pedido",
-          orderCreatedAt: new Date().toISOString(),
-          omieStatus: "erro",
-          omieErro: r.omie_erro ?? null,
         });
       }
       setDirty(false);
     } catch (e) {
       toast.dismiss(t);
-      toast.error("Erro ao chamar Omie", { description: e instanceof Error ? e.message : String(e) });
+      toast.error("Erro ao gerar pedido", { description: e instanceof Error ? e.message : String(e) });
     } finally {
       setOmieBusy(false);
     }
   }
 
-  async function handleReenviarPedido() {
-    if (!proposal) return;
-    setOmieBusy(true);
-    const t = toast.loading("Liberando reenvio ao Omie...");
-    try {
-      const r = await reenviarPedido({ data: { proposta_id: proposal.id, lead_id: proposal.leadId } });
-      toast.dismiss(t);
-      if (!r.ok) {
-        toast.error("Falha no reenvio", {
-          description: r.validacao_erros?.join("\n") ?? r.omie_erro ?? "Erro desconhecido",
-          duration: 10000,
-        });
-        _updateProposal(proposal.id, { omieStatus: r.omie_status === "erro" ? "erro" : null, omieErro: r.omie_erro ?? null });
-      } else {
-        toast.success("Pedido reenviado", { description: r.omie_numero_pedido ? `Omie #${r.omie_numero_pedido}` : undefined });
-        _updateProposal(proposal.id, {
-          omieStatus: r.omie_status === "nao_aplicavel" ? "nao_aplicavel" : "enviado",
-          omieNumeroPedido: r.omie_numero_pedido ?? null,
-          omieCodigoPedido: r.omie_codigo_pedido ?? null,
-          omieErro: null,
-        });
-      }
-    } catch (e) {
-      toast.dismiss(t);
-      toast.error("Erro ao reenviar", { description: e instanceof Error ? e.message : String(e) });
-    } finally {
-      setOmieBusy(false);
-    }
-  }
 
   if (!proposal || !lead) {
     return (
