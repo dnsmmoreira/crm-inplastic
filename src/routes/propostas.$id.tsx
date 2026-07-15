@@ -31,6 +31,7 @@ import {
   type PaymentTerm,
 } from "@/lib/crm-store";
 import { calculateFreightDistance } from "@/lib/freight.functions";
+import { gerarPedidoOmie, reenviarPedidoOmie } from "@/lib/omie.functions";
 import { useServerFn } from "@tanstack/react-start";
 
 
@@ -147,6 +148,9 @@ function PropostaDetalhe() {
   const freightConfig = useCrm((s) => s.freightConfig);
   const [freightLoading, setFreightLoading] = useState(false);
   const calcFreight = useServerFn(calculateFreightDistance);
+  const gerarPedido = useServerFn(gerarPedidoOmie);
+  const reenviarPedido = useServerFn(reenviarPedidoOmie);
+  const [omieBusy, setOmieBusy] = useState(false);
 
   const totals = useMemo(() => (proposal ? proposalTotals(proposal) : null), [proposal]);
   const owner = proposal ? USERS.find((u) => u.id === proposal.ownerId) : null;
@@ -240,6 +244,95 @@ function PropostaDetalhe() {
     updateItem(proposal!.id, itemId, { [field]: parsed.data } as never);
   };
 
+  async function handleGerarPedido(requerAprovacao: boolean) {
+    if (!proposal) return;
+    if (proposal.items.length === 0) {
+      toast.error("Adicione ao menos um item antes de fechar o pedido.");
+      return;
+    }
+    setOmieBusy(true);
+    const t = toast.loading(requerAprovacao ? "Solicitando aprovação..." : "Gerando pedido no Omie...");
+    try {
+      const r = await gerarPedido({ data: { proposta_id: proposal.id, requer_aprovacao: requerAprovacao } });
+      toast.dismiss(t);
+      if (!r.ok) {
+        if (r.validacao_erros?.length) {
+          toast.error("Pendências antes de gerar o pedido", {
+            description: r.validacao_erros.join("\n"),
+            duration: 10000,
+          });
+        } else {
+          toast.error("Falha ao gerar pedido no Omie", {
+            description: r.omie_erro ?? "Erro desconhecido",
+            duration: 10000,
+          });
+        }
+      } else if (r.omie_status === "nao_aplicavel") {
+        toast.success("Pedido registrado", { description: "LICITAPLAS não integra ao Omie." });
+      } else if (r.omie_numero_pedido) {
+        toast.success("Pedido gerado", { description: `Omie #${r.omie_numero_pedido}` });
+      } else if (requerAprovacao) {
+        toast.success("Enviado ao supervisor ADM");
+      }
+      // Espelha no store local (o sync do próximo tick vai puxar do DB de qualquer forma).
+      if (r.ok && !requerAprovacao) {
+        _updateProposal(proposal.id, {
+          status: "pedido",
+          orderCreatedAt: new Date().toISOString(),
+          approvedByUserId: currentUser.id,
+          approvedAt: new Date().toISOString(),
+          omieStatus: r.omie_status === "nao_aplicavel" ? "nao_aplicavel" : "enviado",
+          omieNumeroPedido: r.omie_numero_pedido ?? null,
+          omieCodigoPedido: r.omie_codigo_pedido ?? null,
+          omieErro: null,
+        });
+      } else if (!r.ok && r.omie_status === "erro") {
+        _updateProposal(proposal.id, {
+          status: "pedido",
+          orderCreatedAt: new Date().toISOString(),
+          omieStatus: "erro",
+          omieErro: r.omie_erro ?? null,
+        });
+      }
+      setDirty(false);
+    } catch (e) {
+      toast.dismiss(t);
+      toast.error("Erro ao chamar Omie", { description: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setOmieBusy(false);
+    }
+  }
+
+  async function handleReenviarPedido() {
+    if (!proposal) return;
+    setOmieBusy(true);
+    const t = toast.loading("Liberando reenvio ao Omie...");
+    try {
+      const r = await reenviarPedido({ data: { proposta_id: proposal.id, lead_id: proposal.leadId } });
+      toast.dismiss(t);
+      if (!r.ok) {
+        toast.error("Falha no reenvio", {
+          description: r.validacao_erros?.join("\n") ?? r.omie_erro ?? "Erro desconhecido",
+          duration: 10000,
+        });
+        _updateProposal(proposal.id, { omieStatus: r.omie_status === "erro" ? "erro" : null, omieErro: r.omie_erro ?? null });
+      } else {
+        toast.success("Pedido reenviado", { description: r.omie_numero_pedido ? `Omie #${r.omie_numero_pedido}` : undefined });
+        _updateProposal(proposal.id, {
+          omieStatus: r.omie_status === "nao_aplicavel" ? "nao_aplicavel" : "enviado",
+          omieNumeroPedido: r.omie_numero_pedido ?? null,
+          omieCodigoPedido: r.omie_codigo_pedido ?? null,
+          omieErro: null,
+        });
+      }
+    } catch (e) {
+      toast.dismiss(t);
+      toast.error("Erro ao reenviar", { description: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setOmieBusy(false);
+    }
+  }
+
   if (!proposal || !lead) {
     return (
       <div className="p-8">
@@ -263,6 +356,31 @@ function PropostaDetalhe() {
             <div className="flex items-center gap-2">
               <h1 className="text-xl md:text-2xl font-semibold">Proposta {proposal.number}</h1>
               <Badge variant={s.variant} className={s.className}>{s.label}</Badge>
+              {proposal.omieStatus === "enviado" && (
+                <Badge className="bg-emerald-500/15 text-emerald-700 border-emerald-500/30 gap-1" variant="outline">
+                  ✅ Pedido Omie #{proposal.omieNumeroPedido ?? "?"}
+                </Badge>
+              )}
+              {proposal.omieStatus === "erro" && (
+                <>
+                  <Badge className="bg-red-500/15 text-red-700 border-red-500/30 gap-1" variant="outline">
+                    ❌ Erro Omie
+                  </Badge>
+                  <Button size="sm" variant="outline" disabled={omieBusy} onClick={() => void handleReenviarPedido()}>
+                    Reenviar
+                  </Button>
+                </>
+              )}
+              {proposal.omieStatus === "pendente" && (
+                <Badge className="bg-amber-500/15 text-amber-700 border-amber-500/30 animate-pulse" variant="outline">
+                  ⏳ Enviando ao Omie...
+                </Badge>
+              )}
+              {proposal.omieStatus === "nao_aplicavel" && (
+                <Badge className="bg-muted text-muted-foreground" variant="outline">
+                  ⚫ LICITAPLAS — sem Omie
+                </Badge>
+              )}
               {proposal.transport.freightPayer === "CIF" && proposal.status !== "pedido" && (
                 <Badge variant="outline" className="border-amber-500 text-amber-700 bg-amber-500/10 gap-1">
                   <AlertCircle className="h-3 w-3" /> CIF · requer aprovação do supervisor
@@ -313,57 +431,25 @@ function PropostaDetalhe() {
             </Button>
           )}
 
-          {/* Fechar pedido: sempre requer autorização do ADM. Admin gera direto. */}
+          {/* Fechar pedido: admin gera direto e dispara Omie; vendedor solicita aprovação. */}
           {proposal.status !== "pedido" && proposal.status !== "aguardando_aprovacao" && (
             <Button
               variant="default"
               className="gap-2"
-              onClick={() => {
-                if (proposal.items.length === 0) { toast.error("Adicione ao menos um item antes de fechar o pedido."); return; }
-                if (isAdmin) {
-                  _updateProposal(proposal.id, {
-                    status: "pedido",
-                    approvedByUserId: currentUser.id,
-                    approvedAt: new Date().toISOString(),
-                    orderCreatedAt: new Date().toISOString(),
-                  });
-                  setDirty(false);
-                  toast.success("Pedido gerado", { description: "Liberado diretamente pelo administrador." });
-                } else {
-                  _updateProposal(proposal.id, {
-                    status: "aguardando_aprovacao",
-                    approvalRequestedAt: new Date().toISOString(),
-                    approvalReason:
-                      proposal.transport.freightPayer === "CIF"
-                        ? "Frete CIF requer autorização do supervisor"
-                        : "Geração de pedido requer autorização do supervisor",
-                  });
-                  setDirty(false);
-                  toast.success("Enviado ao supervisor ADM", {
-                    description: "O pedido só será gerado após liberação do administrador.",
-                  });
-                }
-              }}
+              disabled={omieBusy}
+              onClick={() => void handleGerarPedido(!isAdmin)}
             >
               <CheckCircle2 className="h-4 w-4" /> {isAdmin ? "Gerar pedido" : "Solicitar pedido"}
             </Button>
           )}
 
 
-          {/* ADM libera pedidos aguardando aprovação */}
+          {/* ADM libera pedidos aguardando aprovação — dispara Omie no ato. */}
           {proposal.status === "aguardando_aprovacao" && isAdmin && (
             <Button
               className="gap-2 bg-emerald-600 hover:bg-emerald-700"
-              onClick={() => {
-                _updateProposal(proposal.id, {
-                  status: "pedido",
-                  approvedByUserId: currentUser.id,
-                  approvedAt: new Date().toISOString(),
-                  orderCreatedAt: new Date().toISOString(),
-                });
-                setDirty(false);
-                toast.success("Pedido liberado", { description: `Vendedor ${owner?.name ?? ""} será notificado na sua lista.` });
-              }}
+              disabled={omieBusy}
+              onClick={() => void handleGerarPedido(false)}
             >
               <CheckCircle2 className="h-4 w-4" /> Aprovar liberação
             </Button>
@@ -1067,6 +1153,22 @@ function PropostaDetalhe() {
                   Somente o administrador pode cadastrar novas condições.
                 </p>
               </div>
+
+              <div>
+                <Label>Previsão de entrega</Label>
+                <Input
+                  type="date"
+                  value={proposal.expectedDeliveryDate ?? ""}
+                  onChange={(e) =>
+                    updateProposal(proposal.id, { expectedDeliveryDate: e.target.value || undefined })
+                  }
+                  disabled={readOnly}
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Opcional. Se vazio, o Omie usa hoje + 7 dias no pedido.
+                </p>
+              </div>
+
 
               <div className="rounded-md border-l-4 border-amber-500 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-800">
                 <span className="font-semibold">Válido após aprovação financeira.</span>

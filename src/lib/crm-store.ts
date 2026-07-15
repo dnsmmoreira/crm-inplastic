@@ -595,12 +595,19 @@ export type Proposal = {
   approvedByUserId?: string;
   approvedAt?: string;
   orderCreatedAt?: string;
+  expectedDeliveryDate?: string; // yyyy-MM-dd — informa data prevista de entrega ao Omie
   // Solicitação/liberação de alteração em pedido já fechado
   editRequestedAt?: string;
   editRequestReason?: string;
   editRequestedByUserId?: string;
   editUnlockedAt?: string;
   editUnlockedByUserId?: string;
+  // Rastreio da integração Omie (server-managed — não persistido pelo store)
+  omieStatus?: "pendente" | "enviado" | "erro" | "nao_aplicavel" | null;
+  omieNumeroPedido?: string | null;
+  omieCodigoPedido?: number | null;
+  omieErro?: string | null;
+  omieEnviadoEm?: string | null;
 };
 
 

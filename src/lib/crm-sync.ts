@@ -377,6 +377,12 @@ function rowToProposal(
     approvedByUserId: r.approved_by_user_id ?? undefined,
     approvedAt: r.approved_at ?? undefined,
     orderCreatedAt: r.order_created_at ?? undefined,
+    expectedDeliveryDate: (r as unknown as { expected_delivery_date?: string | null }).expected_delivery_date ?? undefined,
+    omieStatus: (r as unknown as { omie_status?: Proposal["omieStatus"] }).omie_status ?? null,
+    omieNumeroPedido: (r as unknown as { omie_numero_pedido?: string | null }).omie_numero_pedido ?? null,
+    omieCodigoPedido: (r as unknown as { omie_codigo_pedido?: number | null }).omie_codigo_pedido ?? null,
+    omieErro: (r as unknown as { omie_erro?: string | null }).omie_erro ?? null,
+    omieEnviadoEm: (r as unknown as { omie_enviado_em?: string | null }).omie_enviado_em ?? null,
   };
 }
 function proposalToInsert(p: Proposal): ProposalInsert {
@@ -398,7 +404,10 @@ function proposalToInsert(p: Proposal): ProposalInsert {
     approved_by_user_id: p.approvedByUserId ?? null,
     approved_at: p.approvedAt ?? null,
     order_created_at: p.orderCreatedAt ?? null,
-  };
+    ...(p.expectedDeliveryDate !== undefined
+      ? { expected_delivery_date: p.expectedDeliveryDate ?? null }
+      : {}),
+  } as ProposalInsert;
 }
 
 // ============ Hidratação ============
