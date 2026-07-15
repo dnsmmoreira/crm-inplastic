@@ -211,6 +211,10 @@ export function LeadDrawer({
             </div>
           </div>
 
+          <OmieLeadSection leadId={lead.id} />
+
+
+
           {(lead.cnpj || lead.razaoSocial || lead.dataAbertura || lead.capitalSocial || lead.socios?.length || lead.suframa?.length) && (
             <>
               <Separator />
