@@ -27,7 +27,9 @@ import { Route as AgenteIaRouteImport } from './routes/agente-ia'
 import { Route as AceitarConviteRouteImport } from './routes/aceitar-convite'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PropostasIndexRouteImport } from './routes/propostas.index'
+import { Route as ClientesIndexRouteImport } from './routes/clientes.index'
 import { Route as PropostasIdRouteImport } from './routes/propostas.$id'
+import { Route as ClientesIdRouteImport } from './routes/clientes.$id'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
@@ -133,9 +135,19 @@ const PropostasIndexRoute = PropostasIndexRouteImport.update({
   path: '/propostas/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ClientesIndexRoute = ClientesIndexRouteImport.update({
+  id: '/clientes/',
+  path: '/clientes/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PropostasIdRoute = PropostasIdRouteImport.update({
   id: '/propostas/$id',
   path: '/propostas/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClientesIdRoute = ClientesIdRouteImport.update({
+  id: '/clientes/$id',
+  path: '/clientes/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const Char91DotwellKnownChar93OauthProtectedResourceRoute =
@@ -239,7 +251,9 @@ export interface FileRoutesByFullPath {
   '/usuarios': typeof UsuariosRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/clientes/$id': typeof ClientesIdRoute
   '/propostas/$id': typeof PropostasIdRoute
+  '/clientes/': typeof ClientesIndexRoute
   '/propostas/': typeof PropostasIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -274,7 +288,9 @@ export interface FileRoutesByTo {
   '/usuarios': typeof UsuariosRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/clientes/$id': typeof ClientesIdRoute
   '/propostas/$id': typeof PropostasIdRoute
+  '/clientes': typeof ClientesIndexRoute
   '/propostas': typeof PropostasIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -310,7 +326,9 @@ export interface FileRoutesById {
   '/usuarios': typeof UsuariosRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/clientes/$id': typeof ClientesIdRoute
   '/propostas/$id': typeof PropostasIdRoute
+  '/clientes/': typeof ClientesIndexRoute
   '/propostas/': typeof PropostasIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -347,7 +365,9 @@ export interface FileRouteTypes {
     | '/usuarios'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
+    | '/clientes/$id'
     | '/propostas/$id'
+    | '/clientes/'
     | '/propostas/'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
@@ -382,7 +402,9 @@ export interface FileRouteTypes {
     | '/usuarios'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
+    | '/clientes/$id'
     | '/propostas/$id'
+    | '/clientes'
     | '/propostas'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
@@ -417,7 +439,9 @@ export interface FileRouteTypes {
     | '/usuarios'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
+    | '/clientes/$id'
     | '/propostas/$id'
+    | '/clientes/'
     | '/propostas/'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
@@ -453,7 +477,9 @@ export interface RootRouteChildren {
   UsuariosRoute: typeof UsuariosRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  ClientesIdRoute: typeof ClientesIdRoute
   PropostasIdRoute: typeof PropostasIdRoute
+  ClientesIndexRoute: typeof ClientesIndexRoute
   PropostasIndexRoute: typeof PropostasIndexRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -597,11 +623,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PropostasIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/clientes/': {
+      id: '/clientes/'
+      path: '/clientes'
+      fullPath: '/clientes/'
+      preLoaderRoute: typeof ClientesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/propostas/$id': {
       id: '/propostas/$id'
       path: '/propostas/$id'
       fullPath: '/propostas/$id'
       preLoaderRoute: typeof PropostasIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/clientes/$id': {
+      id: '/clientes/$id'
+      path: '/clientes/$id'
+      fullPath: '/clientes/$id'
+      preLoaderRoute: typeof ClientesIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/.well-known/oauth-protected-resource': {
@@ -726,7 +766,9 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
+  ClientesIdRoute: ClientesIdRoute,
   PropostasIdRoute: PropostasIdRoute,
+  ClientesIndexRoute: ClientesIndexRoute,
   PropostasIndexRoute: PropostasIndexRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
