@@ -148,6 +148,7 @@ export type Database = {
           ie: string | null
           is_default: boolean
           legal_name: string
+          omie_key: string | null
           phone: string | null
           tagline: string | null
           updated_at: string
@@ -164,6 +165,7 @@ export type Database = {
           ie?: string | null
           is_default?: boolean
           legal_name: string
+          omie_key?: string | null
           phone?: string | null
           tagline?: string | null
           updated_at?: string
@@ -180,6 +182,7 @@ export type Database = {
           ie?: string | null
           is_default?: boolean
           legal_name?: string
+          omie_key?: string | null
           phone?: string | null
           tagline?: string | null
           updated_at?: string
@@ -916,10 +919,17 @@ export type Database = {
           created_at: string
           discount_percent: number
           emitter_id: string
+          expected_delivery_date: string | null
           id: string
           lead_id: string
           number: string
           observations: string
+          omie_codigo_cliente: number | null
+          omie_codigo_pedido: number | null
+          omie_enviado_em: string | null
+          omie_erro: string | null
+          omie_numero_pedido: string | null
+          omie_status: string | null
           order_created_at: string | null
           owner_id: string
           payment_term_id: string | null
@@ -937,10 +947,17 @@ export type Database = {
           created_at?: string
           discount_percent?: number
           emitter_id: string
+          expected_delivery_date?: string | null
           id?: string
           lead_id: string
           number: string
           observations?: string
+          omie_codigo_cliente?: number | null
+          omie_codigo_pedido?: number | null
+          omie_enviado_em?: string | null
+          omie_erro?: string | null
+          omie_numero_pedido?: string | null
+          omie_status?: string | null
           order_created_at?: string | null
           owner_id: string
           payment_term_id?: string | null
@@ -958,10 +975,17 @@ export type Database = {
           created_at?: string
           discount_percent?: number
           emitter_id?: string
+          expected_delivery_date?: string | null
           id?: string
           lead_id?: string
           number?: string
           observations?: string
+          omie_codigo_cliente?: number | null
+          omie_codigo_pedido?: number | null
+          omie_enviado_em?: string | null
+          omie_erro?: string | null
+          omie_numero_pedido?: string | null
+          omie_status?: string | null
           order_created_at?: string | null
           owner_id?: string
           payment_term_id?: string | null
