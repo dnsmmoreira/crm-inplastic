@@ -102,16 +102,15 @@ export const moverParaGanhoOmie = createServerFn({ method: "POST" })
     }
 
     // ==== INPLASTIC / TAOPLAST: validações ====
-    const razaoSocial = ((leadAny.razao_social as string | null) ?? "").trim();
-    const cnpj = ((leadAny.cnpj as string | null) ?? "").trim();
-    const endereco = ((leadAny.endereco as string | null) ?? "").trim();
-    const bairro = ((leadAny.bairro as string | null) ?? "").trim();
-    const cep = ((leadAny.cep as string | null) ?? "").trim();
-    const cidade = ((leadAny.cidade as string | null) ?? "").trim();
-    const estado = ((leadAny.estado as string | null) ?? "").trim();
-    const telefone = (
-      ((leadAny.telefone as string | null) ?? (leadAny.whatsapp as string | null) ?? "") + ""
-    ).trim();
+    const str = (v: unknown) => String(v ?? "").trim();
+    const razaoSocial = str(leadAny.razao_social);
+    const cnpj = str(leadAny.cnpj);
+    const endereco = str(leadAny.endereco);
+    const bairro = str(leadAny.bairro);
+    const cep = str(leadAny.cep);
+    const cidade = str(leadAny.cidade);
+    const estado = str(leadAny.estado);
+    const telefone = str(leadAny.telefone) || str(leadAny.whatsapp);
 
     if (!razaoSocial) erros.push("Razão social é obrigatória.");
     else if (/^cliente\s/i.test(razaoSocial))
