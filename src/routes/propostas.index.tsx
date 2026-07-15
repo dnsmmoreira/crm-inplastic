@@ -314,65 +314,11 @@ function PropostasPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={openNew} onOpenChange={(o) => { setOpenNew(o); if (!o) { setSelectedLead(""); setLeadSearch(""); } }}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Nova proposta comercial</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <Label>Buscar cliente</Label>
-            <div className="relative">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                autoFocus
-                value={leadSearch}
-                onChange={(e) => setLeadSearch(e.target.value)}
-                placeholder="Nome da empresa, contato ou CNPJ..."
-                className="pl-8"
-              />
-            </div>
-            {leads.length === 0 ? (
-              <p className="text-xs text-muted-foreground">
-                Você não tem leads visíveis. Crie um lead primeiro em <Link to="/pipeline" className="text-primary underline">Funil de Vendas</Link>.
-              </p>
-            ) : (
-              <div className="max-h-64 overflow-y-auto border rounded-md divide-y">
-                {leadResults.length === 0 && (
-                  <div className="p-3 text-sm text-muted-foreground text-center">Nenhum cliente encontrado.</div>
-                )}
-                {leadResults.map((l) => (
-                  <button
-                    key={l.id}
-                    type="button"
-                    onClick={() => setSelectedLead(l.id)}
-                    className={`w-full text-left p-2.5 hover:bg-accent transition-colors ${selectedLead === l.id ? "bg-accent" : ""}`}
-                  >
-                    <div className="text-sm font-medium">{l.company}</div>
-                    <div className="text-xs text-muted-foreground flex flex-wrap gap-x-2">
-                      <span>{l.contactName}</span>
-                      {l.cnpj && <span>· CNPJ {l.cnpj}</span>}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setOpenNew(false)}>Cancelar</Button>
-            <Button
-              disabled={!selectedLead}
-              onClick={() => {
-                const id = createProposal(selectedLead);
-                setOpenNew(false);
-                setSelectedLead("");
-                setLeadSearch("");
-                toast.success("Proposta criada — adicione os itens");
-                navigate({ to: "/propostas/$id", params: { id } });
-              }}
-            >
-              Criar proposta
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <NovaPropostaDialog
+        open={openNew}
+        onOpenChange={setOpenNew}
+      />
+
 
       <Dialog open={openNewLead} onOpenChange={(o) => { setOpenNewLead(o); if (!o) resetLeadForm(); }}>
         <DialogContent>
