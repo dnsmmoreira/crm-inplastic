@@ -1061,7 +1061,7 @@ export const useCrm = create<CrmState>()(
                     {
                       id: uid(),
                       productId: product.id,
-                      omieCodigoProduto: product.codigoProdutoOmie ?? undefined,
+                      omieCodigoProduto: undefined,
                       description: product.name,
                       sku: product.sku,
                       unit: product.unit,
