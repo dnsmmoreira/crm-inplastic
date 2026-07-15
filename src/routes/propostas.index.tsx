@@ -1,9 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { Plus, FileText, Search, Trash2, UserPlus, Loader2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Plus, FileText, Search, Trash2, UserPlus, Loader2, Building2 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { lookupCnpj } from "@/lib/cnpj.functions";
-import { isValidCnpj } from "@/lib/cnpj";
+import { getClienteByCnpj, vincularClienteAoLead, type ClienteRow } from "@/lib/clientes.functions";
+import { NovoClienteDialog } from "@/components/clientes/NovoClienteDialog";
+import { isValidCnpj, formatCnpj, onlyDigitsCnpj } from "@/lib/cnpj";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
