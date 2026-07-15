@@ -58,6 +58,8 @@ import {
 } from "@/lib/crm-store";
 import { toast } from "sonner";
 import { computeLeadScore, faturamentoTetoPorPorte } from "@/lib/lead-score";
+import { useMoveLeadStage } from "@/hooks/use-move-lead-stage";
+import { OmieLeadSection } from "@/components/crm/OmieLeadSection";
 
 
 const TYPE_META: Record<Interaction["type"], { label: string; icon: typeof Mail }> = {
