@@ -734,42 +734,98 @@ function PropostaDetalhe() {
               </div>
             )}
 
-            <div className="mt-4 border-t pt-4 flex items-center justify-between gap-2">
+            <div className="mt-4 border-t pt-4 space-y-3">
               <div className="text-xs text-muted-foreground">
-                Itens vêm do catálogo Omie — só produtos cadastrados no Omie podem virar pedido.
+                Itens vêm do catálogo interno de produtos.
               </div>
-              <Button
-                onClick={() => {
-                  if (readOnly) {
-                    toast.error("Pedido fechado — solicite liberação do ADM para editar.");
-                    return;
-                  }
-                  setOmieDialogOpen(true);
-                }}
-                className="gap-2"
-              >
-                <Plus className="h-4 w-4" /> Adicionar produto do Omie
-              </Button>
+              <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-2 items-end">
+                <div>
+                  <Label className="text-xs">Produto</Label>
+                  <Popover open={productPickerOpen} onOpenChange={setProductPickerOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        className="w-full justify-between font-normal"
+                        disabled={readOnly}
+                      >
+                        {productPickerId
+                          ? (() => {
+                              const p = products.find((x) => x.id === productPickerId);
+                              return p ? `${p.sku} · ${p.name}` : "Selecionar produto";
+                            })()
+                          : "Selecionar produto"}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Buscar por SKU ou nome..." />
+                        <CommandList>
+                          <CommandEmpty>Nenhum produto encontrado.</CommandEmpty>
+                          <CommandGroup>
+                            {products
+                              .filter((p) => p.active)
+                              .map((p) => (
+                                <CommandItem
+                                  key={p.id}
+                                  value={`${p.sku} ${p.name}`}
+                                  onSelect={() => {
+                                    setProductPickerId(p.id);
+                                    setProductPickerOpen(false);
+                                  }}
+                                >
+                                  <Check className={cn("mr-2 h-4 w-4", productPickerId === p.id ? "opacity-100" : "opacity-0")} />
+                                  <div className="flex flex-col">
+                                    <span className="font-medium">{p.name}</span>
+                                    <span className="text-[11px] text-muted-foreground">
+                                      {p.sku} · {p.unit} · {formatBRL(p.defaultPrice)}
+                                    </span>
+                                  </div>
+                                </CommandItem>
+                              ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div>
+                  <Label className="text-xs">Qtd</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    step="1"
+                    className="w-24"
+                    value={productPickerQty}
+                    onChange={(e) => setProductPickerQty(Math.max(1, Number(e.target.value) || 1))}
+                    disabled={readOnly}
+                  />
+                </div>
+                <Button
+                  className="gap-2"
+                  disabled={readOnly || !productPickerId || productPickerQty <= 0}
+                  onClick={() => {
+                    const parsed = addItemSchema.safeParse({
+                      productId: productPickerId,
+                      quantity: productPickerQty,
+                      unitPrice: products.find((p) => p.id === productPickerId)?.defaultPrice ?? 0,
+                    });
+                    if (!parsed.success) {
+                      toast.error(parsed.error.issues[0]?.message ?? "Dados inválidos");
+                      return;
+                    }
+                    addItem(proposal.id, productPickerId, productPickerQty);
+                    setProductPickerId("");
+                    setProductPickerQty(1);
+                    toast.success("Item adicionado");
+                  }}
+                >
+                  <Plus className="h-4 w-4" /> Adicionar
+                </Button>
+              </div>
             </div>
 
-            <AddOmieItemDialog
-              open={omieDialogOpen}
-              onOpenChange={setOmieDialogOpen}
-              onAdd={(payload: AddOmieItemPayload) => {
-                addItemFromOmie(
-                  proposal.id,
-                  {
-                    omieCodigoProduto: payload.omieCodigoProduto,
-                    description: payload.description,
-                    sku: payload.sku,
-                    unit: payload.unit,
-                    unitPrice: payload.unitPrice,
-                  },
-                  payload.quantity,
-                );
-                toast.success("Item adicionado");
-              }}
-            />
 
           </CardContent>
         </Card>
