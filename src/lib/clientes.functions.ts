@@ -282,7 +282,7 @@ export const updateCliente = createServerFn({ method: "POST" })
     const { errors, clean } = validateInput(merged);
     if (errors.length) throw new Error(errors.join("; "));
 
-    const updateFields: Record<string, unknown> = {
+    const updateFields = {
       razao_social: clean.razao_social,
       nome_fantasia: clean.nome_fantasia ?? null,
       inscricao_estadual: clean.ie_isento ? null : (clean.inscricao_estadual ?? null),
@@ -303,10 +303,8 @@ export const updateCliente = createServerFn({ method: "POST" })
       empresa_padrao: clean.empresa_padrao,
       ativo: clean.ativo !== false,
       atualizado_em: new Date().toISOString(),
+      ...(patch.vendedor_id !== undefined ? { vendedor_id: patch.vendedor_id } : {}),
     };
-    if (patch.vendedor_id !== undefined) {
-      updateFields.vendedor_id = patch.vendedor_id;
-    }
 
     const { data: updated, error } = await context.supabase
       .from("clientes").update(updateFields).eq("id", id).select("*").single();
