@@ -828,6 +828,7 @@ export type Database = {
         Row: {
           description: string
           id: string
+          omie_codigo_produto: number | null
           position: number
           product_id: string | null
           proposta_id: string
@@ -839,6 +840,7 @@ export type Database = {
         Insert: {
           description: string
           id?: string
+          omie_codigo_produto?: number | null
           position?: number
           product_id?: string | null
           proposta_id: string
@@ -850,6 +852,7 @@ export type Database = {
         Update: {
           description?: string
           id?: string
+          omie_codigo_produto?: number | null
           position?: number
           product_id?: string | null
           proposta_id?: string
