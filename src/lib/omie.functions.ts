@@ -163,15 +163,9 @@ export const gerarPedidoOmie = createServerFn({ method: "POST" })
     const [{ data: cliente, error: cliErr }, { data: emitter, error: emErr }, itensResp] = await Promise.all([
       loose.from("clientes").select("*").eq("id", clienteId).maybeSingle(),
       loose.from("emitters").select("*").eq("id", proposta.emitter_id as string).maybeSingle(),
-      (
-        supabase as unknown as {
-          from: (t: string) => {
-            select: (c: string) => { eq: (k: string, v: string) => Promise<{ data: unknown; error: { message: string } | null }> };
-          };
-        }
-      )
+      loose
         .from("proposta_itens")
-        .select("id, product_id, sku, description, quantity, unit_price")
+        .select("id, product_id, omie_codigo_produto, sku, description, quantity, unit_price")
         .eq("proposta_id", propostaId),
     ]);
     if (cliErr) throw new Error(`Falha ao carregar cliente: ${cliErr.message}`);
@@ -239,31 +233,29 @@ export const gerarPedidoOmie = createServerFn({ method: "POST" })
     else if (itensRaw.some((i) => Number(i.unit_price) <= 0))
       erros.push("Todos os itens precisam de valor unitário maior que zero.");
 
-    // Resolve o código Omie de cada produto (via produtos.codigo_produto_omie)
-    const productIds = Array.from(new Set(itensRaw.map((i) => i.product_id as string).filter(Boolean)));
-    let produtoMap = new Map<string, number | null>();
-    if (productIds.length > 0) {
-      const { data: prodRows, error: prodErr } = await (
-        supabase as unknown as {
-          from: (t: string) => {
-            select: (c: string) => { in: (k: string, v: string[]) => Promise<{ data: Array<Record<string, unknown>> | null; error: { message: string } | null }> };
-          };
-        }
-      )
+    // Fase D: itens já apontam direto pro produto Omie via proposta_itens.omie_codigo_produto.
+    // Fallback: se algum item antigo ainda estiver sem omie_codigo_produto, resolve via produtos.codigo_produto_omie.
+    const itensSemOmie = itensRaw.filter((i) => !i.omie_codigo_produto && i.product_id);
+    const legacyMap = new Map<string, number | null>();
+    if (itensSemOmie.length > 0) {
+      const ids = Array.from(new Set(itensSemOmie.map((i) => i.product_id as string)));
+      const { data: prodRows, error: prodErr } = await loose
         .from("produtos")
-        .select("id, sku, codigo_produto_omie")
-        .in("id", productIds);
+        .select("id, codigo_produto_omie")
+        .in("id", ids);
       if (prodErr) throw new Error(`Falha ao carregar produtos: ${prodErr.message}`);
-      produtoMap = new Map(
-        (prodRows ?? []).map((p) => [p.id as string, (p.codigo_produto_omie as number | null) ?? null]),
+      (prodRows ?? []).forEach((p: Record<string, unknown>) =>
+        legacyMap.set(p.id as string, (p.codigo_produto_omie as number | null) ?? null),
       );
     }
 
     const itensMapeados = itensRaw.map((i) => {
-      const codigoOmie = produtoMap.get(i.product_id as string) ?? null;
+      const codigoOmie =
+        (i.omie_codigo_produto as number | null) ??
+        (i.product_id ? legacyMap.get(i.product_id as string) ?? null : null);
       if (!codigoOmie) {
         erros.push(
-          `Produto "${(i.description as string) ?? i.sku ?? "?"}" não está mapeado no Omie (falta codigo_produto_omie).`,
+          `Produto "${(i.description as string) ?? i.sku ?? "?"}" não está mapeado no Omie. Remova e adicione novamente pelo catálogo Omie.`,
         );
       }
       return {
