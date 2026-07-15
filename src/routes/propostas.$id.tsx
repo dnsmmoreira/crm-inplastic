@@ -304,31 +304,6 @@ function PropostaDetalhe() {
             <div className="flex items-center gap-2">
               <h1 className="text-xl md:text-2xl font-semibold">Proposta {proposal.number}</h1>
               <Badge variant={s.variant} className={s.className}>{s.label}</Badge>
-              {proposal.omieStatus === "enviado" && (
-                <Badge className="bg-emerald-500/15 text-emerald-700 border-emerald-500/30 gap-1" variant="outline">
-                  ✅ Pedido Omie #{proposal.omieNumeroPedido ?? "?"}
-                </Badge>
-              )}
-              {proposal.omieStatus === "erro" && (
-                <>
-                  <Badge className="bg-red-500/15 text-red-700 border-red-500/30 gap-1" variant="outline">
-                    ❌ Erro Omie
-                  </Badge>
-                  <Button size="sm" variant="outline" disabled={omieBusy} onClick={() => void handleReenviarPedido()}>
-                    Reenviar
-                  </Button>
-                </>
-              )}
-              {proposal.omieStatus === "pendente" && (
-                <Badge className="bg-amber-500/15 text-amber-700 border-amber-500/30 animate-pulse" variant="outline">
-                  ⏳ Enviando ao Omie...
-                </Badge>
-              )}
-              {proposal.omieStatus === "nao_aplicavel" && (
-                <Badge className="bg-muted text-muted-foreground" variant="outline">
-                  ⚫ LICITAPLAS — sem Omie
-                </Badge>
-              )}
               {proposal.transport.freightPayer === "CIF" && proposal.status !== "pedido" && (
                 <Badge variant="outline" className="border-amber-500 text-amber-700 bg-amber-500/10 gap-1">
                   <AlertCircle className="h-3 w-3" /> CIF · requer aprovação do supervisor
