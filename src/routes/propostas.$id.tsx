@@ -406,57 +406,25 @@ function PropostaDetalhe() {
             </Button>
           )}
 
-          {/* Fechar pedido: sempre requer autorização do ADM. Admin gera direto. */}
+          {/* Fechar pedido: admin gera direto e dispara Omie; vendedor solicita aprovação. */}
           {proposal.status !== "pedido" && proposal.status !== "aguardando_aprovacao" && (
             <Button
               variant="default"
               className="gap-2"
-              onClick={() => {
-                if (proposal.items.length === 0) { toast.error("Adicione ao menos um item antes de fechar o pedido."); return; }
-                if (isAdmin) {
-                  _updateProposal(proposal.id, {
-                    status: "pedido",
-                    approvedByUserId: currentUser.id,
-                    approvedAt: new Date().toISOString(),
-                    orderCreatedAt: new Date().toISOString(),
-                  });
-                  setDirty(false);
-                  toast.success("Pedido gerado", { description: "Liberado diretamente pelo administrador." });
-                } else {
-                  _updateProposal(proposal.id, {
-                    status: "aguardando_aprovacao",
-                    approvalRequestedAt: new Date().toISOString(),
-                    approvalReason:
-                      proposal.transport.freightPayer === "CIF"
-                        ? "Frete CIF requer autorização do supervisor"
-                        : "Geração de pedido requer autorização do supervisor",
-                  });
-                  setDirty(false);
-                  toast.success("Enviado ao supervisor ADM", {
-                    description: "O pedido só será gerado após liberação do administrador.",
-                  });
-                }
-              }}
+              disabled={omieBusy}
+              onClick={() => void handleGerarPedido(!isAdmin)}
             >
               <CheckCircle2 className="h-4 w-4" /> {isAdmin ? "Gerar pedido" : "Solicitar pedido"}
             </Button>
           )}
 
 
-          {/* ADM libera pedidos aguardando aprovação */}
+          {/* ADM libera pedidos aguardando aprovação — dispara Omie no ato. */}
           {proposal.status === "aguardando_aprovacao" && isAdmin && (
             <Button
               className="gap-2 bg-emerald-600 hover:bg-emerald-700"
-              onClick={() => {
-                _updateProposal(proposal.id, {
-                  status: "pedido",
-                  approvedByUserId: currentUser.id,
-                  approvedAt: new Date().toISOString(),
-                  orderCreatedAt: new Date().toISOString(),
-                });
-                setDirty(false);
-                toast.success("Pedido liberado", { description: `Vendedor ${owner?.name ?? ""} será notificado na sua lista.` });
-              }}
+              disabled={omieBusy}
+              onClick={() => void handleGerarPedido(false)}
             >
               <CheckCircle2 className="h-4 w-4" /> Aprovar liberação
             </Button>
