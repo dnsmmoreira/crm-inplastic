@@ -354,7 +354,7 @@ function PropostaDetalhe() {
             </Button>
           )}
 
-          {/* Fechar pedido: admin gera direto e dispara Omie; vendedor solicita aprovação. */}
+          {/* Fechar pedido: admin gera direto; vendedor solicita aprovação. */}
           {proposal.status !== "pedido" && proposal.status !== "aguardando_aprovacao" && (
             <Button
               variant="default"
@@ -367,7 +367,7 @@ function PropostaDetalhe() {
           )}
 
 
-          {/* ADM libera pedidos aguardando aprovação — dispara Omie no ato. */}
+          {/* ADM libera pedidos aguardando aprovação — geração no ato. */}
           {proposal.status === "aguardando_aprovacao" && isAdmin && (
             <Button
               className="gap-2 bg-emerald-600 hover:bg-emerald-700"
@@ -1057,7 +1057,7 @@ function PropostaDetalhe() {
                   disabled={readOnly}
                 />
                 <p className="text-[11px] text-muted-foreground mt-1">
-                  Opcional. Se vazio, o Omie usa hoje + 7 dias no pedido.
+                  Opcional. Se vazio, usa hoje + 7 dias como referência.
                 </p>
               </div>
 
