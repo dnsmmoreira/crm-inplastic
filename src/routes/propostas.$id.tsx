@@ -31,7 +31,7 @@ import {
   type PaymentTerm,
 } from "@/lib/crm-store";
 import { calculateFreightDistance } from "@/lib/freight.functions";
-import { gerarPedidoOmie, reenviarPedidoOmie } from "@/lib/omie.functions";
+import { gerarPedidoOmie } from "@/lib/omie.functions";
 import { useServerFn } from "@tanstack/react-start";
 
 
@@ -81,7 +81,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
-import { AddOmieItemDialog, type AddOmieItemPayload } from "@/components/propostas/AddOmieItemDialog";
+
 
 export const Route = createFileRoute("/propostas/$id")({
   component: PropostaDetalhe,
@@ -135,19 +135,19 @@ function PropostaDetalhe() {
   const activePaymentTerms = useMemo(() => paymentTerms.filter((t) => t.active), [paymentTerms]);
   const maxDiscount = useMaxDiscountForCurrentUser();
   const _addItem = useCrm((s) => s.addProposalItem);
-  const _addItemFromOmie = useCrm((s) => s.addProposalItemFromOmie);
   const _updateItem = useCrm((s) => s.updateProposalItem);
   const _removeItem = useCrm((s) => s.removeProposalItem);
   const _updateProposal = useCrm((s) => s.updateProposal);
   const _setStatus = useCrm((s) => s.setProposalStatus);
-  const [omieDialogOpen, setOmieDialogOpen] = useState(false);
+  const [productPickerOpen, setProductPickerOpen] = useState(false);
+  const [productPickerId, setProductPickerId] = useState<string>("");
+  const [productPickerQty, setProductPickerQty] = useState<number>(1);
   const [rowErrors, setRowErrors] = useState<Record<string, { field: "description" | "quantity" | "unitPrice"; message: string } | null>>({});
   const [dirty, setDirty] = useState(false);
   const freightConfig = useCrm((s) => s.freightConfig);
   const [freightLoading, setFreightLoading] = useState(false);
   const calcFreight = useServerFn(calculateFreightDistance);
   const gerarPedido = useServerFn(gerarPedidoOmie);
-  const reenviarPedido = useServerFn(reenviarPedidoOmie);
   const [omieBusy, setOmieBusy] = useState(false);
 
   const totals = useMemo(() => (proposal ? proposalTotals(proposal) : null), [proposal]);
