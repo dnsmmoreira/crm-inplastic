@@ -14,6 +14,96 @@ export type Database = {
   }
   public: {
     Tables: {
+      clientes: {
+        Row: {
+          ativo: boolean
+          atualizado_em: string
+          bairro: string | null
+          cep: string | null
+          cidade: string | null
+          cnpj: string
+          complemento: string | null
+          contato: string | null
+          criado_em: string
+          criado_por: string | null
+          email: string | null
+          empresa_padrao: string | null
+          endereco: string | null
+          estado: string | null
+          id: string
+          ie_isento: boolean
+          inscricao_estadual: string | null
+          nome_fantasia: string | null
+          numero: string | null
+          observacao: string | null
+          omie_codigo_cliente_inplastic: number | null
+          omie_codigo_cliente_taoplast: number | null
+          razao_social: string
+          telefone: string | null
+          telefone2: string | null
+          vendedor_id: string | null
+          website: string | null
+        }
+        Insert: {
+          ativo?: boolean
+          atualizado_em?: string
+          bairro?: string | null
+          cep?: string | null
+          cidade?: string | null
+          cnpj: string
+          complemento?: string | null
+          contato?: string | null
+          criado_em?: string
+          criado_por?: string | null
+          email?: string | null
+          empresa_padrao?: string | null
+          endereco?: string | null
+          estado?: string | null
+          id?: string
+          ie_isento?: boolean
+          inscricao_estadual?: string | null
+          nome_fantasia?: string | null
+          numero?: string | null
+          observacao?: string | null
+          omie_codigo_cliente_inplastic?: number | null
+          omie_codigo_cliente_taoplast?: number | null
+          razao_social: string
+          telefone?: string | null
+          telefone2?: string | null
+          vendedor_id?: string | null
+          website?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          atualizado_em?: string
+          bairro?: string | null
+          cep?: string | null
+          cidade?: string | null
+          cnpj?: string
+          complemento?: string | null
+          contato?: string | null
+          criado_em?: string
+          criado_por?: string | null
+          email?: string | null
+          empresa_padrao?: string | null
+          endereco?: string | null
+          estado?: string | null
+          id?: string
+          ie_isento?: boolean
+          inscricao_estadual?: string | null
+          nome_fantasia?: string | null
+          numero?: string | null
+          observacao?: string | null
+          omie_codigo_cliente_inplastic?: number | null
+          omie_codigo_cliente_taoplast?: number | null
+          razao_social?: string
+          telefone?: string | null
+          telefone2?: string | null
+          vendedor_id?: string | null
+          website?: string | null
+        }
+        Relationships: []
+      }
       condicoes_pagamento: {
         Row: {
           active: boolean
@@ -274,6 +364,7 @@ export type Database = {
           bairro: string | null
           cep: string | null
           cidade: string | null
+          cliente_id: string | null
           cnae_principal: string | null
           cnpj: string | null
           codigo_parcela: string | null
@@ -343,6 +434,7 @@ export type Database = {
           bairro?: string | null
           cep?: string | null
           cidade?: string | null
+          cliente_id?: string | null
           cnae_principal?: string | null
           cnpj?: string | null
           codigo_parcela?: string | null
@@ -412,6 +504,7 @@ export type Database = {
           bairro?: string | null
           cep?: string | null
           cidade?: string | null
+          cliente_id?: string | null
           cnae_principal?: string | null
           cnpj?: string | null
           codigo_parcela?: string | null
@@ -478,6 +571,13 @@ export type Database = {
           whatsapp?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "leads_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "leads_product_id_fkey"
             columns: ["product_id"]
