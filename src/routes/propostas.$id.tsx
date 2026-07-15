@@ -152,7 +152,7 @@ function PropostaDetalhe() {
 
   const totals = useMemo(() => (proposal ? proposalTotals(proposal) : null), [proposal]);
   const owner = proposal ? USERS.find((u) => u.id === proposal.ownerId) : null;
-  const selectedProduct = useMemo(() => products.find((p) => p.id === addProduct), [products, addProduct]);
+  const addItemFromOmie: typeof _addItemFromOmie = (...a) => { if (guardNoop()) return; markDirty(); return _addItemFromOmie(...a); };
   const isAdmin = useIsAdmin();
   const currentUser = useCurrentUser();
   const approver = proposal?.approvedByUserId ? USERS.find((u) => u.id === proposal.approvedByUserId) : null;
