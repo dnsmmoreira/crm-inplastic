@@ -525,7 +525,8 @@ const seedProducts: Product[] = [
 
 export type ProposalItem = {
   id: string;
-  productId: string;
+  productId: string;          // DEPRECATED — mantido só p/ compat com itens antigos
+  omieCodigoProduto?: number; // Código do produto no Omie (novo campo canônico)
   description: string; // snapshot
   sku: string;         // snapshot
   unit: ProductUnit;
