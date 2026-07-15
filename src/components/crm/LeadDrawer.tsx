@@ -176,8 +176,14 @@ export function LeadDrawer({
               <Select
                 value={lead.stage}
                 onValueChange={(v) => {
-                  updateLead(lead.id, { stage: v as Lead["stage"] });
-                  toast.success("Etapa atualizada");
+                  const target = v as Lead["stage"];
+                  if (target === lead.stage) return;
+                  if (target === "ganho") {
+                    void moveLeadStage(lead.id, target, { onGanhoLabel: lead.company });
+                  } else {
+                    updateLead(lead.id, { stage: target });
+                    toast.success("Etapa atualizada");
+                  }
                 }}
               >
                 <SelectTrigger className="mt-1">
