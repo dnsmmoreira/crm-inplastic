@@ -134,6 +134,7 @@ const NAV = [
   { to: "/atendimento-ia", label: "Atendimento IA", icon: Radio, adminOnly: true },
   { to: "/agente-ia", label: "Agente IA", icon: Bot, adminOnly: false },
   { to: "/contatos", label: "Contatos", icon: Users, adminOnly: false },
+  { to: "/clientes", label: "Clientes", icon: Building2, adminOnly: false },
   { to: "/tarefas", label: "Tarefas", icon: CheckSquare, adminOnly: false },
   { to: "/minha-agenda", label: "Minha Agenda", icon: ClipboardList, adminOnly: false },
   { to: "/placar", label: "Placar", icon: Trophy, adminOnly: false },

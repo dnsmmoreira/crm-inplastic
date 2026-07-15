@@ -94,6 +94,7 @@ export type Lead = {
   interactions: Interaction[];
   aiActions?: AiAction[];
   ownerId: string;
+  clienteId?: string | null;
   // Dados fiscais
   cnpj?: string;
   razaoSocial?: string;

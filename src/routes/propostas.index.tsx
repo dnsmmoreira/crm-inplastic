@@ -1,9 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { Plus, FileText, Search, Trash2, UserPlus, Loader2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Plus, FileText, Search, Trash2, UserPlus, Loader2, Building2 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { lookupCnpj } from "@/lib/cnpj.functions";
-import { isValidCnpj } from "@/lib/cnpj";
+import { getClienteByCnpj, vincularClienteAoLead, type ClienteRow } from "@/lib/clientes.functions";
+import { NovoClienteDialog } from "@/components/clientes/NovoClienteDialog";
+import { isValidCnpj, formatCnpj, onlyDigitsCnpj } from "@/lib/cnpj";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -312,65 +314,11 @@ function PropostasPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={openNew} onOpenChange={(o) => { setOpenNew(o); if (!o) { setSelectedLead(""); setLeadSearch(""); } }}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Nova proposta comercial</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <Label>Buscar cliente</Label>
-            <div className="relative">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                autoFocus
-                value={leadSearch}
-                onChange={(e) => setLeadSearch(e.target.value)}
-                placeholder="Nome da empresa, contato ou CNPJ..."
-                className="pl-8"
-              />
-            </div>
-            {leads.length === 0 ? (
-              <p className="text-xs text-muted-foreground">
-                Você não tem leads visíveis. Crie um lead primeiro em <Link to="/pipeline" className="text-primary underline">Funil de Vendas</Link>.
-              </p>
-            ) : (
-              <div className="max-h-64 overflow-y-auto border rounded-md divide-y">
-                {leadResults.length === 0 && (
-                  <div className="p-3 text-sm text-muted-foreground text-center">Nenhum cliente encontrado.</div>
-                )}
-                {leadResults.map((l) => (
-                  <button
-                    key={l.id}
-                    type="button"
-                    onClick={() => setSelectedLead(l.id)}
-                    className={`w-full text-left p-2.5 hover:bg-accent transition-colors ${selectedLead === l.id ? "bg-accent" : ""}`}
-                  >
-                    <div className="text-sm font-medium">{l.company}</div>
-                    <div className="text-xs text-muted-foreground flex flex-wrap gap-x-2">
-                      <span>{l.contactName}</span>
-                      {l.cnpj && <span>· CNPJ {l.cnpj}</span>}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setOpenNew(false)}>Cancelar</Button>
-            <Button
-              disabled={!selectedLead}
-              onClick={() => {
-                const id = createProposal(selectedLead);
-                setOpenNew(false);
-                setSelectedLead("");
-                setLeadSearch("");
-                toast.success("Proposta criada — adicione os itens");
-                navigate({ to: "/propostas/$id", params: { id } });
-              }}
-            >
-              Criar proposta
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <NovaPropostaDialog
+        open={openNew}
+        onOpenChange={setOpenNew}
+      />
+
 
       <Dialog open={openNewLead} onOpenChange={(o) => { setOpenNewLead(o); if (!o) resetLeadForm(); }}>
         <DialogContent>
@@ -432,3 +380,162 @@ function PropostasPage() {
     </div>
   );
 }
+
+// ============================================================
+// Dialog "Nova proposta comercial" — busca por CNPJ
+// ============================================================
+function NovaPropostaDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+  const navigate = useNavigate();
+  const leads = useVisibleLeads();
+  const addLead = useCrm((s) => s.addLead);
+  const createProposal = useCrm((s) => s.createProposal);
+  const getByCnpjFn = useServerFn(getClienteByCnpj);
+  const vincularFn = useServerFn(vincularClienteAoLead);
+
+  const [cnpj, setCnpj] = useState("");
+  const [cnpjMasked, setCnpjMasked] = useState("");
+  const [cliente, setCliente] = useState<ClienteRow | null>(null);
+  const [buscando, setBuscando] = useState(false);
+  const [openNovo, setOpenNovo] = useState(false);
+  const [tentativaFeita, setTentativaFeita] = useState(false);
+
+  useEffect(() => {
+    if (!open) {
+      setCnpj(""); setCnpjMasked(""); setCliente(null);
+      setBuscando(false); setTentativaFeita(false);
+    }
+  }, [open]);
+
+  const digits = onlyDigitsCnpj(cnpj);
+  const cnpjCompleto = digits.length === 14;
+  const cnpjOk = cnpjCompleto && isValidCnpj(digits);
+
+  useEffect(() => {
+    if (!cnpjCompleto) { setCliente(null); setTentativaFeita(false); return; }
+    if (!cnpjOk) { setCliente(null); setTentativaFeita(true); return; }
+    setBuscando(true);
+    const t = setTimeout(async () => {
+      try {
+        const r = await getByCnpjFn({ data: { cnpj: digits } });
+        setCliente(r);
+        setTentativaFeita(true);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Erro na busca");
+      } finally {
+        setBuscando(false);
+      }
+    }, 300);
+    return () => { clearTimeout(t); setBuscando(false); };
+  }, [digits, cnpjCompleto, cnpjOk, getByCnpjFn]);
+
+  const criarPropostaComCliente = async (c: ClienteRow) => {
+    // Reusa lead existente com mesmo cliente_id se houver, senão cria novo
+    const existente = leads.find((l) => l.clienteId === c.id);
+    let leadId: string;
+    if (existente) {
+      leadId = existente.id;
+    } else {
+      leadId = addLead({
+        company: c.razao_social,
+        contactName: c.contato ?? "",
+        email: c.email ?? "",
+        phone: c.telefone ?? "",
+        product: "",
+        quantity: 0,
+        estimatedValue: 0,
+        stage: "novo",
+        tags: [],
+        source: "Cliente",
+        notes: "",
+        cnpj: c.cnpj,
+        razaoSocial: c.razao_social,
+        nomeFantasia: c.nome_fantasia ?? undefined,
+        clienteId: c.id,
+      });
+      // persiste cliente_id no banco (o upsert do sync já leva junto; garante mesmo assim)
+      vincularFn({ data: { leadId, clienteId: c.id } }).catch(() => {});
+    }
+    const propId = createProposal(leadId);
+    toast.success("Proposta criada — adicione os itens");
+    onOpenChange(false);
+    navigate({ to: "/propostas/$id", params: { id: propId } });
+  };
+
+  return (
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Nova proposta comercial</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <Label>CNPJ do cliente</Label>
+            <Input
+              autoFocus
+              value={cnpjMasked}
+              onChange={(e) => {
+                const d = e.target.value.replace(/\D/g, "").slice(0, 14);
+                setCnpj(d);
+                setCnpjMasked(formatCnpj(d));
+              }}
+              placeholder="00.000.000/0000-00"
+            />
+            {!cnpjCompleto && (
+              <p className="text-xs text-muted-foreground">Digite o CNPJ do cliente para iniciar a proposta.</p>
+            )}
+            {cnpjCompleto && !cnpjOk && (
+              <p className="text-xs text-destructive">CNPJ inválido. Confira os dígitos.</p>
+            )}
+            {cnpjOk && buscando && (
+              <div className="text-xs text-muted-foreground flex items-center gap-2">
+                <Loader2 className="h-3 w-3 animate-spin" /> Buscando cliente...
+              </div>
+            )}
+            {cnpjOk && !buscando && cliente && (
+              <div className="border rounded-md p-3 space-y-1 bg-accent/30">
+                <div className="font-semibold text-sm">{cliente.razao_social}</div>
+                <div className="text-xs text-muted-foreground">
+                  {formatCnpj(cliente.cnpj)}
+                  {cliente.nome_fantasia ? ` • ${cliente.nome_fantasia}` : ""}
+                </div>
+                <div className="text-xs flex gap-2 flex-wrap pt-1">
+                  {cliente.empresa_padrao && <Badge variant="outline">{cliente.empresa_padrao}</Badge>}
+                  {[cliente.cidade, cliente.estado].filter(Boolean).length > 0 && (
+                    <span className="text-muted-foreground">
+                      {[cliente.cidade, cliente.estado].filter(Boolean).join("/")}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+            {cnpjOk && !buscando && tentativaFeita && !cliente && (
+              <div className="border rounded-md p-4 space-y-2 text-center">
+                <Building2 className="h-8 w-8 mx-auto text-muted-foreground/60" />
+                <div className="text-sm">Nenhum cliente encontrado com este CNPJ</div>
+                <Button className="gap-2" onClick={() => setOpenNovo(true)}>
+                  <Plus className="h-4 w-4" /> Cadastrar novo cliente
+                </Button>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
+            <Button disabled={!cliente} onClick={() => cliente && criarPropostaComCliente(cliente)}>
+              Criar proposta
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <NovoClienteDialog
+        open={openNovo}
+        onOpenChange={setOpenNovo}
+        cnpjInicial={digits}
+        onClienteCriado={(c) => {
+          setCliente(c);
+          setOpenNovo(false);
+          void criarPropostaComCliente(c);
+        }}
+      />
+    </>
+  );
+}
+
