@@ -235,7 +235,7 @@ function ClienteDetailPage() {
                   </TableHeader>
                   <TableBody>
                     {(leadsQ.data ?? []).map((l) => {
-                      const row = l as {
+                      const row = l as unknown as {
                         id: string;
                         company: string | null;
                         contact_name: string | null;
@@ -243,7 +243,7 @@ function ClienteDetailPage() {
                         estimated_value: number | null;
                         created_at: string;
                         omie_status: string | null;
-                        omie_pedido_numero: number | null;
+                        omie_numero_pedido: number | null;
                       };
                       return (
                         <TableRow key={row.id}>

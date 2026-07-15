@@ -321,7 +321,7 @@ export const listLeadsByCliente = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     const { data: rows, error } = await context.supabase
       .from("leads")
-      .select("id, company, contact_name, stage, estimated_value, created_at, owner_id, omie_status, omie_pedido_numero")
+      .select("id, company, contact_name, stage, estimated_value, created_at, owner_id, omie_status, omie_numero_pedido")
       .eq("cliente_id", data.clienteId)
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
