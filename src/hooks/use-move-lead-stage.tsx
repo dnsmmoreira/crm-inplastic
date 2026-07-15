@@ -5,10 +5,10 @@ import { moverParaGanhoOmie } from "@/lib/omie.functions";
 import { useCrm, type StageId } from "@/lib/crm-store";
 
 /**
- * Move um lead entre etapas. Se o alvo for "ganho", roteia pela server fn
- * `moverParaGanhoOmie` que valida cliente/itens/condições e dispara o webhook do n8n
- * (INPLASTIC/TAOPLAST) ou marca como "não aplicável" (LICITAPLAS). Em qualquer outra
- * etapa, aplica direto no store local (que sincroniza com o Supabase).
+ * Move um lead entre etapas. Se o alvo for "ganho", exige que exista uma
+ * proposta com `status='pedido'` vinculada — caso contrário mostra a
+ * pendência ao usuário. Em qualquer outra etapa, aplica direto no store
+ * local (que sincroniza com o Supabase).
  */
 export function useMoveLeadStage() {
   const moveLead = useCrm((s) => s.moveLead);
@@ -21,40 +21,21 @@ export function useMoveLeadStage() {
         return { ok: true as const };
       }
 
-      const t = toast.loading("Enviando para o Omie...");
+      const t = toast.loading("Fechando o lead...");
       try {
         const r = await mover({ data: { lead_id: leadId } });
         if (!r.ok) {
           toast.dismiss(t);
-          if (r.validacao_erros?.length) {
-            toast.error("Pendências antes do Ganho", {
-              description: r.validacao_erros.join("\n"),
-              duration: 8000,
-            });
-          } else {
-            toast.error("Falha ao enviar ao Omie", {
-              description: r.omie_erro ?? "Erro desconhecido",
-              duration: 8000,
-            });
-          }
+          toast.error("Pendências antes do Ganho", {
+            description: (r.validacao_erros ?? ["Erro desconhecido"]).join("\n"),
+            duration: 8000,
+          });
           return { ok: false as const, result: r };
         }
 
-        // Sucesso: sincroniza o stage no store local também.
         moveLead(leadId, "ganho");
-
         toast.dismiss(t);
-        if (r.omie_status === "nao_aplicavel") {
-          toast.success(`${opts?.onGanhoLabel ?? "Lead"} → Ganho`, {
-            description: "LICITAPLAS: sem integração com Omie.",
-          });
-        } else if (r.omie_numero_pedido) {
-          toast.success(`${opts?.onGanhoLabel ?? "Lead"} → Ganho`, {
-            description: `Pedido Omie #${r.omie_numero_pedido}`,
-          });
-        } else {
-          toast.success(`${opts?.onGanhoLabel ?? "Lead"} → Ganho`);
-        }
+        toast.success(`${opts?.onGanhoLabel ?? "Lead"} → Ganho`);
         return { ok: true as const, result: r };
       } catch (e) {
         toast.dismiss(t);
