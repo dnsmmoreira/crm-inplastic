@@ -38,6 +38,7 @@ import { Route as ApiPublicHooksXerifeEngineRouteImport } from './routes/api/pub
 import { Route as ApiPublicHooksXerifeCheckpointRouteImport } from './routes/api/public/hooks/xerife-checkpoint'
 import { Route as ApiPublicHooksXerifeAgendaDiariaRouteImport } from './routes/api/public/hooks/xerife-agenda-diaria'
 import { Route as ApiPublicHooksXerifeRouteImport } from './routes/api/public/hooks/xerife'
+import { Route as ApiPublicHooksOmieSyncProdutosRouteImport } from './routes/api/public/hooks/omie-sync-produtos'
 import { Route as ApiPublicHooksIaUrgenteRouteImport } from './routes/api/public/hooks/ia-urgente'
 import { Route as ApiPublicHooksIaResponderRouteImport } from './routes/api/public/hooks/ia-responder'
 import { Route as ApiPublicHooksIaQualificarRouteImport } from './routes/api/public/hooks/ia-qualificar'
@@ -194,6 +195,12 @@ const ApiPublicHooksXerifeRoute = ApiPublicHooksXerifeRouteImport.update({
   path: '/api/public/hooks/xerife',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksOmieSyncProdutosRoute =
+  ApiPublicHooksOmieSyncProdutosRouteImport.update({
+    id: '/api/public/hooks/omie-sync-produtos',
+    path: '/api/public/hooks/omie-sync-produtos',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksIaUrgenteRoute = ApiPublicHooksIaUrgenteRouteImport.update({
   id: '/api/public/hooks/ia-urgente',
   path: '/api/public/hooks/ia-urgente',
@@ -239,6 +246,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/ia-qualificar': typeof ApiPublicHooksIaQualificarRoute
   '/api/public/hooks/ia-responder': typeof ApiPublicHooksIaResponderRoute
   '/api/public/hooks/ia-urgente': typeof ApiPublicHooksIaUrgenteRoute
+  '/api/public/hooks/omie-sync-produtos': typeof ApiPublicHooksOmieSyncProdutosRoute
   '/api/public/hooks/xerife': typeof ApiPublicHooksXerifeRoute
   '/api/public/hooks/xerife-agenda-diaria': typeof ApiPublicHooksXerifeAgendaDiariaRoute
   '/api/public/hooks/xerife-checkpoint': typeof ApiPublicHooksXerifeCheckpointRoute
@@ -273,6 +281,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/ia-qualificar': typeof ApiPublicHooksIaQualificarRoute
   '/api/public/hooks/ia-responder': typeof ApiPublicHooksIaResponderRoute
   '/api/public/hooks/ia-urgente': typeof ApiPublicHooksIaUrgenteRoute
+  '/api/public/hooks/omie-sync-produtos': typeof ApiPublicHooksOmieSyncProdutosRoute
   '/api/public/hooks/xerife': typeof ApiPublicHooksXerifeRoute
   '/api/public/hooks/xerife-agenda-diaria': typeof ApiPublicHooksXerifeAgendaDiariaRoute
   '/api/public/hooks/xerife-checkpoint': typeof ApiPublicHooksXerifeCheckpointRoute
@@ -308,6 +317,7 @@ export interface FileRoutesById {
   '/api/public/hooks/ia-qualificar': typeof ApiPublicHooksIaQualificarRoute
   '/api/public/hooks/ia-responder': typeof ApiPublicHooksIaResponderRoute
   '/api/public/hooks/ia-urgente': typeof ApiPublicHooksIaUrgenteRoute
+  '/api/public/hooks/omie-sync-produtos': typeof ApiPublicHooksOmieSyncProdutosRoute
   '/api/public/hooks/xerife': typeof ApiPublicHooksXerifeRoute
   '/api/public/hooks/xerife-agenda-diaria': typeof ApiPublicHooksXerifeAgendaDiariaRoute
   '/api/public/hooks/xerife-checkpoint': typeof ApiPublicHooksXerifeCheckpointRoute
@@ -344,6 +354,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/ia-qualificar'
     | '/api/public/hooks/ia-responder'
     | '/api/public/hooks/ia-urgente'
+    | '/api/public/hooks/omie-sync-produtos'
     | '/api/public/hooks/xerife'
     | '/api/public/hooks/xerife-agenda-diaria'
     | '/api/public/hooks/xerife-checkpoint'
@@ -378,6 +389,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/ia-qualificar'
     | '/api/public/hooks/ia-responder'
     | '/api/public/hooks/ia-urgente'
+    | '/api/public/hooks/omie-sync-produtos'
     | '/api/public/hooks/xerife'
     | '/api/public/hooks/xerife-agenda-diaria'
     | '/api/public/hooks/xerife-checkpoint'
@@ -412,6 +424,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/ia-qualificar'
     | '/api/public/hooks/ia-responder'
     | '/api/public/hooks/ia-urgente'
+    | '/api/public/hooks/omie-sync-produtos'
     | '/api/public/hooks/xerife'
     | '/api/public/hooks/xerife-agenda-diaria'
     | '/api/public/hooks/xerife-checkpoint'
@@ -447,6 +460,7 @@ export interface RootRouteChildren {
   ApiPublicHooksIaQualificarRoute: typeof ApiPublicHooksIaQualificarRoute
   ApiPublicHooksIaResponderRoute: typeof ApiPublicHooksIaResponderRoute
   ApiPublicHooksIaUrgenteRoute: typeof ApiPublicHooksIaUrgenteRoute
+  ApiPublicHooksOmieSyncProdutosRoute: typeof ApiPublicHooksOmieSyncProdutosRoute
   ApiPublicHooksXerifeRoute: typeof ApiPublicHooksXerifeRoute
   ApiPublicHooksXerifeAgendaDiariaRoute: typeof ApiPublicHooksXerifeAgendaDiariaRoute
   ApiPublicHooksXerifeCheckpointRoute: typeof ApiPublicHooksXerifeCheckpointRoute
@@ -660,6 +674,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksXerifeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/omie-sync-produtos': {
+      id: '/api/public/hooks/omie-sync-produtos'
+      path: '/api/public/hooks/omie-sync-produtos'
+      fullPath: '/api/public/hooks/omie-sync-produtos'
+      preLoaderRoute: typeof ApiPublicHooksOmieSyncProdutosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/ia-urgente': {
       id: '/api/public/hooks/ia-urgente'
       path: '/api/public/hooks/ia-urgente'
@@ -712,6 +733,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksIaQualificarRoute: ApiPublicHooksIaQualificarRoute,
   ApiPublicHooksIaResponderRoute: ApiPublicHooksIaResponderRoute,
   ApiPublicHooksIaUrgenteRoute: ApiPublicHooksIaUrgenteRoute,
+  ApiPublicHooksOmieSyncProdutosRoute: ApiPublicHooksOmieSyncProdutosRoute,
   ApiPublicHooksXerifeRoute: ApiPublicHooksXerifeRoute,
   ApiPublicHooksXerifeAgendaDiariaRoute: ApiPublicHooksXerifeAgendaDiariaRoute,
   ApiPublicHooksXerifeCheckpointRoute: ApiPublicHooksXerifeCheckpointRoute,
