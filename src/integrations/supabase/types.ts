@@ -219,20 +219,79 @@ export type Database = {
           },
         ]
       }
+      lead_itens: {
+        Row: {
+          codigo_produto: number
+          created_at: string
+          desconto_percentual: number | null
+          desconto_valor: number | null
+          descricao: string
+          id: string
+          lead_id: string
+          quantidade: number
+          unidade: string | null
+          valor_total: number | null
+          valor_unitario: number
+        }
+        Insert: {
+          codigo_produto: number
+          created_at?: string
+          desconto_percentual?: number | null
+          desconto_valor?: number | null
+          descricao: string
+          id?: string
+          lead_id: string
+          quantidade: number
+          unidade?: string | null
+          valor_total?: number | null
+          valor_unitario: number
+        }
+        Update: {
+          codigo_produto?: number
+          created_at?: string
+          desconto_percentual?: number | null
+          desconto_valor?: number | null
+          descricao?: string
+          id?: string
+          lead_id?: string
+          quantidade?: number
+          unidade?: string | null
+          valor_total?: number | null
+          valor_unitario?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_itens_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
+          bairro: string | null
+          cep: string | null
+          cidade: string | null
           cnae_principal: string | null
           cnpj: string | null
+          codigo_parcela: string | null
           company: string
+          complemento: string | null
           contact_name: string
           created_at: string
+          data_previsao_entrega: string | null
           decisor_cargo: string | null
           decisor_nome: string | null
+          desconto_pedido: number | null
           email: string | null
           email_financeiro: string | null
           email_nf_xml: string | null
+          empresa: string | null
           endereco: Json | null
           esfriando: boolean
+          estado: string | null
           estimated_value: number
           etapa_changed_at: string | null
           external_id: string | null
@@ -243,10 +302,20 @@ export type Database = {
           last_contact: string | null
           last_contact_at: string | null
           last_interaction_at: string | null
+          modalidade_frete: string | null
           next_followup: string | null
           nome_fantasia: string | null
           notes: string
           num_funcionarios: number | null
+          numero: string | null
+          observacao_cliente: string | null
+          observacoes_venda: string | null
+          omie_codigo_cliente: number | null
+          omie_codigo_pedido: number | null
+          omie_enviado_em: string | null
+          omie_erro: string | null
+          omie_numero_pedido: string | null
+          omie_status: string | null
           origem: string | null
           owner_id: string | null
           phone: string | null
@@ -263,24 +332,35 @@ export type Database = {
           tags: string[]
           telefone_fixo: string | null
           telefone_whatsapp: string | null
+          telefone2: string | null
           ultima_msg_cliente_at: string | null
           ultima_msg_vendedor_at: string | null
           updated_at: string
+          valor_frete: number | null
           whatsapp: string | null
         }
         Insert: {
+          bairro?: string | null
+          cep?: string | null
+          cidade?: string | null
           cnae_principal?: string | null
           cnpj?: string | null
+          codigo_parcela?: string | null
           company: string
+          complemento?: string | null
           contact_name?: string
           created_at?: string
+          data_previsao_entrega?: string | null
           decisor_cargo?: string | null
           decisor_nome?: string | null
+          desconto_pedido?: number | null
           email?: string | null
           email_financeiro?: string | null
           email_nf_xml?: string | null
+          empresa?: string | null
           endereco?: Json | null
           esfriando?: boolean
+          estado?: string | null
           estimated_value?: number
           etapa_changed_at?: string | null
           external_id?: string | null
@@ -291,10 +371,20 @@ export type Database = {
           last_contact?: string | null
           last_contact_at?: string | null
           last_interaction_at?: string | null
+          modalidade_frete?: string | null
           next_followup?: string | null
           nome_fantasia?: string | null
           notes?: string
           num_funcionarios?: number | null
+          numero?: string | null
+          observacao_cliente?: string | null
+          observacoes_venda?: string | null
+          omie_codigo_cliente?: number | null
+          omie_codigo_pedido?: number | null
+          omie_enviado_em?: string | null
+          omie_erro?: string | null
+          omie_numero_pedido?: string | null
+          omie_status?: string | null
           origem?: string | null
           owner_id?: string | null
           phone?: string | null
@@ -311,24 +401,35 @@ export type Database = {
           tags?: string[]
           telefone_fixo?: string | null
           telefone_whatsapp?: string | null
+          telefone2?: string | null
           ultima_msg_cliente_at?: string | null
           ultima_msg_vendedor_at?: string | null
           updated_at?: string
+          valor_frete?: number | null
           whatsapp?: string | null
         }
         Update: {
+          bairro?: string | null
+          cep?: string | null
+          cidade?: string | null
           cnae_principal?: string | null
           cnpj?: string | null
+          codigo_parcela?: string | null
           company?: string
+          complemento?: string | null
           contact_name?: string
           created_at?: string
+          data_previsao_entrega?: string | null
           decisor_cargo?: string | null
           decisor_nome?: string | null
+          desconto_pedido?: number | null
           email?: string | null
           email_financeiro?: string | null
           email_nf_xml?: string | null
+          empresa?: string | null
           endereco?: Json | null
           esfriando?: boolean
+          estado?: string | null
           estimated_value?: number
           etapa_changed_at?: string | null
           external_id?: string | null
@@ -339,10 +440,20 @@ export type Database = {
           last_contact?: string | null
           last_contact_at?: string | null
           last_interaction_at?: string | null
+          modalidade_frete?: string | null
           next_followup?: string | null
           nome_fantasia?: string | null
           notes?: string
           num_funcionarios?: number | null
+          numero?: string | null
+          observacao_cliente?: string | null
+          observacoes_venda?: string | null
+          omie_codigo_cliente?: number | null
+          omie_codigo_pedido?: number | null
+          omie_enviado_em?: string | null
+          omie_erro?: string | null
+          omie_numero_pedido?: string | null
+          omie_status?: string | null
           origem?: string | null
           owner_id?: string | null
           phone?: string | null
@@ -359,9 +470,11 @@ export type Database = {
           tags?: string[]
           telefone_fixo?: string | null
           telefone_whatsapp?: string | null
+          telefone2?: string | null
           ultima_msg_cliente_at?: string | null
           ultima_msg_vendedor_at?: string | null
           updated_at?: string
+          valor_frete?: number | null
           whatsapp?: string | null
         }
         Relationships: [
@@ -482,6 +595,7 @@ export type Database = {
       produtos: {
         Row: {
           active: boolean
+          codigo_produto_omie: number | null
           created_at: string
           default_price: number
           description: string
@@ -500,6 +614,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          codigo_produto_omie?: number | null
           created_at?: string
           default_price?: number
           description?: string
@@ -518,6 +633,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          codigo_produto_omie?: number | null
           created_at?: string
           default_price?: number
           description?: string
@@ -533,6 +649,48 @@ export type Database = {
           updated_at?: string
           weight_kg?: number
           width_cm?: number
+        }
+        Relationships: []
+      }
+      produtos_omie: {
+        Row: {
+          atualizado_em: string
+          bloqueado: boolean | null
+          codigo: string | null
+          codigo_produto: number
+          descricao: string
+          descricao_familia: string | null
+          inativo: boolean | null
+          marca: string | null
+          ncm: string | null
+          unidade: string | null
+          valor_unitario: number | null
+        }
+        Insert: {
+          atualizado_em?: string
+          bloqueado?: boolean | null
+          codigo?: string | null
+          codigo_produto: number
+          descricao: string
+          descricao_familia?: string | null
+          inativo?: boolean | null
+          marca?: string | null
+          ncm?: string | null
+          unidade?: string | null
+          valor_unitario?: number | null
+        }
+        Update: {
+          atualizado_em?: string
+          bloqueado?: boolean | null
+          codigo?: string | null
+          codigo_produto?: number
+          descricao?: string
+          descricao_familia?: string | null
+          inativo?: boolean | null
+          marca?: string | null
+          ncm?: string | null
+          unidade?: string | null
+          valor_unitario?: number | null
         }
         Relationships: []
       }
