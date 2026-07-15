@@ -152,7 +152,7 @@ function PropostaDetalhe() {
 
   const totals = useMemo(() => (proposal ? proposalTotals(proposal) : null), [proposal]);
   const owner = proposal ? USERS.find((u) => u.id === proposal.ownerId) : null;
-  const addItemFromOmie: typeof _addItemFromOmie = (...a) => { if (guardNoop()) return; markDirty(); return _addItemFromOmie(...a); };
+  
   const isAdmin = useIsAdmin();
   const currentUser = useCurrentUser();
   const approver = proposal?.approvedByUserId ? USERS.find((u) => u.id === proposal.approvedByUserId) : null;
@@ -219,6 +219,7 @@ function PropostaDetalhe() {
 
   // Wrappers: auto-mark the proposal as dirty on any mutation e bloqueia se pedido fechado.
   const addItem: typeof _addItem = (...a) => { if (guard()) return; markDirty(); return _addItem(...a); };
+  const addItemFromOmie: typeof _addItemFromOmie = (...a) => { if (guard()) return; markDirty(); return _addItemFromOmie(...a); };
   const updateItem: typeof _updateItem = (...a) => { if (guard()) return; markDirty(); return _updateItem(...a); };
   const removeItem: typeof _removeItem = (...a) => { if (guard()) return; markDirty(); return _removeItem(...a); };
   const updateProposal: typeof _updateProposal = (...a) => { if (guard()) return; markDirty(); return _updateProposal(...a); };
