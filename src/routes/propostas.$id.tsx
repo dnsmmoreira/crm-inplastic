@@ -1069,6 +1069,20 @@ function PropostaDetalhe() {
                 </p>
               </div>
 
+              <div>
+                <Label>Previsão de entrega</Label>
+                <Input
+                  type="date"
+                  value={proposal.expectedDeliveryDate ?? ""}
+                  onChange={(e) =>
+                    updateProposal(proposal.id, { expectedDeliveryDate: e.target.value || undefined })
+                  }
+                  disabled={readOnly}
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Opcional. Se vazio, o Omie usa hoje + 7 dias no pedido.
+                </p>
+
               <div className="rounded-md border-l-4 border-amber-500 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-800">
                 <span className="font-semibold">Válido após aprovação financeira.</span>
               </div>
