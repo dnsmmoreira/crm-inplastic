@@ -54,29 +54,12 @@ function mapFreightPayer(fp: string | undefined | null): string {
   return map[fp ?? ""] ?? "9";
 }
 
-type LooseClient = ReturnType<typeof relaxSupabase>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type LooseClient = any;
 
 /** Retorna um wrapper "any-like" para acessar tabelas fora dos types gerados. */
-function relaxSupabase(sb: unknown) {
-  return sb as {
-    from: (t: string) => {
-      select: (c: string) => {
-        eq: (k: string, v: string) => {
-          maybeSingle: () => Promise<{ data: Record<string, unknown> | null; error: { message: string } | null }>;
-          order: (col: string, opts?: { ascending?: boolean }) => {
-            limit: (n: number) => {
-              maybeSingle: () => Promise<{ data: Record<string, unknown> | null; error: { message: string } | null }>;
-            };
-          };
-          in?: (col: string, values: string[]) => Promise<{ data: Record<string, unknown>[] | null; error: { message: string } | null }>;
-        };
-        in: (col: string, values: unknown[]) => Promise<{ data: Record<string, unknown>[] | null; error: { message: string } | null }>;
-      };
-      update: (patch: Record<string, unknown>) => {
-        eq: (k: string, v: string) => Promise<{ error: { message: string } | null }>;
-      };
-    };
-  };
+function relaxSupabase(sb: unknown): LooseClient {
+  return sb as LooseClient;
 }
 
 /**
