@@ -404,7 +404,10 @@ function proposalToInsert(p: Proposal): ProposalInsert {
     approved_by_user_id: p.approvedByUserId ?? null,
     approved_at: p.approvedAt ?? null,
     order_created_at: p.orderCreatedAt ?? null,
-  };
+    ...(p.expectedDeliveryDate !== undefined
+      ? { expected_delivery_date: p.expectedDeliveryDate ?? null }
+      : {}),
+  } as ProposalInsert;
 }
 
 // ============ Hidratação ============
