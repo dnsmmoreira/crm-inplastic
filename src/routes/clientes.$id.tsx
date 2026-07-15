@@ -258,8 +258,8 @@ function ClienteDetailPage() {
                               : "—"}
                           </TableCell>
                           <TableCell>
-                            {row.omie_pedido_numero
-                              ? <Badge className="bg-emerald-500/10 text-emerald-700 border-emerald-500/30" variant="outline">Pedido #{row.omie_pedido_numero}</Badge>
+                            {row.omie_numero_pedido
+                              ? <Badge className="bg-emerald-500/10 text-emerald-700 border-emerald-500/30" variant="outline">Pedido #{row.omie_numero_pedido}</Badge>
                               : row.omie_status
                                 ? <Badge variant="outline">{row.omie_status}</Badge>
                                 : "—"}
