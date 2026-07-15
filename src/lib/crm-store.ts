@@ -525,7 +525,8 @@ const seedProducts: Product[] = [
 
 export type ProposalItem = {
   id: string;
-  productId: string;
+  productId: string;          // DEPRECATED — mantido só p/ compat com itens antigos
+  omieCodigoProduto?: number; // Código do produto no Omie (novo campo canônico)
   description: string; // snapshot
   sku: string;         // snapshot
   unit: ProductUnit;
@@ -753,6 +754,11 @@ type CrmState = {
   updateProposal: (id: string, patch: Partial<Proposal>) => void;
   removeProposal: (id: string) => void;
   addProposalItem: (proposalId: string, productId: string, quantity: number) => void;
+  addProposalItemFromOmie: (
+    proposalId: string,
+    omie: { omieCodigoProduto: number; description: string; sku: string; unit: string; unitPrice: number },
+    quantity: number,
+  ) => void;
   updateProposalItem: (proposalId: string, itemId: string, patch: Partial<ProposalItem>) => void;
   removeProposalItem: (proposalId: string, itemId: string) => void;
   setProposalStatus: (id: string, status: ProposalStatus) => void;
@@ -1055,11 +1061,36 @@ export const useCrm = create<CrmState>()(
                     {
                       id: uid(),
                       productId: product.id,
+                      omieCodigoProduto: undefined,
                       description: product.name,
                       sku: product.sku,
                       unit: product.unit,
                       quantity,
                       unitPrice: product.defaultPrice,
+                    },
+                  ],
+                }
+              : p,
+          ),
+        }));
+      },
+      addProposalItemFromOmie: (proposalId, omie, quantity) => {
+        set((s) => ({
+          proposals: s.proposals.map((p) =>
+            p.id === proposalId
+              ? {
+                  ...p,
+                  items: [
+                    ...p.items,
+                    {
+                      id: uid(),
+                      productId: "",
+                      omieCodigoProduto: omie.omieCodigoProduto,
+                      description: omie.description,
+                      sku: omie.sku,
+                      unit: (omie.unit || "Un") as ProductUnit,
+                      quantity,
+                      unitPrice: omie.unitPrice,
                     },
                   ],
                 }
