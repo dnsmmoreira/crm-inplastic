@@ -81,6 +81,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
+import { AddOmieItemDialog, type AddOmieItemPayload } from "@/components/propostas/AddOmieItemDialog";
 
 export const Route = createFileRoute("/propostas/$id")({
   component: PropostaDetalhe,
@@ -134,15 +135,12 @@ function PropostaDetalhe() {
   const activePaymentTerms = useMemo(() => paymentTerms.filter((t) => t.active), [paymentTerms]);
   const maxDiscount = useMaxDiscountForCurrentUser();
   const _addItem = useCrm((s) => s.addProposalItem);
+  const _addItemFromOmie = useCrm((s) => s.addProposalItemFromOmie);
   const _updateItem = useCrm((s) => s.updateProposalItem);
   const _removeItem = useCrm((s) => s.removeProposalItem);
   const _updateProposal = useCrm((s) => s.updateProposal);
   const _setStatus = useCrm((s) => s.setProposalStatus);
-  const [addProduct, setAddProduct] = useState("");
-  const [addQty, setAddQty] = useState<number | "">(1);
-  const [addPrice, setAddPrice] = useState<number | "">("");
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [addError, setAddError] = useState<string | null>(null);
+  const [omieDialogOpen, setOmieDialogOpen] = useState(false);
   const [rowErrors, setRowErrors] = useState<Record<string, { field: "description" | "quantity" | "unitPrice"; message: string } | null>>({});
   const [dirty, setDirty] = useState(false);
   const freightConfig = useCrm((s) => s.freightConfig);
