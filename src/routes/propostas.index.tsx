@@ -455,7 +455,7 @@ function NovaPropostaDialog({ open, onOpenChange }: { open: boolean; onOpenChang
       // persiste cliente_id no banco (o upsert do sync já leva junto; garante mesmo assim)
       vincularFn({ data: { leadId, clienteId: c.id } }).catch(() => {});
     }
-    const propId = createProposal(leadId);
+    const propId = await createProposal(leadId);
     toast.success("Proposta criada — adicione os itens");
     onOpenChange(false);
     navigate({ to: "/propostas/$id", params: { id: propId } });
