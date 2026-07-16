@@ -1505,6 +1505,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      next_proposta_number: { Args: { _year: number }; Returns: string }
       placar_vendedores: {
         Args: { _periodo?: string }
         Returns: {
