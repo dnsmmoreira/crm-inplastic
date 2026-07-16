@@ -750,7 +750,7 @@ type CrmState = {
   setDefaultEmitter: (id: string) => void;
   updateEmitter: (id: string, patch: Partial<Omit<EmitterProfile, "id">>) => void;
 
-  createProposal: (leadId: string, ownerId?: string) => string;
+  createProposal: (leadId: string, ownerId?: string) => Promise<string>;
   updateProposal: (id: string, patch: Partial<Proposal>) => void;
   removeProposal: (id: string) => void;
   addProposalItem: (proposalId: string, productId: string, quantity: number) => void;
