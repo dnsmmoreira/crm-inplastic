@@ -1009,11 +1009,19 @@ export const useCrm = create<CrmState>()(
         set((s) => ({
           emitters: s.emitters.map((e) => (e.id === id ? { ...e, ...patch } : e)),
         })),
-      createProposal: (leadId, ownerId) => {
+      createProposal: async (leadId, ownerId) => {
         const id = uid();
         const year = new Date().getFullYear();
-        const existing = get().proposals.filter((p) => p.number.startsWith(`${year}-`)).length;
-        const number = `${year}-${String(existing + 1).padStart(4, "0")}`;
+        // Aloca número atomicamente no servidor para evitar colisão de UNIQUE
+        // entre vendedores (RLS oculta propostas de terceiros no cliente).
+        let number = `${year}-${String(get().proposals.filter((p) => p.number.startsWith(`${year}-`)).length + 1).padStart(4, "0")}`;
+        try {
+          const { supabase } = await import("@/integrations/supabase/client");
+          const { data, error } = await supabase.rpc("next_proposta_number", { _year: year });
+          if (!error && typeof data === "string" && data.length > 0) number = data;
+        } catch {
+          // fallback já definido acima
+        }
         const proposal: Proposal = {
           id,
           number,
