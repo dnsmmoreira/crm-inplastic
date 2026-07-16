@@ -1012,25 +1012,39 @@ export const useCrm = create<CrmState>()(
       createProposal: async (leadId, ownerId) => {
         const id = uid();
         const year = new Date().getFullYear();
+        const { supabase } = await import("@/integrations/supabase/client");
+        const { toast } = await import("sonner");
+
         // Aloca número atomicamente no servidor para evitar colisão de UNIQUE
         // entre vendedores (RLS oculta propostas de terceiros no cliente).
         let number = `${year}-${String(get().proposals.filter((p) => p.number.startsWith(`${year}-`)).length + 1).padStart(4, "0")}`;
         try {
-          const { supabase } = await import("@/integrations/supabase/client");
           const { data, error } = await supabase.rpc("next_proposta_number", { _year: year });
           if (!error && typeof data === "string" && data.length > 0) number = data;
         } catch {
           // fallback já definido acima
         }
+
+        const finalOwnerId = ownerId ?? get().currentUserId;
+        const emitterId = get().defaultEmitterId || get().emitters[0]?.id;
+        if (!emitterId) {
+          toast.error("Nenhum emitente configurado — peça ao admin para cadastrar um emitente antes de criar propostas.");
+          throw new Error("no default emitter");
+        }
+        if (!finalOwnerId) {
+          toast.error("Sessão expirada — faça login novamente.");
+          throw new Error("no owner");
+        }
+
         const proposal: Proposal = {
           id,
           number,
           leadId,
-          ownerId: ownerId ?? get().currentUserId,
+          ownerId: finalOwnerId,
           createdAt: new Date().toISOString(),
           status: "rascunho",
           validityDays: 15,
-          emitterId: get().defaultEmitterId,
+          emitterId,
           items: [],
           installments: [
             { id: uid(), days: 28, amount: 0, notes: "Boleto — 28 dias" },
@@ -1048,6 +1062,28 @@ export const useCrm = create<CrmState>()(
             "Proposta comercial válida por 15 dias. Preços em reais, impostos inclusos conforme legislação vigente. Prazo de entrega a combinar após aprovação.",
           discountPercent: 0,
         };
+
+        // Persistência direta e síncrona: cria no banco AGORA, com erro visível.
+        // O sync batched só cobre updates subsequentes (que já sobrescrevem esta linha).
+        const { error: insertError } = await supabase.from("propostas").insert({
+          id: proposal.id,
+          number: proposal.number,
+          lead_id: proposal.leadId,
+          owner_id: proposal.ownerId,
+          emitter_id: proposal.emitterId,
+          status: proposal.status,
+          validity_days: proposal.validityDays,
+          discount_percent: proposal.discountPercent,
+          observations: proposal.observations,
+          transport: proposal.transport as never,
+          created_at: proposal.createdAt,
+        });
+        if (insertError) {
+          console.error("[createProposal] insert error:", insertError);
+          toast.error(`Erro ao salvar proposta: ${insertError.message}`);
+          throw insertError;
+        }
+
         set((s) => ({ proposals: [proposal, ...s.proposals] }));
         return id;
       },
