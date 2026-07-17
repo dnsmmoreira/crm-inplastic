@@ -90,6 +90,7 @@ export function LeadDrawer({
   const runFollowUp = useCrm((s) => s.runAiFollowUp);
   const bookSlot = useCrm((s) => s.bookSlotWithAi);
   const calendar = useCrm((s) => s.calendar);
+  const proposals = useCrm((s) => s.proposals);
   const moveLeadStage = useMoveLeadStage();
 
   const [newInt, setNewInt] = useState<{ type: Interaction["type"]; content: string }>({
