@@ -5,25 +5,35 @@ import { moverParaGanhoOmie } from "@/lib/omie.functions";
 import { useCrm, type StageId } from "@/lib/crm-store";
 
 /**
- * Etapas que exigem ao menos uma proposta vinculada ao lead
- * (independente de status; recusadas também contam como registro histórico?
- * Aqui bloqueamos apenas se NÃO houver nenhuma proposta — não filtramos por status
- * para manter genérico).
+ * Etapas que exigem ao menos uma proposta vinculada ao lead.
  */
 const STAGES_REQUIRING_PROPOSAL: StageId[] = ["proposta", "negociacao", "ganho"];
+
+export type LostReasonInput = {
+  motivo: string;
+  motivoLabel: string;
+  observacao?: string;
+};
 
 /**
  * Move um lead entre etapas.
  * - Etapas em `STAGES_REQUIRING_PROPOSAL` exigem ao menos uma proposta vinculada.
+ * - Alvo "perdido" exige `lostReason`; sem ele o hook retorna
+ *   `{ ok: false, reason: "needs_lost_reason" }` para o caller abrir o diálogo.
  * - Alvo "ganho" ainda passa pelo gate fiscal (`moverParaGanhoOmie`).
- * - Demais etapas aplicam direto no store (sincroniza com Supabase).
  */
 export function useMoveLeadStage() {
   const moveLead = useCrm((s) => s.moveLead);
+  const updateLead = useCrm((s) => s.updateLead);
+  const addInteraction = useCrm((s) => s.addInteraction);
   const mover = useServerFn(moverParaGanhoOmie);
 
   return useCallback(
-    async (leadId: string, stage: StageId, opts?: { onGanhoLabel?: string }) => {
+    async (
+      leadId: string,
+      stage: StageId,
+      opts?: { onGanhoLabel?: string; lostReason?: LostReasonInput },
+    ) => {
       if (STAGES_REQUIRING_PROPOSAL.includes(stage)) {
         const proposals = useCrm.getState().proposals;
         const hasProposal = proposals.some((p) => p.leadId === leadId);
@@ -37,6 +47,31 @@ export function useMoveLeadStage() {
           });
           return { ok: false as const, reason: "no_proposal" as const };
         }
+      }
+
+      if (stage === "perdido") {
+        if (!opts?.lostReason) {
+          return { ok: false as const, reason: "needs_lost_reason" as const };
+        }
+        const { motivoLabel, observacao } = opts.lostReason;
+        const lead = useCrm.getState().leads.find((l) => l.id === leadId);
+        const stamp = new Date().toLocaleString("pt-BR");
+        const line = `[${stamp}] Perda — Motivo: ${motivoLabel}${
+          observacao ? ` · ${observacao}` : ""
+        }`;
+        const prevNotes = lead?.notes ?? "";
+        updateLead(leadId, {
+          notes: prevNotes ? `${line}\n${prevNotes}` : line,
+        });
+        addInteraction(leadId, {
+          date: new Date().toISOString(),
+          type: "note",
+          content: `Lead marcado como Perdido — Motivo: ${motivoLabel}${
+            observacao ? `. Observação: ${observacao}` : ""
+          }`,
+        });
+        moveLead(leadId, "perdido");
+        return { ok: true as const };
       }
 
       if (stage !== "ganho") {
@@ -68,6 +103,6 @@ export function useMoveLeadStage() {
         return { ok: false as const };
       }
     },
-    [mover, moveLead],
+    [mover, moveLead, updateLead, addInteraction],
   );
 }
