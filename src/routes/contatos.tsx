@@ -38,6 +38,7 @@ function ContactsPage() {
   const [stage, setStage] = useState<StageId | "all">("all");
   const [tag, setTag] = useState<string>("all");
   const [openLead, setOpenLead] = useState<string | null>(null);
+  const valueMap = useLeadValueMap();
 
   const allTags = useMemo(() => {
     const s = new Set<string>();
