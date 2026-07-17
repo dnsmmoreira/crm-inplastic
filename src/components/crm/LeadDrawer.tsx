@@ -105,6 +105,7 @@ export function LeadDrawer({
   if (!lead) return null;
 
   return (
+    <>
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-2xl overflow-y-auto p-0 gap-0">
         <SheetHeader className="border-b bg-muted/40 px-6 py-5">
