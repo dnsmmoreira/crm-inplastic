@@ -561,7 +561,6 @@ export function LeadDrawer({
 
         </div>
       </SheetContent>
-      </SheetContent>
     </Sheet>
     <LostReasonDialog
       open={lostReasonOpen}
