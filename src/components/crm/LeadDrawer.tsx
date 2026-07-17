@@ -472,7 +472,7 @@ export function LeadDrawer({
                       addTask({
                         leadId: lead.id,
                         title: newTask.title,
-                        dueDate: new Date(newTask.dueDate).toISOString(),
+                        dueDate: dateInputToISO(newTask.dueDate),
                       });
                       setNewTask({ title: "", dueDate: "" });
                       toast.success("Tarefa agendada");
