@@ -1194,6 +1194,9 @@ function PropostaDetalhe() {
             <div className="text-[11px] mt-2">
               <div>Data: {format(new Date(proposal.createdAt), "dd/MM/yyyy")}</div>
               <div>Validade: {proposal.validityDays} dias</div>
+              {proposal.customerOrderNumber && proposal.customerOrderNumber.trim() && (
+                <div>Pedido do cliente: <span className="font-semibold">{proposal.customerOrderNumber}</span></div>
+              )}
             </div>
           </div>
         </div>
