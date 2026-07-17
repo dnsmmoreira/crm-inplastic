@@ -36,7 +36,7 @@ import {
 import { useMemo, useState } from "react";
 import { format, isToday, isBefore, startOfMonth, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useCrm, STAGES, formatBRL, useVisibleLeads, useVisibleTasks, useCurrentUser, followupTemperature } from "@/lib/crm-store";
+import { useCrm, STAGES, formatBRL, useVisibleLeads, useVisibleTasks, useCurrentUser, followupTemperature, useLeadValueMap, useProposalAggregates } from "@/lib/crm-store";
 import { PlacarWidget } from "@/components/placar/PlacarWidget";
 import { NewLeadDialog, LeadDrawer } from "@/components/crm/LeadDrawer";
 import { ResumoDoDia } from "@/components/dashboard/ResumoDoDia";
