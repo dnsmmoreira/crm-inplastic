@@ -95,7 +95,7 @@ export const adiarTarefa = createServerFn({ method: "POST" })
       .update({
         status: "adiada",
         motivo_adiamento: data.motivo,
-        due_date: new Date(data.novaData).toISOString(),
+        due_date: parseDueDateInput(data.novaData),
         escalonamentos: ((cur?.escalonamentos as any) ?? 0) + 1,
       })
       .eq("id", data.id);
