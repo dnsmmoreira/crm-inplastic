@@ -16,6 +16,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useCrm, STAGES, formatBRL, leadTemperature, followupTemperature, type Lead, type StageId, type FollowupLevel, useVisibleLeads, useLeadValueMap } from "@/lib/crm-store";
 import { useMoveLeadStage } from "@/hooks/use-move-lead-stage";
+import { LostReasonDialog, type LostReasonPayload } from "@/components/crm/LostReasonDialog";
 import { computeLeadScore } from "@/lib/lead-score";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -46,6 +47,7 @@ function PipelinePage() {
   const [openLead, setOpenLead] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [lostTarget, setLostTarget] = useState<{ leadId: string; company: string } | null>(null);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
@@ -98,6 +100,19 @@ function PipelinePage() {
   const active = activeId ? leads.find((l) => l.id === activeId) : null;
 
   const onDragStart = (e: DragStartEvent) => setActiveId(String(e.active.id));
+  const runMove = (leadId: string, stage: StageId, company: string, lostReason?: LostReasonPayload) => {
+    void moveLeadStage(leadId, stage, { onGanhoLabel: company, lostReason }).then((r) => {
+      if (!r?.ok && r?.reason === "needs_lost_reason") {
+        setLostTarget({ leadId, company });
+        return;
+      }
+      if (r?.ok && stage !== "ganho") {
+        const stageLabel = STAGES.find((s) => s.id === stage)?.label;
+        toast.success(`${company} → ${stageLabel}`);
+      }
+    });
+  };
+
   const onDragEnd = (e: DragEndEvent) => {
     setActiveId(null);
     if (!e.over) return;
@@ -105,14 +120,10 @@ function PipelinePage() {
     const stage = String(e.over.id) as StageId;
     const lead = leads.find((l) => l.id === leadId);
     if (lead && lead.stage !== stage) {
-      void moveLeadStage(leadId, stage, { onGanhoLabel: lead.company }).then((r) => {
-        if (r?.ok && stage !== "ganho") {
-          const stageLabel = STAGES.find((s) => s.id === stage)?.label;
-          toast.success(`${lead.company} → ${stageLabel}`);
-        }
-      });
+      runMove(leadId, stage, lead.company);
     }
   };
+
 
   return (
     <div className="p-4 md:p-8 space-y-6">
@@ -194,6 +205,17 @@ function PipelinePage() {
       </DndContext>
 
       <LeadDrawer leadId={openLead} open={!!openLead} onOpenChange={(o) => !o && setOpenLead(null)} />
+      <LostReasonDialog
+        open={!!lostTarget}
+        leadLabel={lostTarget?.company}
+        onCancel={() => setLostTarget(null)}
+        onConfirm={async (payload) => {
+          if (!lostTarget) return;
+          const { leadId, company } = lostTarget;
+          setLostTarget(null);
+          runMove(leadId, "perdido", company, payload);
+        }}
+      />
     </div>
   );
 }

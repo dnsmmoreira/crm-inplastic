@@ -61,6 +61,7 @@ import {
 import { toast } from "sonner";
 import { computeLeadScore, faturamentoTetoPorPorte } from "@/lib/lead-score";
 import { useMoveLeadStage } from "@/hooks/use-move-lead-stage";
+import { LostReasonDialog, type LostReasonPayload } from "@/components/crm/LostReasonDialog";
 import { TabErrorBoundary } from "@/components/crm/TabErrorBoundary";
 
 
@@ -93,6 +94,7 @@ export function LeadDrawer({
   const calendar = useCrm((s) => s.calendar);
   const proposals = useCrm((s) => s.proposals);
   const moveLeadStage = useMoveLeadStage();
+  const [lostReasonOpen, setLostReasonOpen] = useState(false);
 
   const [newInt, setNewInt] = useState<{ type: Interaction["type"]; content: string }>({
     type: "call",
@@ -103,6 +105,7 @@ export function LeadDrawer({
   if (!lead) return null;
 
   return (
+    <>
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-2xl overflow-y-auto p-0 gap-0">
         <SheetHeader className="border-b bg-muted/40 px-6 py-5">
@@ -226,6 +229,10 @@ export function LeadDrawer({
                 onValueChange={async (v) => {
                   const target = v as Lead["stage"];
                   if (target === lead.stage) return;
+                  if (target === "perdido") {
+                    setLostReasonOpen(true);
+                    return;
+                  }
                   const r = await moveLeadStage(lead.id, target, { onGanhoLabel: lead.company });
                   if (r.ok && target !== "ganho") toast.success("Etapa atualizada");
                 }}
@@ -555,6 +562,17 @@ export function LeadDrawer({
         </div>
       </SheetContent>
     </Sheet>
+    <LostReasonDialog
+      open={lostReasonOpen}
+      leadLabel={lead.company}
+      onCancel={() => setLostReasonOpen(false)}
+      onConfirm={async (payload) => {
+        setLostReasonOpen(false);
+        const r = await moveLeadStage(lead.id, "perdido", { onGanhoLabel: lead.company, lostReason: payload });
+        if (r.ok) toast.success("Lead marcado como Perdido");
+      }}
+    />
+    </>
   );
 }
 
