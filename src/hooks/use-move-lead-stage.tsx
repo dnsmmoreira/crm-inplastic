@@ -5,10 +5,18 @@ import { moverParaGanhoOmie } from "@/lib/omie.functions";
 import { useCrm, type StageId } from "@/lib/crm-store";
 
 /**
- * Move um lead entre etapas. Se o alvo for "ganho", exige que exista uma
- * proposta com `status='pedido'` vinculada — caso contrário mostra a
- * pendência ao usuário. Em qualquer outra etapa, aplica direto no store
- * local (que sincroniza com o Supabase).
+ * Etapas que exigem ao menos uma proposta vinculada ao lead
+ * (independente de status; recusadas também contam como registro histórico?
+ * Aqui bloqueamos apenas se NÃO houver nenhuma proposta — não filtramos por status
+ * para manter genérico).
+ */
+const STAGES_REQUIRING_PROPOSAL: StageId[] = ["proposta", "negociacao", "ganho"];
+
+/**
+ * Move um lead entre etapas.
+ * - Etapas em `STAGES_REQUIRING_PROPOSAL` exigem ao menos uma proposta vinculada.
+ * - Alvo "ganho" ainda passa pelo gate fiscal (`moverParaGanhoOmie`).
+ * - Demais etapas aplicam direto no store (sincroniza com Supabase).
  */
 export function useMoveLeadStage() {
   const moveLead = useCrm((s) => s.moveLead);
@@ -16,6 +24,21 @@ export function useMoveLeadStage() {
 
   return useCallback(
     async (leadId: string, stage: StageId, opts?: { onGanhoLabel?: string }) => {
+      if (STAGES_REQUIRING_PROPOSAL.includes(stage)) {
+        const proposals = useCrm.getState().proposals;
+        const hasProposal = proposals.some((p) => p.leadId === leadId);
+        if (!hasProposal) {
+          const stageLabel =
+            stage === "proposta" ? "Proposta Enviada"
+            : stage === "negociacao" ? "Negociação"
+            : "Ganho";
+          toast.error(`Crie uma proposta antes de mover para ${stageLabel}`, {
+            description: "Vincule pelo menos uma proposta ao lead para avançar nesta etapa.",
+          });
+          return { ok: false as const, reason: "no_proposal" as const };
+        }
+      }
+
       if (stage !== "ganho") {
         moveLead(leadId, stage);
         return { ok: true as const };
