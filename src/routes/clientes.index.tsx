@@ -213,7 +213,7 @@ function ClientesListPage() {
                         {c.razao_social}
                         {!c.ativo && <Badge variant="outline" className="ml-2">Inativo</Badge>}
                       </TableCell>
-                      <TableCell>{c.nome_fantasia ?? "—"}</TableCell>
+                      <TableCell>{displayValue(c.nome_fantasia)}</TableCell>
                       <TableCell>{[c.cidade, c.estado].filter(Boolean).join("/") || "—"}</TableCell>
                       <TableCell>
                         {c.empresa_padrao ? (
