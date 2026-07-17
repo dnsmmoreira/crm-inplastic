@@ -59,6 +59,7 @@ import {
 import { toast } from "sonner";
 import { computeLeadScore, faturamentoTetoPorPorte } from "@/lib/lead-score";
 import { useMoveLeadStage } from "@/hooks/use-move-lead-stage";
+import { TabErrorBoundary } from "@/components/crm/TabErrorBoundary";
 
 
 const TYPE_META: Record<Interaction["type"], { label: string; icon: typeof Mail }> = {
@@ -339,7 +340,9 @@ export function LeadDrawer({
             </TabsContent>
 
             <TabsContent value="propostas" className="mt-4">
-              <LeadProposals leadId={lead.id} />
+              <TabErrorBoundary label="propostas">
+                <LeadProposals leadId={lead.id} />
+              </TabErrorBoundary>
             </TabsContent>
 
 
