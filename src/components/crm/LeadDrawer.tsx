@@ -94,6 +94,7 @@ export function LeadDrawer({
   const calendar = useCrm((s) => s.calendar);
   const proposals = useCrm((s) => s.proposals);
   const moveLeadStage = useMoveLeadStage();
+  const [lostReasonOpen, setLostReasonOpen] = useState(false);
 
   const [newInt, setNewInt] = useState<{ type: Interaction["type"]; content: string }>({
     type: "call",
