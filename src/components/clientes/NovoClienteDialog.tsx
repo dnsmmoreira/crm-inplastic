@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { isValidCnpj, onlyDigitsCnpj } from "@/lib/cnpj";
+import { isValidCnpj, onlyDigitsCnpj, friendlyCnpjError } from "@/lib/cnpj";
 import { lookupCnpj } from "@/lib/cnpj.functions";
 import { createCliente, listVendedores, type ClienteRow } from "@/lib/clientes.functions";
 import { ClienteFormFields, emptyCliente, type ClienteFormState } from "./ClienteFormFields";
