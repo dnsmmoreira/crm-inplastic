@@ -181,12 +181,42 @@ export function LeadDrawer({
 
         <div className="px-6 py-5 space-y-5">
           <div className="grid grid-cols-2 gap-3 text-sm">
-            <InfoRow icon={Mail} label="E-mail" value={lead.email} />
-            <InfoRow icon={Phone} label="Telefone" value={lead.phone} />
+            <EditableRow
+              icon={Users2}
+              label="Contato"
+              value={lead.contactName}
+              onCommit={(v) => {
+                const t = v.trim();
+                if (!t || t === lead.contactName) return;
+                updateLead(lead.id, { contactName: t.toUpperCase() });
+              }}
+            />
+            <EditableRow
+              icon={Mail}
+              label="E-mail"
+              type="email"
+              value={lead.email}
+              onCommit={(v) => {
+                const t = v.trim().toLowerCase();
+                if (t === lead.email) return;
+                updateLead(lead.id, { email: t });
+              }}
+            />
+            <EditableRow
+              icon={Phone}
+              label="Telefone"
+              value={lead.phone}
+              onCommit={(v) => {
+                const t = v.trim();
+                if (t === lead.phone) return;
+                updateLead(lead.id, { phone: t });
+              }}
+            />
             <InfoRow icon={Package} label="Produto" value={lead.product} />
             <InfoRow icon={Calendar} label="Último contato" value={format(new Date(lead.lastContact), "dd/MM/yyyy")} />
             {lead.emailNfXml && <InfoRow icon={Mail} label="E-mail NF (XML)" value={lead.emailNfXml} />}
           </div>
+
 
           <div className="grid grid-cols-2 gap-3">
             <div>
