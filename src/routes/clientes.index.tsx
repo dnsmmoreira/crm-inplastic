@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
 import { formatCnpj } from "@/lib/cnpj";
-import { relativeTimeShort } from "@/lib/format";
+import { relativeTimeShort, displayValue } from "@/lib/format";
 import { listClientes, listVendedores } from "@/lib/clientes.functions";
 import { useAuth } from "@/hooks/use-auth";
 import { NovoClienteDialog } from "@/components/clientes/NovoClienteDialog";
