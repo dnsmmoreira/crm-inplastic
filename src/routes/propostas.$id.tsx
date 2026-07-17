@@ -1337,6 +1337,13 @@ function PropostaDetalhe() {
           </div>
         )}
 
+        {proposal.orderNotes && proposal.orderNotes.trim() && (
+          <div className="mb-6">
+            <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Observações do pedido</div>
+            <div className="text-[11px] whitespace-pre-wrap border rounded p-3 bg-muted/20">{proposal.orderNotes}</div>
+          </div>
+        )}
+
         <div className="text-[11px] mt-6">Atenciosamente,<br/>Departamento de Vendas</div>
 
         <div className="mt-8 grid grid-cols-3 gap-6 text-[11px]">
