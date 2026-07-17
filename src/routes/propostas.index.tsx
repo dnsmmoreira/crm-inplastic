@@ -103,7 +103,8 @@ function PropostasPage() {
       }));
       toast.success("Dados do CNPJ carregados");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro na consulta do CNPJ");
+      const { friendlyCnpjError } = await import("@/lib/cnpj");
+      toast.error(friendlyCnpjError(e));
     } finally {
       setCnpjLoading(false);
     }

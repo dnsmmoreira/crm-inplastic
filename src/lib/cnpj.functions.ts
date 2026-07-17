@@ -101,34 +101,59 @@ export const lookupCnpj = createServerFn({ method: "POST" })
     return { cnpj: digits };
   })
   .handler(async ({ data }): Promise<CnpjLookupResult> => {
+    const GENERIC = "Não foi possível consultar o CNPJ agora. Tente novamente em instantes.";
     const token = process.env.CNPJA_API_KEY;
-    if (!token) throw new Error("Token do CNPJá não configurado (CNPJA_API_KEY)");
+    if (!token) {
+      console.error("[lookupCnpj] CNPJA_API_KEY não configurada");
+      throw new Error(GENERIC);
+    }
 
     const url = `https://api.cnpja.com/office/${data.cnpj}?registrations=BR&simples=true&suframa=true`;
 
-    const res = await fetch(url, {
-      headers: {
-        Authorization: token,
-        Accept: "application/json",
-      },
-    });
+    let res: Response;
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 12_000);
+      try {
+        res = await fetch(url, {
+          headers: { Authorization: token, Accept: "application/json" },
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeout);
+      }
+    } catch (err) {
+      console.error("[lookupCnpj] network/timeout", err);
+      throw new Error(GENERIC);
+    }
 
     if (res.status === 401 || res.status === 403) {
-      throw new Error("Token do CNPJá inválido ou sem permissão");
+      console.error("[lookupCnpj] auth error", res.status);
+      throw new Error(GENERIC);
     }
     if (res.status === 404) {
       throw new Error("CNPJ não encontrado na Receita Federal");
     }
     if (res.status === 429) {
-      throw new Error("Limite de consultas do CNPJá atingido. Tente novamente em instantes.");
+      throw new Error("Muitas consultas em pouco tempo. Tente novamente em instantes.");
     }
     if (!res.ok) {
-      const body = await res.text();
-      throw new Error(`Erro na consulta (${res.status}): ${body.slice(0, 200)}`);
+      const body = await res.text().catch(() => "");
+      console.error("[lookupCnpj] http error", res.status, body.slice(0, 300));
+      throw new Error(GENERIC);
     }
 
-    const json = (await res.json()) as CnpjaOffice;
-    if (!json?.company?.name) throw new Error("Resposta inválida da CNPJá");
+    let json: CnpjaOffice;
+    try {
+      json = (await res.json()) as CnpjaOffice;
+    } catch (err) {
+      console.error("[lookupCnpj] invalid JSON", err);
+      throw new Error(GENERIC);
+    }
+    if (!json?.company?.name) {
+      console.error("[lookupCnpj] resposta sem campos esperados");
+      throw new Error(GENERIC);
+    }
 
     // IE ativa preferencial (do próprio estado da empresa) ou primeira habilitada
     const uf = json.address?.state ?? "";

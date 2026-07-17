@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { lookupCnpj } from "@/lib/cnpj.functions";
-import { isValidCnpj } from "@/lib/cnpj";
+import { isValidCnpj, friendlyCnpjError } from "@/lib/cnpj";
 import { useAuth } from "@/hooks/use-auth";
 import { dateInputToISO } from "@/lib/format";
 
@@ -879,7 +879,7 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
 
       toast.success("Dados do CNPJ preenchidos");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Falha ao consultar CNPJ");
+      toast.error(friendlyCnpjError(e));
     } finally {
       setLookingUp(false);
     }
