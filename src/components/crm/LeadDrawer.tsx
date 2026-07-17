@@ -61,6 +61,7 @@ import {
 import { toast } from "sonner";
 import { computeLeadScore, faturamentoTetoPorPorte } from "@/lib/lead-score";
 import { useMoveLeadStage } from "@/hooks/use-move-lead-stage";
+import { LostReasonDialog, type LostReasonPayload } from "@/components/crm/LostReasonDialog";
 import { TabErrorBoundary } from "@/components/crm/TabErrorBoundary";
 
 
