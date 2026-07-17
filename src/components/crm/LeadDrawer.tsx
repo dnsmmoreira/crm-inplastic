@@ -192,15 +192,11 @@ export function LeadDrawer({
               <Label className="text-xs">Etapa</Label>
               <Select
                 value={lead.stage}
-                onValueChange={(v) => {
+                onValueChange={async (v) => {
                   const target = v as Lead["stage"];
                   if (target === lead.stage) return;
-                  if (target === "ganho") {
-                    void moveLeadStage(lead.id, target, { onGanhoLabel: lead.company });
-                  } else {
-                    updateLead(lead.id, { stage: target });
-                    toast.success("Etapa atualizada");
-                  }
+                  const r = await moveLeadStage(lead.id, target, { onGanhoLabel: lead.company });
+                  if (r.ok && target !== "ganho") toast.success("Etapa atualizada");
                 }}
               >
                 <SelectTrigger className="mt-1">
