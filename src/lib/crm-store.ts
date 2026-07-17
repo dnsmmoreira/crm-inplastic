@@ -1320,6 +1320,82 @@ export const proposalTotals = (p: Proposal) => {
   return { subtotal, discountPercent: pct, discountAmount, subtotalAfterDiscount, total, qty, count: items.length };
 };
 
+/** Status de propostas em aberto (contam em pipeline ativo). */
+export const OPEN_PROPOSAL_STATUSES: ProposalStatus[] = [
+  "rascunho",
+  "enviada",
+  "aguardando_aprovacao",
+  "aprovada",
+];
+/** Status de propostas fechadas como receita (pedido gerado). */
+export const WON_PROPOSAL_STATUSES: ProposalStatus[] = ["pedido"];
+
+const PROPOSAL_PRIORITY: Record<ProposalStatus, number> = {
+  pedido: 6,
+  aprovada: 5,
+  aguardando_aprovacao: 4,
+  enviada: 3,
+  rascunho: 2,
+  recusada: 0,
+};
+
+/**
+ * Valor efetivo de um lead calculado a partir das propostas vinculadas.
+ * Prioriza a proposta de maior peso (pedido > aprovada > aguardando > enviada > rascunho),
+ * desempate por mais recente. Ignora recusadas. Fallback para `lead.estimatedValue`.
+ */
+export const leadValueFromProposals = (
+  lead: Pick<Lead, "id" | "estimatedValue">,
+  proposals: Proposal[],
+): number => {
+  const fallback = Number(lead.estimatedValue) || 0;
+  const relevantes = proposals.filter(
+    (p) => p.leadId === lead.id && p.status !== "recusada",
+  );
+  if (!relevantes.length) return fallback;
+  const best = [...relevantes].sort((a, b) => {
+    const pri = (PROPOSAL_PRIORITY[b.status] ?? 0) - (PROPOSAL_PRIORITY[a.status] ?? 0);
+    if (pri !== 0) return pri;
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  })[0];
+  const total = proposalTotals(best).total;
+  return total > 0 ? total : fallback;
+};
+
+/** Mapa leadId → valor efetivo (memoizado com base em leads+proposals). */
+export const useLeadValueMap = () => {
+  const proposals = useCrm((s) => s.proposals);
+  const leads = useCrm((s) => s.leads);
+  return useMemo(() => {
+    const map = new Map<string, number>();
+    for (const l of leads) map.set(l.id, leadValueFromProposals(l, proposals));
+    return map;
+  }, [leads, proposals]);
+};
+
+/** Totais agregados por status de proposta, opcionalmente filtrados por ownerId. */
+export const useProposalAggregates = (ownerId?: string) => {
+  const proposals = useCrm((s) => s.proposals);
+  return useMemo(() => {
+    const scoped = ownerId ? proposals.filter((p) => p.ownerId === ownerId) : proposals;
+    let openValue = 0;
+    let openCount = 0;
+    let wonValue = 0;
+    let wonCount = 0;
+    for (const p of scoped) {
+      const total = proposalTotals(p).total;
+      if (OPEN_PROPOSAL_STATUSES.includes(p.status)) {
+        openValue += total;
+        openCount += 1;
+      } else if (WON_PROPOSAL_STATUSES.includes(p.status)) {
+        wonValue += total;
+        wonCount += 1;
+      }
+    }
+    return { openValue, openCount, wonValue, wonCount };
+  }, [proposals, ownerId]);
+};
+
 /** Limite máximo de desconto (%) que um vendedor pode aplicar em uma proposta. Configurável pelo admin. */
 export const useMaxDiscountForCurrentUser = () => {
   const max = useCrm((s) => s.maxDiscountPercentVendedor);

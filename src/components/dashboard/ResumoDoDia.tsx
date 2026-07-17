@@ -9,6 +9,7 @@ import {
   useVisibleLeads,
   useVisibleTasks,
   useCurrentUser,
+  useProposalAggregates,
   formatBRL,
 } from "@/lib/crm-store";
 import { getPlacar } from "@/lib/placar.functions";
@@ -92,14 +93,10 @@ export function ResumoDoDia() {
     ).length;
   }, [leads]);
 
-  // 3) Propostas em aberto
-  const { propostasValor, propostasQtd } = useMemo(() => {
-    const abertas = leads.filter(
-      (l) => l.stage === "proposta" || l.stage === "negociacao",
-    );
-    const valor = abertas.reduce((s, l) => s + (l.estimatedValue ?? 0), 0);
-    return { propostasValor: valor, propostasQtd: abertas.length };
-  }, [leads]);
+  // 3) Propostas em aberto — soma das propostas em status aberto (Rascunho/Enviada/Aguardando/Aprovada)
+  const proposalAgg = useProposalAggregates(isAdmin ? undefined : user.id);
+  const propostasValor = proposalAgg.openValue;
+  const propostasQtd = proposalAgg.openCount;
 
   // 4) Meta do mês — via placar
   const fetchPlacar = useServerFn(getPlacar);

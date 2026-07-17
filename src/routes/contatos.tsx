@@ -21,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useCrm, STAGES, formatBRL, type StageId, useVisibleLeads } from "@/lib/crm-store";
+import { useCrm, STAGES, formatBRL, type StageId, useVisibleLeads, useLeadValueMap } from "@/lib/crm-store";
 import { NewLeadDialog, LeadDrawer } from "@/components/crm/LeadDrawer";
 import { Card } from "@/components/ui/card";
 
@@ -38,6 +38,7 @@ function ContactsPage() {
   const [stage, setStage] = useState<StageId | "all">("all");
   const [tag, setTag] = useState<string>("all");
   const [openLead, setOpenLead] = useState<string | null>(null);
+  const valueMap = useLeadValueMap();
 
   const allTags = useMemo(() => {
     const s = new Set<string>();
@@ -133,7 +134,7 @@ function ContactsPage() {
                         {s.label}
                       </span>
                     </TableCell>
-                    <TableCell className="text-right font-medium">{formatBRL(l.estimatedValue)}</TableCell>
+                    <TableCell className="text-right font-medium">{formatBRL(valueMap.get(l.id) ?? l.estimatedValue)}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {format(new Date(l.lastContact), "dd MMM yyyy", { locale: ptBR })}
                     </TableCell>

@@ -14,7 +14,7 @@ import {
 import { Plus, Package, Calendar as CalendarIcon, Search, ArrowDownUp, X } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useCrm, STAGES, formatBRL, leadTemperature, followupTemperature, type Lead, type StageId, type FollowupLevel, useVisibleLeads } from "@/lib/crm-store";
+import { useCrm, STAGES, formatBRL, leadTemperature, followupTemperature, type Lead, type StageId, type FollowupLevel, useVisibleLeads, useLeadValueMap } from "@/lib/crm-store";
 import { useMoveLeadStage } from "@/hooks/use-move-lead-stage";
 import { computeLeadScore } from "@/lib/lead-score";
 import { Input } from "@/components/ui/input";
@@ -207,7 +207,8 @@ function Column({
   onOpen: (id: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage.id });
-  const total = leads.reduce((s, l) => s + l.estimatedValue, 0);
+  const valueMap = useLeadValueMap();
+  const total = leads.reduce((s, l) => s + (valueMap.get(l.id) ?? l.estimatedValue), 0);
   return (
     <div className="w-[300px] shrink-0 flex flex-col">
       <div className="px-1 pb-2 flex items-center justify-between">
@@ -247,6 +248,8 @@ function LeadCard({
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: lead.id });
   const sc = computeLeadScore(lead);
+  const valueMap = useLeadValueMap();
+  const effValue = valueMap.get(lead.id) ?? lead.estimatedValue;
   const stripe =
     sc.level === "alto" ? "border-l-4 border-l-emerald-500"
     : sc.level === "medio" ? "border-l-4 border-l-amber-500"
@@ -267,7 +270,7 @@ function LeadCard({
       <div className="flex items-start justify-between gap-2">
         <div className="font-medium text-sm truncate">{lead.company}</div>
         <div className="text-primary font-semibold text-sm shrink-0">
-          {formatBRL(lead.estimatedValue)}
+          {formatBRL(effValue)}
         </div>
       </div>
       <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
