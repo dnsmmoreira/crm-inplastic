@@ -205,6 +205,17 @@ function PipelinePage() {
       </DndContext>
 
       <LeadDrawer leadId={openLead} open={!!openLead} onOpenChange={(o) => !o && setOpenLead(null)} />
+      <LostReasonDialog
+        open={!!lostTarget}
+        leadLabel={lostTarget?.company}
+        onCancel={() => setLostTarget(null)}
+        onConfirm={async (payload) => {
+          if (!lostTarget) return;
+          const { leadId, company } = lostTarget;
+          setLostTarget(null);
+          runMove(leadId, "perdido", company, payload);
+        }}
+      />
     </div>
   );
 }
