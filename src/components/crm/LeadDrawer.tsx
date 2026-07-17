@@ -879,7 +879,7 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
 
       toast.success("Dados do CNPJ preenchidos");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Falha ao consultar CNPJ");
+      toast.error(friendlyCnpjError(e));
     } finally {
       setLookingUp(false);
     }
