@@ -1,94 +1,111 @@
-## Fase 1 — Cadastro técnico dos produtos
 
-Complementa a tabela `produtos` (que já tem SKU, nome, peso, dimensões, NCM) com o mínimo para virar coluna no caminhão:
+# Diagnóstico dos 3 avisos de segurança
 
-- `pecas_por_coluna` (int) — quantas peças empilham antes do peso/altura limitar. Vendedor não digita altura de pilha; sistema calcula: `altura_pilha = height_cm × pecas_por_coluna` e `peso_pilha = weight_kg × pecas_por_coluna`.
-- `family` (text, opcional) — agrupador para relatório ("HV", "Container Bin", "Caixa Vazada"). Não afeta cálculo.
+## ITEM 3 — SECURITY DEFINER executáveis por anon/public
 
-Volume unitário (m³) e volume da pilha ficam **calculados na UI** a partir de comprimento×largura×altura, nunca persistidos (evita divergência).
+Consultei `pg_proc` cruzando com `has_function_privilege` para `anon`, `authenticated` e `public`. Funções SECURITY DEFINER no schema `public`:
 
-Tela `/produtos` ganha:
-- Campo "Peças por coluna" com preview: "Pilha = 20 peças · altura 1,80 m · 260 kg".
-- Campo "Família" (autocomplete simples com valores já cadastrados).
+| Função | anon exec | authenticated exec | public exec | O que faz |
+|---|---|---|---|---|
+| `has_role(uuid, app_role)` | não | sim | não | Checa se um user tem um role. Lê `user_roles`. |
+| `handle_new_user()` | não | não | não | Trigger de `auth.users`. Não chamável pela API. |
+| `atribuir_proximo_vendedor(uuid)` | não | não | não | Round-robin de leads. |
+| `placar_vendedores(text)` | não | sim | não | KPIs consolidados do time. |
+| `snapshot_metas_mes(int,int)` | não | não | não | Snapshot mensal de metas. |
+| **`next_proposta_number(int)`** | **SIM** | sim | **SIM** | Gera o próximo número sequencial de proposta do ano (`YYYY-NNNN`). Faz advisory lock e lê `propostas.number`. |
 
-## Fase 2 — Cadastro da frota (admin)
+**Única função exposta ao anon/public: `next_proposta_number`.**
 
-Frota vive em `system_workspace.data.frota` (JSON, admin-only já protegido por RLS). Nova aba em **Condições comerciais → Frota** com CRUD dos veículos:
+- **Chamadores reais no código:** apenas `src/lib/crm-store.ts:1024` via `supabase.rpc("next_proposta_number", …)`, sempre em contexto autenticado (criar proposta). Nenhum caller anônimo.
+- **Risco real de anon poder executar:**
+  - Não expõe dados sensíveis (retorna só o próximo número, ex.: `2026-0042`).
+  - Mas permite: (a) enumerar quantas propostas existem no ano (vazamento de métrica de negócio); (b) DoS leve — cada chamada pega um `pg_advisory_xact_lock` no ano corrente e faz `MAX()` sobre `propostas`; um anon em loop consegue serializar/latenciar toda a criação de propostas legítimas.
+  - **Sem risco de escrita** (função é `SELECT`-only apesar de SECURITY DEFINER, então não insere pulando RLS).
 
-| Campo             | Ex.: Truck        | Ex.: Carreta       | Ex.: Contêiner 20' |
-| ----------------- | ----------------- | ------------------ | ------------------ |
-| nome              | Truck             | Carreta            | Container 20'      |
-| tipo              | truck             | carreta            | container_20       |
-| comprimento_util_m| 7,5               | 14,0               | 5,9                |
-| largura_util_m    | 2,4               | 2,4                | 2,35               |
-| altura_util_m     | 2,7               | 2,9                | 2,39               |
-| capacidade_kg     | 12000             | 27000              | 22000              |
-| rs_por_km         | 6,50              | 9,20               | 11,00              |
-| ativo             | true              | true               | true               |
-
-Preset inicial já vem com **VUC · ¾ · Toco · Truck · Carreta · Container 20' · Container 40' · Bitrem · Rodotrem** — admin ajusta valores.
-
-## Fase 3 — Calculadora de logística
-
-Server fn `calcularLogistica` recebe `{ itens: [{ sku, qtd }], originCep, destinationCep }` e devolve, para cada veículo ativo:
-
-```text
-{
-  totalPeso_kg, totalVolume_m3, totalColunas,
-  distancia_km,   ← reutiliza calculateFreightDistance existente
-  veiculos: [
-    {
-      nome: "Truck",
-      colunasPorVeiculo,        ← floor(area_piso / footprint_sku) × pecas_por_coluna
-      veiculosNecessarios,      ← teto( colunas / colunasPorVeiculo ) OU teto( peso / capacidade_kg )
-      limitante: "volume"|"peso",
-      aproveitamento_pct,
-      freteTotal, fretePorColuna, fretePorPeca
-    }, ...
-  ]
-}
+**Correção proposta:**
+```sql
+REVOKE EXECUTE ON FUNCTION public.next_proposta_number(integer) FROM anon, PUBLIC;
+-- authenticated mantém EXECUTE (é o único caller real)
 ```
+Manter `SECURITY DEFINER` (é necessário para o advisory lock funcionar de forma consistente entre roles) — só fechar o acesso anônimo. Não precisa mover de schema.
 
-Regras de cálculo:
-- **Cabimento** = `floor(comprimento_util / max(L, C)) × floor(largura_util / min(L, C))` — sistema testa também a orientação girada 90° e fica com o maior. Depois multiplica por `pecas_por_coluna`.
-- **Altura** limita colunas se `altura_pilha > altura_util_m` (avisa e reduz).
-- **Frete** = `distancia_km × rs_por_km × veiculos_necessarios`.
-- Chamada única ao Google Maps por cotação (cache por par de CEPs no cliente durante a sessão).
+Observação: as outras SECURITY DEFINER já estão fechadas corretamente. `has_role` e `placar_vendedores` continuam disponíveis para `authenticated` — é o esperado, ambas são usadas pelas RLS/telas logadas.
 
-## Fase 4 — UI na proposta
+---
 
-Novo bloco "Logística" dentro de `/propostas/:id`:
-- Já lê os itens da proposta (não precisa redigitar "650 HV-6").
-- Campos: CEP origem (default da matriz) e CEP destino (default do lead).
-- Botão **Calcular** → renderiza tabela dos veículos:
+## ITEM 1 — `clientes` sem policy de DELETE
 
-```text
-┌──────────────┬─────┬─────────┬──────────┬────────────┬───────────┐
-│ Veículo      │ Qtd │ Aprov.  │ Limitado │ Frete total│ R$/peça   │
-├──────────────┼─────┼─────────┼──────────┼────────────┼───────────┤
-│ Truck        │  2  │  94 %   │ volume   │ R$ 12.480  │ R$ 19,20  │
-│ Carreta      │  1  │  87 %   │ volume   │ R$  8.464  │ R$ 13,02  │  ← sugerida
-│ Container 20'│  2  │  71 %   │ volume   │ R$ 20.240  │ R$ 31,14  │
-└──────────────┴─────┴─────────┴──────────┴────────────┴───────────┘
-```
+Policies em `public.clientes` (via `pg_policies`):
+- `INSERT` (authenticated): `vendedor_id = auth.uid() OR has_role(admin)` e `criado_por = auth.uid() OR null`
+- `SELECT` (authenticated): `vendedor_id = auth.uid() OR has_role(admin)`
+- `UPDATE` (authenticated): mesma condição
+- **`DELETE`: nenhuma policy**
 
-- Sistema destaca automaticamente o menor R$/peça viável.
-- Botão "Adicionar frete à proposta" prefill do campo de valor de frete existente.
+Com RLS habilitado e nenhuma policy de DELETE, o Postgres **fail-closed**: nem admin nem vendedor conseguem deletar via Data API. Confirmado no código: `src/lib/clientes.functions.ts` só expõe `listClientes`, `getCliente`, `createCliente`, `updateCliente`, `listLeadsByCliente`, `vincularClienteAoLead` — **não existe função server nem UI de deletar cliente** (a "desativação" é feita via `ativo=false` no `updateCliente`). `rg` por `delete`/`remove` em `src/routes/clientes*` e `src/components/clientes/` não retorna nada.
 
-## Detalhes técnicos
+**Diagnóstico:** é intencional (soft-delete via `ativo`). O aviso é um lembrete, não uma vulnerabilidade.
 
-- Migração: `ALTER TABLE produtos ADD pecas_por_coluna INT NOT NULL DEFAULT 1, ADD family TEXT`.
-- Frota: schema TypeScript em `src/lib/frota.ts` + hook `useFrota()` que lê/escreve `system_workspace.data.frota` via store existente (`crm-store.ts`).
-- Cálculo puro em `src/lib/logistica.ts` (funções testáveis, sem dependência de rede).
-- Server fn `calcularLogistica` em `src/lib/logistica.functions.ts` — protege com `requireSupabaseAuth`, orquestra `calculateFreightDistance` + `logistica.ts` puro.
-- Cache in-memory de distância por par de CEPs no componente (`useRef<Map>`).
-- Sem mudanças no schema de `propostas` — o frete calculado grava no campo de valor de frete que já existe.
+**Correção proposta:** dois caminhos, o usuário escolhe:
+- **(A) Documentar como intencional** — marcar o finding como ignorado com justificativa "clientes usa soft-delete via `ativo`; DELETE bloqueado por design". Nada muda no banco.
+- **(B) Tornar explícito no schema** — adicionar uma policy restritiva que deixe claro:
+  ```sql
+  CREATE POLICY "clientes_no_delete" ON public.clientes
+    FOR DELETE TO authenticated USING (false);
+  ```
+  Efeito idêntico ao atual, mas remove ambiguidade em auditorias/mudanças futuras.
 
-## Fora do escopo desta iteração
+Recomendação: **(B)**, é 2 linhas e evita alguém abrir uma policy de DELETE ampla por engano no futuro.
 
-- Restrição por NCM/ANTT (perigosos, refrigerados).
-- Otimização mista (2 truck + 1 VUC no mesmo pedido).
-- Roteirização multi-parada.
-- Tabela de frete manual por UF (você escolheu R$/km × distância).
+---
 
-Posso implementar direto se aprovado, ou você prefere quebrar em duas entregas (Fase 1+2 primeiro, depois 3+4)?
+## ITEM 2 — `zapi_inbox` sem policy de INSERT
+
+Policies em `public.zapi_inbox`:
+- `SELECT` (authenticated): `has_role(admin)`
+- `UPDATE` (authenticated): `has_role(admin)`
+- **`INSERT`: nenhuma policy** → fail-closed para `authenticated` e `anon`
+
+Grants na tabela mostram INSERT concedido a `anon` e `authenticated`, mas **RLS bloqueia** — sem policy de INSERT, ninguém logado nem anônimo consegue inserir via Data API.
+
+Único caminho de escrita real: `src/routes/api/public/zapi/webhook.ts:67`, que faz `supabaseAdmin.from("zapi_inbox").insert(...)`. `supabaseAdmin` é o cliente com `SERVICE_ROLE_KEY` (importado dinamicamente de `@/integrations/supabase/client.server`), que **bypassa RLS**. O webhook está sob `/api/public/*` mas valida assinatura Z-API antes de escrever (rota `src/routes/api/public/zapi/webhook.ts`).
+
+`rg` confirma: **nenhum outro insert em `zapi_inbox`** no código client-side/server-fn. E o teste `scripts/test-zapi-inbox-rls.ts` já valida que anon/vendedor não leem nada — o modelo é service-role-only, como o aviso sugere.
+
+**Diagnóstico:** intencional e correto — escrita só via service role no webhook verificado.
+
+**Correção proposta:** também dois caminhos:
+- **(A) Ignorar o finding** com justificativa "insert é service-role-only via webhook Z-API verificado; RLS default-deny já bloqueia clientes".
+- **(B) Tornar explícito** com policy restritiva:
+  ```sql
+  CREATE POLICY "zapi_inbox_no_client_insert" ON public.zapi_inbox
+    FOR INSERT TO authenticated, anon WITH CHECK (false);
+  ```
+  Comportamento igual (RLS já nega), mas documenta a intenção no schema.
+
+Recomendação: **(B)** pelo mesmo motivo do item 1.
+
+---
+
+# Plano de correção (a executar depois da sua aprovação)
+
+Uma única migration com:
+
+1. **Item 3 (real):**
+   ```sql
+   REVOKE EXECUTE ON FUNCTION public.next_proposta_number(integer) FROM anon, PUBLIC;
+   ```
+2. **Item 1 (documental):**
+   ```sql
+   CREATE POLICY "clientes_no_delete" ON public.clientes
+     FOR DELETE TO authenticated USING (false);
+   ```
+3. **Item 2 (documental):**
+   ```sql
+   CREATE POLICY "zapi_inbox_no_client_insert" ON public.zapi_inbox
+     FOR INSERT TO authenticated, anon WITH CHECK (false);
+   ```
+4. Depois: `manage_security_finding` marcando os 3 como fixed com a explicação correspondente, e atualização da `security-memory` para não reincidir.
+
+Nenhum código de app precisa mudar. `next_proposta_number` continua funcionando para o único caller real (usuário autenticado criando proposta).
+
+Me confirma se topa esse plano — ou se prefere só ignorar os itens 1 e 2 sem criar as policies explícitas.
