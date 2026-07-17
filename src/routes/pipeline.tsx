@@ -207,7 +207,8 @@ function Column({
   onOpen: (id: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage.id });
-  const total = leads.reduce((s, l) => s + l.estimatedValue, 0);
+  const valueMap = useLeadValueMap();
+  const total = leads.reduce((s, l) => s + (valueMap.get(l.id) ?? l.estimatedValue), 0);
   return (
     <div className="w-[300px] shrink-0 flex flex-col">
       <div className="px-1 pb-2 flex items-center justify-between">
