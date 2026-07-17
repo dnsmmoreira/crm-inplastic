@@ -339,7 +339,9 @@ export function LeadDrawer({
             </TabsContent>
 
             <TabsContent value="propostas" className="mt-4">
-              <LeadProposals leadId={lead.id} />
+              <TabErrorBoundary label="propostas">
+                <LeadProposals leadId={lead.id} />
+              </TabErrorBoundary>
             </TabsContent>
 
 
