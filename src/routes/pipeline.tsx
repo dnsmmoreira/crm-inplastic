@@ -105,11 +105,12 @@ function PipelinePage() {
     const stage = String(e.over.id) as StageId;
     const lead = leads.find((l) => l.id === leadId);
     if (lead && lead.stage !== stage) {
-      void moveLeadStage(leadId, stage, { onGanhoLabel: lead.company });
-      if (stage !== "ganho") {
-        const stageLabel = STAGES.find((s) => s.id === stage)?.label;
-        toast.success(`${lead.company} → ${stageLabel}`);
-      }
+      void moveLeadStage(leadId, stage, { onGanhoLabel: lead.company }).then((r) => {
+        if (r?.ok && stage !== "ganho") {
+          const stageLabel = STAGES.find((s) => s.id === stage)?.label;
+          toast.success(`${lead.company} → ${stageLabel}`);
+        }
+      });
     }
   };
 
