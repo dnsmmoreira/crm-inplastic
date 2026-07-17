@@ -4,6 +4,7 @@ import { Plus, CheckCircle2, Circle, Trash2, CircleAlert } from "lucide-react";
 import { format, isToday, isTomorrow, isThisWeek, isBefore } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useCrm, useVisibleLeads, useVisibleTasks } from "@/lib/crm-store";
+import { dateInputToISO } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
