@@ -52,6 +52,7 @@ import {
   leadTemperature,
   followupTemperature,
   proposalTotals,
+  leadValueFromProposals,
   type Lead,
   type Interaction,
   type Proposal,
