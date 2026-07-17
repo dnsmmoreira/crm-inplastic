@@ -1228,10 +1228,12 @@ export const formatBRL = (n: number) =>
 
 export const useCurrentUser = (): User => {
   const { user } = useAuth();
-  if (user) {
-    return { id: user.id, name: user.name, role: user.role, avatarColor: user.avatarColor };
-  }
-  return { id: "__anon__", name: "Convidado", role: "vendedor", avatarColor: "#64748b" };
+  return useMemo<User>(() => {
+    if (user) {
+      return { id: user.id, name: user.name, role: user.role, avatarColor: user.avatarColor };
+    }
+    return { id: "__anon__", name: "Convidado", role: "vendedor", avatarColor: "#64748b" };
+  }, [user?.id, user?.name, user?.role, user?.avatarColor]);
 };
 
 export const useIsAdmin = () => {
