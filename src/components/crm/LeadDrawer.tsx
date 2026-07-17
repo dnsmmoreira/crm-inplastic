@@ -228,6 +228,10 @@ export function LeadDrawer({
                 onValueChange={async (v) => {
                   const target = v as Lead["stage"];
                   if (target === lead.stage) return;
+                  if (target === "perdido") {
+                    setLostReasonOpen(true);
+                    return;
+                  }
                   const r = await moveLeadStage(lead.id, target, { onGanhoLabel: lead.company });
                   if (r.ok && target !== "ganho") toast.success("Etapa atualizada");
                 }}
