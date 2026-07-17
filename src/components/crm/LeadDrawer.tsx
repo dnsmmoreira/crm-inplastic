@@ -181,12 +181,42 @@ export function LeadDrawer({
 
         <div className="px-6 py-5 space-y-5">
           <div className="grid grid-cols-2 gap-3 text-sm">
-            <InfoRow icon={Mail} label="E-mail" value={lead.email} />
-            <InfoRow icon={Phone} label="Telefone" value={lead.phone} />
+            <EditableRow
+              icon={Users2}
+              label="Contato"
+              value={lead.contactName}
+              onCommit={(v) => {
+                const t = v.trim();
+                if (!t || t === lead.contactName) return;
+                updateLead(lead.id, { contactName: t.toUpperCase() });
+              }}
+            />
+            <EditableRow
+              icon={Mail}
+              label="E-mail"
+              type="email"
+              value={lead.email}
+              onCommit={(v) => {
+                const t = v.trim().toLowerCase();
+                if (t === lead.email) return;
+                updateLead(lead.id, { email: t });
+              }}
+            />
+            <EditableRow
+              icon={Phone}
+              label="Telefone"
+              value={lead.phone}
+              onCommit={(v) => {
+                const t = v.trim();
+                if (t === lead.phone) return;
+                updateLead(lead.id, { phone: t });
+              }}
+            />
             <InfoRow icon={Package} label="Produto" value={lead.product} />
             <InfoRow icon={Calendar} label="Último contato" value={format(new Date(lead.lastContact), "dd/MM/yyyy")} />
             {lead.emailNfXml && <InfoRow icon={Mail} label="E-mail NF (XML)" value={lead.emailNfXml} />}
           </div>
+
 
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -539,6 +569,40 @@ function InfoRow({ icon: Icon, label, value }: { icon: typeof Mail; label: strin
     </div>
   );
 }
+
+function EditableRow({
+  icon: Icon,
+  label,
+  value,
+  type = "text",
+  onCommit,
+}: {
+  icon: typeof Mail;
+  label: string;
+  value: string;
+  type?: string;
+  onCommit: (v: string) => void;
+}) {
+  return (
+    <div className="flex items-start gap-2">
+      <Icon className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+      <div className="min-w-0 flex-1">
+        <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</div>
+        <Input
+          type={type}
+          defaultValue={value}
+          key={value}
+          className="h-8 mt-0.5 px-2 text-sm"
+          onBlur={(e) => onCommit(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
 
 const PROPOSAL_STATUS_META: Record<Proposal["status"], { label: string; className: string }> = {
   rascunho:              { label: "Rascunho",              className: "bg-muted text-muted-foreground border-muted-foreground/30" },
