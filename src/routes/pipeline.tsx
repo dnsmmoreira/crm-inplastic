@@ -14,7 +14,7 @@ import {
 import { Plus, Package, Calendar as CalendarIcon, Search, ArrowDownUp, X } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useCrm, STAGES, formatBRL, leadTemperature, followupTemperature, type Lead, type StageId, type FollowupLevel, useVisibleLeads } from "@/lib/crm-store";
+import { useCrm, STAGES, formatBRL, leadTemperature, followupTemperature, type Lead, type StageId, type FollowupLevel, useVisibleLeads, useLeadValueMap } from "@/lib/crm-store";
 import { useMoveLeadStage } from "@/hooks/use-move-lead-stage";
 import { computeLeadScore } from "@/lib/lead-score";
 import { Input } from "@/components/ui/input";
