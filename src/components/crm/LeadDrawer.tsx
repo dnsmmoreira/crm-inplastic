@@ -561,7 +561,19 @@ export function LeadDrawer({
 
         </div>
       </SheetContent>
+      </SheetContent>
     </Sheet>
+    <LostReasonDialog
+      open={lostReasonOpen}
+      leadLabel={lead.company}
+      onCancel={() => setLostReasonOpen(false)}
+      onConfirm={async (payload) => {
+        setLostReasonOpen(false);
+        const r = await moveLeadStage(lead.id, "perdido", { onGanhoLabel: lead.company, lostReason: payload });
+        if (r.ok) toast.success("Lead marcado como Perdido");
+      }}
+    />
+    </>
   );
 }
 
