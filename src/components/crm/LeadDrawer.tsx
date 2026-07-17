@@ -570,7 +570,11 @@ function LeadProposals({ leadId }: { leadId: string }) {
 
 
 function LeadTasks({ leadId }: { leadId: string }) {
-  const tasks = useCrm((s) => s.tasks.filter((t) => t.leadId === leadId));
+  const allTasks = useCrm((s) => s.tasks);
+  const tasks = React.useMemo(
+    () => allTasks.filter((t) => t.leadId === leadId),
+    [allTasks, leadId],
+  );
   const toggle = useCrm((s) => s.toggleTask);
   const remove = useCrm((s) => s.removeTask);
   if (tasks.length === 0)
