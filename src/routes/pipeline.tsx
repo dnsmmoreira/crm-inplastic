@@ -100,6 +100,19 @@ function PipelinePage() {
   const active = activeId ? leads.find((l) => l.id === activeId) : null;
 
   const onDragStart = (e: DragStartEvent) => setActiveId(String(e.active.id));
+  const runMove = (leadId: string, stage: StageId, company: string, lostReason?: LostReasonPayload) => {
+    void moveLeadStage(leadId, stage, { onGanhoLabel: company, lostReason }).then((r) => {
+      if (!r?.ok && r?.reason === "needs_lost_reason") {
+        setLostTarget({ leadId, company });
+        return;
+      }
+      if (r?.ok && stage !== "ganho") {
+        const stageLabel = STAGES.find((s) => s.id === stage)?.label;
+        toast.success(`${company} → ${stageLabel}`);
+      }
+    });
+  };
+
   const onDragEnd = (e: DragEndEvent) => {
     setActiveId(null);
     if (!e.over) return;
@@ -107,14 +120,10 @@ function PipelinePage() {
     const stage = String(e.over.id) as StageId;
     const lead = leads.find((l) => l.id === leadId);
     if (lead && lead.stage !== stage) {
-      void moveLeadStage(leadId, stage, { onGanhoLabel: lead.company }).then((r) => {
-        if (r?.ok && stage !== "ganho") {
-          const stageLabel = STAGES.find((s) => s.id === stage)?.label;
-          toast.success(`${lead.company} → ${stageLabel}`);
-        }
-      });
+      runMove(leadId, stage, lead.company);
     }
   };
+
 
   return (
     <div className="p-4 md:p-8 space-y-6">
