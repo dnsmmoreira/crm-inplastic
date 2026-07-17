@@ -1,14 +1,17 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, FileText, Search, Trash2, UserPlus, Loader2, Building2 } from "lucide-react";
+import { Plus, FileText, Search, Trash2, UserPlus, Loader2, Building2, Check } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { lookupCnpj } from "@/lib/cnpj.functions";
-import { getClienteByCnpj, vincularClienteAoLead, type ClienteRow } from "@/lib/clientes.functions";
+import { vincularClienteAoLead } from "@/lib/clientes.functions";
 import { NovoClienteDialog } from "@/components/clientes/NovoClienteDialog";
-import { isValidCnpj, formatCnpj, onlyDigitsCnpj } from "@/lib/cnpj";
+import type { ClienteRow } from "@/lib/clientes.functions";
+import { isValidCnpj, formatCnpj } from "@/lib/cnpj";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 import {
   useCrm,
   useVisibleLeads,
