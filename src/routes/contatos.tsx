@@ -134,7 +134,7 @@ function ContactsPage() {
                         {s.label}
                       </span>
                     </TableCell>
-                    <TableCell className="text-right font-medium">{formatBRL(l.estimatedValue)}</TableCell>
+                    <TableCell className="text-right font-medium">{formatBRL(valueMap.get(l.id) ?? l.estimatedValue)}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {format(new Date(l.lastContact), "dd MMM yyyy", { locale: ptBR })}
                     </TableCell>
