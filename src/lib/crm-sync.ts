@@ -409,6 +409,8 @@ function proposalToInsert(p: Proposal): ProposalInsert {
     ...(p.expectedDeliveryDate !== undefined
       ? { expected_delivery_date: p.expectedDeliveryDate ?? null }
       : {}),
+    numero_pedido_cliente: p.customerOrderNumber ?? null,
+    observacoes_pedido: p.orderNotes ?? null,
   } as ProposalInsert;
 }
 
