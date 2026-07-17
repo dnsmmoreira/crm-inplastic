@@ -324,7 +324,7 @@ function DashboardPage() {
                     <div className="min-w-0">
                       <div className="text-sm font-medium truncate">{l.company}</div>
                       <div className="text-xs text-muted-foreground truncate">
-                        {l.product} · {formatBRL(l.estimatedValue)}
+                        {l.product} · {formatBRL(leadValue(l.id, l.estimatedValue))}
                       </div>
                     </div>
                     <Badge variant="outline" className={`shrink-0 ${f.className}`} title={f.hint}>
