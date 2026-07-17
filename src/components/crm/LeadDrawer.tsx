@@ -508,11 +508,14 @@ const PROPOSAL_STATUS_META: Record<Proposal["status"], { label: string; classNam
 };
 
 function LeadProposals({ leadId }: { leadId: string }) {
-  const proposals = useCrm((s) =>
-    s.proposals
-      .filter((p) => p.leadId === leadId)
-      .slice()
-      .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || "")),
+  const allProposals = useCrm((s) => s.proposals);
+  const proposals = React.useMemo(
+    () =>
+      allProposals
+        .filter((p) => p && p.leadId === leadId)
+        .slice()
+        .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || "")),
+    [allProposals, leadId],
   );
   if (proposals.length === 0) {
     return (
@@ -525,7 +528,9 @@ function LeadProposals({ leadId }: { leadId: string }) {
     <ul className="space-y-2">
       {proposals.map((p) => {
         const t = proposalTotals(p);
-        const meta = PROPOSAL_STATUS_META[p.status];
+        const meta =
+          PROPOSAL_STATUS_META[p.status as Proposal["status"]] ??
+          { label: String(p.status ?? "—"), className: "bg-muted text-muted-foreground border-muted-foreground/30" };
         const isPedido = p.status === "pedido";
         const dateRef = isPedido && p.orderCreatedAt ? p.orderCreatedAt : p.createdAt;
         return (
