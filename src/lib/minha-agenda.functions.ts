@@ -2,6 +2,15 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+/** Converte YYYY-MM-DD (input date) para ISO ancorado ao meio-dia UTC,
+ *  preservando o dia escolhido em qualquer TZ (evita shift para o dia anterior). */
+function parseDueDateInput(v: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
+  if (m) return `${v}T12:00:00.000Z`;
+  return new Date(v).toISOString();
+}
+
+
 /** Lista tarefas do vendedor logado (hoje + atrasadas), ordenadas por prioridade. */
 export const listMinhaAgenda = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -95,7 +104,7 @@ export const adiarTarefa = createServerFn({ method: "POST" })
       .update({
         status: "adiada",
         motivo_adiamento: data.motivo,
-        due_date: new Date(data.novaData).toISOString(),
+        due_date: parseDueDateInput(data.novaData),
         escalonamentos: ((cur?.escalonamentos as any) ?? 0) + 1,
       })
       .eq("id", data.id);

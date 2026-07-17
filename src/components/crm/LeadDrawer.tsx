@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { lookupCnpj } from "@/lib/cnpj.functions";
 import { isValidCnpj } from "@/lib/cnpj";
 import { useAuth } from "@/hooks/use-auth";
+import { dateInputToISO } from "@/lib/format";
 
 
 import {
@@ -472,7 +473,7 @@ export function LeadDrawer({
                       addTask({
                         leadId: lead.id,
                         title: newTask.title,
-                        dueDate: new Date(newTask.dueDate).toISOString(),
+                        dueDate: dateInputToISO(newTask.dueDate),
                       });
                       setNewTask({ title: "", dueDate: "" });
                       toast.success("Tarefa agendada");

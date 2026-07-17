@@ -33,3 +33,17 @@ export function relativeTimeShort(iso: string | null | undefined): string {
   const y = Math.floor(mo / 12);
   return `há ${y} ano${y > 1 ? "s" : ""}`;
 }
+
+/**
+ * Converte um valor de <input type="date"> (YYYY-MM-DD) em ISO ancorado ao
+ * meio-dia local, evitando o shift de -1 dia causado por `new Date("YYYY-MM-DD")`
+ * (que é interpretado como UTC 00:00 e regride para o dia anterior em TZs negativas).
+ * Passa datas ISO completas sem alteração.
+ */
+export function dateInputToISO(v: string): string {
+  if (!v) return v;
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
+  if (!m) return new Date(v).toISOString();
+  const [, y, mo, d] = m;
+  return new Date(Number(y), Number(mo) - 1, Number(d), 12, 0, 0, 0).toISOString();
+}
