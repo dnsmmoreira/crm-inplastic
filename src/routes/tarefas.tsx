@@ -60,7 +60,7 @@ function TasksPage() {
     addTask({
       leadId: form.leadId,
       title: form.title,
-      dueDate: new Date(form.dueDate).toISOString(),
+      dueDate: dateInputToISO(form.dueDate),
     });
     setForm({ leadId: "", title: "", dueDate: "" });
     toast.success("Tarefa criada");
