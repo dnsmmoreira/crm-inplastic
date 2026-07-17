@@ -54,17 +54,22 @@ function DashboardPage() {
   const isAdmin = user.role === "admin";
   const [openLead, setOpenLead] = useState<string | null>(null);
 
+  const leadValueMap = useLeadValueMap();
+  const proposalAgg = useProposalAggregates(isAdmin ? undefined : user.id);
+  const leadValue = (id: string, fallback = 0) => leadValueMap.get(id) ?? fallback;
 
   const kpis = useMemo(() => {
-    const active = leads.filter((l) => l.stage !== "perdido");
-    const pipeline = active.reduce((sum, l) => sum + l.estimatedValue, 0);
+    const active = leads.filter((l) => l.stage !== "perdido" && l.stage !== "ganho");
+    // Pipeline ativo: valor total das propostas em aberto + leads ativos sem proposta (fallback estimatedValue)
+    const pipelineFromLeads = active.reduce((sum, l) => sum + leadValue(l.id, l.estimatedValue), 0);
+    // Receita fechada: propostas com status "pedido"
+    const wonValue = proposalAgg.wonValue;
     const won = leads.filter((l) => l.stage === "ganho");
-    const wonValue = won.reduce((s, l) => s + l.estimatedValue, 0);
     const conv = leads.length ? (won.length / leads.length) * 100 : 0;
     const monthStart = startOfMonth(new Date());
     const newThisMonth = leads.filter((l) => new Date(l.createdAt) >= monthStart).length;
-    return { pipeline, wonValue, conv, newThisMonth, total: leads.length };
-  }, [leads]);
+    return { pipeline: pipelineFromLeads, wonValue, conv, newThisMonth, total: leads.length };
+  }, [leads, leadValueMap, proposalAgg]);
 
   const stageData = useMemo(
     () =>
@@ -73,10 +78,10 @@ function DashboardPage() {
         return {
           name: s.label,
           leads: stageLeads.length,
-          valor: stageLeads.reduce((sum, l) => sum + l.estimatedValue, 0),
+          valor: stageLeads.reduce((sum, l) => sum + leadValue(l.id, l.estimatedValue), 0),
         };
       }),
-    [leads],
+    [leads, leadValueMap],
   );
 
   const trend = useMemo(() => {
@@ -98,9 +103,9 @@ function DashboardPage() {
 
   const productMix = useMemo(() => {
     const map = new Map<string, number>();
-    leads.forEach((l) => map.set(l.product, (map.get(l.product) || 0) + l.estimatedValue));
+    leads.forEach((l) => map.set(l.product, (map.get(l.product) || 0) + leadValue(l.id, l.estimatedValue)));
     return Array.from(map, ([name, value]) => ({ name, value }));
-  }, [leads]);
+  }, [leads, leadValueMap]);
 
   const PIE_COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)"];
 
