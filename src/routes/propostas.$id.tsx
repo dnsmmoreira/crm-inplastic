@@ -1141,8 +1141,31 @@ function PropostaDetalhe() {
                 <Input type="number" value={proposal.validityDays} onChange={(e) => updateProposal(proposal.id, { validityDays: Number(e.target.value) })} />
               </div>
               <div>
+                <Label>Nº do pedido do cliente</Label>
+                <Input
+                  placeholder="Ex.: PO-12345 / OC 2026-001"
+                  value={proposal.customerOrderNumber ?? ""}
+                  onChange={(e) => updateProposal(proposal.id, { customerOrderNumber: e.target.value })}
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Opcional. Aparece no cabeçalho da proposta impressa quando preenchido.
+                </p>
+              </div>
+              <div>
                 <Label>Observações</Label>
                 <Textarea rows={3} value={proposal.observations} onChange={(e) => updateProposal(proposal.id, { observations: e.target.value })} />
+              </div>
+              <div>
+                <Label>Observações do pedido</Label>
+                <Textarea
+                  rows={3}
+                  placeholder="Instruções específicas do pedido (entrega, embalagem, contato, etc.)"
+                  value={proposal.orderNotes ?? ""}
+                  onChange={(e) => updateProposal(proposal.id, { orderNotes: e.target.value })}
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Opcional. Exibida em seção própria na proposta impressa.
+                </p>
               </div>
             </CardContent>
           </Card>
