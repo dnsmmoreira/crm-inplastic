@@ -11,7 +11,8 @@ async function assertAdmin(supabase: any, userId: string) {
 export const listFila = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
+    await assertAdmin(supabase, userId);
     const { data: fila, error } = await supabase
       .from("fila_vendedores")
       .select("user_id, posicao, ativo")
