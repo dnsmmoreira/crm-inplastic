@@ -1307,13 +1307,15 @@ export const useVisibleProposals = () => {
 };
 
 export const proposalTotals = (p: Proposal) => {
-  const subtotal = p.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
-  const pct = Math.max(0, Math.min(100, p.discountPercent ?? 0));
+  const items = Array.isArray(p?.items) ? p.items : [];
+  const transport = p?.transport ?? ({} as Proposal["transport"]);
+  const subtotal = items.reduce((s, i) => s + (Number(i?.quantity) || 0) * (Number(i?.unitPrice) || 0), 0);
+  const pct = Math.max(0, Math.min(100, p?.discountPercent ?? 0));
   const discountAmount = +(subtotal * (pct / 100)).toFixed(2);
   const subtotalAfterDiscount = +(subtotal - discountAmount).toFixed(2);
-  const total = subtotalAfterDiscount + (p.transport.freightValue || 0);
-  const qty = p.items.reduce((s, i) => s + i.quantity, 0);
-  return { subtotal, discountPercent: pct, discountAmount, subtotalAfterDiscount, total, qty, count: p.items.length };
+  const total = subtotalAfterDiscount + (Number(transport?.freightValue) || 0);
+  const qty = items.reduce((s, i) => s + (Number(i?.quantity) || 0), 0);
+  return { subtotal, discountPercent: pct, discountAmount, subtotalAfterDiscount, total, qty, count: items.length };
 };
 
 /** Limite máximo de desconto (%) que um vendedor pode aplicar em uma proposta. Configurável pelo admin. */
