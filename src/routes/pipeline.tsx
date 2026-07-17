@@ -248,6 +248,8 @@ function LeadCard({
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: lead.id });
   const sc = computeLeadScore(lead);
+  const valueMap = useLeadValueMap();
+  const effValue = valueMap.get(lead.id) ?? lead.estimatedValue;
   const stripe =
     sc.level === "alto" ? "border-l-4 border-l-emerald-500"
     : sc.level === "medio" ? "border-l-4 border-l-amber-500"
@@ -268,7 +270,7 @@ function LeadCard({
       <div className="flex items-start justify-between gap-2">
         <div className="font-medium text-sm truncate">{lead.company}</div>
         <div className="text-primary font-semibold text-sm shrink-0">
-          {formatBRL(lead.estimatedValue)}
+          {formatBRL(effValue)}
         </div>
       </div>
       <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
