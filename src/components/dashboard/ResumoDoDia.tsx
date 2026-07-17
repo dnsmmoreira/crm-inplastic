@@ -9,6 +9,7 @@ import {
   useVisibleLeads,
   useVisibleTasks,
   useCurrentUser,
+  useProposalAggregates,
   formatBRL,
 } from "@/lib/crm-store";
 import { getPlacar } from "@/lib/placar.functions";
