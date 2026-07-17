@@ -216,15 +216,40 @@ export function LeadDrawer({
               </Select>
             </div>
             <div>
-              <Label className="text-xs">Valor estimado (R$)</Label>
-              <Input
-                type="number"
-                className="mt-1"
-                defaultValue={lead.estimatedValue}
-                onBlur={(e) =>
-                  updateLead(lead.id, { estimatedValue: Number(e.target.value) || 0 })
+              {(() => {
+                const hasProps = proposals.some(
+                  (p) => p.leadId === lead.id && p.status !== "recusada",
+                );
+                if (hasProps) {
+                  const eff = leadValueFromProposals(lead, proposals);
+                  return (
+                    <>
+                      <Label className="text-xs">Valor (propostas)</Label>
+                      <div className="mt-1 flex h-9 items-center rounded-md border bg-muted/40 px-3 text-sm font-medium">
+                        {formatBRL(eff)}
+                      </div>
+                      <p className="mt-1 text-[10px] text-muted-foreground">
+                        calculado da proposta mais relevante
+                      </p>
+                    </>
+                  );
                 }
-              />
+                return (
+                  <>
+                    <Label className="text-xs">Valor estimado (R$)</Label>
+                    <Input
+                      type="number"
+                      className="mt-1"
+                      defaultValue={lead.estimatedValue}
+                      onBlur={(e) =>
+                        updateLead(lead.id, {
+                          estimatedValue: Number(e.target.value) || 0,
+                        })
+                      }
+                    />
+                  </>
+                );
+              })()}
             </div>
           </div>
 
