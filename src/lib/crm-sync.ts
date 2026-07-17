@@ -369,6 +369,8 @@ function rowToProposal(
       distanceKm: t.distanceKm,
     },
     observations: r.observations ?? "",
+    customerOrderNumber: (r as unknown as { numero_pedido_cliente?: string | null }).numero_pedido_cliente ?? undefined,
+    orderNotes: (r as unknown as { observacoes_pedido?: string | null }).observacoes_pedido ?? undefined,
     paymentTermId: r.payment_term_id ?? undefined,
     emitterId: r.emitter_id,
     discountPercent: Number(r.discount_percent ?? 0),
@@ -407,6 +409,8 @@ function proposalToInsert(p: Proposal): ProposalInsert {
     ...(p.expectedDeliveryDate !== undefined
       ? { expected_delivery_date: p.expectedDeliveryDate ?? null }
       : {}),
+    numero_pedido_cliente: p.customerOrderNumber ?? null,
+    observacoes_pedido: p.orderNotes ?? null,
   } as ProposalInsert;
 }
 

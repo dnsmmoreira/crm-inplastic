@@ -588,6 +588,8 @@ export type Proposal = {
   installments: PaymentInstallment[];
   transport: TransportInfo;
   observations: string;
+  customerOrderNumber?: string; // Número do pedido do cliente (PO/OC)
+  orderNotes?: string;          // Observações do pedido (separado de observations)
   paymentTermId?: string;   // ADM-managed payment term chosen by seller
   emitterId: string;        // qual CNPJ do grupo emite esta proposta
   discountPercent: number;  // % de desconto aplicado sobre o subtotal (limite gerido pelo ADM)

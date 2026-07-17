@@ -926,6 +926,8 @@ export type Database = {
           id: string
           lead_id: string
           number: string
+          numero_pedido_cliente: string | null
+          observacoes_pedido: string | null
           observations: string
           omie_codigo_cliente: number | null
           omie_codigo_pedido: number | null
@@ -954,6 +956,8 @@ export type Database = {
           id?: string
           lead_id: string
           number: string
+          numero_pedido_cliente?: string | null
+          observacoes_pedido?: string | null
           observations?: string
           omie_codigo_cliente?: number | null
           omie_codigo_pedido?: number | null
@@ -982,6 +986,8 @@ export type Database = {
           id?: string
           lead_id?: string
           number?: string
+          numero_pedido_cliente?: string | null
+          observacoes_pedido?: string | null
           observations?: string
           omie_codigo_cliente?: number | null
           omie_codigo_pedido?: number | null
