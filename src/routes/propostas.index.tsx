@@ -385,144 +385,167 @@ function PropostasPage() {
 }
 
 // ============================================================
-// Dialog "Nova proposta comercial" — busca por CNPJ
+// Dialog "Nova proposta comercial" — seletor de lead/cliente
 // ============================================================
 function NovaPropostaDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   const navigate = useNavigate();
   const leads = useVisibleLeads();
   const addLead = useCrm((s) => s.addLead);
   const createProposal = useCrm((s) => s.createProposal);
-  const getByCnpjFn = useServerFn(getClienteByCnpj);
   const vincularFn = useServerFn(vincularClienteAoLead);
 
-  const [cnpj, setCnpj] = useState("");
-  const [cnpjMasked, setCnpjMasked] = useState("");
-  const [cliente, setCliente] = useState<ClienteRow | null>(null);
-  const [buscando, setBuscando] = useState(false);
+  const [query, setQuery] = useState("");
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [openNovo, setOpenNovo] = useState(false);
-  const [tentativaFeita, setTentativaFeita] = useState(false);
+  const [criando, setCriando] = useState(false);
 
   useEffect(() => {
     if (!open) {
-      setCnpj(""); setCnpjMasked(""); setCliente(null);
-      setBuscando(false); setTentativaFeita(false);
+      setQuery("");
+      setSelectedLeadId(null);
+      setCriando(false);
     }
   }, [open]);
 
-  const digits = onlyDigitsCnpj(cnpj);
-  const cnpjCompleto = digits.length === 14;
-  const cnpjOk = cnpjCompleto && isValidCnpj(digits);
+  const results = useMemo(() => {
+    const t = query.toLowerCase().trim();
+    const digits = query.replace(/\D/g, "");
+    const sorted = [...leads].sort((a, b) => a.company.localeCompare(b.company, "pt-BR"));
+    if (!t) return sorted.slice(0, 100);
+    return sorted.filter((l) => {
+      const hay = [l.company, l.razaoSocial, l.nomeFantasia, l.contactName]
+        .filter(Boolean).join(" ").toLowerCase();
+      const cnpjDigits = (l.cnpj ?? "").replace(/\D/g, "");
+      return hay.includes(t) || (digits.length >= 2 && cnpjDigits.includes(digits));
+    }).slice(0, 100);
+  }, [leads, query]);
 
-  useEffect(() => {
-    if (!cnpjCompleto) { setCliente(null); setTentativaFeita(false); return; }
-    if (!cnpjOk) { setCliente(null); setTentativaFeita(true); return; }
-    setBuscando(true);
-    const t = setTimeout(async () => {
-      try {
-        const r = await getByCnpjFn({ data: { cnpj: digits } });
-        setCliente(r);
-        setTentativaFeita(true);
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Erro na busca");
-      } finally {
-        setBuscando(false);
-      }
-    }, 300);
-    return () => { clearTimeout(t); setBuscando(false); };
-  }, [digits, cnpjCompleto, cnpjOk, getByCnpjFn]);
+  const selectedLead = useMemo(
+    () => (selectedLeadId ? leads.find((l) => l.id === selectedLeadId) ?? null : null),
+    [leads, selectedLeadId],
+  );
 
-  const criarPropostaComCliente = async (c: ClienteRow) => {
-    // Reusa lead existente com mesmo cliente_id se houver, senão cria novo
-    const existente = leads.find((l) => l.clienteId === c.id);
-    let leadId: string;
-    if (existente) {
-      leadId = existente.id;
-    } else {
-      leadId = addLead({
-        company: c.razao_social,
-        contactName: c.contato ?? "",
-        email: c.email ?? "",
-        phone: c.telefone ?? "",
-        product: "",
-        quantity: 0,
-        estimatedValue: 0,
-        stage: "novo",
-        tags: [],
-        source: "Cliente",
-        notes: "",
-        cnpj: c.cnpj,
-        razaoSocial: c.razao_social,
-        nomeFantasia: c.nome_fantasia ?? undefined,
-        clienteId: c.id,
-      });
-      // persiste cliente_id no banco (o upsert do sync já leva junto; garante mesmo assim)
-      vincularFn({ data: { leadId, clienteId: c.id } }).catch(() => {});
+  const criarProposta = async (leadId: string) => {
+    setCriando(true);
+    try {
+      const propId = await createProposal(leadId);
+      toast.success("Proposta criada — adicione os itens");
+      onOpenChange(false);
+      navigate({ to: "/propostas/$id", params: { id: propId } });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao criar proposta");
+    } finally {
+      setCriando(false);
     }
-    const propId = await createProposal(leadId);
-    toast.success("Proposta criada — adicione os itens");
-    onOpenChange(false);
-    navigate({ to: "/propostas/$id", params: { id: propId } });
+  };
+
+  const criarPropostaComClienteNovo = async (c: ClienteRow) => {
+    try {
+      const existente = leads.find((l) => l.clienteId === c.id);
+      let leadId: string;
+      if (existente) {
+        leadId = existente.id;
+      } else {
+        leadId = addLead({
+          company: c.razao_social,
+          contactName: c.contato ?? "",
+          email: c.email ?? "",
+          phone: c.telefone ?? "",
+          product: "",
+          quantity: 0,
+          estimatedValue: 0,
+          stage: "novo",
+          tags: [],
+          source: "Cliente",
+          notes: "",
+          cnpj: c.cnpj,
+          razaoSocial: c.razao_social,
+          nomeFantasia: c.nome_fantasia ?? undefined,
+          clienteId: c.id,
+        });
+        vincularFn({ data: { leadId, clienteId: c.id } }).catch((err) => {
+          toast.error(err instanceof Error ? err.message : "Erro ao vincular cliente ao lead");
+        });
+      }
+      await criarProposta(leadId);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao cadastrar cliente");
+    }
   };
 
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Nova proposta comercial</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <Label>CNPJ do cliente</Label>
-            <Input
-              autoFocus
-              value={cnpjMasked}
-              onChange={(e) => {
-                const d = e.target.value.replace(/\D/g, "").slice(0, 14);
-                setCnpj(d);
-                setCnpjMasked(formatCnpj(d));
-              }}
-              placeholder="00.000.000/0000-00"
-            />
-            {!cnpjCompleto && (
-              <p className="text-xs text-muted-foreground">Digite o CNPJ do cliente para iniciar a proposta.</p>
-            )}
-            {cnpjCompleto && !cnpjOk && (
-              <p className="text-xs text-destructive">CNPJ inválido. Confira os dígitos.</p>
-            )}
-            {cnpjOk && buscando && (
-              <div className="text-xs text-muted-foreground flex items-center gap-2">
-                <Loader2 className="h-3 w-3 animate-spin" /> Buscando cliente...
-              </div>
-            )}
-            {cnpjOk && !buscando && cliente && (
-              <div className="border rounded-md p-3 space-y-1 bg-accent/30">
-                <div className="font-semibold text-sm">{cliente.razao_social}</div>
+            <Label>Selecione o lead / cliente</Label>
+            <Command shouldFilter={false} className="border rounded-md">
+              <CommandInput
+                placeholder="Buscar por nome, razão social ou CNPJ..."
+                value={query}
+                onValueChange={setQuery}
+              />
+              <CommandList className="max-h-72">
+                <CommandEmpty>
+                  <div className="py-4 text-sm text-muted-foreground">
+                    Nenhum lead encontrado.
+                  </div>
+                </CommandEmpty>
+                <CommandGroup>
+                  {results.map((l) => {
+                    const isSel = l.id === selectedLeadId;
+                    const subtitle = [
+                      l.razaoSocial && l.razaoSocial !== l.company ? l.razaoSocial : null,
+                      l.cnpj ? formatCnpj(l.cnpj.replace(/\D/g, "")) : null,
+                      l.contactName || null,
+                    ].filter(Boolean).join(" • ");
+                    return (
+                      <CommandItem
+                        key={l.id}
+                        value={l.id}
+                        onSelect={() => setSelectedLeadId(l.id)}
+                        className="flex items-start gap-2"
+                      >
+                        <Check className={cn("h-4 w-4 mt-1", isSel ? "opacity-100" : "opacity-0")} />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium truncate">{l.company}</div>
+                          {subtitle && (
+                            <div className="text-xs text-muted-foreground truncate">{subtitle}</div>
+                          )}
+                        </div>
+                      </CommandItem>
+                    );
+                  })}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+
+            {selectedLead && (
+              <div className="border rounded-md p-3 bg-accent/30 text-sm">
+                <div className="font-semibold">{selectedLead.company}</div>
                 <div className="text-xs text-muted-foreground">
-                  {formatCnpj(cliente.cnpj)}
-                  {cliente.nome_fantasia ? ` • ${cliente.nome_fantasia}` : ""}
-                </div>
-                <div className="text-xs flex gap-2 flex-wrap pt-1">
-                  {cliente.empresa_padrao && <Badge variant="outline">{cliente.empresa_padrao}</Badge>}
-                  {[cliente.cidade, cliente.estado].filter(Boolean).length > 0 && (
-                    <span className="text-muted-foreground">
-                      {[cliente.cidade, cliente.estado].filter(Boolean).join("/")}
-                    </span>
-                  )}
+                  {selectedLead.cnpj
+                    ? formatCnpj(selectedLead.cnpj.replace(/\D/g, ""))
+                    : "Sem CNPJ cadastrado"}
+                  {selectedLead.contactName ? ` • ${selectedLead.contactName}` : ""}
                 </div>
               </div>
             )}
-            {cnpjOk && !buscando && tentativaFeita && !cliente && (
-              <div className="border rounded-md p-4 space-y-2 text-center">
-                <Building2 className="h-8 w-8 mx-auto text-muted-foreground/60" />
-                <div className="text-sm">Nenhum cliente encontrado com este CNPJ</div>
-                <Button className="gap-2" onClick={() => setOpenNovo(true)}>
-                  <Plus className="h-4 w-4" /> Cadastrar novo cliente
-                </Button>
-              </div>
-            )}
+
+            <div className="pt-1">
+              <Button variant="outline" className="gap-2 w-full" onClick={() => setOpenNovo(true)}>
+                <Plus className="h-4 w-4" /> Cadastrar novo cliente
+              </Button>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button disabled={!cliente} onClick={() => cliente && criarPropostaComCliente(cliente)}>
-              Criar proposta
+            <Button
+              disabled={!selectedLeadId || criando}
+              onClick={() => selectedLeadId && criarProposta(selectedLeadId)}
+            >
+              {criando ? <Loader2 className="h-4 w-4 animate-spin" /> : "Criar proposta"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -531,14 +554,13 @@ function NovaPropostaDialog({ open, onOpenChange }: { open: boolean; onOpenChang
       <NovoClienteDialog
         open={openNovo}
         onOpenChange={setOpenNovo}
-        cnpjInicial={digits}
         onClienteCriado={(c) => {
-          setCliente(c);
           setOpenNovo(false);
-          void criarPropostaComCliente(c);
+          void criarPropostaComClienteNovo(c);
         }}
       />
     </>
   );
 }
+
 
