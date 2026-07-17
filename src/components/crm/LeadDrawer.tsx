@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { lookupCnpj } from "@/lib/cnpj.functions";
 import { isValidCnpj } from "@/lib/cnpj";
 import { useAuth } from "@/hooks/use-auth";
+import { dateInputToISO } from "@/lib/format";
 
 
 import {
