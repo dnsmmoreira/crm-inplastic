@@ -81,10 +81,9 @@ export function NovoClienteDialog({ open, onOpenChange, cnpjInicial, onClienteCr
       }));
       toast.success("Dados carregados da Receita");
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Erro ao consultar CNPJ";
-      if (/não encontrado/i.test(msg)) toast.error("CNPJ não encontrado na Receita. Preencha manualmente.");
-      else if (/limite|429/i.test(msg)) toast.error("Muitas consultas. Preencha manualmente ou aguarde.");
-      else toast.error(msg);
+      const raw = e instanceof Error ? e.message : "";
+      if (/não encontrado/i.test(raw)) toast.error("CNPJ não encontrado na Receita. Preencha manualmente.");
+      else toast.error(friendlyCnpjError(e));
     } finally {
       setLoadingLookup(false);
     }
