@@ -155,10 +155,25 @@ export function LeadDrawer({
 
             </div>
             <div className="text-right shrink-0">
-              <div className="text-xs text-muted-foreground">Valor estimado</div>
-              <div className="font-display text-2xl font-semibold text-primary">
-                {formatBRL(lead.estimatedValue)}
-              </div>
+              {(() => {
+                const effValor = leadValueFromProposals(lead, proposals);
+                const hasProps = proposals.some((p) => p.leadId === lead.id && p.status !== "recusada");
+                return (
+                  <>
+                    <div className="text-xs text-muted-foreground">
+                      {hasProps ? "Valor (propostas)" : "Valor estimado"}
+                    </div>
+                    <div className="font-display text-2xl font-semibold text-primary">
+                      {formatBRL(effValor)}
+                    </div>
+                    {hasProps && (
+                      <div className="text-[10px] text-muted-foreground mt-0.5">
+                        base: proposta mais relevante
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           </div>
         </SheetHeader>
