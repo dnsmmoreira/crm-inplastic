@@ -1,4 +1,24 @@
 // Helpers de formatação compartilhados
+
+/**
+ * Placeholder padrão para valores vazios em toda a UI de leitura.
+ * Use SEMPRE em listas, tabelas, fichas e cards ao exibir valor que pode ser
+ * null/undefined/"". Não usar em inputs de formulário. Preserva 0/false como
+ * valores legítimos (renderiza "0"/"false"), então também é seguro para números.
+ */
+export const EMPTY_PLACEHOLDER = "—";
+
+export function displayValue(v: unknown, fallback: string = EMPTY_PLACEHOLDER): string {
+  if (v === null || v === undefined) return fallback;
+  if (typeof v === "string") {
+    const t = v.trim();
+    if (!t || t === "null" || t === "undefined") return fallback;
+    return v;
+  }
+  if (typeof v === "number") return Number.isFinite(v) ? String(v) : fallback;
+  return String(v);
+}
+
 export function formatCep(v: string): string {
   const d = (v ?? "").replace(/\D/g, "").slice(0, 8);
   return d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5)}` : d;

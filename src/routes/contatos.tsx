@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { displayValue } from "@/lib/format";
 import {
   Table,
   TableBody,
@@ -122,12 +123,12 @@ function ContactsPage() {
                     onClick={() => setOpenLead(l.id)}
                     className="cursor-pointer"
                   >
-                    <TableCell className="font-medium">{l.company}</TableCell>
+                    <TableCell className="font-medium">{displayValue(l.company)}</TableCell>
                     <TableCell>
-                      <div className="text-sm">{l.contactName}</div>
-                      <div className="text-xs text-muted-foreground">{l.email}</div>
+                      <div className="text-sm">{displayValue(l.contactName)}</div>
+                      <div className="text-xs text-muted-foreground">{displayValue(l.email)}</div>
                     </TableCell>
-                    <TableCell className="text-sm">{l.product}</TableCell>
+                    <TableCell className="text-sm">{displayValue(l.product)}</TableCell>
                     <TableCell>
                       <span className="inline-flex items-center gap-1.5 text-xs">
                         <span className="stage-dot" style={{ background: s.color }} />
@@ -136,14 +137,18 @@ function ContactsPage() {
                     </TableCell>
                     <TableCell className="text-right font-medium">{formatBRL(valueMap.get(l.id) ?? l.estimatedValue)}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {format(new Date(l.lastContact), "dd MMM yyyy", { locale: ptBR })}
+                      {l.lastContact ? format(new Date(l.lastContact), "dd MMM yyyy", { locale: ptBR }) : "—"}
                     </TableCell>
                     <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {l.tags.map((t) => (
-                          <Badge key={t} variant="secondary" className="text-[10px]">{t}</Badge>
-                        ))}
-                      </div>
+                      {l.tags.length === 0 ? (
+                        <span className="text-muted-foreground">—</span>
+                      ) : (
+                        <div className="flex flex-wrap gap-1">
+                          {l.tags.map((t) => (
+                            <Badge key={t} variant="secondary" className="text-[10px]">{t}</Badge>
+                          ))}
+                        </div>
+                      )}
                     </TableCell>
                   </TableRow>
                 );

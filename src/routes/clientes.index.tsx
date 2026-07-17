@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
 import { formatCnpj } from "@/lib/cnpj";
-import { relativeTimeShort } from "@/lib/format";
+import { relativeTimeShort, displayValue } from "@/lib/format";
 import { listClientes, listVendedores } from "@/lib/clientes.functions";
 import { useAuth } from "@/hooks/use-auth";
 import { NovoClienteDialog } from "@/components/clientes/NovoClienteDialog";
@@ -213,7 +213,7 @@ function ClientesListPage() {
                         {c.razao_social}
                         {!c.ativo && <Badge variant="outline" className="ml-2">Inativo</Badge>}
                       </TableCell>
-                      <TableCell>{c.nome_fantasia ?? "—"}</TableCell>
+                      <TableCell>{displayValue(c.nome_fantasia)}</TableCell>
                       <TableCell>{[c.cidade, c.estado].filter(Boolean).join("/") || "—"}</TableCell>
                       <TableCell>
                         {c.empresa_padrao ? (
