@@ -420,10 +420,11 @@ async function runEngine(
       if (await alreadyActed(sb, regra, l.id, 12)) continue;
       if (await hasOpenTask(sb, l.id, "resposta_pendente")) continue;
 
+      const hEspera = horasDesde(l.ultima_msg_cliente_at, now);
       await criarTarefa({
         regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id,
         tipo: "resposta_pendente",
-        titulo: `Responder ${l.company}`,
+        titulo: withCtx(`Responder ${l.company}`, hEspera != null ? `cliente aguardando há ${hEspera}h` : null),
         descricao: `Cliente enviou mensagem há +${cfg.sla_resposta_whatsapp_horas}h úteis sem resposta.`,
         motivo: `Cliente enviou mensagem há +${cfg.sla_resposta_whatsapp_horas}h úteis sem resposta.`,
         prioridade: 1,
