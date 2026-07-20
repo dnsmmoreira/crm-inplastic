@@ -631,6 +631,7 @@ async function runEngine(
         pos_venda_satisfacao: "Pesquisa de satisfação",
         pos_venda_recompra: "Sondar recompra",
       };
+      const prefixoPv = `Pós-venda D+${d}`;
 
       for (const l of leads ?? []) {
         const regra = `C_pos_venda_D${d}`;
