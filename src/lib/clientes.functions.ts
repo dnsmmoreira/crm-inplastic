@@ -179,30 +179,65 @@ export const getClienteByCnpj = createServerFn({ method: "GET" })
 // ==========================
 // CREATE
 // ==========================
+export type CreateClienteResult =
+  | { ok: true; cliente: ClienteRow }
+  | {
+      ok: false;
+      code: "duplicate_active" | "duplicate_inactive" | "duplicate_other";
+      message: string;
+      podeReativar?: boolean;
+      clienteId?: string;
+    };
+
 export const createCliente = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: ClienteInput) => data)
-  .handler(async ({ data, context }) => {
+  .handler(async ({ data, context }): Promise<CreateClienteResult> => {
     const { errors, clean } = validateInput(data);
     if (errors.length) throw new Error(errors.join("; "));
 
-    // Checagem preliminar de duplicidade (RLS-aware; se admin, vê tudo)
-    const { data: existing } = await context.supabase
-      .from("clientes")
-      .select("id, razao_social, vendedor_id")
-      .ilike("cnpj", `%${clean.cnpj}%`)
-      .limit(5);
+    // Checagem via RPC SECURITY DEFINER (enxerga cross-vendor sem expor dados sensíveis)
+    const { data: statusRows, error: statusErr } = await context.supabase
+      .rpc("cnpj_status", { _cnpj: clean.cnpj });
 
-    const dup = (existing ?? []).find(
-      (r) => onlyDigitsCnpj((r as { cnpj?: string }).cnpj ?? clean.cnpj) === clean.cnpj,
-    );
-    if (dup) {
-      const rec = dup as { id: string; razao_social: string; vendedor_id: string | null };
-      throw new Error(
-        `CNPJ já cadastrado para "${rec.razao_social}" (id:${rec.id}${
-          rec.vendedor_id && rec.vendedor_id !== context.userId ? "; outro vendedor" : ""
-        })`,
-      );
+    if (statusErr) {
+      // Falha na verificação preliminar: não abortar; o mapeamento 23505 abaixo cuida da duplicidade.
+      console.warn("cnpj_status falhou:", statusErr.message);
+    } else {
+      const st = (statusRows ?? [])[0] as
+        | { existe: boolean; ativo: boolean; mesmo_vendedor: boolean; cliente_id: string | null }
+        | undefined;
+      if (st?.existe) {
+        if (st.ativo && st.mesmo_vendedor) {
+          return {
+            ok: false,
+            code: "duplicate_active",
+            message: "Você já tem um cliente ativo com este CNPJ.",
+            clienteId: st.cliente_id ?? undefined,
+          };
+        }
+        if (st.ativo && !st.mesmo_vendedor) {
+          return {
+            ok: false,
+            code: "duplicate_other",
+            message: "Já existe um cliente com este CNPJ.",
+          };
+        }
+        if (!st.ativo && st.mesmo_vendedor) {
+          return {
+            ok: false,
+            code: "duplicate_inactive",
+            message: "Você tem um cliente inativo com este CNPJ. Deseja reativá-lo?",
+            podeReativar: true,
+            clienteId: st.cliente_id ?? undefined,
+          };
+        }
+        return {
+          ok: false,
+          code: "duplicate_inactive",
+          message: "Já existe um cliente inativo com este CNPJ. Peça a um admin para reativar.",
+        };
+      }
     }
 
     const vendedorId = clean.vendedor_id ?? context.userId;
@@ -236,8 +271,42 @@ export const createCliente = createServerFn({ method: "POST" })
       .select("*")
       .single();
 
-    if (error) throw new Error(error.message);
-    return inserted as ClienteRow;
+    if (error) {
+      const errCode = (error as { code?: string }).code;
+      const errMsg = error.message ?? "";
+      if (errCode === "23505" || /clientes_cnpj_key/i.test(errMsg) || /duplicate key/i.test(errMsg)) {
+        return {
+          ok: false,
+          code: "duplicate_other",
+          message: "Já existe um cliente com este CNPJ.",
+        };
+      }
+      throw new Error("Não foi possível salvar o cliente. Tente novamente.");
+    }
+    return { ok: true, cliente: inserted as ClienteRow };
+  });
+
+// ==========================
+// REATIVAR CLIENTE (dono ou admin, via RLS de UPDATE)
+// ==========================
+export const reativarCliente = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { id: string }) => ({ id: String(data?.id ?? "") }))
+  .handler(async ({ data, context }) => {
+    if (!data.id) throw new Error("id obrigatório");
+    const { data: updated, error } = await context.supabase
+      .from("clientes")
+      .update({ ativo: true, atualizado_em: new Date().toISOString() })
+      .eq("id", data.id)
+      .select("*")
+      .maybeSingle();
+    if (error) {
+      throw new Error("Não foi possível reativar o cliente.");
+    }
+    if (!updated) {
+      throw new Error("Você não tem permissão para reativar este cliente.");
+    }
+    return updated as ClienteRow;
   });
 
 // ==========================
