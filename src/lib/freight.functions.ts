@@ -3,6 +3,29 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const GATEWAY = "https://connector-gateway.lovable.dev/google_maps";
 
+function getGoogleMapsConnectionKey() {
+  return process.env.GOOGLE_MAPS_API_KEY_1 ?? process.env.GOOGLE_MAPS_API_KEY;
+}
+
+async function googleMapsErrorMessage(response: Response, fallback: string) {
+  const body = await response.text();
+  try {
+    const parsed = JSON.parse(body) as { error?: { details?: Array<{ reason?: string; metadata?: { apiName?: string } }> } };
+    const details = parsed.error?.details ?? [];
+    const reason = details.find((detail) => detail.reason)?.reason;
+    if (response.status === 403 && reason === "API_KEY_HTTP_REFERRER_BLOCKED") {
+      return 'Google Maps: a chave server-side está restrita por HTTP referrer. No Google Cloud, deixe a chave server-side sem restrição de referrer (ou restrita por IP).';
+    }
+    if (response.status === 403 && reason === "API_KEY_SERVICE_BLOCKED") {
+      const apiName = details.find((detail) => detail.metadata?.apiName)?.metadata?.apiName;
+      return `Google Maps: a chave server-side não permite esta API${apiName ? ` (${apiName})` : ""}. Adicione a API nas restrições da chave.`;
+    }
+  } catch {
+    // Keep provider body below for unexpected non-JSON errors.
+  }
+  return `${fallback}: ${response.status}${body ? ` ${body}` : ""}`;
+}
+
 type CalcInput = {
   originCep: string;
   destinationCep: string;
@@ -18,7 +41,7 @@ async function geocodeCep(cep: string, lovableKey: string, connKey: string) {
       "X-Connection-Api-Key": connKey,
     },
   });
-  if (!res.ok) throw new Error(`Geocode ${cep}: ${res.status}`);
+  if (!res.ok) throw new Error(await googleMapsErrorMessage(res, `Geocode ${cep}`));
   const data = (await res.json()) as {
     status: string;
     results?: Array<{
@@ -47,7 +70,7 @@ export const calculateFreightDistance = createServerFn({ method: "POST" })
   })
   .handler(async ({ data }) => {
     const lovableKey = process.env.LOVABLE_API_KEY;
-    const connKey = process.env.GOOGLE_MAPS_API_KEY;
+    const connKey = getGoogleMapsConnectionKey();
     if (!lovableKey || !connKey) {
       throw new Error("Google Maps não está configurado no projeto");
     }
@@ -75,7 +98,7 @@ export const calculateFreightDistance = createServerFn({ method: "POST" })
       }),
     });
     if (!routesRes.ok) {
-      throw new Error(`Routes API falhou: ${routesRes.status} ${await routesRes.text()}`);
+      throw new Error(await googleMapsErrorMessage(routesRes, "Routes API falhou"));
     }
     const routesData = (await routesRes.json()) as {
       routes?: Array<{ distanceMeters?: number; duration?: string }>;
