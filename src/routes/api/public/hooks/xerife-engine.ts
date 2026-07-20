@@ -638,11 +638,12 @@ async function runEngine(
         if (await alreadyActed(sb, regra, l.id, 30 * 24)) continue;
         if (await hasOpenTask(sb, l.id, tipo)) continue;
 
+        const fechadoDDMM = fmtDDMM(l.etapa_changed_at);
         await criarTarefa({
           regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id,
           tipo,
-          titulo: `${titulos[tipo]}: ${l.company}`,
-          descricao: `Pós-venda D+${d}. Requer nota de conclusão.`,
+          titulo: withCtx(`${prefixoPv}: ${l.company}`, fechadoDDMM ? `pedido fechado em ${fechadoDDMM}` : null),
+          descricao: `Pós-venda D+${d}. Requer nota de conclusão. (${titulos[tipo]})`,
           motivo: `Pós-venda D+${d}. Requer nota de conclusão.`,
           prioridade: 2,
         });
