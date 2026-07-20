@@ -310,10 +310,15 @@ async function runEngine(
       if (await alreadyActed(sb, regra, l.id, 24)) continue;
       if (await hasOpenTask(sb, l.id, "primeiro_contato")) continue;
 
+      const hora = fmtHHhMM(l.created_at);
+      const canal = canalLabel((l as any).origem ?? (l as any).source);
+      const ctxPc = hora
+        ? (canal ? `lead chegou às ${hora} via ${canal}` : `lead chegou às ${hora}`)
+        : null;
       await criarTarefa({
         regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id,
         tipo: "primeiro_contato",
-        titulo: `Primeiro contato: ${l.company}`,
+        titulo: withCtx(`Primeiro contato: ${l.company}`, ctxPc),
         descricao: `Lead entrou há mais de ${cfg.sla_primeiro_contato_min} min úteis e não teve nenhum contato.`,
         motivo: `Lead entrou há mais de ${cfg.sla_primeiro_contato_min} min úteis e não teve nenhum contato.`,
         prioridade: 1,
