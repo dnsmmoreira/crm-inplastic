@@ -368,10 +368,12 @@ async function runEngine(
         if (await alreadyActed(sb, regra, l.id, 24)) continue;
         if (await hasOpenTask(sb, l.id, "follow_up")) continue;
 
+        const diasParado = diasDesde(l.etapa_changed_at, now) ?? maxDias;
+        const etapaLabel = STAGE_LABEL[stage] ?? stage;
         await criarTarefa({
           regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id,
           tipo: "follow_up",
-          titulo: `Destravar ${l.company}`,
+          titulo: withCtx(`Destravar ${l.company}`, `parado em ${etapaLabel} há ${diasParado} dias`),
           descricao: `Lead parado em "${stage}" há +${maxDias} dias. Ligar/definir próximo passo.`,
           motivo: `Lead parado em "${stage}" há +${maxDias} dias. Ligar/definir próximo passo.`,
           prioridade: 2,
