@@ -579,7 +579,7 @@ async function runEngine(
     const isoLim = new Date(now.getTime() - cfg.reciclagem_perdidos_dias * 86400_000).toISOString();
     const { data: leads } = await sb
       .from("leads")
-      .select("id, company, owner_id, updated_at")
+      .select("id, company, owner_id, updated_at, etapa_changed_at")
       .eq("stage", "perdido" as any)
       .lt("updated_at", isoLim)
       .not("owner_id", "is", null)
