@@ -26,7 +26,9 @@ import {
   Radio,
   ClipboardList,
   Trophy,
+  BookOpen,
 } from "lucide-react";
+
 
 
 import appCss from "../styles.css?url";
@@ -182,7 +184,20 @@ function AppShell({ children }: { children: ReactNode }) {
               </Link>
             );
           })}
+          <a
+            href="/manual.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+              "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+            )}
+          >
+            <BookOpen className="h-4 w-4" />
+            Manual do CRM
+          </a>
         </nav>
+
         <UserBadge />
         <div className="p-4 text-xs text-sidebar-foreground/50 border-t border-sidebar-border">
 
@@ -220,7 +235,20 @@ function AppShell({ children }: { children: ReactNode }) {
               </Link>
             );
           })}
+          <a
+            href="/manual.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              "flex items-center gap-2 whitespace-nowrap px-4 py-3 text-sm border-b-2",
+              "border-transparent text-muted-foreground",
+            )}
+          >
+            <BookOpen className="h-4 w-4" />
+            Manual do CRM
+          </a>
         </nav>
+
         <main className="flex-1 min-w-0">{children}</main>
       </div>
     </div>
