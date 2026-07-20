@@ -12,8 +12,9 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { isValidCnpj, onlyDigitsCnpj, friendlyCnpjError } from "@/lib/cnpj";
+import { friendlyClienteError } from "@/lib/clientes";
 import { lookupCnpj } from "@/lib/cnpj.functions";
-import { createCliente, listVendedores, type ClienteRow } from "@/lib/clientes.functions";
+import { createCliente, listVendedores, reativarCliente, type ClienteRow } from "@/lib/clientes.functions";
 import { ClienteFormFields, emptyCliente, type ClienteFormState } from "./ClienteFormFields";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -89,10 +90,23 @@ export function NovoClienteDialog({ open, onOpenChange, cnpjInicial, onClienteCr
     }
   };
 
+  const reativarFn = useServerFn(reativarCliente);
+
+  const doReativar = async (id: string) => {
+    try {
+      const cli = await reativarFn({ data: { id } });
+      toast.success("Cliente reativado");
+      onClienteCriado?.(cli);
+      onOpenChange(false);
+    } catch (e) {
+      toast.error(friendlyClienteError(e));
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
-      const created = await createFn({ data: {
+      const res = await createFn({ data: {
         cnpj: state.cnpj,
         razao_social: state.razao_social,
         nome_fantasia: state.nome_fantasia,
@@ -114,11 +128,28 @@ export function NovoClienteDialog({ open, onOpenChange, cnpjInicial, onClienteCr
         empresa_padrao: state.empresa_padrao,
         vendedor_id: isAdmin ? state.vendedor_id : undefined,
       } });
-      toast.success("Cliente cadastrado");
-      onClienteCriado?.(created);
-      onOpenChange(false);
+
+      if (res.ok) {
+        toast.success("Cliente cadastrado");
+        onClienteCriado?.(res.cliente);
+        onOpenChange(false);
+        return;
+      }
+
+      if (res.podeReativar && res.clienteId) {
+        const clienteId = res.clienteId;
+        toast(res.message, {
+          action: {
+            label: "Reativar",
+            onClick: () => { void doReativar(clienteId); },
+          },
+          duration: 8000,
+        });
+      } else {
+        toast.error(res.message);
+      }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro ao salvar cliente");
+      toast.error(friendlyClienteError(e));
     } finally {
       setSaving(false);
     }

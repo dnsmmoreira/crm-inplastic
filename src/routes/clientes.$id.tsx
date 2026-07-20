@@ -17,6 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatCnpj } from "@/lib/cnpj";
+import { friendlyClienteError } from "@/lib/clientes";
 import {
   getCliente,
   updateCliente,
@@ -139,7 +140,7 @@ function ClienteDetailPage() {
       await qc.invalidateQueries({ queryKey: ["cliente", id] });
       await qc.invalidateQueries({ queryKey: ["clientes"] });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro ao salvar");
+      toast.error(friendlyClienteError(e));
     } finally {
       setSaving(false);
     }
