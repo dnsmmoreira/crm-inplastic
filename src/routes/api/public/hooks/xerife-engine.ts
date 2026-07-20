@@ -296,7 +296,7 @@ async function runEngine(
 
     const { data: leads } = await sb
       .from("leads")
-      .select("id, company, owner_id, created_at, last_contact_at, last_interaction_at")
+      .select("id, company, owner_id, created_at, last_contact_at, last_interaction_at, origem, source")
       .in("stage", ["novo", "qualificacao"] as any)
       .lt("created_at", thresholdIso)
       .is("last_contact_at", null)
