@@ -377,7 +377,7 @@ export const updateCliente = createServerFn({ method: "POST" })
 
     const { data: updated, error } = await context.supabase
       .from("clientes").update(updateFields).eq("id", id).select("*").single();
-    if (error) throw new Error(error.message);
+    if (error) throw new Error("Não foi possível salvar o cliente. Tente novamente.");
     return updated as ClienteRow;
   });
 
