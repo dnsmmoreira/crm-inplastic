@@ -472,10 +472,20 @@ async function runEngine(
       const regra = `A4_cadencia_D${passo}`;
       if (await alreadyActed(sb, regra, l.id, 22 * 60)) continue; // 22h — 1 por passo
 
+      const propDDMM = fmtDDMM(l.proposta_enviada_at);
+      const isDecisao = passo >= 15;
+      const baseTitulo = isDecisao
+        ? `Decisão D+${passo}: ${l.company}`
+        : `Follow proposta D+${passo}: ${l.company}`;
+      const ctxA4 = propDDMM
+        ? (isDecisao
+            ? `sem retorno desde ${propDDMM}, retomar ou marcar perdido`
+            : `proposta enviada em ${propDDMM}`)
+        : null;
       await criarTarefa({
         regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id,
         tipo: "cadencia_proposta",
-        titulo: `Follow proposta D+${passo}: ${l.company}`,
+        titulo: withCtx(baseTitulo, ctxA4),
         descricao: `Proposta enviada há ${passo} dias. Cadência: ${cfg.cadencia_proposta_dias.join("/")}.`,
         motivo: `Proposta enviada há ${passo} dias. Cadência: ${cfg.cadencia_proposta_dias.join("/")}.`,
         prioridade: 2,
