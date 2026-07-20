@@ -12,8 +12,9 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { isValidCnpj, onlyDigitsCnpj, friendlyCnpjError } from "@/lib/cnpj";
+import { friendlyClienteError } from "@/lib/clientes";
 import { lookupCnpj } from "@/lib/cnpj.functions";
-import { createCliente, listVendedores, type ClienteRow } from "@/lib/clientes.functions";
+import { createCliente, listVendedores, reativarCliente, type ClienteRow } from "@/lib/clientes.functions";
 import { ClienteFormFields, emptyCliente, type ClienteFormState } from "./ClienteFormFields";
 import { useAuth } from "@/hooks/use-auth";
 
