@@ -23,6 +23,66 @@ import {
 import { alreadyActed, hasOpenTask, logAction } from "@/lib/xerife/dedupe.server";
 import { notifyOwner, notifyDiretoria, crmLeadLink } from "@/lib/xerife/notify.server";
 
+// ─── Helpers de contexto para títulos de tarefas (regras gerais):
+//   • sufixo sempre no fim, separado por " — "
+//   • se o timestamp for nulo/invalid, devolvemos "" e o título fica sem sufixo
+//   • datas em DD/MM, horas em HHhMM, arredondamento para baixo
+const SP_TZ = "America/Sao_Paulo";
+function _valid(iso: string | null | undefined): Date | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? null : d;
+}
+function fmtDDMM(iso: string | null | undefined): string | null {
+  const d = _valid(iso);
+  if (!d) return null;
+  const p = new Intl.DateTimeFormat("pt-BR", { timeZone: SP_TZ, day: "2-digit", month: "2-digit" }).format(d);
+  return p;
+}
+function fmtHHhMM(iso: string | null | undefined): string | null {
+  const d = _valid(iso);
+  if (!d) return null;
+  const parts = new Intl.DateTimeFormat("pt-BR", { timeZone: SP_TZ, hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(d);
+  const hh = parts.find((x) => x.type === "hour")?.value ?? "00";
+  const mm = parts.find((x) => x.type === "minute")?.value ?? "00";
+  return `${hh}h${mm}`;
+}
+function diasDesde(iso: string | null | undefined, now: Date): number | null {
+  const d = _valid(iso);
+  if (!d) return null;
+  return Math.max(0, Math.floor((now.getTime() - d.getTime()) / 86400_000));
+}
+function horasDesde(iso: string | null | undefined, now: Date): number | null {
+  const d = _valid(iso);
+  if (!d) return null;
+  return Math.max(0, Math.floor((now.getTime() - d.getTime()) / 3600_000));
+}
+const STAGE_LABEL: Record<string, string> = {
+  novo: "Novo",
+  qualificacao: "Qualificação",
+  proposta: "Proposta",
+  negociacao: "Negociação",
+  ganho: "Ganho",
+  perdido: "Perdido",
+};
+const CANAL_LABEL: Record<string, string> = {
+  whatsapp: "WhatsApp",
+  site: "Site",
+  telefone: "Telefone",
+  indicacao: "Indicação",
+  email: "E-mail",
+};
+function canalLabel(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const k = String(raw).trim().toLowerCase();
+  if (!k) return null;
+  return CANAL_LABEL[k] ?? raw;
+}
+/** Concatena base + sufixo se o sufixo estiver preenchido; senão devolve só a base. */
+function withCtx(base: string, ctx: string | null | undefined): string {
+  return ctx && ctx.trim() ? `${base} — ${ctx.trim()}` : base;
+}
+
 export type XerifePlanItem = {
   regra: string;
   lead_id: string;
@@ -236,7 +296,7 @@ async function runEngine(
 
     const { data: leads } = await sb
       .from("leads")
-      .select("id, company, owner_id, created_at, last_contact_at, last_interaction_at")
+      .select("id, company, owner_id, created_at, last_contact_at, last_interaction_at, origem, source")
       .in("stage", ["novo", "qualificacao"] as any)
       .lt("created_at", thresholdIso)
       .is("last_contact_at", null)
@@ -250,10 +310,15 @@ async function runEngine(
       if (await alreadyActed(sb, regra, l.id, 24)) continue;
       if (await hasOpenTask(sb, l.id, "primeiro_contato")) continue;
 
+      const hora = fmtHHhMM(l.created_at);
+      const canal = canalLabel((l as any).origem ?? (l as any).source);
+      const ctxPc = hora
+        ? (canal ? `lead chegou às ${hora} via ${canal}` : `lead chegou às ${hora}`)
+        : null;
       await criarTarefa({
         regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id,
         tipo: "primeiro_contato",
-        titulo: `Primeiro contato: ${l.company}`,
+        titulo: withCtx(`Primeiro contato: ${l.company}`, ctxPc),
         descricao: `Lead entrou há mais de ${cfg.sla_primeiro_contato_min} min úteis e não teve nenhum contato.`,
         motivo: `Lead entrou há mais de ${cfg.sla_primeiro_contato_min} min úteis e não teve nenhum contato.`,
         prioridade: 1,
@@ -303,10 +368,12 @@ async function runEngine(
         if (await alreadyActed(sb, regra, l.id, 24)) continue;
         if (await hasOpenTask(sb, l.id, "follow_up")) continue;
 
+        const diasParado = diasDesde(l.etapa_changed_at, now) ?? maxDias;
+        const etapaLabel = STAGE_LABEL[stage] ?? stage;
         await criarTarefa({
           regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id,
           tipo: "follow_up",
-          titulo: `Destravar ${l.company}`,
+          titulo: withCtx(`Destravar ${l.company}`, `parado em ${etapaLabel} há ${diasParado} dias`),
           descricao: `Lead parado em "${stage}" há +${maxDias} dias. Ligar/definir próximo passo.`,
           motivo: `Lead parado em "${stage}" há +${maxDias} dias. Ligar/definir próximo passo.`,
           prioridade: 2,
@@ -353,10 +420,11 @@ async function runEngine(
       if (await alreadyActed(sb, regra, l.id, 12)) continue;
       if (await hasOpenTask(sb, l.id, "resposta_pendente")) continue;
 
+      const hEspera = horasDesde(l.ultima_msg_cliente_at, now);
       await criarTarefa({
         regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id,
         tipo: "resposta_pendente",
-        titulo: `Responder ${l.company}`,
+        titulo: withCtx(`Responder ${l.company}`, hEspera != null ? `cliente aguardando há ${hEspera}h` : null),
         descricao: `Cliente enviou mensagem há +${cfg.sla_resposta_whatsapp_horas}h úteis sem resposta.`,
         motivo: `Cliente enviou mensagem há +${cfg.sla_resposta_whatsapp_horas}h úteis sem resposta.`,
         prioridade: 1,
@@ -404,10 +472,20 @@ async function runEngine(
       const regra = `A4_cadencia_D${passo}`;
       if (await alreadyActed(sb, regra, l.id, 22 * 60)) continue; // 22h — 1 por passo
 
+      const propDDMM = fmtDDMM(l.proposta_enviada_at);
+      const isDecisao = passo >= 15;
+      const baseTitulo = isDecisao
+        ? `Decisão D+${passo}: ${l.company}`
+        : `Follow proposta D+${passo}: ${l.company}`;
+      const ctxA4 = propDDMM
+        ? (isDecisao
+            ? `sem retorno desde ${propDDMM}, retomar ou marcar perdido`
+            : `proposta enviada em ${propDDMM}`)
+        : null;
       await criarTarefa({
         regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id,
         tipo: "cadencia_proposta",
-        titulo: `Follow proposta D+${passo}: ${l.company}`,
+        titulo: withCtx(baseTitulo, ctxA4),
         descricao: `Proposta enviada há ${passo} dias. Cadência: ${cfg.cadencia_proposta_dias.join("/")}.`,
         motivo: `Proposta enviada há ${passo} dias. Cadência: ${cfg.cadencia_proposta_dias.join("/")}.`,
         prioridade: 2,
@@ -439,10 +517,11 @@ async function runEngine(
       if (await alreadyActed(sb, regra, l.id, 7 * 24)) continue;
       if (await hasOpenTask(sb, l.id, "resgate_carteira")) continue;
 
+      const diasSem45 = diasDesde(l.last_contact_at, now);
       await criarTarefa({
         regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id,
         tipo: "resgate_carteira",
-        titulo: `Reaquecer cliente: ${l.company}`,
+        titulo: withCtx(`Resgatar ${l.company}`, diasSem45 != null ? `sem contato há ${diasSem45} dias` : null),
         descricao: `Cliente ganho sem contato há +${cfg.carteira_alerta_dias} dias.`,
         motivo: `Cliente ganho sem contato há +${cfg.carteira_alerta_dias} dias.`,
         prioridade: 3,
@@ -472,10 +551,11 @@ async function runEngine(
       if (await alreadyActed(sb, regra, l.id, 7 * 24)) continue;
 
       if (!(await hasOpenTask(sb, l.id, "resgate_carteira"))) {
+        const diasSem60 = diasDesde(l.last_contact_at, now);
         await criarTarefa({
           regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id,
           tipo: "resgate_carteira",
-          titulo: `URGENTE reaquecer: ${l.company}`,
+          titulo: withCtx(`Resgatar ${l.company}`, diasSem60 != null ? `sem contato há ${diasSem60} dias` : null),
           descricao: `Cliente ganho sem contato há +${cfg.carteira_critico_dias} dias (crítico).`,
           motivo: `Cliente ganho sem contato há +${cfg.carteira_critico_dias} dias (crítico).`,
           prioridade: 1,
@@ -499,7 +579,7 @@ async function runEngine(
     const isoLim = new Date(now.getTime() - cfg.reciclagem_perdidos_dias * 86400_000).toISOString();
     const { data: leads } = await sb
       .from("leads")
-      .select("id, company, owner_id, updated_at")
+      .select("id, company, owner_id, updated_at, etapa_changed_at")
       .eq("stage", "perdido" as any)
       .lt("updated_at", isoLim)
       .not("owner_id", "is", null)
@@ -510,10 +590,11 @@ async function runEngine(
       if (await alreadyActed(sb, regra, l.id, 30 * 24)) continue;
       if (await hasOpenTask(sb, l.id, "reativacao_lead")) continue;
 
+      const diasPerdido = diasDesde((l as any).etapa_changed_at ?? l.updated_at, now);
       await criarTarefa({
         regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id,
         tipo: "reativacao_lead",
-        titulo: `Reativar lead perdido: ${l.company}`,
+        titulo: withCtx(`Reativar ${l.company}`, diasPerdido != null ? `perdido há ${diasPerdido}+ dias` : null),
         descricao: `Perdido há +${cfg.reciclagem_perdidos_dias} dias. Vale nova tentativa.`,
         motivo: `Perdido há +${cfg.reciclagem_perdidos_dias} dias. Vale nova tentativa.`,
         prioridade: 4,
@@ -550,17 +631,19 @@ async function runEngine(
         pos_venda_satisfacao: "Pesquisa de satisfação",
         pos_venda_recompra: "Sondar recompra",
       };
+      const prefixoPv = `Pós-venda D+${d}`;
 
       for (const l of leads ?? []) {
         const regra = `C_pos_venda_D${d}`;
         if (await alreadyActed(sb, regra, l.id, 30 * 24)) continue;
         if (await hasOpenTask(sb, l.id, tipo)) continue;
 
+        const fechadoDDMM = fmtDDMM(l.etapa_changed_at);
         await criarTarefa({
           regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id,
           tipo,
-          titulo: `${titulos[tipo]}: ${l.company}`,
-          descricao: `Pós-venda D+${d}. Requer nota de conclusão.`,
+          titulo: withCtx(`${prefixoPv}: ${l.company}`, fechadoDDMM ? `pedido fechado em ${fechadoDDMM}` : null),
+          descricao: `Pós-venda D+${d}. Requer nota de conclusão. (${titulos[tipo]})`,
           motivo: `Pós-venda D+${d}. Requer nota de conclusão.`,
           prioridade: 2,
         });
