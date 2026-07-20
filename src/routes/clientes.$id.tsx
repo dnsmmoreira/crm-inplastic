@@ -17,6 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatCnpj } from "@/lib/cnpj";
+import { friendlyClienteError } from "@/lib/clientes";
 import {
   getCliente,
   updateCliente,
