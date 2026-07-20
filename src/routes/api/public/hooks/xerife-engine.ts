@@ -590,10 +590,11 @@ async function runEngine(
       if (await alreadyActed(sb, regra, l.id, 30 * 24)) continue;
       if (await hasOpenTask(sb, l.id, "reativacao_lead")) continue;
 
+      const diasPerdido = diasDesde((l as any).etapa_changed_at ?? l.updated_at, now);
       await criarTarefa({
         regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id,
         tipo: "reativacao_lead",
-        titulo: `Reativar lead perdido: ${l.company}`,
+        titulo: withCtx(`Reativar ${l.company}`, diasPerdido != null ? `perdido há ${diasPerdido}+ dias` : null),
         descricao: `Perdido há +${cfg.reciclagem_perdidos_dias} dias. Vale nova tentativa.`,
         motivo: `Perdido há +${cfg.reciclagem_perdidos_dias} dias. Vale nova tentativa.`,
         prioridade: 4,
