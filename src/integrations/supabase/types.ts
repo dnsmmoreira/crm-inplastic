@@ -1504,6 +1504,15 @@ export type Database = {
     }
     Functions: {
       atribuir_proximo_vendedor: { Args: { _lead_id: string }; Returns: string }
+      cnpj_status: {
+        Args: { _cnpj: string }
+        Returns: {
+          ativo: boolean
+          cliente_id: string
+          existe: boolean
+          mesmo_vendedor: boolean
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
