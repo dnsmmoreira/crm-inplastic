@@ -184,7 +184,20 @@ function AppShell({ children }: { children: ReactNode }) {
               </Link>
             );
           })}
+          <a
+            href="/manual.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+              "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+            )}
+          >
+            <BookOpen className="h-4 w-4" />
+            Manual do CRM
+          </a>
         </nav>
+
         <UserBadge />
         <div className="p-4 text-xs text-sidebar-foreground/50 border-t border-sidebar-border">
 
