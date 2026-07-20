@@ -1,0 +1,1613 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<script>document.documentElement.classList.add("js");</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manual Animado do CRM Inplastic</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:ital,wght@0,400;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --azul:#1B5FBF; --azul-escuro:#12315C; --papel:#F2F7FC;
+    --amarelo:#FFC833; --verde:#2FA84F; --vermelho:#E4553F;
+    --cinza:#5B77A0; --borda:#DCE9F7; --branco:#fff;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{font-family:'Nunito',sans-serif;background:var(--papel);color:var(--azul-escuro);line-height:1.65;font-size:17px}
+  h1,h2,h3{font-family:'Baloo 2',cursive;line-height:1.15}
+  .page{max-width:880px;margin:0 auto;padding:0 18px}
+
+  /* barra de progresso da leitura */
+  #progresso{position:fixed;top:0;left:0;height:6px;background:var(--amarelo);width:0;z-index:99;border-radius:0 4px 4px 0}
+
+  /* ============ CAPA ============ */
+  header{
+    background:linear-gradient(180deg,#12315C 0%,#1B5FBF 60%,#2E77D8 100%);
+    color:#fff;text-align:center;padding:56px 20px 40px;position:relative;overflow:hidden;
+  }
+  header .eyebrow{display:inline-block;background:var(--amarelo);color:var(--azul-escuro);
+    font-weight:800;font-size:14px;letter-spacing:.12em;padding:6px 16px;border-radius:999px;text-transform:uppercase}
+  header h1{font-size:clamp(32px,6vw,56px);font-weight:800;margin:18px auto 8px;max-width:660px}
+  header p.sub{font-size:19px;opacity:.92;max-width:540px;margin:0 auto 18px}
+  .cta{
+    display:inline-block;margin-top:16px;background:var(--amarelo);color:var(--azul-escuro);
+    font-family:'Baloo 2';font-weight:800;font-size:18px;text-decoration:none;
+    padding:13px 30px;border-radius:999px;box-shadow:0 5px 0 #b8860b;transition:transform .15s;
+  }
+  .cta:active{transform:translateY(5px);box-shadow:none}
+
+  /* estrelinhas flutuantes na capa */
+  .estrela{position:absolute;animation:brilha 2.6s ease-in-out infinite}
+  @keyframes brilha{0%,100%{opacity:.2;transform:scale(.7) rotate(0)}50%{opacity:1;transform:scale(1.15) rotate(20deg)}}
+
+  /* ============ PALETINHO ANIMADO ============ */
+  .paletinho-wrap{display:inline-block;animation:flutua 3s ease-in-out infinite}
+  @keyframes flutua{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+  .p-olho{transform-origin:center;transform-box:fill-box;animation:pisca-olho 4s infinite}
+  @keyframes pisca-olho{0%,90%,100%{transform:scaleY(1)}94%{transform:scaleY(.08)}}
+  .p-braco{transform-origin:8% 20%;transform-box:fill-box;animation:acena 2.2s ease-in-out infinite}
+  @keyframes acena{0%,100%{transform:rotate(0)}50%{transform:rotate(-22deg)}}
+  .p-sombra{animation:sombra 3s ease-in-out infinite;transform-origin:center;transform-box:fill-box}
+  @keyframes sombra{0%,100%{transform:scaleX(1);opacity:.35}50%{transform:scaleX(.82);opacity:.22}}
+
+  /* ============ CAPÍTULOS ============ */
+  .chapter{
+    background:#fff;border-radius:28px;padding:34px 30px;margin:36px 0;
+    box-shadow:0 6px 0 rgba(18,49,92,.10);border:3px solid var(--borda);
+    transition:opacity .7s ease,transform .7s ease;
+  }
+  /* efeito "surgir ao rolar" APENAS quando o JavaScript está rodando */
+  html.js .chapter{opacity:0;transform:translateY(36px)}
+  html.js .chapter.visivel{opacity:1;transform:translateY(0)}
+  .chapter-head{display:flex;align-items:center;gap:16px;margin-bottom:14px;flex-wrap:wrap}
+  .badge{font-family:'Baloo 2';font-weight:800;font-size:26px;background:var(--amarelo);
+    color:var(--azul-escuro);width:58px;height:58px;border-radius:18px;display:flex;
+    align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 0 rgba(18,49,92,.15)}
+  .chapter.visivel .badge{animation:badge-pula .6s cubic-bezier(.34,1.56,.64,1)}
+  @keyframes badge-pula{0%{transform:scale(0) rotate(-30deg)}100%{transform:scale(1) rotate(0)}}
+  .chapter h2{font-size:clamp(24px,4vw,32px)}
+  .chapter h2 small{display:block;font-family:'Nunito';font-size:15px;font-weight:800;
+    color:var(--azul);text-transform:uppercase;letter-spacing:.1em}
+  .chapter p{margin:12px 0}
+  .figure{margin:22px auto;text-align:center}
+  .figure svg{max-width:100%;height:auto}
+  .figure figcaption{font-size:14px;font-weight:600;color:var(--cinza);margin-top:8px;font-style:italic}
+
+  .kid{display:flex;gap:14px;align-items:flex-start;background:#FFF6DC;
+    border:3px dashed var(--amarelo);border-radius:20px;padding:16px 18px;margin-top:20px}
+  .kid svg{flex-shrink:0;margin-top:2px}
+  .kid p{margin:0;font-weight:600}
+  .kid p strong{color:#8a6400}
+  .kid .mini-olho{transform-origin:center;transform-box:fill-box;animation:pisca-olho 3.4s infinite}
+
+  ul.simple{margin:10px 0 10px 22px}
+  ul.simple li{margin:6px 0}
+  ol.simple{margin:10px 0 10px 26px}
+  ol.simple li{margin:7px 0}
+
+  table{width:100%;border-collapse:separate;border-spacing:0;margin:16px 0;font-size:16px}
+  th{background:var(--azul);color:#fff;text-align:left;padding:10px 14px;font-family:'Baloo 2';font-size:17px}
+  th:first-child{border-radius:14px 0 0 0}
+  th:last-child{border-radius:0 14px 0 0}
+  td{padding:10px 14px;background:#F7FAFF;border-bottom:2px solid #E3EDF9}
+  tr:last-child td:first-child{border-radius:0 0 0 14px}
+  tr:last-child td:last-child{border-radius:0 0 14px 0}
+  td:first-child{font-weight:800;white-space:nowrap}
+
+  .rule{background:var(--azul-escuro);color:#fff;border-radius:20px;padding:18px 22px;
+    font-weight:800;text-align:center;font-family:'Baloo 2';font-size:19px;margin-top:18px}
+  .rule span{color:var(--amarelo)}
+
+  .score{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:20px 0}
+  .score .col-s{border-radius:20px;padding:20px;border:3px solid}
+  .score .win{background:#EAF8EE;border-color:var(--verde)}
+  .score .lose{background:#FCEEEA;border-color:var(--vermelho)}
+  .score h3{font-size:20px;margin-bottom:8px}
+  .score ul{margin-left:20px}
+  .score li{margin:7px 0;font-size:15.5px}
+  @media(max-width:640px){.score{grid-template-columns:1fr}}
+
+  /* ============ ANIMAÇÕES DAS CENAS ============ */
+  .balao-pop{transform-origin:60% 100%;transform-box:fill-box;animation:balao 4s ease-in-out infinite}
+  @keyframes balao{0%,12%{transform:scale(0);opacity:0}20%,78%{transform:scale(1);opacity:1}88%,100%{transform:scale(0);opacity:0}}
+  .caderninho-voa{animation:flutua 2.6s ease-in-out infinite}
+  .papel-treme{transform-box:fill-box;transform-origin:center;animation:treme 1.1s ease-in-out infinite}
+  .papel-treme:nth-of-type(2){animation-delay:.25s}
+  .papel-treme:nth-of-type(3){animation-delay:.5s}
+  @keyframes treme{0%,100%{transform:rotate(-7deg) translateY(0)}50%{transform:rotate(7deg) translateY(4px)}}
+  .check-pulsa{transform-box:fill-box;transform-origin:center;animation:pulsa 1.8s ease-in-out infinite}
+  @keyframes pulsa{0%,100%{transform:scale(1)}50%{transform:scale(1.25)}}
+  .ponteiro{transform-box:fill-box;transform-origin:bottom center;animation:gira 6s linear infinite}
+  @keyframes gira{to{transform:rotate(360deg)}}
+  .raios{transform-box:fill-box;transform-origin:center;animation:pulsa 2.4s ease-in-out infinite}
+  .antena-luz{animation:luz 1.2s ease-in-out infinite}
+  @keyframes luz{0%,100%{fill:#FFC833}50%{fill:#fff}}
+  .zap-bounce{transform-box:fill-box;transform-origin:center;animation:zap 1.8s ease-in-out infinite}
+  @keyframes zap{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+  .coroa-brilho{animation:brilha 2.2s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+  .engrenagem-gira{transform-box:fill-box;transform-origin:center;animation:gira 9s linear infinite}
+  .escorrega{animation:desce 6s ease-in-out infinite}
+  @keyframes desce{
+    0%,8%{transform:translate(360px,18px) rotate(14deg)}
+    22%{transform:translate(300px,72px) rotate(20deg)}
+    38%{transform:translate(250px,126px) rotate(20deg)}
+    54%{transform:translate(210px,180px) rotate(20deg)}
+    70%{transform:translate(180px,234px) rotate(20deg)}
+    84%,92%{transform:translate(96px,344px) rotate(0deg)}
+    100%{transform:translate(96px,344px) rotate(0deg);opacity:0}
+  }
+  .balanca-pende{transform-box:fill-box;transform-origin:220px 44px;animation:pende 3.6s ease-in-out infinite}
+  @keyframes pende{0%,100%{transform:rotate(0)}50%{transform:rotate(-5deg)}}
+  .moeda-cai{animation:moeda 2.4s ease-in infinite}
+  @keyframes moeda{0%{transform:translateY(-70px);opacity:0}35%{opacity:1}70%,100%{transform:translateY(0);opacity:1}}
+  .cliente-voa{animation:voa-embora 4.5s ease-in-out infinite}
+  @keyframes voa-embora{0%,20%{transform:translate(0,0);opacity:1}90%,100%{transform:translate(48px,-70px);opacity:0}}
+
+  @media (prefers-reduced-motion: reduce){
+    *,*::before,*::after{animation-duration:.001s !important;animation-iteration-count:1 !important;transition-duration:.001s !important}
+  }
+</style>
+</head>
+<body>
+<div id="progresso"></div>
+
+<!-- ============ CAPA ============ -->
+<header>
+  <svg class="estrela" style="left:8%;top:14%" width="26" height="26" viewBox="0 0 26 26"><path d="M13 0 l3.5 9.5 9.5 3.5 -9.5 3.5 -3.5 9.5 -3.5 -9.5 -9.5 -3.5 9.5 -3.5z" fill="#FFC833"/></svg>
+  <svg class="estrela" style="right:10%;top:22%;animation-delay:.7s" width="20" height="20" viewBox="0 0 26 26"><path d="M13 0 l3.5 9.5 9.5 3.5 -9.5 3.5 -3.5 9.5 -3.5 -9.5 -9.5 -3.5 9.5 -3.5z" fill="#FFC833"/></svg>
+  <svg class="estrela" style="left:16%;bottom:18%;animation-delay:1.3s" width="18" height="18" viewBox="0 0 26 26"><path d="M13 0 l3.5 9.5 9.5 3.5 -9.5 3.5 -3.5 9.5 -3.5 -9.5 -9.5 -3.5 9.5 -3.5z" fill="#FFC833"/></svg>
+  <svg class="estrela" style="right:18%;bottom:26%;animation-delay:1.9s" width="22" height="22" viewBox="0 0 26 26"><path d="M13 0 l3.5 9.5 9.5 3.5 -9.5 3.5 -3.5 9.5 -3.5 -9.5 -9.5 -3.5 9.5 -3.5z" fill="#FFC833"/></svg>
+
+  <span class="eyebrow">Manual animado · 5W2H</span>
+  <h1>O Caderninho Mágico da Inplastic</h1>
+  <p class="sub">Como o nosso CRM transforma conversas em vendas — contado pelo <strong>Paletinho</strong>, que já está acenando para você. 👋</p>
+
+  <!-- Paletinho GRANDE animado: flutua, pisca e acena -->
+  <div class="paletinho-wrap">
+  <svg width="300" height="230" viewBox="0 0 300 230" role="img" aria-label="Paletinho, o mascote pallet, acenando e piscando">
+    <ellipse class="p-sombra" cx="150" cy="215" rx="95" ry="12" fill="#0E2748" opacity=".35"/>
+    <rect x="70" y="178" width="30" height="30" rx="6" fill="#0F4494"/>
+    <rect x="135" y="178" width="30" height="30" rx="6" fill="#0F4494"/>
+    <rect x="200" y="178" width="30" height="30" rx="6" fill="#0F4494"/>
+    <!-- braço que acena -->
+    <g class="p-braco">
+      <rect x="238" y="92" width="14" height="52" rx="7" fill="#3E86E8" stroke="#0F4494" stroke-width="4" transform="rotate(-38 245 96)"/>
+      <circle cx="272" cy="70" r="11" fill="#5C9CF0" stroke="#0F4494" stroke-width="4"/>
+    </g>
+    <rect x="55" y="106" width="190" height="24" rx="8" fill="#3E86E8" stroke="#0F4494" stroke-width="4"/>
+    <rect x="55" y="136" width="190" height="24" rx="8" fill="#3E86E8" stroke="#0F4494" stroke-width="4"/>
+    <rect x="55" y="166" width="190" height="18" rx="8" fill="#3E86E8" stroke="#0F4494" stroke-width="4"/>
+    <rect x="88" y="40" width="124" height="72" rx="20" fill="#5C9CF0" stroke="#0F4494" stroke-width="4"/>
+    <g class="p-olho"><circle cx="126" cy="72" r="9" fill="#12315C"/><circle cx="129" cy="69" r="3" fill="#fff"/></g>
+    <g class="p-olho"><circle cx="174" cy="72" r="9" fill="#12315C"/><circle cx="177" cy="69" r="3" fill="#fff"/></g>
+    <path d="M132 90 Q150 104 168 90" stroke="#12315C" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <circle cx="106" cy="86" r="6" fill="#FFC833" opacity=".8"/>
+    <circle cx="194" cy="86" r="6" fill="#FFC833" opacity=".8"/>
+  </svg>
+  </div>
+
+  <br>
+  <a class="cta" href="#historia">🎬 Começar a aventura</a>
+</header>
+
+<main class="page">
+
+<!-- ============ HISTORINHA ============ -->
+<section class="chapter" id="historia">
+  <div class="chapter-head">
+    <div class="badge">★</div>
+    <h2>Antes de começar: a sorveteria<small>Uma historinha</small></h2>
+  </div>
+  <p>Imagine que a Inplastic é uma <strong>sorveteria</strong>. Todo dia, pessoas param na porta e perguntam: <em>"Quanto custa o sorvete?"</em></p>
+  <p>Algumas só perguntam e vão embora. Outras compram na hora. E outras dizem <em>"volto amanhã"</em> — e, sem querer, a gente esquece delas.</p>
+
+  <figure class="figure">
+    <svg width="560" height="200" viewBox="0 0 560 200" role="img" aria-label="Sorveteria com fila de clientes; o balão de fala aparece e o caderninho mágico flutua anotando">
+      <rect x="0" y="170" width="560" height="8" rx="4" fill="#C9DCF3"/>
+      <rect x="40" y="70" width="150" height="100" rx="12" fill="#fff" stroke="#1B5FBF" stroke-width="4"/>
+      <path d="M30 70 h170 l-14 -30 h-142 z" fill="#FFC833" stroke="#12315C" stroke-width="4" stroke-linejoin="round"/>
+      <rect x="60" y="100" width="110" height="40" rx="8" fill="#E7F1FD"/>
+      <text x="115" y="126" text-anchor="middle" font-family="Baloo 2" font-weight="800" font-size="16" fill="#1B5FBF">INPLASTIC</text>
+      <g transform="translate(102,42)">
+        <path d="M0 14 L13 34 L26 14 Z" fill="#D98E4A" stroke="#12315C" stroke-width="3" stroke-linejoin="round"/>
+        <circle cx="13" cy="9" r="10" fill="#FF9FB0" stroke="#12315C" stroke-width="3"/>
+      </g>
+      <g stroke="#12315C" stroke-width="3">
+        <circle cx="260" cy="112" r="16" fill="#FFD9A0"/>
+        <rect x="244" y="128" width="32" height="42" rx="10" fill="#2FA84F"/>
+        <circle cx="330" cy="112" r="16" fill="#F3B58B"/>
+        <rect x="314" y="128" width="32" height="42" rx="10" fill="#E4553F"/>
+        <circle cx="400" cy="112" r="16" fill="#FFE0C2"/>
+        <rect x="384" y="128" width="32" height="42" rx="10" fill="#7A57C9"/>
+      </g>
+      <!-- balão que aparece e some -->
+      <g class="balao-pop">
+        <rect x="236" y="52" width="150" height="34" rx="16" fill="#fff" stroke="#1B5FBF" stroke-width="3"/>
+        <path d="M266 86 l8 12 4 -12 z" fill="#fff" stroke="#1B5FBF" stroke-width="3" stroke-linejoin="round"/>
+        <text x="311" y="74" text-anchor="middle" font-family="Nunito" font-weight="800" font-size="14" fill="#12315C">Quanto custa?</text>
+      </g>
+      <!-- caderninho flutuando -->
+      <g class="caderninho-voa">
+        <g transform="rotate(8 490 100)">
+          <rect x="462" y="70" width="58" height="72" rx="10" fill="#FFC833" stroke="#12315C" stroke-width="4"/>
+          <line x1="474" y1="90" x2="508" y2="90" stroke="#12315C" stroke-width="3" stroke-linecap="round"/>
+          <line x1="474" y1="104" x2="508" y2="104" stroke="#12315C" stroke-width="3" stroke-linecap="round"/>
+          <line x1="474" y1="118" x2="496" y2="118" stroke="#12315C" stroke-width="3" stroke-linecap="round"/>
+        </g>
+        <path class="estrela" d="M452 50 l4 9 9 4 -9 4 -4 9 -4 -9 -9 -4 9 -4z" fill="#FFC833"/>
+        <path class="estrela" style="animation-delay:1.2s" d="M532 140 l3 7 7 3 -7 3 -3 7 -3 -7 -7 -3 7 -3z" fill="#FFC833"/>
+      </g>
+    </svg>
+    <figcaption>O caderninho mágico anota quem parou na porta — e lembra de chamar quem disse "volto amanhã".</figcaption>
+  </figure>
+
+  <p>O CRM é esse <strong>caderninho mágico</strong>. Quem tem, vende mais. Quem não tem, esquece cliente e perde dinheiro. Agora vamos às <strong>7 perguntas</strong>!</p>
+</section>
+
+<!-- ============ 1. O QUÊ ============ -->
+<section class="chapter">
+  <div class="chapter-head">
+    <div class="badge">1</div>
+    <h2>O quê?<small>What · O que é o CRM</small></h2>
+  </div>
+  <p>É o sistema onde ficam guardados <strong>todos os clientes e interessados</strong> (os <em>leads</em>) que falam com a Inplastic — pelo site, pelo WhatsApp ou por indicação. Para cada um, existe uma fichinha com:</p>
+  <ul class="simple">
+    <li><strong>Quem</strong> é a pessoa (nome, empresa, telefone);</li>
+    <li><strong>O que</strong> ela quer (quantos pallets, qual modelo);</li>
+    <li><strong>Onde</strong> a conversa parou (só perguntou? recebeu proposta? fechou?);</li>
+    <li><strong>Tarefas</strong>: o que fazer e até quando (ex.: "ligar para o João amanhã").</li>
+  </ul>
+
+  <figure class="figure">
+    <!-- fichinha com linhas que "aparecem" em sequência -->
+    <svg width="360" height="190" viewBox="0 0 360 190" role="img" aria-label="Fichinha do lead com informações aparecendo linha a linha">
+      <rect x="30" y="14" width="300" height="162" rx="16" fill="#fff" stroke="#1B5FBF" stroke-width="4"/>
+      <rect x="30" y="14" width="300" height="38" rx="16" fill="#1B5FBF"/>
+      <rect x="30" y="36" width="300" height="16" fill="#1B5FBF"/>
+      <text x="180" y="40" text-anchor="middle" font-family="Baloo 2" font-weight="800" font-size="16" fill="#fff">🗂️ Ficha do Lead</text>
+      <g font-family="Nunito" font-weight="700" font-size="13.5" fill="#12315C">
+        <g class="balao-pop" style="animation-delay:0s"><text x="52" y="80">👤 João Ferreira · LogBrasil</text></g>
+        <g class="balao-pop" style="animation-delay:.4s"><text x="52" y="108">📦 500 pallets PBR · R$ 42.500</text></g>
+        <g class="balao-pop" style="animation-delay:.8s"><text x="52" y="136">💬 Origem: WhatsApp (Lucas 🤖)</text></g>
+        <g class="balao-pop" style="animation-delay:1.2s"><text x="52" y="164">📌 Tarefa: ligar amanhã às 9h</text></g>
+      </g>
+    </svg>
+    <figcaption>Tudo do cliente numa fichinha só — nada se perde.</figcaption>
+  </figure>
+
+  <div class="kid">
+    <svg width="40" height="40" viewBox="0 0 40 40"><rect x="4" y="14" width="32" height="8" rx="3" fill="#3E86E8" stroke="#0F4494" stroke-width="2.5"/><rect x="4" y="24" width="32" height="8" rx="3" fill="#3E86E8" stroke="#0F4494" stroke-width="2.5"/><rect x="10" y="2" width="20" height="11" rx="5" fill="#5C9CF0" stroke="#0F4494" stroke-width="2.5"/><g class="mini-olho"><circle cx="16" cy="7" r="1.8" fill="#12315C"/></g><g class="mini-olho"><circle cx="24" cy="7" r="1.8" fill="#12315C"/></g><path d="M16.5 10 Q20 12.5 23.5 10" stroke="#12315C" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>
+    <p><strong>Paletinho explica:</strong> é uma lista de amiguinhos que querem brincar com a gente, com um lembrete do que cada um pediu.</p>
+  </div>
+</section>
+
+<!-- ============ 2. POR QUÊ ============ -->
+<section class="chapter">
+  <div class="chapter-head">
+    <div class="badge">2</div>
+    <h2>Por quê?<small>Why · Por que não anotar no papel ou "na cabeça"</small></h2>
+  </div>
+  <p>Porque a cabeça esquece, o papel some e o WhatsApp vira uma bagunça com centenas de conversas.</p>
+
+  <figure class="figure">
+    <svg width="540" height="190" viewBox="0 0 540 190" role="img" aria-label="Sem CRM os papéis tremem e voam; com CRM as fichinhas ficam alinhadas com checks pulsando">
+      <rect x="14" y="14" width="240" height="162" rx="18" fill="#FCEEEA" stroke="#E4553F" stroke-width="3"/>
+      <text x="134" y="44" text-anchor="middle" font-family="Baloo 2" font-weight="800" font-size="17" fill="#E4553F">SEM CRM</text>
+      <g stroke="#B54B3A" stroke-width="2.5" fill="#fff">
+        <rect class="papel-treme" x="44" y="62" width="42" height="52" rx="4"/>
+        <rect class="papel-treme" x="104" y="76" width="42" height="52" rx="4"/>
+        <rect class="papel-treme" x="170" y="58" width="42" height="52" rx="4"/>
+      </g>
+      <text x="134" y="160" text-anchor="middle" font-family="Nunito" font-weight="800" font-size="13" fill="#B54B3A">"Ih... esqueci de ligar!" 😰</text>
+      <rect x="286" y="14" width="240" height="162" rx="18" fill="#EAF8EE" stroke="#2FA84F" stroke-width="3"/>
+      <text x="406" y="44" text-anchor="middle" font-family="Baloo 2" font-weight="800" font-size="17" fill="#1D7A38">COM CRM</text>
+      <g stroke="#1D7A38" stroke-width="2.5" fill="#fff">
+        <rect x="316" y="62" width="52" height="60" rx="6"/>
+        <rect x="380" y="62" width="52" height="60" rx="6"/>
+        <rect x="444" y="62" width="52" height="60" rx="6"/>
+      </g>
+      <g font-family="Baloo 2" font-weight="800" font-size="20" fill="#2FA84F">
+        <text class="check-pulsa" x="342" y="100" text-anchor="middle">✓</text>
+        <text class="check-pulsa" style="animation-delay:.4s" x="406" y="100" text-anchor="middle">✓</text>
+        <text class="check-pulsa" style="animation-delay:.8s" x="470" y="100" text-anchor="middle">✓</text>
+      </g>
+      <text x="406" y="160" text-anchor="middle" font-family="Nunito" font-weight="800" font-size="13" fill="#1D7A38">Cada cliente na sua fichinha ✅</text>
+    </svg>
+  </figure>
+
+  <ul class="simple">
+    <li><strong>Nenhum cliente é esquecido</strong> — e cliente esquecido compra do concorrente. 💸</li>
+    <li><strong>O dono enxerga tudo:</strong> quantos leads entraram, quantos viraram venda, quanto está em negociação.</li>
+    <li><strong>A empresa não depende da memória de ninguém</strong> — férias e trocas de vendedor deixam de ser um problema.</li>
+  </ul>
+  <div class="kid">
+    <svg width="40" height="40" viewBox="0 0 40 40"><rect x="4" y="14" width="32" height="8" rx="3" fill="#3E86E8" stroke="#0F4494" stroke-width="2.5"/><rect x="4" y="24" width="32" height="8" rx="3" fill="#3E86E8" stroke="#0F4494" stroke-width="2.5"/><rect x="10" y="2" width="20" height="11" rx="5" fill="#5C9CF0" stroke="#0F4494" stroke-width="2.5"/><g class="mini-olho"><circle cx="16" cy="7" r="1.8" fill="#12315C"/></g><g class="mini-olho"><circle cx="24" cy="7" r="1.8" fill="#12315C"/></g><path d="M16.5 10 Q20 12.5 23.5 10" stroke="#12315C" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>
+    <p><strong>Paletinho explica:</strong> é como guardar os brinquedos na caixa certa. Se joga tudo no chão, na hora de brincar você não acha nada.</p>
+  </div>
+</section>
+
+<!-- ============ 3. ONDE ============ -->
+<section class="chapter">
+  <div class="chapter-head">
+    <div class="badge">3</div>
+    <h2>Onde?<small>Where · Onde eu acesso</small></h2>
+  </div>
+
+  <figure class="figure">
+    <svg width="480" height="150" viewBox="0 0 480 150" role="img" aria-label="Navegador digitando sozinho o endereço crm.inplastic.com.br">
+      <rect x="20" y="14" width="440" height="122" rx="16" fill="#fff" stroke="#1B5FBF" stroke-width="4"/>
+      <rect x="20" y="14" width="440" height="34" rx="16" fill="#1B5FBF"/>
+      <rect x="20" y="34" width="440" height="14" fill="#1B5FBF"/>
+      <circle cx="44" cy="31" r="6" fill="#E4553F"/>
+      <circle cx="64" cy="31" r="6" fill="#FFC833"/>
+      <circle cx="84" cy="31" r="6" fill="#2FA84F"/>
+      <rect x="46" y="66" width="388" height="38" rx="19" fill="#F2F7FC" stroke="#9DBEE8" stroke-width="3"/>
+      <text id="url-digitada" x="240" y="91" text-anchor="middle" font-family="Baloo 2" font-weight="800" font-size="21" fill="#12315C"></text>
+      <text x="240" y="126" text-anchor="middle" font-family="Nunito" font-weight="700" font-size="13" fill="#5B77A0">💻 computador · 📱 celular · sem instalar nada</text>
+    </svg>
+  </figure>
+
+  <p>Basta abrir o navegador (Chrome, por exemplo), digitar o endereço e entrar com seu <strong>login e senha</strong>. Se você tem internet, você tem o CRM — na fábrica, em casa ou visitando um cliente.</p>
+</section>
+
+<!-- ============ 4. QUANDO ============ -->
+<section class="chapter">
+  <div class="chapter-head">
+    <div class="badge">4</div>
+    <h2>Quando?<small>When · Os momentos de usar</small></h2>
+  </div>
+
+  <figure class="figure">
+    <svg width="420" height="120" viewBox="0 0 420 120" role="img" aria-label="Linha do tempo do dia: sol brilhando, relógio girando, lua">
+      <line x1="60" y1="66" x2="360" y2="66" stroke="#9DBEE8" stroke-width="5" stroke-linecap="round" stroke-dasharray="2 12"/>
+      <g class="raios" stroke="#FFC833" stroke-width="4" stroke-linecap="round">
+        <line x1="60" y1="24" x2="60" y2="32"/><line x1="60" y1="88" x2="60" y2="96"/>
+        <line x1="24" y1="60" x2="32" y2="60"/><line x1="88" y1="60" x2="96" y2="60"/>
+      </g>
+      <circle cx="60" cy="60" r="20" fill="#FFC833" stroke="#12315C" stroke-width="3"/>
+      <circle cx="210" cy="62" r="26" fill="#fff" stroke="#1B5FBF" stroke-width="4"/>
+      <line class="ponteiro" x1="210" y1="62" x2="210" y2="44" stroke="#12315C" stroke-width="4" stroke-linecap="round"/>
+      <line x1="210" y1="62" x2="222" y2="68" stroke="#12315C" stroke-width="4" stroke-linecap="round"/>
+      <path d="M372 44 a20 20 0 1 0 6 38 a16 16 0 1 1 -6 -38z" fill="#5C9CF0" stroke="#12315C" stroke-width="3"/>
+    </svg>
+  </figure>
+
+  <table>
+    <tr><th>Momento</th><th>O que fazer no CRM</th></tr>
+    <tr><td>🌅 Começo do dia</td><td>Abrir e olhar suas <strong>tarefas pendentes</strong></td></tr>
+    <tr><td>📞 Contato novo</td><td>Conferir o lead (os do WhatsApp entram sozinhos, via robô Lucas)</td></tr>
+    <tr><td>💬 Após cada conversa</td><td>Anotar o que foi combinado e <strong>mover o lead de estágio</strong></td></tr>
+    <tr><td>📄 Enviou proposta</td><td>Mover o lead para <strong>Proposta</strong></td></tr>
+    <tr><td>✅ Fechou a venda</td><td>Marcar <strong>Ganho</strong> — o pedido já vai sozinho para o Omie!</td></tr>
+    <tr><td>❌ Cliente desistiu</td><td>Marcar <strong>Perdido</strong> e anotar o motivo</td></tr>
+    <tr><td>🌙 Fim do dia</td><td>Conferir se não ficou tarefa esquecida</td></tr>
+  </table>
+
+  <div class="rule">Regra de ouro: <span>aconteceu, anotou.</span> "Depois" nunca chega.</div>
+</section>
+
+<!-- ============ 5. QUEM ============ -->
+<section class="chapter">
+  <div class="chapter-head">
+    <div class="badge">5</div>
+    <h2>Quem?<small>Who · O time do caderninho</small></h2>
+  </div>
+
+  <figure class="figure">
+    <svg width="560" height="200" viewBox="0 0 560 200" role="img" aria-label="O time animado: Lucas com a antena piscando, vendedor, admin com coroa brilhando e engrenagem Omie girando">
+      <g transform="translate(30,30)">
+        <rect x="10" y="30" width="76" height="66" rx="14" fill="#3ECF6E" stroke="#12315C" stroke-width="4"/>
+        <g class="p-olho"><circle cx="34" cy="58" r="8" fill="#12315C"/><circle cx="36.5" cy="55.5" r="2.5" fill="#fff"/></g>
+        <g class="p-olho"><circle cx="62" cy="58" r="8" fill="#12315C"/><circle cx="64.5" cy="55.5" r="2.5" fill="#fff"/></g>
+        <rect x="34" y="74" width="28" height="8" rx="4" fill="#12315C"/>
+        <line x1="48" y1="12" x2="48" y2="30" stroke="#12315C" stroke-width="4"/>
+        <circle class="antena-luz" cx="48" cy="10" r="6" stroke="#12315C" stroke-width="3"/>
+        <rect x="26" y="100" width="18" height="26" rx="6" fill="#2AA457" stroke="#12315C" stroke-width="3.5"/>
+        <rect x="52" y="100" width="18" height="26" rx="6" fill="#2AA457" stroke="#12315C" stroke-width="3.5"/>
+        <g class="zap-bounce" transform="translate(78,-8)">
+          <circle cx="16" cy="16" r="15" fill="#fff" stroke="#2AA457" stroke-width="3"/>
+          <path d="M10 14 a7 7 0 1 1 3 9 l-5 2 2 -5" fill="#2AA457"/>
+        </g>
+        <text x="48" y="152" text-anchor="middle" font-family="Baloo 2" font-weight="800" font-size="15" fill="#12315C">Lucas 🤖</text>
+        <text x="48" y="168" text-anchor="middle" font-family="Nunito" font-size="11.5" font-weight="700" fill="#5B77A0">atende 24h no Whats</text>
+      </g>
+      <g transform="translate(190,30)">
+        <circle cx="48" cy="42" r="24" fill="#FFD9A0" stroke="#12315C" stroke-width="4"/>
+        <path d="M24 40 a24 24 0 0 1 48 0 l-6 -10 h-36 z" fill="#7A4A21"/>
+        <g class="p-olho"><circle cx="40" cy="44" r="3" fill="#12315C"/></g>
+        <g class="p-olho"><circle cx="56" cy="44" r="3" fill="#12315C"/></g>
+        <path d="M40 54 Q48 60 56 54" stroke="#12315C" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <rect x="22" y="68" width="52" height="58" rx="14" fill="#1B5FBF" stroke="#12315C" stroke-width="4"/>
+        <rect x="58" y="84" width="24" height="34" rx="4" fill="#fff" stroke="#12315C" stroke-width="3" transform="rotate(10 70 101)"/>
+        <text x="48" y="152" text-anchor="middle" font-family="Baloo 2" font-weight="800" font-size="15" fill="#12315C">Vendedor</text>
+        <text x="48" y="168" text-anchor="middle" font-family="Nunito" font-size="11.5" font-weight="700" fill="#5B77A0">cuida dos seus leads</text>
+      </g>
+      <g transform="translate(330,30)">
+        <path class="coroa-brilho" d="M28 20 l8 10 12 -14 12 14 8 -10 -4 20 h-32 z" fill="#FFC833" stroke="#12315C" stroke-width="3.5" stroke-linejoin="round"/>
+        <circle cx="48" cy="52" r="22" fill="#F3B58B" stroke="#12315C" stroke-width="4"/>
+        <g class="p-olho"><circle cx="41" cy="52" r="3" fill="#12315C"/></g>
+        <g class="p-olho"><circle cx="55" cy="52" r="3" fill="#12315C"/></g>
+        <path d="M41 61 Q48 66 55 61" stroke="#12315C" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <rect x="22" y="74" width="52" height="52" rx="14" fill="#12315C"/>
+        <text x="48" y="152" text-anchor="middle" font-family="Baloo 2" font-weight="800" font-size="15" fill="#12315C">Admin 👑</text>
+        <text x="48" y="168" text-anchor="middle" font-family="Nunito" font-size="11.5" font-weight="700" fill="#5B77A0">enxerga tudo</text>
+      </g>
+      <g transform="translate(462,44)">
+        <g class="engrenagem-gira">
+          <circle cx="40" cy="46" r="30" fill="#9DBEE8" stroke="#12315C" stroke-width="3.5"/>
+          <g stroke="#12315C" stroke-width="3.5" fill="#9DBEE8">
+            <rect x="34" y="4" width="12" height="16" rx="4"/>
+            <rect x="34" y="72" width="12" height="16" rx="4"/>
+            <rect x="-2" y="40" width="16" height="12" rx="4"/>
+            <rect x="66" y="40" width="16" height="12" rx="4"/>
+          </g>
+          <circle cx="40" cy="46" r="12" fill="#F2F7FC" stroke="#12315C" stroke-width="3.5"/>
+        </g>
+        <text x="40" y="138" text-anchor="middle" font-family="Baloo 2" font-weight="800" font-size="15" fill="#12315C">Omie ⚙️</text>
+        <text x="40" y="154" text-anchor="middle" font-family="Nunito" font-size="11.5" font-weight="700" fill="#5B77A0">gera o pedido</text>
+      </g>
+    </svg>
+  </figure>
+
+  <ul class="simple">
+    <li>🤖 <strong>Lucas (robô do WhatsApp):</strong> atende o cliente 24 horas, faz as primeiras perguntas e coloca o lead qualificado dentro do CRM.</li>
+    <li>👤 <strong>Vendedor:</strong> vê <strong>apenas os próprios leads</strong>. Conversa, negocia, move os estágios e cumpre as tarefas.</li>
+    <li>👑 <strong>Administrador:</strong> vê <strong>todos os leads de todos os vendedores</strong>, acompanha o funil e distribui os contatos.</li>
+    <li>⚙️ <strong>Omie (ERP):</strong> quando um lead vira <strong>Ganho</strong>, o pedido de venda nasce sozinho lá dentro.</li>
+  </ul>
+
+  <div class="kid">
+    <svg width="40" height="40" viewBox="0 0 40 40"><rect x="4" y="14" width="32" height="8" rx="3" fill="#3E86E8" stroke="#0F4494" stroke-width="2.5"/><rect x="4" y="24" width="32" height="8" rx="3" fill="#3E86E8" stroke="#0F4494" stroke-width="2.5"/><rect x="10" y="2" width="20" height="11" rx="5" fill="#5C9CF0" stroke="#0F4494" stroke-width="2.5"/><g class="mini-olho"><circle cx="16" cy="7" r="1.8" fill="#12315C"/></g><g class="mini-olho"><circle cx="24" cy="7" r="1.8" fill="#12315C"/></g><path d="M16.5 10 Q20 12.5 23.5 10" stroke="#12315C" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>
+    <p><strong>Paletinho explica:</strong> o Lucas é o porteiro que recebe as visitas, os vendedores são os anfitriões que cuidam de cada uma, e o admin é quem enxerga a casa inteira.</p>
+  </div>
+</section>
+
+<!-- ============ 6. COMO ============ -->
+<style>
+  /* estilos do funil + tour do mouse */
+  #tour-viewport{width:100%;overflow:hidden;margin-top:18px}
+  #tour-scaler{transform-origin:top left}
+  #tour-stage{position:relative;width:920px;height:560px;background:#fff;
+    border:3px solid var(--borda);border-radius:22px;box-shadow:0 8px 0 rgba(18,49,92,.08);overflow:hidden}
+  #tour-stage .appbar{height:54px;background:var(--azul);display:flex;align-items:center;gap:12px;padding:0 18px}
+  #tour-stage .appbar .logo{font-family:'Baloo 2';font-weight:800;color:#fff;font-size:18px}
+  #tour-stage .appbar .url{margin-left:auto;background:rgba(255,255,255,.18);color:#fff;font-size:12px;font-weight:700;padding:5px 14px;border-radius:999px}
+  #tour-stage .board{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;padding:16px;height:calc(100% - 54px)}
+  #tour-stage .col{background:var(--papel);border:2px solid var(--borda);border-radius:16px;padding:10px;display:flex;flex-direction:column;gap:10px}
+  #tour-stage .col h3{font-family:'Baloo 2';font-size:15px;display:flex;align-items:center;gap:7px;padding:2px 4px}
+  #tour-stage .col h3 .pill{margin-left:auto;background:#fff;border:2px solid var(--borda);border-radius:999px;font-size:12px;padding:1px 9px;color:var(--cinza)}
+  #tour-stage .col.ganho-col{background:#EAF8EE;border-color:#BFE7CB}
+  #tour-stage .col.ganho-col h3{color:#1D7A38}
+  #tour-stage .card{background:#fff;border:2px solid var(--borda);border-radius:14px;padding:10px 12px;
+    box-shadow:0 3px 0 rgba(18,49,92,.07);font-size:13px}
+  #tour-stage .card .nome{font-weight:800;font-size:14px}
+  #tour-stage .card .empresa{color:var(--cinza);font-weight:700;font-size:12px}
+  #tour-stage .card .tags{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+  #tour-stage .tag{font-size:10.5px;font-weight:800;border-radius:999px;padding:2px 8px}
+  #tour-stage .tag.whats{background:#E4F8EC;color:#1D7A38}
+  #tour-stage .tag.valor{background:#FFF3CF;color:#8a6400}
+  #tour-stage .tag.tarefa{background:#E7F1FD;color:var(--azul)}
+  #tour-stage .card.destaque{border-color:var(--amarelo);box-shadow:0 0 0 4px rgba(255,200,51,.35)}
+  #tour-stage .card.fantasma{opacity:.35;border-style:dashed}
+  #tour-stage .card.pop{animation:pop .5s cubic-bezier(.34,1.56,.64,1)}
+  @keyframes pop{0%{transform:scale(.3);opacity:0}100%{transform:scale(1);opacity:1}}
+  #flyer{position:absolute;width:200px;z-index:40;pointer-events:none;transform:rotate(-3deg);display:none}
+  #tour-overlay{position:absolute;inset:0;background:rgba(18,49,92,.45);display:none;z-index:30}
+  #tour-modal{position:absolute;top:70px;left:50%;transform:translateX(-50%) scale(.9);opacity:0;
+    width:420px;background:#fff;border-radius:18px;z-index:31;display:none;
+    border:3px solid var(--borda);box-shadow:0 16px 40px rgba(18,49,92,.3);
+    transition:transform .3s cubic-bezier(.34,1.56,.64,1),opacity .3s}
+  #tour-modal.aberto{transform:translateX(-50%) scale(1);opacity:1}
+  #tour-modal .m-head{background:var(--azul);color:#fff;border-radius:14px 14px 0 0;padding:12px 18px;
+    font-family:'Baloo 2';font-weight:800;font-size:17px;display:flex;justify-content:space-between}
+  #tour-modal .m-body{padding:16px 18px;font-size:13.5px}
+  #tour-modal .campo{margin-bottom:10px}
+  #tour-modal .campo label{display:block;font-weight:800;font-size:11.5px;color:var(--cinza);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
+  #tour-modal .valor-campo{background:var(--papel);border:2px solid var(--borda);border-radius:10px;padding:7px 11px;font-weight:700;min-height:34px}
+  #tour-modal .valor-campo.foco{border-color:var(--azul);box-shadow:0 0 0 3px rgba(27,95,191,.18)}
+  .caret{display:inline-block;width:2px;height:14px;background:var(--azul);vertical-align:-2px;animation:pisca-caret .7s infinite}
+  @keyframes pisca-caret{50%{opacity:0}}
+  #tour-modal .m-acoes{display:flex;justify-content:flex-end;padding:0 18px 16px}
+  #tour-modal .btn-salvar{font-family:'Baloo 2';font-weight:800;border:none;border-radius:12px;
+    padding:9px 18px;font-size:14px;background:var(--verde);color:#fff;box-shadow:0 3px 0 #1D7A38}
+  #tour-modal .btn-salvar.apertado{transform:translateY(3px);box-shadow:none}
+  #tour-cursor{position:absolute;z-index:50;width:30px;height:30px;pointer-events:none;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))}
+  .ripple{position:absolute;z-index:49;width:14px;height:14px;border-radius:50%;
+    border:3px solid var(--amarelo);pointer-events:none;animation:onda .5s ease-out forwards}
+  @keyframes onda{0%{transform:scale(.4);opacity:1}100%{transform:scale(3.2);opacity:0}}
+  #tour-toast{position:absolute;bottom:16px;left:50%;transform:translate(-50%,80px);z-index:45;
+    background:var(--azul-escuro);color:#fff;font-weight:800;font-size:14px;padding:12px 20px;
+    border-radius:14px;display:flex;gap:10px;align-items:center;transition:transform .4s cubic-bezier(.34,1.56,.64,1)}
+  #tour-toast.mostra{transform:translate(-50%,0)}
+  #tour-toast .ok{background:var(--verde);width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px}
+  .confete{position:absolute;width:9px;height:14px;z-index:44;border-radius:2px;animation:cai 1.6s ease-in forwards}
+  @keyframes cai{0%{transform:translateY(0) rotate(0)}100%{transform:translateY(560px) rotate(540deg);opacity:.2}}
+  #tour-legenda{background:var(--azul-escuro);color:#fff;border-radius:16px;padding:13px 18px;
+    display:flex;align-items:center;gap:12px;min-height:58px;margin-top:12px}
+  #tour-legenda .num{background:var(--amarelo);color:var(--azul-escuro);font-family:'Baloo 2';font-weight:800;
+    width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px}
+  #tour-legenda p{font-weight:700;font-size:15px;margin:0}
+  #tour-controles{display:flex;gap:10px;margin-top:12px;justify-content:center}
+  #tour-controles button{font-family:'Baloo 2';font-weight:800;font-size:15px;border:none;cursor:pointer;
+    background:var(--azul);color:#fff;border-radius:999px;padding:10px 22px;box-shadow:0 3px 0 #12447e}
+  #tour-controles button:active{transform:translateY(3px);box-shadow:none}
+  #tour-controles button.sec{background:#fff;color:var(--azul);border:2px solid var(--azul);box-shadow:0 3px 0 var(--borda)}
+</style>
+
+<section class="chapter">
+  <div class="chapter-head">
+    <div class="badge">6</div>
+    <h2>Como?<small>How · O escorregador de 7 degraus</small></h2>
+  </div>
+  <p>Pense num <strong>escorregador</strong>. Todo cliente entra no topo, e a nossa missão é levá-lo até o final: a venda. Olha o Paletinho descendo — estes são os estágios, exatamente como aparecem no sistema:</p>
+
+  <figure class="figure">
+    <svg width="520" height="430" viewBox="0 0 520 430" role="img" aria-label="Funil escorregador de 7 degraus com o Paletinho descendo do Atendimento ao Ganho">
+      <defs><clipPath id="round"><rect x="0" y="0" width="520" height="430" rx="20"/></clipPath></defs>
+      <g clip-path="url(#round)">
+        <rect width="520" height="430" fill="#E7F1FD"/>
+        <g font-family="Baloo 2" font-weight="800" font-size="17">
+          <g><rect x="30"  y="26"  width="340" height="42" rx="12" fill="#8FB6EE" stroke="#12315C" stroke-width="3.5"/><text x="200" y="54" text-anchor="middle" fill="#12315C">1 · ATENDIMENTO 🤖</text></g>
+          <g><rect x="58"  y="80"  width="312" height="42" rx="12" fill="#6FA3EA" stroke="#12315C" stroke-width="3.5"/><text x="214" y="108" text-anchor="middle" fill="#12315C">2 · NOVO ✨</text></g>
+          <g><rect x="86"  y="134" width="284" height="42" rx="12" fill="#4F8FE5" stroke="#12315C" stroke-width="3.5"/><text x="228" y="162" text-anchor="middle" fill="#fff">3 · QUALIFICAÇÃO 🔍</text></g>
+          <g><rect x="114" y="188" width="256" height="42" rx="12" fill="#3579DA" stroke="#12315C" stroke-width="3.5"/><text x="242" y="216" text-anchor="middle" fill="#fff">4 · PROPOSTA 📄</text></g>
+          <g><rect x="142" y="242" width="228" height="42" rx="12" fill="#1B5FBF" stroke="#12315C" stroke-width="3.5"/><text x="256" y="270" text-anchor="middle" fill="#fff">5 · NEGOCIAÇÃO 🤝</text></g>
+        </g>
+        <path d="M256 292 v22" stroke="#12315C" stroke-width="4" stroke-linecap="round"/>
+        <path d="M256 314 q-60 20 -120 34" stroke="#2FA84F" stroke-width="5" fill="none" stroke-linecap="round" stroke-dasharray="1 10"/>
+        <path d="M256 314 q60 20 120 34" stroke="#E4553F" stroke-width="5" fill="none" stroke-linecap="round" stroke-dasharray="1 10"/>
+        <g font-family="Baloo 2" font-weight="800" font-size="18">
+          <rect x="40" y="352" width="200" height="50" rx="14" fill="#2FA84F" stroke="#12315C" stroke-width="4"/>
+          <text x="140" y="384" text-anchor="middle" fill="#fff">6 · GANHO ✅ → Omie</text>
+          <rect x="286" y="352" width="196" height="50" rx="14" fill="#E4553F" stroke="#12315C" stroke-width="4"/>
+          <text x="384" y="384" text-anchor="middle" fill="#fff">7 · PERDIDO ❌ + motivo</text>
+        </g>
+        <!-- Paletinho mini descendo o escorregador em loop -->
+        <g class="escorrega">
+          <rect x="0" y="24" width="52" height="10" rx="4" fill="#3E86E8" stroke="#0F4494" stroke-width="3"/>
+          <rect x="0" y="37" width="52" height="10" rx="4" fill="#3E86E8" stroke="#0F4494" stroke-width="3"/>
+          <rect x="10" y="0" width="32" height="20" rx="8" fill="#5C9CF0" stroke="#0F4494" stroke-width="3"/>
+          <g class="p-olho"><circle cx="20" cy="9" r="2.6" fill="#12315C"/></g>
+          <g class="p-olho"><circle cx="32" cy="9" r="2.6" fill="#12315C"/></g>
+          <path d="M21 14 Q26 18 31 14" stroke="#12315C" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+        </g>
+      </g>
+    </svg>
+    <figcaption>Uhuuul! 🎢 Pino parado não ganha jogo: a missão é mover cada lead degrau por degrau.</figcaption>
+  </figure>
+
+  <p><strong>Passo a passo do dia a dia do vendedor:</strong></p>
+  <ol class="simple">
+    <li><strong>Entre</strong> em crm.inplastic.com.br com seu login.</li>
+    <li><strong>Olhe suas tarefas pendentes</strong> — elas são a sua lista do dia.</li>
+    <li><strong>Pegue os leads em "Novo"</strong> e contate rápido: lead novo é pão quente, esfria depressa. 🥖</li>
+    <li><strong>Após cada conversa</strong>, anote o resultado na ficha e mova o lead para o estágio certo.</li>
+    <li><strong>Sempre crie a próxima tarefa</strong> antes de fechar a ficha. Lead sem próxima tarefa é lead esquecido.</li>
+    <li><strong>Fechou?</strong> Marque <strong style="color:var(--verde)">Ganho</strong> — o valor vira pedido no Omie.</li>
+    <li><strong>Perdeu?</strong> Marque <strong style="color:var(--vermelho)">Perdido</strong> com o motivo.</li>
+  </ol>
+
+  <div class="rule" style="margin-top:26px">🖱️ Agora assista o mouse fazer o caminho completo, sozinho:</div>
+
+  <!-- ============ TOUR DO MOUSE (multi-telas) ============ -->
+  <style>
+    #tour-stage .board{grid-template-columns:repeat(7,1fr);gap:8px;padding:10px 12px 12px;flex:1;height:auto}
+    #tour-stage .col{padding:6px;gap:7px;border-radius:12px}
+    #tour-stage .col h3{font-size:11px;gap:3px;padding:1px 2px}
+    #tour-stage .col h3 .pill{font-size:9.5px;padding:0 6px}
+    #tour-stage .card{padding:6px 7px;font-size:10px;border-radius:10px}
+    #tour-stage .card .nome{font-size:11px}
+    #tour-stage .card .empresa{font-size:9.5px}
+    #tour-stage .tag{font-size:8px;padding:1px 5px}
+    #flyer{width:108px}
+    .tela{position:absolute;top:54px;left:0;right:0;bottom:0;display:none;background:#fff}
+    .tela.ativa{display:block;animation:tela-fade .45s ease}
+    @keyframes tela-fade{from{opacity:0}to{opacity:1}}
+    #tela-login{background:linear-gradient(180deg,#F2F7FC,#E7F1FD)}
+    #tela-login.ativa{display:flex;align-items:center;justify-content:center}
+    .login-card{width:340px;background:#fff;border:3px solid var(--borda);border-radius:20px;padding:26px;text-align:center;box-shadow:0 8px 0 rgba(18,49,92,.08)}
+    .login-card h4{font-family:'Baloo 2';font-size:20px;margin-bottom:14px;color:var(--azul)}
+    .campo-f{text-align:left;margin-bottom:10px;flex:1}
+    .campo-f label{font-size:10.5px;font-weight:800;color:var(--cinza);text-transform:uppercase;letter-spacing:.04em}
+    .campo-f .valor-campo{background:var(--papel);border:2px solid var(--borda);border-radius:10px;padding:7px 11px;font-weight:700;min-height:35px;font-size:13px;position:relative}
+    .campo-f .valor-campo.foco{border-color:var(--azul);box-shadow:0 0 0 3px rgba(27,95,191,.18)}
+    .campo-f .valor-campo.auto{color:var(--azul-escuro);animation:pop .4s cubic-bezier(.34,1.56,.64,1)}
+    .btn-azul,.btn-verde{font-family:'Baloo 2';font-weight:800;font-size:14px;border:none;border-radius:12px;padding:9px 16px;color:#fff;cursor:default}
+    .btn-azul{background:var(--azul);box-shadow:0 3px 0 #12447e}
+    .btn-verde{background:var(--verde);box-shadow:0 3px 0 #1D7A38}
+    .btn-azul.apertado,.btn-verde.apertado,.btn-entrar.apertado{transform:translateY(3px);box-shadow:none}
+    .btn-entrar{font-family:'Baloo 2';font-weight:800;font-size:15px;border:none;border-radius:12px;padding:10px 0;width:100%;background:var(--azul);color:#fff;box-shadow:0 3px 0 #12447e;margin-top:6px}
+    .com-sidebar{display:flex;height:100%}
+    .sidebar{width:122px;background:var(--azul-escuro);padding:14px 8px;display:flex;flex-direction:column;gap:8px;flex-shrink:0}
+    .sidebar .item{color:#fff;font-weight:800;font-size:12.5px;border-radius:10px;padding:9px 10px;opacity:.7}
+    .sidebar .item.ativo{background:var(--azul);opacity:1}
+    .conteudo{flex:1;overflow:hidden;position:relative;display:flex;flex-direction:column}
+    .topo-funil{display:flex;justify-content:flex-end;padding:10px 12px 0}
+    .lista-tarefas{padding:18px}
+    .lista-tarefas h4{font-family:'Baloo 2';font-size:19px;margin-bottom:12px}
+    .tarefa{display:flex;align-items:center;gap:12px;background:var(--papel);border:2px solid var(--borda);border-radius:12px;padding:11px 14px;margin-bottom:9px;font-weight:700;font-size:14px}
+    .tarefa .chk{width:24px;height:24px;border-radius:8px;border:3px solid var(--azul);background:#fff;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:14px}
+    .tarefa.feita{opacity:.55}
+    .tarefa.feita .chk{background:var(--verde);border-color:var(--verde)}
+    .tarefa.feita span.txt{text-decoration:line-through}
+    .tarefa .prazo{margin-left:auto;font-size:11px;background:#FFF3CF;color:#8a6400;border-radius:999px;padding:2px 9px;font-weight:800;white-space:nowrap}
+    .col.perdido-col{background:#FCEEEA;border-color:#F2C9C0}
+    .col.perdido-col h3{color:#B54B3A}
+    /* form cadastro / proposta */
+    .form-card{padding:14px 20px;overflow:hidden;height:100%}
+    .form-card h4{font-family:'Baloo 2';font-size:18px;margin-bottom:10px;color:var(--azul-escuro)}
+    .form-row{display:flex;gap:10px;align-items:flex-end}
+    .box{border:2px solid var(--borda);border-radius:14px;padding:10px 14px;margin-bottom:10px;background:#FBFDFF}
+    .box h5{font-family:'Baloo 2';font-size:13.5px;color:var(--azul);margin-bottom:6px}
+    .dd{position:absolute;top:105%;left:0;right:0;background:#fff;border:2px solid var(--azul);border-radius:10px;z-index:20;display:none;overflow:hidden}
+    .dd.aberto{display:block;animation:pop .25s ease}
+    .dd .op{padding:7px 11px;font-size:12.5px;font-weight:700;border-bottom:1px solid var(--borda)}
+    .dd .op:last-child{border-bottom:none}
+    .dd .op.hover{background:#E7F1FD}
+    .linha-item{display:grid;grid-template-columns:2.4fr .8fr 1fr 1fr;gap:8px;align-items:center;font-size:12.5px;font-weight:700}
+    .linha-item .cab{font-size:10px;color:var(--cinza);text-transform:uppercase;font-weight:800}
+    .frete-res{display:none;background:#EAF8EE;border:2px solid var(--verde);color:#1D7A38;border-radius:10px;padding:6px 12px;font-weight:800;font-size:13px}
+    .frete-res.mostra{display:inline-block;animation:pop .35s cubic-bezier(.34,1.56,.64,1)}
+    .total-bar{display:flex;align-items:center;justify-content:space-between;background:var(--azul-escuro);color:#fff;border-radius:14px;padding:10px 16px}
+    .total-bar .tot{font-family:'Baloo 2';font-weight:800;font-size:18px}
+    .total-bar .tot span{color:var(--amarelo)}
+    #modal-motivo{position:absolute;top:150px;left:50%;transform:translateX(-50%) scale(.9);opacity:0;width:300px;background:#fff;border-radius:16px;z-index:31;display:none;border:3px solid var(--borda);box-shadow:0 16px 40px rgba(18,49,92,.3);transition:transform .3s cubic-bezier(.34,1.56,.64,1),opacity .3s}
+    #modal-motivo.aberto{transform:translateX(-50%) scale(1);opacity:1}
+    #modal-motivo .m-head-m{background:var(--vermelho);color:#fff;border-radius:12px 12px 0 0;padding:10px 16px;font-family:'Baloo 2';font-weight:800;font-size:15px}
+    #modal-motivo .opcoes{padding:12px 16px 16px}
+    .opcao{border:2px solid var(--borda);border-radius:10px;padding:8px 12px;font-weight:700;font-size:13px;margin-bottom:8px}
+    .opcao.escolhida{border-color:var(--vermelho);background:#FCEEEA}
+    .bg-auto,.bg-manual{font-size:8.5px;font-weight:800;border-radius:999px;padding:1px 7px;margin-left:6px;vertical-align:1px}
+    .bg-auto{background:#E4F8EC;color:#1D7A38}
+    .bg-manual{background:#FFF3CF;color:#8a6400}
+    .legenda-cad{display:flex;gap:16px;font-size:11px;font-weight:800;margin:0 0 8px;color:var(--cinza)}
+    .cad-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .cad-grid .box{margin-bottom:0}
+    .cad-grid .campo-f{margin-bottom:5px}
+    .cad-grid .campo-f label{font-size:9.5px}
+    .cad-grid .valor-campo{min-height:28px;padding:4px 10px;font-size:11.5px}
+    .box.box-auto{border-color:#BFE7CB;background:#F4FBF6}
+    .box.box-manual{border-color:#F4DFA0;background:#FFFDF4}
+  </style>
+
+  <div id="tour-viewport"><div id="tour-scaler">
+  <div id="tour-stage">
+    <div class="appbar">
+      <span class="logo">▦ CRM Inplastic</span>
+      <span class="url">crm.inplastic.com.br</span>
+    </div>
+
+    <!-- TELA · LOGIN -->
+    <div class="tela ativa" id="tela-login">
+      <div class="login-card">
+        <h4>Entrar no CRM</h4>
+        <div class="campo-f"><label>E-mail</label><div class="valor-campo" id="campo-email"><span id="login-email-txt"></span></div></div>
+        <div class="campo-f"><label>Senha</label><div class="valor-campo" id="campo-senha"><span id="login-senha-txt"></span></div></div>
+        <button class="btn-entrar" id="btn-entrar">Entrar</button>
+      </div>
+    </div>
+
+    <!-- TELA · TAREFAS -->
+    <div class="tela" id="tela-tarefas">
+      <div class="com-sidebar">
+        <div class="sidebar">
+          <div class="item ativo">📋 Tarefas</div>
+          <div class="item" id="menu-funil">🗂️ Funil</div>
+        </div>
+        <div class="conteudo">
+          <div class="lista-tarefas">
+            <h4>📋 Minhas tarefas de hoje</h4>
+            <div class="tarefa" id="tarefa-1"><div class="chk"></div><span class="txt">Ligar para Transportes Silva — retorno da proposta</span><span class="prazo">hoje 9h</span></div>
+            <div class="tarefa"><div class="chk"></div><span class="txt">Enviar frete atualizado para AgroLog Sul</span><span class="prazo">hoje 11h</span></div>
+            <div class="tarefa"><div class="chk"></div><span class="txt">Cobrar assinatura do contrato — MegaLog</span><span class="prazo">hoje 15h</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TELA · FUNIL -->
+    <div class="tela" id="tela-funil">
+      <div class="com-sidebar">
+        <div class="sidebar">
+          <div class="item">📋 Tarefas</div>
+          <div class="item ativo">🗂️ Funil</div>
+        </div>
+        <div class="conteudo">
+          <div class="topo-funil"><button class="btn-azul" id="btn-novo-lead">➕ Novo Lead</button></div>
+          <div class="board">
+            <div class="col" id="col-atend"><h3>🤖 Atend. <span class="pill">0</span></h3></div>
+            <div class="col" id="col-novo"><h3>✨ Novo <span class="pill">0</span></h3></div>
+            <div class="col" id="col-qualif"><h3>🔍 Qualif. <span class="pill">0</span></h3></div>
+            <div class="col" id="col-prop"><h3>📄 Prop. <span class="pill">0</span></h3></div>
+            <div class="col" id="col-negoc"><h3>🤝 Negoc. <span class="pill">1</span></h3>
+              <div class="card" id="card-silva"><div class="nome">Transportes Silva</div><div class="empresa">SP · 300 pallets</div><div class="tags"><span class="tag valor">R$ 25.900</span></div></div>
+            </div>
+            <div class="col ganho-col" id="col-ganho"><h3>✅ Ganho <span class="pill">0</span></h3></div>
+            <div class="col perdido-col" id="col-perd"><h3>❌ Perd. <span class="pill">0</span></h3></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TELA · CADASTRO DE LEAD -->
+    <div class="tela" id="tela-cadastro">
+      <div class="com-sidebar">
+        <div class="sidebar">
+          <div class="item">📋 Tarefas</div>
+          <div class="item ativo">🗂️ Funil</div>
+        </div>
+        <div class="conteudo">
+          <div class="form-card" style="padding:10px 16px">
+            <h4 style="margin-bottom:4px">➕ Cadastrar novo lead</h4>
+            <div class="legenda-cad"><span><span class="bg-auto">🤖 automático</span> o CRM preenche sozinho</span><span><span class="bg-manual">✍️ vendedor</span> você preenche</span></div>
+            <div class="cad-grid">
+              <div class="box box-auto">
+                <h5>1 · Busca pelo CNPJ</h5>
+                <div class="form-row" style="margin-bottom:5px">
+                  <div class="campo-f" style="margin-bottom:0"><label>CNPJ <span class="bg-manual">✍️</span></label><div class="valor-campo" id="campo-cnpj"><span id="cnpj-txt"></span></div></div>
+                  <div class="campo-f" style="flex:0 0 auto;margin-bottom:0"><button class="btn-azul" id="btn-buscar-cnpj" style="font-size:12px;padding:7px 12px">🔎 Buscar CNPJ</button></div>
+                </div>
+                <div class="campo-f"><label>Razão social <span class="bg-auto">🤖</span></label><div class="valor-campo" id="f-razao"></div></div>
+                <div class="campo-f"><label>Nome fantasia <span class="bg-auto">🤖</span></label><div class="valor-campo" id="f-fantasia"></div></div>
+                <div class="form-row">
+                  <div class="campo-f"><label>Cidade / UF <span class="bg-auto">🤖</span></label><div class="valor-campo" id="f-cidade"></div></div>
+                  <div class="campo-f"><label>CEP <span class="bg-auto">🤖</span></label><div class="valor-campo" id="f-cep"></div></div>
+                </div>
+                <div class="campo-f"><label>Telefone da empresa <span class="bg-auto">🤖</span></label><div class="valor-campo" id="f-fone"></div></div>
+              </div>
+              <div class="box box-manual">
+                <h5>2 · O vendedor completa</h5>
+                <div class="form-row">
+                  <div class="campo-f"><label>Contato <span class="bg-manual">✍️</span></label><div class="valor-campo" id="campo-ctt"><span id="ctt-txt"></span></div></div>
+                  <div class="campo-f"><label>WhatsApp <span class="bg-manual">✍️</span></label><div class="valor-campo" id="campo-zap"><span id="zap-txt"></span></div></div>
+                </div>
+                <div class="form-row">
+                  <div class="campo-f"><label>Origem <span class="bg-manual">✍️</span></label>
+                    <div class="valor-campo" id="campo-origem"><span id="origem-txt">Selecionar…</span>
+                      <div class="dd" id="dd-origem">
+                        <div class="op" id="op-tel">📞 Telefone</div>
+                        <div class="op">💬 WhatsApp</div>
+                        <div class="op">🌐 Site</div>
+                        <div class="op">🤝 Indicação</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="campo-f"><label>Produto de interesse <span class="bg-manual">✍️</span></label>
+                    <div class="valor-campo" id="campo-prod2"><span id="prod2-txt">Selecionar…</span>
+                      <div class="dd" id="dd-prod2">
+                        <div class="op" id="op-h7">🟦 Pallet H7 1100×1100</div>
+                        <div class="op">🟦 Pallet PBR 1200×1000</div>
+                        <div class="op">🟦 Pallet Descartável</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="campo-f" style="flex:.6"><label>Quantidade <span class="bg-manual">✍️</span></label><div class="valor-campo" id="campo-qtd2"><span id="qtd2-txt"></span></div></div>
+                  <div class="campo-f" style="flex:1.4"><label>Observações <span class="bg-manual">✍️</span></label><div class="valor-campo" id="campo-obs"><span id="obs-txt"></span></div></div>
+                </div>
+                <div style="text-align:right;margin-top:4px"><button class="btn-verde" id="btn-salvar-lead" style="font-size:13px">💾 Salvar lead</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TELA · NOVA PROPOSTA -->
+    <div class="tela" id="tela-proposta">
+      <div class="com-sidebar">
+        <div class="sidebar">
+          <div class="item">📋 Tarefas</div>
+          <div class="item ativo">🗂️ Funil</div>
+        </div>
+        <div class="conteudo">
+          <div class="form-card">
+            <h4>📄 Nova proposta — João Ferreira · LogBrasil Ltda</h4>
+            <div class="box">
+              <h5>1 · Produto</h5>
+              <div class="form-row" style="margin-bottom:6px">
+                <div class="campo-f" style="margin-bottom:0"><label>Buscar no catálogo</label>
+                  <div class="valor-campo" id="campo-prod"><span id="prod-txt"></span>
+                    <div class="dd" id="dd-prod">
+                      <div class="op" id="op-pbr">🟦 Pallet PBR 1200×1000 mm — R$ 85,00</div>
+                      <div class="op">🟦 Pallet H7 1100×1100 mm — R$ 92,00</div>
+                      <div class="op">🟦 Pallet Descartável 1200×800 — R$ 39,00</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="linha-item">
+                <span class="cab">Item</span><span class="cab">Qtd</span><span class="cab">Unitário</span><span class="cab">Subtotal</span>
+                <span id="item-nome">—</span>
+                <div class="valor-campo" id="campo-qtd" style="min-height:30px;padding:4px 9px"><span id="qtd-txt"></span></div>
+                <span id="item-unit">—</span>
+                <strong id="item-sub">—</strong>
+              </div>
+            </div>
+            <div class="box">
+              <h5>2 · Frete e prazo</h5>
+              <div class="form-row" style="margin-bottom:0;align-items:center">
+                <div class="campo-f" style="flex:.8;margin-bottom:0"><label>CEP de entrega</label><div class="valor-campo" id="campo-cep"><span id="cep-txt"></span></div></div>
+                <button class="btn-azul" id="btn-frete">🚚 Simular frete</button>
+                <span class="frete-res" id="frete-res">R$ 3.900 · entrega em 5 dias úteis 🚚</span>
+              </div>
+            </div>
+            <div class="box">
+              <h5>3 · Condições</h5>
+              <div class="form-row" style="margin-bottom:0">
+                <div class="campo-f" style="margin-bottom:0"><label>Pagamento</label>
+                  <div class="valor-campo" id="campo-pgto"><span id="pgto-txt">Selecionar…</span>
+                    <div class="dd" id="dd-pgto">
+                      <div class="op">À vista (PIX) — 3% desc.</div>
+                      <div class="op" id="op-28">Boleto 28 dias</div>
+                      <div class="op">Entrada + 2× 30/60</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="campo-f" style="margin-bottom:0"><label>Validade da proposta</label><div class="valor-campo">15 dias</div></div>
+              </div>
+            </div>
+            <div class="total-bar">
+              <span class="tot">Total: <span id="total-txt">R$ —</span></span>
+              <button class="btn-verde" id="btn-enviar">📤 Gerar e enviar proposta</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="tour-overlay"></div>
+    <div id="tour-modal">
+      <div class="m-head"><span>🗂️ Ficha do Lead</span><span>✕</span></div>
+      <div class="m-body">
+        <div class="campo"><label>Nome</label><div class="valor-campo">João Ferreira</div></div>
+        <div class="campo"><label>Empresa · Pedido</label><div class="valor-campo">LogBrasil Ltda · 500 pallets PBR</div></div>
+        <div class="campo"><label>Origem</label><div class="valor-campo">💬 WhatsApp — qualificado pelo Lucas 🤖</div></div>
+        <div class="campo"><label>➕ Nova tarefa</label><div class="valor-campo" id="campo-tarefa"><span id="texto-tarefa"></span></div></div>
+      </div>
+      <div class="m-acoes" style="gap:10px">
+        <button class="btn-azul" id="btn-criar-prop" style="display:none">📄 Criar proposta</button>
+        <button class="btn-salvar" id="btn-salvar">Salvar tarefa</button>
+      </div>
+    </div>
+
+    <div id="modal-motivo">
+      <div class="m-head-m">❌ Motivo da perda</div>
+      <div class="opcoes">
+        <div class="opcao" id="opcao-preco">💰 Preço alto</div>
+        <div class="opcao">🚚 Prazo de entrega</div>
+        <div class="opcao">🏆 Fechou com concorrente</div>
+      </div>
+    </div>
+
+    <div id="flyer"></div>
+    <div id="tour-toast"><span class="ok">✓</span><span id="toast-txt">…</span></div>
+    <svg id="tour-cursor" viewBox="0 0 30 30">
+      <path d="M4 2 L4 24 L10 18 L14 27 L18 25 L14 16 L23 16 Z" fill="#fff" stroke="#12315C" stroke-width="2.4" stroke-linejoin="round"/>
+    </svg>
+  </div>
+  </div></div>
+
+  <div id="tour-legenda"><div class="num" id="leg-num">▶</div><p id="leg-texto">Aperte "Assistir" para ver o mouse trabalhar.</p></div>
+  <div id="tour-controles">
+    <button id="btn-play">▶ Assistir</button>
+    <button class="sec" id="btn-replay">↺ Recomeçar</button>
+  </div>
+</section>
+
+<!-- ============ 7. QUANTO ============ -->
+<section class="chapter">
+  <div class="chapter-head">
+    <div class="badge">7</div>
+    <h2>Quanto?<small>How much · O que eu ganho e o que eu perco</small></h2>
+  </div>
+
+  <figure class="figure">
+    <svg width="440" height="200" viewBox="0 0 440 200" role="img" aria-label="Balança animada: moedas caem no prato de quem usa o CRM; o cliente esquecido voa embora de balão">
+      <line x1="220" y1="40" x2="220" y2="160" stroke="#12315C" stroke-width="6" stroke-linecap="round"/>
+      <path d="M180 160 h80 l14 20 h-108 z" fill="#1B5FBF" stroke="#12315C" stroke-width="4" stroke-linejoin="round"/>
+      <g class="balanca-pende">
+        <line x1="90" y1="62" x2="350" y2="46" stroke="#12315C" stroke-width="6" stroke-linecap="round"/>
+        <circle cx="220" cy="54" r="8" fill="#FFC833" stroke="#12315C" stroke-width="3"/>
+        <line x1="90" y1="62" x2="70" y2="106" stroke="#12315C" stroke-width="3.5"/>
+        <line x1="90" y1="62" x2="110" y2="106" stroke="#12315C" stroke-width="3.5"/>
+        <path d="M56 106 h68 q-6 22 -34 22 q-28 0 -34 -22z" fill="#9DBEE8" stroke="#12315C" stroke-width="3.5"/>
+        <g stroke="#B8860B" stroke-width="2.5" fill="#FFC833">
+          <circle cx="76" cy="98" r="11"/><circle cx="100" cy="98" r="11"/>
+        </g>
+        <circle class="moeda-cai" cx="88" cy="82" r="11" fill="#FFC833" stroke="#B8860B" stroke-width="2.5"/>
+        <line x1="350" y1="46" x2="330" y2="82" stroke="#12315C" stroke-width="3.5"/>
+        <line x1="350" y1="46" x2="370" y2="82" stroke="#12315C" stroke-width="3.5"/>
+        <path d="M316 82 h68 q-6 22 -34 22 q-28 0 -34 -22z" fill="#9DBEE8" stroke="#12315C" stroke-width="3.5"/>
+      </g>
+      <g class="cliente-voa" transform="translate(392,28)">
+        <circle cx="12" cy="10" r="9" fill="#FFD9A0" stroke="#12315C" stroke-width="2.5"/>
+        <line x1="12" y1="1" x2="12" y2="-14" stroke="#5B77A0" stroke-width="2"/>
+        <circle cx="12" cy="-24" r="11" fill="#E4553F" stroke="#12315C" stroke-width="2.5"/>
+      </g>
+      <text x="90" y="156" text-anchor="middle" font-family="Baloo 2" font-weight="800" font-size="15" fill="#1D7A38">usa o CRM 💰</text>
+      <text x="350" y="132" text-anchor="middle" font-family="Baloo 2" font-weight="800" font-size="15" fill="#B54B3A">esquece o cliente 🎈</text>
+    </svg>
+  </figure>
+
+  <div class="score">
+    <div class="col-s win">
+      <h3>💰 O que você GANHA</h3>
+      <ul>
+        <li><strong>Mais vendas com os mesmos leads:</strong> boa parte das vendas acontece a partir do 4º ou 5º contato — e sem CRM ninguém lembra de fazer o 4º contato.</li>
+        <li><strong>Resposta rápida fecha negócio:</strong> Lucas + CRM garantem atendimento até fora do horário.</li>
+        <li><strong>Zero retrabalho:</strong> venda fechada vira pedido no Omie sozinha, sem redigitação e sem erro.</li>
+        <li><strong>Visão do dinheiro:</strong> o funil mostra quantos reais estão em cada estágio.</li>
+        <li><strong>Aprendizado:</strong> os motivos de "Perdido" mostram onde estamos deixando dinheiro na mesa.</li>
+      </ul>
+    </div>
+    <div class="col-s lose">
+      <h3>💸 O que você PERDE sem ele</h3>
+      <ul>
+        <li>Cada lead esquecido é um pedido de pallets indo para o <strong>concorrente</strong>.</li>
+        <li>O dinheiro investido em <strong>Google Ads e Meta Ads</strong> para trazer o lead vai para o lixo se ele morrer esquecido no WhatsApp.</li>
+        <li>Sem histórico, férias ou troca de vendedor viram um <strong>recomeço do zero</strong> com o cliente.</li>
+      </ul>
+      <p style="margin-top:12px;font-size:15px"><strong>⚠️ O único custo real:</strong> 2 a 3 minutos de disciplina após cada conversa. É o preço de nunca mais perder venda por esquecimento.</p>
+    </div>
+  </div>
+
+  <div class="kid">
+    <svg width="40" height="40" viewBox="0 0 40 40"><rect x="4" y="14" width="32" height="8" rx="3" fill="#3E86E8" stroke="#0F4494" stroke-width="2.5"/><rect x="4" y="24" width="32" height="8" rx="3" fill="#3E86E8" stroke="#0F4494" stroke-width="2.5"/><rect x="10" y="2" width="20" height="11" rx="5" fill="#5C9CF0" stroke="#0F4494" stroke-width="2.5"/><g class="mini-olho"><circle cx="16" cy="7" r="1.8" fill="#12315C"/></g><g class="mini-olho"><circle cx="24" cy="7" r="1.8" fill="#12315C"/></g><path d="M16.5 10 Q20 12.5 23.5 10" stroke="#12315C" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>
+    <p><strong>Paletinho explica:</strong> se você ganha uma moedinha toda vez que lembra do amiguinho e perde uma quando esquece… o caderninho que lembra por você é o melhor brinquedo da loja.</p>
+  </div>
+</section>
+
+
+<!-- ============ 8. TAREFAS AUTOMÁTICAS ============ -->
+<style>
+  .trio-cad{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:16px 0}
+  @media(max-width:640px){.trio-cad{grid-template-columns:1fr}}
+  .card-tarefa{border:3px solid var(--borda);border-radius:18px;padding:0;overflow:hidden;background:#fff;margin:16px 0}
+  .card-tarefa .ct-titulo{background:var(--azul-escuro);color:#fff;padding:11px 16px;font-family:'Baloo 2';font-weight:800;font-size:15px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .card-tarefa .ct-titulo .real{background:#fff;color:var(--azul-escuro);border-radius:8px;padding:2px 9px;font-size:13px;font-weight:800}
+  .card-tarefa .ct-corpo{padding:14px 16px}
+  .card-tarefa .ct-linha{display:flex;gap:9px;margin:7px 0;font-size:15px}
+  .card-tarefa .ct-linha .ic{flex-shrink:0;font-size:16px}
+  .card-tarefa .ct-linha b{color:var(--azul)}
+  .mini-cad{border:2px solid var(--borda);border-radius:14px;padding:12px;background:#FBFDFF}
+  .mini-cad h5{font-family:'Baloo 2';font-size:15px;margin-bottom:4px}
+  .mini-cad .quando{font-size:12px;font-weight:800;color:var(--cinza);text-transform:uppercase;letter-spacing:.04em}
+  .mini-cad.d2{border-color:#BFE7CB}.mini-cad.d2 h5{color:#1D7A38}
+  .mini-cad.d5{border-color:#F4DFA0}.mini-cad.d5 h5{color:#8a6400}
+  .mini-cad.d10{border-color:#F2C9C0}.mini-cad.d10 h5{color:#B54B3A}
+  .nota-box{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}
+  @media(max-width:640px){.nota-box{grid-template-columns:1fr}}
+  .nota-box .nb{border-radius:14px;padding:12px 14px;font-size:14px}
+  .nota-box .ruim{background:#FCEEEA;border:2px solid #E4553F}
+  .nota-box .boa{background:#EAF8EE;border:2px solid #2FA84F}
+  .nota-box .nb .rot{font-weight:800;font-family:'Baloo 2';font-size:14px;display:block;margin-bottom:4px}
+  .nota-box .ruim .rot{color:#B54B3A}.nota-box .boa .rot{color:#1D7A38}
+  .nota-box .nb .exemplo{font-style:italic;color:var(--azul-escuro)}
+  .faq-item{border:2px solid var(--borda);border-radius:14px;padding:12px 16px;margin:9px 0;background:#fff}
+  .faq-item .q{font-family:'Baloo 2';font-weight:800;font-size:15.5px;color:var(--azul);margin-bottom:4px}
+  .faq-item .a{font-size:14.5px}
+  .xerife-wrap{display:inline-block;animation:flutua 3s ease-in-out infinite}
+</style>
+
+<section class="chapter">
+  <div class="chapter-head">
+    <div class="badge">8</div>
+    <h2>As tarefas que o sistema cria pra você<small>Bônus · O Xerife trabalhando ao seu lado</small></h2>
+  </div>
+
+  <p>Você já viu que <strong>toda conversa vira uma tarefa</strong> criada por você. Mas tem um ajudante que também cria tarefas sozinho: o <strong>Xerife</strong> 🤠 — o fiscal amigo do CRM, irmão do Paletinho. Ele fica de olho no relógio e, quando algo está prestes a esfriar, coloca uma tarefa na sua lista <strong>antes</strong> que você perca a venda.</p>
+
+  <figure class="figure">
+    <div class="xerife-wrap">
+    <svg width="150" height="170" viewBox="0 0 150 170" role="img" aria-label="Xerife, mascote pallet com chapéu e estrela, piscando">
+      <ellipse class="p-sombra" cx="75" cy="158" rx="52" ry="8" fill="#0E2748" opacity=".3"/>
+      <!-- chapéu -->
+      <ellipse cx="75" cy="40" rx="52" ry="12" fill="#8a5a2b" stroke="#0F4494" stroke-width="0"/>
+      <path d="M50 40 q0 -26 25 -26 q25 0 25 26z" fill="#a06a33"/>
+      <rect x="50" y="34" width="50" height="7" rx="3" fill="#6d4420"/>
+      <!-- corpo pallet -->
+      <rect x="40" y="70" width="70" height="16" rx="6" fill="#3E86E8" stroke="#0F4494" stroke-width="3"/>
+      <rect x="40" y="92" width="70" height="16" rx="6" fill="#3E86E8" stroke="#0F4494" stroke-width="3"/>
+      <rect x="40" y="114" width="70" height="12" rx="6" fill="#3E86E8" stroke="#0F4494" stroke-width="3"/>
+      <!-- cabeça -->
+      <rect x="48" y="46" width="54" height="30" rx="10" fill="#5C9CF0" stroke="#0F4494" stroke-width="3"/>
+      <g class="p-olho"><circle cx="65" cy="61" r="4.5" fill="#12315C"/><circle cx="66.5" cy="59.5" r="1.4" fill="#fff"/></g>
+      <g class="p-olho"><circle cx="85" cy="61" r="4.5" fill="#12315C"/><circle cx="86.5" cy="59.5" r="1.4" fill="#fff"/></g>
+      <path d="M66 69 Q75 75 84 69" stroke="#12315C" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <!-- estrela de xerife -->
+      <path class="coroa-brilho" d="M75 128 l4 8 9 1 -6.5 6 1.5 9 -8 -4.5 -8 4.5 1.5 -9 -6.5 -6 9 -1z" fill="#FFC833" stroke="#12315C" stroke-width="2"/>
+    </svg>
+    </div>
+    <figcaption>O Xerife 🤠 nunca dorme — mas está do seu lado. Toda tarefa dele é um lembrete pra você não perder dinheiro.</figcaption>
+  </figure>
+
+  <p>A partir de agora, os títulos das tarefas do Xerife <strong>já contam o porquê</strong> — você entende o que fazer sem abrir nada. Veja cada tipo:</p>
+
+  <!-- DESTRAVAR -->
+  <div class="card-tarefa">
+    <div class="ct-titulo">🔓 Como aparece: <span class="real">Destravar OCEANUS — parado em Qualificação há 4 dias</span></div>
+    <div class="ct-corpo">
+      <div class="ct-linha"><span class="ic">🤔</span><span><b>O que significa:</b> esse lead ficou parado tempo demais na mesma etapa. O sistema te avisa antes que ele esfrie de vez.</span></div>
+      <div class="ct-linha"><span class="ic">📏</span><span><b>Por que apareceu:</b> cada etapa tem um prazo — Novo 1 dia, Qualificação 2 dias, Proposta 3 dias, Negociação 5 dias. Passou do prazo, nasce a tarefa.</span></div>
+      <div class="ct-linha"><span class="ic">✅</span><span><b>Como resolver:</b> abra o lead e leia a última anotação. Antes de ligar, veja o que ficou pendente. Fale com o cliente ("Oi Fulano, tudo certo pra seguirmos?"), e depois no CRM: <strong>mova pra próxima etapa</strong> ou <strong>conclua a tarefa com uma nota</strong> do que combinou.</span></div>
+      <div class="ct-linha"><span class="ic">⏭️</span><span><b>Se ignorar:</b> rola pra amanhã com prioridade maior. Casos muito parados escalam pro gestor/diretoria.</span></div>
+    </div>
+  </div>
+
+  <!-- FOLLOW PROPOSTA -->
+  <p style="margin-top:24px"><strong>📄 Follow de proposta</strong> — depois que você envia uma proposta, o Xerife cria uma sequência de lembretes. <strong>Cada um tem uma abordagem diferente</strong>, então preste atenção no número (D+2, D+5, D+10):</p>
+
+  <div class="trio-cad">
+    <div class="mini-cad d2">
+      <span class="quando">2 dias depois</span>
+      <h5>D+2 · Chegou tudo?</h5>
+      <p style="font-size:13.5px;margin-top:4px">Título: <em>Follow proposta D+2: OCEANUS — proposta enviada em 18/07</em></p>
+      <p style="font-size:13.5px;margin-top:6px">Abordagem leve: <strong>"Recebeu a proposta certinho? Alguma dúvida?"</strong> Só confirmar que chegou e abrir a porta.</p>
+    </div>
+    <div class="mini-cad d5">
+      <span class="quando">5 dias depois</span>
+      <h5>D+5 · Trate objeções</h5>
+      <p style="font-size:13.5px;margin-top:4px">Título: <em>Follow proposta D+5: OCEANUS — proposta enviada em 18/07</em></p>
+      <p style="font-size:13.5px;margin-top:6px">Agora é <strong>entender o que trava</strong>: preço? prazo? Ofereça solução — condição, frete, prazo de entrega.</p>
+    </div>
+    <div class="mini-cad d10">
+      <span class="quando">10 dias depois</span>
+      <h5>D+10 · Última chamada</h5>
+      <p style="font-size:13.5px;margin-top:4px">Título: <em>Follow proposta D+10: OCEANUS — proposta enviada em 18/07</em></p>
+      <p style="font-size:13.5px;margin-top:6px">Senso de urgência com carinho: <strong>"Consigo segurar essa condição até sexta"</strong>. Ou fecha, ou você descobre que morreu.</p>
+    </div>
+  </div>
+
+  <!-- DECISÃO D+15 -->
+  <div class="card-tarefa">
+    <div class="ct-titulo">⚖️ Como aparece: <span class="real">Decisão D+15: OCEANUS — sem retorno desde 18/07, retomar ou marcar perdido</span></div>
+    <div class="ct-corpo">
+      <div class="ct-linha"><span class="ic">🤔</span><span><b>O que significa:</b> a proposta já tem 15 dias e o cliente sumiu. Chegou a hora de decidir: dá pra retomar ou é hora de soltar?</span></div>
+      <div class="ct-linha"><span class="ic">✅</span><span><b>Como resolver:</b> uma última tentativa real. Se responder, volta pra Negociação. Se não houver clima, <strong>marque Perdido com o motivo</strong> — isso vira aprendizado e libera sua energia pra quem está quente.</span></div>
+      <div class="ct-linha"><span class="ic">⏭️</span><span><b>Se ignorar:</b> o lead fica te entupindo a lista. Melhor decidir e seguir.</span></div>
+    </div>
+  </div>
+
+  <!-- PRIMEIRO CONTATO -->
+  <div class="card-tarefa">
+    <div class="ct-titulo">⚡ Como aparece: <span class="real">Primeiro contato: OCEANUS — lead chegou às 14h32 via WhatsApp</span></div>
+    <div class="ct-corpo">
+      <div class="ct-linha"><span class="ic">🤔</span><span><b>O que significa:</b> um lead novo caiu pra você (o Lucas 🤖 qualificou no WhatsApp). Ele está <strong>quente agora</strong>.</span></div>
+      <div class="ct-linha"><span class="ic">📏</span><span><b>Por que apareceu:</b> lead novo tem prazo curtíssimo de primeiro contato. Pão quente esfria rápido! 🥖</span></div>
+      <div class="ct-linha"><span class="ic">✅</span><span><b>Como resolver:</b> leia o resumo do Lucas, chame <strong>rápido</strong>, entenda a necessidade e já crie a próxima tarefa. Depois mova pra Qualificação.</span></div>
+      <div class="ct-linha"><span class="ic">⏭️</span><span><b>Se ignorar:</b> a chance de fechar despenca a cada hora — e escala pro gestor.</span></div>
+    </div>
+  </div>
+
+  <!-- RESPOSTA PENDENTE -->
+  <div class="card-tarefa">
+    <div class="ct-titulo">💬 Como aparece: <span class="real">Responder FANTE — cliente aguardando há 3h</span></div>
+    <div class="ct-corpo">
+      <div class="ct-linha"><span class="ic">🤔</span><span><b>O que significa:</b> o cliente mandou mensagem e está <strong>esperando você</strong> no WhatsApp.</span></div>
+      <div class="ct-linha"><span class="ic">✅</span><span><b>Como resolver:</b> responda o quanto antes, mesmo que seja "já te retorno com o valor". Cliente esperando é venda em risco.</span></div>
+      <div class="ct-linha"><span class="ic">⏭️</span><span><b>Se ignorar:</b> rola com prioridade maior — e cliente sem resposta procura o concorrente.</span></div>
+    </div>
+  </div>
+
+  <!-- PÓS-VENDA -->
+  <p style="margin-top:24px"><strong>🎁 Pós-venda</strong> — fechou? O trabalho não acabou! O Xerife cria três lembretes pra transformar um pedido em cliente fiel:</p>
+  <div class="trio-cad">
+    <div class="mini-cad d2">
+      <span class="quando">3 dias após o ganho</span>
+      <h5>D+3 · Confirmação</h5>
+      <p style="font-size:13.5px;margin-top:4px"><em>Pós-venda D+3: FANTE — pedido fechado em 17/07</em></p>
+      <p style="font-size:13.5px;margin-top:6px">"Deu tudo certo com o pedido? Prazo de entrega ok?" Mostra cuidado.</p>
+    </div>
+    <div class="mini-cad d5">
+      <span class="quando">15 dias após</span>
+      <h5>D+15 · Satisfação</h5>
+      <p style="font-size:13.5px;margin-top:4px"><em>Pós-venda D+15: FANTE — pedido fechado em 17/07</em></p>
+      <p style="font-size:13.5px;margin-top:6px">"Os pallets atenderam bem?" Ouça, resolva, peça indicação.</p>
+    </div>
+    <div class="mini-cad d10">
+      <span class="quando">45 dias após</span>
+      <h5>D+45 · Recompra</h5>
+      <p style="font-size:13.5px;margin-top:4px"><em>Pós-venda D+45: FANTE — pedido fechado em 17/07</em></p>
+      <p style="font-size:13.5px;margin-top:6px">"Está na hora de repor o estoque?" Cliente satisfeito compra de novo.</p>
+    </div>
+  </div>
+
+  <!-- RESGATE DE CARTEIRA -->
+  <div class="card-tarefa">
+    <div class="ct-titulo">🧰 Como aparece: <span class="real">Resgatar TK SOLUCOES — sem contato há 52 dias</span></div>
+    <div class="ct-corpo">
+      <div class="ct-linha"><span class="ic">🤔</span><span><b>O que significa:</b> um cliente da sua carteira está esquecido faz tempo. Cliente que já comprou é ouro — não deixe esfriar.</span></div>
+      <div class="ct-linha"><span class="ic">📏</span><span><b>Por que apareceu:</b> aos 45 dias vem o alerta; aos 60, vira crítico.</span></div>
+      <div class="ct-linha"><span class="ic">✅</span><span><b>Como resolver:</b> ligue sem "empurrar" venda: novidade, condição especial, ou só "sumimos, como estão as coisas?". Registre a conversa.</span></div>
+      <div class="ct-linha"><span class="ic">⏭️</span><span><b>Se ignorar:</b> escala e o cliente pode migrar pro concorrente de vez.</span></div>
+    </div>
+  </div>
+
+  <!-- REATIVAÇÃO -->
+  <div class="card-tarefa">
+    <div class="ct-titulo">♻️ Como aparece: <span class="real">Reativar TK SOLUCOES — perdido há 90+ dias</span></div>
+    <div class="ct-corpo">
+      <div class="ct-linha"><span class="ic">🤔</span><span><b>O que significa:</b> esse lead foi marcado como perdido há um bom tempo. O que travou lá atrás pode ter mudado.</span></div>
+      <div class="ct-linha"><span class="ic">✅</span><span><b>Como resolver:</b> abordagem nova — "voltamos com condição diferente", "lançamos um modelo novo". Se reacender, volta pro funil. Se não, conclua a tarefa e siga.</span></div>
+      <div class="ct-linha"><span class="ic">⏭️</span><span><b>Se ignorar:</b> rola pra frente; é dinheiro parado que o Xerife insiste em te lembrar.</span></div>
+    </div>
+  </div>
+
+  <!-- NOTA DE CONCLUSÃO -->
+  <h3 style="font-size:22px;margin:28px 0 8px;color:var(--azul-escuro)">✍️ Como escrever uma boa nota de conclusão</h3>
+  <p>Toda tarefa concluída pede uma nota. Ela é o que <strong>o próximo você</strong> (ou outro vendedor) vai ler daqui a duas semanas. Nota boa conta o que aconteceu e o próximo passo:</p>
+  <div class="nota-box">
+    <div class="nb ruim"><span class="rot">❌ Nota inútil</span><span class="exemplo">"ok"</span><br><span style="font-size:13px">Daqui a 10 dias ninguém lembra o que foi "ok".</span></div>
+    <div class="nb boa"><span class="rot">✅ Nota boa</span><span class="exemplo">"Falei com o Marcos. Achou o frete alto, vou reenviar com FOB. Retorno dele até sexta."</span></div>
+  </div>
+  <div class="nota-box">
+    <div class="nb ruim"><span class="rot">❌ Nota inútil</span><span class="exemplo">"liguei"</span><br><span style="font-size:13px">Ligou e… o quê? Atendeu? Ficou de quê?</span></div>
+    <div class="nb boa"><span class="rot">✅ Nota boa</span><span class="exemplo">"Não atendeu, mandei WhatsApp. Combinei de tentar de novo terça de manhã."</span></div>
+  </div>
+
+  <!-- FAQ -->
+  <h3 style="font-size:22px;margin:28px 0 8px;color:var(--azul-escuro)">❓ Perguntas rápidas</h3>
+  <div class="faq-item"><div class="q">O que é uma tarefa "Destravar"?</div><div class="a">É um aviso de que um lead ficou parado tempo demais na mesma etapa. O Xerife está te lembrando de dar o próximo passo antes que ele esfrie.</div></div>
+  <div class="faq-item"><div class="q">Por que apareceram várias tarefas de uma vez?</div><div class="a">Normal! Cada lead tem seus próprios prazos, e vários podem estourar no mesmo dia (ou logo depois de um feriado). Priorize as de primeiro contato e resposta pendente — são as mais quentes.</div></div>
+  <div class="faq-item"><div class="q">A tarefa sumiu da minha lista, o que houve?</div><div class="a">Se você não a concluiu, ela provavelmente <strong>rolou para o dia seguinte com prioridade maior</strong> — não some de vez. Procure em "hoje"; ela reaparece te cobrando de novo. 😉</div></div>
+
+  <div class="kid">
+    <svg width="40" height="40" viewBox="0 0 40 40"><rect x="4" y="14" width="32" height="8" rx="3" fill="#3E86E8" stroke="#0F4494" stroke-width="2.5"/><rect x="4" y="24" width="32" height="8" rx="3" fill="#3E86E8" stroke="#0F4494" stroke-width="2.5"/><rect x="10" y="2" width="20" height="11" rx="5" fill="#5C9CF0" stroke="#0F4494" stroke-width="2.5"/><g class="mini-olho"><circle cx="16" cy="7" r="1.8" fill="#12315C"/></g><g class="mini-olho"><circle cx="24" cy="7" r="1.8" fill="#12315C"/></g><path d="M16.5 10 Q20 12.5 23.5 10" stroke="#12315C" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>
+    <p><strong>Paletinho explica:</strong> o Xerife não é chato — ele é o amigo que te cutuca: "ó, não esquece do fulano!". Cada tarefa dele é uma moedinha que você quase deixou cair no chão.</p>
+  </div>
+</section>
+
+<!-- ============ FINAL ============ -->
+<section class="chapter" style="background:linear-gradient(180deg,#12315C,#1B5FBF);color:#fff;text-align:center;border:none">
+  <div class="paletinho-wrap">
+  <svg width="140" height="112" viewBox="0 0 120 96" role="img" aria-label="Paletinho comemorando">
+    <rect x="22" y="46" width="76" height="12" rx="5" fill="#3E86E8" stroke="#0F4494" stroke-width="3.5"/>
+    <rect x="22" y="62" width="76" height="12" rx="5" fill="#3E86E8" stroke="#0F4494" stroke-width="3.5"/>
+    <rect x="22" y="78" width="76" height="10" rx="5" fill="#3E86E8" stroke="#0F4494" stroke-width="3.5"/>
+    <rect x="34" y="14" width="52" height="28" rx="11" fill="#5C9CF0" stroke="#0F4494" stroke-width="3.5"/>
+    <g class="p-olho"><circle cx="50" cy="26" r="3.6" fill="#12315C"/></g>
+    <g class="p-olho"><circle cx="70" cy="26" r="3.6" fill="#12315C"/></g>
+    <path d="M50 33 Q60 40 70 33" stroke="#12315C" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <path class="estrela" d="M12 8 l3 8 8 3 -8 3 -3 8 -3 -8 -8 -3 8 -3z" fill="#FFC833"/>
+    <path class="estrela" style="animation-delay:1s" d="M106 4 l2.5 6 6 2.5 -6 2.5 -2.5 6 -2.5 -6 -6 -2.5 6 -2.5z" fill="#FFC833"/>
+  </svg>
+  </div>
+  <h2 style="font-size:28px;margin:14px 0 10px">Resumo em uma frase</h2>
+  <p style="max-width:560px;margin:0 auto;font-size:18px">O CRM é o caderninho mágico da Inplastic: <strong>tudo que acontece com um cliente entra nele na hora</strong>, cada lead sempre tem uma <strong>próxima tarefa</strong>, e <strong>nenhuma venda morre por esquecimento</strong>.</p>
+  <button id="btn-festa" style="margin-top:22px;background:var(--amarelo);color:var(--azul-escuro);font-family:'Baloo 2';font-weight:800;font-size:17px;border:none;border-radius:999px;padding:12px 26px;cursor:pointer;box-shadow:0 4px 0 #b8860b">Aconteceu? Anotou! ✏️ 🎉</button>
+</section>
+
+</main>
+<footer style="text-align:center;font-size:13px;color:var(--cinza);padding:10px 0 40px">Versão 2.0 animada · Julho/2026 · Inplastic — crm.inplastic.com.br</footer>
+
+<script>
+const $=s=>document.querySelector(s);
+
+/* barra de progresso da leitura */
+window.addEventListener('scroll',()=>{
+  const h=document.documentElement;
+  const p=h.scrollTop/(h.scrollHeight-h.clientHeight)*100;
+  $('#progresso').style.width=p+'%';
+},{passive:true});
+
+/* capítulos aparecem ao rolar */
+const io=new IntersectionObserver(es=>es.forEach(e=>{
+  if(e.isIntersecting){e.target.classList.add('visivel');io.unobserve(e.target);}
+}),{threshold:.12});
+document.querySelectorAll('.chapter').forEach(c=>io.observe(c));
+
+/* navegador digitando a URL em loop */
+(function(){
+  const alvo='crm.inplastic.com.br', el=document.getElementById('url-digitada');
+  if(!el)return;
+  let i=0;
+  (function tick(){
+    el.textContent=alvo.slice(0,i)+(i<alvo.length?'|':'');
+    i++;
+    if(i<=alvo.length){setTimeout(tick,110);}
+    else{setTimeout(()=>{i=0;tick();},3200);}
+  })();
+})();
+
+/* ================== TOUR DO MOUSE (multi-telas) ================== */
+const stage=$('#tour-stage'), cursor=$('#tour-cursor');
+let rodando=false, cancelar=false;
+
+function ajustaEscala(){
+  const vp=document.getElementById('tour-viewport');
+  const s=Math.min(vp.clientWidth,920)/920;
+  $('#tour-scaler').style.transform=`scale(${s})`;
+  vp.style.height=(560+6)*s+'px';
+}
+window.addEventListener('resize',ajustaEscala);ajustaEscala();
+
+const dorme=ms=>new Promise(r=>{
+  const t0=performance.now();
+  (function chk(t){ if(cancelar) return r(); (t-t0>=ms)?r():requestAnimationFrame(chk); })(t0);
+});
+function mostraTela(id){
+  document.querySelectorAll('#tour-stage .tela').forEach(t=>t.classList.remove('ativa'));
+  $(id).classList.add('ativa');
+}
+function posDe(el,dx=0.5,dy=0.5){
+  const r=el.getBoundingClientRect(), s=stage.getBoundingClientRect();
+  const esc=s.width/920;
+  return {x:(r.left-s.left)/esc + (r.width/esc)*dx, y:(r.top-s.top)/esc + (r.height/esc)*dy};
+}
+async function moveAte(x,y,dur=900){
+  const x0=parseFloat(cursor.style.left||'40'), y0=parseFloat(cursor.style.top||'40');
+  const t0=performance.now();
+  return new Promise(res=>{(function passo(t){
+    if(cancelar) return res();
+    let p=Math.min((t-t0)/dur,1);
+    p=p<.5?2*p*p:1-Math.pow(-2*p+2,2)/2;
+    cursor.style.left=(x0+(x-x0)*p)+'px';
+    cursor.style.top=(y0+(y-y0)*p)+'px';
+    p<1?requestAnimationFrame(passo):res();
+  })(t0)});
+}
+async function moveAteEl(el,dx=0.5,dy=0.5,dur=850){const p=posDe(el,dx,dy);await moveAte(p.x,p.y,dur);}
+async function clica(){
+  if(cancelar)return;
+  const r=document.createElement('div');r.className='ripple';
+  r.style.left=(parseFloat(cursor.style.left)-4)+'px';
+  r.style.top=(parseFloat(cursor.style.top)-4)+'px';
+  stage.appendChild(r);setTimeout(()=>r.remove(),550);
+  cursor.style.transform='scale(.8)';await dorme(120);cursor.style.transform='scale(1)';
+  await dorme(180);
+}
+async function aperta(btn){btn.classList.add('apertado');await dorme(150);btn.classList.remove('apertado');}
+function legenda(n,txt){$('#leg-num').textContent=n;$('#leg-texto').textContent=txt;}
+async function digita(el,txt,vel=50){
+  el.innerHTML='';const caret=document.createElement('span');caret.className='caret';
+  const span=document.createElement('span');el.appendChild(span);el.appendChild(caret);
+  for(const ch of txt){ if(cancelar)break; span.textContent+=ch; await dorme(vel+Math.random()*45); }
+  caret.remove();
+}
+async function preenche(el,txt){el.textContent=txt;el.classList.add('auto');await dorme(420);}
+async function toast(txt,tempo=2800){
+  $('#toast-txt').textContent=txt;
+  $('#tour-toast').classList.add('mostra');
+  await dorme(tempo);
+  $('#tour-toast').classList.remove('mostra');
+}
+function confetti(alvo){
+  const cores=['#FFC833','#2FA84F','#1B5FBF','#E4553F','#5C9CF0'];
+  for(let i=0;i<36;i++){
+    const c=document.createElement('div');c.className='confete';
+    c.style.left=(40+Math.random()*840)+'px';c.style.top='-20px';
+    c.style.background=cores[i%cores.length];
+    c.style.animationDelay=(Math.random()*.5)+'s';
+    alvo.appendChild(c);setTimeout(()=>c.remove(),2400);
+  }
+}
+function contaPills(){
+  document.querySelectorAll('#tela-funil .col').forEach(col=>{
+    const pill=col.querySelector('.pill');
+    if(pill) pill.textContent=col.querySelectorAll('.card').length;
+  });
+}
+function cardJoaoHTML(){return `
+  <div class="nome">João Ferreira</div>
+  <div class="empresa">LogBrasil · 500 PBR</div>
+  <div class="tags"><span class="tag whats">💬 Lucas</span><span class="tag valor">R$ 42.500</span><span class="tag tarefa tag-tarefa" style="display:none">📌 9h</span><span class="tag tarefa tag-prop" style="display:none">📄 #184</span></div>`;}
+function cardHorizonteHTML(){return `
+  <div class="nome">Dist. Horizonte</div>
+  <div class="empresa">Campinas/SP · 300 H7</div>
+  <div class="tags"><span class="tag tarefa">📞 origem: telefone</span></div>`;}
+async function arrasta(card,destinoSel){
+  const dest=$(destinoSel), flyer=$('#flyer');
+  const pIni=posDe(card,0,0);
+  flyer.innerHTML='<div class="card destaque">'+card.innerHTML+'</div>';
+  flyer.style.display='block';flyer.style.left=pIni.x+'px';flyer.style.top=pIni.y+'px';
+  card.style.visibility='hidden';
+  const alvo=posDe(dest,0.5,0.42);
+  const dur=1100,t0=performance.now();
+  const c0={x:parseFloat(cursor.style.left),y:parseFloat(cursor.style.top)};
+  const f0={x:pIni.x,y:pIni.y};
+  const aC={x:alvo.x,y:alvo.y}, aF={x:alvo.x-54,y:alvo.y-16};
+  await new Promise(res=>{(function passo(t){
+    if(cancelar)return res();
+    let pr=Math.min((t-t0)/dur,1);pr=pr<.5?2*pr*pr:1-Math.pow(-2*pr+2,2)/2;
+    cursor.style.left=(c0.x+(aC.x-c0.x)*pr)+'px';
+    cursor.style.top=(c0.y+(aC.y-c0.y)*pr)+'px';
+    flyer.style.left=(f0.x+(aF.x-f0.x)*pr)+'px';
+    flyer.style.top=(f0.y+(aF.y-f0.y)*pr)+'px';
+    pr<1?requestAnimationFrame(passo):res();
+  })(t0)});
+  flyer.style.display='none';
+  card.style.visibility='visible';card.classList.add('pop');
+  dest.appendChild(card);
+  contaPills();
+  await clica();
+}
+function resetTour(){
+  mostraTela('#tela-login');
+  ['#login-email-txt','#login-senha-txt','#cnpj-txt','#ctt-txt','#zap-txt','#qtd2-txt','#obs-txt',
+   '#prod-txt','#qtd-txt','#cep-txt','#texto-tarefa'].forEach(s=>{$(s).innerHTML='';});
+  ['#f-razao','#f-fantasia','#f-cidade','#f-cep','#f-fone'].forEach(s=>{$(s).textContent='';$(s).classList.remove('auto');});
+  $('#origem-txt').textContent='Selecionar…';$('#prod2-txt').textContent='Selecionar…';
+  $('#dd-origem').classList.remove('aberto');$('#dd-prod2').classList.remove('aberto');
+  $('#op-tel').classList.remove('hover');$('#op-h7').classList.remove('hover');
+  document.querySelectorAll('.tarefa').forEach(t=>{t.classList.remove('feita');t.querySelector('.chk').textContent='';});
+  ['#card-joao','#card-horizonte'].forEach(s=>{const c=document.querySelector(s);if(c)c.remove();});
+  const silva=document.getElementById('card-silva');
+  $('#col-negoc').appendChild(silva);
+  silva.querySelectorAll('.tag-perda').forEach(t=>t.remove());
+  silva.style.visibility='visible';
+  $('#dd-prod').classList.remove('aberto');$('#dd-pgto').classList.remove('aberto');
+  $('#op-pbr').classList.remove('hover');$('#op-28').classList.remove('hover');
+  $('#item-nome').textContent='—';$('#item-unit').textContent='—';$('#item-sub').textContent='—';
+  $('#pgto-txt').textContent='Selecionar…';$('#total-txt').textContent='R$ —';
+  $('#frete-res').classList.remove('mostra');
+  $('#btn-frete').textContent='🚚 Simular frete';
+  $('#btn-buscar-cnpj').textContent='🔎 Buscar CNPJ';
+  $('#btn-criar-prop').style.display='none';
+  $('#tour-toast').classList.remove('mostra');
+  $('#tour-modal').style.display='none';$('#tour-modal').classList.remove('aberto');
+  $('#modal-motivo').style.display='none';$('#modal-motivo').classList.remove('aberto');
+  $('#tour-overlay').style.display='none';
+  $('#opcao-preco').classList.remove('escolhida');
+  contaPills();
+  cursor.style.left='120px';cursor.style.top='120px';
+}
+async function tour(){
+  if(rodando)return; rodando=true; cancelar=false;
+  resetTour();
+
+  /* 1 · LOGIN */
+  legenda('1','Tela de entrada: o vendedor digita e-mail e senha em crm.inplastic.com.br.');
+  await dorme(900); if(cancelar)return fim();
+  await moveAteEl($('#campo-email'),0.25);await clica();
+  $('#campo-email').classList.add('foco');
+  await digita($('#login-email-txt'),'vendedor@inplastic.com.br',38);
+  $('#campo-email').classList.remove('foco');
+  await moveAteEl($('#campo-senha'),0.25,0.5,550);await clica();
+  $('#campo-senha').classList.add('foco');
+  await digita($('#login-senha-txt'),'••••••••',65);
+  $('#campo-senha').classList.remove('foco');
+  await moveAteEl($('#btn-entrar'),0.5,0.5,550);await clica(); if(cancelar)return fim();
+  await aperta($('#btn-entrar'));
+  mostraTela('#tela-tarefas');
+  await dorme(700);
+
+  /* 2 · TAREFAS */
+  legenda('2','O dia começa pelas tarefas pendentes — a lista do dia. Fez? Marca!');
+  await dorme(1100); if(cancelar)return fim();
+  const chk=$('#tarefa-1 .chk');
+  await moveAteEl(chk);await clica(); if(cancelar)return fim();
+  $('#tarefa-1').classList.add('feita');chk.textContent='✓';
+  await dorme(1200);
+
+  /* 3 · FUNIL */
+  legenda('3','No menu lateral, o Funil: as 7 etapas da venda, lado a lado.');
+  await moveAteEl($('#menu-funil'));await clica(); if(cancelar)return fim();
+  mostraTela('#tela-funil');contaPills();
+  await dorme(1100);
+
+  /* 4 · LEAD DO LUCAS */
+  legenda('4','O Lucas 🤖 estava atendendo o João no WhatsApp… qualificou e o lead cai em Novo ✨.');
+  const card=document.createElement('div');card.className='card pop destaque';card.id='card-joao';
+  card.innerHTML=cardJoaoHTML();$('#col-atend').appendChild(card);contaPills();
+  await dorme(1800); if(cancelar)return fim();
+  card.classList.remove('pop');void card.offsetWidth;
+  $('#col-novo').appendChild(card);card.classList.add('pop');contaPills();
+  await dorme(1500);
+
+  /* 5 · CADASTRO MANUAL + CNPJ */
+  legenda('5','Um cliente ligou na fábrica! Para cadastrar na mão: botão ➕ Novo Lead.');
+  await moveAteEl($('#btn-novo-lead'));await clica(); if(cancelar)return fim();
+  await aperta($('#btn-novo-lead'));
+  mostraTela('#tela-cadastro');
+  await dorme(1000);
+  legenda('5','Repare nas etiquetas: 🤖 o CRM preenche sozinho · ✍️ o vendedor preenche.');
+  await dorme(2200); if(cancelar)return fim();
+
+  /* 6 · BUSCA CNPJ */
+  legenda('6','O vendedor digita SÓ o CNPJ e clica em Buscar: o CRM consulta a Receita Federal…');
+  await moveAteEl($('#campo-cnpj'),0.25);await clica(); if(cancelar)return fim();
+  $('#campo-cnpj').classList.add('foco');
+  await digita($('#cnpj-txt'),'12.345.678/0001-90',45);
+  $('#campo-cnpj').classList.remove('foco');
+  await moveAteEl($('#btn-buscar-cnpj'),0.5,0.5,550);await clica(); if(cancelar)return fim();
+  await aperta($('#btn-buscar-cnpj'));
+  $('#btn-buscar-cnpj').textContent='⏳ Consultando…';
+  await dorme(1300);
+  $('#btn-buscar-cnpj').textContent='✅ Encontrado!';
+  legenda('6','…e TODOS os campos 🤖 preenchem sozinhos: razão social, fantasia, cidade, CEP e telefone!');
+  await preenche($('#f-razao'),'Distribuidora Horizonte Ltda');
+  await preenche($('#f-fantasia'),'Horizonte Log');
+  await preenche($('#f-cidade'),'Campinas / SP');
+  await preenche($('#f-cep'),'13087-000');
+  await preenche($('#f-fone'),'(19) 3232-4455');
+  await dorme(900); if(cancelar)return fim();
+
+  /* 7 · CAMPOS DO VENDEDOR */
+  legenda('7','Agora os campos ✍️: quem é o contato e o WhatsApp dele…');
+  await moveAteEl($('#campo-ctt'),0.3);await clica();
+  $('#campo-ctt').classList.add('foco');
+  await digita($('#ctt-txt'),'Marcos (compras)',38);
+  $('#campo-ctt').classList.remove('foco');
+  await moveAteEl($('#campo-zap'),0.3,0.5,500);await clica();
+  $('#campo-zap').classList.add('foco');
+  await digita($('#zap-txt'),'(19) 99888-7766',38);
+  $('#campo-zap').classList.remove('foco');
+  legenda('7','…de onde o lead veio (origem) e qual produto interessa:');
+  await moveAteEl($('#campo-origem'),0.35,0.5,550);await clica(); if(cancelar)return fim();
+  $('#dd-origem').classList.add('aberto');
+  await dorme(700);
+  await moveAteEl($('#op-tel'),0.35);
+  $('#op-tel').classList.add('hover');await clica();
+  $('#dd-origem').classList.remove('aberto');
+  $('#origem-txt').textContent='📞 Telefone';
+  await moveAteEl($('#campo-prod2'),0.35,0.5,550);await clica(); if(cancelar)return fim();
+  $('#dd-prod2').classList.add('aberto');
+  await dorme(700);
+  await moveAteEl($('#op-h7'),0.35);
+  $('#op-h7').classList.add('hover');await clica();
+  $('#dd-prod2').classList.remove('aberto');
+  $('#prod2-txt').textContent='Pallet H7 1100×1100';
+  legenda('7','Quantidade, uma observação… e salvar!');
+  await moveAteEl($('#campo-qtd2'),0.35,0.5,500);await clica();
+  $('#campo-qtd2').classList.add('foco');
+  await digita($('#qtd2-txt'),'300',110);
+  $('#campo-qtd2').classList.remove('foco');
+  await moveAteEl($('#campo-obs'),0.25,0.5,450);await clica();
+  $('#campo-obs').classList.add('foco');
+  await digita($('#obs-txt'),'Precisa p/ o próximo mês',34);
+  $('#campo-obs').classList.remove('foco');
+  await moveAteEl($('#btn-salvar-lead'),0.5,0.5,550);await clica(); if(cancelar)return fim();
+  await aperta($('#btn-salvar-lead'));
+  mostraTela('#tela-funil');
+  const cardH=document.createElement('div');cardH.className='card pop';cardH.id='card-horizonte';
+  cardH.innerHTML=cardHorizonteHTML();$('#col-novo').appendChild(cardH);contaPills();
+  await toast('Lead Distribuidora Horizonte criado em Novo!',2200); if(cancelar)return fim();
+
+  /* 8 · FICHA + TAREFA */
+  legenda('8','De volta ao João: o vendedor abre a ficha e cria a próxima tarefa. Lead sem tarefa é lead esquecido!');
+  await moveAteEl(card);await clica(); if(cancelar)return fim();
+  $('#tour-overlay').style.display='block';$('#tour-modal').style.display='block';
+  await dorme(40);$('#tour-modal').classList.add('aberto');
+  await dorme(1100);
+  const campoT=$('#campo-tarefa');
+  await moveAteEl(campoT,0.3);await clica(); if(cancelar)return fim();
+  campoT.classList.add('foco');
+  await digita($('#texto-tarefa'),'Ligar amanhã às 9h 📞');
+  campoT.classList.remove('foco');
+  await moveAteEl($('#btn-salvar'),0.5,0.5,650);await clica(); if(cancelar)return fim();
+  await aperta($('#btn-salvar'));
+  card.querySelector('.tag-tarefa').style.display='inline-block';
+  $('#btn-criar-prop').style.display='inline-block';
+  await dorme(700);
+
+  /* 9 · CRIAR PROPOSTA */
+  legenda('9','Conversou, qualificou… hora da proposta: botão 📄 Criar proposta.');
+  await moveAteEl($('#btn-criar-prop'),0.5,0.5,650);await clica(); if(cancelar)return fim();
+  await aperta($('#btn-criar-prop'));
+  $('#tour-modal').classList.remove('aberto');await dorme(250);
+  $('#tour-modal').style.display='none';$('#tour-overlay').style.display='none';
+  card.classList.remove('pop');void card.offsetWidth;
+  $('#col-qualif').appendChild(card);card.classList.add('pop');contaPills();
+  mostraTela('#tela-proposta');
+  await dorme(1000);
+
+  /* 10 · PRODUTO */
+  legenda('10','Busca no catálogo: digitou "PBR", o produto aparece — é só escolher.');
+  await moveAteEl($('#campo-prod'),0.2);await clica(); if(cancelar)return fim();
+  $('#campo-prod').classList.add('foco');
+  await digita($('#prod-txt'),'PBR',110);
+  $('#dd-prod').classList.add('aberto');
+  await dorme(800);
+  await moveAteEl($('#op-pbr'),0.35);
+  $('#op-pbr').classList.add('hover');await clica(); if(cancelar)return fim();
+  $('#dd-prod').classList.remove('aberto');
+  $('#campo-prod').classList.remove('foco');
+  $('#prod-txt').textContent='Pallet PBR 1200×1000 mm';
+  $('#item-nome').textContent='Pallet PBR 1200×1000';
+  $('#item-unit').textContent='R$ 85,00';
+  await dorme(600);
+  legenda('11','Quantidade: 500 unidades — o subtotal calcula na hora.');
+  await moveAteEl($('#campo-qtd'),0.4,0.5,600);await clica();
+  $('#campo-qtd').classList.add('foco');
+  await digita($('#qtd-txt'),'500',130);
+  $('#campo-qtd').classList.remove('foco');
+  $('#item-sub').textContent='R$ 42.500';$('#item-sub').classList.add('auto');
+  await dorme(1000); if(cancelar)return fim();
+
+  /* 12 · FRETE */
+  legenda('12','Frete e prazo: digita o CEP de entrega e clica em Simular…');
+  await moveAteEl($('#campo-cep'),0.3);await clica();
+  $('#campo-cep').classList.add('foco');
+  await digita($('#cep-txt'),'13087-000',75);
+  $('#campo-cep').classList.remove('foco');
+  await moveAteEl($('#btn-frete'),0.5,0.5,600);await clica(); if(cancelar)return fim();
+  await aperta($('#btn-frete'));
+  $('#btn-frete').textContent='⏳ Calculando…';
+  await dorme(1300);
+  $('#btn-frete').textContent='🚚 Simular frete';
+  $('#frete-res').classList.add('mostra');
+  legenda('12','…R$ 3.900 e entrega em 5 dias úteis. Cliente sabe tudo antes de fechar.');
+  await dorme(1600); if(cancelar)return fim();
+
+  /* 13 · CONDIÇÕES + TOTAL */
+  legenda('13','Condição de pagamento: boleto 28 dias. O total fecha sozinho.');
+  await moveAteEl($('#campo-pgto'),0.35);await clica();
+  $('#dd-pgto').classList.add('aberto');
+  await dorme(800);
+  await moveAteEl($('#op-28'),0.35);
+  $('#op-28').classList.add('hover');await clica(); if(cancelar)return fim();
+  $('#dd-pgto').classList.remove('aberto');
+  $('#pgto-txt').textContent='Boleto 28 dias';
+  await dorme(400);
+  $('#total-txt').textContent='R$ 46.400';
+  await dorme(1100);
+
+  /* 14 · ENVIAR */
+  legenda('14','Pronto: 📤 gerar e enviar. A proposta vira PDF e vai por e-mail — e o lead pula para Proposta.');
+  await moveAteEl($('#btn-enviar'),0.5,0.5,700);await clica(); if(cancelar)return fim();
+  await aperta($('#btn-enviar'));
+  mostraTela('#tela-funil');
+  card.classList.remove('pop');void card.offsetWidth;
+  $('#col-prop').appendChild(card);card.classList.add('pop');contaPills();
+  card.querySelector('.tag-prop').style.display='inline-block';
+  await toast('Proposta #2026-184 enviada por e-mail ao cliente! 📤',2600); if(cancelar)return fim();
+
+  /* 15 · NEGOCIAÇÃO */
+  legenda('15','O cliente pediu desconto no frete — negociação 🤝. Arrasta!');
+  await moveAteEl(card,0.5,0.5,700);await clica(); if(cancelar)return fim();
+  await arrasta(card,'#col-negoc');
+  await dorme(1500);
+
+  /* 16 · GANHO */
+  legenda('16','FECHOU!! Ganho ✅ — e o valor da proposta vira pedido de venda.');
+  await moveAteEl(card,0.5,0.5,600);await clica(); if(cancelar)return fim();
+  await arrasta(card,'#col-ganho');
+  confetti(stage);
+  await dorme(400);
+  await toast('Pedido de venda criado no Omie automaticamente! ⚙️',2800); if(cancelar)return fim();
+
+  /* 17 · PERDIDO */
+  legenda('17','E quando não dá? O Transportes Silva desistiu: Perdido ❌ — sempre com o motivo.');
+  const silva=document.getElementById('card-silva');
+  await moveAteEl(silva,0.5,0.5,800);await clica(); if(cancelar)return fim();
+  await arrasta(silva,'#col-perd');
+  $('#tour-overlay').style.display='block';$('#modal-motivo').style.display='block';
+  await dorme(40);$('#modal-motivo').classList.add('aberto');
+  await dorme(950);
+  await moveAteEl($('#opcao-preco'));await clica(); if(cancelar)return fim();
+  $('#opcao-preco').classList.add('escolhida');
+  await dorme(850);
+  $('#modal-motivo').classList.remove('aberto');await dorme(260);
+  $('#modal-motivo').style.display='none';$('#tour-overlay').style.display='none';
+  const tagPerda=document.createElement('span');
+  tagPerda.className='tag tag-perda';tagPerda.style.background='#FCEEEA';tagPerda.style.color='#B54B3A';
+  tagPerda.textContent='💰 Preço';
+  silva.querySelector('.tags').appendChild(tagPerda);
+  await dorme(1100);
+
+  legenda('★','Fim! Login → tarefas → cadastro com CNPJ → ficha → proposta com produto, frete e prazo → Ganho no Omie. Aperte ↺ para rever.');
+  fim();
+}
+function fim(){rodando=false;}
+$('#btn-play').addEventListener('click',()=>tour());
+$('#btn-replay').addEventListener('click',async()=>{cancelar=true;await dorme(80);rodando=false;tour();});
+
+/* confete no botão final */
+document.getElementById('btn-festa').addEventListener('click',function(){
+  const sec=this.closest('.chapter');
+  sec.style.position='relative';sec.style.overflow='hidden';
+  const cores=['#FFC833','#2FA84F','#fff','#E4553F','#5C9CF0'];
+  for(let i=0;i<40;i++){
+    const c=document.createElement('div');c.className='confete';
+    c.style.left=(Math.random()*100)+'%';c.style.top='-20px';
+    c.style.background=cores[i%cores.length];
+    c.style.animationDelay=(Math.random()*.6)+'s';
+    sec.appendChild(c);setTimeout(()=>c.remove(),2600);
+  }
+});
+</script>
+</body>
+</html>
