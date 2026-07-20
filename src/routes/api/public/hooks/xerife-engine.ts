@@ -517,10 +517,11 @@ async function runEngine(
       if (await alreadyActed(sb, regra, l.id, 7 * 24)) continue;
       if (await hasOpenTask(sb, l.id, "resgate_carteira")) continue;
 
+      const diasSem45 = diasDesde(l.last_contact_at, now);
       await criarTarefa({
         regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id,
         tipo: "resgate_carteira",
-        titulo: `Reaquecer cliente: ${l.company}`,
+        titulo: withCtx(`Resgatar ${l.company}`, diasSem45 != null ? `sem contato há ${diasSem45} dias` : null),
         descricao: `Cliente ganho sem contato há +${cfg.carteira_alerta_dias} dias.`,
         motivo: `Cliente ganho sem contato há +${cfg.carteira_alerta_dias} dias.`,
         prioridade: 3,
