@@ -23,6 +23,66 @@ import {
 import { alreadyActed, hasOpenTask, logAction } from "@/lib/xerife/dedupe.server";
 import { notifyOwner, notifyDiretoria, crmLeadLink } from "@/lib/xerife/notify.server";
 
+// ─── Helpers de contexto para títulos de tarefas (regras gerais):
+//   • sufixo sempre no fim, separado por " — "
+//   • se o timestamp for nulo/invalid, devolvemos "" e o título fica sem sufixo
+//   • datas em DD/MM, horas em HHhMM, arredondamento para baixo
+const SP_TZ = "America/Sao_Paulo";
+function _valid(iso: string | null | undefined): Date | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? null : d;
+}
+function fmtDDMM(iso: string | null | undefined): string | null {
+  const d = _valid(iso);
+  if (!d) return null;
+  const p = new Intl.DateTimeFormat("pt-BR", { timeZone: SP_TZ, day: "2-digit", month: "2-digit" }).format(d);
+  return p;
+}
+function fmtHHhMM(iso: string | null | undefined): string | null {
+  const d = _valid(iso);
+  if (!d) return null;
+  const parts = new Intl.DateTimeFormat("pt-BR", { timeZone: SP_TZ, hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(d);
+  const hh = parts.find((x) => x.type === "hour")?.value ?? "00";
+  const mm = parts.find((x) => x.type === "minute")?.value ?? "00";
+  return `${hh}h${mm}`;
+}
+function diasDesde(iso: string | null | undefined, now: Date): number | null {
+  const d = _valid(iso);
+  if (!d) return null;
+  return Math.max(0, Math.floor((now.getTime() - d.getTime()) / 86400_000));
+}
+function horasDesde(iso: string | null | undefined, now: Date): number | null {
+  const d = _valid(iso);
+  if (!d) return null;
+  return Math.max(0, Math.floor((now.getTime() - d.getTime()) / 3600_000));
+}
+const STAGE_LABEL: Record<string, string> = {
+  novo: "Novo",
+  qualificacao: "Qualificação",
+  proposta: "Proposta",
+  negociacao: "Negociação",
+  ganho: "Ganho",
+  perdido: "Perdido",
+};
+const CANAL_LABEL: Record<string, string> = {
+  whatsapp: "WhatsApp",
+  site: "Site",
+  telefone: "Telefone",
+  indicacao: "Indicação",
+  email: "E-mail",
+};
+function canalLabel(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const k = String(raw).trim().toLowerCase();
+  if (!k) return null;
+  return CANAL_LABEL[k] ?? raw;
+}
+/** Concatena base + sufixo se o sufixo estiver preenchido; senão devolve só a base. */
+function withCtx(base: string, ctx: string | null | undefined): string {
+  return ctx && ctx.trim() ? `${base} — ${ctx.trim()}` : base;
+}
+
 export type XerifePlanItem = {
   regra: string;
   lead_id: string;
