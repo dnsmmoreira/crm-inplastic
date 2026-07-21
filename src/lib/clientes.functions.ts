@@ -273,6 +273,9 @@ export const createCliente = createServerFn({ method: "POST" })
         vendedor_id: vendedorId,
         criado_por: context.userId,
         ativo: clean.ativo !== false,
+        simples_optante: clean.simples_optante ?? null,
+        suframa_isento: clean.suframa_isento ?? null,
+        suframa_numero: (clean.suframa_numero ?? "").trim() || null,
       })
       .select("*")
       .single();
