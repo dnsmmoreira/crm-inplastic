@@ -1344,6 +1344,30 @@ function PropostaDetalhe() {
           </div>
         )}
 
+        {(emitter.banco || emitter.agencia || emitter.conta || emitter.pix) && (
+          <div className="mb-6">
+            <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Dados para pagamento</div>
+            <div className="border rounded p-3 bg-muted/10 text-[11px] leading-relaxed">
+              <div className="font-semibold">{emitter.legalName}</div>
+              <div>CNPJ: {emitter.cnpj}</div>
+              {emitter.banco && <div>Banco: {emitter.banco}</div>}
+              {(emitter.agencia || emitter.conta) && (
+                <div>
+                  {emitter.agencia && <>Agência: <span className="font-mono">{emitter.agencia}</span></>}
+                  {emitter.agencia && emitter.conta && " · "}
+                  {emitter.conta && <>Conta corrente: <span className="font-mono">{emitter.conta}</span></>}
+                </div>
+              )}
+              {emitter.pix && (
+                <div className="mt-1">
+                  <span>Chave PIX:</span>{" "}
+                  <span className="font-mono font-semibold select-all">{emitter.pix}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="text-[11px] mt-6">Atenciosamente,<br/>Departamento de Vendas</div>
 
         <div className="mt-8 grid grid-cols-3 gap-6 text-[11px]">
