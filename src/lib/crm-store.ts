@@ -1145,6 +1145,10 @@ export const useCrm = create<CrmState>()(
         }
 
         set((s) => ({ proposals: [proposal, ...s.proposals] }));
+        if (emitterReason) {
+          const brand = get().emitters.find((e) => e.id === emitterId)?.brand ?? "";
+          toast.success(`Emissora sugerida: ${brand} — ${emitterReason}`);
+        }
         return id;
       },
 
