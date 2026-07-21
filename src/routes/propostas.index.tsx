@@ -477,7 +477,7 @@ function NovaPropostaDialog({ open, onOpenChange }: { open: boolean; onOpenChang
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="w-[calc(100vw-2rem)] max-w-lg max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader><DialogTitle>Nova proposta comercial</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <Label>Selecione o lead / cliente</Label>
@@ -487,7 +487,7 @@ function NovaPropostaDialog({ open, onOpenChange }: { open: boolean; onOpenChang
                 value={query}
                 onValueChange={setQuery}
               />
-              <CommandList className="max-h-72">
+              <CommandList className="max-h-60 sm:max-h-72">
                 <CommandEmpty>
                   <div className="py-4 text-sm text-muted-foreground">
                     Nenhum lead encontrado.
@@ -508,7 +508,7 @@ function NovaPropostaDialog({ open, onOpenChange }: { open: boolean; onOpenChang
                         onSelect={() => setSelectedLeadId(l.id)}
                         className="flex items-start gap-2"
                       >
-                        <Check className={cn("h-4 w-4 mt-1", isSel ? "opacity-100" : "opacity-0")} />
+                        <Check className={cn("h-4 w-4 mt-1 shrink-0", isSel ? "opacity-100" : "opacity-0")} />
                         <div className="flex-1 min-w-0">
                           <div className="font-medium truncate">{l.company}</div>
                           {subtitle && (
@@ -523,9 +523,9 @@ function NovaPropostaDialog({ open, onOpenChange }: { open: boolean; onOpenChang
             </Command>
 
             {selectedLead && (
-              <div className="border rounded-md p-3 bg-accent/30 text-sm">
-                <div className="font-semibold">{selectedLead.company}</div>
-                <div className="text-xs text-muted-foreground">
+              <div className="border rounded-md p-3 bg-accent/30 text-sm min-w-0">
+                <div className="font-semibold truncate">{selectedLead.company}</div>
+                <div className="text-xs text-muted-foreground truncate">
                   {selectedLead.cnpj
                     ? formatCnpj(selectedLead.cnpj.replace(/\D/g, ""))
                     : "Sem CNPJ cadastrado"}
@@ -540,9 +540,10 @@ function NovaPropostaDialog({ open, onOpenChange }: { open: boolean; onOpenChang
               </Button>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:gap-0">
+            <Button variant="ghost" className="w-full sm:w-auto" onClick={() => onOpenChange(false)}>Cancelar</Button>
             <Button
+              className="w-full sm:w-auto"
               disabled={!selectedLeadId || criando}
               onClick={() => selectedLeadId && criarProposta(selectedLeadId)}
             >
@@ -550,6 +551,7 @@ function NovaPropostaDialog({ open, onOpenChange }: { open: boolean; onOpenChang
             </Button>
           </DialogFooter>
         </DialogContent>
+
       </Dialog>
 
       <NovoClienteDialog
