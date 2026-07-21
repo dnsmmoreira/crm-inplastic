@@ -129,6 +129,10 @@ function EmitterForm({
       whatsapp: form.whatsapp.trim(),
       email: form.email.trim(),
       website: form.website.trim(),
+      banco: form.banco?.trim() ?? "",
+      agencia: form.agencia?.trim() ?? "",
+      conta: form.conta?.trim() ?? "",
+      pix: form.pix?.trim() ?? "",
     });
     setDirty(false);
     toast.success(`Dados de ${form.brand} atualizados.`);
