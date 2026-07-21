@@ -347,7 +347,6 @@ function ProductDialog({
 }
 
 // small helper hook to reset form when dialog opens
-import { useEffect } from "react";
 function useMemoReset(trigger: boolean, fn: () => void) {
   useEffect(() => { if (trigger) fn(); }, [trigger]);
 }
