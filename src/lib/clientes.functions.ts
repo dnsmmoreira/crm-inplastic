@@ -30,6 +30,9 @@ export type ClienteRow = {
   ativo: boolean;
   omie_codigo_cliente_inplastic: number | null;
   omie_codigo_cliente_taoplast: number | null;
+  simples_optante: boolean | null;
+  suframa_isento: boolean | null;
+  suframa_numero: string | null;
 };
 
 export type ClienteInput = {
@@ -54,6 +57,9 @@ export type ClienteInput = {
   empresa_padrao: string;
   vendedor_id?: string | null;
   ativo?: boolean;
+  simples_optante?: boolean | null;
+  suframa_isento?: boolean | null;
+  suframa_numero?: string | null;
 };
 
 function validateInput(d: ClienteInput): { errors: string[]; clean: ClienteInput } {
