@@ -1,0 +1,2 @@
+ALTER TABLE public.produtos ADD COLUMN IF NOT EXISTS stack_height_cm numeric NULL;
+COMMENT ON COLUMN public.produtos.stack_height_cm IS 'Altura real do volume completo empilhado/aninhado em cm. Quando preenchida, o motor de logística usa este valor no lugar de height_cm × pecas_por_coluna (para produtos aninháveis).';
