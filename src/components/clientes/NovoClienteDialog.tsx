@@ -132,6 +132,9 @@ export function NovoClienteDialog({ open, onOpenChange, cnpjInicial, onClienteCr
         observacao: state.observacao,
         empresa_padrao: state.empresa_padrao,
         vendedor_id: isAdmin ? state.vendedor_id : undefined,
+        simples_optante: state.simples_optante ?? null,
+        suframa_isento: state.suframa_isento ?? null,
+        suframa_numero: state.suframa_numero ?? null,
       } });
 
       if (res.ok) {
