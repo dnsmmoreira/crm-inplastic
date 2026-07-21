@@ -451,6 +451,7 @@ export type Product = {
   defaultPrice: number;  // preço unitário sugerido
   active: boolean;
   pecasPorColuna: number; // logística: quantas peças empilham por coluna
+  stackHeightCm?: number | null; // altura real do volume empilhado (cm) — usada quando o produto é aninhável
   family?: string;        // agrupador opcional (ex.: "HV", "Container Bin")
 };
 
