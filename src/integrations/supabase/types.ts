@@ -39,6 +39,9 @@ export type Database = {
           omie_codigo_cliente_inplastic: number | null
           omie_codigo_cliente_taoplast: number | null
           razao_social: string
+          simples_optante: boolean | null
+          suframa_isento: boolean | null
+          suframa_numero: string | null
           telefone: string | null
           telefone2: string | null
           vendedor_id: string | null
@@ -68,6 +71,9 @@ export type Database = {
           omie_codigo_cliente_inplastic?: number | null
           omie_codigo_cliente_taoplast?: number | null
           razao_social: string
+          simples_optante?: boolean | null
+          suframa_isento?: boolean | null
+          suframa_numero?: string | null
           telefone?: string | null
           telefone2?: string | null
           vendedor_id?: string | null
@@ -97,6 +103,9 @@ export type Database = {
           omie_codigo_cliente_inplastic?: number | null
           omie_codigo_cliente_taoplast?: number | null
           razao_social?: string
+          simples_optante?: boolean | null
+          suframa_isento?: boolean | null
+          suframa_numero?: string | null
           telefone?: string | null
           telefone2?: string | null
           vendedor_id?: string | null
@@ -432,9 +441,12 @@ export type Database = {
           quantity: number
           razao_social: string | null
           segment: string | null
+          simples_optante: boolean | null
           site: string | null
           source: string
           stage: Database["public"]["Enums"]["lead_stage"]
+          suframa_isento: boolean | null
+          suframa_numero: string | null
           tags: string[]
           telefone_fixo: string | null
           telefone_whatsapp: string | null
@@ -502,9 +514,12 @@ export type Database = {
           quantity?: number
           razao_social?: string | null
           segment?: string | null
+          simples_optante?: boolean | null
           site?: string | null
           source?: string
           stage?: Database["public"]["Enums"]["lead_stage"]
+          suframa_isento?: boolean | null
+          suframa_numero?: string | null
           tags?: string[]
           telefone_fixo?: string | null
           telefone_whatsapp?: string | null
@@ -572,9 +587,12 @@ export type Database = {
           quantity?: number
           razao_social?: string | null
           segment?: string | null
+          simples_optante?: boolean | null
           site?: string | null
           source?: string
           stage?: Database["public"]["Enums"]["lead_stage"]
+          suframa_isento?: boolean | null
+          suframa_numero?: string | null
           tags?: string[]
           telefone_fixo?: string | null
           telefone_whatsapp?: string | null
