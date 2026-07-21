@@ -40,6 +40,9 @@ export function emptyCliente(cnpjInicial = ""): ClienteFormState {
     empresa_padrao: "",
     vendedor_id: null,
     ativo: true,
+    simples_optante: null,
+    suframa_isento: null,
+    suframa_numero: "",
   };
 }
 
@@ -66,6 +69,9 @@ export function fromRow(r: ClienteRow): ClienteFormState {
     empresa_padrao: r.empresa_padrao ?? "",
     vendedor_id: r.vendedor_id,
     ativo: r.ativo,
+    simples_optante: r.simples_optante,
+    suframa_isento: r.suframa_isento,
+    suframa_numero: r.suframa_numero ?? "",
   };
 }
 
