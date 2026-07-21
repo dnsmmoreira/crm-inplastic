@@ -54,6 +54,13 @@ export type ProdutoLog = {
   widthCm: number;
   lengthCm: number;
   pecasPorColuna: number;
+  /**
+   * Altura real do volume completo empilhado/aninhado (cm).
+   * Quando definido, o motor usa este valor como altura da pilha em vez de
+   * heightCm × pecasPorColuna. Ideal para produtos aninháveis (ex.: pallets
+   * que encaixam dentro uns dos outros).
+   */
+  stackHeightCm?: number | null;
 };
 
 /** Volume unitário em m³. */
@@ -61,10 +68,12 @@ export function volumeUnitM3(p: Pick<ProdutoLog, "heightCm" | "widthCm" | "lengt
   return (p.heightCm * p.widthCm * p.lengthCm) / 1_000_000;
 }
 
-/** Altura da pilha em metros. */
-export function alturaPilhaM(p: Pick<ProdutoLog, "heightCm" | "pecasPorColuna">): number {
+/** Altura da pilha em metros — usa stackHeightCm quando disponível (aninhamento). */
+export function alturaPilhaM(p: Pick<ProdutoLog, "heightCm" | "pecasPorColuna" | "stackHeightCm">): number {
+  if (p.stackHeightCm && p.stackHeightCm > 0) return p.stackHeightCm / 100;
   return (p.heightCm * Math.max(1, p.pecasPorColuna)) / 100;
 }
+
 
 /** Peso da pilha em kg. */
 export function pesoPilhaKg(p: Pick<ProdutoLog, "weightKg" | "pecasPorColuna">): number {
