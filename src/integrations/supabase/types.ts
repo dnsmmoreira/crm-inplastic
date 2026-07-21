@@ -740,6 +740,7 @@ export type Database = {
           ncm: string | null
           pecas_por_coluna: number
           sku: string
+          stack_height_cm: number | null
           unit: string
           updated_at: string
           weight_kg: number
@@ -759,6 +760,7 @@ export type Database = {
           ncm?: string | null
           pecas_por_coluna?: number
           sku: string
+          stack_height_cm?: number | null
           unit?: string
           updated_at?: string
           weight_kg?: number
@@ -778,6 +780,7 @@ export type Database = {
           ncm?: string | null
           pecas_por_coluna?: number
           sku?: string
+          stack_height_cm?: number | null
           unit?: string
           updated_at?: string
           weight_kg?: number

@@ -54,6 +54,13 @@ export type ProdutoLog = {
   widthCm: number;
   lengthCm: number;
   pecasPorColuna: number;
+  /**
+   * Altura real do volume completo empilhado/aninhado (cm).
+   * Quando definido, o motor usa este valor como altura da pilha em vez de
+   * heightCm × pecasPorColuna. Ideal para produtos aninháveis (ex.: pallets
+   * que encaixam dentro uns dos outros).
+   */
+  stackHeightCm?: number | null;
 };
 
 /** Volume unitário em m³. */
@@ -61,10 +68,12 @@ export function volumeUnitM3(p: Pick<ProdutoLog, "heightCm" | "widthCm" | "lengt
   return (p.heightCm * p.widthCm * p.lengthCm) / 1_000_000;
 }
 
-/** Altura da pilha em metros. */
-export function alturaPilhaM(p: Pick<ProdutoLog, "heightCm" | "pecasPorColuna">): number {
+/** Altura da pilha em metros — usa stackHeightCm quando disponível (aninhamento). */
+export function alturaPilhaM(p: Pick<ProdutoLog, "heightCm" | "pecasPorColuna" | "stackHeightCm">): number {
+  if (p.stackHeightCm && p.stackHeightCm > 0) return p.stackHeightCm / 100;
   return (p.heightCm * Math.max(1, p.pecasPorColuna)) / 100;
 }
+
 
 /** Peso da pilha em kg. */
 export function pesoPilhaKg(p: Pick<ProdutoLog, "weightKg" | "pecasPorColuna">): number {
@@ -174,12 +183,28 @@ function calcularParaVeiculo(
     return { ...zeroResult(v, "cabe_zero"), avisos };
   }
 
-  // Altura pode limitar peças por coluna
+  // Altura pode limitar peças por coluna.
+  // Se o produto tem stack_height_cm (produto aninhável), a altura da pilha cheia
+  // é esse valor — não heightCm × pecas_por_coluna. Se o veículo não comporta a
+  // pilha cheia, prorrateamos linearmente.
   const alturaMax = v.alturaUtilM;
-  const alturaPecaM = dominante.produto.heightCm / 100;
-  const maxPecasPilhaAltura = alturaPecaM > 0 ? Math.floor(alturaMax / alturaPecaM) : dominante.produto.pecasPorColuna;
-  const pecasPorPilha = Math.max(1, Math.min(dominante.produto.pecasPorColuna, maxPecasPilhaAltura));
-  if (maxPecasPilhaAltura < dominante.produto.pecasPorColuna) {
+  const prod = dominante.produto;
+  const stackCm = prod.stackHeightCm && prod.stackHeightCm > 0 ? prod.stackHeightCm : null;
+  const alturaPilhaCheiaM = stackCm ? stackCm / 100 : (prod.heightCm / 100) * Math.max(1, prod.pecasPorColuna);
+  let maxPecasPilhaAltura: number;
+  if (stackCm) {
+    // Produto aninhável — a pilha inteira ocupa stackCm de altura.
+    if (alturaMax >= alturaPilhaCheiaM) {
+      maxPecasPilhaAltura = prod.pecasPorColuna;
+    } else {
+      maxPecasPilhaAltura = Math.max(1, Math.floor(prod.pecasPorColuna * (alturaMax / alturaPilhaCheiaM)));
+    }
+  } else {
+    const alturaPecaM = prod.heightCm / 100;
+    maxPecasPilhaAltura = alturaPecaM > 0 ? Math.floor(alturaMax / alturaPecaM) : prod.pecasPorColuna;
+  }
+  const pecasPorPilha = Math.max(1, Math.min(prod.pecasPorColuna, maxPecasPilhaAltura));
+  if (maxPecasPilhaAltura < prod.pecasPorColuna) {
     avisos.push(`Altura útil (${alturaMax.toFixed(2)}m) limita a pilha a ${maxPecasPilhaAltura} peças`);
   }
 
@@ -188,16 +213,17 @@ function calcularParaVeiculo(
   // Peso — cada peça da carga inteira (média ponderada por SKU)
   const totalPecas = itens.reduce((s, i) => s + i.quantidade, 0);
   const totalPeso = itens.reduce((s, i) => s + i.produto.weightKg * i.quantidade, 0);
-  const pesoMedioPorPeca = totalPecas > 0 ? totalPeso / totalPecas : dominante.produto.weightKg;
+  const pesoMedioPorPeca = totalPecas > 0 ? totalPeso / totalPecas : prod.weightKg;
   const pecasPorVeiculoPeso = pesoMedioPorPeca > 0 ? Math.floor(v.capacidadeKg / pesoMedioPorPeca) : pecasPorVeiculoVolume;
 
   const pecasPorVeiculo = Math.min(pecasPorVeiculoVolume, pecasPorVeiculoPeso);
   const limitante: CalcVeiculo["limitante"] =
     pecasPorVeiculoPeso < pecasPorVeiculoVolume
       ? "peso"
-      : maxPecasPilhaAltura < dominante.produto.pecasPorColuna
+      : maxPecasPilhaAltura < prod.pecasPorColuna
         ? "altura"
         : "volume";
+
 
   const veiculosNecessarios = pecasPorVeiculo > 0 ? Math.ceil(totalPecas / pecasPorVeiculo) : 0;
   const pecasNoUltimo = veiculosNecessarios > 0 ? totalPecas - (veiculosNecessarios - 1) * pecasPorVeiculo : 0;

@@ -136,6 +136,12 @@ function rowToProduct(r: ProductRow): Product {
     defaultPrice: Number(r.default_price ?? 0),
     active: !!r.active,
     pecasPorColuna: Number((r as unknown as { pecas_por_coluna?: number }).pecas_por_coluna ?? 1) || 1,
+    stackHeightCm: (() => {
+      const v = (r as unknown as { stack_height_cm?: number | string | null }).stack_height_cm;
+      if (v === null || v === undefined || v === "") return null;
+      const n = Number(v);
+      return Number.isFinite(n) && n > 0 ? n : null;
+    })(),
     family: (r as unknown as { family?: string | null }).family ?? undefined,
   };
 }
@@ -154,6 +160,7 @@ function productToInsert(p: Product): ProductInsert {
     default_price: p.defaultPrice,
     active: p.active,
     pecas_por_coluna: p.pecasPorColuna ?? 1,
+    stack_height_cm: p.stackHeightCm ?? null,
     family: p.family ?? null,
   };
 }

@@ -1493,6 +1493,7 @@ function LogisticaCard({ proposalId }: { proposalId: string }) {
             widthCm: p.widthCm,
             lengthCm: p.lengthCm,
             pecasPorColuna: p.pecasPorColuna || 1,
+            stackHeightCm: p.stackHeightCm ?? null,
           },
           quantidade: it.quantity,
         };
