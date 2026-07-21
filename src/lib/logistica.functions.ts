@@ -17,7 +17,9 @@ type Input = {
 const GATEWAY = "https://connector-gateway.lovable.dev/google_maps";
 
 function getGoogleMapsConnectionKey() {
-  return process.env.GOOGLE_MAPS_API_KEY_1 ?? process.env.GOOGLE_MAPS_API_KEY;
+  // Server-side: sempre priorizar a chave sem restrição de referrer.
+  // GOOGLE_MAPS_API_KEY_1 (custom) costuma ser referrer-restricted p/ browser.
+  return process.env.GOOGLE_MAPS_API_KEY ?? process.env.GOOGLE_MAPS_API_KEY_1;
 }
 
 async function googleMapsErrorMessage(response: Response, fallback: string) {

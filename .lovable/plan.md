@@ -1,74 +1,87 @@
-## 1) O que o motor faz hoje (sem conceito de aninhamento)
+## Diagnóstico
 
-Em `src/lib/logistica.ts`:
+**Sintoma**: ao clicar em "Calcular logística" (ou "Calcular" em Transporte) na proposta 2026-0008, aparece erro tipo "CEP não localizado" / "frete não encontrado". Nenhum km/frete é salvo.
 
-- **Linhas 65–67** — `alturaPilhaM(p)` retorna `(heightCm × pecasPorColuna) / 100`. Assume empilhamento cheio.
-- **Linhas 178–181** — dentro de `calcularParaVeiculo`:
-  ```
-  alturaPecaM = heightCm / 100
-  maxPecasPilhaAltura = floor(alturaUtilM / alturaPecaM)
-  pecasPorPilha = min(pecasPorColuna, maxPecasPilhaAltura)
-  ```
-  Ou seja, a altura útil do veículo é dividida pela altura de **uma peça avulsa**, o que superestima a altura ocupada quando o produto é aninhável (ex.: MDLS = 15 cm × 25 peças = 375 cm no modelo atual, quando na realidade o volume aninhado tem 240 cm).
+**Causa raiz confirmada por reprodução direta contra o gateway**:
 
-Não há hoje nenhum campo/lógica para altura de volume aninhado.
+Existem duas chaves Google Maps no projeto:
+- `GOOGLE_MAPS_API_KEY_1` → conexão "Denis's Google Maps Platform" (a customizada, restrita por HTTP referrer para funcionar no domínio próprio no browser).
+- `GOOGLE_MAPS_API_KEY` → conexão "Google Maps Platform" padrão, sem restrição de referrer.
 
-## 2) Proposta: coluna opcional `stack_height_cm`
+O código do server function prioriza a `_1`:
 
-Adicionar uma coluna nova, **opcional (nullable)**, em `public.produtos`:
+```ts
+// src/lib/logistica.functions.ts:19-21 e src/lib/freight.functions.ts:6-8
+function getGoogleMapsConnectionKey() {
+  return process.env.GOOGLE_MAPS_API_KEY_1 ?? process.env.GOOGLE_MAPS_API_KEY;
+}
+```
 
-- `stack_height_cm numeric` — altura real do volume completo empilhado/aninhado, em cm.
+Ao chamar `/maps/api/geocode/json` server-side com a `_1`, o Google devolve HTTP 200 + JSON:
 
-**Regra no motor** (dentro de `calcularParaVeiculo`):
+```json
+{ "status": "REQUEST_DENIED",
+  "error_message": "API keys with referer restrictions cannot be used with this API." }
+```
 
-- Se `stack_height_cm` **estiver preenchido**:
-  - `stackHeightM = stack_height_cm / 100`
-  - Se `alturaUtilM >= stackHeightM` → cabe a pilha inteira: `pecasPorPilha = pecas_por_coluna`.
-  - Se não cabe (veículo mais baixo que o volume): prorratear linearmente — `pecasPorPilha = max(1, floor(pecas_por_coluna × alturaUtilM / stackHeightM))`. Emite aviso "Altura útil limita o volume a X peças".
-- Se `stack_height_cm` **for null**: mantém a fórmula atual (`height_cm × pecas_por_coluna`), preservando 100% do comportamento para os 57 produtos sem dado técnico. Zero regressão de frete.
+O código atual não trata `status = REQUEST_DENIED`: como `res.ok` é `true` e `data.status !== "OK"`, cai no genérico `throw new Error("CEP não localizado: ${cep}")` (src/lib/logistica.functions.ts:54 e src/lib/freight.functions.ts:53). Daí a mensagem enganosa que o usuário viu.
 
-O `heightCm` continua sendo a altura da peça avulsa e continua útil para o fallback e para futuros cálculos (ex.: envio de peças soltas fora do volume).
+A chave `GOOGLE_MAPS_API_KEY` padrão funciona no mesmo endpoint (retornei o endereço completo de 02422-230 nos testes). Ou seja: a chave custom nunca deveria ter sido usada em server functions — ela é para o browser no domínio próprio (Maps JavaScript API).
 
-## 3) Footprint (piso do veículo)
+Efeito colateral: a proposta 2026-0008 é FOB, mas o card "Logística inteligente" é renderizado sempre (src/routes/propostas.$id.tsx:1033), independente do payer — então o erro afeta CIF e FOB.
 
-Sim — `width_cm × length_cm` recebem as dimensões **L × C do volume completo** que você informou (não da peça individual, porque quando aninhado o volume ocupa o footprint da peça externa maior). Para os pallets, largura/comprimento do volume = largura/comprimento de uma peça (a peça externa define o footprint), então isso bate com a informação de campo.
+## Correção proposta (mínima, sem mudar UI nem regras de negócio)
 
-## 4) Tabela final por família
+### 1. Inverter a prioridade das chaves para uso server-side
 
-Cores (BRC/NAT/PRT/AZL/CNZ PRT) recebem valores idênticos dentro da família. HV6 empilha cheio; posso deixar `stack_height_cm` nulo (fallback = 16 × 15 = 240 cm) OU preencher com 240 explícito para documentar — proponho preencher explícito para clareza.
+Em `src/lib/logistica.functions.ts:19-21` e `src/lib/freight.functions.ts:6-8`:
 
-| Família (SKUs) | weight_kg | height_cm | width_cm | length_cm | pecas_por_coluna | stack_height_cm |
-|---|---|---|---|---|---|---|
-| EX1210 (BRC/NAT/PRT) | 7.600 | 15 | 100 | 120 | 75 | **230** |
-| EXLS1210 (BRC/NAT/PRT) | 10.230 | 14 | 100 | 120 | 50 | **165** |
-| MDLS (BRC/CNZ PRT/NAT/PRT) | 16.630 | 15 | 120 | 120 | 25 | **240** |
-| HV3 (AZL/BRC/NAT/PRT) | 14.680 | 16 | 120 | 120 | 23 | **235** |
-| HV6 (AZL/BRC/NAT/PRT) | 15.960 | 16 | 100 | 120 | 15 | **240** (empilha cheio; 16×15=240 coincide) |
+```ts
+function getGoogleMapsConnectionKey() {
+  return process.env.GOOGLE_MAPS_API_KEY ?? process.env.GOOGLE_MAPS_API_KEY_1;
+}
+```
 
-Total: **17 SKUs** atualizados (3+3+4+4+4). EXCL = EXLS1210. MD é pulado.
+Justificativa: server functions rodam no worker, sem referrer; a chave restrita por referrer **nunca** funciona a partir dali. A chave "padrão" é a única viável server-side. A chave `_1` continua servindo pro browser em `crm.inplastic.com.br` (Maps JavaScript API via `GOOGLE_MAPS_BROWSER_KEY_1` já é browser).
 
-### Impacto no cálculo de frete
+### 2. Tratar `REQUEST_DENIED` / `ZERO_RESULTS` com mensagem correta
 
-Comparando altura ocupada antes vs. depois, num veículo tipo Truck (alturaUtilM = 2.7 m):
+Em `geocodeCep` (ambos arquivos), separar os casos antes do throw genérico:
 
-| Família | Antes (h×n) | Depois (stack) | Diferença |
-|---|---|---|---|
-| EX1210 | 15×75 = 1125 cm → limita a 18 peças/pilha | 230 cm → cabe pilha cheia (75) | **+4× peças/veículo** |
-| EXLS1210 | 14×50 = 700 cm → limita a 19 | 165 cm → 50 cheia | **+2,6×** |
-| MDLS | 15×25 = 375 cm → limita a 18 | 240 cm → 25 cheia | **+38%** |
-| HV3 | 16×23 = 368 cm → limita a 16 | 235 cm → 23 cheia | **+43%** |
-| HV6 | 16×15 = 240 cm → 15 cheia | 240 cm → 15 cheia | **0** (esperado — não aninha) |
+```ts
+if (data.status === "REQUEST_DENIED") {
+  throw new Error(
+    `Google Maps recusou a chave server-side (${data.error_message ?? "REQUEST_DENIED"}). ` +
+    `Verifique restrições da API key.`
+  );
+}
+if (data.status === "OVER_QUERY_LIMIT") {
+  throw new Error("Google Maps: cota excedida. Tente novamente em alguns minutos.");
+}
+if (data.status !== "OK" || !data.results?.length) {
+  throw new Error(`CEP não localizado: ${cep}`);
+}
+```
 
-Resultado esperado: frete/peça **cai** para EX1210/EXLS1210/MDLS/HV3 (menos veículos para a mesma quantidade). HV6 fica idêntico. Nenhum SKU sem dados técnicos muda (fallback intacto).
+Isso evita que futuros bloqueios de chave sejam disfarçados de "CEP inválido".
 
-## Arquivos afetados quando implementarmos
+### 3. Não persistir automaticamente `distanceKm`/`freightValue` — sem mudanças
 
-- **Migration**: `ALTER TABLE public.produtos ADD COLUMN stack_height_cm numeric NULL;` + `UPDATE` dos 17 SKUs com os valores da tabela.
-- `src/integrations/supabase/types.ts` — regenerado automaticamente pós-migration.
-- `src/lib/logistica.ts` — adicionar `stackHeightCm?: number | null` em `ProdutoLog`; ajustar a lógica de `pecasPorPilha` em `calcularParaVeiculo` conforme regra do item 2. `alturaPilhaM` e `volumeUnitM3` ficam como estão (peça avulsa).
-- `src/lib/logistica.functions.ts` — incluir `stack_height_cm` no SELECT/mapeamento.
-- `src/routes/produtos.tsx` — expor o campo no cadastro de produto (input opcional "Altura do volume empilhado (cm)") para futuros SKUs. Se preferir só backfill agora e UI depois, também é válido — me diga.
+Não altera store nem UI. O botão "Usar" continua aplicando o frete escolhido normalmente.
 
-## Aguardo aprovação
+## Arquivos afetados
 
-Ponto único de decisão: **incluir input de `stack_height_cm` no formulário de produtos agora**, ou só rodar a migration+backfill e deixar a UI para depois?
+- `src/lib/logistica.functions.ts` — inverter fallback + tratamento de `REQUEST_DENIED`.
+- `src/lib/freight.functions.ts` — idem (mesma função duplicada; correções idênticas).
+
+Nenhuma migration, nenhuma alteração de tabela, nenhuma mudança em UI de proposta. Zero impacto em dados existentes.
+
+## Como validar depois de aplicar
+
+1. Reabrir proposta 2026-0008 → clicar em "Calcular logística" → deve retornar distância (≈ poucos km, ambos CEPs em SP capital) e a tabela por veículo (Truck deve aparecer como "melhor" ou 3/4, com aproveitamento e frete/peça).
+2. Trocar payer para CIF e usar o botão "Calcular" na seção Transporte → deve preencher km e valor aproximado sem erro.
+3. Em caso de erro futuro, a mensagem agora diz explicitamente se foi a chave ou o CEP.
+
+## Aguardo aprovação para implementar
+
+Ponto único de decisão: aprovar a inversão da prioridade das chaves (a `_1` continua sendo usada no browser normalmente — só sai do caminho server-side).
