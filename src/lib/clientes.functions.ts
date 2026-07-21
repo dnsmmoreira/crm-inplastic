@@ -356,6 +356,18 @@ export const updateCliente = createServerFn({ method: "POST" })
       observacao: patch.observacao ?? (current as ClienteRow).observacao,
       vendedor_id: patch.vendedor_id ?? (current as ClienteRow).vendedor_id,
       ativo: patch.ativo ?? (current as ClienteRow).ativo,
+      simples_optante:
+        patch.simples_optante !== undefined
+          ? patch.simples_optante
+          : (current as ClienteRow).simples_optante,
+      suframa_isento:
+        patch.suframa_isento !== undefined
+          ? patch.suframa_isento
+          : (current as ClienteRow).suframa_isento,
+      suframa_numero:
+        patch.suframa_numero !== undefined
+          ? patch.suframa_numero
+          : (current as ClienteRow).suframa_numero,
     };
     const { errors, clean } = validateInput(merged);
     if (errors.length) throw new Error(errors.join("; "));
@@ -380,6 +392,9 @@ export const updateCliente = createServerFn({ method: "POST" })
       observacao: clean.observacao ?? null,
       empresa_padrao: clean.empresa_padrao,
       ativo: clean.ativo !== false,
+      simples_optante: clean.simples_optante ?? null,
+      suframa_isento: clean.suframa_isento ?? null,
+      suframa_numero: (clean.suframa_numero ?? "")?.toString().trim() || null,
       atualizado_em: new Date().toISOString(),
       ...(patch.vendedor_id !== undefined ? { vendedor_id: patch.vendedor_id } : {}),
     };
