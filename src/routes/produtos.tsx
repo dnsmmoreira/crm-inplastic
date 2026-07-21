@@ -319,9 +319,30 @@ function ProductDialog({
             <Label>Peças por coluna</Label>
             <Input type="number" min={1} step="1" value={form.pecasPorColuna} onChange={(e) => setForm({ ...form, pecasPorColuna: Math.max(1, Number(e.target.value) || 1) })} />
             <p className="text-[11px] text-muted-foreground mt-1">
-              Pilha: {form.pecasPorColuna} pçs · altura {((form.heightCm * form.pecasPorColuna) / 100).toFixed(2)} m · {(form.weightKg * form.pecasPorColuna).toFixed(0)} kg
+              {form.stackHeightCm && form.stackHeightCm > 0
+                ? <>Volume (aninhado): {form.pecasPorColuna} pçs · altura {(form.stackHeightCm / 100).toFixed(2)} m · {(form.weightKg * form.pecasPorColuna).toFixed(0)} kg</>
+                : <>Pilha: {form.pecasPorColuna} pçs · altura {((form.heightCm * form.pecasPorColuna) / 100).toFixed(2)} m · {(form.weightKg * form.pecasPorColuna).toFixed(0)} kg</>
+              }
             </p>
           </div>
+          <div>
+            <Label>Altura do volume empilhado (cm)</Label>
+            <Input
+              type="number"
+              min={0}
+              step="0.1"
+              value={form.stackHeightCm ?? ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                setForm({ ...form, stackHeightCm: v === "" ? null : Number(v) });
+              }}
+              placeholder="Opcional — só para produtos aninháveis"
+            />
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Preencha quando o produto encaixa/aninha dentro do próximo (ex.: pallets). Se vazio, o motor de frete usa altura da peça × peças por coluna.
+            </p>
+          </div>
+
           <div>
             <Label>Família (opcional)</Label>
             <Input value={form.family ?? ""} onChange={(e) => setForm({ ...form, family: e.target.value })} placeholder="Ex.: HV, PBR, Container Bin" />
