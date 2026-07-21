@@ -65,6 +65,7 @@ const STATUS_META: Record<ProposalStatus, { label: string; variant: "default" | 
 function PropostasPage() {
   const proposals = useVisibleProposals();
   const leads = useVisibleLeads();
+  const emitters = useCrm((s) => s.emitters);
   const removeProposal = useCrm((s) => s.removeProposal);
   const createProposal = useCrm((s) => s.createProposal);
   const addLead = useCrm((s) => s.addLead);
@@ -73,6 +74,7 @@ function PropostasPage() {
   const isAdmin = user?.role === "admin";
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | ProposalStatus>("all");
+  const [emitterFilter, setEmitterFilter] = useState<string>("all");
   const [openNew, setOpenNew] = useState(false);
   const [selectedLead, setSelectedLead] = useState<string>("");
   const [leadSearch, setLeadSearch] = useState("");
