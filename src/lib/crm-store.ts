@@ -666,27 +666,18 @@ export type EmitterProfile = {
   whatsapp: string;
   email: string;
   website: string;
+  banco?: string;
+  agencia?: string;
+  conta?: string;
+  pix?: string;
 };
 
 export const DEFAULT_EMITTERS: EmitterProfile[] = [
   {
-    id: "taoplast",
-    brand: "PALLET DE PLÁSTICO",
-    tagline: "Indústria e comércio de produtos plásticos",
-    legalName: "TAOPLAST Indústria e Comércio de Produtos Plásticos LTDA",
-    cnpj: "00.000.000/0001-00",
-    ie: "000.000.000.000",
-    address: "Av. Industrial, 1000 — Distrito Industrial — São Paulo/SP — CEP 00000-000",
-    phone: "(11) 4000-0000",
-    whatsapp: "(11) 90000-0000",
-    email: "vendas@palletdeplastico.com.br",
-    website: "www.palletdeplastico.com.br",
-  },
-  {
     id: "inplastic",
     brand: "INPLASTIC",
     tagline: "Comércio de produtos plásticos",
-    legalName: "INPLASTIC Comércio de Produtos Plásticos LTDA – ME",
+    legalName: "INPLASTIC COMERCIO DE PLASTICOS LTDA",
     cnpj: "19.959.992/0001-07",
     ie: "143.366.452.110",
     address: "Rua Capitão Busse, 854 — Parque Edu Chaves — São Paulo/SP — CEP 02232-050",
@@ -694,12 +685,33 @@ export const DEFAULT_EMITTERS: EmitterProfile[] = [
     whatsapp: "(11) 2372-2225",
     email: "inplastic@inplastic.com.br",
     website: "www.inplastic.com.br",
+    banco: "Banco do Brasil",
+    agencia: "0386-7",
+    conta: "87075-7",
+    pix: "19959992000107",
+  },
+  {
+    id: "taoplast",
+    brand: "TAOPLAST",
+    tagline: "Comércio de produtos plásticos",
+    legalName: "TAOPLAST COMERCIO DE PLASTICOS LTDA",
+    cnpj: "42.608.358/0001-41",
+    ie: "—",
+    address: "",
+    phone: "",
+    whatsapp: "",
+    email: "",
+    website: "",
+    banco: "Banco do Brasil",
+    agencia: "0386-7",
+    conta: "91587-4",
+    pix: "42608358000141",
   },
   {
     id: "licitaplas",
     brand: "LICITAPLAS",
     tagline: "Comércio de plásticos",
-    legalName: "LICITAPLAS Comércio de Plásticos LTDA (Limitada Unipessoal – ME)",
+    legalName: "LICITAPLAS COMERCIO DE PLASTICOS",
     cnpj: "39.871.995/0001-00",
     ie: "—",
     address: "Rua Luis Sergio Person, 223 — Parque Mandaqui — São Paulo/SP — CEP 02422-230",
@@ -707,6 +719,10 @@ export const DEFAULT_EMITTERS: EmitterProfile[] = [
     whatsapp: "(11) 2372-2225",
     email: "contato@licitaplas.com.br",
     website: "www.licitaplas.com.br",
+    banco: "Banco do Brasil",
+    agencia: "0386-7",
+    conta: "91828-8",
+    pix: "39871995000100",
   },
 ];
 
@@ -1028,7 +1044,24 @@ export const useCrm = create<CrmState>()(
         }
 
         const finalOwnerId = ownerId ?? get().currentUserId;
-        const emitterId = get().defaultEmitterId || get().emitters[0]?.id;
+        let emitterId = get().defaultEmitterId || get().emitters[0]?.id;
+        // Se o lead tem cliente vinculado com empresa_padrao, pré-seleciona esse emitter.
+        try {
+          const lead = get().leads.find((l) => l.id === leadId);
+          const clienteId = (lead as { clienteId?: string } | undefined)?.clienteId;
+          if (clienteId) {
+            const { data: cli } = await supabase
+              .from("clientes")
+              .select("empresa_padrao")
+              .eq("id", clienteId)
+              .maybeSingle();
+            const key = (cli?.empresa_padrao ?? "").toLowerCase();
+            const match = get().emitters.find((e) => e.id === key);
+            if (match) emitterId = match.id;
+          }
+        } catch {
+          // segue com o default
+        }
         if (!emitterId) {
           toast.error("Nenhum emitente configurado — peça ao admin para cadastrar um emitente antes de criar propostas.");
           throw new Error("no default emitter");

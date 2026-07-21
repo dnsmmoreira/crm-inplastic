@@ -171,6 +171,10 @@ function rowToEmitter(r: EmitterRow): EmitterProfile {
     whatsapp: r.whatsapp ?? "",
     email: r.email ?? "",
     website: r.website ?? "",
+    banco: (r as { banco?: string | null }).banco ?? undefined,
+    agencia: (r as { agencia?: string | null }).agencia ?? undefined,
+    conta: (r as { conta?: string | null }).conta ?? undefined,
+    pix: (r as { pix?: string | null }).pix ?? undefined,
   };
 }
 function emitterToInsert(e: EmitterProfile, isDefault: boolean): EmitterInsert {
@@ -187,7 +191,11 @@ function emitterToInsert(e: EmitterProfile, isDefault: boolean): EmitterInsert {
     email: e.email ?? null,
     website: e.website ?? null,
     is_default: isDefault,
-  };
+    banco: e.banco ?? null,
+    agencia: e.agencia ?? null,
+    conta: e.conta ?? null,
+    pix: e.pix ?? null,
+  } as EmitterInsert;
 }
 
 function rowToPayTerm(r: PayTermRow): PaymentTerm {
