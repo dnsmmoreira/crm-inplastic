@@ -64,6 +64,7 @@ const empty = {
   defaultPrice: 0,
   active: true,
   pecasPorColuna: 1,
+  stackHeightCm: null as number | null,
   family: "",
 };
 
