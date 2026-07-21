@@ -140,8 +140,11 @@ export type Database = {
       emitters: {
         Row: {
           address: string | null
+          agencia: string | null
+          banco: string | null
           brand: string
           cnpj: string
+          conta: string | null
           created_at: string
           email: string | null
           id: string
@@ -150,6 +153,7 @@ export type Database = {
           legal_name: string
           omie_key: string | null
           phone: string | null
+          pix: string | null
           tagline: string | null
           updated_at: string
           website: string | null
@@ -157,8 +161,11 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          agencia?: string | null
+          banco?: string | null
           brand: string
           cnpj: string
+          conta?: string | null
           created_at?: string
           email?: string | null
           id: string
@@ -167,6 +174,7 @@ export type Database = {
           legal_name: string
           omie_key?: string | null
           phone?: string | null
+          pix?: string | null
           tagline?: string | null
           updated_at?: string
           website?: string | null
@@ -174,8 +182,11 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          agencia?: string | null
+          banco?: string | null
           brand?: string
           cnpj?: string
+          conta?: string | null
           created_at?: string
           email?: string | null
           id?: string
@@ -184,6 +195,7 @@ export type Database = {
           legal_name?: string
           omie_key?: string | null
           phone?: string | null
+          pix?: string | null
           tagline?: string | null
           updated_at?: string
           website?: string | null

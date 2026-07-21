@@ -65,6 +65,7 @@ const STATUS_META: Record<ProposalStatus, { label: string; variant: "default" | 
 function PropostasPage() {
   const proposals = useVisibleProposals();
   const leads = useVisibleLeads();
+  const emitters = useCrm((s) => s.emitters);
   const removeProposal = useCrm((s) => s.removeProposal);
   const createProposal = useCrm((s) => s.createProposal);
   const addLead = useCrm((s) => s.addLead);
@@ -73,6 +74,7 @@ function PropostasPage() {
   const isAdmin = user?.role === "admin";
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | ProposalStatus>("all");
+  const [emitterFilter, setEmitterFilter] = useState<string>("all");
   const [openNew, setOpenNew] = useState(false);
   const [selectedLead, setSelectedLead] = useState<string>("");
   const [leadSearch, setLeadSearch] = useState("");
@@ -157,6 +159,7 @@ function PropostasPage() {
     const t = q.toLowerCase().trim();
     return proposals.filter((p) => {
       if (statusFilter !== "all" && p.status !== statusFilter) return false;
+      if (emitterFilter !== "all" && p.emitterId !== emitterFilter) return false;
       if (!t) return true;
       const lead = leads.find((l) => l.id === p.leadId);
       return (
@@ -164,7 +167,7 @@ function PropostasPage() {
         (lead?.company.toLowerCase().includes(t) ?? false)
       );
     });
-  }, [proposals, leads, q, statusFilter]);
+  }, [proposals, leads, q, statusFilter, emitterFilter]);
 
   return (
     <div className="p-4 md:p-8 space-y-6">
@@ -190,6 +193,15 @@ function PropostasPage() {
               <SelectItem value="aprovada">Aprovada</SelectItem>
               <SelectItem value="pedido">Pedido</SelectItem>
               <SelectItem value="recusada">Recusada</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={emitterFilter} onValueChange={setEmitterFilter}>
+            <SelectTrigger className="w-44"><SelectValue placeholder="Empresa" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as empresas</SelectItem>
+              {emitters.map((e) => (
+                <SelectItem key={e.id} value={e.id}>{e.brand}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
 
@@ -248,6 +260,7 @@ function PropostasPage() {
               <TableRow>
                 <TableHead>Nº</TableHead>
                 <TableHead>Cliente</TableHead>
+                <TableHead>Empresa</TableHead>
                 <TableHead>Data</TableHead>
                 <TableHead className="text-right">Itens</TableHead>
                 <TableHead className="text-right">Total</TableHead>
@@ -258,12 +271,16 @@ function PropostasPage() {
             <TableBody>
               {filtered.map((p) => {
                 const lead = leads.find((l) => l.id === p.leadId);
+                const em = emitters.find((e) => e.id === p.emitterId);
                 const t = proposalTotals(p);
                 const s = STATUS_META[p.status];
                 return (
                   <TableRow key={p.id} className="cursor-pointer hover:bg-accent/40" onClick={() => navigate({ to: "/propostas/$id", params: { id: p.id } })}>
                     <TableCell className="font-mono text-xs">{p.number}</TableCell>
                     <TableCell className="font-medium">{lead?.company ?? "—"}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-[10px]">{em?.brand ?? "—"}</Badge>
+                    </TableCell>
                     <TableCell>{format(new Date(p.createdAt), "dd/MM/yyyy", { locale: ptBR })}</TableCell>
                     <TableCell className="text-right">{t.count}</TableCell>
                     <TableCell className="text-right font-semibold">{formatBRL(t.total)}</TableCell>
@@ -308,7 +325,7 @@ function PropostasPage() {
               })}
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-8">
+                  <TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-8">
                     Nenhuma proposta encontrada. Crie a primeira!
                   </TableCell>
                 </TableRow>

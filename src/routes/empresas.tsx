@@ -129,6 +129,10 @@ function EmitterForm({
       whatsapp: form.whatsapp.trim(),
       email: form.email.trim(),
       website: form.website.trim(),
+      banco: form.banco?.trim() ?? "",
+      agencia: form.agencia?.trim() ?? "",
+      conta: form.conta?.trim() ?? "",
+      pix: form.pix?.trim() ?? "",
     });
     setDirty(false);
     toast.success(`Dados de ${form.brand} atualizados.`);
@@ -233,6 +237,33 @@ function EmitterForm({
             <div>
               <Label>Site</Label>
               <Input value={form.website} onChange={(e) => patch("website", e.target.value)} />
+            </div>
+          </div>
+        </section>
+
+        <section className="space-y-3">
+          <div className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+            Dados para pagamento
+          </div>
+          <div className="grid md:grid-cols-2 gap-3">
+            <div>
+              <Label>Banco</Label>
+              <Input value={form.banco ?? ""} onChange={(e) => patch("banco", e.target.value)} placeholder="Ex: Banco do Brasil" />
+            </div>
+            <div>
+              <Label>Agência</Label>
+              <Input value={form.agencia ?? ""} onChange={(e) => patch("agencia", e.target.value)} placeholder="Ex: 0386-7" />
+            </div>
+            <div>
+              <Label>Conta corrente</Label>
+              <Input value={form.conta ?? ""} onChange={(e) => patch("conta", e.target.value)} placeholder="Ex: 87075-7" />
+            </div>
+            <div>
+              <Label>Chave PIX</Label>
+              <Input value={form.pix ?? ""} onChange={(e) => patch("pix", e.target.value)} placeholder="Ex: CNPJ, e-mail ou chave aleatória" />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Aparece no bloco "Dados para pagamento" da proposta impressa.
+              </p>
             </div>
           </div>
         </section>
