@@ -131,6 +131,47 @@ function PropostaDetalhe() {
     [emitters, proposal?.emitterId, defaultEmitterId],
   );
 
+  // Sugestão dinâmica de empresa emitente com base nos flags fiscais do cliente vinculado.
+  const [emitterSuggestion, setEmitterSuggestion] = useState<{ id: string; reason: string } | null>(null);
+  useEffect(() => {
+    const clienteId = (lead as { clienteId?: string | null } | undefined)?.clienteId;
+    if (!clienteId) { setEmitterSuggestion(null); return; }
+    let alive = true;
+    (async () => {
+      try {
+        const { supabase } = await import("@/integrations/supabase/client");
+        const { data: cli } = await supabase
+          .from("clientes")
+          .select("empresa_padrao, simples_optante, suframa_isento")
+          .eq("id", clienteId)
+          .maybeSingle();
+        const { data: prev } = await supabase
+          .from("propostas")
+          .select("emitter_id, id, leads!inner(cliente_id)")
+          .eq("leads.cliente_id", clienteId)
+          .neq("id", id)
+          .order("created_at", { ascending: false })
+          .limit(1);
+        const prevEmitter = (prev?.[0] as { emitter_id?: string } | undefined)?.emitter_id;
+        if (!alive) return;
+        if (prevEmitter) {
+          setEmitterSuggestion({ id: prevEmitter, reason: "Histórico: última proposta deste cliente usou esta empresa." });
+        } else if (cli?.suframa_isento) {
+          setEmitterSuggestion({ id: "taoplast", reason: "Cliente com SUFRAMA — sugerido TAOPLAST." });
+        } else if (cli?.simples_optante) {
+          setEmitterSuggestion({ id: "licitaplas", reason: "Cliente optante do Simples — sugerido LICITAPLAS." });
+        } else if (cli?.empresa_padrao) {
+          setEmitterSuggestion({ id: String(cli.empresa_padrao).toLowerCase(), reason: "Empresa padrão do cliente." });
+        } else {
+          setEmitterSuggestion(null);
+        }
+      } catch {
+        if (alive) setEmitterSuggestion(null);
+      }
+    })();
+    return () => { alive = false; };
+  }, [lead, id]);
+
   const paymentTerms = useCrm((s) => s.paymentTerms);
   const activePaymentTerms = useMemo(() => paymentTerms.filter((t) => t.active), [paymentTerms]);
   const maxDiscount = useMaxDiscountForCurrentUser();
@@ -1015,6 +1056,26 @@ function PropostaDetalhe() {
                 <div>{emitter.address}</div>
                 <div>Tel: {emitter.phone} · {emitter.email}</div>
               </div>
+              {emitterSuggestion && proposal && (
+                <div className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-[11px] leading-relaxed flex items-start justify-between gap-2">
+                  <div>
+                    <div className="font-medium text-primary">
+                      Sugerido: {emitters.find((e) => e.id === emitterSuggestion.id)?.brand ?? emitterSuggestion.id.toUpperCase()}
+                    </div>
+                    <div className="text-muted-foreground">{emitterSuggestion.reason}</div>
+                  </div>
+                  {proposal.emitterId !== emitterSuggestion.id && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-[11px]"
+                      onClick={() => _updateProposal(proposal.id, { emitterId: emitterSuggestion.id })}
+                    >
+                      Usar sugestão
+                    </Button>
+                  )}
+                </div>
+              )}
               <p className="text-[11px] text-muted-foreground">
                 Define qual CNPJ do grupo aparece no cabeçalho da proposta impressa.
               </p>

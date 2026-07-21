@@ -65,6 +65,8 @@ export function NovoClienteDialog({ open, onOpenChange, cnpjInicial, onClienteCr
     setLoadingLookup(true);
     try {
       const r = await lookupFn({ data: { cnpj: digits } });
+      const suframaAprovada = Array.isArray(r.suframa) && r.suframa.some((s: { aprovado?: boolean }) => !!s?.aprovado);
+      const suframaNumero = Array.isArray(r.suframa) && r.suframa[0]?.numero ? String(r.suframa[0].numero) : "";
       setState((s) => ({
         ...s,
         razao_social: s.razao_social || r.razaoSocial,
@@ -79,6 +81,9 @@ export function NovoClienteDialog({ open, onOpenChange, cnpjInicial, onClienteCr
         estado: s.estado || r.endereco.uf,
         email: s.email || r.email,
         telefone: s.telefone || r.telefone,
+        simples_optante: s.simples_optante ?? (typeof r.simplesOptante === "boolean" ? r.simplesOptante : null),
+        suframa_isento: s.suframa_isento ?? (suframaAprovada || null),
+        suframa_numero: s.suframa_numero || suframaNumero,
       }));
       toast.success("Dados carregados da Receita");
     } catch (e) {
@@ -127,6 +132,9 @@ export function NovoClienteDialog({ open, onOpenChange, cnpjInicial, onClienteCr
         observacao: state.observacao,
         empresa_padrao: state.empresa_padrao,
         vendedor_id: isAdmin ? state.vendedor_id : undefined,
+        simples_optante: state.simples_optante ?? null,
+        suframa_isento: state.suframa_isento ?? null,
+        suframa_numero: state.suframa_numero ?? null,
       } });
 
       if (res.ok) {

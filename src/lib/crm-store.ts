@@ -1045,19 +1045,44 @@ export const useCrm = create<CrmState>()(
 
         const finalOwnerId = ownerId ?? get().currentUserId;
         let emitterId = get().defaultEmitterId || get().emitters[0]?.id;
-        // Se o lead tem cliente vinculado com empresa_padrao, pré-seleciona esse emitter.
+        let emitterReason = "";
+        // Sugestão de emitente:
+        // 1) reutiliza o emitente da última proposta do mesmo cliente;
+        // 2) senão, aplica regra fiscal do cliente (SUFRAMA → Taoplast; Simples → Licitaplas);
+        // 3) senão, empresa_padrao do cliente;
+        // 4) senão, default.
         try {
           const lead = get().leads.find((l) => l.id === leadId);
           const clienteId = (lead as { clienteId?: string } | undefined)?.clienteId;
           if (clienteId) {
             const { data: cli } = await supabase
               .from("clientes")
-              .select("empresa_padrao")
+              .select("empresa_padrao, simples_optante, suframa_isento")
               .eq("id", clienteId)
               .maybeSingle();
-            const key = (cli?.empresa_padrao ?? "").toLowerCase();
-            const match = get().emitters.find((e) => e.id === key);
-            if (match) emitterId = match.id;
+
+            const { data: prev } = await supabase
+              .from("propostas")
+              .select("emitter_id, created_at, lead_id, leads!inner(cliente_id)")
+              .eq("leads.cliente_id", clienteId)
+              .order("created_at", { ascending: false })
+              .limit(1);
+
+            const prevEmitter = (prev?.[0] as { emitter_id?: string } | undefined)?.emitter_id;
+            if (prevEmitter && get().emitters.find((e) => e.id === prevEmitter)) {
+              emitterId = prevEmitter;
+              emitterReason = "Histórico: última proposta deste cliente usou esta empresa.";
+            } else if (cli?.suframa_isento) {
+              const m = get().emitters.find((e) => e.id === "taoplast");
+              if (m) { emitterId = m.id; emitterReason = "Cliente com SUFRAMA — sugerido TAOPLAST."; }
+            } else if (cli?.simples_optante) {
+              const m = get().emitters.find((e) => e.id === "licitaplas");
+              if (m) { emitterId = m.id; emitterReason = "Cliente optante do Simples — sugerido LICITAPLAS."; }
+            } else if (cli?.empresa_padrao) {
+              const key = String(cli.empresa_padrao).toLowerCase();
+              const match = get().emitters.find((e) => e.id === key);
+              if (match) { emitterId = match.id; emitterReason = "Empresa padrão do cliente."; }
+            }
           }
         } catch {
           // segue com o default
@@ -1120,6 +1145,10 @@ export const useCrm = create<CrmState>()(
         }
 
         set((s) => ({ proposals: [proposal, ...s.proposals] }));
+        if (emitterReason) {
+          const brand = get().emitters.find((e) => e.id === emitterId)?.brand ?? "";
+          toast.success(`Emissora sugerida: ${brand} — ${emitterReason}`);
+        }
         return id;
       },
 

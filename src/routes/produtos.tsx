@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Plus, Pencil, Trash2, Package, Search } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -67,6 +67,9 @@ const empty = {
   family: "",
 };
 
+type SortKey = "az" | "za" | "recent";
+const SORT_STORAGE_KEY = "produtos.sort";
+
 function ProdutosPage() {
   const products = useCrm((s) => s.products);
   const addProduct = useCrm((s) => s.addProduct);
@@ -76,17 +79,32 @@ function ProdutosPage() {
   const [q, setQ] = useState("");
   const [editing, setEditing] = useState<Product | null>(null);
   const [open, setOpen] = useState(false);
+  const [sort, setSort] = useState<SortKey>(() => {
+    if (typeof window === "undefined") return "az";
+    const v = window.localStorage.getItem(SORT_STORAGE_KEY);
+    return v === "za" || v === "recent" ? v : "az";
+  });
+
+  useEffect(() => {
+    try { window.localStorage.setItem(SORT_STORAGE_KEY, sort); } catch { /* noop */ }
+  }, [sort]);
 
   const filtered = useMemo(() => {
     const t = q.toLowerCase().trim();
-    if (!t) return products;
-    return products.filter(
-      (p) =>
-        p.name.toLowerCase().includes(t) ||
-        p.sku.toLowerCase().includes(t) ||
-        p.ncm.includes(t),
-    );
-  }, [products, q]);
+    const base = !t
+      ? products
+      : products.filter(
+          (p) =>
+            p.name.toLowerCase().includes(t) ||
+            p.sku.toLowerCase().includes(t) ||
+            p.ncm.includes(t),
+        );
+    const sorted = [...base];
+    if (sort === "az") sorted.sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+    else if (sort === "za") sorted.sort((a, b) => b.name.localeCompare(a.name, "pt-BR"));
+    // "recent": mantém a ordem do store (novos são inseridos no início)
+    return sorted;
+  }, [products, q, sort]);
 
   return (
     <div className="p-4 md:p-8 space-y-6">
@@ -97,7 +115,17 @@ function ProdutosPage() {
             Base compartilhada — usada nas propostas comerciais.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Select value={sort} onValueChange={(v) => setSort(v as SortKey)}>
+            <SelectTrigger className="w-44">
+              <SelectValue placeholder="Ordenar" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="az">Nome A–Z</SelectItem>
+              <SelectItem value="za">Nome Z–A</SelectItem>
+              <SelectItem value="recent">Criados por último</SelectItem>
+            </SelectContent>
+          </Select>
           <div className="relative">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
@@ -319,7 +347,6 @@ function ProductDialog({
 }
 
 // small helper hook to reset form when dialog opens
-import { useEffect } from "react";
 function useMemoReset(trigger: boolean, fn: () => void) {
   useEffect(() => { if (trigger) fn(); }, [trigger]);
 }

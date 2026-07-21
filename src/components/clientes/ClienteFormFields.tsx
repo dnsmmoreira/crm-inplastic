@@ -40,6 +40,9 @@ export function emptyCliente(cnpjInicial = ""): ClienteFormState {
     empresa_padrao: "",
     vendedor_id: null,
     ativo: true,
+    simples_optante: null,
+    suframa_isento: null,
+    suframa_numero: "",
   };
 }
 
@@ -66,6 +69,9 @@ export function fromRow(r: ClienteRow): ClienteFormState {
     empresa_padrao: r.empresa_padrao ?? "",
     vendedor_id: r.vendedor_id,
     ativo: r.ativo,
+    simples_optante: r.simples_optante,
+    suframa_isento: r.suframa_isento,
+    suframa_numero: r.suframa_numero ?? "",
   };
 }
 
@@ -246,6 +252,43 @@ export function ClienteFormFields({
             <Input value={value.website ?? ""} disabled={disabled}
               onChange={(e) => onChange({ website: e.target.value })} />
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3"><CardTitle className="text-base">Regime fiscal</CardTitle></CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <label className="flex items-center gap-2">
+            <Switch
+              checked={value.simples_optante === true}
+              disabled={disabled}
+              onCheckedChange={(c) => onChange({ simples_optante: c })}
+            />
+            <span className="text-sm">Optante do Simples Nacional</span>
+          </label>
+          <label className="flex items-center gap-2">
+            <Switch
+              checked={value.suframa_isento === true}
+              disabled={disabled}
+              onCheckedChange={(c) => onChange({ suframa_isento: c, suframa_numero: c ? (value.suframa_numero ?? "") : "" })}
+            />
+            <span className="text-sm">Possui SUFRAMA (isenção fiscal)</span>
+          </label>
+          {value.suframa_isento && (
+            <div className="md:col-span-2">
+              <Label>Inscrição SUFRAMA</Label>
+              <Input
+                value={value.suframa_numero ?? ""}
+                disabled={disabled}
+                onChange={(e) => onChange({ suframa_numero: e.target.value })}
+                placeholder="Ex.: 12.3456.7890-1"
+              />
+            </div>
+          )}
+          <p className="md:col-span-2 text-[11px] text-muted-foreground">
+            Usado para sugerir automaticamente a empresa emitente das propostas
+            (SUFRAMA → TAOPLAST; Simples → LICITAPLAS; caso contrário → INPLASTIC).
+          </p>
         </CardContent>
       </Card>
 
