@@ -1056,6 +1056,26 @@ function PropostaDetalhe() {
                 <div>{emitter.address}</div>
                 <div>Tel: {emitter.phone} · {emitter.email}</div>
               </div>
+              {emitterSuggestion && proposal && (
+                <div className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-[11px] leading-relaxed flex items-start justify-between gap-2">
+                  <div>
+                    <div className="font-medium text-primary">
+                      Sugerido: {emitters.find((e) => e.id === emitterSuggestion.id)?.brand ?? emitterSuggestion.id.toUpperCase()}
+                    </div>
+                    <div className="text-muted-foreground">{emitterSuggestion.reason}</div>
+                  </div>
+                  {proposal.emitterId !== emitterSuggestion.id && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-[11px]"
+                      onClick={() => _updateProposal(proposal.id, { emitterId: emitterSuggestion.id })}
+                    >
+                      Usar sugestão
+                    </Button>
+                  )}
+                </div>
+              )}
               <p className="text-[11px] text-muted-foreground">
                 Define qual CNPJ do grupo aparece no cabeçalho da proposta impressa.
               </p>
