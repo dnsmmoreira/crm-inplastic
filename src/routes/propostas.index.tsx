@@ -195,6 +195,15 @@ function PropostasPage() {
               <SelectItem value="recusada">Recusada</SelectItem>
             </SelectContent>
           </Select>
+          <Select value={emitterFilter} onValueChange={setEmitterFilter}>
+            <SelectTrigger className="w-44"><SelectValue placeholder="Empresa" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as empresas</SelectItem>
+              {emitters.map((e) => (
+                <SelectItem key={e.id} value={e.id}>{e.brand}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
           <Button variant="outline" onClick={() => setOpenNewLead(true)} className="gap-2">
             <UserPlus className="h-4 w-4" /> Cadastrar lead
