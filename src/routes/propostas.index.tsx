@@ -159,6 +159,7 @@ function PropostasPage() {
     const t = q.toLowerCase().trim();
     return proposals.filter((p) => {
       if (statusFilter !== "all" && p.status !== statusFilter) return false;
+      if (emitterFilter !== "all" && p.emitterId !== emitterFilter) return false;
       if (!t) return true;
       const lead = leads.find((l) => l.id === p.leadId);
       return (
@@ -166,7 +167,7 @@ function PropostasPage() {
         (lead?.company.toLowerCase().includes(t) ?? false)
       );
     });
-  }, [proposals, leads, q, statusFilter]);
+  }, [proposals, leads, q, statusFilter, emitterFilter]);
 
   return (
     <div className="p-4 md:p-8 space-y-6">
