@@ -160,6 +160,7 @@ function productToInsert(p: Product): ProductInsert {
     default_price: p.defaultPrice,
     active: p.active,
     pecas_por_coluna: p.pecasPorColuna ?? 1,
+    stack_height_cm: p.stackHeightCm ?? null,
     family: p.family ?? null,
   };
 }
