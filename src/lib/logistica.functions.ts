@@ -51,8 +51,17 @@ async function geocodeCep(cep: string, lovableKey: string, connKey: string) {
   if (!res.ok) throw new Error(await googleMapsErrorMessage(res, `Geocode ${cep}`));
   const data = (await res.json()) as {
     status: string;
+    error_message?: string;
     results?: Array<{ formatted_address: string; geometry: { location: { lat: number; lng: number } } }>;
   };
+  if (data.status === "REQUEST_DENIED") {
+    throw new Error(
+      `Google Maps recusou a chave server-side (${data.error_message ?? "REQUEST_DENIED"}). Verifique restrições da API key no Google Cloud.`,
+    );
+  }
+  if (data.status === "OVER_QUERY_LIMIT") {
+    throw new Error("Google Maps: cota excedida. Tente novamente em alguns minutos.");
+  }
   if (data.status !== "OK" || !data.results?.length) throw new Error(`CEP não localizado: ${cep}`);
   const r = data.results[0];
   return { lat: r.geometry.location.lat, lng: r.geometry.location.lng, address: r.formatted_address };
