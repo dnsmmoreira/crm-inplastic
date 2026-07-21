@@ -260,6 +260,7 @@ function PropostasPage() {
               <TableRow>
                 <TableHead>Nº</TableHead>
                 <TableHead>Cliente</TableHead>
+                <TableHead>Empresa</TableHead>
                 <TableHead>Data</TableHead>
                 <TableHead className="text-right">Itens</TableHead>
                 <TableHead className="text-right">Total</TableHead>
@@ -270,12 +271,16 @@ function PropostasPage() {
             <TableBody>
               {filtered.map((p) => {
                 const lead = leads.find((l) => l.id === p.leadId);
+                const em = emitters.find((e) => e.id === p.emitterId);
                 const t = proposalTotals(p);
                 const s = STATUS_META[p.status];
                 return (
                   <TableRow key={p.id} className="cursor-pointer hover:bg-accent/40" onClick={() => navigate({ to: "/propostas/$id", params: { id: p.id } })}>
                     <TableCell className="font-mono text-xs">{p.number}</TableCell>
                     <TableCell className="font-medium">{lead?.company ?? "—"}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-[10px]">{em?.brand ?? "—"}</Badge>
+                    </TableCell>
                     <TableCell>{format(new Date(p.createdAt), "dd/MM/yyyy", { locale: ptBR })}</TableCell>
                     <TableCell className="text-right">{t.count}</TableCell>
                     <TableCell className="text-right font-semibold">{formatBRL(t.total)}</TableCell>
