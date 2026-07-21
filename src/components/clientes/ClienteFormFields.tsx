@@ -255,6 +255,43 @@ export function ClienteFormFields({
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader className="pb-3"><CardTitle className="text-base">Regime fiscal</CardTitle></CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <label className="flex items-center gap-2">
+            <Switch
+              checked={value.simples_optante === true}
+              disabled={disabled}
+              onCheckedChange={(c) => onChange({ simples_optante: c })}
+            />
+            <span className="text-sm">Optante do Simples Nacional</span>
+          </label>
+          <label className="flex items-center gap-2">
+            <Switch
+              checked={value.suframa_isento === true}
+              disabled={disabled}
+              onCheckedChange={(c) => onChange({ suframa_isento: c, suframa_numero: c ? (value.suframa_numero ?? "") : "" })}
+            />
+            <span className="text-sm">Possui SUFRAMA (isenção fiscal)</span>
+          </label>
+          {value.suframa_isento && (
+            <div className="md:col-span-2">
+              <Label>Inscrição SUFRAMA</Label>
+              <Input
+                value={value.suframa_numero ?? ""}
+                disabled={disabled}
+                onChange={(e) => onChange({ suframa_numero: e.target.value })}
+                placeholder="Ex.: 12.3456.7890-1"
+              />
+            </div>
+          )}
+          <p className="md:col-span-2 text-[11px] text-muted-foreground">
+            Usado para sugerir automaticamente a empresa emitente das propostas
+            (SUFRAMA → TAOPLAST; Simples → LICITAPLAS; caso contrário → INPLASTIC).
+          </p>
+        </CardContent>
+      </Card>
+
       {showInternal && (
         <Card>
           <CardHeader className="pb-3"><CardTitle className="text-base">Interno</CardTitle></CardHeader>
