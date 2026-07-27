@@ -671,6 +671,47 @@ export type Database = {
           },
         ]
       }
+      pedido_stage_history: {
+        Row: {
+          created_at: string
+          from_stage: Database["public"]["Enums"]["pedido_stage"] | null
+          id: string
+          is_backward: boolean
+          motivo: string | null
+          moved_by: string | null
+          pedido_id: string
+          to_stage: Database["public"]["Enums"]["pedido_stage"]
+        }
+        Insert: {
+          created_at?: string
+          from_stage?: Database["public"]["Enums"]["pedido_stage"] | null
+          id?: string
+          is_backward?: boolean
+          motivo?: string | null
+          moved_by?: string | null
+          pedido_id: string
+          to_stage: Database["public"]["Enums"]["pedido_stage"]
+        }
+        Update: {
+          created_at?: string
+          from_stage?: Database["public"]["Enums"]["pedido_stage"] | null
+          id?: string
+          is_backward?: boolean
+          motivo?: string | null
+          moved_by?: string | null
+          pedido_id?: string
+          to_stage?: Database["public"]["Enums"]["pedido_stage"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pedido_stage_history_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pedidos: {
         Row: {
           created_at: string
