@@ -66,6 +66,7 @@ function PedidosKanbanPage() {
   const [search, setSearch] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [pendingBackward, setPendingBackward] = useState<PendingBackward | null>(null);
+  const [openPedidoId, setOpenPedidoId] = useState<string | null>(null);
 
   const pedidosQ = useQuery({
     queryKey: ["pedidos", "kanban"],
