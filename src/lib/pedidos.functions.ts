@@ -210,6 +210,99 @@ export type MoveStageResult =
   | { ok: true; stage: PedidoStageId; backward: boolean }
   | { ok: false; reason: "invalid_transition" | "needs_motivo"; message: string };
 
+/* ---------------------------------------------------------------------------
+ * Fase 5 — Fila interna de notificações de mudança de etapa.
+ * Registra o evento com evento_id determinístico (idempotente).
+ * NÃO envia nada por WhatsApp — feature flag desligada.
+ * -------------------------------------------------------------------------*/
+
+const NOTIFY_DISPATCH_ENABLED = false; // feature flag off — apenas registra
+
+type StageClassificacao = "informativa" | "acao_necessaria" | "alerta";
+
+const STAGE_CLASSIFICACAO: Record<PedidoStageId, StageClassificacao> = {
+  pedido_recebido: "informativa",
+  em_validacao: "informativa",
+  aguardando_aprovacao: "acao_necessaria",
+  aprovado_programado: "informativa",
+  em_producao: "informativa",
+  separacao_conferencia: "informativa",
+  faturado_aguardando_coleta: "informativa",
+  despachado_transporte: "informativa",
+  pedido_entregue: "informativa",
+  concluido: "informativa",
+};
+
+function stageLabel(id: PedidoStageId): string {
+  return PEDIDO_STAGES.find((s) => s.id === id)?.label ?? id;
+}
+
+async function enqueueStageChangeNotification(
+  sb: LooseClient,
+  args: {
+    pedido_id: string;
+    from: PedidoStageId;
+    to: PedidoStageId;
+    history_id: string;
+    history_created_at: string;
+    criado_por: string | null;
+  },
+): Promise<void> {
+  // evento_id determinístico ancorado no histórico recém-criado
+  const evento_id = `${args.pedido_id}:${args.from}->${args.to}:${args.history_id}`;
+
+  // idempotência: se já existe, não recria
+  const { data: existing } = await sb
+    .from("pedido_notificacoes")
+    .select("id")
+    .eq("evento_id", evento_id)
+    .maybeSingle();
+  if (existing) return;
+
+  // resolver destinatário padrão (vendedor proprietário do pedido)
+  const { data: ped } = await sb
+    .from("pedidos")
+    .select("number, vendedor_proprietario_id, owner_id, lead_id, leads:lead_id(company)")
+    .eq("id", args.pedido_id)
+    .maybeSingle();
+
+  const destinatario_user_id =
+    (ped?.vendedor_proprietario_id as string | null) ?? (ped?.owner_id as string | null) ?? null;
+  const numero = (ped?.number as string | null) ?? "";
+  const cliente = (ped?.leads?.company as string | null) ?? "cliente";
+
+  const classificacao = STAGE_CLASSIFICACAO[args.to] ?? "informativa";
+  const mensagem =
+    `[CRM Inplastic] Pedido ${numero} (${cliente}) mudou de etapa: ` +
+    `${stageLabel(args.from)} → ${stageLabel(args.to)}.`;
+
+  try {
+    await sb.from("pedido_notificacoes").insert({
+      pedido_id: args.pedido_id,
+      evento_id,
+      etapa_anterior: args.from,
+      nova_etapa: args.to,
+      classificacao,
+      destinatario_tipo: "vendedor_proprietario",
+      destinatario_user_id,
+      mensagem,
+      status: "pendente",
+      criado_por: args.criado_por,
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    // unique violation → outra chamada concorrente já registrou
+    if (msg.includes("duplicate") || msg.includes("23505")) return;
+    throw e;
+  }
+
+  // Envio real desativado nesta fase (doc 14 — feature flag off).
+  if (NOTIFY_DISPATCH_ENABLED) {
+    // reservado para ativação futura com autorização
+  }
+}
+
+
 export const updatePedidoStage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { pedido_id: string; stage: PedidoStageId; motivo?: string }) =>
