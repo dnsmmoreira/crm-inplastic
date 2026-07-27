@@ -114,6 +114,7 @@ export const listPedidos = createServerFn({ method: "GET" })
     // Buscar última transição por pedido para calcular "dias na etapa"
     const ids = rows.map((r) => r.id);
     const lastChangeByPedido = new Map<string, string>();
+    const openOcorrByPedido = new Map<string, number>();
     if (ids.length > 0) {
       const { data: hist } = await sb
         .from("pedido_stage_history")
@@ -122,6 +123,14 @@ export const listPedidos = createServerFn({ method: "GET" })
         .order("created_at", { ascending: false });
       for (const h of (hist ?? []) as Array<{ pedido_id: string; created_at: string }>) {
         if (!lastChangeByPedido.has(h.pedido_id)) lastChangeByPedido.set(h.pedido_id, h.created_at);
+      }
+      const { data: openOc } = await sb
+        .from("pedido_ocorrencias")
+        .select("pedido_id")
+        .in("pedido_id", ids)
+        .eq("resolvida", false);
+      for (const o of (openOc ?? []) as Array<{ pedido_id: string }>) {
+        openOcorrByPedido.set(o.pedido_id, (openOcorrByPedido.get(o.pedido_id) ?? 0) + 1);
       }
     }
 
