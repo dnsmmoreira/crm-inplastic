@@ -138,5 +138,154 @@ export const moverParaGanhoOmie = createServerFn({ method: "POST" })
       };
     }
     await loose.from("leads").update({ stage: "ganho" }).eq("id", data.lead_id);
+
+    // Fase 2 — cria pedido operacional interno de forma idempotente.
+    // Não bloqueia o Ganho se algo falhar aqui (idempotência protege reexecução).
+    try {
+      await ensurePedidoFromProposta(loose, {
+        propostaId: prop.id as string,
+        leadId: data.lead_id,
+        callerId: context.userId,
+      });
+    } catch (e) {
+      console.error("[moverParaGanhoOmie] falha ao criar pedido operacional:", e);
+    }
+
     return { ok: true, proposta_id: prop.id as string };
   });
+
+/**
+ * Cria (ou reutiliza) o pedido operacional interno a partir de uma proposta aceita.
+ * Idempotente por `pedidos.proposta_id` (índice único parcial).
+ *
+ * Regras (Fase 2):
+ * - stage inicial = 'pedido_recebido'
+ * - fiscal_status = 'nao_iniciado', pos_venda_status = 'nao_iniciado'
+ * - vendedor_proprietario_id = owner da proposta
+ * - responsavel_atual_id = null ("Julia" não existe como usuário no projeto);
+ *   equipe_responsavel = 'Julia (Operações)' documenta a intenção
+ * - proposta_snapshot = cópia imutável (proposta + itens + parcelas + emitter + lead)
+ * - copia itens de proposta_itens para pedido_itens
+ * - número via next_pedido_number(ano corrente)
+ */
+async function ensurePedidoFromProposta(
+  sb: LooseClient,
+  args: { propostaId: string; leadId: string; callerId: string },
+): Promise<{ id: string; number: string; reused: boolean }> {
+  const { propostaId, leadId, callerId } = args;
+
+  // 1) Idempotência
+  const { data: existing, error: existErr } = await sb
+    .from("pedidos")
+    .select("id, number")
+    .eq("proposta_id", propostaId)
+    .maybeSingle();
+  if (existErr) throw new Error(`Falha ao checar pedido existente: ${existErr.message}`);
+  if (existing) return { id: existing.id, number: existing.number, reused: true };
+
+  // 2) Carrega proposta + itens + parcelas + emitter + lead
+  const [propRes, itensRes, parcelasRes] = await Promise.all([
+    sb.from("propostas").select("*").eq("id", propostaId).maybeSingle(),
+    sb.from("proposta_itens").select("*").eq("proposta_id", propostaId).order("position", { ascending: true }),
+    sb.from("proposta_parcelas").select("*").eq("proposta_id", propostaId).order("position", { ascending: true }),
+  ]);
+  if (propRes.error) throw new Error(`Falha ao carregar proposta: ${propRes.error.message}`);
+  const proposta = propRes.data;
+  if (!proposta) throw new Error("Proposta não encontrada");
+  const itens = itensRes.data ?? [];
+  const parcelas = parcelasRes.data ?? [];
+
+  const [emitterRes, leadRes] = await Promise.all([
+    proposta.emitter_id
+      ? sb.from("emitters").select("*").eq("id", proposta.emitter_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+    sb.from("leads").select("*").eq("id", leadId).maybeSingle(),
+  ]);
+
+  // 3) Total (subtotal dos itens com desconto% da proposta)
+  const subtotal = itens.reduce(
+    (s: number, i: { quantity: number; unit_price: number }) =>
+      s + Number(i.quantity) * Number(i.unit_price),
+    0,
+  );
+  const descontoPct = Number(proposta.discount_percent ?? 0);
+  const total = subtotal * (1 - descontoPct / 100);
+
+  // 4) Número do pedido
+  const ano = new Date().getFullYear();
+  const { data: numData, error: numErr } = await sb.rpc("next_pedido_number", { _year: ano });
+  if (numErr) throw new Error(`Falha ao gerar número do pedido: ${numErr.message}`);
+  const number = numData as string;
+
+  // 5) Snapshot imutável
+  const proposta_snapshot = {
+    versao: 1,
+    capturado_em: new Date().toISOString(),
+    capturado_por_user_id: callerId,
+    proposta,
+    itens,
+    parcelas,
+    emitter: emitterRes.data ?? null,
+    lead: leadRes.data ?? null,
+  };
+
+  // 6) Insere pedido
+  const { data: novoPedido, error: insErr } = await sb
+    .from("pedidos")
+    .insert({
+      number,
+      proposta_id: propostaId,
+      lead_id: leadId,
+      owner_id: proposta.owner_id,
+      vendedor_proprietario_id: proposta.owner_id,
+      responsavel_atual_id: null,
+      equipe_responsavel: "Julia (Operações)",
+      status: "novo",
+      stage: "pedido_recebido",
+      fiscal_status: "nao_iniciado",
+      pos_venda_status: "nao_iniciado",
+      total,
+      previsao_entrega: proposta.expected_delivery_date ?? null,
+      proposta_snapshot,
+      metadata: {
+        origem: "conversao_ganho",
+        proposta_number: proposta.number,
+        numero_pedido_cliente: proposta.numero_pedido_cliente ?? null,
+      },
+    })
+    .select("id, number")
+    .single();
+  if (insErr) {
+    // Corrida com índice único: outra transação já criou — retorna o existente
+    if ((insErr as { code?: string }).code === "23505") {
+      const { data: raced } = await sb
+        .from("pedidos")
+        .select("id, number")
+        .eq("proposta_id", propostaId)
+        .maybeSingle();
+      if (raced) return { id: raced.id, number: raced.number, reused: true };
+    }
+    throw new Error(`Falha ao criar pedido: ${insErr.message}`);
+  }
+
+  // 7) Copia itens
+  if (itens.length > 0) {
+    const rows = itens.map((i: {
+      product_id: string | null; sku: string; description: string;
+      unit: string; quantity: number; unit_price: number; position: number;
+    }) => ({
+      pedido_id: novoPedido.id,
+      product_id: i.product_id,
+      sku: i.sku,
+      description: i.description,
+      unit: i.unit,
+      quantity: i.quantity,
+      unit_price: i.unit_price,
+      position: i.position,
+    }));
+    const { error: itErr } = await sb.from("pedido_itens").insert(rows);
+    if (itErr) throw new Error(`Falha ao copiar itens do pedido: ${itErr.message}`);
+  }
+
+  return { id: novoPedido.id, number: novoPedido.number, reused: false };
+}
