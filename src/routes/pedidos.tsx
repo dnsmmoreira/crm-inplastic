@@ -248,12 +248,14 @@ function Column({
   dragActive,
   canDrop,
   isBackwardTarget,
+  onOpen,
 }: {
   stage: (typeof PEDIDO_STAGES)[number];
   pedidos: PedidoRow[];
   dragActive: boolean;
   canDrop: boolean;
   isBackwardTarget: boolean;
+  onOpen: (id: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage.id, disabled: dragActive && !canDrop });
   const total = pedidos.reduce((s, p) => s + p.total, 0);
