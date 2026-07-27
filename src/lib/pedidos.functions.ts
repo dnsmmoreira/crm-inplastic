@@ -99,8 +99,6 @@ export const listPedidos = createServerFn({ method: "GET" })
           "vendedor_proprietario_id, proposta_id, lead_id",
           "leads:lead_id(company)",
           "propostas:proposta_id(number)",
-          "vendedor:vendedor_proprietario_id(name)",
-          "responsavel:responsavel_atual_id(name)",
         ].join(", "),
       )
       .order("created_at", { ascending: false })
@@ -108,6 +106,8 @@ export const listPedidos = createServerFn({ method: "GET" })
     if (error) throw new Error(`Falha ao listar pedidos: ${error.message}`);
     const rows = (data ?? []) as Array<{
       id: string;
+      vendedor_proprietario_id: string | null;
+      responsavel_atual_id: string | null;
     }>;
 
     // Buscar última transição por pedido para calcular "dias na etapa"
@@ -124,6 +124,24 @@ export const listPedidos = createServerFn({ method: "GET" })
       }
     }
 
+    // Resolver nomes de profiles (vendedor + responsável) via lookup separado —
+    // não há FK declarada entre pedidos e profiles, então evitamos embed do PostgREST.
+    const profileIds = new Set<string>();
+    for (const r of rows) {
+      if (r.vendedor_proprietario_id) profileIds.add(r.vendedor_proprietario_id);
+      if (r.responsavel_atual_id) profileIds.add(r.responsavel_atual_id);
+    }
+    const nameById = new Map<string, string>();
+    if (profileIds.size > 0) {
+      const { data: profs } = await sb
+        .from("profiles")
+        .select("id, name")
+        .in("id", Array.from(profileIds));
+      for (const p of (profs ?? []) as Array<{ id: string; name: string | null }>) {
+        if (p.name) nameById.set(p.id, p.name);
+      }
+    }
+
     return (data ?? []).map(
       (r: {
         id: string; number: string; stage: PedidoStageId; total: number; created_at: string;
@@ -134,8 +152,6 @@ export const listPedidos = createServerFn({ method: "GET" })
         vendedor_proprietario_id: string | null; proposta_id: string | null; lead_id: string | null;
         leads?: { company: string | null } | null;
         propostas?: { number: string | null } | null;
-        vendedor?: { name: string | null } | null;
-        responsavel?: { name: string | null } | null;
       }) => ({
         id: r.id,
         number: r.number,
@@ -146,14 +162,14 @@ export const listPedidos = createServerFn({ method: "GET" })
         previsao_entrega: r.previsao_entrega,
         equipe_responsavel: r.equipe_responsavel,
         responsavel_atual_id: r.responsavel_atual_id,
-        responsavel_nome: r.responsavel?.name ?? null,
+        responsavel_nome: r.responsavel_atual_id ? nameById.get(r.responsavel_atual_id) ?? null : null,
         fiscal_status: r.fiscal_status,
         nf_numero: r.nf_numero,
         forma_atendimento: r.forma_atendimento,
         prioridade: r.prioridade,
         ocorrencia: r.ocorrencia,
         vendedor_proprietario_id: r.vendedor_proprietario_id,
-        vendedor_nome: r.vendedor?.name ?? null,
+        vendedor_nome: r.vendedor_proprietario_id ? nameById.get(r.vendedor_proprietario_id) ?? null : null,
         proposta_id: r.proposta_id,
         lead_id: r.lead_id,
         lead_company: r.leads?.company ?? null,
@@ -279,24 +295,33 @@ export const listPedidoStageHistory = createServerFn({ method: "GET" })
     const sb: LooseClient = context.supabase;
     const { data: rows, error } = await sb
       .from("pedido_stage_history")
-      .select("id, from_stage, to_stage, is_backward, motivo, moved_by, created_at, profile:moved_by(name)")
+      .select("id, from_stage, to_stage, is_backward, motivo, moved_by, created_at")
       .eq("pedido_id", data.pedido_id)
       .order("created_at", { ascending: false });
     if (error) throw new Error(`Falha ao carregar histórico: ${error.message}`);
-    return (rows ?? []).map(
-      (r: {
-        id: string; from_stage: PedidoStageId | null; to_stage: PedidoStageId;
-        is_backward: boolean; motivo: string | null; moved_by: string | null; created_at: string;
-        profile?: { name: string | null } | null;
-      }) => ({
-        id: r.id,
-        from_stage: r.from_stage,
-        to_stage: r.to_stage,
-        is_backward: r.is_backward,
-        motivo: r.motivo,
-        moved_by: r.moved_by,
-        moved_by_name: r.profile?.name ?? null,
-        created_at: r.created_at,
-      }),
-    );
+
+    const rowsTyped = (rows ?? []) as Array<{
+      id: string; from_stage: PedidoStageId | null; to_stage: PedidoStageId;
+      is_backward: boolean; motivo: string | null; moved_by: string | null; created_at: string;
+    }>;
+
+    const userIds = Array.from(new Set(rowsTyped.map((r) => r.moved_by).filter((x): x is string => !!x)));
+    const nameById = new Map<string, string>();
+    if (userIds.length > 0) {
+      const { data: profs } = await sb.from("profiles").select("id, name").in("id", userIds);
+      for (const p of (profs ?? []) as Array<{ id: string; name: string | null }>) {
+        if (p.name) nameById.set(p.id, p.name);
+      }
+    }
+
+    return rowsTyped.map((r) => ({
+      id: r.id,
+      from_stage: r.from_stage,
+      to_stage: r.to_stage,
+      is_backward: r.is_backward,
+      motivo: r.motivo,
+      moved_by: r.moved_by,
+      moved_by_name: r.moved_by ? nameById.get(r.moved_by) ?? null : null,
+      created_at: r.created_at,
+    }));
   });
