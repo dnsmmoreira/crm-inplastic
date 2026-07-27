@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import {
   DndContext,
   DragOverlay,
@@ -11,7 +13,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { Plus, Package, Calendar as CalendarIcon, Search, ArrowDownUp, X } from "lucide-react";
+import { Plus, Package, Calendar as CalendarIcon, Search, ArrowDownUp, X, PackageCheck } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useCrm, STAGES, formatBRL, leadTemperature, followupTemperature, type Lead, type StageId, type FollowupLevel, useVisibleLeads, useLeadValueMap } from "@/lib/crm-store";
@@ -26,6 +28,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { NewLeadDialog, LeadDrawer } from "@/components/crm/LeadDrawer";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { listLeadsComPedido } from "@/lib/pedidos.functions";
 
 type SortMode = "default" | "urgency" | "urgency-desc";
 const AGENDA_FILTERS: { level: FollowupLevel; label: string; emoji: string }[] = [
@@ -48,6 +51,8 @@ function PipelinePage() {
   const [search, setSearch] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [lostTarget, setLostTarget] = useState<{ leadId: string; company: string } | null>(null);
+  // Fase 3: por padrão, oculta ganhos que já viraram pedido operacional (não deleta nada).
+  const [mostrarGanhosCompletos, setMostrarGanhosCompletos] = useState(false);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
@@ -62,9 +67,28 @@ function PipelinePage() {
       return next;
     });
 
+  const leadsComPedidoFn = useServerFn(listLeadsComPedido);
+  const leadsComPedidoQ = useQuery({
+    queryKey: ["pipeline", "leads-com-pedido"],
+    queryFn: () => leadsComPedidoFn(),
+    staleTime: 60_000,
+  });
+  const leadsComPedidoSet = useMemo(
+    () => new Set(leadsComPedidoQ.data ?? []),
+    [leadsComPedidoQ.data],
+  );
+  const ganhosOcultos = useMemo(
+    () =>
+      mostrarGanhosCompletos
+        ? 0
+        : leads.filter((l) => l.stage === "ganho" && leadsComPedidoSet.has(l.id)).length,
+    [leads, leadsComPedidoSet, mostrarGanhosCompletos],
+  );
+
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     return leads.filter((l) => {
+      if (!mostrarGanhosCompletos && l.stage === "ganho" && leadsComPedidoSet.has(l.id)) return false;
       if (q && !(l.company.toLowerCase().includes(q) ||
         l.contactName.toLowerCase().includes(q) ||
         l.product.toLowerCase().includes(q))) return false;
@@ -74,7 +98,7 @@ function PipelinePage() {
       }
       return true;
     });
-  }, [leads, search, agendaFilter]);
+  }, [leads, search, agendaFilter, leadsComPedidoSet, mostrarGanhosCompletos]);
 
   const byStage = useMemo(() => {
     const rank: Record<FollowupLevel, number> = { urgent: 0, attention: 1, scheduled: 2, ok: 3 };
@@ -174,6 +198,18 @@ function PipelinePage() {
           </Button>
         )}
         <div className="ml-auto flex items-center gap-2">
+          <Toggle
+            pressed={mostrarGanhosCompletos}
+            onPressedChange={setMostrarGanhosCompletos}
+            size="sm"
+            className="h-7 gap-1 text-xs data-[state=on]:bg-primary/15 data-[state=on]:text-primary"
+            title="Ganhos que já geraram pedido operacional ficam ocultos por padrão. Os dados permanecem no banco."
+          >
+            <PackageCheck className="h-3 w-3" />
+            {mostrarGanhosCompletos
+              ? "Ocultar ganhos c/ pedido"
+              : `Mostrar ganhos c/ pedido${ganhosOcultos > 0 ? ` (${ganhosOcultos})` : ""}`}
+          </Toggle>
           <ArrowDownUp className="h-3.5 w-3.5 text-muted-foreground" />
           <Select value={sortMode} onValueChange={(v) => setSortMode(v as SortMode)}>
             <SelectTrigger className="h-7 w-[200px] text-xs">
