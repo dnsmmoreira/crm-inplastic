@@ -295,24 +295,33 @@ export const listPedidoStageHistory = createServerFn({ method: "GET" })
     const sb: LooseClient = context.supabase;
     const { data: rows, error } = await sb
       .from("pedido_stage_history")
-      .select("id, from_stage, to_stage, is_backward, motivo, moved_by, created_at, profile:moved_by(name)")
+      .select("id, from_stage, to_stage, is_backward, motivo, moved_by, created_at")
       .eq("pedido_id", data.pedido_id)
       .order("created_at", { ascending: false });
     if (error) throw new Error(`Falha ao carregar histórico: ${error.message}`);
-    return (rows ?? []).map(
-      (r: {
-        id: string; from_stage: PedidoStageId | null; to_stage: PedidoStageId;
-        is_backward: boolean; motivo: string | null; moved_by: string | null; created_at: string;
-        profile?: { name: string | null } | null;
-      }) => ({
-        id: r.id,
-        from_stage: r.from_stage,
-        to_stage: r.to_stage,
-        is_backward: r.is_backward,
-        motivo: r.motivo,
-        moved_by: r.moved_by,
-        moved_by_name: r.profile?.name ?? null,
-        created_at: r.created_at,
-      }),
-    );
+
+    const rowsTyped = (rows ?? []) as Array<{
+      id: string; from_stage: PedidoStageId | null; to_stage: PedidoStageId;
+      is_backward: boolean; motivo: string | null; moved_by: string | null; created_at: string;
+    }>;
+
+    const userIds = Array.from(new Set(rowsTyped.map((r) => r.moved_by).filter((x): x is string => !!x)));
+    const nameById = new Map<string, string>();
+    if (userIds.length > 0) {
+      const { data: profs } = await sb.from("profiles").select("id, name").in("id", userIds);
+      for (const p of (profs ?? []) as Array<{ id: string; name: string | null }>) {
+        if (p.name) nameById.set(p.id, p.name);
+      }
+    }
+
+    return rowsTyped.map((r) => ({
+      id: r.id,
+      from_stage: r.from_stage,
+      to_stage: r.to_stage,
+      is_backward: r.is_backward,
+      motivo: r.motivo,
+      moved_by: r.moved_by,
+      moved_by_name: r.moved_by ? nameById.get(r.moved_by) ?? null : null,
+      created_at: r.created_at,
+    }));
   });
