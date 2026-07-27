@@ -3,25 +3,30 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 /**
- * Fluxo interno de fechamento de pedido — sem integração externa.
- * O nome do arquivo é mantido por compatibilidade com imports existentes.
+ * Fluxo interno de fechamento de pedido — SEM integração externa (nenhum ERP).
+ * O nome do arquivo é mantido apenas por compatibilidade com imports existentes;
+ * toda a lógica é interna ao CRM.
  *
- * `gerarPedidoOmie` (legado, apenas o nome):
+ * `gerarPedidoInterno`:
  *   - Marca a proposta como `status='pedido'` (idempotente).
  *   - Move o lead para `stage='ganho'` automaticamente.
  *   - Retorna `{ ok, validacao_erros? }` — sem chamadas externas.
  *
- * `moverParaGanhoOmie`:
- *   - Gate do kanban: só permite mover pra ganho se houver proposta com `status='pedido'`.
+ * `moverParaGanho`:
+ *   - Gate do kanban: só permite mover para ganho se houver proposta com `status='pedido'`.
+ *
+ * Aliases `gerarPedidoOmie` / `moverParaGanhoOmie` são mantidos como re-export
+ * para não quebrar imports legados; devem ser removidos em uma etapa futura.
  */
 
-export type OmieResult = {
+export type InternalOrderResult = {
   ok: boolean;
   validacao_erros?: string[];
   proposta_id?: string;
 };
 
-export type MoverParaGanhoOmieResult = OmieResult;
+export type OmieResult = InternalOrderResult;
+export type MoverParaGanhoOmieResult = InternalOrderResult;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type LooseClient = any;
