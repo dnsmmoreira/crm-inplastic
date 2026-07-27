@@ -259,6 +259,7 @@ function Column({
   pedidos,
   dragActive,
   canDrop,
+  blockedReason,
   isBackwardTarget,
   onOpen,
 }: {
@@ -266,6 +267,7 @@ function Column({
   pedidos: PedidoRow[];
   dragActive: boolean;
   canDrop: boolean;
+  blockedReason?: string | null;
   isBackwardTarget: boolean;
   onOpen: (id: string) => void;
 }) {
@@ -294,6 +296,7 @@ function Column({
       </div>
       <div
         ref={setNodeRef}
+        title={showBlocked && blockedReason ? blockedReason : undefined}
         className={cn(
           "flex-1 rounded-xl border border-dashed p-2 space-y-2 min-h-[400px] transition-colors relative",
           isOver && canDrop && !isBackwardTarget && "bg-accent/40 border-primary",
@@ -305,7 +308,7 @@ function Column({
         {showBlocked && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground bg-background/80 border rounded-md px-2 py-1">
-              <Ban className="h-3 w-3" /> Não permitido
+              <Ban className="h-3 w-3" /> {blockedReason ?? "Não permitido"}
             </div>
           </div>
         )}
