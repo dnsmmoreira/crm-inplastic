@@ -118,7 +118,7 @@ export const gerarPedidoInterno = createServerFn({ method: "POST" })
     return { ok: true, proposta_id: propostaId };
   });
 
-export const moverParaGanhoOmie = createServerFn({ method: "POST" })
+export const moverParaGanho = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { lead_id: string }) =>
     z.object({ lead_id: z.string().uuid() }).parse(input),
