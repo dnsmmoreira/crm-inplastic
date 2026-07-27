@@ -285,6 +285,22 @@ function PedidosKanbanPage() {
 
       <KpiBar pedidos={filtered} />
 
+      <FilterBar
+        options={options}
+        fVendedor={fVendedor} setFVendedor={setFVendedor}
+        fResponsavel={fResponsavel} setFResponsavel={setFResponsavel}
+        fStage={fStage} setFStage={setFStage}
+        fForma={fForma} setFForma={setFForma}
+        tAtrasados={tAtrasados} setTAtrasados={setTAtrasados}
+        tBloqueados={tBloqueados} setTBloqueados={setTBloqueados}
+        tOcorrencia={tOcorrencia} setTOcorrencia={setTOcorrencia}
+        tConcluidos={tConcluidos} setTConcluidos={setTConcluidos}
+        activeCount={activeFilterCount}
+        onClear={clearFilters}
+        totalCount={allRows.length}
+        filteredCount={filtered.length}
+      />
+
       {pedidosQ.isLoading ? (
         <div className="text-sm text-muted-foreground">Carregando pedidos…</div>
       ) : pedidosQ.isError ? (
