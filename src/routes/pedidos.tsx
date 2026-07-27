@@ -308,7 +308,15 @@ function Column({
   );
 }
 
-function PedidoCard({ pedido, dragging = false }: { pedido: PedidoRow; dragging?: boolean }) {
+function PedidoCard({
+  pedido,
+  dragging = false,
+  onOpen,
+}: {
+  pedido: PedidoRow;
+  dragging?: boolean;
+  onOpen?: (id: string) => void;
+}) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: pedido.id });
 
   const diasNaEtapa = Math.max(
@@ -343,6 +351,13 @@ function PedidoCard({ pedido, dragging = false }: { pedido: PedidoRow; dragging?
       ref={setNodeRef}
       {...attributes}
       {...listeners}
+      onClick={(e) => {
+        // ignora clique enquanto arrasta
+        if (isDragging || dragging) return;
+        // Só abre em clique "simples" sem drag
+        if (onOpen) onOpen(pedido.id);
+        e.stopPropagation();
+      }}
       className={cn(
         "cursor-grab active:cursor-grabbing rounded-lg border bg-card p-3 shadow-sm hover:shadow-md hover:border-primary/50 transition-all",
         atrasado && "border-l-4 border-l-rose-500",
