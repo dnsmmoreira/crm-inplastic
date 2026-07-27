@@ -195,6 +195,8 @@ function PedidosKanbanPage() {
         </div>
       </div>
 
+      <KpiBar pedidos={filtered} />
+
       {pedidosQ.isLoading ? (
         <div className="text-sm text-muted-foreground">Carregando pedidos…</div>
       ) : pedidosQ.isError ? (
