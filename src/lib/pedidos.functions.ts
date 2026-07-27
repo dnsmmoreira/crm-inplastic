@@ -178,6 +178,7 @@ export const listPedidos = createServerFn({ method: "GET" })
         forma_atendimento: r.forma_atendimento,
         prioridade: r.prioridade,
         ocorrencia: r.ocorrencia,
+        ocorrencias_abertas: openOcorrByPedido.get(r.id) ?? 0,
         vendedor_proprietario_id: r.vendedor_proprietario_id,
         vendedor_nome: r.vendedor_proprietario_id ? nameById.get(r.vendedor_proprietario_id) ?? null : null,
         proposta_id: r.proposta_id,
