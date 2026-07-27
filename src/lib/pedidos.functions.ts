@@ -74,6 +74,7 @@ export type PedidoRow = {
   forma_atendimento: string | null;
   prioridade: string | null;
   ocorrencia: string | null;
+  ocorrencias_abertas: number;
   vendedor_proprietario_id: string | null;
   vendedor_nome: string | null;
   proposta_id: string | null;
