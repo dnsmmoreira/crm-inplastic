@@ -26,9 +26,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+
 import { formatBRL } from "@/lib/crm-store";
 import {
   listPedidos,
@@ -68,6 +72,15 @@ function PedidosKanbanPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [pendingBackward, setPendingBackward] = useState<PendingBackward | null>(null);
   const [openPedidoId, setOpenPedidoId] = useState<string | null>(null);
+  const [fVendedor, setFVendedor] = useState<string>("all");
+  const [fResponsavel, setFResponsavel] = useState<string>("all");
+  const [fStage, setFStage] = useState<string>("all");
+  const [fForma, setFForma] = useState<string>("all");
+  const [tAtrasados, setTAtrasados] = useState(false);
+  const [tBloqueados, setTBloqueados] = useState(false);
+  const [tOcorrencia, setTOcorrencia] = useState(false);
+  const [tConcluidos, setTConcluidos] = useState(false);
+
 
   const pedidosQ = useQuery({
     queryKey: ["pedidos", "kanban"],
@@ -106,15 +119,90 @@ function PedidosKanbanPage() {
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
+  const allRows = pedidosQ.data ?? [];
+
+  const responsavelOf = (p: PedidoRow) =>
+    p.responsavel_nome ?? p.equipe_responsavel ?? null;
+
+  const options = useMemo(() => {
+    const vendedores = new Set<string>();
+    const responsaveis = new Set<string>();
+    const formas = new Set<string>();
+    const stages = new Set<string>();
+    allRows.forEach((p) => {
+      if (p.vendedor_nome) vendedores.add(p.vendedor_nome);
+      const r = responsavelOf(p);
+      if (r) responsaveis.add(r);
+      const f = p.forma_atendimento?.trim();
+      if (f) formas.add(f);
+      stages.add(p.stage);
+    });
+    const sortAsc = (a: string, b: string) => a.localeCompare(b, "pt-BR");
+    return {
+      vendedores: [...vendedores].sort(sortAsc),
+      responsaveis: [...responsaveis].sort(sortAsc),
+      formas: [...formas].sort(sortAsc),
+      stages: PEDIDO_STAGES.filter((s) => stages.has(s.id)),
+    };
+  }, [allRows]);
+
+  const terminalStages: PedidoStageId[] = ["pedido_entregue", "concluido"];
+
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
-    const rows = pedidosQ.data ?? [];
-    if (!q) return rows;
-    return rows.filter((p) =>
-      [p.number, p.lead_company ?? "", p.proposta_number ?? "", p.nf_numero ?? ""]
-        .some((s) => s.toLowerCase().includes(q)),
-    );
-  }, [pedidosQ.data, search]);
+    const now = new Date();
+    return allRows.filter((p) => {
+      if (q) {
+        const hit = [p.number, p.lead_company ?? "", p.proposta_number ?? "", p.nf_numero ?? ""]
+          .some((s) => s.toLowerCase().includes(q));
+        if (!hit) return false;
+      }
+      if (fVendedor !== "all" && p.vendedor_nome !== fVendedor) return false;
+      if (fResponsavel !== "all" && responsavelOf(p) !== fResponsavel) return false;
+      if (fStage !== "all" && p.stage !== fStage) return false;
+      if (fForma !== "all" && (p.forma_atendimento?.trim() ?? "") !== fForma) return false;
+
+      if (tAtrasados) {
+        const prev = p.previsao_entrega ? new Date(p.previsao_entrega) : null;
+        const atrasado =
+          prev !== null &&
+          !terminalStages.includes(p.stage) &&
+          differenceInCalendarDays(now, prev) > 0;
+        if (!atrasado) return false;
+      }
+      if (tBloqueados) {
+        const fiscalBlock =
+          p.fiscal_status === "aguardando_correcao" ||
+          p.fiscal_status === "nota_fiscal_cancelada";
+        if ((p.ocorrencias_abertas ?? 0) <= 0 && !fiscalBlock) return false;
+      }
+      if (tOcorrencia && !(p.ocorrencia && p.ocorrencia.trim().length > 0)) return false;
+      if (tConcluidos && p.stage !== "concluido") return false;
+      return true;
+    });
+  }, [allRows, search, fVendedor, fResponsavel, fStage, fForma, tAtrasados, tBloqueados, tOcorrencia, tConcluidos]);
+
+  const activeFilterCount =
+    (fVendedor !== "all" ? 1 : 0) +
+    (fResponsavel !== "all" ? 1 : 0) +
+    (fStage !== "all" ? 1 : 0) +
+    (fForma !== "all" ? 1 : 0) +
+    (tAtrasados ? 1 : 0) +
+    (tBloqueados ? 1 : 0) +
+    (tOcorrencia ? 1 : 0) +
+    (tConcluidos ? 1 : 0);
+
+  const clearFilters = () => {
+    setFVendedor("all");
+    setFResponsavel("all");
+    setFStage("all");
+    setFForma("all");
+    setTAtrasados(false);
+    setTBloqueados(false);
+    setTOcorrencia(false);
+    setTConcluidos(false);
+  };
+
 
   const byStage = useMemo(() => {
     const map: Record<PedidoStageId, PedidoRow[]> = {
@@ -196,6 +284,22 @@ function PedidosKanbanPage() {
       </div>
 
       <KpiBar pedidos={filtered} />
+
+      <FilterBar
+        options={options}
+        fVendedor={fVendedor} setFVendedor={setFVendedor}
+        fResponsavel={fResponsavel} setFResponsavel={setFResponsavel}
+        fStage={fStage} setFStage={setFStage}
+        fForma={fForma} setFForma={setFForma}
+        tAtrasados={tAtrasados} setTAtrasados={setTAtrasados}
+        tBloqueados={tBloqueados} setTBloqueados={setTBloqueados}
+        tOcorrencia={tOcorrencia} setTOcorrencia={setTOcorrencia}
+        tConcluidos={tConcluidos} setTConcluidos={setTConcluidos}
+        activeCount={activeFilterCount}
+        onClear={clearFilters}
+        totalCount={allRows.length}
+        filteredCount={filtered.length}
+      />
 
       {pedidosQ.isLoading ? (
         <div className="text-sm text-muted-foreground">Carregando pedidos…</div>
@@ -686,3 +790,144 @@ function KpiBar({ pedidos }: { pedidos: PedidoRow[] }) {
     </div>
   );
 }
+
+type FilterBarProps = {
+  options: {
+    vendedores: string[];
+    responsaveis: string[];
+    formas: string[];
+    stages: { id: PedidoStageId; label: string; color: string }[];
+  };
+  fVendedor: string; setFVendedor: (v: string) => void;
+  fResponsavel: string; setFResponsavel: (v: string) => void;
+  fStage: string; setFStage: (v: string) => void;
+  fForma: string; setFForma: (v: string) => void;
+  tAtrasados: boolean; setTAtrasados: (v: boolean) => void;
+  tBloqueados: boolean; setTBloqueados: (v: boolean) => void;
+  tOcorrencia: boolean; setTOcorrencia: (v: boolean) => void;
+  tConcluidos: boolean; setTConcluidos: (v: boolean) => void;
+  activeCount: number;
+  onClear: () => void;
+  totalCount: number;
+  filteredCount: number;
+};
+
+function FilterBar(props: FilterBarProps) {
+  const {
+    options, fVendedor, setFVendedor, fResponsavel, setFResponsavel,
+    fStage, setFStage, fForma, setFForma,
+    tAtrasados, setTAtrasados, tBloqueados, setTBloqueados,
+    tOcorrencia, setTOcorrencia, tConcluidos, setTConcluidos,
+    activeCount, onClear, totalCount, filteredCount,
+  } = props;
+
+  return (
+    <div className="rounded-xl border bg-card p-3 space-y-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <FilterSelect
+          value={fVendedor} onChange={setFVendedor}
+          placeholder="Vendedor" allLabel="Todos os vendedores"
+          items={options.vendedores.map((v) => ({ value: v, label: v }))}
+        />
+        <FilterSelect
+          value={fResponsavel} onChange={setFResponsavel}
+          placeholder="Responsável" allLabel="Todos os responsáveis"
+          items={options.responsaveis.map((v) => ({ value: v, label: v }))}
+        />
+        <FilterSelect
+          value={fStage} onChange={setFStage}
+          placeholder="Etapa" allLabel="Todas as etapas"
+          items={options.stages.map((s) => ({ value: s.id, label: s.label }))}
+        />
+        <FilterSelect
+          value={fForma} onChange={setFForma}
+          placeholder="Forma de atendimento" allLabel="Todas as formas"
+          items={options.formas.map((v) => ({ value: v, label: v }))}
+        />
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <ToggleChip active={tAtrasados} onClick={() => setTAtrasados(!tAtrasados)} tone="danger">
+          <AlertTriangle className="h-3 w-3 mr-1" /> Atrasados
+        </ToggleChip>
+        <ToggleChip active={tBloqueados} onClick={() => setTBloqueados(!tBloqueados)} tone="warning">
+          <ShieldAlert className="h-3 w-3 mr-1" /> Bloqueados
+        </ToggleChip>
+        <ToggleChip active={tOcorrencia} onClick={() => setTOcorrencia(!tOcorrencia)} tone="warning">
+          <Ban className="h-3 w-3 mr-1" /> Com ocorrência
+        </ToggleChip>
+        <ToggleChip active={tConcluidos} onClick={() => setTConcluidos(!tConcluidos)} tone="success">
+          <CheckCircle2 className="h-3 w-3 mr-1" /> Concluídos
+        </ToggleChip>
+
+        <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
+          <span>
+            {filteredCount} de {totalCount}
+          </span>
+          {activeCount > 0 && (
+            <Button variant="ghost" size="sm" onClick={onClear} className="h-7 px-2 text-xs">
+              Limpar filtros ({activeCount})
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FilterSelect({
+  value, onChange, placeholder, allLabel, items,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  allLabel: string;
+  items: { value: string; label: string }[];
+}) {
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger className="h-9 text-sm">
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all">{allLabel}</SelectItem>
+        {items.map((i) => (
+          <SelectItem key={i.value} value={i.value}>
+            {i.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+function ToggleChip({
+  active, onClick, tone, children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  tone: "danger" | "warning" | "success" | "info";
+  children: React.ReactNode;
+}) {
+  const toneCls =
+    tone === "danger"
+      ? "bg-rose-500/15 text-rose-700 border-rose-500/40"
+      : tone === "warning"
+        ? "bg-amber-500/15 text-amber-700 border-amber-500/40"
+        : tone === "success"
+          ? "bg-emerald-500/15 text-emerald-700 border-emerald-500/40"
+          : "bg-sky-500/15 text-sky-700 border-sky-500/40";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "inline-flex items-center rounded-full border px-2.5 py-1 text-xs transition-colors",
+        active ? toneCls : "bg-muted/40 text-muted-foreground border-border hover:bg-muted",
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
