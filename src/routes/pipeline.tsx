@@ -198,6 +198,18 @@ function PipelinePage() {
           </Button>
         )}
         <div className="ml-auto flex items-center gap-2">
+          <Toggle
+            pressed={mostrarGanhosCompletos}
+            onPressedChange={setMostrarGanhosCompletos}
+            size="sm"
+            className="h-7 gap-1 text-xs data-[state=on]:bg-primary/15 data-[state=on]:text-primary"
+            title="Ganhos que já geraram pedido operacional ficam ocultos por padrão. Os dados permanecem no banco."
+          >
+            <PackageCheck className="h-3 w-3" />
+            {mostrarGanhosCompletos
+              ? "Ocultar ganhos c/ pedido"
+              : `Mostrar ganhos c/ pedido${ganhosOcultos > 0 ? ` (${ganhosOcultos})` : ""}`}
+          </Toggle>
           <ArrowDownUp className="h-3.5 w-3.5 text-muted-foreground" />
           <Select value={sortMode} onValueChange={(v) => setSortMode(v as SortMode)}>
             <SelectTrigger className="h-7 w-[200px] text-xs">
