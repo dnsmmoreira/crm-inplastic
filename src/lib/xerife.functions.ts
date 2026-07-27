@@ -227,3 +227,22 @@ export const runFechamentoNow = createServerFn({ method: "POST" })
     const { runFechamento } = await import("@/routes/api/public/hooks/xerife-fechamento");
     return runFechamento(true);
   });
+
+/** Executa o Xerife Operacional (Pedidos) agora. Somente admin. Sem WhatsApp. */
+export const runXerifePedidosNow = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context);
+    const { runXerifePedidos } = await import("@/routes/api/public/hooks/xerife-pedidos");
+    return runXerifePedidos({ force: true });
+  });
+
+/** Simula o Xerife Operacional (Pedidos), sem gravar. Somente admin. Sem WhatsApp. */
+export const simulateXerifePedidos = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context);
+    const { runXerifePedidos } = await import("@/routes/api/public/hooks/xerife-pedidos");
+    return runXerifePedidos({ force: true, dryRun: true });
+  });
+
