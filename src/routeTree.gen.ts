@@ -36,6 +36,7 @@ import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as ApiPublicZapiWebhookRouteImport } from './routes/api/public/zapi/webhook'
+import { Route as ApiPublicHooksXerifePedidosRouteImport } from './routes/api/public/hooks/xerife-pedidos'
 import { Route as ApiPublicHooksXerifeFechamentoRouteImport } from './routes/api/public/hooks/xerife-fechamento'
 import { Route as ApiPublicHooksXerifeEngineRouteImport } from './routes/api/public/hooks/xerife-engine'
 import { Route as ApiPublicHooksXerifeCheckpointRouteImport } from './routes/api/public/hooks/xerife-checkpoint'
@@ -183,6 +184,12 @@ const ApiPublicZapiWebhookRoute = ApiPublicZapiWebhookRouteImport.update({
   path: '/api/public/zapi/webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksXerifePedidosRoute =
+  ApiPublicHooksXerifePedidosRouteImport.update({
+    id: '/api/public/hooks/xerife-pedidos',
+    path: '/api/public/hooks/xerife-pedidos',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksXerifeFechamentoRoute =
   ApiPublicHooksXerifeFechamentoRouteImport.update({
     id: '/api/public/hooks/xerife-fechamento',
@@ -265,6 +272,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/xerife-checkpoint': typeof ApiPublicHooksXerifeCheckpointRoute
   '/api/public/hooks/xerife-engine': typeof ApiPublicHooksXerifeEngineRoute
   '/api/public/hooks/xerife-fechamento': typeof ApiPublicHooksXerifeFechamentoRoute
+  '/api/public/hooks/xerife-pedidos': typeof ApiPublicHooksXerifePedidosRoute
   '/api/public/zapi/webhook': typeof ApiPublicZapiWebhookRoute
 }
 export interface FileRoutesByTo {
@@ -302,6 +310,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/xerife-checkpoint': typeof ApiPublicHooksXerifeCheckpointRoute
   '/api/public/hooks/xerife-engine': typeof ApiPublicHooksXerifeEngineRoute
   '/api/public/hooks/xerife-fechamento': typeof ApiPublicHooksXerifeFechamentoRoute
+  '/api/public/hooks/xerife-pedidos': typeof ApiPublicHooksXerifePedidosRoute
   '/api/public/zapi/webhook': typeof ApiPublicZapiWebhookRoute
 }
 export interface FileRoutesById {
@@ -340,6 +349,7 @@ export interface FileRoutesById {
   '/api/public/hooks/xerife-checkpoint': typeof ApiPublicHooksXerifeCheckpointRoute
   '/api/public/hooks/xerife-engine': typeof ApiPublicHooksXerifeEngineRoute
   '/api/public/hooks/xerife-fechamento': typeof ApiPublicHooksXerifeFechamentoRoute
+  '/api/public/hooks/xerife-pedidos': typeof ApiPublicHooksXerifePedidosRoute
   '/api/public/zapi/webhook': typeof ApiPublicZapiWebhookRoute
 }
 export interface FileRouteTypes {
@@ -379,6 +389,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/xerife-checkpoint'
     | '/api/public/hooks/xerife-engine'
     | '/api/public/hooks/xerife-fechamento'
+    | '/api/public/hooks/xerife-pedidos'
     | '/api/public/zapi/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -416,6 +427,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/xerife-checkpoint'
     | '/api/public/hooks/xerife-engine'
     | '/api/public/hooks/xerife-fechamento'
+    | '/api/public/hooks/xerife-pedidos'
     | '/api/public/zapi/webhook'
   id:
     | '__root__'
@@ -453,6 +465,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/xerife-checkpoint'
     | '/api/public/hooks/xerife-engine'
     | '/api/public/hooks/xerife-fechamento'
+    | '/api/public/hooks/xerife-pedidos'
     | '/api/public/zapi/webhook'
   fileRoutesById: FileRoutesById
 }
@@ -491,6 +504,7 @@ export interface RootRouteChildren {
   ApiPublicHooksXerifeCheckpointRoute: typeof ApiPublicHooksXerifeCheckpointRoute
   ApiPublicHooksXerifeEngineRoute: typeof ApiPublicHooksXerifeEngineRoute
   ApiPublicHooksXerifeFechamentoRoute: typeof ApiPublicHooksXerifeFechamentoRoute
+  ApiPublicHooksXerifePedidosRoute: typeof ApiPublicHooksXerifePedidosRoute
   ApiPublicZapiWebhookRoute: typeof ApiPublicZapiWebhookRoute
 }
 
@@ -685,6 +699,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicZapiWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/xerife-pedidos': {
+      id: '/api/public/hooks/xerife-pedidos'
+      path: '/api/public/hooks/xerife-pedidos'
+      fullPath: '/api/public/hooks/xerife-pedidos'
+      preLoaderRoute: typeof ApiPublicHooksXerifePedidosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/xerife-fechamento': {
       id: '/api/public/hooks/xerife-fechamento'
       path: '/api/public/hooks/xerife-fechamento'
@@ -780,6 +801,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksXerifeCheckpointRoute: ApiPublicHooksXerifeCheckpointRoute,
   ApiPublicHooksXerifeEngineRoute: ApiPublicHooksXerifeEngineRoute,
   ApiPublicHooksXerifeFechamentoRoute: ApiPublicHooksXerifeFechamentoRoute,
+  ApiPublicHooksXerifePedidosRoute: ApiPublicHooksXerifePedidosRoute,
   ApiPublicZapiWebhookRoute: ApiPublicZapiWebhookRoute,
 }
 export const routeTree = rootRouteImport
