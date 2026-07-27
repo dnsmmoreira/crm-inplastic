@@ -6,7 +6,7 @@ import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import {
   ClipboardCheck, ShieldCheck, ShieldAlert, FileCheck2, AlertTriangle,
-  CheckCircle2, XCircle, Plus, Loader2,
+  CheckCircle2, XCircle, Plus, Loader2, Bell,
 } from "lucide-react";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
@@ -32,10 +32,12 @@ import {
   atualizarStatusFiscal,
   registrarOcorrencia,
   resolverOcorrencia,
+  listPedidoNotificacoes,
   PEDIDO_STAGES,
   type ChecklistItem,
   type PedidoDetalhes,
   type PedidoStageId,
+  type PedidoNotificacaoRow,
 } from "@/lib/pedidos.functions";
 
 const DEFAULT_CHECKLIST: ChecklistItem[] = [
@@ -119,9 +121,104 @@ function PedidoDetailBody({
           <ChecklistBlock pedido={pedido} onChanged={onChanged} />
           <FiscalBlock pedido={pedido} onChanged={onChanged} />
           <OcorrenciasBlock pedido={pedido} onChanged={onChanged} />
+          <NotificacoesBlock pedidoId={pedido.id} />
         </div>
       </ScrollArea>
     </div>
+  );
+}
+
+/* ------------------------------ Notificações (RO) --------------------------- */
+
+const CLASSIFICACAO_LABEL: Record<PedidoNotificacaoRow["classificacao"], string> = {
+  informativa: "Informativa",
+  acao_necessaria: "Ação necessária",
+  alerta: "Alerta",
+};
+
+const STATUS_LABEL: Record<PedidoNotificacaoRow["status"], string> = {
+  pendente: "Pendente",
+  enviado: "Enviado",
+  entregue: "Entregue",
+  falhou: "Falhou",
+  reprocessado: "Reprocessado",
+};
+
+function stageLabelFor(id: PedidoStageId | null): string {
+  if (!id) return "—";
+  return PEDIDO_STAGES.find((s) => s.id === id)?.label ?? id;
+}
+
+function NotificacoesBlock({ pedidoId }: { pedidoId: string }) {
+  const listFn = useServerFn(listPedidoNotificacoes);
+  const q = useQuery({
+    queryKey: ["pedido", "notificacoes", pedidoId],
+    queryFn: () => listFn({ data: { pedido_id: pedidoId } }),
+    refetchOnWindowFocus: false,
+  });
+  const rows = q.data ?? [];
+
+  return (
+    <section className="space-y-3">
+      <SectionTitle
+        icon={<Bell className="h-4 w-4" />}
+        label="Notificações"
+        right={
+          <span className="text-xs text-muted-foreground">
+            somente leitura · envio desativado
+          </span>
+        }
+      />
+      <div className="rounded-lg border">
+        {q.isLoading ? (
+          <div className="p-3 text-xs text-muted-foreground flex items-center gap-2">
+            <Loader2 className="h-3 w-3 animate-spin" /> Carregando…
+          </div>
+        ) : rows.length === 0 ? (
+          <div className="p-3 text-xs text-muted-foreground italic">
+            Nenhum evento registrado para este pedido.
+          </div>
+        ) : (
+          <ul className="divide-y">
+            {rows.map((n) => (
+              <li key={n.id} className="p-3 space-y-1">
+                <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                  <span>
+                    {format(new Date(n.criado_em), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "text-[10px] px-1.5 py-0",
+                        n.classificacao === "acao_necessaria" &&
+                          "border-amber-500/40 text-amber-700 bg-amber-500/10",
+                        n.classificacao === "alerta" &&
+                          "border-rose-500/40 text-rose-700 bg-rose-500/10",
+                      )}
+                    >
+                      {CLASSIFICACAO_LABEL[n.classificacao]}
+                    </Badge>
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                      {STATUS_LABEL[n.status]}
+                    </Badge>
+                  </div>
+                </div>
+                <div className="text-xs">
+                  <span className="text-muted-foreground">Etapa: </span>
+                  <b>{stageLabelFor(n.etapa_anterior)}</b>
+                  <span className="text-muted-foreground"> → </span>
+                  <b>{stageLabelFor(n.nova_etapa)}</b>
+                </div>
+                <div className="text-xs text-foreground/80 line-clamp-2 whitespace-pre-wrap">
+                  {n.mensagem}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
   );
 }
 
