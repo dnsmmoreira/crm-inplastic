@@ -212,6 +212,7 @@ function PedidosKanbanPage() {
                   dragActive={!!activePedido && activePedido.stage !== stage.id}
                   canDrop={canDrop}
                   isBackwardTarget={isBack && canDrop}
+                  onOpen={setOpenPedidoId}
                 />
               );
             })}
@@ -219,6 +220,8 @@ function PedidosKanbanPage() {
           <DragOverlay>{activePedido && <PedidoCard pedido={activePedido} dragging />}</DragOverlay>
         </DndContext>
       )}
+
+      <PedidoDetailDrawer pedidoId={openPedidoId} onClose={() => setOpenPedidoId(null)} />
 
       <BackwardMotiveDialog
         pending={pendingBackward}
