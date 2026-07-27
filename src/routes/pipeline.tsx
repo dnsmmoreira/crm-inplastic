@@ -51,6 +51,8 @@ function PipelinePage() {
   const [search, setSearch] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [lostTarget, setLostTarget] = useState<{ leadId: string; company: string } | null>(null);
+  // Fase 3: por padrão, oculta ganhos que já viraram pedido operacional (não deleta nada).
+  const [mostrarGanhosCompletos, setMostrarGanhosCompletos] = useState(false);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
@@ -65,9 +67,28 @@ function PipelinePage() {
       return next;
     });
 
+  const leadsComPedidoFn = useServerFn(listLeadsComPedido);
+  const leadsComPedidoQ = useQuery({
+    queryKey: ["pipeline", "leads-com-pedido"],
+    queryFn: () => leadsComPedidoFn(),
+    staleTime: 60_000,
+  });
+  const leadsComPedidoSet = useMemo(
+    () => new Set(leadsComPedidoQ.data ?? []),
+    [leadsComPedidoQ.data],
+  );
+  const ganhosOcultos = useMemo(
+    () =>
+      mostrarGanhosCompletos
+        ? 0
+        : leads.filter((l) => l.stage === "ganho" && leadsComPedidoSet.has(l.id)).length,
+    [leads, leadsComPedidoSet, mostrarGanhosCompletos],
+  );
+
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     return leads.filter((l) => {
+      if (!mostrarGanhosCompletos && l.stage === "ganho" && leadsComPedidoSet.has(l.id)) return false;
       if (q && !(l.company.toLowerCase().includes(q) ||
         l.contactName.toLowerCase().includes(q) ||
         l.product.toLowerCase().includes(q))) return false;
@@ -77,7 +98,7 @@ function PipelinePage() {
       }
       return true;
     });
-  }, [leads, search, agendaFilter]);
+  }, [leads, search, agendaFilter, leadsComPedidoSet, mostrarGanhosCompletos]);
 
   const byStage = useMemo(() => {
     const rank: Record<FollowupLevel, number> = { urgent: 0, attention: 1, scheduled: 2, ok: 3 };
