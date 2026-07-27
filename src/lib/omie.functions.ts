@@ -34,7 +34,7 @@ function relaxSupabase(sb: unknown): LooseClient {
   return sb as LooseClient;
 }
 
-export const gerarPedidoOmie = createServerFn({ method: "POST" })
+export const gerarPedidoInterno = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { proposta_id: string; requer_aprovacao?: boolean }) =>
     z
