@@ -671,6 +671,62 @@ export type Database = {
           },
         ]
       }
+      pedido_ocorrencias: {
+        Row: {
+          created_at: string
+          criada_por: string | null
+          descricao: string
+          id: string
+          pedido_id: string
+          resolucao_nota: string | null
+          resolvida: boolean
+          resolvida_em: string | null
+          resolvida_por: string | null
+          severidade: string
+          stage_no_momento: Database["public"]["Enums"]["pedido_stage"] | null
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          criada_por?: string | null
+          descricao: string
+          id?: string
+          pedido_id: string
+          resolucao_nota?: string | null
+          resolvida?: boolean
+          resolvida_em?: string | null
+          resolvida_por?: string | null
+          severidade?: string
+          stage_no_momento?: Database["public"]["Enums"]["pedido_stage"] | null
+          tipo: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          criada_por?: string | null
+          descricao?: string
+          id?: string
+          pedido_id?: string
+          resolucao_nota?: string | null
+          resolvida?: boolean
+          resolvida_em?: string | null
+          resolvida_por?: string | null
+          severidade?: string
+          stage_no_momento?: Database["public"]["Enums"]["pedido_stage"] | null
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pedido_ocorrencias_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pedido_stage_history: {
         Row: {
           created_at: string
@@ -714,6 +770,16 @@ export type Database = {
       }
       pedidos: {
         Row: {
+          aprovacao_decidida_em: string | null
+          aprovacao_decidida_por: string | null
+          aprovacao_decisao: string | null
+          aprovacao_motivo: string | null
+          aprovacao_observacao: string | null
+          aprovacao_solicitada_em: string | null
+          aprovacao_solicitada_por: string | null
+          checklist_atualizado_em: string | null
+          checklist_atualizado_por: string | null
+          checklist_conferencia: Json
           created_at: string
           despachado_em: string | null
           entrega_recebida_por: string | null
@@ -750,6 +816,16 @@ export type Database = {
           vendedor_proprietario_id: string | null
         }
         Insert: {
+          aprovacao_decidida_em?: string | null
+          aprovacao_decidida_por?: string | null
+          aprovacao_decisao?: string | null
+          aprovacao_motivo?: string | null
+          aprovacao_observacao?: string | null
+          aprovacao_solicitada_em?: string | null
+          aprovacao_solicitada_por?: string | null
+          checklist_atualizado_em?: string | null
+          checklist_atualizado_por?: string | null
+          checklist_conferencia?: Json
           created_at?: string
           despachado_em?: string | null
           entrega_recebida_por?: string | null
@@ -786,6 +862,16 @@ export type Database = {
           vendedor_proprietario_id?: string | null
         }
         Update: {
+          aprovacao_decidida_em?: string | null
+          aprovacao_decidida_por?: string | null
+          aprovacao_decisao?: string | null
+          aprovacao_motivo?: string | null
+          aprovacao_observacao?: string | null
+          aprovacao_solicitada_em?: string | null
+          aprovacao_solicitada_por?: string | null
+          checklist_atualizado_em?: string | null
+          checklist_atualizado_por?: string | null
+          checklist_conferencia?: Json
           created_at?: string
           despachado_em?: string | null
           entrega_recebida_por?: string | null

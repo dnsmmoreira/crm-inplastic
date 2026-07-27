@@ -39,6 +39,7 @@ import {
   type PedidoRow,
   type PedidoStageId,
 } from "@/lib/pedidos.functions";
+import { PedidoDetailDrawer } from "@/components/pedidos/PedidoDetailDrawer";
 
 export const Route = createFileRoute("/pedidos")({
   component: PedidosKanbanPage,
@@ -65,6 +66,7 @@ function PedidosKanbanPage() {
   const [search, setSearch] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [pendingBackward, setPendingBackward] = useState<PendingBackward | null>(null);
+  const [openPedidoId, setOpenPedidoId] = useState<string | null>(null);
 
   const pedidosQ = useQuery({
     queryKey: ["pedidos", "kanban"],
@@ -210,6 +212,7 @@ function PedidosKanbanPage() {
                   dragActive={!!activePedido && activePedido.stage !== stage.id}
                   canDrop={canDrop}
                   isBackwardTarget={isBack && canDrop}
+                  onOpen={setOpenPedidoId}
                 />
               );
             })}
@@ -217,6 +220,8 @@ function PedidosKanbanPage() {
           <DragOverlay>{activePedido && <PedidoCard pedido={activePedido} dragging />}</DragOverlay>
         </DndContext>
       )}
+
+      <PedidoDetailDrawer pedidoId={openPedidoId} onClose={() => setOpenPedidoId(null)} />
 
       <BackwardMotiveDialog
         pending={pendingBackward}
@@ -243,12 +248,14 @@ function Column({
   dragActive,
   canDrop,
   isBackwardTarget,
+  onOpen,
 }: {
   stage: (typeof PEDIDO_STAGES)[number];
   pedidos: PedidoRow[];
   dragActive: boolean;
   canDrop: boolean;
   isBackwardTarget: boolean;
+  onOpen: (id: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage.id, disabled: dragActive && !canDrop });
   const total = pedidos.reduce((s, p) => s + p.total, 0);
@@ -291,7 +298,7 @@ function Column({
           </div>
         )}
         {pedidos.map((p) => (
-          <PedidoCard key={p.id} pedido={p} />
+          <PedidoCard key={p.id} pedido={p} onOpen={onOpen} />
         ))}
         {pedidos.length === 0 && !showBlocked && (
           <div className="text-xs text-muted-foreground text-center py-8 italic">Solte aqui</div>
@@ -301,7 +308,15 @@ function Column({
   );
 }
 
-function PedidoCard({ pedido, dragging = false }: { pedido: PedidoRow; dragging?: boolean }) {
+function PedidoCard({
+  pedido,
+  dragging = false,
+  onOpen,
+}: {
+  pedido: PedidoRow;
+  dragging?: boolean;
+  onOpen?: (id: string) => void;
+}) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: pedido.id });
 
   const diasNaEtapa = Math.max(
@@ -336,6 +351,13 @@ function PedidoCard({ pedido, dragging = false }: { pedido: PedidoRow; dragging?
       ref={setNodeRef}
       {...attributes}
       {...listeners}
+      onClick={(e) => {
+        // ignora clique enquanto arrasta
+        if (isDragging || dragging) return;
+        // Só abre em clique "simples" sem drag
+        if (onOpen) onOpen(pedido.id);
+        e.stopPropagation();
+      }}
       className={cn(
         "cursor-grab active:cursor-grabbing rounded-lg border bg-card p-3 shadow-sm hover:shadow-md hover:border-primary/50 transition-all",
         atrasado && "border-l-4 border-l-rose-500",
