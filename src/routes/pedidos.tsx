@@ -531,3 +531,158 @@ function BackwardMotiveDialog({
     </Dialog>
   );
 }
+
+function KpiBar({ pedidos }: { pedidos: PedidoRow[] }) {
+  const kpis = useMemo(() => {
+    const now = new Date();
+    const terminal: PedidoStageId[] = ["pedido_entregue", "concluido"];
+    const ativos = pedidos.filter((p) => p.stage !== "concluido");
+    const valorAtivos = ativos.reduce((s, p) => s + p.total, 0);
+
+    const atrasados = pedidos.filter((p) => {
+      if (!p.previsao_entrega) return false;
+      if (terminal.includes(p.stage)) return false;
+      return differenceInCalendarDays(now, new Date(p.previsao_entrega)) > 0;
+    }).length;
+
+    const bloqueados = pedidos.filter((p) => {
+      const ocor = (p.ocorrencias_abertas ?? 0) > 0;
+      const fiscal =
+        p.fiscal_status === "aguardando_correcao" ||
+        p.fiscal_status === "nota_fiscal_cancelada";
+      return ocor || fiscal;
+    }).length;
+
+    const emProducao = pedidos.filter((p) => p.stage === "em_producao").length;
+    const aguardSaida = pedidos.filter(
+      (p) => p.stage === "faturado_aguardando_coleta",
+    ).length;
+    const emTransporte = pedidos.filter((p) => p.stage === "despachado_transporte").length;
+    const entregues = pedidos.filter((p) => p.stage === "pedido_entregue").length;
+    const comOcorrencia = pedidos.filter((p) => (p.ocorrencias_abertas ?? 0) > 0).length;
+
+    const diasArr = pedidos
+      .filter((p) => !terminal.includes(p.stage))
+      .map((p) =>
+        Math.max(0, differenceInCalendarDays(now, new Date(p.stage_changed_at))),
+      );
+    const tempoMedio =
+      diasArr.length > 0
+        ? diasArr.reduce((s, n) => s + n, 0) / diasArr.length
+        : 0;
+
+    const concluidos = pedidos.filter((p) => p.stage === "concluido").length;
+    const total = pedidos.length;
+    const pctPosVenda = total > 0 ? (concluidos / total) * 100 : 0;
+
+    return {
+      ativos: ativos.length,
+      valorAtivos,
+      atrasados,
+      bloqueados,
+      emProducao,
+      aguardSaida,
+      emTransporte,
+      entregues,
+      comOcorrencia,
+      tempoMedio,
+      pctPosVenda,
+    };
+  }, [pedidos]);
+
+  const cards: Array<{
+    label: string;
+    value: string;
+    hint?: string;
+    icon: React.ComponentType<{ className?: string }>;
+    tone?: "default" | "warning" | "danger" | "success" | "info";
+  }> = [
+    {
+      label: "Ativos",
+      value: String(kpis.ativos),
+      hint: formatBRL(kpis.valorAtivos),
+      icon: Package,
+      tone: "default",
+    },
+    {
+      label: "Atrasados",
+      value: String(kpis.atrasados),
+      icon: AlertTriangle,
+      tone: kpis.atrasados > 0 ? "danger" : "default",
+    },
+    {
+      label: "Bloqueados",
+      value: String(kpis.bloqueados),
+      hint: "ocorrência/fiscal",
+      icon: ShieldAlert,
+      tone: kpis.bloqueados > 0 ? "warning" : "default",
+    },
+    { label: "Em produção", value: String(kpis.emProducao), icon: Factory, tone: "info" },
+    {
+      label: "Aguard. saída",
+      value: String(kpis.aguardSaida),
+      icon: PackageCheck,
+      tone: "info",
+    },
+    { label: "Em transporte", value: String(kpis.emTransporte), icon: Truck, tone: "info" },
+    {
+      label: "Entregues",
+      value: String(kpis.entregues),
+      icon: CheckCircle2,
+      tone: "success",
+    },
+    {
+      label: "Com ocorrência",
+      value: String(kpis.comOcorrencia),
+      icon: Flame,
+      tone: kpis.comOcorrencia > 0 ? "warning" : "default",
+    },
+    {
+      label: "Tempo médio",
+      value: `${kpis.tempoMedio.toFixed(1)}d`,
+      hint: "na etapa atual",
+      icon: Timer,
+      tone: "default",
+    },
+    {
+      label: "Pós-venda concluído",
+      value: `${kpis.pctPosVenda.toFixed(0)}%`,
+      hint: "do total",
+      icon: TrendingUp,
+      tone: "success",
+    },
+  ];
+
+  const toneClass: Record<NonNullable<(typeof cards)[number]["tone"]>, string> = {
+    default: "text-foreground",
+    warning: "text-amber-600",
+    danger: "text-rose-600",
+    success: "text-emerald-600",
+    info: "text-sky-600",
+  };
+
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 xl:grid-cols-10 gap-2">
+      {cards.map((c) => {
+        const Icon = c.icon;
+        return (
+          <div
+            key={c.label}
+            className="rounded-lg border bg-card p-2.5 flex flex-col gap-1 min-w-0"
+          >
+            <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-muted-foreground min-w-0">
+              <Icon className={cn("h-3 w-3 shrink-0", toneClass[c.tone ?? "default"])} />
+              <span className="truncate">{c.label}</span>
+            </div>
+            <div className={cn("text-lg font-semibold leading-tight", toneClass[c.tone ?? "default"])}>
+              {c.value}
+            </div>
+            {c.hint && (
+              <div className="text-[10px] text-muted-foreground truncate">{c.hint}</div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
