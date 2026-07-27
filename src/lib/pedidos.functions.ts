@@ -569,6 +569,24 @@ export const salvarChecklistConferencia = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const sb: LooseClient = context.supabase;
+
+    // Trava do checklist (doc 7.6): "pronto para faturamento/expedição" só pode
+    // ficar marcado quando todos os outros itens estiverem confirmados.
+    const isProntoItem = (it: ChecklistItem) =>
+      it.id === "pronto" ||
+      /pronto\s+para\s+(faturamento|expedi)/i.test(it.label);
+    const pronto = data.items.find(isProntoItem);
+    if (pronto?.done) {
+      const outrosPendentes = data.items.filter((i) => !isProntoItem(i) && !i.done);
+      if (outrosPendentes.length > 0) {
+        throw new Error(
+          `Marque todos os itens de conferência antes de sinalizar "pronto para faturamento/expedição". Pendente(s): ${outrosPendentes
+            .map((i) => i.label)
+            .join(", ")}.`,
+        );
+      }
+    }
+
     const { error } = await sb
       .from("pedidos")
       .update({
