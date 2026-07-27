@@ -6,7 +6,7 @@ import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import {
   ClipboardCheck, ShieldCheck, ShieldAlert, FileCheck2, AlertTriangle,
-  CheckCircle2, XCircle, Plus, Loader2,
+  CheckCircle2, XCircle, Plus, Loader2, Bell,
 } from "lucide-react";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
