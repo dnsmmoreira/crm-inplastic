@@ -251,6 +251,24 @@ export const updatePedidoStage = createServerFn({ method: "POST" })
       };
     }
 
+    // Bloqueio de conclusão por ocorrência aberta (doc 7.9 e 22)
+    if (to === "concluido") {
+      const { count: abertas, error: ocErr } = await sb
+        .from("pedido_ocorrencias")
+        .select("id", { count: "exact", head: true })
+        .eq("pedido_id", data.pedido_id)
+        .eq("resolvida", false);
+      if (ocErr) throw new Error(`Falha ao verificar ocorrências: ${ocErr.message}`);
+      if ((abertas ?? 0) > 0) {
+        return {
+          ok: false,
+          reason: "invalid_transition",
+          message:
+            "Não é possível concluir: há ocorrência(s) em aberto. Resolva-as antes de concluir.",
+        };
+      }
+    }
+
     // Atualiza etapa
     const { error: updErr } = await sb
       .from("pedidos")
