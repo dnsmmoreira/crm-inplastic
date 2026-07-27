@@ -44,6 +44,7 @@ const DEFAULT_CHECKLIST: ChecklistItem[] = [
   { id: "conf-embal", label: "Embalagem/rotulagem OK", done: false },
   { id: "conf-peso", label: "Peso/volume batendo", done: false },
   { id: "conf-doc", label: "Documentos anexos completos", done: false },
+  { id: "pronto", label: "Pronto para faturamento/expedição", done: false },
 ];
 
 const OCORRENCIA_TIPOS = [
