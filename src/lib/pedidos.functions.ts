@@ -622,6 +622,14 @@ export const atualizarStatusFiscal = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const sb: LooseClient = context.supabase;
+
+    // Snapshot dos valores atuais para diff imutável (doc 11.2 e 16)
+    const { data: before } = await sb
+      .from("pedidos")
+      .select("nf_numero, nf_serie, nf_chave, nf_valor")
+      .eq("id", data.pedido_id)
+      .maybeSingle();
+
     const patch: Record<string, unknown> = { fiscal_status: data.fiscal_status };
     if (data.nf_numero !== undefined) patch.nf_numero = data.nf_numero || null;
     if (data.nf_serie !== undefined) patch.nf_serie = data.nf_serie || null;
@@ -630,7 +638,37 @@ export const atualizarStatusFiscal = createServerFn({ method: "POST" })
     if (data.fiscal_status === "emitida") patch.nf_emitida_em = new Date().toISOString();
     const { error } = await sb.from("pedidos").update(patch).eq("id", data.pedido_id);
     if (error) throw new Error(`Falha ao atualizar status fiscal: ${error.message}`);
-    void context;
+
+    // Auditoria fiscal imutável: uma linha por campo alterado
+    const toStr = (v: unknown): string | null =>
+      v === null || v === undefined || v === "" ? null : String(v);
+    const diffs: Array<{ campo: string; valor_anterior: string | null; valor_novo: string | null }> = [];
+    const check = (campo: "nf_numero" | "nf_serie" | "nf_chave" | "nf_valor", incoming: unknown) => {
+      if (incoming === undefined) return;
+      const antes = toStr(before ? (before as Record<string, unknown>)[campo] : null);
+      const depois = toStr(incoming);
+      if (antes !== depois) diffs.push({ campo, valor_anterior: antes, valor_novo: depois });
+    };
+    check("nf_numero", patch.nf_numero);
+    check("nf_serie", patch.nf_serie);
+    check("nf_chave", patch.nf_chave);
+    check("nf_valor", patch.nf_valor);
+
+    if (diffs.length > 0) {
+      const { error: histErr } = await sb.from("pedido_fiscal_history").insert(
+        diffs.map((d) => ({
+          pedido_id: data.pedido_id,
+          campo: d.campo,
+          valor_anterior: d.valor_anterior,
+          valor_novo: d.valor_novo,
+          alterado_por: context.userId,
+        })),
+      );
+      if (histErr) {
+        console.error("[atualizarStatusFiscal] falha ao registrar auditoria fiscal:", histErr);
+      }
+    }
+
     return { ok: true as const };
   });
 
