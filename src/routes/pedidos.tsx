@@ -790,3 +790,144 @@ function KpiBar({ pedidos }: { pedidos: PedidoRow[] }) {
     </div>
   );
 }
+
+type FilterBarProps = {
+  options: {
+    vendedores: string[];
+    responsaveis: string[];
+    formas: string[];
+    stages: typeof PEDIDO_STAGES;
+  };
+  fVendedor: string; setFVendedor: (v: string) => void;
+  fResponsavel: string; setFResponsavel: (v: string) => void;
+  fStage: string; setFStage: (v: string) => void;
+  fForma: string; setFForma: (v: string) => void;
+  tAtrasados: boolean; setTAtrasados: (v: boolean) => void;
+  tBloqueados: boolean; setTBloqueados: (v: boolean) => void;
+  tOcorrencia: boolean; setTOcorrencia: (v: boolean) => void;
+  tConcluidos: boolean; setTConcluidos: (v: boolean) => void;
+  activeCount: number;
+  onClear: () => void;
+  totalCount: number;
+  filteredCount: number;
+};
+
+function FilterBar(props: FilterBarProps) {
+  const {
+    options, fVendedor, setFVendedor, fResponsavel, setFResponsavel,
+    fStage, setFStage, fForma, setFForma,
+    tAtrasados, setTAtrasados, tBloqueados, setTBloqueados,
+    tOcorrencia, setTOcorrencia, tConcluidos, setTConcluidos,
+    activeCount, onClear, totalCount, filteredCount,
+  } = props;
+
+  return (
+    <div className="rounded-xl border bg-card p-3 space-y-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <FilterSelect
+          value={fVendedor} onChange={setFVendedor}
+          placeholder="Vendedor" allLabel="Todos os vendedores"
+          items={options.vendedores.map((v) => ({ value: v, label: v }))}
+        />
+        <FilterSelect
+          value={fResponsavel} onChange={setFResponsavel}
+          placeholder="Responsável" allLabel="Todos os responsáveis"
+          items={options.responsaveis.map((v) => ({ value: v, label: v }))}
+        />
+        <FilterSelect
+          value={fStage} onChange={setFStage}
+          placeholder="Etapa" allLabel="Todas as etapas"
+          items={options.stages.map((s) => ({ value: s.id, label: s.label }))}
+        />
+        <FilterSelect
+          value={fForma} onChange={setFForma}
+          placeholder="Forma de atendimento" allLabel="Todas as formas"
+          items={options.formas.map((v) => ({ value: v, label: v }))}
+        />
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <ToggleChip active={tAtrasados} onClick={() => setTAtrasados(!tAtrasados)} tone="danger">
+          <AlertTriangle className="h-3 w-3 mr-1" /> Atrasados
+        </ToggleChip>
+        <ToggleChip active={tBloqueados} onClick={() => setTBloqueados(!tBloqueados)} tone="warning">
+          <ShieldAlert className="h-3 w-3 mr-1" /> Bloqueados
+        </ToggleChip>
+        <ToggleChip active={tOcorrencia} onClick={() => setTOcorrencia(!tOcorrencia)} tone="warning">
+          <Ban className="h-3 w-3 mr-1" /> Com ocorrência
+        </ToggleChip>
+        <ToggleChip active={tConcluidos} onClick={() => setTConcluidos(!tConcluidos)} tone="success">
+          <CheckCircle2 className="h-3 w-3 mr-1" /> Concluídos
+        </ToggleChip>
+
+        <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
+          <span>
+            {filteredCount} de {totalCount}
+          </span>
+          {activeCount > 0 && (
+            <Button variant="ghost" size="sm" onClick={onClear} className="h-7 px-2 text-xs">
+              Limpar filtros ({activeCount})
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FilterSelect({
+  value, onChange, placeholder, allLabel, items,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  allLabel: string;
+  items: { value: string; label: string }[];
+}) {
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger className="h-9 text-sm">
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all">{allLabel}</SelectItem>
+        {items.map((i) => (
+          <SelectItem key={i.value} value={i.value}>
+            {i.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+function ToggleChip({
+  active, onClick, tone, children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  tone: "danger" | "warning" | "success" | "info";
+  children: React.ReactNode;
+}) {
+  const toneCls =
+    tone === "danger"
+      ? "bg-rose-500/15 text-rose-700 border-rose-500/40"
+      : tone === "warning"
+        ? "bg-amber-500/15 text-amber-700 border-amber-500/40"
+        : tone === "success"
+          ? "bg-emerald-500/15 text-emerald-700 border-emerald-500/40"
+          : "bg-sky-500/15 text-sky-700 border-sky-500/40";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "inline-flex items-center rounded-full border px-2.5 py-1 text-xs transition-colors",
+        active ? toneCls : "bg-muted/40 text-muted-foreground border-border hover:bg-muted",
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
