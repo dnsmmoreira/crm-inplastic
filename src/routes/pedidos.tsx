@@ -72,6 +72,15 @@ function PedidosKanbanPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [pendingBackward, setPendingBackward] = useState<PendingBackward | null>(null);
   const [openPedidoId, setOpenPedidoId] = useState<string | null>(null);
+  const [fVendedor, setFVendedor] = useState<string>("all");
+  const [fResponsavel, setFResponsavel] = useState<string>("all");
+  const [fStage, setFStage] = useState<string>("all");
+  const [fForma, setFForma] = useState<string>("all");
+  const [tAtrasados, setTAtrasados] = useState(false);
+  const [tBloqueados, setTBloqueados] = useState(false);
+  const [tOcorrencia, setTOcorrencia] = useState(false);
+  const [tConcluidos, setTConcluidos] = useState(false);
+
 
   const pedidosQ = useQuery({
     queryKey: ["pedidos", "kanban"],
