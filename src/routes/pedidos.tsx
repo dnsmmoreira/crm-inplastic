@@ -13,18 +13,29 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { Search, Package, Calendar as CalendarIcon, FileText, Truck } from "lucide-react";
-import { format } from "date-fns";
+import {
+  Search, Calendar as CalendarIcon, FileText, Truck, User, Clock,
+  AlertTriangle, Flame, Headphones, Ban,
+} from "lucide-react";
+import { format, differenceInCalendarDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { formatBRL } from "@/lib/crm-store";
 import {
   listPedidos,
   updatePedidoStage,
   PEDIDO_STAGES,
+  ALLOWED_FORWARD,
+  isBackward,
+  isTransitionAllowed,
   type PedidoRow,
   type PedidoStageId,
 } from "@/lib/pedidos.functions";
@@ -39,6 +50,13 @@ export const Route = createFileRoute("/pedidos")({
   }),
 });
 
+type PendingBackward = {
+  pedidoId: string;
+  pedidoNumber: string;
+  from: PedidoStageId;
+  to: PedidoStageId;
+};
+
 function PedidosKanbanPage() {
   const listFn = useServerFn(listPedidos);
   const updateFn = useServerFn(updatePedidoStage);
@@ -46,6 +64,7 @@ function PedidosKanbanPage() {
 
   const [search, setSearch] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [pendingBackward, setPendingBackward] = useState<PendingBackward | null>(null);
 
   const pedidosQ = useQuery({
     queryKey: ["pedidos", "kanban"],
@@ -54,7 +73,8 @@ function PedidosKanbanPage() {
   });
 
   const mutation = useMutation({
-    mutationFn: (vars: { pedido_id: string; stage: PedidoStageId }) => updateFn({ data: vars }),
+    mutationFn: (vars: { pedido_id: string; stage: PedidoStageId; motivo?: string }) =>
+      updateFn({ data: vars }),
     onMutate: async (vars) => {
       await qc.cancelQueries({ queryKey: ["pedidos", "kanban"] });
       const prev = qc.getQueryData<PedidoRow[]>(["pedidos", "kanban"]);
@@ -70,8 +90,14 @@ function PedidosKanbanPage() {
       if (ctx?.prev) qc.setQueryData(["pedidos", "kanban"], ctx.prev);
       toast.error("Falha ao mover pedido");
     },
-    onSuccess: () => {
+    onSuccess: (res) => {
+      if (res && "ok" in res && !res.ok) {
+        toast.error(res.message);
+        void qc.invalidateQueries({ queryKey: ["pedidos", "kanban"] });
+        return;
+      }
       void qc.invalidateQueries({ queryKey: ["pedidos", "kanban"] });
+      void qc.invalidateQueries({ queryKey: ["pipeline", "leads-com-pedido"] });
     },
   });
 
@@ -97,18 +123,44 @@ function PedidosKanbanPage() {
     return map;
   }, [filtered]);
 
-  const active = activeId ? filtered.find((p) => p.id === activeId) : null;
+  const activePedido = activeId ? filtered.find((p) => p.id === activeId) ?? null : null;
 
   const onDragStart = (e: DragStartEvent) => setActiveId(String(e.active.id));
+
   const onDragEnd = (e: DragEndEvent) => {
+    const draggedId = String(e.active.id);
     setActiveId(null);
     if (!e.over) return;
-    const pedidoId = String(e.active.id);
-    const stage = String(e.over.id) as PedidoStageId;
-    const pedido = filtered.find((p) => p.id === pedidoId);
-    if (!pedido || pedido.stage === stage) return;
-    mutation.mutate({ pedido_id: pedidoId, stage });
-    const label = PEDIDO_STAGES.find((s) => s.id === stage)?.label;
+    const target = String(e.over.id) as PedidoStageId;
+    const pedido = filtered.find((p) => p.id === draggedId);
+    if (!pedido) return;
+    const from = pedido.stage;
+    if (from === target) return;
+
+    if (!isTransitionAllowed(from, target)) {
+      const permitidas = ALLOWED_FORWARD[from]
+        .map((s) => PEDIDO_STAGES.find((x) => x.id === s)?.label ?? s)
+        .join(", ");
+      toast.error(
+        permitidas
+          ? `Transição não permitida. Avanço possível: ${permitidas}. Retornos permitidos exigem motivo.`
+          : "Transição não permitida a partir desta etapa.",
+      );
+      return;
+    }
+
+    if (isBackward(from, target)) {
+      setPendingBackward({
+        pedidoId: pedido.id,
+        pedidoNumber: pedido.number,
+        from,
+        to: target,
+      });
+      return;
+    }
+
+    mutation.mutate({ pedido_id: pedido.id, stage: target });
+    const label = PEDIDO_STAGES.find((s) => s.id === target)?.label;
     toast.success(`${pedido.number} → ${label}`);
   };
 
@@ -118,7 +170,8 @@ function PedidosKanbanPage() {
         <div>
           <h1 className="text-2xl md:text-3xl font-semibold">Pedidos</h1>
           <p className="text-sm text-muted-foreground">
-            Kanban operacional — do recebimento à entrega. Coexiste com o Funil de Vendas.
+            Kanban operacional — avanços restritos por matriz; retornos exigem motivo. Faturamento é
+            status, não etapa.
           </p>
         </div>
         <div className="relative w-full sm:w-72">
@@ -144,13 +197,42 @@ function PedidosKanbanPage() {
       ) : (
         <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
           <div className="flex gap-4 overflow-x-auto pb-4 -mx-4 md:-mx-8 px-4 md:px-8">
-            {PEDIDO_STAGES.map((stage) => (
-              <Column key={stage.id} stage={stage} pedidos={byStage[stage.id]} />
-            ))}
+            {PEDIDO_STAGES.map((stage) => {
+              const canDrop = activePedido
+                ? isTransitionAllowed(activePedido.stage, stage.id)
+                : true;
+              const isBack = activePedido ? isBackward(activePedido.stage, stage.id) : false;
+              return (
+                <Column
+                  key={stage.id}
+                  stage={stage}
+                  pedidos={byStage[stage.id]}
+                  dragActive={!!activePedido && activePedido.stage !== stage.id}
+                  canDrop={canDrop}
+                  isBackwardTarget={isBack && canDrop}
+                />
+              );
+            })}
           </div>
-          <DragOverlay>{active && <PedidoCard pedido={active} dragging />}</DragOverlay>
+          <DragOverlay>{activePedido && <PedidoCard pedido={activePedido} dragging />}</DragOverlay>
         </DndContext>
       )}
+
+      <BackwardMotiveDialog
+        pending={pendingBackward}
+        onCancel={() => setPendingBackward(null)}
+        onConfirm={(motivo) => {
+          if (!pendingBackward) return;
+          mutation.mutate({
+            pedido_id: pendingBackward.pedidoId,
+            stage: pendingBackward.to,
+            motivo,
+          });
+          const label = PEDIDO_STAGES.find((s) => s.id === pendingBackward.to)?.label;
+          toast.success(`${pendingBackward.pedidoNumber} ↺ ${label}`);
+          setPendingBackward(null);
+        }}
+      />
     </div>
   );
 }
@@ -158,12 +240,19 @@ function PedidosKanbanPage() {
 function Column({
   stage,
   pedidos,
+  dragActive,
+  canDrop,
+  isBackwardTarget,
 }: {
   stage: (typeof PEDIDO_STAGES)[number];
   pedidos: PedidoRow[];
+  dragActive: boolean;
+  canDrop: boolean;
+  isBackwardTarget: boolean;
 }) {
-  const { setNodeRef, isOver } = useDroppable({ id: stage.id });
+  const { setNodeRef, isOver } = useDroppable({ id: stage.id, disabled: dragActive && !canDrop });
   const total = pedidos.reduce((s, p) => s + p.total, 0);
+  const showBlocked = dragActive && !canDrop;
   return (
     <div className="w-[300px] shrink-0 flex flex-col">
       <div className="px-1 pb-2 flex items-center justify-between">
@@ -176,20 +265,35 @@ function Column({
           <Badge variant="secondary" className="text-xs">
             {pedidos.length}
           </Badge>
+          {dragActive && canDrop && isBackwardTarget && (
+            <Badge className="text-[10px] px-1.5 py-0 bg-amber-500/15 text-amber-700 border-amber-500/30">
+              retorno · motivo
+            </Badge>
+          )}
         </div>
         <span className="text-xs text-muted-foreground shrink-0">{formatBRL(total)}</span>
       </div>
       <div
         ref={setNodeRef}
         className={cn(
-          "flex-1 rounded-xl border border-dashed p-2 space-y-2 min-h-[400px] transition-colors",
-          isOver ? "bg-accent/40 border-primary" : "bg-muted/30 border-border",
+          "flex-1 rounded-xl border border-dashed p-2 space-y-2 min-h-[400px] transition-colors relative",
+          isOver && canDrop && !isBackwardTarget && "bg-accent/40 border-primary",
+          isOver && canDrop && isBackwardTarget && "bg-amber-500/10 border-amber-500",
+          showBlocked && "bg-muted/10 border-border/40 opacity-50",
+          !isOver && !showBlocked && "bg-muted/30 border-border",
         )}
       >
+        {showBlocked && (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground bg-background/80 border rounded-md px-2 py-1">
+              <Ban className="h-3 w-3" /> Não permitido
+            </div>
+          </div>
+        )}
         {pedidos.map((p) => (
           <PedidoCard key={p.id} pedido={p} />
         ))}
-        {pedidos.length === 0 && (
+        {pedidos.length === 0 && !showBlocked && (
           <div className="text-xs text-muted-foreground text-center py-8 italic">Solte aqui</div>
         )}
       </div>
@@ -199,6 +303,34 @@ function Column({
 
 function PedidoCard({ pedido, dragging = false }: { pedido: PedidoRow; dragging?: boolean }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: pedido.id });
+
+  const diasNaEtapa = Math.max(
+    0,
+    differenceInCalendarDays(new Date(), new Date(pedido.stage_changed_at)),
+  );
+
+  const terminalStages: PedidoStageId[] = ["pedido_entregue", "concluido"];
+  const previsao = pedido.previsao_entrega ? new Date(pedido.previsao_entrega) : null;
+  const atrasado =
+    previsao !== null &&
+    !terminalStages.includes(pedido.stage) &&
+    differenceInCalendarDays(new Date(), previsao) > 0;
+
+  const responsavel =
+    pedido.responsavel_nome ?? pedido.equipe_responsavel ?? pedido.vendedor_nome ?? null;
+
+  const forma = pedido.forma_atendimento?.trim() || null;
+
+  const pendencias: string[] = [];
+  if (pedido.stage === "aguardando_aprovacao") pendencias.push("Aguardando aprovação");
+  if (
+    pedido.fiscal_status &&
+    pedido.fiscal_status !== "nao_iniciado" &&
+    pedido.fiscal_status !== "emitida"
+  )
+    pendencias.push(`Fiscal: ${pedido.fiscal_status}`);
+  if (pedido.ocorrencia && pedido.ocorrencia.trim().length > 0) pendencias.push("Ocorrência");
+
   return (
     <div
       ref={setNodeRef}
@@ -206,6 +338,8 @@ function PedidoCard({ pedido, dragging = false }: { pedido: PedidoRow; dragging?
       {...listeners}
       className={cn(
         "cursor-grab active:cursor-grabbing rounded-lg border bg-card p-3 shadow-sm hover:shadow-md hover:border-primary/50 transition-all",
+        atrasado && "border-l-4 border-l-rose-500",
+        pedido.prioridade === "alta" && !atrasado && "border-l-4 border-l-amber-500",
         isDragging && "opacity-30",
         dragging && "shadow-xl rotate-2",
       )}
@@ -217,39 +351,143 @@ function PedidoCard({ pedido, dragging = false }: { pedido: PedidoRow; dragging?
         </div>
         <div className="text-primary font-semibold text-sm shrink-0">{formatBRL(pedido.total)}</div>
       </div>
-      {pedido.proposta_number && (
+
+      {responsavel && (
         <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-          <FileText className="h-3 w-3 shrink-0" />
-          <span className="truncate">Proposta {pedido.proposta_number}</span>
+          <User className="h-3 w-3 shrink-0" />
+          <span className="truncate">{responsavel}</span>
         </div>
       )}
-      {pedido.previsao_entrega && (
-        <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+
+      <div className="mt-1 grid grid-cols-2 gap-x-2 gap-y-1 text-xs text-muted-foreground">
+        <div className="flex items-center gap-1.5">
           <CalendarIcon className="h-3 w-3 shrink-0" />
-          <span>
-            Previsão {format(new Date(pedido.previsao_entrega), "dd MMM", { locale: ptBR })}
+          <span title="Data do pedido">
+            {format(new Date(pedido.created_at), "dd MMM", { locale: ptBR })}
           </span>
         </div>
-      )}
+        <div className="flex items-center gap-1.5">
+          <Clock className="h-3 w-3 shrink-0" />
+          <span title="Dias na etapa atual">{diasNaEtapa}d na etapa</span>
+        </div>
+        {previsao && (
+          <div
+            className={cn(
+              "flex items-center gap-1.5 col-span-2",
+              atrasado && "text-rose-600 font-medium",
+            )}
+          >
+            <Truck className="h-3 w-3 shrink-0" />
+            <span>
+              Previsão {format(previsao, "dd MMM", { locale: ptBR })}
+              {atrasado && ` · atrasado ${differenceInCalendarDays(new Date(), previsao)}d`}
+            </span>
+          </div>
+        )}
+      </div>
+
       <div className="mt-2 flex flex-wrap items-center gap-1">
-        {pedido.equipe_responsavel && (
-          <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-            <Package className="h-2.5 w-2.5 mr-1" />
-            {pedido.equipe_responsavel}
+        {pedido.proposta_number && (
+          <Badge variant="outline" className="text-[10px] px-1.5 py-0" title="Proposta origem">
+            <FileText className="h-2.5 w-2.5 mr-1" />
+            {pedido.proposta_number}
+          </Badge>
+        )}
+        {forma && (
+          <Badge variant="outline" className="text-[10px] px-1.5 py-0" title="Forma de atendimento">
+            <Headphones className="h-2.5 w-2.5 mr-1" />
+            {forma}
+          </Badge>
+        )}
+        {pedido.prioridade === "alta" && (
+          <Badge className="text-[10px] px-1.5 py-0 bg-amber-500/15 text-amber-700 border-amber-500/30">
+            <Flame className="h-2.5 w-2.5 mr-1" /> Alta
           </Badge>
         )}
         {pedido.nf_numero && (
-          <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-            <Truck className="h-2.5 w-2.5 mr-1" />
+          <Badge variant="outline" className="text-[10px] px-1.5 py-0" title="Nota fiscal emitida">
             NF {pedido.nf_numero}
           </Badge>
         )}
-        {pedido.fiscal_status && pedido.fiscal_status !== "nao_iniciado" && (
-          <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-            {pedido.fiscal_status}
+        {atrasado && (
+          <Badge className="text-[10px] px-1.5 py-0 bg-rose-500/15 text-rose-700 border-rose-500/30">
+            <AlertTriangle className="h-2.5 w-2.5 mr-1" /> Atrasado
           </Badge>
         )}
+        {pendencias.map((p) => (
+          <Badge
+            key={p}
+            variant="outline"
+            className="text-[10px] px-1.5 py-0 bg-muted/60"
+            title="Pendência / bloqueio"
+          >
+            {p}
+          </Badge>
+        ))}
       </div>
     </div>
+  );
+}
+
+function BackwardMotiveDialog({
+  pending,
+  onCancel,
+  onConfirm,
+}: {
+  pending: PendingBackward | null;
+  onCancel: () => void;
+  onConfirm: (motivo: string) => void;
+}) {
+  const [motivo, setMotivo] = useState("");
+  const open = !!pending;
+  const fromLabel = pending ? PEDIDO_STAGES.find((s) => s.id === pending.from)?.label : "";
+  const toLabel = pending ? PEDIDO_STAGES.find((s) => s.id === pending.to)?.label : "";
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) {
+          setMotivo("");
+          onCancel();
+        }
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Motivo do retorno de etapa</DialogTitle>
+          <DialogDescription>
+            {pending?.pedidoNumber}: <b>{fromLabel}</b> ↺ <b>{toLabel}</b>. Registre o motivo — ele
+            fica no histórico do pedido.
+          </DialogDescription>
+        </DialogHeader>
+        <Textarea
+          autoFocus
+          rows={4}
+          placeholder="Ex.: divergência fiscal identificada na conferência; retorno para separação corrigir volume; …"
+          value={motivo}
+          onChange={(e) => setMotivo(e.target.value)}
+        />
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setMotivo("");
+              onCancel();
+            }}
+          >
+            Cancelar
+          </Button>
+          <Button
+            disabled={motivo.trim().length < 3}
+            onClick={() => {
+              onConfirm(motivo.trim());
+              setMotivo("");
+            }}
+          >
+            Confirmar retorno
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
