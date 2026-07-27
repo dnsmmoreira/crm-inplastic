@@ -288,17 +288,37 @@ export const updatePedidoStage = createServerFn({ method: "POST" })
     if (updErr) throw new Error(`Falha ao atualizar etapa: ${updErr.message}`);
 
     // Registra histórico (imutável)
-    const { error: histErr } = await sb.from("pedido_stage_history").insert({
-      pedido_id: data.pedido_id,
-      from_stage: from,
-      to_stage: to,
-      is_backward: backward,
-      motivo: data.motivo ?? null,
-      moved_by: context.userId,
-    });
+    const { data: histRow, error: histErr } = await sb
+      .from("pedido_stage_history")
+      .insert({
+        pedido_id: data.pedido_id,
+        from_stage: from,
+        to_stage: to,
+        is_backward: backward,
+        motivo: data.motivo ?? null,
+        moved_by: context.userId,
+      })
+      .select("id, created_at")
+      .maybeSingle();
     if (histErr) {
       // não reverte a etapa — histórico é auditoria; loga e segue
       console.error("[updatePedidoStage] falha ao registrar histórico:", histErr);
+    }
+
+    // Fase 5 — enfileira notificação (idempotente, sem envio real).
+    if (histRow) {
+      try {
+        await enqueueStageChangeNotification(sb, {
+          pedido_id: data.pedido_id,
+          from,
+          to,
+          history_id: histRow.id as string,
+          history_created_at: histRow.created_at as string,
+          criado_por: context.userId ?? null,
+        });
+      } catch (e) {
+        console.error("[updatePedidoStage] falha ao enfileirar notificação:", e);
+      }
     }
 
     return { ok: true, stage: to, backward };
