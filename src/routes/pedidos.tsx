@@ -39,6 +39,7 @@ import {
   type PedidoRow,
   type PedidoStageId,
 } from "@/lib/pedidos.functions";
+import { PedidoDetailDrawer } from "@/components/pedidos/PedidoDetailDrawer";
 
 export const Route = createFileRoute("/pedidos")({
   component: PedidosKanbanPage,
