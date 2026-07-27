@@ -875,3 +875,38 @@ export const resolverOcorrencia = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+
+/* ============================================================================
+ * Fase 5 (complemento) — Listagem read-only de notificações do pedido
+ * ==========================================================================*/
+
+export type PedidoNotificacaoRow = {
+  id: string;
+  evento_id: string;
+  etapa_anterior: PedidoStageId | null;
+  nova_etapa: PedidoStageId;
+  classificacao: "informativa" | "acao_necessaria" | "alerta";
+  status: "pendente" | "enviado" | "entregue" | "falhou" | "reprocessado";
+  mensagem: string;
+  criado_em: string;
+  enviado_em: string | null;
+};
+
+export const listPedidoNotificacoes = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { pedido_id: string }) =>
+    z.object({ pedido_id: z.string().uuid() }).parse(input),
+  )
+  .handler(async ({ data, context }): Promise<PedidoNotificacaoRow[]> => {
+    const sb: LooseClient = context.supabase;
+    const { data: rows, error } = await sb
+      .from("pedido_notificacoes")
+      .select(
+        "id, evento_id, etapa_anterior, nova_etapa, classificacao, status, mensagem, criado_em, enviado_em",
+      )
+      .eq("pedido_id", data.pedido_id)
+      .order("criado_em", { ascending: false })
+      .limit(200);
+    if (error) throw new Error(`Falha ao listar notificações: ${error.message}`);
+    return (rows ?? []) as PedidoNotificacaoRow[];
+  });
