@@ -139,6 +139,13 @@ function PedidosKanbanPage() {
     const from = pedido.stage;
     if (from === target) return;
 
+    if (target === "concluido" && (pedido.ocorrencias_abertas ?? 0) > 0) {
+      toast.error(
+        "Não é possível concluir: há ocorrência(s) em aberto. Resolva-as antes de concluir.",
+      );
+      return;
+    }
+
     if (!isTransitionAllowed(from, target)) {
       const permitidas = ALLOWED_FORWARD[from]
         .map((s) => PEDIDO_STAGES.find((x) => x.id === s)?.label ?? s)
