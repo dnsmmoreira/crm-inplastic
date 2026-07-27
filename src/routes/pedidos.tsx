@@ -298,7 +298,7 @@ function Column({
           </div>
         )}
         {pedidos.map((p) => (
-          <PedidoCard key={p.id} pedido={p} />
+          <PedidoCard key={p.id} pedido={p} onOpen={onOpen} />
         ))}
         {pedidos.length === 0 && !showBlocked && (
           <div className="text-xs text-muted-foreground text-center py-8 italic">Solte aqui</div>
