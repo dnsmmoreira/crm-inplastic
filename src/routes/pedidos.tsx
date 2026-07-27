@@ -15,7 +15,8 @@ import {
 } from "@dnd-kit/core";
 import {
   Search, Calendar as CalendarIcon, FileText, Truck, User, Clock,
-  AlertTriangle, Flame, Headphones, Ban,
+  AlertTriangle, Flame, Headphones, Ban, Package, Factory, PackageCheck,
+  CheckCircle2, ShieldAlert, Timer, TrendingUp,
 } from "lucide-react";
 import { format, differenceInCalendarDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
