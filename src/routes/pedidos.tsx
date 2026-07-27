@@ -119,15 +119,90 @@ function PedidosKanbanPage() {
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
+  const allRows = pedidosQ.data ?? [];
+
+  const responsavelOf = (p: PedidoRow) =>
+    p.responsavel_nome ?? p.equipe_responsavel ?? null;
+
+  const options = useMemo(() => {
+    const vendedores = new Set<string>();
+    const responsaveis = new Set<string>();
+    const formas = new Set<string>();
+    const stages = new Set<string>();
+    allRows.forEach((p) => {
+      if (p.vendedor_nome) vendedores.add(p.vendedor_nome);
+      const r = responsavelOf(p);
+      if (r) responsaveis.add(r);
+      const f = p.forma_atendimento?.trim();
+      if (f) formas.add(f);
+      stages.add(p.stage);
+    });
+    const sortAsc = (a: string, b: string) => a.localeCompare(b, "pt-BR");
+    return {
+      vendedores: [...vendedores].sort(sortAsc),
+      responsaveis: [...responsaveis].sort(sortAsc),
+      formas: [...formas].sort(sortAsc),
+      stages: PEDIDO_STAGES.filter((s) => stages.has(s.id)),
+    };
+  }, [allRows]);
+
+  const terminalStages: PedidoStageId[] = ["pedido_entregue", "concluido"];
+
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
-    const rows = pedidosQ.data ?? [];
-    if (!q) return rows;
-    return rows.filter((p) =>
-      [p.number, p.lead_company ?? "", p.proposta_number ?? "", p.nf_numero ?? ""]
-        .some((s) => s.toLowerCase().includes(q)),
-    );
-  }, [pedidosQ.data, search]);
+    const now = new Date();
+    return allRows.filter((p) => {
+      if (q) {
+        const hit = [p.number, p.lead_company ?? "", p.proposta_number ?? "", p.nf_numero ?? ""]
+          .some((s) => s.toLowerCase().includes(q));
+        if (!hit) return false;
+      }
+      if (fVendedor !== "all" && p.vendedor_nome !== fVendedor) return false;
+      if (fResponsavel !== "all" && responsavelOf(p) !== fResponsavel) return false;
+      if (fStage !== "all" && p.stage !== fStage) return false;
+      if (fForma !== "all" && (p.forma_atendimento?.trim() ?? "") !== fForma) return false;
+
+      if (tAtrasados) {
+        const prev = p.previsao_entrega ? new Date(p.previsao_entrega) : null;
+        const atrasado =
+          prev !== null &&
+          !terminalStages.includes(p.stage) &&
+          differenceInCalendarDays(now, prev) > 0;
+        if (!atrasado) return false;
+      }
+      if (tBloqueados) {
+        const fiscalBlock =
+          p.fiscal_status === "aguardando_correcao" ||
+          p.fiscal_status === "nota_fiscal_cancelada";
+        if ((p.ocorrencias_abertas ?? 0) <= 0 && !fiscalBlock) return false;
+      }
+      if (tOcorrencia && !(p.ocorrencia && p.ocorrencia.trim().length > 0)) return false;
+      if (tConcluidos && p.stage !== "concluido") return false;
+      return true;
+    });
+  }, [allRows, search, fVendedor, fResponsavel, fStage, fForma, tAtrasados, tBloqueados, tOcorrencia, tConcluidos]);
+
+  const activeFilterCount =
+    (fVendedor !== "all" ? 1 : 0) +
+    (fResponsavel !== "all" ? 1 : 0) +
+    (fStage !== "all" ? 1 : 0) +
+    (fForma !== "all" ? 1 : 0) +
+    (tAtrasados ? 1 : 0) +
+    (tBloqueados ? 1 : 0) +
+    (tOcorrencia ? 1 : 0) +
+    (tConcluidos ? 1 : 0);
+
+  const clearFilters = () => {
+    setFVendedor("all");
+    setFResponsavel("all");
+    setFStage("all");
+    setFForma("all");
+    setTAtrasados(false);
+    setTBloqueados(false);
+    setTOcorrencia(false);
+    setTConcluidos(false);
+  };
+
 
   const byStage = useMemo(() => {
     const map: Record<PedidoStageId, PedidoRow[]> = {
