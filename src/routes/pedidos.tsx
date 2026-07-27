@@ -207,8 +207,12 @@ function PedidosKanbanPage() {
         <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
           <div className="flex gap-4 overflow-x-auto pb-4 -mx-4 md:-mx-8 px-4 md:px-8">
             {PEDIDO_STAGES.map((stage) => {
+              const blockedByOcorrencia =
+                !!activePedido &&
+                stage.id === "concluido" &&
+                (activePedido.ocorrencias_abertas ?? 0) > 0;
               const canDrop = activePedido
-                ? isTransitionAllowed(activePedido.stage, stage.id)
+                ? isTransitionAllowed(activePedido.stage, stage.id) && !blockedByOcorrencia
                 : true;
               const isBack = activePedido ? isBackward(activePedido.stage, stage.id) : false;
               return (
@@ -218,6 +222,7 @@ function PedidosKanbanPage() {
                   pedidos={byStage[stage.id]}
                   dragActive={!!activePedido && activePedido.stage !== stage.id}
                   canDrop={canDrop}
+                  blockedReason={blockedByOcorrencia ? "Ocorrência aberta" : null}
                   isBackwardTarget={isBack && canDrop}
                   onOpen={setOpenPedidoId}
                 />
