@@ -796,7 +796,7 @@ type FilterBarProps = {
     vendedores: string[];
     responsaveis: string[];
     formas: string[];
-    stages: typeof PEDIDO_STAGES;
+    stages: { id: PedidoStageId; label: string; color: string }[];
   };
   fVendedor: string; setFVendedor: (v: string) => void;
   fResponsavel: string; setFResponsavel: (v: string) => void;
