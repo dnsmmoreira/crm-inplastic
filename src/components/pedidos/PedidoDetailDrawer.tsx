@@ -44,6 +44,7 @@ const DEFAULT_CHECKLIST: ChecklistItem[] = [
   { id: "conf-embal", label: "Embalagem/rotulagem OK", done: false },
   { id: "conf-peso", label: "Peso/volume batendo", done: false },
   { id: "conf-doc", label: "Documentos anexos completos", done: false },
+  { id: "pronto", label: "Pronto para faturamento/expedição", done: false },
 ];
 
 const OCORRENCIA_TIPOS = [
@@ -263,6 +264,11 @@ function ChecklistBlock({
   const relevant = isConferencia.includes(pedido.stage);
   const done = items.filter((i) => i.done).length;
 
+  const isProntoItem = (it: ChecklistItem) =>
+    it.id === "pronto" || /pronto\s+para\s+(faturamento|expedi)/i.test(it.label);
+  const outrosPendentes = items.filter((i) => !isProntoItem(i) && !i.done).length;
+  const prontoLocked = outrosPendentes > 0;
+
   const salvar = useMutation({
     mutationFn: () => salvarFn({ data: { pedido_id: pedido.id, items } }),
     onSuccess: () => { toast.success("Checklist salvo"); onChanged(); },
@@ -281,22 +287,45 @@ function ChecklistBlock({
         }
       />
       <div className="space-y-2 rounded-lg border p-3">
-        {items.map((it, idx) => (
-          <div key={it.id} className="flex items-start gap-2">
-            <Checkbox
-              checked={it.done}
-              onCheckedChange={(v) => {
-                const copy = [...items];
-                copy[idx] = { ...it, done: v === true };
-                setItems(copy);
-              }}
-              id={`chk-${it.id}`}
-            />
-            <label htmlFor={`chk-${it.id}`} className={cn("text-sm cursor-pointer", it.done && "line-through text-muted-foreground")}>
-              {it.label}
-            </label>
-          </div>
-        ))}
+        {items.map((it, idx) => {
+          const pronto = isProntoItem(it);
+          const disabled = pronto && prontoLocked && !it.done;
+          return (
+            <div key={it.id} className="flex items-start gap-2">
+              <Checkbox
+                checked={it.done}
+                disabled={disabled}
+                onCheckedChange={(v) => {
+                  if (disabled) return;
+                  const copy = [...items];
+                  copy[idx] = { ...it, done: v === true };
+                  setItems(copy);
+                }}
+                id={`chk-${it.id}`}
+              />
+              <label
+                htmlFor={`chk-${it.id}`}
+                className={cn(
+                  "text-sm cursor-pointer",
+                  it.done && "line-through text-muted-foreground",
+                  disabled && "cursor-not-allowed opacity-60",
+                )}
+              >
+                {it.label}
+                {pronto && (
+                  <span className="ml-2 text-[10px] uppercase tracking-wide text-muted-foreground">
+                    gate
+                  </span>
+                )}
+              </label>
+              {disabled && (
+                <span className="ml-auto text-[11px] text-muted-foreground">
+                  bloqueado: {outrosPendentes} item(ns) pendente(s)
+                </span>
+              )}
+            </div>
+          );
+        })}
         <div className="flex gap-2 pt-2 border-t mt-2">
           <Input
             placeholder="Adicionar item…"

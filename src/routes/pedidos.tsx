@@ -139,6 +139,13 @@ function PedidosKanbanPage() {
     const from = pedido.stage;
     if (from === target) return;
 
+    if (target === "concluido" && (pedido.ocorrencias_abertas ?? 0) > 0) {
+      toast.error(
+        "Não é possível concluir: há ocorrência(s) em aberto. Resolva-as antes de concluir.",
+      );
+      return;
+    }
+
     if (!isTransitionAllowed(from, target)) {
       const permitidas = ALLOWED_FORWARD[from]
         .map((s) => PEDIDO_STAGES.find((x) => x.id === s)?.label ?? s)
@@ -200,8 +207,12 @@ function PedidosKanbanPage() {
         <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
           <div className="flex gap-4 overflow-x-auto pb-4 -mx-4 md:-mx-8 px-4 md:px-8">
             {PEDIDO_STAGES.map((stage) => {
+              const blockedByOcorrencia =
+                !!activePedido &&
+                stage.id === "concluido" &&
+                (activePedido.ocorrencias_abertas ?? 0) > 0;
               const canDrop = activePedido
-                ? isTransitionAllowed(activePedido.stage, stage.id)
+                ? isTransitionAllowed(activePedido.stage, stage.id) && !blockedByOcorrencia
                 : true;
               const isBack = activePedido ? isBackward(activePedido.stage, stage.id) : false;
               return (
@@ -211,6 +222,7 @@ function PedidosKanbanPage() {
                   pedidos={byStage[stage.id]}
                   dragActive={!!activePedido && activePedido.stage !== stage.id}
                   canDrop={canDrop}
+                  blockedReason={blockedByOcorrencia ? "Ocorrência aberta" : null}
                   isBackwardTarget={isBack && canDrop}
                   onOpen={setOpenPedidoId}
                 />
@@ -247,6 +259,7 @@ function Column({
   pedidos,
   dragActive,
   canDrop,
+  blockedReason,
   isBackwardTarget,
   onOpen,
 }: {
@@ -254,6 +267,7 @@ function Column({
   pedidos: PedidoRow[];
   dragActive: boolean;
   canDrop: boolean;
+  blockedReason?: string | null;
   isBackwardTarget: boolean;
   onOpen: (id: string) => void;
 }) {
@@ -282,6 +296,7 @@ function Column({
       </div>
       <div
         ref={setNodeRef}
+        title={showBlocked && blockedReason ? blockedReason : undefined}
         className={cn(
           "flex-1 rounded-xl border border-dashed p-2 space-y-2 min-h-[400px] transition-colors relative",
           isOver && canDrop && !isBackwardTarget && "bg-accent/40 border-primary",
@@ -293,7 +308,7 @@ function Column({
         {showBlocked && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground bg-background/80 border rounded-md px-2 py-1">
-              <Ban className="h-3 w-3" /> Não permitido
+              <Ban className="h-3 w-3" /> {blockedReason ?? "Não permitido"}
             </div>
           </div>
         )}

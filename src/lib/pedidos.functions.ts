@@ -74,6 +74,7 @@ export type PedidoRow = {
   forma_atendimento: string | null;
   prioridade: string | null;
   ocorrencia: string | null;
+  ocorrencias_abertas: number;
   vendedor_proprietario_id: string | null;
   vendedor_nome: string | null;
   proposta_id: string | null;
@@ -113,6 +114,7 @@ export const listPedidos = createServerFn({ method: "GET" })
     // Buscar última transição por pedido para calcular "dias na etapa"
     const ids = rows.map((r) => r.id);
     const lastChangeByPedido = new Map<string, string>();
+    const openOcorrByPedido = new Map<string, number>();
     if (ids.length > 0) {
       const { data: hist } = await sb
         .from("pedido_stage_history")
@@ -121,6 +123,14 @@ export const listPedidos = createServerFn({ method: "GET" })
         .order("created_at", { ascending: false });
       for (const h of (hist ?? []) as Array<{ pedido_id: string; created_at: string }>) {
         if (!lastChangeByPedido.has(h.pedido_id)) lastChangeByPedido.set(h.pedido_id, h.created_at);
+      }
+      const { data: openOc } = await sb
+        .from("pedido_ocorrencias")
+        .select("pedido_id")
+        .in("pedido_id", ids)
+        .eq("resolvida", false);
+      for (const o of (openOc ?? []) as Array<{ pedido_id: string }>) {
+        openOcorrByPedido.set(o.pedido_id, (openOcorrByPedido.get(o.pedido_id) ?? 0) + 1);
       }
     }
 
@@ -168,6 +178,7 @@ export const listPedidos = createServerFn({ method: "GET" })
         forma_atendimento: r.forma_atendimento,
         prioridade: r.prioridade,
         ocorrencia: r.ocorrencia,
+        ocorrencias_abertas: openOcorrByPedido.get(r.id) ?? 0,
         vendedor_proprietario_id: r.vendedor_proprietario_id,
         vendedor_nome: r.vendedor_proprietario_id ? nameById.get(r.vendedor_proprietario_id) ?? null : null,
         proposta_id: r.proposta_id,
@@ -249,6 +260,24 @@ export const updatePedidoStage = createServerFn({ method: "POST" })
         reason: "needs_motivo",
         message: "Retornos de etapa exigem motivo.",
       };
+    }
+
+    // Bloqueio de conclusão por ocorrência aberta (doc 7.9 e 22)
+    if (to === "concluido") {
+      const { count: abertas, error: ocErr } = await sb
+        .from("pedido_ocorrencias")
+        .select("id", { count: "exact", head: true })
+        .eq("pedido_id", data.pedido_id)
+        .eq("resolvida", false);
+      if (ocErr) throw new Error(`Falha ao verificar ocorrências: ${ocErr.message}`);
+      if ((abertas ?? 0) > 0) {
+        return {
+          ok: false,
+          reason: "invalid_transition",
+          message:
+            "Não é possível concluir: há ocorrência(s) em aberto. Resolva-as antes de concluir.",
+        };
+      }
     }
 
     // Atualiza etapa
@@ -551,6 +580,24 @@ export const salvarChecklistConferencia = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const sb: LooseClient = context.supabase;
+
+    // Trava do checklist (doc 7.6): "pronto para faturamento/expedição" só pode
+    // ficar marcado quando todos os outros itens estiverem confirmados.
+    const isProntoItem = (it: ChecklistItem) =>
+      it.id === "pronto" ||
+      /pronto\s+para\s+(faturamento|expedi)/i.test(it.label);
+    const pronto = data.items.find(isProntoItem);
+    if (pronto?.done) {
+      const outrosPendentes = data.items.filter((i) => !isProntoItem(i) && !i.done);
+      if (outrosPendentes.length > 0) {
+        throw new Error(
+          `Marque todos os itens de conferência antes de sinalizar "pronto para faturamento/expedição". Pendente(s): ${outrosPendentes
+            .map((i) => i.label)
+            .join(", ")}.`,
+        );
+      }
+    }
+
     const { error } = await sb
       .from("pedidos")
       .update({
@@ -586,6 +633,14 @@ export const atualizarStatusFiscal = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const sb: LooseClient = context.supabase;
+
+    // Snapshot dos valores atuais para diff imutável (doc 11.2 e 16)
+    const { data: before } = await sb
+      .from("pedidos")
+      .select("nf_numero, nf_serie, nf_chave, nf_valor")
+      .eq("id", data.pedido_id)
+      .maybeSingle();
+
     const patch: Record<string, unknown> = { fiscal_status: data.fiscal_status };
     if (data.nf_numero !== undefined) patch.nf_numero = data.nf_numero || null;
     if (data.nf_serie !== undefined) patch.nf_serie = data.nf_serie || null;
@@ -594,7 +649,37 @@ export const atualizarStatusFiscal = createServerFn({ method: "POST" })
     if (data.fiscal_status === "emitida") patch.nf_emitida_em = new Date().toISOString();
     const { error } = await sb.from("pedidos").update(patch).eq("id", data.pedido_id);
     if (error) throw new Error(`Falha ao atualizar status fiscal: ${error.message}`);
-    void context;
+
+    // Auditoria fiscal imutável: uma linha por campo alterado
+    const toStr = (v: unknown): string | null =>
+      v === null || v === undefined || v === "" ? null : String(v);
+    const diffs: Array<{ campo: string; valor_anterior: string | null; valor_novo: string | null }> = [];
+    const check = (campo: "nf_numero" | "nf_serie" | "nf_chave" | "nf_valor", incoming: unknown) => {
+      if (incoming === undefined) return;
+      const antes = toStr(before ? (before as Record<string, unknown>)[campo] : null);
+      const depois = toStr(incoming);
+      if (antes !== depois) diffs.push({ campo, valor_anterior: antes, valor_novo: depois });
+    };
+    check("nf_numero", patch.nf_numero);
+    check("nf_serie", patch.nf_serie);
+    check("nf_chave", patch.nf_chave);
+    check("nf_valor", patch.nf_valor);
+
+    if (diffs.length > 0) {
+      const { error: histErr } = await sb.from("pedido_fiscal_history").insert(
+        diffs.map((d) => ({
+          pedido_id: data.pedido_id,
+          campo: d.campo,
+          valor_anterior: d.valor_anterior,
+          valor_novo: d.valor_novo,
+          alterado_por: context.userId,
+        })),
+      );
+      if (histErr) {
+        console.error("[atualizarStatusFiscal] falha ao registrar auditoria fiscal:", histErr);
+      }
+    }
+
     return { ok: true as const };
   });
 
