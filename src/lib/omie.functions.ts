@@ -294,3 +294,10 @@ async function ensurePedidoFromProposta(
 
   return { id: novoPedido.id, number: novoPedido.number, reused: false };
 }
+
+/**
+ * Aliases legados — mantidos para não quebrar imports existentes.
+ * Preferir `gerarPedidoInterno` / `moverParaGanho` em código novo.
+ */
+export const gerarPedidoOmie = gerarPedidoInterno;
+export const moverParaGanhoOmie = moverParaGanho;
