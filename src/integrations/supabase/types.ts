@@ -709,6 +709,68 @@ export type Database = {
           },
         ]
       }
+      pedido_notificacoes: {
+        Row: {
+          classificacao: string
+          criado_em: string
+          criado_por: string | null
+          destinatario_tipo: string
+          destinatario_user_id: string | null
+          enviado_em: string | null
+          erro: string | null
+          etapa_anterior: Database["public"]["Enums"]["pedido_stage"] | null
+          evento_id: string
+          id: string
+          mensagem: string
+          nova_etapa: Database["public"]["Enums"]["pedido_stage"]
+          pedido_id: string
+          status: string
+          tentativas: number
+        }
+        Insert: {
+          classificacao?: string
+          criado_em?: string
+          criado_por?: string | null
+          destinatario_tipo?: string
+          destinatario_user_id?: string | null
+          enviado_em?: string | null
+          erro?: string | null
+          etapa_anterior?: Database["public"]["Enums"]["pedido_stage"] | null
+          evento_id: string
+          id?: string
+          mensagem: string
+          nova_etapa: Database["public"]["Enums"]["pedido_stage"]
+          pedido_id: string
+          status?: string
+          tentativas?: number
+        }
+        Update: {
+          classificacao?: string
+          criado_em?: string
+          criado_por?: string | null
+          destinatario_tipo?: string
+          destinatario_user_id?: string | null
+          enviado_em?: string | null
+          erro?: string | null
+          etapa_anterior?: Database["public"]["Enums"]["pedido_stage"] | null
+          evento_id?: string
+          id?: string
+          mensagem?: string
+          nova_etapa?: Database["public"]["Enums"]["pedido_stage"]
+          pedido_id?: string
+          status?: string
+          tentativas?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pedido_notificacoes_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pedido_ocorrencias: {
         Row: {
           created_at: string
