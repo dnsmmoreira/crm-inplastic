@@ -674,39 +674,111 @@ export type Database = {
       pedidos: {
         Row: {
           created_at: string
+          despachado_em: string | null
+          entrega_recebida_por: string | null
+          entregue_em: string | null
+          equipe_responsavel: string | null
+          fiscal_status: string | null
+          forma_atendimento: string | null
           id: string
           lead_id: string | null
           metadata: Json
+          motorista: string | null
+          nf_chave: string | null
+          nf_emitida_em: string | null
+          nf_numero: string | null
+          nf_pdf_url: string | null
+          nf_serie: string | null
+          nf_valor: number | null
+          nf_xml_url: string | null
           number: string
+          ocorrencia: string | null
           owner_id: string
+          placa: string | null
+          pos_venda_status: string | null
+          previsao_entrega: string | null
+          prioridade: string | null
           proposta_id: string | null
+          proposta_snapshot: Json | null
+          responsavel_atual_id: string | null
+          stage: Database["public"]["Enums"]["pedido_stage"]
           status: string
           total: number
+          transportadora: string | null
           updated_at: string
+          vendedor_proprietario_id: string | null
         }
         Insert: {
           created_at?: string
+          despachado_em?: string | null
+          entrega_recebida_por?: string | null
+          entregue_em?: string | null
+          equipe_responsavel?: string | null
+          fiscal_status?: string | null
+          forma_atendimento?: string | null
           id?: string
           lead_id?: string | null
           metadata?: Json
+          motorista?: string | null
+          nf_chave?: string | null
+          nf_emitida_em?: string | null
+          nf_numero?: string | null
+          nf_pdf_url?: string | null
+          nf_serie?: string | null
+          nf_valor?: number | null
+          nf_xml_url?: string | null
           number: string
+          ocorrencia?: string | null
           owner_id: string
+          placa?: string | null
+          pos_venda_status?: string | null
+          previsao_entrega?: string | null
+          prioridade?: string | null
           proposta_id?: string | null
+          proposta_snapshot?: Json | null
+          responsavel_atual_id?: string | null
+          stage?: Database["public"]["Enums"]["pedido_stage"]
           status?: string
           total?: number
+          transportadora?: string | null
           updated_at?: string
+          vendedor_proprietario_id?: string | null
         }
         Update: {
           created_at?: string
+          despachado_em?: string | null
+          entrega_recebida_por?: string | null
+          entregue_em?: string | null
+          equipe_responsavel?: string | null
+          fiscal_status?: string | null
+          forma_atendimento?: string | null
           id?: string
           lead_id?: string | null
           metadata?: Json
+          motorista?: string | null
+          nf_chave?: string | null
+          nf_emitida_em?: string | null
+          nf_numero?: string | null
+          nf_pdf_url?: string | null
+          nf_serie?: string | null
+          nf_valor?: number | null
+          nf_xml_url?: string | null
           number?: string
+          ocorrencia?: string | null
           owner_id?: string
+          placa?: string | null
+          pos_venda_status?: string | null
+          previsao_entrega?: string | null
+          prioridade?: string | null
           proposta_id?: string | null
+          proposta_snapshot?: Json | null
+          responsavel_atual_id?: string | null
+          stage?: Database["public"]["Enums"]["pedido_stage"]
           status?: string
           total?: number
+          transportadora?: string | null
           updated_at?: string
+          vendedor_proprietario_id?: string | null
         }
         Relationships: [
           {
@@ -1553,6 +1625,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      next_pedido_number: { Args: { _year: number }; Returns: string }
       next_proposta_number: { Args: { _year: number }; Returns: string }
       placar_vendedores: {
         Args: { _periodo?: string }
@@ -1613,6 +1686,17 @@ export type Database = {
         | "perdido"
       msg_autor: "cliente" | "ia" | "vendedor"
       msg_direcao: "entrada" | "saida"
+      pedido_stage:
+        | "pedido_recebido"
+        | "em_validacao"
+        | "aguardando_aprovacao"
+        | "aprovado_programado"
+        | "em_producao"
+        | "separacao_conferencia"
+        | "faturado_aguardando_coleta"
+        | "despachado_transporte"
+        | "pedido_entregue"
+        | "concluido"
       proposal_status:
         | "rascunho"
         | "enviada"
@@ -1774,6 +1858,18 @@ export const Constants = {
       ],
       msg_autor: ["cliente", "ia", "vendedor"],
       msg_direcao: ["entrada", "saida"],
+      pedido_stage: [
+        "pedido_recebido",
+        "em_validacao",
+        "aguardando_aprovacao",
+        "aprovado_programado",
+        "em_producao",
+        "separacao_conferencia",
+        "faturado_aguardando_coleta",
+        "despachado_transporte",
+        "pedido_entregue",
+        "concluido",
+      ],
       proposal_status: [
         "rascunho",
         "enviada",
