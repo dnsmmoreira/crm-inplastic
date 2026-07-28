@@ -1457,10 +1457,64 @@ function PropostaDetalhe() {
       </div>
 
       <style>{`
+        /* Print-only running header is hidden on screen */
+        .print-running-header { display: none; }
+
+        @page { size: A4; margin: 12mm; }
+
         @media print {
           body { background: white; }
           aside, header, nav { display: none !important; }
           .print\\:hidden { display: none !important; }
+
+          /* Repeating header on every printed page */
+          #proposta-print .print-running-header {
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 4mm 6mm 3mm 6mm;
+            background: white;
+            border-bottom: 1px solid #d1d5db;
+            font-size: 10px;
+            z-index: 9999;
+          }
+          #proposta-print .print-running-header-inner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+          }
+          #proposta-print .print-running-header-brand {
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            color: #111827;
+          }
+          #proposta-print .print-running-header-meta {
+            color: #374151;
+          }
+
+          /* Reserve space so the fixed header does not overlap content */
+          #proposta-print { padding-top: 16mm !important; }
+
+          /* Keep each logical section (direct children) whole across pages */
+          #proposta-print > div,
+          #proposta-print > table {
+            break-inside: avoid;
+            page-break-inside: avoid;
+          }
+
+          /* Keep tables and each row from splitting across pages */
+          #proposta-print table,
+          #proposta-print thead,
+          #proposta-print tbody,
+          #proposta-print tr {
+            break-inside: avoid;
+            page-break-inside: avoid;
+          }
+          #proposta-print thead { display: table-header-group; }
+          #proposta-print tfoot { display: table-footer-group; }
         }
       `}</style>
     </div>
