@@ -88,11 +88,9 @@ describe("Etapas terminais — pedido_entregue e concluido", () => {
     // e não há forward possível
     for (const s of PEDIDO_STAGES) {
       if (s.id === "concluido") continue;
-      // forward significaria index maior — não existe além de concluido
-      const forward = !isBackward("concluido", s.id) && s.id !== "concluido";
-      if (forward) {
-        expect(isTransitionAllowed("concluido", s.id)).toBe(false);
-      }
+      // todo destino != concluido é backward a partir de concluido → permitido; forward inexistente
+      expect(isBackward("concluido", s.id)).toBe(true);
     }
   });
 });
+
