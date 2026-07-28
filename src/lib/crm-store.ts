@@ -1286,7 +1286,7 @@ export const useCrm = create<CrmState>()(
 
 
 export const formatBRL = (n: number) =>
-  n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+  n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 // Current user is derived from the authenticated session (see src/hooks/use-auth.tsx).
 // Legacy USERS array is kept only to display owner names on seeded/legacy records.
