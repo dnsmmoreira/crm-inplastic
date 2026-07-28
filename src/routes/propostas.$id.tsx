@@ -1460,20 +1460,22 @@ function PropostaDetalhe() {
         /* Print-only running header is hidden on screen */
         .print-running-header { display: none; }
 
-        @page { size: A4; margin: 12mm; }
+        @page { size: A4; margin: 22mm 12mm 12mm 12mm; }
 
         @media print {
           body { background: white; }
           aside, header, nav { display: none !important; }
           .print\\:hidden { display: none !important; }
 
-          /* Repeating header on every printed page */
+          /* Repeating header on every printed page — sits inside the top page margin */
           #proposta-print .print-running-header {
             display: block;
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
+            height: 14mm;
+            box-sizing: border-box;
             padding: 4mm 6mm 3mm 6mm;
             background: white;
             border-bottom: 1px solid #d1d5db;
@@ -1495,8 +1497,8 @@ function PropostaDetalhe() {
             color: #374151;
           }
 
-          /* Reserve space so the fixed header does not overlap content */
-          #proposta-print { padding-top: 16mm !important; }
+          /* Header space is reserved via @page margin-top; no container padding needed */
+          #proposta-print { padding-top: 0 !important; }
 
           /* Keep each logical section (direct children) whole across pages */
           #proposta-print > div,
