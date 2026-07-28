@@ -1236,6 +1236,16 @@ function PropostaDetalhe() {
 
       {/* Documento imprimível */}
       <div className="bg-white text-[13px] leading-snug border rounded-lg p-8 md:p-10 shadow-sm print:border-0 print:shadow-none print:rounded-none print:p-6 print:text-[11px]" id="proposta-print">
+        {/* Print-only running header: repeats on every printed page */}
+        <div className="print-running-header" aria-hidden="true">
+          <div className="print-running-header-inner">
+            <div className="print-running-header-brand">{emitter.brand}</div>
+            <div className="print-running-header-meta">
+              <span>PROPOSTA Nº <strong>{proposal.number}</strong></span>
+              <span> · {format(new Date(proposal.createdAt), "dd/MM/yyyy")}</span>
+            </div>
+          </div>
+        </div>
         <div className="flex items-start justify-between border-b pb-4 mb-4">
           <div>
             <div className="text-xl font-display font-bold text-primary">{emitter.brand}</div>
