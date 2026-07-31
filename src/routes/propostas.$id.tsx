@@ -197,6 +197,37 @@ function PropostaDetalhe() {
 
   const totals = useMemo(() => (proposal ? proposalTotals(proposal) : null), [proposal]);
   const owner = proposal ? USERS.find((u) => u.id === proposal.ownerId) : null;
+
+  // Vendedor real (tabela de usuários) — vinculado ao cliente da proposta.
+  const vendedorFn = useServerFn(getVendedorDaProposta);
+  const vendedorQ = useQuery<VendedorContato | null>({
+    queryKey: ["proposta-vendedor", proposal?.leadId ?? null, proposal?.ownerId ?? null],
+    enabled: !!proposal,
+    staleTime: 5 * 60 * 1000,
+    queryFn: () =>
+      vendedorFn({ data: { leadId: proposal?.leadId ?? null, ownerId: proposal?.ownerId ?? null } }),
+  });
+  const vendedor = vendedorQ.data ?? null;
+
+  // Dados cadastrais do cliente (CNPJ + endereço) para o bloco "Para" da impressão.
+  const clienteId = (lead as { clienteId?: string | null } | undefined)?.clienteId ?? null;
+  const [clienteRow, setClienteRow] = useState<ClienteRow | null>(null);
+  useEffect(() => {
+    if (!clienteId) { setClienteRow(null); return; }
+    let alive = true;
+    (async () => {
+      try {
+        const { supabase } = await import("@/integrations/supabase/client");
+        const { data } = await supabase.from("clientes").select("*").eq("id", clienteId).maybeSingle();
+        if (alive) setClienteRow((data as ClienteRow | null) ?? null);
+      } catch {
+        if (alive) setClienteRow(null);
+      }
+    })();
+    return () => { alive = false; };
+  }, [clienteId]);
+
+
   
   const isAdmin = useIsAdmin();
   const currentUser = useCurrentUser();
