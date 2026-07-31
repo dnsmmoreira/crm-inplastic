@@ -32,6 +32,10 @@ import {
 } from "@/lib/crm-store";
 import { calculateFreightDistance } from "@/lib/freight.functions";
 import { gerarPedidoOmie } from "@/lib/omie.functions";
+import { getVendedorDaProposta, type VendedorContato, type ClienteRow } from "@/lib/clientes.functions";
+import { useQuery } from "@tanstack/react-query";
+import { formatCnpj } from "@/lib/cnpj";
+import { formatCep } from "@/lib/format";
 import { useServerFn } from "@tanstack/react-start";
 
 
