@@ -283,13 +283,13 @@ function PropostasPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Nº</TableHead>
-                <TableHead>Cliente</TableHead>
-                <TableHead>Empresa</TableHead>
-                <TableHead>Data</TableHead>
-                <TableHead className="text-right">Itens</TableHead>
-                <TableHead className="text-right">Total</TableHead>
-                <TableHead>Status</TableHead>
+                <SortHead sortKey="numero" label="Nº" sort={sort} onSort={toggleSort} />
+                <SortHead sortKey="cliente" label="Cliente" sort={sort} onSort={toggleSort} />
+                <SortHead sortKey="empresa" label="Empresa" sort={sort} onSort={toggleSort} />
+                <SortHead sortKey="data" label="Data" sort={sort} onSort={toggleSort} />
+                <SortHead sortKey="itens" label="Itens" sort={sort} onSort={toggleSort} align="right" />
+                <SortHead sortKey="total" label="Total" sort={sort} onSort={toggleSort} align="right" />
+                <SortHead sortKey="status" label="Status" sort={sort} onSort={toggleSort} />
                 <TableHead />
               </TableRow>
             </TableHeader>
