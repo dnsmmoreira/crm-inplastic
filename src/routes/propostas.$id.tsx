@@ -407,7 +407,7 @@ function PropostaDetalhe() {
               )}
             </div>
             <p className="text-xs text-muted-foreground">
-              Criada em {format(new Date(proposal.createdAt), "dd/MM/yyyy", { locale: ptBR })} · Vendedor: {owner?.name ?? "—"}
+              Criada em {format(new Date(proposal.createdAt), "dd/MM/yyyy", { locale: ptBR })} · Vendedor: {vendedor?.name ?? owner?.name ?? "—"}
               {proposal.approvedAt && approver && (
                 <> · Aprovada por <span className="font-medium text-foreground">{approver.name}</span> em {format(new Date(proposal.approvedAt), "dd/MM/yyyy HH:mm", { locale: ptBR })}</>
               )}
