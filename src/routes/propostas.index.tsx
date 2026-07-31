@@ -183,6 +183,7 @@ function PropostasPage() {
         case "itens": return proposalTotals(p).count;
         case "total": return proposalTotals(p).total;
         case "status": return STATUS_META[p.status].label;
+        default: return "";
       }
     };
     return [...base].sort((a, b) => {
