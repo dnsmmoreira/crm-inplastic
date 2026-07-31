@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, FileText, Search, Trash2, UserPlus, Loader2, Building2, Check } from "lucide-react";
+import { Plus, FileText, Search, Trash2, UserPlus, Loader2, Building2, Check, ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { lookupCnpj } from "@/lib/cnpj.functions";
 import { vincularClienteAoLead } from "@/lib/clientes.functions";
@@ -62,6 +62,36 @@ const STATUS_META: Record<ProposalStatus, { label: string; variant: "default" | 
   pedido: { label: "Pedido", variant: "default" },
 };
 
+type SortKey = "numero" | "cliente" | "empresa" | "data" | "itens" | "total" | "status";
+type SortState = { key: SortKey; dir: "asc" | "desc" } | null;
+
+function SortHead({
+  sortKey, label, sort, onSort, align = "left",
+}: {
+  sortKey: SortKey;
+  label: string;
+  sort: SortState;
+  onSort: (k: SortKey) => void;
+  align?: "left" | "right";
+}) {
+  const active = sort?.key === sortKey;
+  const Icon = !active ? ChevronsUpDown : sort.dir === "asc" ? ArrowUp : ArrowDown;
+  return (
+    <TableHead className={align === "right" ? "text-right" : undefined}>
+      <button
+        type="button"
+        onClick={() => onSort(sortKey)}
+        className={`inline-flex items-center gap-1 select-none hover:text-foreground transition-colors ${
+          align === "right" ? "flex-row-reverse" : ""
+        } ${active ? "text-foreground font-semibold" : ""}`}
+      >
+        {label}
+        <Icon className={`h-3.5 w-3.5 ${active ? "opacity-100" : "opacity-40"}`} />
+      </button>
+    </TableHead>
+  );
+}
+
 function PropostasPage() {
   const proposals = useVisibleProposals();
   const leads = useVisibleLeads();
@@ -75,6 +105,9 @@ function PropostasPage() {
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | ProposalStatus>("all");
   const [emitterFilter, setEmitterFilter] = useState<string>("all");
+  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" } | null>(null);
+  const toggleSort = (key: SortKey) =>
+    setSort((s) => (s?.key === key ? (s.dir === "asc" ? { key, dir: "desc" } : null) : { key, dir: "asc" }));
   const [openNew, setOpenNew] = useState(false);
   const [selectedLead, setSelectedLead] = useState<string>("");
   const [leadSearch, setLeadSearch] = useState("");
@@ -157,7 +190,7 @@ function PropostasPage() {
 
   const filtered = useMemo(() => {
     const t = q.toLowerCase().trim();
-    return proposals.filter((p) => {
+    const base = proposals.filter((p) => {
       if (statusFilter !== "all" && p.status !== statusFilter) return false;
       if (emitterFilter !== "all" && p.emitterId !== emitterFilter) return false;
       if (!t) return true;
@@ -167,7 +200,27 @@ function PropostasPage() {
         (lead?.company.toLowerCase().includes(t) ?? false)
       );
     });
-  }, [proposals, leads, q, statusFilter, emitterFilter]);
+    if (!sort) return base;
+    const dir = sort.dir === "asc" ? 1 : -1;
+    const valueOf = (p: (typeof base)[number]): string | number => {
+      switch (sort.key) {
+        case "numero": return p.number;
+        case "cliente": return leads.find((l) => l.id === p.leadId)?.company ?? "";
+        case "empresa": return emitters.find((e) => e.id === p.emitterId)?.brand ?? "";
+        case "data": return new Date(p.createdAt).getTime();
+        case "itens": return proposalTotals(p).count;
+        case "total": return proposalTotals(p).total;
+        case "status": return STATUS_META[p.status].label;
+        default: return "";
+      }
+    };
+    return [...base].sort((a, b) => {
+      const va = valueOf(a);
+      const vb = valueOf(b);
+      if (typeof va === "number" && typeof vb === "number") return (va - vb) * dir;
+      return String(va).localeCompare(String(vb), "pt-BR", { numeric: true }) * dir;
+    });
+  }, [proposals, leads, emitters, q, statusFilter, emitterFilter, sort]);
 
   return (
     <div className="p-4 md:p-8 space-y-6">
@@ -258,13 +311,13 @@ function PropostasPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Nº</TableHead>
-                <TableHead>Cliente</TableHead>
-                <TableHead>Empresa</TableHead>
-                <TableHead>Data</TableHead>
-                <TableHead className="text-right">Itens</TableHead>
-                <TableHead className="text-right">Total</TableHead>
-                <TableHead>Status</TableHead>
+                <SortHead sortKey="numero" label="Nº" sort={sort} onSort={toggleSort} />
+                <SortHead sortKey="cliente" label="Cliente" sort={sort} onSort={toggleSort} />
+                <SortHead sortKey="empresa" label="Empresa" sort={sort} onSort={toggleSort} />
+                <SortHead sortKey="data" label="Data" sort={sort} onSort={toggleSort} />
+                <SortHead sortKey="itens" label="Itens" sort={sort} onSort={toggleSort} align="right" />
+                <SortHead sortKey="total" label="Total" sort={sort} onSort={toggleSort} align="right" />
+                <SortHead sortKey="status" label="Status" sort={sort} onSort={toggleSort} />
                 <TableHead />
               </TableRow>
             </TableHeader>
