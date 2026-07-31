@@ -63,6 +63,34 @@ const STATUS_META: Record<ProposalStatus, { label: string; variant: "default" | 
 };
 
 type SortKey = "numero" | "cliente" | "empresa" | "data" | "itens" | "total" | "status";
+type SortState = { key: SortKey; dir: "asc" | "desc" } | null;
+
+function SortHead({
+  sortKey, label, sort, onSort, align = "left",
+}: {
+  sortKey: SortKey;
+  label: string;
+  sort: SortState;
+  onSort: (k: SortKey) => void;
+  align?: "left" | "right";
+}) {
+  const active = sort?.key === sortKey;
+  const Icon = !active ? ChevronsUpDown : sort.dir === "asc" ? ArrowUp : ArrowDown;
+  return (
+    <TableHead className={align === "right" ? "text-right" : undefined}>
+      <button
+        type="button"
+        onClick={() => onSort(sortKey)}
+        className={`inline-flex items-center gap-1 select-none hover:text-foreground transition-colors ${
+          align === "right" ? "flex-row-reverse" : ""
+        } ${active ? "text-foreground font-semibold" : ""}`}
+      >
+        {label}
+        <Icon className={`h-3.5 w-3.5 ${active ? "opacity-100" : "opacity-40"}`} />
+      </button>
+    </TableHead>
+  );
+}
 
 function PropostasPage() {
   const proposals = useVisibleProposals();
