@@ -1310,17 +1310,30 @@ function PropostaDetalhe() {
         <div className="grid grid-cols-2 gap-6 mb-4">
           <div>
             <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Para</div>
-            <div className="font-semibold">{lead.company}</div>
+            <div className="font-semibold">{clienteRow?.razao_social || lead.company}</div>
             <div className="text-[11px] leading-relaxed">
+              {clienteRow?.cnpj && <div>CNPJ: {formatCnpj(clienteRow.cnpj)}</div>}
+              {(clienteRow?.endereco || clienteRow?.numero) && (
+                <div>
+                  {[clienteRow?.endereco, clienteRow?.numero].filter(Boolean).join(", ")}
+                  {clienteRow?.complemento ? ` — ${clienteRow.complemento}` : ""}
+                </div>
+              )}
+              {clienteRow?.bairro && <div>Bairro: {clienteRow.bairro}</div>}
+              {(clienteRow?.cidade || clienteRow?.estado) && (
+                <div>{[clienteRow?.cidade, clienteRow?.estado].filter(Boolean).join("/")}</div>
+              )}
+              {clienteRow?.cep && <div>CEP: {formatCep(clienteRow.cep)}</div>}
               <div>Aos cuidados de: {lead.contactName}</div>
-              <div>E-mail: {lead.email || "—"}</div>
-              <div>Telefone: {lead.phone}</div>
+              <div>E-mail: {lead.email || clienteRow?.email || "—"}</div>
+              <div>Telefone: {lead.phone || clienteRow?.telefone || "—"}</div>
             </div>
           </div>
           <div>
             <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Vendedor(a)</div>
-            <div className="font-semibold">{owner?.name ?? "—"}</div>
-            <div className="text-[11px]">{emitter.email}</div>
+            <div className="font-semibold">{vendedor?.name ?? owner?.name ?? "—"}</div>
+            <div className="text-[11px]">{vendedor?.email ?? emitter.email}</div>
+
           </div>
         </div>
 
