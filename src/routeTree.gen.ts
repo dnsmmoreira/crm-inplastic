@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UsuariosRouteImport } from './routes/usuarios'
 import { Route as TarefasRouteImport } from './routes/tarefas'
+import { Route as RelatoriosRouteImport } from './routes/relatorios'
 import { Route as ProdutosRouteImport } from './routes/produtos'
 import { Route as PrimeiroAcessoRouteImport } from './routes/primeiro-acesso'
 import { Route as PlacarRouteImport } from './routes/placar'
@@ -54,6 +55,11 @@ const UsuariosRoute = UsuariosRouteImport.update({
 const TarefasRoute = TarefasRouteImport.update({
   id: '/tarefas',
   path: '/tarefas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RelatoriosRoute = RelatoriosRouteImport.update({
+  id: '/relatorios',
+  path: '/relatorios',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProdutosRoute = ProdutosRouteImport.update({
@@ -254,6 +260,7 @@ export interface FileRoutesByFullPath {
   '/placar': typeof PlacarRoute
   '/primeiro-acesso': typeof PrimeiroAcessoRoute
   '/produtos': typeof ProdutosRoute
+  '/relatorios': typeof RelatoriosRoute
   '/tarefas': typeof TarefasRoute
   '/usuarios': typeof UsuariosRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
@@ -292,6 +299,7 @@ export interface FileRoutesByTo {
   '/placar': typeof PlacarRoute
   '/primeiro-acesso': typeof PrimeiroAcessoRoute
   '/produtos': typeof ProdutosRoute
+  '/relatorios': typeof RelatoriosRoute
   '/tarefas': typeof TarefasRoute
   '/usuarios': typeof UsuariosRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
@@ -331,6 +339,7 @@ export interface FileRoutesById {
   '/placar': typeof PlacarRoute
   '/primeiro-acesso': typeof PrimeiroAcessoRoute
   '/produtos': typeof ProdutosRoute
+  '/relatorios': typeof RelatoriosRoute
   '/tarefas': typeof TarefasRoute
   '/usuarios': typeof UsuariosRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
@@ -371,6 +380,7 @@ export interface FileRouteTypes {
     | '/placar'
     | '/primeiro-acesso'
     | '/produtos'
+    | '/relatorios'
     | '/tarefas'
     | '/usuarios'
     | '/.mcp/list-tools'
@@ -409,6 +419,7 @@ export interface FileRouteTypes {
     | '/placar'
     | '/primeiro-acesso'
     | '/produtos'
+    | '/relatorios'
     | '/tarefas'
     | '/usuarios'
     | '/.mcp/list-tools'
@@ -447,6 +458,7 @@ export interface FileRouteTypes {
     | '/placar'
     | '/primeiro-acesso'
     | '/produtos'
+    | '/relatorios'
     | '/tarefas'
     | '/usuarios'
     | '/.mcp/list-tools'
@@ -486,6 +498,7 @@ export interface RootRouteChildren {
   PlacarRoute: typeof PlacarRoute
   PrimeiroAcessoRoute: typeof PrimeiroAcessoRoute
   ProdutosRoute: typeof ProdutosRoute
+  RelatoriosRoute: typeof RelatoriosRoute
   TarefasRoute: typeof TarefasRoute
   UsuariosRoute: typeof UsuariosRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
@@ -522,6 +535,13 @@ declare module '@tanstack/react-router' {
       path: '/tarefas'
       fullPath: '/tarefas'
       preLoaderRoute: typeof TarefasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/relatorios': {
+      id: '/relatorios'
+      path: '/relatorios'
+      fullPath: '/relatorios'
+      preLoaderRoute: typeof RelatoriosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/produtos': {
@@ -782,6 +802,7 @@ const rootRouteChildren: RootRouteChildren = {
   PlacarRoute: PlacarRoute,
   PrimeiroAcessoRoute: PrimeiroAcessoRoute,
   ProdutosRoute: ProdutosRoute,
+  RelatoriosRoute: RelatoriosRoute,
   TarefasRoute: TarefasRoute,
   UsuariosRoute: UsuariosRoute,
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
