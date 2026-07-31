@@ -157,7 +157,7 @@ function PropostasPage() {
 
   const filtered = useMemo(() => {
     const t = q.toLowerCase().trim();
-    return proposals.filter((p) => {
+    const base = proposals.filter((p) => {
       if (statusFilter !== "all" && p.status !== statusFilter) return false;
       if (emitterFilter !== "all" && p.emitterId !== emitterFilter) return false;
       if (!t) return true;
@@ -167,7 +167,26 @@ function PropostasPage() {
         (lead?.company.toLowerCase().includes(t) ?? false)
       );
     });
-  }, [proposals, leads, q, statusFilter, emitterFilter]);
+    if (!sort) return base;
+    const dir = sort.dir === "asc" ? 1 : -1;
+    const valueOf = (p: (typeof base)[number]): string | number => {
+      switch (sort.key) {
+        case "numero": return p.number;
+        case "cliente": return leads.find((l) => l.id === p.leadId)?.company ?? "";
+        case "empresa": return emitters.find((e) => e.id === p.emitterId)?.brand ?? "";
+        case "data": return new Date(p.createdAt).getTime();
+        case "itens": return proposalTotals(p).count;
+        case "total": return proposalTotals(p).total;
+        case "status": return STATUS_META[p.status].label;
+      }
+    };
+    return [...base].sort((a, b) => {
+      const va = valueOf(a);
+      const vb = valueOf(b);
+      if (typeof va === "number" && typeof vb === "number") return (va - vb) * dir;
+      return String(va).localeCompare(String(vb), "pt-BR", { numeric: true }) * dir;
+    });
+  }, [proposals, leads, emitters, q, statusFilter, emitterFilter, sort]);
 
   return (
     <div className="p-4 md:p-8 space-y-6">
