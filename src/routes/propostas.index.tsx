@@ -62,6 +62,8 @@ const STATUS_META: Record<ProposalStatus, { label: string; variant: "default" | 
   pedido: { label: "Pedido", variant: "default" },
 };
 
+type SortKey = "numero" | "cliente" | "empresa" | "data" | "itens" | "total" | "status";
+
 function PropostasPage() {
   const proposals = useVisibleProposals();
   const leads = useVisibleLeads();
