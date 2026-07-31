@@ -466,3 +466,59 @@ export const vincularClienteAoLead = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+// ==========================
+// VENDEDOR REAL DA PROPOSTA (nome + e-mail de login)
+// ==========================
+export type VendedorContato = { id: string; name: string; email: string | null };
+
+export const getVendedorDaProposta = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { leadId?: string | null; ownerId?: string | null }) => ({
+    leadId: data?.leadId ? String(data.leadId) : null,
+    ownerId: data?.ownerId ? String(data.ownerId) : null,
+  }))
+  .handler(async ({ data, context }): Promise<VendedorContato | null> => {
+    let vendedorId: string | null = null;
+
+    if (data.leadId) {
+      const { data: lead } = await context.supabase
+        .from("leads")
+        .select("owner_id, cliente_id")
+        .eq("id", data.leadId)
+        .maybeSingle();
+      const clienteId = (lead as { cliente_id?: string | null } | null)?.cliente_id ?? null;
+      if (clienteId) {
+        const { data: cli } = await context.supabase
+          .from("clientes")
+          .select("vendedor_id")
+          .eq("id", clienteId)
+          .maybeSingle();
+        vendedorId = (cli as { vendedor_id?: string | null } | null)?.vendedor_id ?? null;
+      }
+      if (!vendedorId) vendedorId = (lead as { owner_id?: string | null } | null)?.owner_id ?? null;
+    }
+    if (!vendedorId) vendedorId = data.ownerId;
+    if (!vendedorId) return null;
+
+    const { data: profile } = await context.supabase
+      .from("profiles")
+      .select("id, name")
+      .eq("id", vendedorId)
+      .maybeSingle();
+
+    let email: string | null = null;
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(vendedorId);
+      email = authUser?.user?.email ?? null;
+    } catch {
+      email = null;
+    }
+
+    return {
+      id: vendedorId,
+      name: (profile as { name?: string } | null)?.name ?? "—",
+      email,
+    };
+  });
