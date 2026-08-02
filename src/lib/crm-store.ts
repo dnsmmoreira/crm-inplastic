@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { markDeleted } from "@/lib/delete-intents";
 import { DEFAULT_FLEET, type FleetVehicle } from "@/lib/logistica";
 
 
@@ -872,10 +873,14 @@ export const useCrm = create<CrmState>()(
         set((s) => ({ leads: s.leads.map((l) => (l.id === id ? { ...l, ...patch } : l)) }));
       },
       removeLead: (id) =>
-        set((s) => ({
-          leads: s.leads.filter((l) => l.id !== id),
-          tasks: s.tasks.filter((t) => t.leadId !== id),
-        })),
+        set((s) => {
+          markDeleted("leads", id);
+          markDeleted("tasks", ...s.tasks.filter((t) => t.leadId === id).map((t) => t.id));
+          return {
+            leads: s.leads.filter((l) => l.id !== id),
+            tasks: s.tasks.filter((t) => t.leadId !== id),
+          };
+        }),
       moveLead: (id, stage) =>
         set((s) => ({
           leads: s.leads.map((l) =>
@@ -901,7 +906,11 @@ export const useCrm = create<CrmState>()(
       addTask: (t) => set((s) => ({ tasks: [...s.tasks, { ...t, id: uid(), done: false }] })),
       toggleTask: (id) =>
         set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? { ...t, done: !t.done } : t)) })),
-      removeTask: (id) => set((s) => ({ tasks: s.tasks.filter((t) => t.id !== id) })),
+      removeTask: (id) =>
+        set((s) => {
+          markDeleted("tasks", id);
+          return { tasks: s.tasks.filter((t) => t.id !== id) };
+        }),
       receiveWhatsapp: (m) =>
         set((s) => ({
           whatsapp: [
@@ -1014,7 +1023,10 @@ export const useCrm = create<CrmState>()(
       updateProduct: (id, patch) =>
         set((s) => ({ products: s.products.map((p) => (p.id === id ? { ...p, ...patch } : p)) })),
       removeProduct: (id) =>
-        set((s) => ({ products: s.products.filter((p) => p.id !== id) })),
+        set((s) => {
+          markDeleted("products", id);
+          return { products: s.products.filter((p) => p.id !== id) };
+        }),
 
       // ============ Propostas ============
       proposals: [],
@@ -1156,7 +1168,15 @@ export const useCrm = create<CrmState>()(
       updateProposal: (id, patch) =>
         set((s) => ({ proposals: s.proposals.map((p) => (p.id === id ? { ...p, ...patch } : p)) })),
       removeProposal: (id) =>
-        set((s) => ({ proposals: s.proposals.filter((p) => p.id !== id) })),
+        set((s) => {
+          markDeleted("proposals", id);
+          const prop = s.proposals.find((p) => p.id === id);
+          if (prop) {
+            markDeleted("proposalItems", ...prop.items.map((it) => it.id));
+            markDeleted("proposalParcelas", ...prop.installments.map((pa) => pa.id));
+          }
+          return { proposals: s.proposals.filter((p) => p.id !== id) };
+        }),
       addProposalItem: (proposalId, productId, quantity) => {
         const product = get().products.find((p) => p.id === productId);
         if (!product) return;
@@ -1216,7 +1236,7 @@ export const useCrm = create<CrmState>()(
           ),
         })),
       removeProposalItem: (proposalId, itemId) =>
-        set((s) => ({
+        set((s) => (markDeleted("proposalItems", itemId), {
           proposals: s.proposals.map((p) =>
             p.id === proposalId ? { ...p, items: p.items.filter((it) => it.id !== itemId) } : p,
           ),
@@ -1238,7 +1258,10 @@ export const useCrm = create<CrmState>()(
           paymentTerms: s.paymentTerms.map((t) => (t.id === id ? { ...t, ...patch } : t)),
         })),
       removePaymentTerm: (id) =>
-        set((s) => ({ paymentTerms: s.paymentTerms.filter((t) => t.id !== id) })),
+        set((s) => {
+          markDeleted("paymentTerms", id);
+          return { paymentTerms: s.paymentTerms.filter((t) => t.id !== id) };
+        }),
       togglePaymentTermActive: (id) =>
         set((s) => ({
           paymentTerms: s.paymentTerms.map((t) => (t.id === id ? { ...t, active: !t.active } : t)),
