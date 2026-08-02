@@ -383,6 +383,66 @@ export type Database = {
           },
         ]
       }
+      lead_owner_history: {
+        Row: {
+          contexto: Json | null
+          criado_em: string
+          id: string
+          lead_id: string
+          origem: string
+          owner_anterior: string | null
+          owner_novo: string | null
+        }
+        Insert: {
+          contexto?: Json | null
+          criado_em?: string
+          id?: string
+          lead_id: string
+          origem: string
+          owner_anterior?: string | null
+          owner_novo?: string | null
+        }
+        Update: {
+          contexto?: Json | null
+          criado_em?: string
+          id?: string
+          lead_id?: string
+          origem?: string
+          owner_anterior?: string | null
+          owner_novo?: string | null
+        }
+        Relationships: []
+      }
+      lead_stage_history: {
+        Row: {
+          contexto: Json | null
+          criado_em: string
+          etapa_anterior: string | null
+          etapa_nova: string | null
+          id: string
+          lead_id: string
+          origem: string
+        }
+        Insert: {
+          contexto?: Json | null
+          criado_em?: string
+          etapa_anterior?: string | null
+          etapa_nova?: string | null
+          id?: string
+          lead_id: string
+          origem: string
+        }
+        Update: {
+          contexto?: Json | null
+          criado_em?: string
+          etapa_anterior?: string | null
+          etapa_nova?: string | null
+          id?: string
+          lead_id?: string
+          origem?: string
+        }
+        Relationships: []
+      }
       leads: {
         Row: {
           bairro: string | null
@@ -1616,6 +1676,7 @@ export type Database = {
           direcao: Database["public"]["Enums"]["msg_direcao"]
           external_id: string | null
           id: string
+          usuario_id: string | null
         }
         Insert: {
           autor: Database["public"]["Enums"]["msg_autor"]
@@ -1625,6 +1686,7 @@ export type Database = {
           direcao: Database["public"]["Enums"]["msg_direcao"]
           external_id?: string | null
           id?: string
+          usuario_id?: string | null
         }
         Update: {
           autor?: Database["public"]["Enums"]["msg_autor"]
@@ -1634,6 +1696,7 @@ export type Database = {
           direcao?: Database["public"]["Enums"]["msg_direcao"]
           external_id?: string | null
           id?: string
+          usuario_id?: string | null
         }
         Relationships: [
           {

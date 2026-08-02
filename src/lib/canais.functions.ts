@@ -21,7 +21,8 @@ export const sendConversaMessage = createServerFn({ method: "POST" })
     z.object({ conversaId: z.string().uuid(), message: z.string().min(1).max(4096) }).parse(data),
   )
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
+
 
     const { data: conversa, error: cErr } = await supabase
       .from("whatsapp_conversas")
@@ -38,7 +39,9 @@ export const sendConversaMessage = createServerFn({ method: "POST" })
       direcao: "saida",
       autor: "vendedor",
       conteudo: data.message,
+      usuario_id: userId,
     });
+
     if (mErr) throw new Error(mErr.message);
 
     // Sai do modo IA se ainda estava
