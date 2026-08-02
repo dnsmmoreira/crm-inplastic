@@ -14,6 +14,7 @@
  * `useCrm(...)` mantém a mesma assinatura.
  */
 
+import { isIntentionalDelete, clearDeleteIntent } from "@/lib/delete-intents";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database, Json } from "@/integrations/supabase/types";
 import {
@@ -748,6 +749,9 @@ async function doSave() {
       upsert: (items) =>
         supabase.from("produtos").upsert(items.map(productToInsert), { onConflict: "id" }),
       del: (ids) => supabase.from("produtos").delete().in("id", ids),
+    isIntentionalDelete: isIntentionalDelete("products"),
+    collectionName: "products",
+    onDeleted: (ids) => clearDeleteIntent("products", ids),
     });
 
     // ---- emitters ----
@@ -766,6 +770,9 @@ async function doSave() {
             { onConflict: "id" },
           ),
       del: (ids) => supabase.from("emitters").delete().in("id", ids),
+    isIntentionalDelete: isIntentionalDelete("emitters"),
+    collectionName: "emitters",
+    onDeleted: (ids) => clearDeleteIntent("emitters", ids),
     });
     // update default flag isolado se apenas ele mudou
     if (state.defaultEmitterId !== snapshot.defaultEmitterId) {
@@ -788,6 +795,9 @@ async function doSave() {
           .from("condicoes_pagamento")
           .upsert(items.map(payTermToInsert), { onConflict: "id" }),
       del: (ids) => supabase.from("condicoes_pagamento").delete().in("id", ids),
+    isIntentionalDelete: isIntentionalDelete("paymentTerms"),
+    collectionName: "paymentTerms",
+    onDeleted: (ids) => clearDeleteIntent("paymentTerms", ids),
     });
   }
 
@@ -800,6 +810,9 @@ async function doSave() {
     upsert: (items) =>
       supabase.from("leads").upsert(items.map(leadToInsert), { onConflict: "id" }),
     del: (ids) => supabase.from("leads").delete().in("id", ids),
+    isIntentionalDelete: isIntentionalDelete("leads"),
+    collectionName: "leads",
+    onDeleted: (ids) => clearDeleteIntent("leads", ids),
   });
 
   // ---- tarefas ----
@@ -818,6 +831,9 @@ async function doSave() {
           { onConflict: "id" },
         ),
     del: (ids) => supabase.from("tarefas").delete().in("id", ids),
+    isIntentionalDelete: isIntentionalDelete("tasks"),
+    collectionName: "tasks",
+    onDeleted: (ids) => clearDeleteIntent("tasks", ids),
   });
 
   // ---- propostas ----
@@ -829,6 +845,9 @@ async function doSave() {
     upsert: (items) =>
       supabase.from("propostas").upsert(items.map(proposalToInsert), { onConflict: "id" }),
     del: (ids) => supabase.from("propostas").delete().in("id", ids),
+    isIntentionalDelete: isIntentionalDelete("proposals"),
+    collectionName: "proposals",
+    onDeleted: (ids) => clearDeleteIntent("proposals", ids),
   });
 
   // ---- proposta_itens ----
@@ -870,6 +889,9 @@ async function doSave() {
         { onConflict: "id" },
       ),
     del: (ids) => supabase.from("proposta_itens").delete().in("id", ids),
+    isIntentionalDelete: isIntentionalDelete("proposalItems"),
+    collectionName: "proposalItems",
+    onDeleted: (ids) => clearDeleteIntent("proposalItems", ids),
   });
 
   // ---- proposta_parcelas ----
@@ -903,6 +925,9 @@ async function doSave() {
         { onConflict: "id" },
       ),
     del: (ids) => supabase.from("proposta_parcelas").delete().in("id", ids),
+    isIntentionalDelete: isIntentionalDelete("proposalParcelas"),
+    collectionName: "proposalParcelas",
+    onDeleted: (ids) => clearDeleteIntent("proposalParcelas", ids),
   });
 
   // ---- lead_interactions (append-only) ----
