@@ -956,8 +956,24 @@ async function syncCollection<T>(opts: {
   toJson: (item: T) => string;
   upsert: (items: T[]) => PromiseLike<{ error: unknown }>;
   del: (ids: string[]) => PromiseLike<{ error: unknown }>;
+  /** Se fornecido, só ids aprovados pelo predicado são apagados no banco. */
+  isIntentionalDelete?: (id: string) => boolean;
+  /** Rótulo apenas para log. */
+  collectionName?: string;
+  /** Chamado após DELETE bem-sucedido (para limpar o registro de intenção). */
+  onDeleted?: (ids: string[]) => void;
 }) {
-  const { current, snapshot: snap, toKey, toJson, upsert, del } = opts;
+  const {
+    current,
+    snapshot: snap,
+    toKey,
+    toJson,
+    upsert,
+    del,
+    isIntentionalDelete,
+    collectionName,
+    onDeleted,
+  } = opts;
   const currentIds = new Set<string>();
   const toUpsert: T[] = [];
   for (const item of current) {
@@ -966,10 +982,22 @@ async function syncCollection<T>(opts: {
     const j = toJson(item);
     if (snap.get(k) !== j) toUpsert.push(item);
   }
-  const toDelete: string[] = [];
+  const missing: string[] = [];
   snap.forEach((_, k) => {
-    if (!currentIds.has(k)) toDelete.push(k);
+    if (!currentIds.has(k)) missing.push(k);
   });
+
+  let toDelete = missing;
+  if (isIntentionalDelete) {
+    toDelete = missing.filter((k) => isIntentionalDelete(k));
+    const skipped = missing.filter((k) => !isIntentionalDelete(k));
+    if (skipped.length) {
+      console.warn(
+        `[crm-sync] ${collectionName ?? "collection"}: ${skipped.length} id(s) sumiram do estado local sem intenção de exclusão — ignorados (não apagados):`,
+        skipped,
+      );
+    }
+  }
 
   if (toUpsert.length) {
     const { error } = await upsert(toUpsert);
@@ -983,6 +1011,7 @@ async function syncCollection<T>(opts: {
     const { error } = await del(toDelete);
     if (!error) {
       toDelete.forEach((k) => snap.delete(k));
+      onDeleted?.(toDelete);
     } else {
       console.warn("[crm-sync] delete error:", error);
     }
