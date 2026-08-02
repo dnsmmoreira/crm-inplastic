@@ -39,7 +39,9 @@ export const sendConversaMessage = createServerFn({ method: "POST" })
       direcao: "saida",
       autor: "vendedor",
       conteudo: data.message,
+      usuario_id: userId,
     });
+
     if (mErr) throw new Error(mErr.message);
 
     // Sai do modo IA se ainda estava
