@@ -1,87 +1,85 @@
-## Diagnóstico
+# Inventário de acoplamento com a Z-API
 
-**Sintoma**: ao clicar em "Calcular logística" (ou "Calcular" em Transporte) na proposta 2026-0008, aparece erro tipo "CEP não localizado" / "frete não encontrado". Nenhum km/frete é salvo.
+Somente levantamento. Nenhum arquivo de código foi alterado e nada é proposto aqui.
 
-**Causa raiz confirmada por reprodução direta contra o gateway**:
+## 1. Pontos que chamam a Z-API
 
-Existem duas chaves Google Maps no projeto:
-- `GOOGLE_MAPS_API_KEY_1` → conexão "Denis's Google Maps Platform" (a customizada, restrita por HTTP referrer para funcionar no domínio próprio no browser).
-- `GOOGLE_MAPS_API_KEY` → conexão "Google Maps Platform" padrão, sem restrição de referrer.
+Todo o tráfego HTTP para `api.z-api.io` passa por dois arquivos:
 
-O código do server function prioriza a `_1`:
+- `src/lib/zapi-send.server.ts:47` — monta `https://api.z-api.io/instances/{instanceId}/token/{token}/send-text` e faz o POST em `:49-56` com `{ phone, message }`. Único envio existente (somente texto).
+- `src/lib/zapi.functions.ts:41` — monta `https://api.z-api.io/instances/{instanceId}/token/{token}/status` e faz GET em `:42` (checagem de conexão).
 
-```ts
-// src/lib/logistica.functions.ts:19-21 e src/lib/freight.functions.ts:6-8
-function getGoogleMapsConnectionKey() {
-  return process.env.GOOGLE_MAPS_API_KEY_1 ?? process.env.GOOGLE_MAPS_API_KEY;
-}
-```
+Credenciais (lidas de `process.env`, nunca no cliente):
 
-Ao chamar `/maps/api/geocode/json` server-side com a `_1`, o Google devolve HTTP 200 + JSON:
+- `src/lib/zapi-send.server.ts:30-32` — `ZAPI_INSTANCE_ID`, `ZAPI_TOKEN`, `ZAPI_CLIENT_TOKEN`; header obrigatório `Client-Token` em `:53`.
+- `src/lib/zapi.functions.ts:36-38` — mesmas três variáveis; header `Client-Token` em `:42`.
 
-```json
-{ "status": "REQUEST_DENIED",
-  "error_message": "API keys with referer restrictions cannot be used with this API." }
-```
+Chamadores de `sendZapiText` (todos indiretos, via import dinâmico):
 
-O código atual não trata `status = REQUEST_DENIED`: como `res.ok` é `true` e `data.status !== "OK"`, cai no genérico `throw new Error("CEP não localizado: ${cep}")` (src/lib/logistica.functions.ts:54 e src/lib/freight.functions.ts:53). Daí a mensagem enganosa que o usuário viu.
+- `src/lib/canais.functions.ts:34-35` — envio manual do vendedor na tela de Canais.
+- `src/lib/zapi.functions.ts:22-23` — server fn `sendWhatsapp` (envio avulso por telefone).
+- `src/routes/api/public/hooks/ia-responder.ts:67-68` — resposta da IA (n8n) ao cliente.
+- `src/routes/api/public/hooks/ia-urgente.ts:152-156` — alerta para o número da diretoria.
+- `src/lib/xerife/notify.server.ts:30-31` (notifyOwner) e `:43-44` (notifyDiretoria) — notificações internas; telefone do vendedor vem de `profiles.telefone_whatsapp` (`:14-19`), diretoria de `process.env.WHATSAPP_DIRETORIA` (`:40`).
+- `src/routes/api/public/hooks/xerife.ts:34-41` (wrapper) usado em `:137`, `:401`, `:443`.
+- Consumidores de notify: `xerife-fechamento.ts:83,148,183`, `xerife-engine.ts:225`, `xerife-checkpoint.ts:61`, `xerife-agenda-diaria.ts:130`.
 
-A chave `GOOGLE_MAPS_API_KEY` padrão funciona no mesmo endpoint (retornei o endereço completo de 02422-230 nos testes). Ou seja: a chave custom nunca deveria ter sido usada em server functions — ela é para o browser no domínio próprio (Maps JavaScript API).
+UI acoplada: `src/routes/canais.tsx:27` (import `zapiStatus`), `:126` rótulo "WhatsApp Business (Z-API)", `:430-465` card com URL de webhook `/api/public/zapi/webhook` (`:438`) e botão "Testar conexão" (`:431,446-451`).
 
-Efeito colateral: a proposta 2026-0008 é FOB, mas o card "Logística inteligente" é renderizado sempre (src/routes/propostas.$id.tsx:1033), independente do payer — então o erro afeta CIF e FOB.
+Não existe nenhum envio de mídia, template, botão ou lista. Só `send-text`.
 
-## Correção proposta (mínima, sem mudar UI nem regras de negócio)
+## 2. Webhook de recebimento — campos lidos e destino
 
-### 1. Inverter a prioridade das chaves para uso server-side
+Arquivo único: `src/routes/api/public/zapi/webhook.ts`.
 
-Em `src/lib/logistica.functions.ts:19-21` e `src/lib/freight.functions.ts:6-8`:
+| Campo do payload Z-API | Linha | Destino |
+| --- | --- | --- |
+| `fromMe` | :45 | filtro (ignora e retorna `ignored:true`) |
+| `isGroup` | :45 | filtro (ignora) |
+| `phone` | :49-50 | `zapi_inbox.phone`, `whatsapp_conversas.phone` (só dígitos, via `onlyDigits`) |
+| `text.message` ou `message` | :51-54 | `zapi_inbox.message`, `whatsapp_mensagens.conteudo`, e `last_message_preview` (via trigger) |
+| `senderName` ou `chatName` | :60 | `zapi_inbox.name`, `whatsapp_conversas.name` (`:92-98` só preenche se estava NULL) |
+| `messageId` | :61 | `whatsapp_mensagens.external_id` (`:134`) |
+| payload inteiro | :64,72 | `zapi_inbox.raw` (jsonb) |
 
-```ts
-function getGoogleMapsConnectionKey() {
-  return process.env.GOOGLE_MAPS_API_KEY ?? process.env.GOOGLE_MAPS_API_KEY_1;
-}
-```
+Efeitos colaterais: upsert da conversa por telefone (`:83-122`), vínculo automático ao lead por `leads.telefone_whatsapp` (`:101-105`), insert da mensagem com `direcao='entrada'`, `autor='cliente'` (`:127-135`), e notificação síncrona ao n8n com histórico das últimas 20 mensagens (`:144-197`).
 
-Justificativa: server functions rodam no worker, sem referrer; a chave restrita por referrer **nunca** funciona a partir dali. A chave "padrão" é a única viável server-side. A chave `_1` continua servindo pro browser em `crm.inplastic.com.br` (Maps JavaScript API via `GOOGLE_MAPS_BROWSER_KEY_1` já é browser).
+Campos da Z-API não lidos: `type`, `momment`, `instanceId`, `photo`, `broadcast`, `referenceMessageId`, `status`, e todos os blocos de mídia.
 
-### 2. Tratar `REQUEST_DENIED` / `ZERO_RESULTS` com mensagem correta
+## 3. Tipos de mensagem tratados
 
-Em `geocodeCep` (ambos arquivos), separar os casos antes do throw genérico:
+- Tratado: **apenas texto** (`payload.text.message` / `payload.message`), `webhook.ts:51-54`.
+- Não tratados: imagem, áudio/PTT, documento, vídeo, figurinha, localização, contato, reply (`referenceMessageId` ignorado), reação, enquete, botão/lista.
+- O que acontece com os não tratados: como não há `message`, o handler cai em `:56-58` e retorna `{ ok:true, skipped:"no-text" }` — **nada é gravado**, nem em `zapi_inbox`, nem em `whatsapp_mensagens`. A mensagem do cliente desaparece silenciosamente (só fica o log do provedor).
+- Mensagens de grupo e mensagens enviadas pelo próprio número (`fromMe`) também são descartadas (`:45`), o que inclui envios feitos pelo celular fora do CRM.
 
-```ts
-if (data.status === "REQUEST_DENIED") {
-  throw new Error(
-    `Google Maps recusou a chave server-side (${data.error_message ?? "REQUEST_DENIED"}). ` +
-    `Verifique restrições da API key.`
-  );
-}
-if (data.status === "OVER_QUERY_LIMIT") {
-  throw new Error("Google Maps: cota excedida. Tente novamente em alguns minutos.");
-}
-if (data.status !== "OK" || !data.results?.length) {
-  throw new Error(`CEP não localizado: ${cep}`);
-}
-```
+## 4. Persistência de telefone / chatId / messageId
 
-Isso evita que futuros bloqueios de chave sejam disfarçados de "CEP inválido".
+- **Telefone**: normalizado só com dígitos em `webhook.ts:50`. Gravado em `zapi_inbox.phone` e `whatsapp_conversas.phone`. É **chave de negócio**: existe `UNIQUE INDEX whatsapp_conversas_phone_key ON whatsapp_conversas(phone)` e o lookup de conversa é `eq("phone", phone)` (`:86`). O vínculo ao lead usa `leads.telefone_whatsapp` (`:104`).
+  - Normalização divergente entre módulos: o webhook grava só dígitos sem forçar DDI; `src/lib/canais.functions.ts:9-13` e `src/lib/zapi-send.server.ts:12-16` prefixam `55` no envio. Ou seja, o mesmo contato pode ter formatos diferentes entre gravação e envio.
+- **chatId**: não é lido nem persistido em lugar nenhum.
+- **messageId**: gravado em `whatsapp_mensagens.external_id` (`:134`). **Não tem índice nem UNIQUE** (índices existentes: `whatsapp_mensagens_pkey` e `whatsapp_mensagens_conversa_idx`), portanto não há deduplicação por reentrega do webhook. Nas mensagens de saída (`canais.functions.ts:37-43`, `ia-responder.ts:78-83`) o `external_id` fica NULL — o ID retornado pela Z-API é descartado.
+- Chaves primárias reais são `uuid` gerado no banco nas três tabelas.
 
-### 3. Não persistir automaticamente `distanceKm`/`freightValue` — sem mudanças
+## 5. Status de entrega e fila/retentativa
 
-Não altera store nem UI. O botão "Usar" continua aplicando o frete escolhido normalmente.
+- **Não existe** tratamento de status de entrega. Nenhum handler para os callbacks `MessageStatusCallback` (SENT/RECEIVED/READ) da Z-API; `whatsapp_mensagens` não tem coluna de status/timestamps de entrega ou leitura.
+- **Não existe fila nem retentativa de saída** para mensagens de cliente. `sendZapiText` faz um `fetch` único e lança erro em falha (`zapi-send.server.ts:59-62`); o chamador propaga (`canais.functions.ts:35`) ou apenas loga e segue (`notify.server.ts:33-36`, `xerife.ts:39-41`). Em falha de envio manual, **nada é gravado** em `whatsapp_mensagens` — a mensagem some.
+- Existe fila com idempotência apenas para o módulo de Pedidos (`pedido_notificacoes`, com `evento_id` e coluna `tentativas`), mas ela **não** despacha via WhatsApp (flag de dispatch desligada) e não cobre o canal de conversas.
+- `zapi_inbox.processed` existe e tem índice, mas nenhum código do projeto marca ou consome esse flag — é log bruto morto.
 
-## Arquivos afetados
+## 6. Dependências de comportamento que a API oficial da Meta não oferece
 
-- `src/lib/logistica.functions.ts` — inverter fallback + tratamento de `REQUEST_DENIED`.
-- `src/lib/freight.functions.ts` — idem (mesma função duplicada; correções idênticas).
+- **Envio livre fora da janela de 24 h** — este é o acoplamento mais forte. Todo envio é texto livre, sem conceito de template aprovado:
+  - `xerife/notify.server.ts:24-50` e todos os hooks do Xerife (`xerife-agenda-diaria.ts:130`, `xerife-checkpoint.ts:61`, `xerife-fechamento.ts:83,148,183`, `xerife-engine.ts:225`, `xerife.ts:137,401,443`) disparam por cron/regra, sem mensagem prévia do destinatário.
+  - `ia-urgente.ts:152-156` dispara para a diretoria a qualquer hora.
+  - `zapi.functions.ts:18-27` (`sendWhatsapp`) permite envio para telefone arbitrário sem conversa existente.
+  - Observação: a maior parte desses destinatários é interna (vendedores e diretoria), o que na API oficial exige que cada número interno seja um contato que iniciou conversa ou que se use template — hoje isso é irrestrito.
+- **Número da instância pareado ao aparelho** — `zapi.functions.ts:32-45` e o card em `canais.tsx:430+` expõem "estado da instância / conectado", conceito de aparelho pareado que não existe na Cloud API (não há QR code nem status de conexão de celular).
+- **Mensagens enviadas pelo próprio celular** — o webhook descarta `fromMe` (`webhook.ts:45`); a Cloud API simplesmente não entrega esses eventos, então qualquer expectativa de captar conversa feita no aparelho deixa de existir.
+- **Grupos** — hoje são explicitamente ignorados (`webhook.ts:45`); a API oficial não suporta grupos, então não há regressão, apenas confirmação de que nada depende disso.
+- Não há uso de: leitura de histórico do aparelho, listagem de contatos, listagem de grupos, presença (online/digitando), nem marcar como lido. Nenhuma chamada a esses recursos existe no código.
 
-Nenhuma migration, nenhuma alteração de tabela, nenhuma mudança em UI de proposta. Zero impacto em dados existentes.
+## Resumo do acoplamento
 
-## Como validar depois de aplicar
-
-1. Reabrir proposta 2026-0008 → clicar em "Calcular logística" → deve retornar distância (≈ poucos km, ambos CEPs em SP capital) e a tabela por veículo (Truck deve aparecer como "melhor" ou 3/4, com aproveitamento e frete/peça).
-2. Trocar payer para CIF e usar o botão "Calcular" na seção Transporte → deve preencher km e valor aproximado sem erro.
-3. Em caso de erro futuro, a mensagem agora diz explicitamente se foi a chave ou o CEP.
-
-## Aguardo aprovação para implementar
-
-Ponto único de decisão: aprovar a inversão da prioridade das chaves (a `_1` continua sendo usada no browser normalmente — só sai do caminho server-side).
+O acoplamento a HTTP/credenciais da Z-API está concentrado em 2 arquivos (`zapi-send.server.ts`, `zapi.functions.ts`) e 1 webhook (`api/public/zapi/webhook.ts`). O acoplamento **semântico** é maior: telefone como chave única de conversa, ausência de status de entrega, ausência de dedupe por `messageId`, suporte só a texto e envio proativo irrestrito fora da janela de 24 h.
