@@ -14,6 +14,7 @@
  * `useCrm(...)` mantém a mesma assinatura.
  */
 
+import { isIntentionalDelete, clearDeleteIntent } from "@/lib/delete-intents";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database, Json } from "@/integrations/supabase/types";
 import {
@@ -748,6 +749,9 @@ async function doSave() {
       upsert: (items) =>
         supabase.from("produtos").upsert(items.map(productToInsert), { onConflict: "id" }),
       del: (ids) => supabase.from("produtos").delete().in("id", ids),
+    isIntentionalDelete: isIntentionalDelete("products"),
+    collectionName: "products",
+    onDeleted: (ids) => clearDeleteIntent("products", ids),
     });
 
     // ---- emitters ----
@@ -766,6 +770,9 @@ async function doSave() {
             { onConflict: "id" },
           ),
       del: (ids) => supabase.from("emitters").delete().in("id", ids),
+    isIntentionalDelete: isIntentionalDelete("emitters"),
+    collectionName: "emitters",
+    onDeleted: (ids) => clearDeleteIntent("emitters", ids),
     });
     // update default flag isolado se apenas ele mudou
     if (state.defaultEmitterId !== snapshot.defaultEmitterId) {
@@ -788,6 +795,9 @@ async function doSave() {
           .from("condicoes_pagamento")
           .upsert(items.map(payTermToInsert), { onConflict: "id" }),
       del: (ids) => supabase.from("condicoes_pagamento").delete().in("id", ids),
+    isIntentionalDelete: isIntentionalDelete("paymentTerms"),
+    collectionName: "paymentTerms",
+    onDeleted: (ids) => clearDeleteIntent("paymentTerms", ids),
     });
   }
 
@@ -800,6 +810,9 @@ async function doSave() {
     upsert: (items) =>
       supabase.from("leads").upsert(items.map(leadToInsert), { onConflict: "id" }),
     del: (ids) => supabase.from("leads").delete().in("id", ids),
+    isIntentionalDelete: isIntentionalDelete("leads"),
+    collectionName: "leads",
+    onDeleted: (ids) => clearDeleteIntent("leads", ids),
   });
 
   // ---- tarefas ----
@@ -818,6 +831,9 @@ async function doSave() {
           { onConflict: "id" },
         ),
     del: (ids) => supabase.from("tarefas").delete().in("id", ids),
+    isIntentionalDelete: isIntentionalDelete("tasks"),
+    collectionName: "tasks",
+    onDeleted: (ids) => clearDeleteIntent("tasks", ids),
   });
 
   // ---- propostas ----
@@ -829,6 +845,9 @@ async function doSave() {
     upsert: (items) =>
       supabase.from("propostas").upsert(items.map(proposalToInsert), { onConflict: "id" }),
     del: (ids) => supabase.from("propostas").delete().in("id", ids),
+    isIntentionalDelete: isIntentionalDelete("proposals"),
+    collectionName: "proposals",
+    onDeleted: (ids) => clearDeleteIntent("proposals", ids),
   });
 
   // ---- proposta_itens ----
@@ -870,6 +889,9 @@ async function doSave() {
         { onConflict: "id" },
       ),
     del: (ids) => supabase.from("proposta_itens").delete().in("id", ids),
+    isIntentionalDelete: isIntentionalDelete("proposalItems"),
+    collectionName: "proposalItems",
+    onDeleted: (ids) => clearDeleteIntent("proposalItems", ids),
   });
 
   // ---- proposta_parcelas ----
@@ -903,6 +925,9 @@ async function doSave() {
         { onConflict: "id" },
       ),
     del: (ids) => supabase.from("proposta_parcelas").delete().in("id", ids),
+    isIntentionalDelete: isIntentionalDelete("proposalParcelas"),
+    collectionName: "proposalParcelas",
+    onDeleted: (ids) => clearDeleteIntent("proposalParcelas", ids),
   });
 
   // ---- lead_interactions (append-only) ----
@@ -956,8 +981,24 @@ async function syncCollection<T>(opts: {
   toJson: (item: T) => string;
   upsert: (items: T[]) => PromiseLike<{ error: unknown }>;
   del: (ids: string[]) => PromiseLike<{ error: unknown }>;
+  /** Se fornecido, só ids aprovados pelo predicado são apagados no banco. */
+  isIntentionalDelete?: (id: string) => boolean;
+  /** Rótulo apenas para log. */
+  collectionName?: string;
+  /** Chamado após DELETE bem-sucedido (para limpar o registro de intenção). */
+  onDeleted?: (ids: string[]) => void;
 }) {
-  const { current, snapshot: snap, toKey, toJson, upsert, del } = opts;
+  const {
+    current,
+    snapshot: snap,
+    toKey,
+    toJson,
+    upsert,
+    del,
+    isIntentionalDelete,
+    collectionName,
+    onDeleted,
+  } = opts;
   const currentIds = new Set<string>();
   const toUpsert: T[] = [];
   for (const item of current) {
@@ -966,10 +1007,22 @@ async function syncCollection<T>(opts: {
     const j = toJson(item);
     if (snap.get(k) !== j) toUpsert.push(item);
   }
-  const toDelete: string[] = [];
+  const missing: string[] = [];
   snap.forEach((_, k) => {
-    if (!currentIds.has(k)) toDelete.push(k);
+    if (!currentIds.has(k)) missing.push(k);
   });
+
+  let toDelete = missing;
+  if (isIntentionalDelete) {
+    toDelete = missing.filter((k) => isIntentionalDelete(k));
+    const skipped = missing.filter((k) => !isIntentionalDelete(k));
+    if (skipped.length) {
+      console.warn(
+        `[crm-sync] ${collectionName ?? "collection"}: ${skipped.length} id(s) sumiram do estado local sem intenção de exclusão — ignorados (não apagados):`,
+        skipped,
+      );
+    }
+  }
 
   if (toUpsert.length) {
     const { error } = await upsert(toUpsert);
@@ -983,6 +1036,7 @@ async function syncCollection<T>(opts: {
     const { error } = await del(toDelete);
     if (!error) {
       toDelete.forEach((k) => snap.delete(k));
+      onDeleted?.(toDelete);
     } else {
       console.warn("[crm-sync] delete error:", error);
     }
