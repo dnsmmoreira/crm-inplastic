@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.tg_lead_history_track() FROM PUBLIC, anon, authenticated;
