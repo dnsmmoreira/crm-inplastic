@@ -166,6 +166,7 @@ export function XerifeConfigForm() {
           resumo_diario_ativo: cfg.resumo_diario_ativo,
           resumo_hora: `${cfg.resumo_hora}:00`,
           ativo: cfg.ativo,
+          whatsapp_interno_ativo: cfg.whatsapp_interno_ativo,
         },
       });
       toast.success("Configuração salva");
