@@ -692,8 +692,8 @@ export const hardDeleteUsuario = createServerFn({ method: "POST" })
     ];
     const resumo: Record<string, number> = {};
     for (const [table, col] of reatribuicoes) {
-      const { data: moved, error } = await sb
-        .from(table)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: moved, error } = await (sb.from(table as any) as any)
         .update({ [col]: destinoId })
         .eq(col, data.userId)
         .select("id");
