@@ -93,7 +93,13 @@ function RelatoriosPage() {
     return r.itens.map((i) => `${i.sku} (${i.quantity} ${i.unit})`).join(", ");
   }
 
-  function exportCSV() {
+  async function exportCSV() {
+    try {
+      await checkExport();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Exportação não permitida");
+      return;
+    }
     const header = ["Nº do pedido", "Cliente", "Produtos", "Data de criação", "Prazo de entrega", "Fase", "Total"];
     const lines = filtered.map((r) => [
       r.number,
