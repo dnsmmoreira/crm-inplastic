@@ -41,11 +41,6 @@ export const Route = createFileRoute("/api/public/zapi/webhook")({
         try {
           const payload = (await request.json()) as ZapiPayload;
 
-          // Ignora mensagens enviadas por nós mesmos e mensagens de grupo
-          if (payload.fromMe || payload.isGroup) {
-            return Response.json({ ok: true, ignored: true }, { headers: CORS });
-          }
-
           const phoneRaw = payload.phone ?? "";
           const phone = onlyDigits(phoneRaw);
           const message =
@@ -53,17 +48,16 @@ export const Route = createFileRoute("/api/public/zapi/webhook")({
             payload.message ??
             "";
 
-          if (!phone || !message) {
-            return Response.json({ ok: true, skipped: "no-text" }, { headers: CORS });
-          }
-
           const name = payload.senderName || payload.chatName || null;
-          const externalId = typeof payload.messageId === "string" ? payload.messageId : null;
+          const externalId = typeof payload.messageId === "string" && payload.messageId.trim() !== ""
+            ? payload.messageId
+            : null;
 
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
           const rawJson = JSON.parse(JSON.stringify(payload)) as Record<string, unknown>;
 
-          // 1) Log bruto
+          // 1) Log bruto — SEMPRE, para TODO payload (inclusive fromMe, grupo e não-texto),
+          //    antes de qualquer early return, para não perder a auditoria.
           const inboxRes = await supabaseAdmin.from("zapi_inbox").insert({
             phone,
             name,
@@ -75,7 +69,32 @@ export const Route = createFileRoute("/api/public/zapi/webhook")({
             console.error("zapi_inbox insert failed:", inboxRes.error);
           }
 
-          // 2) Upsert conversa por telefone
+          // 2) Guarda de duplicidade (reentrega da Z-API).
+          if (externalId) {
+            const { data: jaExiste } = await supabaseAdmin
+              .from("whatsapp_mensagens")
+              .select("id")
+              .eq("external_id", externalId)
+              .maybeSingle();
+            if (jaExiste?.id) {
+              console.warn("[zapi-webhook] mensagem duplicada ignorada:", externalId);
+              return Response.json({ ok: true, duplicado: true }, { headers: CORS });
+            }
+          } else {
+            console.warn("[zapi-webhook] payload sem messageId — seguindo sem guarda de duplicidade");
+          }
+
+          // 3) Só depois do registro bruto e da guarda aplicamos os filtros de processamento.
+          if (payload.fromMe || payload.isGroup) {
+            return Response.json({ ok: true, ignored: true }, { headers: CORS });
+          }
+
+          if (!phone || !message) {
+            return Response.json({ ok: true, skipped: "no-text" }, { headers: CORS });
+          }
+
+          // 4) Upsert conversa por telefone
+
           //    Se já existe → mantém status/ia_ativa/lead_id atuais.
           //    Se não existe → cria em 'ia_atendendo' com ia_ativa=true.
           let conversaId: string | null = null;
@@ -122,7 +141,7 @@ export const Route = createFileRoute("/api/public/zapi/webhook")({
             }
           }
 
-          // 3) Grava a mensagem do cliente
+          // 5) Grava a mensagem do cliente
           if (conversaId) {
             const { error: msgErr } = await supabaseAdmin
               .from("whatsapp_mensagens")
@@ -134,10 +153,16 @@ export const Route = createFileRoute("/api/public/zapi/webhook")({
                 external_id: externalId,
               });
             if (msgErr) {
+              // 23505 = violação de unicidade no índice parcial → reentrega, não erro.
+              if (msgErr.code === "23505") {
+                console.warn("[zapi-webhook] corrida de reentrega detectada (23505):", externalId);
+                return Response.json({ ok: true, duplicado: true }, { headers: CORS });
+              }
               console.error("whatsapp_mensagens insert failed:", msgErr);
             }
 
-            // 4) Notifica o n8n se a IA estiver ativa.
+
+            // 6) Notifica o n8n se a IA estiver ativa.
             // IMPORTANTE: no runtime Cloudflare Worker, promises não-aguardadas
             // são canceladas ao retornar a resposta. Por isso AGUARDAMOS o fetch
             // (com timeout curto) em vez de fire-and-forget.
@@ -174,7 +199,7 @@ export const Route = createFileRoute("/api/public/zapi/webhook")({
                 };
                 try {
                   const ctrl = new AbortController();
-                  const timer = setTimeout(() => ctrl.abort(), 8000);
+                  const timer = setTimeout(() => ctrl.abort(), 3000);
                   const r = await fetch(n8nUrl, {
                     method: "POST",
                     headers: {
