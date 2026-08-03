@@ -133,7 +133,7 @@ function RootShell({ children }: { children: ReactNode }) {
 const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, adminOnly: false },
   { to: "/pipeline", label: "Funil de Vendas", icon: KanbanSquare, adminOnly: false },
-  { to: "/canais", label: "Canais de Entrada", icon: MessageSquare, adminOnly: false },
+  { to: "/canais", label: "Canais de Entrada", icon: MessageSquare, adminOnly: false, perm: "configurar_integracoes" },
   { to: "/atendimento-ia", label: "Atendimento IA", icon: Radio, adminOnly: true },
   { to: "/agente-ia", label: "Agente IA", icon: Bot, adminOnly: false },
   { to: "/contatos", label: "Contatos", icon: Users, adminOnly: false },
@@ -143,18 +143,24 @@ const NAV = [
   { to: "/placar", label: "Placar", icon: Trophy, adminOnly: false },
   { to: "/propostas", label: "Propostas", icon: FileText, adminOnly: false },
   { to: "/pedidos", label: "Pedidos", icon: ClipboardList, adminOnly: false },
-  { to: "/relatorios", label: "Relatórios", icon: BarChart3, adminOnly: false },
+  { to: "/relatorios", label: "Relatórios", icon: BarChart3, adminOnly: false, perm: "ver_relatorios" },
   { to: "/produtos", label: "Produtos", icon: Package, adminOnly: false },
   { to: "/condicoes-comerciais", label: "Condições Comerciais", icon: Settings2, adminOnly: true },
   { to: "/empresas", label: "Empresas do Grupo", icon: Building2, adminOnly: true },
-  { to: "/usuarios", label: "Usuários", icon: UserCog, adminOnly: true },
+  { to: "/usuarios", label: "Usuários", icon: UserCog, adminOnly: true, perm: "gerenciar_usuarios" },
 
 ] as const;
 
 function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isAdmin = useIsAdmin();
-  const nav = NAV.filter((n) => !n.adminOnly || isAdmin);
+  const { user } = useAuth();
+  const nav = NAV.filter((n) => {
+    if (n.adminOnly && !isAdmin) return false;
+    const perm = "perm" in n ? n.perm : null;
+    if (perm && user && !user.permissions[perm]) return false;
+    return true;
+  });
   return (
     <div className="flex min-h-screen bg-background text-foreground">
       <aside className="hidden md:flex w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground">
