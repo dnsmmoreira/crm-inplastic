@@ -1,85 +1,80 @@
-# Inventário de acoplamento com a Z-API
+# Configuração completa de usuários em /usuarios
 
-Somente levantamento. Nenhum arquivo de código foi alterado e nada é proposto aqui.
+Transforma a página de usuários numa central de administração da equipe: listagem com busca/filtros/ordenação e ações rápidas, mais um modal de edição com 5 abas por usuário. Só administradores acessam, e a regra é validada também no servidor — não apenas escondendo botões na tela.
 
-## 1. Pontos que chamam a Z-API
+## Decisões já definidas
 
-Todo o tráfego HTTP para `api.z-api.io` passa por dois arquivos:
+- Permissões granulares: gravadas e aplicadas nos pontos principais (relatórios, exportação, gestão de usuários, integrações). Regras de leads/propostas continuam como estão hoje.
+- Entrega em um único bloco.
+- Avatar continua sendo iniciais + cor (sem upload de arquivo por enquanto).
 
-- `src/lib/zapi-send.server.ts:47` — monta `https://api.z-api.io/instances/{instanceId}/token/{token}/send-text` e faz o POST em `:49-56` com `{ phone, message }`. Único envio existente (somente texto).
-- `src/lib/zapi.functions.ts:41` — monta `https://api.z-api.io/instances/{instanceId}/token/{token}/status` e faz GET em `:42` (checagem de conexão).
+## Migrações de banco necessárias
 
-Credenciais (lidas de `process.env`, nunca no cliente):
+**1. Novas colunas em `profiles`**
+- `email_cache` (text) — espelho do e-mail para busca/ordenação na lista; a fonte da verdade continua sendo o cadastro de acesso.
+- `cargo` (text)
+- `fuso_horario` (text, padrão `America/Sao_Paulo`)
+- `ativo` (boolean, padrão true) — desativar bloqueia o login sem apagar histórico.
+- `limite_leads_simultaneos` (int, nulo = sem limite)
+- `canais_entrada` (text[], padrão `{}` = todos permitidos)
+- `deleted_at` (timestamptz) — soft delete.
+- `deleted_by` (uuid)
+- `ultimo_acesso_em` (timestamptz)
+- `senha_reset_exigido` (boolean, padrão false) — marca o fluxo de /primeiro-acesso.
 
-- `src/lib/zapi-send.server.ts:30-32` — `ZAPI_INSTANCE_ID`, `ZAPI_TOKEN`, `ZAPI_CLIENT_TOKEN`; header obrigatório `Client-Token` em `:53`.
-- `src/lib/zapi.functions.ts:36-38` — mesmas três variáveis; header `Client-Token` em `:42`.
+**2. Nova tabela `user_permissions`** (uma linha por usuário)
+- `user_id` (PK, referência ao usuário), e flags booleanas: `ver_todos_leads`, `editar_propostas`, `excluir_propostas`, `exportar_dados`, `ver_relatorios`, `gerenciar_usuarios`, `configurar_integracoes`.
+- Grants para `authenticated` e `service_role`; RLS: cada um lê as próprias; admin lê e grava todas (via `has_role`).
 
-Chamadores de `sendZapiText` (todos indiretos, via import dinâmico):
+**3. Nova tabela `user_audit_log`** (imutável)
+- `id`, `alvo_user_id`, `ator_user_id`, `campo`, `valor_anterior`, `valor_novo`, `criado_em`.
+- Grants: leitura para `authenticated` (admin, via política), escrita só por `service_role`. Sem update nem delete.
 
-- `src/lib/canais.functions.ts:34-35` — envio manual do vendedor na tela de Canais.
-- `src/lib/zapi.functions.ts:22-23` — server fn `sendWhatsapp` (envio avulso por telefone).
-- `src/routes/api/public/hooks/ia-responder.ts:67-68` — resposta da IA (n8n) ao cliente.
-- `src/routes/api/public/hooks/ia-urgente.ts:152-156` — alerta para o número da diretoria.
-- `src/lib/xerife/notify.server.ts:30-31` (notifyOwner) e `:43-44` (notifyDiretoria) — notificações internas; telefone do vendedor vem de `profiles.telefone_whatsapp` (`:14-19`), diretoria de `process.env.WHATSAPP_DIRETORIA` (`:40`).
-- `src/routes/api/public/hooks/xerife.ts:34-41` (wrapper) usado em `:137`, `:401`, `:443`.
-- Consumidores de notify: `xerife-fechamento.ts:83,148,183`, `xerife-engine.ts:225`, `xerife-checkpoint.ts:61`, `xerife-agenda-diaria.ts:130`.
+**4. Função `public.admins_ativos_count()`** (`SECURITY DEFINER`)
+- Conta administradores ativos e não excluídos. Usada para impedir a remoção do último admin.
 
-UI acoplada: `src/routes/canais.tsx:27` (import `zapiStatus`), `:126` rótulo "WhatsApp Business (Z-API)", `:430-465` card com URL de webhook `/api/public/zapi/webhook` (`:438`) e botão "Testar conexão" (`:431,446-451`).
+**5. Ajuste de RLS em `profiles`**
+- Manter a política atual de leitura; adicionar política para o admin atualizar qualquer perfil e restringir os campos administrativos (`ativo`, `deleted_at`, permissões) a quem tem papel admin.
 
-Não existe nenhum envio de mídia, template, botão ou lista. Só `send-text`.
+**6. Backfill sem destruir dados**
+- Criar uma linha em `user_permissions` para cada usuário existente com os padrões (vendedor: só os próprios leads, sem exportar, sem gerenciar usuários; admin: tudo ligado). Nenhuma linha existente de `profiles`, `leads` ou `propostas` é alterada além das colunas novas com valor padrão.
 
-## 2. Webhook de recebimento — campos lidos e destino
+## Backend (server functions em `src/lib/usuarios.functions.ts`)
 
-Arquivo único: `src/routes/api/public/zapi/webhook.ts`.
+Todas com `requireSupabaseAuth` + verificação de papel admin no servidor (mesmo padrão do `assertAdmin` já usado em `fila.functions.ts`):
 
-| Campo do payload Z-API | Linha | Destino |
-| --- | --- | --- |
-| `fromMe` | :45 | filtro (ignora e retorna `ignored:true`) |
-| `isGroup` | :45 | filtro (ignora) |
-| `phone` | :49-50 | `zapi_inbox.phone`, `whatsapp_conversas.phone` (só dígitos, via `onlyDigits`) |
-| `text.message` ou `message` | :51-54 | `zapi_inbox.message`, `whatsapp_mensagens.conteudo`, e `last_message_preview` (via trigger) |
-| `senderName` ou `chatName` | :60 | `zapi_inbox.name`, `whatsapp_conversas.name` (`:92-98` só preenche se estava NULL) |
-| `messageId` | :61 | `whatsapp_mensagens.external_id` (`:134`) |
-| payload inteiro | :64,72 | `zapi_inbox.raw` (jsonb) |
+- `listUsuarios` — junta perfil, papel, permissões, presença na fila, meta mensal, último acesso.
+- `updateUsuario` — dados cadastrais + acesso + vendas + permissões numa transação lógica; grava cada campo alterado no log de auditoria.
+- `checkEmailDuplicado` — validação de duplicidade contra a base de acesso.
+- `setUsuarioAtivo` — ativa/desativa; recusa se for o próprio usuário ou se deixaria a base sem admin ativo.
+- `setUsuarioRole` — reaproveita a lógica atual de papéis; recusa o admin rebaixar a si mesmo e recusa remover o último admin.
+- `forcarRedefinicaoSenha` — marca o usuário para o fluxo `/primeiro-acesso` e limpa a senha atual.
+- `encerrarSessoes` — invalida as sessões ativas do usuário.
+- `softDeleteUsuario` / `hardDeleteUsuario` — a definitiva exige o nome digitado igual e a indicação de outro vendedor para receber leads e propostas; a reatribuição ocorre antes da exclusão.
+- `listAuditoriaUsuario` — histórico de alterações.
 
-Efeitos colaterais: upsert da conversa por telefone (`:83-122`), vínculo automático ao lead por `leads.telefone_whatsapp` (`:101-105`), insert da mensagem com `direcao='entrada'`, `autor='cliente'` (`:127-135`), e notificação síncrona ao n8n com histórico das últimas 20 mensagens (`:144-197`).
+Bloqueio de login: o gate de sessão passa a recusar perfis com `ativo = false` ou `deleted_at` preenchido, com mensagem clara e signOut.
 
-Campos da Z-API não lidos: `type`, `momment`, `instanceId`, `photo`, `broadcast`, `referenceMessageId`, `status`, e todos os blocos de mídia.
+## Frontend
 
-## 3. Tipos de mensagem tratados
+- `src/routes/usuarios.tsx`: barra de busca (nome/e-mail), filtros por papel e status, ordenação por nome/cadastro/último acesso, e por item da lista um botão **Editar** mais ações rápidas (ativar/desativar, redefinir senha, remover da fila).
+- Novo `src/components/usuarios/UsuarioEditDialog.tsx` usando `Dialog` + `Tabs` do design system atual, com as abas:
+  1. **Dados cadastrais** — nome, e-mail (validação + duplicidade), telefone/WhatsApp, cargo, avatar (cor/iniciais), fuso horário.
+  2. **Acesso e segurança** — papel, status ativo/inativo, forçar redefinição de senha, encerrar sessões.
+  3. **Vendas** — meta mensal (grava em `vendedor_metas`), participação e posição na fila (reaproveita `fila.functions.ts`, sem duplicar lógica), limite de leads simultâneos, canais de entrada permitidos.
+  4. **Permissões** — os sete interruptores; travados para o próprio usuário no caso de "gerenciar usuários".
+  5. **Auditoria** — data de cadastro, último acesso e log de alterações.
+- Novo `src/components/usuarios/ExcluirUsuarioDialog.tsx` — soft delete como padrão; exclusão definitiva exige digitar o nome e escolher o vendedor que recebe leads e propostas.
+- O card da fila round-robin e o cadastro de novo usuário permanecem funcionando como hoje; o modal apenas reutiliza as mesmas funções.
 
-- Tratado: **apenas texto** (`payload.text.message` / `payload.message`), `webhook.ts:51-54`.
-- Não tratados: imagem, áudio/PTT, documento, vídeo, figurinha, localização, contato, reply (`referenceMessageId` ignorado), reação, enquete, botão/lista.
-- O que acontece com os não tratados: como não há `message`, o handler cai em `:56-58` e retorna `{ ok:true, skipped:"no-text" }` — **nada é gravado**, nem em `zapi_inbox`, nem em `whatsapp_mensagens`. A mensagem do cliente desaparece silenciosamente (só fica o log do provedor).
-- Mensagens de grupo e mensagens enviadas pelo próprio número (`fromMe`) também são descartadas (`:45`), o que inclui envios feitos pelo celular fora do CRM.
+## Aplicação das permissões nesta etapa
 
-## 4. Persistência de telefone / chatId / messageId
+- Menu e rotas de Relatórios, Usuários e Canais/Integrações passam a respeitar as flags.
+- Exportação de relatórios verificada também no servidor.
+- Leads e propostas mantêm a regra de dono atual; `ver_todos_leads` fica gravado e pronto para a próxima etapa.
 
-- **Telefone**: normalizado só com dígitos em `webhook.ts:50`. Gravado em `zapi_inbox.phone` e `whatsapp_conversas.phone`. É **chave de negócio**: existe `UNIQUE INDEX whatsapp_conversas_phone_key ON whatsapp_conversas(phone)` e o lookup de conversa é `eq("phone", phone)` (`:86`). O vínculo ao lead usa `leads.telefone_whatsapp` (`:104`).
-  - Normalização divergente entre módulos: o webhook grava só dígitos sem forçar DDI; `src/lib/canais.functions.ts:9-13` e `src/lib/zapi-send.server.ts:12-16` prefixam `55` no envio. Ou seja, o mesmo contato pode ter formatos diferentes entre gravação e envio.
-- **chatId**: não é lido nem persistido em lugar nenhum.
-- **messageId**: gravado em `whatsapp_mensagens.external_id` (`:134`). **Não tem índice nem UNIQUE** (índices existentes: `whatsapp_mensagens_pkey` e `whatsapp_mensagens_conversa_idx`), portanto não há deduplicação por reentrega do webhook. Nas mensagens de saída (`canais.functions.ts:37-43`, `ia-responder.ts:78-83`) o `external_id` fica NULL — o ID retornado pela Z-API é descartado.
-- Chaves primárias reais são `uuid` gerado no banco nas três tabelas.
+## Garantias
 
-## 5. Status de entrega e fila/retentativa
-
-- **Não existe** tratamento de status de entrega. Nenhum handler para os callbacks `MessageStatusCallback` (SENT/RECEIVED/READ) da Z-API; `whatsapp_mensagens` não tem coluna de status/timestamps de entrega ou leitura.
-- **Não existe fila nem retentativa de saída** para mensagens de cliente. `sendZapiText` faz um `fetch` único e lança erro em falha (`zapi-send.server.ts:59-62`); o chamador propaga (`canais.functions.ts:35`) ou apenas loga e segue (`notify.server.ts:33-36`, `xerife.ts:39-41`). Em falha de envio manual, **nada é gravado** em `whatsapp_mensagens` — a mensagem some.
-- Existe fila com idempotência apenas para o módulo de Pedidos (`pedido_notificacoes`, com `evento_id` e coluna `tentativas`), mas ela **não** despacha via WhatsApp (flag de dispatch desligada) e não cobre o canal de conversas.
-- `zapi_inbox.processed` existe e tem índice, mas nenhum código do projeto marca ou consome esse flag — é log bruto morto.
-
-## 6. Dependências de comportamento que a API oficial da Meta não oferece
-
-- **Envio livre fora da janela de 24 h** — este é o acoplamento mais forte. Todo envio é texto livre, sem conceito de template aprovado:
-  - `xerife/notify.server.ts:24-50` e todos os hooks do Xerife (`xerife-agenda-diaria.ts:130`, `xerife-checkpoint.ts:61`, `xerife-fechamento.ts:83,148,183`, `xerife-engine.ts:225`, `xerife.ts:137,401,443`) disparam por cron/regra, sem mensagem prévia do destinatário.
-  - `ia-urgente.ts:152-156` dispara para a diretoria a qualquer hora.
-  - `zapi.functions.ts:18-27` (`sendWhatsapp`) permite envio para telefone arbitrário sem conversa existente.
-  - Observação: a maior parte desses destinatários é interna (vendedores e diretoria), o que na API oficial exige que cada número interno seja um contato que iniciou conversa ou que se use template — hoje isso é irrestrito.
-- **Número da instância pareado ao aparelho** — `zapi.functions.ts:32-45` e o card em `canais.tsx:430+` expõem "estado da instância / conectado", conceito de aparelho pareado que não existe na Cloud API (não há QR code nem status de conexão de celular).
-- **Mensagens enviadas pelo próprio celular** — o webhook descarta `fromMe` (`webhook.ts:45`); a Cloud API simplesmente não entrega esses eventos, então qualquer expectativa de captar conversa feita no aparelho deixa de existir.
-- **Grupos** — hoje são explicitamente ignorados (`webhook.ts:45`); a API oficial não suporta grupos, então não há regressão, apenas confirmação de que nada depende disso.
-- Não há uso de: leitura de histórico do aparelho, listagem de contatos, listagem de grupos, presença (online/digitando), nem marcar como lido. Nenhuma chamada a esses recursos existe no código.
-
-## Resumo do acoplamento
-
-O acoplamento a HTTP/credenciais da Z-API está concentrado em 2 arquivos (`zapi-send.server.ts`, `zapi.functions.ts`) e 1 webhook (`api/public/zapi/webhook.ts`). O acoplamento **semântico** é maior: telefone como chave única de conversa, ausência de status de entrega, ausência de dedupe por `messageId`, suporte só a texto e envio proativo irrestrito fora da janela de 24 h.
+- Nenhum dado transacional é apagado: exclusão padrão é lógica.
+- Sempre pelo menos um admin ativo; o admin não consegue rebaixar nem desativar a si mesmo.
+- Toda regra crítica é checada no servidor e por política de acesso do banco, não só na interface.
