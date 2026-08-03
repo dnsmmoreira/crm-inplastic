@@ -48,6 +48,7 @@ type Cfg = {
   resumo_hora: string;
   // Motor
   ativo: boolean;
+  whatsapp_interno_ativo: boolean;
 };
 
 const hhmm = (s: string | null | undefined, d: string) =>
