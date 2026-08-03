@@ -201,6 +201,12 @@ function ConversationList({
                       <Badge variant="outline" className="text-[10px]">Sem lead</Badge>
                     )}
                     <StatusChip status={c.status} />
+                    {c.requer_humano && (
+                      <Badge variant="destructive" className="text-[10px] gap-1">
+                        <AlertTriangle className="h-3 w-3" /> Requer humano
+                      </Badge>
+                    )}
+
                   </div>
                 </div>
               </button>
