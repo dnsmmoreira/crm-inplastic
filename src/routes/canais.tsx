@@ -379,6 +379,37 @@ function ConversationPanel({
   );
 }
 
+function MidiaPreview({ m }: { m: Mensagem }) {
+  const tipo = (m as { tipo?: string }).tipo ?? "texto";
+  const midia = (m.midia ?? null) as Record<string, unknown> | null;
+  const url = typeof midia?.url === "string" ? midia.url : null;
+  if (tipo === "texto" || tipo === "resposta_opcao") return null;
+
+  return (
+    <div className="mt-1 space-y-1">
+      <Badge variant="outline" className="text-[10px] gap-1">
+        <Paperclip className="h-3 w-3" /> {tipo}
+      </Badge>
+      {url && tipo === "imagem" && (
+        <a href={url} target="_blank" rel="noreferrer" className="block">
+          <img src={url} alt="Imagem recebida" className="max-h-40 rounded-md border" />
+        </a>
+      )}
+      {url && tipo !== "imagem" && (
+        <a
+          href={url}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1 text-xs underline break-all"
+        >
+          <Paperclip className="h-3 w-3" />
+          {typeof midia?.fileName === "string" && midia.fileName ? midia.fileName : "Abrir arquivo"}
+        </a>
+      )}
+    </div>
+  );
+}
+
 function MessageBubble({ m }: { m: Mensagem }) {
   const isOutgoing = m.direcao === "saida";
   const isBot = m.autor === "ia";
@@ -401,10 +432,12 @@ function MessageBubble({ m }: { m: Mensagem }) {
           <span>{format(new Date(m.created_at), "HH:mm")}</span>
         </div>
         <div className="whitespace-pre-wrap break-words">{m.conteudo}</div>
+        <MidiaPreview m={m} />
       </div>
     </div>
   );
 }
+
 
 function StatusChip({
   status,
