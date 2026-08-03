@@ -1,117 +1,97 @@
-# Inventário: Xerife + Receptor do Webhook Z-API
+# Inventário — Notificação Interna (somente leitura)
 
-Somente investigação. Nenhum arquivo alterado.
+Nada foi alterado. Apenas leitura de repositório e banco.
 
-## ASSUNTO A — XERIFE
+## BLOCO 1 — Pontos de notificação interna
 
-### 1) Onde está o código
+Ponto único: `src/lib/xerife/notify.server.ts:34` (`enviarNotificacaoInterna`).
+Dois wrappers: `notifyOwner` (:77) e `notifyDiretoria` (:91).
 
-Rotas/motores (todos `createFileRoute` públicos):
-- `src/routes/api/public/hooks/xerife.ts:1-502` — `runXerife()` (`:61`), `runResumoDiario()` (`:288`), `sendZapiText()` local (`:34`, wrapper de `@/lib/zapi-send.server`), `loadConfig()` (`:~50`), handler POST (`:468`).
-- `src/routes/api/public/hooks/xerife-engine.ts:1-693` — `runXerifeEngine()` (motor de cadência Fase 2), `alertDiretoria()` (`:214`), `criarTarefa` (`:~185`), `marcarEsfriando` (`:229`), handler (`:663`).
-- `src/routes/api/public/hooks/xerife-agenda-diaria.ts:1-180` — `runAgendaDiaria()`, envio em `:130`, handler `:153`.
-- `src/routes/api/public/hooks/xerife-checkpoint.ts:1-107` — `runCheckpoint()`, envio em `:61`, handler `:80`.
-- `src/routes/api/public/hooks/xerife-fechamento.ts:1-236` — `runFechamento()`, envios em `:83`, `:148`, `:183`, handler `:209`.
-- `src/routes/api/public/hooks/xerife-pedidos.ts:1-455` — `runXerifePedidos()`, handler `:424`. **Não envia WhatsApp** (`:3-6`), só cria tarefas + `xerife_log`.
+| # | Arquivo:linha | Evento que dispara | Mensagem (resumo) | Destinatário |
+|---|---|---|---|---|
+| 1 | `src/routes/api/public/hooks/xerife.ts:132` (via `sendZapiText` :35-36) | Regra de lead urgente do motor Xerife (cron), com dedupe de 24h em `lead_ai_actions` | Alerta curto sobre o lead (`Xerife WhatsApp: <msg>`) | `getOwnerPhone(ownerId)` → dono do lead |
+| 2 | `src/routes/api/public/hooks/xerife.ts:396` | Resumo diário, laço de vendedores (`resumo_diario_ativo`, `resumo_hora`) | "Resumo": leads urgentes, tarefas de hoje, tarefas vencidas, propostas paradas | `profiles.telefone_whatsapp` do vendedor (:390) |
+| 3 | `src/routes/api/public/hooks/xerife.ts:438` | Resumo diário, laço de admins | Mesmo resumo em visão consolidada + bloco "🏆 Placar do mês" (top 3) | `profiles.telefone_whatsapp` de cada admin (:435) |
+| 4 | `src/routes/api/public/hooks/xerife-engine.ts:225` (`alertDiretoria`) | Regras do motor de cadência que escalam para diretoria | Texto da regra (`msg`) + contexto do lead | `notifyDiretoria` → env `WHATSAPP_DIRETORIA` |
+| 5 | `src/routes/api/public/hooks/xerife-agenda-diaria.ts:130` | Agenda diária (07:30) | "🤠 Agenda Xerife — data", contagem vs meta, até 20 tarefas com link do lead | `notifyOwner(uid)` → vendedor |
+| 6 | `src/routes/api/public/hooks/xerife-checkpoint.ts:61` | Checkpoint 13h | "⏱️ Checkpoint 13h": concluídas, pendentes, críticas (até 5) | `notifyOwner(uid)` → vendedor |
+| 7 | `src/routes/api/public/hooks/xerife-fechamento.ts:83` | Fechamento 18h, por vendedor | "🏁 Fechamento do dia": concluídas, roladas | `notifyOwner(uid)` → vendedor |
+| 8 | `src/routes/api/public/hooks/xerife-fechamento.ts:148` | Faixa de meta cruzada (50/80/100/120), dedupe 30d em `xerife_log` | "🎯 Meta batida / X% da meta", com valores em R$ | `notifyOwner(r.vendedor_id)` → vendedor |
+| 9 | `src/routes/api/public/hooks/xerife-fechamento.ts:183` | Fim do fechamento, se há placar | "🏁 Placar Xerife": total da equipe, ranking por vendedor, top 3, faixas batidas (sem R$) | `notifyDiretoria` → env |
+| 10 | `src/routes/api/public/hooks/ia-urgente.ts:155` | POST do n8n em `/api/public/hooks/ia-urgente` (lead urgente fora do horário) | "🔴 LEAD URGENTE": empresa, contato, produto/qtd, urgência, link CRM | `process.env.WHATSAPP_DIRETORIA` (:146) |
 
-Bibliotecas de apoio:
-- `src/lib/xerife/notify.server.ts:12` `getOwnerPhone`, `:24` `notifyOwner`, `:39` `notifyDiretoria`, `:52` `crmLeadLink`.
-- `src/lib/xerife/dedupe.server.ts:14` `alreadyActed`, `:30` `hasOpenTask`, `:44` `logAction`.
-- `src/lib/xerife/businessTime.server.ts:1-144` (janela útil), `src/lib/xerife/rollover.server.ts:1-70` (+ teste `rollover.server.test.ts`).
+Guarda comum: `enviarNotificacaoInterna` lê `xerife_config.whatsapp_interno_ativo` (hoje `false`) e exige `ZAPI_INTERNO_INSTANCE_ID/_TOKEN/_CLIENT_TOKEN`. Hoje, nenhum dos 10 pontos envia de fato.
 
-Server functions (UI admin):
-- `src/lib/xerife.functions.ts:13` `getXerifeConfig`, `:118` `updateXerifeConfig`, `:131` `listAiActions`, `:169` `runXerifeNow`, `:178` `runResumoDiarioNow`, `:187` `runXerifeEngineNow`, `:196` `simulateXerifeEngine`, `:205` `runAgendaDiariaNow`, `:214` `runCheckpointNow`, `:223` `runFechamentoNow`, `:232` `runXerifePedidosNow`, `:241` `simulateXerifePedidos`.
-- `src/lib/xerife-cadencia.functions.ts:1-237` (leitura de cadência/leads esfriando).
-- UI: `src/components/xerife/XerifeConfigForm.tsx`, `CadenciaPanel.tsx`, `XerifeSimulator.tsx`; MCP: `src/lib/mcp/tools/xerife_config_view.ts`, `xerife_log_recent.ts`.
+## BLOCO 2 — Origem do destinatário
 
-### 2) Gatilhos de disparo automático
+- Vendedor/admin: coluna `public.profiles.telefone_whatsapp`, lida em `notify.server.ts:18-28` (`getOwnerPhone`, com cache em memória) e diretamente em `xerife.ts:390` e `:435`.
+- Diretoria: variável de ambiente `WHATSAPP_DIRETORIA` — `notify.server.ts:92` e `ia-urgente.ts:146`. Não existe tabela nem coluna de diretoria.
+- Credenciais de canal: env `ZAPI_INTERNO_*` (`src/lib/zapi-send.server.ts:35-38`), sem fallback comercial.
+- Liga/desliga: `public.xerife_config.whatsapp_interno_ativo` (linha id=1).
+- Nenhum número fixo em código.
 
-`pg_cron` (banco, todos `active=true`, horários em UTC):
-- jobid 2 `xerife-hourly` — `0 10-23 * * *` → POST `/api/public/hooks/xerife` (header `x-xerife-secret`).
-- jobid 3 `xerife-digest-daily` — `0 11 * * *` → `/api/public/hooks/xerife?mode=digest` (resumo diário).
-- jobid 4 `xerife-engine-15min` — `*/15 10-23 * * 1-5` → `/api/public/hooks/xerife-engine`.
-- jobid 5 `xerife-agenda-diaria` — `30 10 * * 1-5`.
-- jobid 6 `xerife-checkpoint` — `0 16 * * 1-5`.
-- jobid 7 `xerife-fechamento` — `0 21 * * 1-5`.
+## BLOCO 3 — Tabela de usuários
 
-Não há trigger de banco nem edge function agendada. Gatilhos manuais pelo front (admin): `src/lib/xerife.functions.ts:169,178,187,196,205,214,223,232` chamados pelos componentes em `src/components/xerife/*`.
+`public.profiles` (PK = `auth.users.id`). Colunas: `id`, `name`, `avatar_color`, `created_at`, `updated_at`, `telefone_whatsapp`, `email_cache`, `cargo`, `fuso_horario`, `ativo`, `limite_leads_simultaneos`, `canais_entrada` (text[]), `deleted_at`, `deleted_by`, `ultimo_acesso_em`, `senha_reset_exigido`. Não há coluna de papel.
 
-Pontos de envio efetivo:
-- `src/routes/api/public/hooks/xerife.ts:137` (alerta urgente por lead), `:401` (resumo vendedor), `:443` (resumo admin).
-- `xerife-engine.ts:225` (`notifyDiretoria`).
-- `xerife-agenda-diaria.ts:130`, `xerife-checkpoint.ts:61`, `xerife-fechamento.ts:83,148,183`.
+Papéis em `public.user_roles` (enum `app_role`), contagem atual:
+- `vendedor`: 5
+- `admin`: 1
 
-### 3) Destinatários e origem do número
+Só existem esses dois valores no enum e no banco. Não há noção de diretoria, financeiro ou gestor: `cargo` é texto livre (2 de 6 preenchidos) e não é usado em nenhuma decisão de envio. `public.user_permissions` tem flags booleanas por usuário (`ver_todos_leads`, `gerenciar_usuarios`, etc.), mas nenhuma delas é consultada pelas rotinas de notificação.
 
-- Vendedor/admin dono do lead: `profiles.telefone_whatsapp` — lido em `src/lib/xerife/notify.server.ts:14-19` e em `src/routes/api/public/hooks/xerife.ts:110-117` (cache local), `:389`, `:441`.
-- Diretoria: variável de ambiente `WHATSAPP_DIRETORIA` — `src/lib/xerife/notify.server.ts:40`; mesmo env em `src/routes/api/public/hooks/ia-urgente.ts:146`.
-- Nenhum número hardcoded no código. Nunca é enviado ao lead nos fluxos Xerife (`notify.server.ts:1-5`).
-- Link de CRM fixo no texto: `https://crm.inplastic.com.br/pipeline?lead=...` (`notify.server.ts:53`).
+## BLOCO 4 — Colunas de contato em `profiles` (6 registros, 6 ativos)
 
-### 4) Mesma instância Z-API do atendimento
+| Coluna | Tipo | Preenchidos |
+|---|---|---|
+| `telefone_whatsapp` | text NULL | 1 |
+| `email_cache` | text NULL | 3 |
+| `cargo` | text NULL | 2 |
 
-Sim. Todos os caminhos passam por `sendZapiText` em `src/lib/zapi-send.server.ts:25-63`, que lê `ZAPI_INSTANCE_ID`, `ZAPI_TOKEN`, `ZAPI_CLIENT_TOKEN` de `process.env` (`:30-32`) e monta `https://api.z-api.io/instances/{id}/token/{token}/send-text` (`:47`). Mesmo helper usado por: Xerife (`notify.server.ts:30,43`, `xerife.ts:36`), IA (`ia-responder.ts:67`, `ia-urgente.ts:152`) e envio manual (`src/lib/canais.functions.ts:34`, `src/lib/zapi.functions.ts:22`). Status da instância: `src/lib/zapi.functions.ts:41`.
+Não há coluna de telefone fixo nem de e-mail secundário. O e-mail canônico vive em `auth.users`; `email_cache` é cópia.
 
-### 5) Liga/desliga sem remover código
+## BLOCO 5 — `public.xerife_config` (linha id=1)
 
-- `xerife_config.ativo` (id=1) — checado em `xerife.ts:73` e `xerife-engine.ts:155`. **Valor atual: `true`**.
-- `xerife_config.resumo_diario_ativo` — checado em `xerife.ts:298`. **Valor atual: `true`**.
-- Janela horária: `xerife_config.horario_comercial_inicio/fim` (`xerife.ts:85-97`).
-- Env `WHATSAPP_DIRETORIA` vazio ⇒ alertas de diretoria viram no-op (`notify.server.ts:40-41`).
-- Envs Z-API ausentes ⇒ `sendZapiText` lança e nada é enviado (`zapi-send.server.ts:39-44`).
-- Segredo `XERIFE_SECRET` (`xerife.ts:469`); os jobs 4-7 usam apenas `apikey` publishable — sem segredo próprio.
-- Cada job pode ser desativado individualmente em `cron.job.active`.
-- `xerife-pedidos` já é permanentemente sem WhatsApp por design.
+| Coluna | Tipo | Valor atual |
+|---|---|---|
+| id | integer | 1 |
+| ativo | boolean | true |
+| whatsapp_interno_ativo | boolean | false |
+| resumo_diario_ativo | boolean | true |
+| resumo_hora | time | 08:00:00 |
+| horario_comercial_inicio / fim | time | 07:00:00 / 20:00:00 |
+| dias_uteis_inicio / fim | time | 08:00:00 / 18:00:00 |
+| dias_sem_interacao_por_etapa | jsonb | novo 1, qualificacao 2, proposta 3, negociacao 2 |
+| max_dias_etapa | jsonb | novo 1, qualificacao 2, proposta 3, negociacao 5 |
+| cadencia_proposta_dias | int[] | {2,5,10,15} |
+| proposta_enviada_dias | integer | 3 |
+| pos_venda_dias | int[] | {3,15,45} |
+| tarefa_atrasada_horas | integer | 24 |
+| ia_sem_resposta_horas | integer | 2 |
+| sla_primeiro_contato_min / escalar_min | integer | 15 / 60 |
+| sla_resposta_whatsapp_horas / escalar_horas | integer | 2 / 4 |
+| sla_lead_orfao_min | integer | 15 |
+| auto_atribuir_lead_orfao | boolean | true |
+| carteira_alerta_dias / critico_dias | integer | 45 / 60 |
+| reciclagem_perdidos_dias | integer | 90 |
+| meta_atividades_dia | integer | 15 |
+| placar_peso_ganho / proposta / tarefa / pos_venda | integer | 10 / 3 / 1 / 2 |
+| placar_peso_sla_estourado / carteira_60 | integer | -5 / -3 |
+| placar_peso_meta_batida | integer | 20 |
+| placar_dias_sem_proposta_limite | integer | 14 |
+| updated_at | timestamptz | 2026-07-06 14:42:29+00 |
 
-### 6) Frequência / volume estimado
+## BLOCO 6 — Eventos financeiros e de diretoria hoje SEM notificação
 
-Execuções por dia útil: 14 (hourly) + 1 (digest) + ~56 (engine 15min) + 3 (agenda/checkpoint/fechamento) ≈ 74 execuções.
+Nenhum destes dispara notificação interna hoje:
 
-Mensagens WhatsApp por dia (não por execução), com dedupe:
-- Resumo diário: 1 por vendedor com pendências + 1 por admin — hoje ~3 vendedores + admins ⇒ ~3-5.
-- Agenda diária 07:30, checkpoint 13:00, fechamento 18:00: até 1 por vendedor cada ⇒ até ~9.
-- Fechamento diretoria: 1.
-- Alertas urgentes: cap de 1/lead/24h (`xerife.ts:124-132`); engine dedupa por `(regra, lead_id)` em `xerife_log` (`dedupe.server.ts:14-27`).
-
-Medição real: `xerife_log` = 127 ações nos últimos 7 dias (~18/dia útil, majoritariamente tarefas, não WhatsApp); `lead_ai_actions` com `metadata.channel='whatsapp'` = 1 nos últimos 7 dias. Ou seja, volume atual efetivo de WhatsApp do Xerife é baixo (ordem de ~10-15/dia útil, dominado pelos resumos), com teto estrutural de ~1 mensagem por vendedor por rotina.
-
-## ASSUNTO B — RECEPTOR DO WEBHOOK Z-API
-
-### 7) Arquivo do POST
-
-`src/routes/api/public/zapi/webhook.ts:36-211`; handler POST em `:40`, `OPTIONS` em `:39`. Sem verificação de assinatura/segredo — endpoint aberto sob `/api/public/*`.
-
-### 8) Tipos de mensagem tratados
-
-Tratado: **apenas texto**, lido de `payload.text.message` ou `payload.message` (`:51-54`).
-Filtros anteriores: `fromMe` e `isGroup` são descartados (`:45-47`).
-
-Não tratados (nenhum código os lê): `image`, `audio`, `ptt`, `document`, `video`, `sticker`, `location`, `contact`, `reaction`, `buttonsResponseMessage`/`listResponseMessage` (reply de botão/lista), `quotedMessage`/reply contextual, status de entrega. O campo `payload.type` (`:14`) é declarado no tipo mas nunca usado em nenhuma ramificação.
-
-### 9) O que acontece com não-texto
-
-Ignora silenciosamente com 200: como `message` fica vazio, cai no early return `:56-58` → `{ ok: true, skipped: "no-text" }`. Consequências:
-- Não grava em `zapi_inbox` (o insert bruto está depois, em `:67`) — ou seja, nem auditoria bruta do não-texto existe.
-- Não cria/atualiza conversa nem mensagem.
-- Não notifica o n8n — o agente simplesmente não vê a mensagem; para o cliente parece que a IA não respondeu. Não há erro nem quebra de fluxo.
-
-### 10) Deduplicação por messageId
-
-Não existe. `payload.messageId` é lido em `:61` e gravado em `whatsapp_mensagens.external_id` (`:134`) — essa é a única coluna que guarda o id externo. Índices em `whatsapp_mensagens`: apenas `whatsapp_mensagens_pkey (id)` e `whatsapp_mensagens_conversa_idx (conversa_id, created_at)`. **Não há coluna única nem índice único sobre `external_id`**, e o código nunca consulta `external_id` antes de inserir. `zapi_inbox` também aceita duplicatas (insert direto em `:67`).
-
-### 11) Retry / reentrega
-
-Não há tratamento. Se a Z-API reentregar o mesmo `messageId` (ex.: timeout do nosso lado — o fetch ao n8n é aguardado com até 8s, `:176-186`, o que aumenta a chance de timeout na Z-API), o webhook:
-- insere nova linha em `zapi_inbox` e nova linha em `whatsapp_mensagens` com o mesmo `external_id`;
-- dispara **novamente** o POST ao n8n (`:178`) com o histórico, sem qualquer trava.
-
-Risco real de resposta duplicada do agente, já que o `ia-responder` também não dedupa (só checa `ia_ativa`, `src/routes/api/public/hooks/ia-responder.ts:59`).
-
-### 12) Envio ativo/outbound sem mensagem do lead
-
-Para o **lead/cliente**:
-- `src/lib/canais.functions.ts:34-40` — `sendConversaMessage`, envio manual do vendedor (autor='vendedor'), pode iniciar conversa.
-- `src/lib/zapi.functions.ts:18-27` — `sendWhatsapp`, envio livre para qualquer telefone por usuário autenticado.
-- `src/routes/api/public/hooks/ia-responder.ts:67` — chamado pelo n8n; na prática reativo, mas o endpoint aceita disparo a qualquer momento para qualquer `conversa_id` com `ia_ativa=true`, sem checar se houve mensagem de entrada.
-
-Para **usuários internos** (não-lead): Xerife (`xerife.ts:137,401,443`; `notify.server.ts:31,44`; agenda/checkpoint/fechamento) e `ia-urgente.ts:156` (diretoria) — todos outbound iniciados pelo sistema.
+- Proposta enviada / aprovada / virada em pedido: `src/routes/propostas.$id.tsx:344` (`status: "pedido"`); campos `approval_requested_at`, `approved_at`, `order_created_at` gravados em `src/lib/omie.functions.ts:92`, `:109`, `:110` — sem chamada a `notify*`.
+- Negócio ganho: `src/lib/omie.functions.ts:116` e `:145` (`stage: "ganho"`), `src/lib/crm-store.ts:311`, fluxo do hook `src/hooks/use-move-lead-stage.tsx:81-90`. Sem notificação.
+- Negócio perdido (com motivo obrigatório): `src/hooks/use-move-lead-stage.tsx:52-74`. Só grava nota/interação, sem notificação.
+- Pedido gerado a partir da proposta: `src/lib/omie.functions.ts:150` / `:176` (`ensurePedidoFromProposta`). Sem notificação.
+- Aprovação de pedido solicitada e decidida: `src/lib/pedidos.functions.ts:621` (`solicitarAprovacao`) e `:648` (`decidirAprovacao`). Gravam campos de aprovação, não notificam.
+- Mudança de etapa de pedido: fila `pedido_notificacoes` é gravada em `src/lib/pedidos.functions.ts:280`, mas o disparo está desligado por `NOTIFY_DISPATCH_ENABLED = false` em `:219` (verificado em `:300`). Leitura read-only em `:903`.
+- Faturamento / nota fiscal: `src/lib/pedidos.functions.ts:762` (`nf_emitida_em` quando `fiscal_status = "emitida"`) e histórico em `pedido_fiscal_history`. Sem notificação.
+- Ocorrências de pedido (tabela `pedido_ocorrencias`): registradas, sem notificação.
+- Meta / snapshot mensal: `src/lib/placar.functions.ts:232` e `src/routes/api/public/hooks/xerife-fechamento.ts:176` (`snapshot_metas_mes`). O snapshot em si não notifica; só a faixa de meta (Bloco 1, item 8) notifica o vendedor.
+- Inadimplência: não existe nenhuma tabela, coluna ou código de inadimplência/cobrança no projeto.
