@@ -205,7 +205,11 @@ export const listAuditoriaUsuario = createServerFn({ method: "POST" })
       .order("criado_em", { ascending: false })
       .limit(200);
     if (error) throw new Error(error.message);
-    const atores = [...new Set((rows ?? []).map((r) => r.ator_user_id).filter(Boolean))];
+    const atores = [
+      ...new Set(
+        (rows ?? []).map((r) => r.ator_user_id).filter((v): v is string => typeof v === "string"),
+      ),
+    ];
     const nomes = new Map<string, string>();
     if (atores.length) {
       const { data: profs } = await sb.from("profiles").select("id, name").in("id", atores);
