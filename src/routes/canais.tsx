@@ -339,7 +339,15 @@ function ConversationPanel({
             {conversa.phone}
             <StatusChip status={conversa.status} className="ml-2" />
           </div>
+          {conversa.requer_humano && (
+            <div className="mt-1 flex items-center gap-1 text-[11px] text-destructive">
+              <AlertTriangle className="h-3 w-3" />
+              Atendimento humano necessário
+              {conversa.motivo_handoff ? ` (${conversa.motivo_handoff})` : ""}
+            </div>
+          )}
         </div>
+
         <div className="flex gap-2 shrink-0">
           {conversa.lead_id ? (
             <Button size="sm" variant="outline" onClick={() => onOpenLead(conversa.lead_id!)}>
