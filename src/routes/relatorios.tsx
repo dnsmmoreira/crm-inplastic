@@ -11,7 +11,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { formatBRL } from "@/lib/crm-store";
 import { PEDIDO_STAGES, type PedidoStageId } from "@/lib/pedidos.functions";
-import { listPedidosRelatorio, type RelatorioPedidoRow } from "@/lib/relatorios.functions";
+import { toast } from "sonner";
+import { listPedidosRelatorio, assertPodeExportarRelatorio, type RelatorioPedidoRow } from "@/lib/relatorios.functions";
 
 export const Route = createFileRoute("/relatorios")({
   component: RelatoriosPage,
