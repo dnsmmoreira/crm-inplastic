@@ -6,12 +6,50 @@ import { hydrateCrmForUser, clearCrmState } from "@/lib/crm-sync";
 
 export type AppRole = "admin" | "vendedor";
 
+export type UserPermissions = {
+  ver_todos_leads: boolean;
+  editar_propostas: boolean;
+  excluir_propostas: boolean;
+  exportar_dados: boolean;
+  ver_relatorios: boolean;
+  gerenciar_usuarios: boolean;
+  configurar_integracoes: boolean;
+};
+
+export const ADMIN_PERMISSIONS: UserPermissions = {
+  ver_todos_leads: true,
+  editar_propostas: true,
+  excluir_propostas: true,
+  exportar_dados: true,
+  ver_relatorios: true,
+  gerenciar_usuarios: true,
+  configurar_integracoes: true,
+};
+
+const VENDEDOR_PERMISSIONS: UserPermissions = {
+  ver_todos_leads: false,
+  editar_propostas: true,
+  excluir_propostas: false,
+  exportar_dados: false,
+  ver_relatorios: true,
+  gerenciar_usuarios: false,
+  configurar_integracoes: false,
+};
+
+export class ContaInativaError extends Error {
+  constructor() {
+    super("Sua conta está inativa. Fale com um administrador.");
+    this.name = "ContaInativaError";
+  }
+}
+
 export type AuthUser = {
   id: string;
   email: string;
   name: string;
   avatarColor: string;
   role: AppRole;
+  permissions: UserPermissions;
 };
 
 type AuthContextValue = {
