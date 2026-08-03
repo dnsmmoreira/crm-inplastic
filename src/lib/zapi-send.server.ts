@@ -22,15 +22,21 @@ export type ZapiSendResult = {
   phone: string;
 };
 
+export type ZapiCanal = "comercial" | "interno";
+
 export async function sendZapiText(
   phoneRaw: string,
   message: string,
   ctx?: string,
+  canal: ZapiCanal = "comercial",
 ): Promise<ZapiSendResult> {
-  const instanceId = process.env.ZAPI_INSTANCE_ID;
-  const token = process.env.ZAPI_TOKEN;
-  const clientToken = process.env.ZAPI_CLIENT_TOKEN;
-  const tag = ctx ? `[zapi:${ctx}]` : "[zapi]";
+  // Canais fisicamente separados. NUNCA há fallback do interno para o comercial.
+  const instanceId =
+    canal === "interno" ? process.env.ZAPI_INTERNO_INSTANCE_ID : process.env.ZAPI_INSTANCE_ID;
+  const token = canal === "interno" ? process.env.ZAPI_INTERNO_TOKEN : process.env.ZAPI_TOKEN;
+  const clientToken =
+    canal === "interno" ? process.env.ZAPI_INTERNO_CLIENT_TOKEN : process.env.ZAPI_CLIENT_TOKEN;
+  const tag = ctx ? `[zapi:${canal}:${ctx}]` : `[zapi:${canal}]`;
 
   console.log(
     `${tag} env instance=${!!instanceId}(${instanceId?.length ?? 0}) token=${!!token}(${token?.length ?? 0}) clientToken=${!!clientToken}(${clientToken?.length ?? 0})`,

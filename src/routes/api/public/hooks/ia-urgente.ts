@@ -148,17 +148,17 @@ export const Route = createFileRoute("/api/public/hooks/ia-urgente")({
         let envioErro: string | null = null;
 
         if (diretoria) {
-          try {
-            const { sendZapiText } = await import("@/lib/zapi-send.server");
-            console.log(
-              `[ia-urgente] enviando alerta para diretoria (${diretoria.slice(0, 4)}****) conversa=${conversaId} lead=${leadId}`,
-            );
-            await sendZapiText(diretoria, texto, "ia-urgente");
-            enviado = true;
+          const { enviarNotificacaoInterna } = await import("@/lib/xerife/notify.server");
+          console.log(
+            `[ia-urgente] enviando alerta para diretoria (${diretoria.slice(0, 4)}****) conversa=${conversaId} lead=${leadId}`,
+          );
+          const r = await enviarNotificacaoInterna(diretoria, texto, "ia-urgente");
+          enviado = r.enviado;
+          if (r.enviado) {
             console.log(`[ia-urgente] alerta enviado com sucesso lead=${leadId}`);
-          } catch (e) {
-            envioErro = e instanceof Error ? e.message : String(e);
-            console.error(`[ia-urgente] falha ao enviar alerta:`, envioErro);
+          } else {
+            envioErro = r.motivo ?? "desconhecido";
+            console.warn(`[ia-urgente] alerta não enviado: ${envioErro}`);
           }
         } else {
           console.warn(

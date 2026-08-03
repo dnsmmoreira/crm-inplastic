@@ -68,6 +68,7 @@ const configSchema = z
 
     // Motor
     ativo: z.boolean().optional(),
+    whatsapp_interno_ativo: z.boolean().optional(),
   })
   .refine(
     (d) =>

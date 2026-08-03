@@ -48,6 +48,7 @@ type Cfg = {
   resumo_hora: string;
   // Motor
   ativo: boolean;
+  whatsapp_interno_ativo: boolean;
 };
 
 const hhmm = (s: string | null | undefined, d: string) =>
@@ -107,6 +108,7 @@ export function XerifeConfigForm() {
         resumo_diario_ativo: r.resumo_diario_ativo ?? true,
         resumo_hora: hhmm(r.resumo_hora, "08:00"),
         ativo: r.ativo ?? true,
+        whatsapp_interno_ativo: r.whatsapp_interno_ativo ?? false,
       });
     })();
   }, [getFn]);
@@ -164,6 +166,7 @@ export function XerifeConfigForm() {
           resumo_diario_ativo: cfg.resumo_diario_ativo,
           resumo_hora: `${cfg.resumo_hora}:00`,
           ativo: cfg.ativo,
+          whatsapp_interno_ativo: cfg.whatsapp_interno_ativo,
         },
       });
       toast.success("Configuração salva");
@@ -370,6 +373,21 @@ export function XerifeConfigForm() {
               </p>
             </div>
             <Switch checked={cfg.ativo} onCheckedChange={(v) => upd({ ativo: v })} />
+          </div>
+          <Separator />
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-sm">Notificações internas por WhatsApp (segundo número)</Label>
+              <p className="text-xs text-muted-foreground">
+                Envia alertas para vendedores, admins e diretoria por um número separado do
+                comercial. Exige as credenciais ZAPI_INTERNO_INSTANCE_ID, ZAPI_INTERNO_TOKEN e
+                ZAPI_INTERNO_CLIENT_TOKEN; sem elas nada é enviado.
+              </p>
+            </div>
+            <Switch
+              checked={cfg.whatsapp_interno_ativo}
+              onCheckedChange={(v) => upd({ whatsapp_interno_ativo: v })}
+            />
           </div>
         </Section>
       </div>

@@ -27,19 +27,14 @@ function parseHour(hhmm: string): number {
 }
 
 /**
- * Envia mensagem WhatsApp direto via Z-API (uso interno do Xerife).
- * NUNCA envia para cliente/lead — apenas para vendedores/admins da equipe.
- * Usa o mesmo helper compartilhado (`sendZapiText`) do envio manual e do ia-responder.
+ * Envia mensagem WhatsApp para público INTERNO do Xerife.
+ * Passa obrigatoriamente pelo ponto único `enviarNotificacaoInterna`
+ * (canal interno ZAPI_INTERNO_*, desligado por padrão).
  */
 async function sendZapiText(phoneRaw: string, message: string): Promise<boolean> {
-  try {
-    const { sendZapiText: send } = await import("@/lib/zapi-send.server");
-    await send(phoneRaw, message, "xerife");
-    return true;
-  } catch (e) {
-    console.error("[xerife] Z-API erro:", e instanceof Error ? e.message : String(e));
-    return false;
-  }
+  const { enviarNotificacaoInterna } = await import("@/lib/xerife/notify.server");
+  const r = await enviarNotificacaoInterna(phoneRaw, message, "xerife");
+  return r.enviado;
 }
 
 async function loadConfig(): Promise<XerifeConfig> {
