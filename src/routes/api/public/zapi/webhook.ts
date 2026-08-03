@@ -199,7 +199,7 @@ export const Route = createFileRoute("/api/public/zapi/webhook")({
                 };
                 try {
                   const ctrl = new AbortController();
-                  const timer = setTimeout(() => ctrl.abort(), 8000);
+                  const timer = setTimeout(() => ctrl.abort(), 3000);
                   const r = await fetch(n8nUrl, {
                     method: "POST",
                     headers: {
