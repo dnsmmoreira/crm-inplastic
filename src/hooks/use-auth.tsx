@@ -114,6 +114,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.error("hydrateCrmForUser failed", err);
         }
       } catch (e) {
+        if (e instanceof ContaInativaError) {
+          // Conta desativada ou excluída: encerra a sessão sem apagar histórico.
+          setUser(null);
+          clearCrmState();
+          setSession(null);
+          try { toast.error(e.message); } catch { /* noop */ }
+          void supabase.auth.signOut();
+          setLoading(false);
+          return;
+        }
         console.error("loadAuthUser failed", e);
         // Não zera o user aqui — se já tinha um user carregado, mantém.
         // Uma falha transitória em profiles/user_roles não deve deslogar.
