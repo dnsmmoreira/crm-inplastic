@@ -44,6 +44,7 @@ function inRange(iso: string | null, from: string, to: string) {
 
 function RelatoriosPage() {
   const fetchPedidos = useServerFn(listPedidosRelatorio);
+  const checkExport = useServerFn(assertPodeExportarRelatorio);
   const { data, isLoading, error } = useQuery({
     queryKey: ["relatorio-pedidos"],
     queryFn: () => fetchPedidos(),
