@@ -1,6 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
-import { ShieldAlert, Users, Shield, User as UserIcon, Loader2, UserPlus, ListOrdered, ArrowUp, ArrowDown, Trash2, Plus } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  ShieldAlert, Users, Shield, User as UserIcon, Loader2, UserPlus, ListOrdered,
+  ArrowUp, ArrowDown, Trash2, Plus, Search, Pencil, KeyRound, Power, LogOut,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 
@@ -10,10 +13,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth, type AppRole } from "@/hooks/use-auth";
 import { createUser } from "@/lib/invites.functions";
 import { listFila, addFilaMember, removeFilaMember, toggleFilaAtivo, reorderFila } from "@/lib/fila.functions";
+import {
+  listUsuarios, setUsuarioAtivo, forcarRedefinicaoSenha, type UsuarioRow,
+} from "@/lib/usuarios.functions";
+import { UsuarioEditDialog } from "@/components/usuarios/UsuarioEditDialog";
+import { ExcluirUsuarioDialog } from "@/components/usuarios/ExcluirUsuarioDialog";
 
 export const Route = createFileRoute("/usuarios")({
   component: UsuariosPage,
@@ -27,47 +34,69 @@ type Row = {
   role: AppRole;
 };
 
+type SortKey = "nome" | "cadastro" | "acesso";
+
 function UsuariosPage() {
   const { user, loading } = useAuth();
-  const [rows, setRows] = useState<Row[] | null>(null);
+  const listar = useServerFn(listUsuarios);
+  const toggleAtivo = useServerFn(setUsuarioAtivo);
+  const resetSenha = useServerFn(forcarRedefinicaoSenha);
+  const removerFila = useServerFn(removeFilaMember);
+
+  const [rows, setRows] = useState<UsuarioRow[] | null>(null);
+  const [busca, setBusca] = useState("");
+  const [filtroPapel, setFiltroPapel] = useState<"todos" | AppRole>("todos");
+  const [filtroStatus, setFiltroStatus] = useState<"todos" | "ativos" | "inativos" | "excluidos">("ativos");
+  const [sort, setSort] = useState<SortKey>("nome");
   const [saving, setSaving] = useState<string | null>(null);
+  const [editando, setEditando] = useState<UsuarioRow | null>(null);
+  const [excluindo, setExcluindo] = useState<UsuarioRow | null>(null);
 
   const load = useCallback(async () => {
-    const [{ data: profiles, error: pErr }, { data: roles, error: rErr }] = await Promise.all([
-      supabase.from("profiles").select("id, name, avatar_color, created_at").order("created_at", { ascending: true }),
-      supabase.from("user_roles").select("user_id, role"),
-    ]);
-    if (pErr) { toast.error(pErr.message); return; }
-    if (rErr) { toast.error(rErr.message); return; }
-    const roleByUser = new Map<string, AppRole>();
-    (roles ?? []).forEach((r) => {
-      const cur = roleByUser.get(r.user_id);
-      if (cur === "admin") return;
-      roleByUser.set(r.user_id, r.role as AppRole);
-    });
-    setRows(
-      (profiles ?? []).map((p) => ({
-        id: p.id,
-        name: p.name,
-        avatarColor: p.avatar_color,
-        createdAt: p.created_at,
-        role: roleByUser.get(p.id) ?? "vendedor",
-      })),
-    );
-  }, []);
+    try {
+      const data = await listar({ data: { incluirExcluidos: true } });
+      setRows(data as UsuarioRow[]);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao carregar usuários");
+    }
+  }, [listar]);
 
   useEffect(() => { if (user?.role === "admin") void load(); }, [user, load]);
 
-  const setRole = async (userId: string, role: AppRole) => {
-    setSaving(userId);
+  const filtrados = useMemo(() => {
+    const q = busca.trim().toLowerCase();
+    const list = (rows ?? []).filter((r) => {
+      if (q && !`${r.name} ${r.email}`.toLowerCase().includes(q)) return false;
+      if (filtroPapel !== "todos" && r.role !== filtroPapel) return false;
+      if (filtroStatus === "excluidos") return !!r.deletedAt;
+      if (r.deletedAt) return false;
+      if (filtroStatus === "ativos") return r.ativo;
+      if (filtroStatus === "inativos") return !r.ativo;
+      return true;
+    });
+    return [...list].sort((a, b) => {
+      if (sort === "nome") return a.name.localeCompare(b.name, "pt-BR");
+      if (sort === "cadastro") return a.createdAt.localeCompare(b.createdAt);
+      return (b.ultimoAcesso ?? "").localeCompare(a.ultimoAcesso ?? "");
+    });
+  }, [rows, busca, filtroPapel, filtroStatus, sort]);
+
+  const vendedoresParaFila: Row[] = useMemo(
+    () =>
+      (rows ?? [])
+        .filter((r) => !r.deletedAt && r.ativo)
+        .map((r) => ({ id: r.id, name: r.name, avatarColor: r.avatarColor, createdAt: r.createdAt, role: r.role })),
+    [rows],
+  );
+
+  const acao = async (id: string, fn: () => Promise<unknown>, ok: string) => {
+    setSaving(id);
     try {
-      await supabase.from("user_roles").delete().eq("user_id", userId);
-      const { error } = await supabase.from("user_roles").insert({ user_id: userId, role });
-      if (error) throw error;
-      toast.success(`Papel atualizado para ${role === "admin" ? "Administrador" : "Vendedor"}`);
+      await fn();
+      toast.success(ok);
       await load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Falha ao salvar");
+      toast.error(e instanceof Error ? e.message : "Falha na operação");
     } finally {
       setSaving(null);
     }
@@ -101,28 +130,70 @@ function UsuariosPage() {
         </div>
         <div>
           <h1 className="font-display text-xl font-semibold">Usuários</h1>
-          <p className="text-sm text-muted-foreground">Gerencie quem tem acesso ao CRM e o papel de cada um.</p>
+          <p className="text-sm text-muted-foreground">Gerencie quem tem acesso ao CRM, o papel e as permissões de cada um.</p>
         </div>
       </div>
 
       <CreateUserCard onCreated={load} />
 
       <Card className="mt-6">
-        <CardHeader>
+        <CardHeader className="space-y-3">
           <CardTitle className="text-base">Equipe cadastrada</CardTitle>
+          <div className="flex flex-wrap gap-2">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                placeholder="Buscar por nome ou e-mail"
+                className="pl-8"
+              />
+            </div>
+            <select
+              value={filtroPapel}
+              onChange={(e) => setFiltroPapel(e.target.value as "todos" | AppRole)}
+              aria-label="Filtrar por papel"
+              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+            >
+              <option value="todos">Todos os papéis</option>
+              <option value="admin">Administradores</option>
+              <option value="vendedor">Vendedores</option>
+            </select>
+            <select
+              value={filtroStatus}
+              onChange={(e) => setFiltroStatus(e.target.value as typeof filtroStatus)}
+              aria-label="Filtrar por status"
+              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+            >
+              <option value="ativos">Ativos</option>
+              <option value="inativos">Inativos</option>
+              <option value="todos">Ativos e inativos</option>
+              <option value="excluidos">Excluídos</option>
+            </select>
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value as SortKey)}
+              aria-label="Ordenar"
+              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+            >
+              <option value="nome">Ordenar por nome</option>
+              <option value="cadastro">Ordenar por cadastro</option>
+              <option value="acesso">Ordenar por último acesso</option>
+            </select>
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           {!rows ? (
             <div className="p-6 text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Carregando…</div>
-          ) : rows.length === 0 ? (
-            <div className="p-6 text-sm text-muted-foreground">Nenhum usuário cadastrado ainda.</div>
+          ) : filtrados.length === 0 ? (
+            <div className="p-6 text-sm text-muted-foreground">Nenhum usuário encontrado com esses filtros.</div>
           ) : (
             <div className="divide-y">
-              {rows.map((r) => (
-                <div key={r.id} className="flex items-center gap-4 p-4">
+              {filtrados.map((r) => (
+                <div key={r.id} className="flex flex-wrap items-center gap-3 p-4">
                   <div
                     className="h-10 w-10 rounded-full flex items-center justify-center text-white text-sm font-semibold shrink-0"
-                    style={{ background: r.avatarColor }}
+                    style={{ background: r.avatarColor, opacity: r.ativo && !r.deletedAt ? 1 : 0.45 }}
                   >
                     {r.name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase() || "?"}
                   </div>
@@ -130,32 +201,64 @@ function UsuariosPage() {
                     <div className="font-medium truncate flex items-center gap-2">
                       {r.name || "Sem nome"}
                       {r.id === user.id && <Badge variant="outline" className="text-[10px]">você</Badge>}
+                      {r.deletedAt ? (
+                        <Badge variant="destructive" className="text-[10px]">excluído</Badge>
+                      ) : !r.ativo ? (
+                        <Badge variant="secondary" className="text-[10px]">inativo</Badge>
+                      ) : null}
+                      {r.naFila && <Badge variant="outline" className="text-[10px]">fila #{r.filaPosicao}</Badge>}
                     </div>
-                    <div className="text-xs text-muted-foreground truncate">Cadastrado em {new Date(r.createdAt).toLocaleDateString("pt-BR")}</div>
+                    <div className="text-xs text-muted-foreground truncate">
+                      {r.email || "sem e-mail"} · {r.cargo || "sem cargo"} ·{" "}
+                      {r.ultimoAcesso
+                        ? `último acesso ${new Date(r.ultimoAcesso).toLocaleDateString("pt-BR")}`
+                        : "nunca acessou"}
+                    </div>
                   </div>
                   <Badge variant={r.role === "admin" ? "default" : "secondary"} className="gap-1">
                     {r.role === "admin" ? <Shield className="h-3 w-3" /> : <UserIcon className="h-3 w-3" />}
                     {r.role === "admin" ? "Administrador" : "Vendedor"}
                   </Badge>
-                  <div className="flex gap-2">
-                    {r.role === "admin" ? (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={saving === r.id || r.id === user.id}
-                        onClick={() => setRole(r.id, "vendedor")}
-                      >
-                        {saving === r.id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Tornar vendedor"}
-                      </Button>
-                    ) : (
-                      <Button
-                        size="sm"
-                        disabled={saving === r.id}
-                        onClick={() => setRole(r.id, "admin")}
-                      >
-                        {saving === r.id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Promover a admin"}
-                      </Button>
-                    )}
+                  <div className="flex gap-1">
+                    <Button size="sm" variant="outline" className="gap-1" onClick={() => setEditando(r)}>
+                      <Pencil className="h-3.5 w-3.5" /> Editar
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      title={r.ativo ? "Desativar" : "Ativar"}
+                      disabled={saving === r.id || r.id === user.id || !!r.deletedAt}
+                      onClick={() => acao(r.id, () => toggleAtivo({ data: { userId: r.id, ativo: !r.ativo } }), r.ativo ? "Usuário desativado" : "Usuário ativado")}
+                    >
+                      {saving === r.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Power className={`h-4 w-4 ${r.ativo ? "text-emerald-600" : "text-muted-foreground"}`} />}
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      title="Redefinir senha"
+                      disabled={saving === r.id || !!r.deletedAt}
+                      onClick={() => acao(r.id, () => resetSenha({ data: { userId: r.id } }), "Senha zerada — use /primeiro-acesso")}
+                    >
+                      <KeyRound className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      title="Remover da fila"
+                      disabled={saving === r.id || !r.naFila}
+                      onClick={() => acao(r.id, () => removerFila({ data: { userId: r.id } }), "Removido da fila")}
+                    >
+                      <LogOut className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      title="Excluir"
+                      disabled={saving === r.id || r.id === user.id || !!r.deletedAt}
+                      onClick={() => setExcluindo(r)}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -164,7 +267,22 @@ function UsuariosPage() {
         </CardContent>
       </Card>
 
-      <FilaVendedoresCard vendedores={rows ?? []} />
+      <UsuarioEditDialog
+        usuario={editando}
+        currentUserId={user.id}
+        open={!!editando}
+        onOpenChange={(v) => { if (!v) setEditando(null); }}
+        onSaved={load}
+      />
+      <ExcluirUsuarioDialog
+        usuario={excluindo}
+        candidatos={rows ?? []}
+        open={!!excluindo}
+        onOpenChange={(v) => { if (!v) setExcluindo(null); }}
+        onDone={load}
+      />
+
+      <FilaVendedoresCard vendedores={vendedoresParaFila} />
 
 
       <div className="mt-4 rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground space-y-1">
