@@ -108,6 +108,7 @@ export function XerifeConfigForm() {
         resumo_diario_ativo: r.resumo_diario_ativo ?? true,
         resumo_hora: hhmm(r.resumo_hora, "08:00"),
         ativo: r.ativo ?? true,
+        whatsapp_interno_ativo: r.whatsapp_interno_ativo ?? false,
       });
     })();
   }, [getFn]);
