@@ -1191,27 +1191,57 @@ export type Database = {
       }
       profiles: {
         Row: {
+          ativo: boolean
           avatar_color: string
+          canais_entrada: string[]
+          cargo: string | null
           created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
+          email_cache: string | null
+          fuso_horario: string
           id: string
+          limite_leads_simultaneos: number | null
           name: string
+          senha_reset_exigido: boolean
           telefone_whatsapp: string | null
+          ultimo_acesso_em: string | null
           updated_at: string
         }
         Insert: {
+          ativo?: boolean
           avatar_color?: string
+          canais_entrada?: string[]
+          cargo?: string | null
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          email_cache?: string | null
+          fuso_horario?: string
           id: string
+          limite_leads_simultaneos?: number | null
           name?: string
+          senha_reset_exigido?: boolean
           telefone_whatsapp?: string | null
+          ultimo_acesso_em?: string | null
           updated_at?: string
         }
         Update: {
+          ativo?: boolean
           avatar_color?: string
+          canais_entrada?: string[]
+          cargo?: string | null
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          email_cache?: string | null
+          fuso_horario?: string
           id?: string
+          limite_leads_simultaneos?: number | null
           name?: string
+          senha_reset_exigido?: boolean
           telefone_whatsapp?: string | null
+          ultimo_acesso_em?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -1517,6 +1547,75 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_audit_log: {
+        Row: {
+          alvo_user_id: string
+          ator_user_id: string | null
+          campo: string
+          criado_em: string
+          id: string
+          valor_anterior: string | null
+          valor_novo: string | null
+        }
+        Insert: {
+          alvo_user_id: string
+          ator_user_id?: string | null
+          campo: string
+          criado_em?: string
+          id?: string
+          valor_anterior?: string | null
+          valor_novo?: string | null
+        }
+        Update: {
+          alvo_user_id?: string
+          ator_user_id?: string | null
+          campo?: string
+          criado_em?: string
+          id?: string
+          valor_anterior?: string | null
+          valor_novo?: string | null
+        }
+        Relationships: []
+      }
+      user_permissions: {
+        Row: {
+          configurar_integracoes: boolean
+          created_at: string
+          editar_propostas: boolean
+          excluir_propostas: boolean
+          exportar_dados: boolean
+          gerenciar_usuarios: boolean
+          updated_at: string
+          user_id: string
+          ver_relatorios: boolean
+          ver_todos_leads: boolean
+        }
+        Insert: {
+          configurar_integracoes?: boolean
+          created_at?: string
+          editar_propostas?: boolean
+          excluir_propostas?: boolean
+          exportar_dados?: boolean
+          gerenciar_usuarios?: boolean
+          updated_at?: string
+          user_id: string
+          ver_relatorios?: boolean
+          ver_todos_leads?: boolean
+        }
+        Update: {
+          configurar_integracoes?: boolean
+          created_at?: string
+          editar_propostas?: boolean
+          excluir_propostas?: boolean
+          exportar_dados?: boolean
+          gerenciar_usuarios?: boolean
+          updated_at?: string
+          user_id?: string
+          ver_relatorios?: boolean
+          ver_todos_leads?: boolean
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
@@ -1898,6 +1997,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admins_ativos_count: { Args: never; Returns: number }
       atribuir_proximo_vendedor: { Args: { _lead_id: string }; Returns: string }
       cnpj_status: {
         Args: { _cnpj: string }
