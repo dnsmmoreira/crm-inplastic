@@ -93,8 +93,8 @@ export const Route = createFileRoute("/api/public/zapi/webhook")({
             return Response.json({ ok: true, skipped: "no-text" }, { headers: CORS });
           }
 
+          // 4) Upsert conversa por telefone
 
-          // 2) Upsert conversa por telefone
           //    Se já existe → mantém status/ia_ativa/lead_id atuais.
           //    Se não existe → cria em 'ia_atendendo' com ia_ativa=true.
           let conversaId: string | null = null;
