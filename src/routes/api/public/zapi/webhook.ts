@@ -43,10 +43,11 @@ export const Route = createFileRoute("/api/public/zapi/webhook")({
 
           const phoneRaw = payload.phone ?? "";
           const phone = onlyDigits(phoneRaw);
-          const message =
-            payload.text?.message ??
-            payload.message ??
-            "";
+
+          const { normalizarPayloadZapi, TIPOS_COM_RESPOSTA_AUTOMATICA, TIPOS_COM_HANDOFF } =
+            await import("@/lib/zapi-normalize");
+          const norm = normalizarPayloadZapi(payload as Record<string, unknown>);
+          const message = norm.texto;
 
           const name = payload.senderName || payload.chatName || null;
           const externalId = typeof payload.messageId === "string" && payload.messageId.trim() !== ""
@@ -151,6 +152,9 @@ export const Route = createFileRoute("/api/public/zapi/webhook")({
                 autor: "cliente",
                 conteudo: message,
                 external_id: externalId,
+                tipo: norm.tipo,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                midia: (norm.midia ?? null) as any,
               });
             if (msgErr) {
               // 23505 = violação de unicidade no índice parcial → reentrega, não erro.
@@ -161,6 +165,31 @@ export const Route = createFileRoute("/api/public/zapi/webhook")({
               console.error("whatsapp_mensagens insert failed:", msgErr);
             }
 
+            // 5b) Handoff humano para mídia/tipos não conversáveis.
+            //     Apenas estado no banco — nenhum envio de WhatsApp é feito aqui.
+            if (TIPOS_COM_HANDOFF.includes(norm.tipo)) {
+              const { error: hoErr } = await supabaseAdmin
+                .from("whatsapp_conversas")
+                .update({
+                  requer_humano: true,
+                  motivo_handoff: `midia_${norm.tipo}`,
+                  ia_ativa: false,
+                })
+                .eq("id", conversaId);
+              if (hoErr) console.error("handoff update failed:", hoErr);
+              return Response.json(
+                { ok: true, conversaId, tipo: norm.tipo, handoff: true },
+                { headers: CORS },
+              );
+            }
+
+            // 5c) Reação: apenas registrada, sem handoff e sem n8n.
+            if (!TIPOS_COM_RESPOSTA_AUTOMATICA.includes(norm.tipo)) {
+              return Response.json(
+                { ok: true, conversaId, tipo: norm.tipo, n8n: false },
+                { headers: CORS },
+              );
+            }
 
             // 6) Notifica o n8n se a IA estiver ativa.
             // IMPORTANTE: no runtime Cloudflare Worker, promises não-aguardadas
@@ -223,6 +252,7 @@ export const Route = createFileRoute("/api/public/zapi/webhook")({
           }
 
           return Response.json({ ok: true, conversaId }, { headers: CORS });
+
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);
           console.error("zapi webhook error:", msg);
