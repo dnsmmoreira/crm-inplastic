@@ -1,10 +1,48 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Session, User as SupaUser } from "@supabase/supabase-js";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { hydrateCrmForUser, clearCrmState } from "@/lib/crm-sync";
 
 
 export type AppRole = "admin" | "vendedor";
+
+export type UserPermissions = {
+  ver_todos_leads: boolean;
+  editar_propostas: boolean;
+  excluir_propostas: boolean;
+  exportar_dados: boolean;
+  ver_relatorios: boolean;
+  gerenciar_usuarios: boolean;
+  configurar_integracoes: boolean;
+};
+
+export const ADMIN_PERMISSIONS: UserPermissions = {
+  ver_todos_leads: true,
+  editar_propostas: true,
+  excluir_propostas: true,
+  exportar_dados: true,
+  ver_relatorios: true,
+  gerenciar_usuarios: true,
+  configurar_integracoes: true,
+};
+
+const VENDEDOR_PERMISSIONS: UserPermissions = {
+  ver_todos_leads: false,
+  editar_propostas: true,
+  excluir_propostas: false,
+  exportar_dados: false,
+  ver_relatorios: true,
+  gerenciar_usuarios: false,
+  configurar_integracoes: false,
+};
+
+export class ContaInativaError extends Error {
+  constructor() {
+    super("Sua conta está inativa. Fale com um administrador.");
+    this.name = "ContaInativaError";
+  }
+}
 
 export type AuthUser = {
   id: string;
@@ -12,6 +50,7 @@ export type AuthUser = {
   name: string;
   avatarColor: string;
   role: AppRole;
+  permissions: UserPermissions;
 };
 
 type AuthContextValue = {
@@ -35,14 +74,28 @@ function colorFor(id: string) {
 }
 
 async function loadAuthUser(supaUser: SupaUser): Promise<AuthUser> {
-  const [{ data: profile }, { data: roles }] = await Promise.all([
-    supabase.from("profiles").select("name, avatar_color").eq("id", supaUser.id).maybeSingle(),
+  const [{ data: profile }, { data: roles }, { data: perms }] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("name, avatar_color, ativo, deleted_at")
+      .eq("id", supaUser.id)
+      .maybeSingle(),
     supabase.from("user_roles").select("role").eq("user_id", supaUser.id),
+    supabase.from("user_permissions").select("*").eq("user_id", supaUser.id).maybeSingle(),
   ]);
+  if (profile && (profile.ativo === false || profile.deleted_at)) throw new ContaInativaError();
   const role: AppRole = (roles ?? []).some((r) => r.role === "admin") ? "admin" : "vendedor";
   const name = profile?.name || (supaUser.user_metadata?.name as string | undefined) || supaUser.email?.split("@")[0] || "Usuário";
   const avatarColor = profile?.avatar_color || colorFor(supaUser.id);
-  return { id: supaUser.id, email: supaUser.email ?? "", name, avatarColor, role };
+  const base = role === "admin" ? ADMIN_PERMISSIONS : VENDEDOR_PERMISSIONS;
+  const permissions: UserPermissions = perms
+    ? (Object.fromEntries(
+        (Object.keys(base) as Array<keyof UserPermissions>).map((k) => [k, !!perms[k]]),
+      ) as UserPermissions)
+    : { ...base };
+  // Administrador nunca perde o acesso à gestão de usuários.
+  if (role === "admin") permissions.gerenciar_usuarios = true;
+  return { id: supaUser.id, email: supaUser.email ?? "", name, avatarColor, role, permissions };
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -62,6 +115,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.error("hydrateCrmForUser failed", err);
         }
       } catch (e) {
+        if (e instanceof ContaInativaError) {
+          // Conta desativada ou excluída: encerra a sessão sem apagar histórico.
+          setUser(null);
+          clearCrmState();
+          setSession(null);
+          try { toast.error(e.message); } catch { /* noop */ }
+          void supabase.auth.signOut();
+          setLoading(false);
+          return;
+        }
         console.error("loadAuthUser failed", e);
         // Não zera o user aqui — se já tinha um user carregado, mantém.
         // Uma falha transitória em profiles/user_roles não deve deslogar.

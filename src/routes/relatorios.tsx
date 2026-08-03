@@ -11,7 +11,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { formatBRL } from "@/lib/crm-store";
 import { PEDIDO_STAGES, type PedidoStageId } from "@/lib/pedidos.functions";
-import { listPedidosRelatorio, type RelatorioPedidoRow } from "@/lib/relatorios.functions";
+import { toast } from "sonner";
+import { listPedidosRelatorio, assertPodeExportarRelatorio, type RelatorioPedidoRow } from "@/lib/relatorios.functions";
 
 export const Route = createFileRoute("/relatorios")({
   component: RelatoriosPage,
@@ -43,6 +44,7 @@ function inRange(iso: string | null, from: string, to: string) {
 
 function RelatoriosPage() {
   const fetchPedidos = useServerFn(listPedidosRelatorio);
+  const checkExport = useServerFn(assertPodeExportarRelatorio);
   const { data, isLoading, error } = useQuery({
     queryKey: ["relatorio-pedidos"],
     queryFn: () => fetchPedidos(),
@@ -93,7 +95,13 @@ function RelatoriosPage() {
     return r.itens.map((i) => `${i.sku} (${i.quantity} ${i.unit})`).join(", ");
   }
 
-  function exportCSV() {
+  async function exportCSV() {
+    try {
+      await checkExport();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Exportação não permitida");
+      return;
+    }
     const header = ["Nº do pedido", "Cliente", "Produtos", "Data de criação", "Prazo de entrega", "Fase", "Total"];
     const lines = filtered.map((r) => [
       r.number,

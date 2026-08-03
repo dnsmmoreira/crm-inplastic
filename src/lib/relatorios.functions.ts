@@ -28,10 +28,41 @@ export type RelatorioPedidoRow = {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type LooseClient = any;
 
+/** Lê a permissão do próprio usuário no servidor (admin sempre liberado). */
+async function assertPermissao(
+  sb: LooseClient,
+  userId: string,
+  perm: "ver_relatorios" | "exportar_dados",
+  mensagem: string,
+) {
+  const { data: isAdmin } = await sb.rpc("has_role", { _user_id: userId, _role: "admin" });
+  if (isAdmin) return;
+  const { data } = await sb.from("user_permissions").select(perm).eq("user_id", userId).maybeSingle();
+  if (!data || data[perm] !== true) throw new Error(mensagem);
+}
+
+export const assertPodeExportarRelatorio = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertPermissao(
+      context.supabase,
+      context.userId,
+      "exportar_dados",
+      "Você não tem permissão para exportar dados.",
+    );
+    return { ok: true as const };
+  });
+
 export const listPedidosRelatorio = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<RelatorioPedidoRow[]> => {
     const sb: LooseClient = context.supabase;
+    await assertPermissao(
+      sb,
+      context.userId,
+      "ver_relatorios",
+      "Você não tem permissão para ver relatórios.",
+    );
     const { data, error } = await sb
       .from("pedidos")
       .select(
