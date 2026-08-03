@@ -162,7 +162,7 @@ export const Route = createFileRoute("/api/public/zapi/webhook")({
             }
 
 
-            // 4) Notifica o n8n se a IA estiver ativa.
+            // 6) Notifica o n8n se a IA estiver ativa.
             // IMPORTANTE: no runtime Cloudflare Worker, promises não-aguardadas
             // são canceladas ao retornar a resposta. Por isso AGUARDAMOS o fetch
             // (com timeout curto) em vez de fire-and-forget.
