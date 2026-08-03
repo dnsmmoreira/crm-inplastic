@@ -73,14 +73,28 @@ function colorFor(id: string) {
 }
 
 async function loadAuthUser(supaUser: SupaUser): Promise<AuthUser> {
-  const [{ data: profile }, { data: roles }] = await Promise.all([
-    supabase.from("profiles").select("name, avatar_color").eq("id", supaUser.id).maybeSingle(),
+  const [{ data: profile }, { data: roles }, { data: perms }] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("name, avatar_color, ativo, deleted_at")
+      .eq("id", supaUser.id)
+      .maybeSingle(),
     supabase.from("user_roles").select("role").eq("user_id", supaUser.id),
+    supabase.from("user_permissions").select("*").eq("user_id", supaUser.id).maybeSingle(),
   ]);
+  if (profile && (profile.ativo === false || profile.deleted_at)) throw new ContaInativaError();
   const role: AppRole = (roles ?? []).some((r) => r.role === "admin") ? "admin" : "vendedor";
   const name = profile?.name || (supaUser.user_metadata?.name as string | undefined) || supaUser.email?.split("@")[0] || "Usuário";
   const avatarColor = profile?.avatar_color || colorFor(supaUser.id);
-  return { id: supaUser.id, email: supaUser.email ?? "", name, avatarColor, role };
+  const base = role === "admin" ? ADMIN_PERMISSIONS : VENDEDOR_PERMISSIONS;
+  const permissions: UserPermissions = perms
+    ? (Object.fromEntries(
+        (Object.keys(base) as Array<keyof UserPermissions>).map((k) => [k, !!perms[k]]),
+      ) as UserPermissions)
+    : { ...base };
+  // Administrador nunca perde o acesso à gestão de usuários.
+  if (role === "admin") permissions.gerenciar_usuarios = true;
+  return { id: supaUser.id, email: supaUser.email ?? "", name, avatarColor, role, permissions };
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
