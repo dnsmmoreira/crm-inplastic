@@ -1727,8 +1727,10 @@ export type Database = {
           last_message_at: string | null
           last_message_preview: string | null
           lead_id: string | null
+          motivo_handoff: string | null
           name: string | null
           phone: string
+          requer_humano: boolean
           status: Database["public"]["Enums"]["conversa_status"]
           updated_at: string
         }
@@ -1739,8 +1741,10 @@ export type Database = {
           last_message_at?: string | null
           last_message_preview?: string | null
           lead_id?: string | null
+          motivo_handoff?: string | null
           name?: string | null
           phone: string
+          requer_humano?: boolean
           status?: Database["public"]["Enums"]["conversa_status"]
           updated_at?: string
         }
@@ -1751,8 +1755,10 @@ export type Database = {
           last_message_at?: string | null
           last_message_preview?: string | null
           lead_id?: string | null
+          motivo_handoff?: string | null
           name?: string | null
           phone?: string
+          requer_humano?: boolean
           status?: Database["public"]["Enums"]["conversa_status"]
           updated_at?: string
         }
@@ -1775,6 +1781,8 @@ export type Database = {
           direcao: Database["public"]["Enums"]["msg_direcao"]
           external_id: string | null
           id: string
+          midia: Json | null
+          tipo: string
           usuario_id: string | null
         }
         Insert: {
@@ -1785,6 +1793,8 @@ export type Database = {
           direcao: Database["public"]["Enums"]["msg_direcao"]
           external_id?: string | null
           id?: string
+          midia?: Json | null
+          tipo?: string
           usuario_id?: string | null
         }
         Update: {
@@ -1795,6 +1805,8 @@ export type Database = {
           direcao?: Database["public"]["Enums"]["msg_direcao"]
           external_id?: string | null
           id?: string
+          midia?: Json | null
+          tipo?: string
           usuario_id?: string | null
         }
         Relationships: [

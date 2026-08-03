@@ -14,6 +14,9 @@ import {
   Bot,
   User as UserIcon,
   CheckCircle2,
+  Paperclip,
+  AlertTriangle,
+
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -198,6 +201,12 @@ function ConversationList({
                       <Badge variant="outline" className="text-[10px]">Sem lead</Badge>
                     )}
                     <StatusChip status={c.status} />
+                    {c.requer_humano && (
+                      <Badge variant="destructive" className="text-[10px] gap-1">
+                        <AlertTriangle className="h-3 w-3" /> Requer humano
+                      </Badge>
+                    )}
+
                   </div>
                 </div>
               </button>
@@ -330,7 +339,15 @@ function ConversationPanel({
             {conversa.phone}
             <StatusChip status={conversa.status} className="ml-2" />
           </div>
+          {conversa.requer_humano && (
+            <div className="mt-1 flex items-center gap-1 text-[11px] text-destructive">
+              <AlertTriangle className="h-3 w-3" />
+              Atendimento humano necessário
+              {conversa.motivo_handoff ? ` (${conversa.motivo_handoff})` : ""}
+            </div>
+          )}
         </div>
+
         <div className="flex gap-2 shrink-0">
           {conversa.lead_id ? (
             <Button size="sm" variant="outline" onClick={() => onOpenLead(conversa.lead_id!)}>
@@ -379,6 +396,37 @@ function ConversationPanel({
   );
 }
 
+function MidiaPreview({ m }: { m: Mensagem }) {
+  const tipo = (m as { tipo?: string }).tipo ?? "texto";
+  const midia = (m.midia ?? null) as Record<string, unknown> | null;
+  const url = typeof midia?.url === "string" ? midia.url : null;
+  if (tipo === "texto" || tipo === "resposta_opcao") return null;
+
+  return (
+    <div className="mt-1 space-y-1">
+      <Badge variant="outline" className="text-[10px] gap-1">
+        <Paperclip className="h-3 w-3" /> {tipo}
+      </Badge>
+      {url && tipo === "imagem" && (
+        <a href={url} target="_blank" rel="noreferrer" className="block">
+          <img src={url} alt="Imagem recebida" className="max-h-40 rounded-md border" />
+        </a>
+      )}
+      {url && tipo !== "imagem" && (
+        <a
+          href={url}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1 text-xs underline break-all"
+        >
+          <Paperclip className="h-3 w-3" />
+          {typeof midia?.fileName === "string" && midia.fileName ? midia.fileName : "Abrir arquivo"}
+        </a>
+      )}
+    </div>
+  );
+}
+
 function MessageBubble({ m }: { m: Mensagem }) {
   const isOutgoing = m.direcao === "saida";
   const isBot = m.autor === "ia";
@@ -401,10 +449,12 @@ function MessageBubble({ m }: { m: Mensagem }) {
           <span>{format(new Date(m.created_at), "HH:mm")}</span>
         </div>
         <div className="whitespace-pre-wrap break-words">{m.conteudo}</div>
+        <MidiaPreview m={m} />
       </div>
     </div>
   );
 }
+
 
 function StatusChip({
   status,
