@@ -141,7 +141,7 @@ export const Route = createFileRoute("/api/public/zapi/webhook")({
             }
           }
 
-          // 3) Grava a mensagem do cliente
+          // 5) Grava a mensagem do cliente
           if (conversaId) {
             const { error: msgErr } = await supabaseAdmin
               .from("whatsapp_mensagens")
@@ -153,8 +153,14 @@ export const Route = createFileRoute("/api/public/zapi/webhook")({
                 external_id: externalId,
               });
             if (msgErr) {
+              // 23505 = violação de unicidade no índice parcial → reentrega, não erro.
+              if (msgErr.code === "23505") {
+                console.warn("[zapi-webhook] corrida de reentrega detectada (23505):", externalId);
+                return Response.json({ ok: true, duplicado: true }, { headers: CORS });
+              }
               console.error("whatsapp_mensagens insert failed:", msgErr);
             }
+
 
             // 4) Notifica o n8n se a IA estiver ativa.
             // IMPORTANTE: no runtime Cloudflare Worker, promises não-aguardadas
