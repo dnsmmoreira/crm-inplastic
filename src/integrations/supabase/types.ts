@@ -1843,6 +1843,7 @@ export type Database = {
           sla_resposta_whatsapp_horas: number
           tarefa_atrasada_horas: number
           updated_at: string
+          whatsapp_interno_ativo: boolean
         }
         Insert: {
           ativo?: boolean
@@ -1879,6 +1880,7 @@ export type Database = {
           sla_resposta_whatsapp_horas?: number
           tarefa_atrasada_horas?: number
           updated_at?: string
+          whatsapp_interno_ativo?: boolean
         }
         Update: {
           ativo?: boolean
@@ -1915,6 +1917,7 @@ export type Database = {
           sla_resposta_whatsapp_horas?: number
           tarefa_atrasada_horas?: number
           updated_at?: string
+          whatsapp_interno_ativo?: boolean
         }
         Relationships: []
       }
