@@ -41,8 +41,33 @@ export async function enviarNotificacaoInterna(
   destino: string | null | undefined,
   texto: string,
   ctx = "interno",
+  opts?: { telegramChatId?: string | null },
 ): Promise<ResultadoNotificacaoInterna> {
   try {
+    // ---- Trilho TELEGRAM (tem precedência quando xerife_config.telegram_ativo = true) ----
+    {
+      const { supabaseAdmin: sbTg } = await import("@/integrations/supabase/client.server");
+      const { data: cfgTg } = await sbTg
+        .from("xerife_config")
+        .select("telegram_ativo")
+        .eq("id", 1)
+        .maybeSingle();
+      if (cfgTg?.telegram_ativo) {
+        const tgToken = (process.env.TELEGRAM_BOT_TOKEN ?? "").trim();
+        if (!tgToken) {
+          console.warn(
+            "[notificacao-interna] TELEGRAM_BOT_TOKEN ausente — nada enviado (sem fallback WhatsApp/comercial).",
+          );
+          return { enviado: false, motivo: "telegram_sem_token" };
+        }
+        const chatId = (opts?.telegramChatId ?? "").trim();
+        if (!chatId) return { enviado: false, motivo: "sem_chat_id" };
+        const { sendTelegramText } = await import("@/lib/telegram-send.server");
+        const tg = await sendTelegramText(chatId, texto, ctx);
+        return tg.ok ? { enviado: true } : { enviado: false, motivo: "erro_envio" };
+      }
+    }
+
     const alvo = (destino ?? "").trim();
     if (!alvo) return { enviado: false, motivo: "sem_destino" };
 
