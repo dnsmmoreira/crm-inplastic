@@ -9,6 +9,19 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 type SB = SupabaseClient<any, any, any>;
 
 const phoneCache = new Map<string, string | null>();
+const telegramChatCache = new Map<string, string | null>();
+
+export async function getOwnerTelegramChatId(sb: SB, ownerId: string): Promise<string | null> {
+  if (telegramChatCache.has(ownerId)) return telegramChatCache.get(ownerId)!;
+  const { data } = await sb
+    .from("profiles")
+    .select("telegram_chat_id")
+    .eq("id", ownerId)
+    .maybeSingle();
+  const c = ((data?.telegram_chat_id ?? "") as string).trim() || null;
+  telegramChatCache.set(ownerId, c);
+  return c;
+}
 
 export type ResultadoNotificacaoInterna = {
   enviado: boolean;
