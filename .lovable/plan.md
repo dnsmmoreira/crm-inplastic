@@ -1,97 +1,89 @@
-# Inventário — Notificação Interna (somente leitura)
+# Watchdog de conversa parada na IA
 
-Nada foi alterado. Apenas leitura de repositório e banco.
+Objetivo: nenhuma conversa em `ia_atendendo` fica horas parada sem virar lead atribuído a um vendedor.
 
-## BLOCO 1 — Pontos de notificação interna
+## BLOCO 1 — Gatilho
 
-Ponto único: `src/lib/xerife/notify.server.ts:34` (`enviarNotificacaoInterna`).
-Dois wrappers: `notifyOwner` (:77) e `notifyDiretoria` (:91).
+**Como os crons existem hoje** (registrados no banco, em `cron.job`, não em arquivo do repo):
 
-| # | Arquivo:linha | Evento que dispara | Mensagem (resumo) | Destinatário |
-|---|---|---|---|---|
-| 1 | `src/routes/api/public/hooks/xerife.ts:132` (via `sendZapiText` :35-36) | Regra de lead urgente do motor Xerife (cron), com dedupe de 24h em `lead_ai_actions` | Alerta curto sobre o lead (`Xerife WhatsApp: <msg>`) | `getOwnerPhone(ownerId)` → dono do lead |
-| 2 | `src/routes/api/public/hooks/xerife.ts:396` | Resumo diário, laço de vendedores (`resumo_diario_ativo`, `resumo_hora`) | "Resumo": leads urgentes, tarefas de hoje, tarefas vencidas, propostas paradas | `profiles.telefone_whatsapp` do vendedor (:390) |
-| 3 | `src/routes/api/public/hooks/xerife.ts:438` | Resumo diário, laço de admins | Mesmo resumo em visão consolidada + bloco "🏆 Placar do mês" (top 3) | `profiles.telefone_whatsapp` de cada admin (:435) |
-| 4 | `src/routes/api/public/hooks/xerife-engine.ts:225` (`alertDiretoria`) | Regras do motor de cadência que escalam para diretoria | Texto da regra (`msg`) + contexto do lead | `notifyDiretoria` → env `WHATSAPP_DIRETORIA` |
-| 5 | `src/routes/api/public/hooks/xerife-agenda-diaria.ts:130` | Agenda diária (07:30) | "🤠 Agenda Xerife — data", contagem vs meta, até 20 tarefas com link do lead | `notifyOwner(uid)` → vendedor |
-| 6 | `src/routes/api/public/hooks/xerife-checkpoint.ts:61` | Checkpoint 13h | "⏱️ Checkpoint 13h": concluídas, pendentes, críticas (até 5) | `notifyOwner(uid)` → vendedor |
-| 7 | `src/routes/api/public/hooks/xerife-fechamento.ts:83` | Fechamento 18h, por vendedor | "🏁 Fechamento do dia": concluídas, roladas | `notifyOwner(uid)` → vendedor |
-| 8 | `src/routes/api/public/hooks/xerife-fechamento.ts:148` | Faixa de meta cruzada (50/80/100/120), dedupe 30d em `xerife_log` | "🎯 Meta batida / X% da meta", com valores em R$ | `notifyOwner(r.vendedor_id)` → vendedor |
-| 9 | `src/routes/api/public/hooks/xerife-fechamento.ts:183` | Fim do fechamento, se há placar | "🏁 Placar Xerife": total da equipe, ranking por vendedor, top 3, faixas batidas (sem R$) | `notifyDiretoria` → env |
-| 10 | `src/routes/api/public/hooks/ia-urgente.ts:155` | POST do n8n em `/api/public/hooks/ia-urgente` (lead urgente fora do horário) | "🔴 LEAD URGENTE": empresa, contato, produto/qtd, urgência, link CRM | `process.env.WHATSAPP_DIRETORIA` (:146) |
+| jobid | jobname | schedule | endpoint |
+|---|---|---|---|
+| 2 | xerife-hourly | `0 10-23 * * *` | `/api/public/hooks/xerife` |
+| 3 | xerife-digest-daily | `0 11 * * *` | `/api/public/hooks/xerife?mode=digest` |
+| 4 | xerife-engine-15min | `*/15 10-23 * * 1-5` | `/api/public/hooks/xerife-engine` |
+| 5 | xerife-agenda-diaria | `30 10 * * 1-5` | `/api/public/hooks/xerife-agenda-diaria` |
+| 6 | xerife-checkpoint | `0 16 * * 1-5` | `/api/public/hooks/xerife-checkpoint` |
+| 7 | xerife-fechamento | `0 21 * * 1-5` | `/api/public/hooks/xerife-fechamento` |
 
-Guarda comum: `enviarNotificacaoInterna` lê `xerife_config.whatsapp_interno_ativo` (hoje `false`) e exige `ZAPI_INTERNO_INSTANCE_ID/_TOKEN/_CLIENT_TOKEN`. Hoje, nenhum dos 10 pontos envia de fato.
+Recomendação: **cron novo dedicado** (`xerife-watchdog-conversa`, `*/10 10-23 * * 1-5`), chamando um endpoint novo `/api/public/hooks/xerife-watchdog-conversa`, no mesmo padrão de auth do engine (`xerife-engine.ts:663-676`: header `x-xerife-secret` OU `apikey` = publishable key). Motivo: acrescentar a regra dentro de `runEngine` obrigaria a editar `xerife-engine.ts` (arquivo de 690 linhas com 10+ regras já validadas) e amarraria a janela do watchdog aos 15min do engine. Um `cron.schedule('xerife-watchdog-conversa', ...)` novo não toca nenhum job existente — `cron.schedule` só cria/atualiza pelo `jobname`.
 
-## BLOCO 2 — Origem do destinatário
+**Query de detecção** (via `supabaseAdmin`, ignora RLS):
 
-- Vendedor/admin: coluna `public.profiles.telefone_whatsapp`, lida em `notify.server.ts:18-28` (`getOwnerPhone`, com cache em memória) e diretamente em `xerife.ts:390` e `:435`.
-- Diretoria: variável de ambiente `WHATSAPP_DIRETORIA` — `notify.server.ts:92` e `ia-urgente.ts:146`. Não existe tabela nem coluna de diretoria.
-- Credenciais de canal: env `ZAPI_INTERNO_*` (`src/lib/zapi-send.server.ts:35-38`), sem fallback comercial.
-- Liga/desliga: `public.xerife_config.whatsapp_interno_ativo` (linha id=1).
-- Nenhum número fixo em código.
+```
+whatsapp_conversas
+WHERE status = 'ia_atendendo'
+  AND ia_ativa = true
+  AND lead_id IS NULL
+  AND requer_humano = false
+  AND coalesce(last_message_at, created_at) < :threshold
+ORDER BY coalesce(last_message_at, created_at) ASC
+LIMIT 50
+```
 
-## BLOCO 3 — Tabela de usuários
+`:threshold` calculado em **minutos úteis** com `subtractBusinessMinutes(...)` (`src/lib/xerife/businessTime.server.ts:95`), igual à regra de lead órfão (`xerife-engine.ts:242`).
 
-`public.profiles` (PK = `auth.users.id`). Colunas: `id`, `name`, `avatar_color`, `created_at`, `updated_at`, `telefone_whatsapp`, `email_cache`, `cargo`, `fuso_horario`, `ativo`, `limite_leads_simultaneos`, `canais_entrada` (text[]), `deleted_at`, `deleted_by`, `ultimo_acesso_em`, `senha_reset_exigido`. Não há coluna de papel.
+**Campo de config:** nenhum dos dois existentes serve bem. `ia_sem_resposta_horas` (=2) hoje mede "IA falou e o cliente sumiu"; `sla_lead_orfao_min` (=15) mede "lead já criado sem dono" e é consumido em `xerife-engine.ts:242-285`. Reusar qualquer um acopla duas regras diferentes ao mesmo número. Proposta: **campo novo** em `xerife_config`, `watchdog_conversa_ia_min` (default 30, migration aditiva com `ADD COLUMN IF NOT EXISTS`), mais um `watchdog_conversa_ativo boolean default false` para ligar só quando quisermos.
 
-Papéis em `public.user_roles` (enum `app_role`), contagem atual:
-- `vendedor`: 5
-- `admin`: 1
+## BLOCO 2 — Ação ao detectar
 
-Só existem esses dois valores no enum e no banco. Não há noção de diretoria, financeiro ou gestor: `cargo` é texto livre (2 de 6 preenchidos) e não é usado em nenhuma decisão de envio. `public.user_permissions` tem flags booleanas por usuário (`ver_todos_leads`, `gerenciar_usuarios`, etc.), mas nenhuma delas é consultada pelas rotinas de notificação.
+Sequência recomendada, por conversa:
 
-## BLOCO 4 — Colunas de contato em `profiles` (6 registros, 6 ativos)
+**(a) Criar o lead — reusar a lógica do `ia-qualificar`, não o `createLeadFromConversa`.**
+`createLeadFromConversa` (`src/lib/canais.functions.ts:61`) é `createServerFn` com `requireSupabaseAuth` e define `owner_id = userId` (linha 93) — não existe usuário logado num cron, e ele já grava dono errado. O caminho certo é o do webhook n8n (`ia-qualificar.ts:79-125`): insert em `leads` com `owner_id: null`, `stage: 'novo'`, `origem: 'whatsapp'`, `source` (usar `"WhatsApp Watchdog"`), tags, `notes` com a última mensagem. Para não duplicar código, extrair esse trecho para um helper server-only novo (`src/lib/xerife/watchdog-conversa.server.ts`) — ou deixá-lo autocontido no watchdog e só depois considerar unificação, se o objetivo for zero linhas tocadas em `ia-qualificar.ts`.
 
-| Coluna | Tipo | Preenchidos |
-|---|---|---|
-| `telefone_whatsapp` | text NULL | 1 |
-| `email_cache` | text NULL | 3 |
-| `cargo` | text NULL | 2 |
+**(b) Round-robin.** RPC `public.atribuir_proximo_vendedor(_lead_id uuid)` (SECURITY DEFINER), chamada em `ia-qualificar.ts:141`. O que faz: trava a linha do lead (`FOR UPDATE`); se `owner_id` já existe, retorna sem escrever nada; trava `fila_estado`, escolhe o próximo `fila_vendedores` com `ativo = true` e `posicao >` a do último, com fallback para a primeira posição ativa; se não houver ninguém ativo, `RAISE EXCEPTION 'Nenhum vendedor ativo na fila'`; atualiza `fila_estado.ultimo_user_id`; move `stage` para `qualificacao` só se estava em `novo`/`atendimento`; e nesse caso já faz `UPDATE whatsapp_conversas SET status='qualificado', ia_ativa=false WHERE lead_id = _lead_id`.
+**Ela não olha `limite_leads_simultaneos`** — esse campo só é lido/escrito na tela de usuários (`src/lib/usuarios.functions.ts:174,457`). O watchdog **consome** a RPC como está; respeitar o limite exigiria alterar a RPC, o que fica fora deste escopo.
 
-Não há coluna de telefone fixo nem de e-mail secundário. O e-mail canônico vive em `auth.users`; `email_cache` é cópia.
+**(c) Desligar a IA.** Já é efeito colateral da própria RPC (passo 5 acima), porque o lead nasce em `novo`. O watchdog só precisa de um `UPDATE` defensivo (`lead_id`, e `ia_ativa=false`/`status`) para o caso de a RPC falhar — ver Bloco 5(a).
 
-## BLOCO 5 — `public.xerife_config` (linha id=1)
+**(d) Notificar o vendedor.** Reusar `notifyOwner(ownerId, msg)` (`src/lib/xerife/notify.server.ts:121`) — ele resolve telefone e `telegram_chat_id` do perfil e chama `enviarNotificacaoInterna`, que hoje dá precedência ao Telegram (`notify.server.ts:60-83`) porque `xerife_config.telegram_ativo = true`. Zero mudança nesse arquivo. Mensagem com `crmLeadLink(leadId)` (`notify.server.ts:154`).
 
-| Coluna | Tipo | Valor atual |
-|---|---|---|
-| id | integer | 1 |
-| ativo | boolean | true |
-| whatsapp_interno_ativo | boolean | false |
-| resumo_diario_ativo | boolean | true |
-| resumo_hora | time | 08:00:00 |
-| horario_comercial_inicio / fim | time | 07:00:00 / 20:00:00 |
-| dias_uteis_inicio / fim | time | 08:00:00 / 18:00:00 |
-| dias_sem_interacao_por_etapa | jsonb | novo 1, qualificacao 2, proposta 3, negociacao 2 |
-| max_dias_etapa | jsonb | novo 1, qualificacao 2, proposta 3, negociacao 5 |
-| cadencia_proposta_dias | int[] | {2,5,10,15} |
-| proposta_enviada_dias | integer | 3 |
-| pos_venda_dias | int[] | {3,15,45} |
-| tarefa_atrasada_horas | integer | 24 |
-| ia_sem_resposta_horas | integer | 2 |
-| sla_primeiro_contato_min / escalar_min | integer | 15 / 60 |
-| sla_resposta_whatsapp_horas / escalar_horas | integer | 2 / 4 |
-| sla_lead_orfao_min | integer | 15 |
-| auto_atribuir_lead_orfao | boolean | true |
-| carteira_alerta_dias / critico_dias | integer | 45 / 60 |
-| reciclagem_perdidos_dias | integer | 90 |
-| meta_atividades_dia | integer | 15 |
-| placar_peso_ganho / proposta / tarefa / pos_venda | integer | 10 / 3 / 1 / 2 |
-| placar_peso_sla_estourado / carteira_60 | integer | -5 / -3 |
-| placar_peso_meta_batida | integer | 20 |
-| placar_dias_sem_proposta_limite | integer | 14 |
-| updated_at | timestamptz | 2026-07-06 14:42:29+00 |
+## BLOCO 3 — Não conflitar com o n8n
 
-## BLOCO 6 — Eventos financeiros e de diretoria hoje SEM notificação
+Se o watchdog agir primeiro e o n8n chamar `ia-qualificar` depois:
 
-Nenhum destes dispara notificação interna hoje:
+- `ia-qualificar.ts:76-79` lê `conv.lead_id` e **só cria lead se estiver nulo** (`if (!leadId)`). Como o watchdog já gravou `lead_id`, o insert é pulado. **Sem lead duplicado.**
+- `ia-qualificar.ts:128-136` reaplica `status='qualificado'`, `ia_ativa=false` — idempotente.
+- Se vier com `distribuir: true`, a RPC (`:141`) retorna o `owner_id` já existente sem escrever nem consumir posição da fila (guarda de proprietário). **A fila não anda duas vezes.**
+- Único efeito colateral: mais uma linha em `lead_ai_actions` (`:159` / `:173`) — registro de auditoria, aceitável.
 
-- Proposta enviada / aprovada / virada em pedido: `src/routes/propostas.$id.tsx:344` (`status: "pedido"`); campos `approval_requested_at`, `approved_at`, `order_created_at` gravados em `src/lib/omie.functions.ts:92`, `:109`, `:110` — sem chamada a `notify*`.
-- Negócio ganho: `src/lib/omie.functions.ts:116` e `:145` (`stage: "ganho"`), `src/lib/crm-store.ts:311`, fluxo do hook `src/hooks/use-move-lead-stage.tsx:81-90`. Sem notificação.
-- Negócio perdido (com motivo obrigatório): `src/hooks/use-move-lead-stage.tsx:52-74`. Só grava nota/interação, sem notificação.
-- Pedido gerado a partir da proposta: `src/lib/omie.functions.ts:150` / `:176` (`ensurePedidoFromProposta`). Sem notificação.
-- Aprovação de pedido solicitada e decidida: `src/lib/pedidos.functions.ts:621` (`solicitarAprovacao`) e `:648` (`decidirAprovacao`). Gravam campos de aprovação, não notificam.
-- Mudança de etapa de pedido: fila `pedido_notificacoes` é gravada em `src/lib/pedidos.functions.ts:280`, mas o disparo está desligado por `NOTIFY_DISPATCH_ENABLED = false` em `:219` (verificado em `:300`). Leitura read-only em `:903`.
-- Faturamento / nota fiscal: `src/lib/pedidos.functions.ts:762` (`nf_emitida_em` quando `fiscal_status = "emitida"`) e histórico em `pedido_fiscal_history`. Sem notificação.
-- Ocorrências de pedido (tabela `pedido_ocorrencias`): registradas, sem notificação.
-- Meta / snapshot mensal: `src/lib/placar.functions.ts:232` e `src/routes/api/public/hooks/xerife-fechamento.ts:176` (`snapshot_metas_mes`). O snapshot em si não notifica; só a faixa de meta (Bloco 1, item 8) notifica o vendedor.
-- Inadimplência: não existe nenhuma tabela, coluna ou código de inadimplência/cobrança no projeto.
+Idempotência do próprio watchdog, com o que já existe:
+1. A query filtra `lead_id IS NULL`, então a conversa sai do conjunto assim que é tratada.
+2. `alreadyActed(sb, 'watchdog_conversa_ia', leadId|null, 24)` e `logAction(...)` de `src/lib/xerife/dedupe.server.ts:14,45` — como não há lead antes da ação, o dedupe usa a **conversa** como chave: gravar em `xerife_log` com `regra='watchdog_conversa_ia'` e `payload.conversa_id`, e checar por esse payload (ou gravar o `lead_id` depois de criado e confiar no filtro 1 + janela).
+3. Ordem transacional prática: criar lead → gravar `lead_id` na conversa → chamar RPC → logar. Se o processo morrer no meio, a rodada seguinte vê `lead_id` preenchido e não recria; o lead sem dono é então coberto pela regra de lead órfão já existente (`xerife-engine.ts:242-285`).
+
+## BLOCO 4 — Impacto / escopo congelado
+
+**Criados**
+- `src/routes/api/public/hooks/xerife-watchdog-conversa.ts` — endpoint + `runWatchdogConversa({force, dryRun})`.
+- (opcional) `src/lib/xerife/watchdog-conversa.server.ts` — se preferirmos separar a lógica do handler.
+- Migration aditiva: `ALTER TABLE public.xerife_config ADD COLUMN IF NOT EXISTS watchdog_conversa_ativo boolean NOT NULL DEFAULT false, ADD COLUMN IF NOT EXISTS watchdog_conversa_ia_min integer NOT NULL DEFAULT 30;`
+- Registro do cron novo (`cron.schedule('xerife-watchdog-conversa', ...)`), via operação de dados, não migration.
+
+**Tocados (mínimo, todos aditivos)**
+- `src/lib/xerife.functions.ts` — acrescentar `runWatchdogConversaNow` / `simulateWatchdogConversa` (admin-only), no mesmo padrão das linhas 188-248. Só inserções ao fim do arquivo.
+- Opcionalmente `src/components/xerife/XerifeConfigForm.tsx` + o schema em `src/lib/xerife/../xerife.functions.ts:36-117` — para expor o toggle e a janela na tela. Se ficar de fora desta fase, os campos só mudam por SQL.
+
+**Confirmado sem alterar:** placar, `estimated_value`, leads existentes (o watchdog só faz INSERT de leads novos), ordem da fila (só consome a RPC, que já é quem avança `fila_estado`), `src/routes/api/public/zapi/webhook.ts`, canal comercial (`canais.functions.ts`, `zapi.functions.ts`, `ia-responder.ts`), Telegram (webhook/vínculo/secrets — só chamamos `notifyOwner`), e as rotinas atuais do Xerife (`xerife.ts`, `xerife-engine.ts`, `xerife-agenda-diaria.ts`, `xerife-checkpoint.ts`, `xerife-fechamento.ts`, `xerife-pedidos.ts` intactos).
+
+Único arquivo existente que precisa encostar de fato é `src/lib/xerife.functions.ts`, e apenas por inserção no fim, para dar ao admin um botão "rodar agora / simular" coerente com as outras rotinas. Se quiser escopo ainda mais fechado, dá para pular isso e testar só via cron/curl.
+
+## BLOCO 5 — Casos de borda
+
+**(a) Sem fila / sem vendedor ativo.** A RPC lança `Nenhum vendedor ativo na fila`. O watchdog captura o erro, **mantém o lead criado sem dono**, grava `xerife_log` com `acao='lead criado sem vendedor'` e dispara `notifyDiretoria` (`notify.server.ts:135`). O lead então cai naturalmente na regra de lead órfão existente. Nunca deixar a exceção derrubar o loop — try/catch por conversa.
+
+**(b) Mídia com `requer_humano=true`, `ia_ativa=false`.** Fora do conjunto: o filtro exige `ia_ativa = true`, e adicionamos `requer_humano = false` explicitamente. Essa conversa já foi entregue ao humano por decisão do webhook; tratá-la aqui seria sequestrar um atendimento em curso. Se quisermos cobrir depois, vira uma segunda regra separada (alerta, não criação automática de lead).
+
+**(c) Horário comercial.** Sim, respeita. `isBusinessNow(win)` (`businessTime.server.ts:52`) com a janela de `xerife_config.horario_comercial_inicio/fim` (mesmo padrão de `xerife-engine.ts:158`), e o cron já limita `* * 1-5`. Fora da janela, retorna `{ ran: false }` sem agir — exceto com `?force=1`. O threshold usa minutos **úteis**, então conversa que chegou às 19h50 não é considerada parada às 8h do dia seguinte por "12 horas de silêncio".
+
+**(d) Loop a cada rodada.** Três travas: (1) `lead_id IS NULL` remove a conversa do conjunto após a primeira ação; (2) `alreadyActed(..., 'watchdog_conversa_ia', ..., 24h)` de `dedupe.server.ts:14`; (3) `LIMIT 50` por rodada, para o backlog inicial não virar uma rajada de notificações. Modo `dryRun` retorna o plano sem escrever, para conferirmos o alcance antes de ligar.
