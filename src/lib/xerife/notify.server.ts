@@ -12,7 +12,13 @@ const phoneCache = new Map<string, string | null>();
 
 export type ResultadoNotificacaoInterna = {
   enviado: boolean;
-  motivo?: "canal_interno_desligado" | "canal_interno_sem_credencial" | "sem_destino" | "erro_envio";
+  motivo?:
+    | "canal_interno_desligado"
+    | "canal_interno_sem_credencial"
+    | "sem_destino"
+    | "erro_envio"
+    | "telegram_sem_token"
+    | "sem_chat_id";
 };
 
 export async function getOwnerPhone(sb: SB, ownerId: string): Promise<string | null> {
