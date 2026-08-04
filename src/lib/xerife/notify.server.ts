@@ -110,8 +110,9 @@ export async function notifyOwner(ownerId: string | null, msg: string): Promise<
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const phone = await getOwnerPhone(supabaseAdmin, ownerId);
-    if (!phone) return false;
-    const r = await enviarNotificacaoInterna(phone, msg, "xerife");
+    const chatId = await getOwnerTelegramChatId(supabaseAdmin, ownerId);
+    if (!phone && !chatId) return false;
+    const r = await enviarNotificacaoInterna(phone, msg, "xerife", { telegramChatId: chatId });
     return r.enviado;
   } catch (e) {
     console.error("[xerife/notify] erro:", e instanceof Error ? e.message : String(e));
@@ -121,7 +122,20 @@ export async function notifyOwner(ownerId: string | null, msg: string): Promise<
 
 export async function notifyDiretoria(msg: string): Promise<boolean> {
   const phone = (process.env.WHATSAPP_DIRETORIA ?? "").trim();
-  const r = await enviarNotificacaoInterna(phone, msg, "xerife-diretoria");
+  const chatId = (process.env.TELEGRAM_CHAT_DIRETORIA ?? "").trim() || null;
+  const r = await enviarNotificacaoInterna(phone, msg, "xerife-diretoria", {
+    telegramChatId: chatId,
+  });
+  return r.enviado;
+}
+
+/** Caminho pronto para eventos financeiros (sem call site nesta fase). */
+export async function notifyFinanceiro(msg: string): Promise<boolean> {
+  const phone = (process.env.WHATSAPP_FINANCEIRO ?? "").trim();
+  const chatId = (process.env.TELEGRAM_CHAT_FINANCEIRO ?? "").trim() || null;
+  const r = await enviarNotificacaoInterna(phone, msg, "xerife-financeiro", {
+    telegramChatId: chatId,
+  });
   return r.enviado;
 }
 
