@@ -1862,6 +1862,8 @@ export type Database = {
           tarefa_atrasada_horas: number
           telegram_ativo: boolean
           updated_at: string
+          watchdog_conversa_ativo: boolean
+          watchdog_conversa_ia_min: number
           whatsapp_interno_ativo: boolean
         }
         Insert: {
@@ -1900,6 +1902,8 @@ export type Database = {
           tarefa_atrasada_horas?: number
           telegram_ativo?: boolean
           updated_at?: string
+          watchdog_conversa_ativo?: boolean
+          watchdog_conversa_ia_min?: number
           whatsapp_interno_ativo?: boolean
         }
         Update: {
@@ -1938,6 +1942,8 @@ export type Database = {
           tarefa_atrasada_horas?: number
           telegram_ativo?: boolean
           updated_at?: string
+          watchdog_conversa_ativo?: boolean
+          watchdog_conversa_ia_min?: number
           whatsapp_interno_ativo?: boolean
         }
         Relationships: []
