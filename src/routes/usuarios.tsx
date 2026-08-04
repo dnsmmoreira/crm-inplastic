@@ -21,6 +21,7 @@ import {
 } from "@/lib/usuarios.functions";
 import { UsuarioEditDialog } from "@/components/usuarios/UsuarioEditDialog";
 import { ExcluirUsuarioDialog } from "@/components/usuarios/ExcluirUsuarioDialog";
+import { TelegramVinculoButton } from "@/components/usuarios/TelegramVinculoButton";
 
 export const Route = createFileRoute("/usuarios")({
   component: UsuariosPage,
