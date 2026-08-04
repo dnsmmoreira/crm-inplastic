@@ -1,7 +1,7 @@
 /**
  * Endpoint do Watchdog de conversa parada na IA.
  * Auth: mesmo padrão do xerife-engine (x-xerife-secret OU apikey do cron).
- * Cron: xerife-watchdog-conversa, */10 10-23 * * 1-5.
+ * Cron: xerife-watchdog-conversa, a cada 10 min, 10-23h UTC, seg-sex.
  */
 import { createFileRoute } from "@tanstack/react-router";
 
