@@ -247,3 +247,21 @@ export const simulateXerifePedidos = createServerFn({ method: "POST" })
     return runXerifePedidos({ force: true, dryRun: true });
   });
 
+/** Executa o Watchdog de conversa parada na IA agora. Somente admin. */
+export const runWatchdogConversaNow = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context);
+    const { runWatchdogConversa } = await import("@/lib/xerife/watchdog-conversa.server");
+    return runWatchdogConversa({ force: true });
+  });
+
+/** Simula o Watchdog de conversa parada, sem gravar nada. Somente admin. */
+export const simulateWatchdogConversa = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context);
+    const { runWatchdogConversa } = await import("@/lib/xerife/watchdog-conversa.server");
+    return runWatchdogConversa({ force: true, dryRun: true });
+  });
+
