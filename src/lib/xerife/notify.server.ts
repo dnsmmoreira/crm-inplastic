@@ -9,10 +9,29 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 type SB = SupabaseClient<any, any, any>;
 
 const phoneCache = new Map<string, string | null>();
+const telegramChatCache = new Map<string, string | null>();
+
+export async function getOwnerTelegramChatId(sb: SB, ownerId: string): Promise<string | null> {
+  if (telegramChatCache.has(ownerId)) return telegramChatCache.get(ownerId)!;
+  const { data } = await sb
+    .from("profiles")
+    .select("telegram_chat_id")
+    .eq("id", ownerId)
+    .maybeSingle();
+  const c = ((data?.telegram_chat_id ?? "") as string).trim() || null;
+  telegramChatCache.set(ownerId, c);
+  return c;
+}
 
 export type ResultadoNotificacaoInterna = {
   enviado: boolean;
-  motivo?: "canal_interno_desligado" | "canal_interno_sem_credencial" | "sem_destino" | "erro_envio";
+  motivo?:
+    | "canal_interno_desligado"
+    | "canal_interno_sem_credencial"
+    | "sem_destino"
+    | "erro_envio"
+    | "telegram_sem_token"
+    | "sem_chat_id";
 };
 
 export async function getOwnerPhone(sb: SB, ownerId: string): Promise<string | null> {
@@ -35,8 +54,33 @@ export async function enviarNotificacaoInterna(
   destino: string | null | undefined,
   texto: string,
   ctx = "interno",
+  opts?: { telegramChatId?: string | null },
 ): Promise<ResultadoNotificacaoInterna> {
   try {
+    // ---- Trilho TELEGRAM (tem precedência quando xerife_config.telegram_ativo = true) ----
+    {
+      const { supabaseAdmin: sbTg } = await import("@/integrations/supabase/client.server");
+      const { data: cfgTg } = await sbTg
+        .from("xerife_config")
+        .select("telegram_ativo")
+        .eq("id", 1)
+        .maybeSingle();
+      if (cfgTg?.telegram_ativo) {
+        const tgToken = (process.env.TELEGRAM_BOT_TOKEN ?? "").trim();
+        if (!tgToken) {
+          console.warn(
+            "[notificacao-interna] TELEGRAM_BOT_TOKEN ausente — nada enviado (sem fallback WhatsApp/comercial).",
+          );
+          return { enviado: false, motivo: "telegram_sem_token" };
+        }
+        const chatId = (opts?.telegramChatId ?? "").trim();
+        if (!chatId) return { enviado: false, motivo: "sem_chat_id" };
+        const { sendTelegramText } = await import("@/lib/telegram-send.server");
+        const tg = await sendTelegramText(chatId, texto, ctx);
+        return tg.ok ? { enviado: true } : { enviado: false, motivo: "erro_envio" };
+      }
+    }
+
     const alvo = (destino ?? "").trim();
     if (!alvo) return { enviado: false, motivo: "sem_destino" };
 
@@ -79,8 +123,9 @@ export async function notifyOwner(ownerId: string | null, msg: string): Promise<
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const phone = await getOwnerPhone(supabaseAdmin, ownerId);
-    if (!phone) return false;
-    const r = await enviarNotificacaoInterna(phone, msg, "xerife");
+    const chatId = await getOwnerTelegramChatId(supabaseAdmin, ownerId);
+    if (!phone && !chatId) return false;
+    const r = await enviarNotificacaoInterna(phone, msg, "xerife", { telegramChatId: chatId });
     return r.enviado;
   } catch (e) {
     console.error("[xerife/notify] erro:", e instanceof Error ? e.message : String(e));
@@ -90,7 +135,20 @@ export async function notifyOwner(ownerId: string | null, msg: string): Promise<
 
 export async function notifyDiretoria(msg: string): Promise<boolean> {
   const phone = (process.env.WHATSAPP_DIRETORIA ?? "").trim();
-  const r = await enviarNotificacaoInterna(phone, msg, "xerife-diretoria");
+  const chatId = (process.env.TELEGRAM_CHAT_DIRETORIA ?? "").trim() || null;
+  const r = await enviarNotificacaoInterna(phone, msg, "xerife-diretoria", {
+    telegramChatId: chatId,
+  });
+  return r.enviado;
+}
+
+/** Caminho pronto para eventos financeiros (sem call site nesta fase). */
+export async function notifyFinanceiro(msg: string): Promise<boolean> {
+  const phone = (process.env.WHATSAPP_FINANCEIRO ?? "").trim();
+  const chatId = (process.env.TELEGRAM_CHAT_FINANCEIRO ?? "").trim() || null;
+  const r = await enviarNotificacaoInterna(phone, msg, "xerife-financeiro", {
+    telegramChatId: chatId,
+  });
   return r.enviado;
 }
 

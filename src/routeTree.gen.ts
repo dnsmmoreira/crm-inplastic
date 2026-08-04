@@ -37,6 +37,7 @@ import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as ApiPublicZapiWebhookRouteImport } from './routes/api/public/zapi/webhook'
+import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram/webhook'
 import { Route as ApiPublicHooksXerifePedidosRouteImport } from './routes/api/public/hooks/xerife-pedidos'
 import { Route as ApiPublicHooksXerifeFechamentoRouteImport } from './routes/api/public/hooks/xerife-fechamento'
 import { Route as ApiPublicHooksXerifeEngineRouteImport } from './routes/api/public/hooks/xerife-engine'
@@ -190,6 +191,12 @@ const ApiPublicZapiWebhookRoute = ApiPublicZapiWebhookRouteImport.update({
   path: '/api/public/zapi/webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicTelegramWebhookRoute =
+  ApiPublicTelegramWebhookRouteImport.update({
+    id: '/api/public/telegram/webhook',
+    path: '/api/public/telegram/webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksXerifePedidosRoute =
   ApiPublicHooksXerifePedidosRouteImport.update({
     id: '/api/public/hooks/xerife-pedidos',
@@ -280,6 +287,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/xerife-engine': typeof ApiPublicHooksXerifeEngineRoute
   '/api/public/hooks/xerife-fechamento': typeof ApiPublicHooksXerifeFechamentoRoute
   '/api/public/hooks/xerife-pedidos': typeof ApiPublicHooksXerifePedidosRoute
+  '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
   '/api/public/zapi/webhook': typeof ApiPublicZapiWebhookRoute
 }
 export interface FileRoutesByTo {
@@ -319,6 +327,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/xerife-engine': typeof ApiPublicHooksXerifeEngineRoute
   '/api/public/hooks/xerife-fechamento': typeof ApiPublicHooksXerifeFechamentoRoute
   '/api/public/hooks/xerife-pedidos': typeof ApiPublicHooksXerifePedidosRoute
+  '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
   '/api/public/zapi/webhook': typeof ApiPublicZapiWebhookRoute
 }
 export interface FileRoutesById {
@@ -359,6 +368,7 @@ export interface FileRoutesById {
   '/api/public/hooks/xerife-engine': typeof ApiPublicHooksXerifeEngineRoute
   '/api/public/hooks/xerife-fechamento': typeof ApiPublicHooksXerifeFechamentoRoute
   '/api/public/hooks/xerife-pedidos': typeof ApiPublicHooksXerifePedidosRoute
+  '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
   '/api/public/zapi/webhook': typeof ApiPublicZapiWebhookRoute
 }
 export interface FileRouteTypes {
@@ -400,6 +410,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/xerife-engine'
     | '/api/public/hooks/xerife-fechamento'
     | '/api/public/hooks/xerife-pedidos'
+    | '/api/public/telegram/webhook'
     | '/api/public/zapi/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -439,6 +450,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/xerife-engine'
     | '/api/public/hooks/xerife-fechamento'
     | '/api/public/hooks/xerife-pedidos'
+    | '/api/public/telegram/webhook'
     | '/api/public/zapi/webhook'
   id:
     | '__root__'
@@ -478,6 +490,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/xerife-engine'
     | '/api/public/hooks/xerife-fechamento'
     | '/api/public/hooks/xerife-pedidos'
+    | '/api/public/telegram/webhook'
     | '/api/public/zapi/webhook'
   fileRoutesById: FileRoutesById
 }
@@ -518,6 +531,7 @@ export interface RootRouteChildren {
   ApiPublicHooksXerifeEngineRoute: typeof ApiPublicHooksXerifeEngineRoute
   ApiPublicHooksXerifeFechamentoRoute: typeof ApiPublicHooksXerifeFechamentoRoute
   ApiPublicHooksXerifePedidosRoute: typeof ApiPublicHooksXerifePedidosRoute
+  ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
   ApiPublicZapiWebhookRoute: typeof ApiPublicZapiWebhookRoute
 }
 
@@ -719,6 +733,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicZapiWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/telegram/webhook': {
+      id: '/api/public/telegram/webhook'
+      path: '/api/public/telegram/webhook'
+      fullPath: '/api/public/telegram/webhook'
+      preLoaderRoute: typeof ApiPublicTelegramWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/xerife-pedidos': {
       id: '/api/public/hooks/xerife-pedidos'
       path: '/api/public/hooks/xerife-pedidos'
@@ -823,6 +844,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksXerifeEngineRoute: ApiPublicHooksXerifeEngineRoute,
   ApiPublicHooksXerifeFechamentoRoute: ApiPublicHooksXerifeFechamentoRoute,
   ApiPublicHooksXerifePedidosRoute: ApiPublicHooksXerifePedidosRoute,
+  ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
   ApiPublicZapiWebhookRoute: ApiPublicZapiWebhookRoute,
 }
 export const routeTree = rootRouteImport

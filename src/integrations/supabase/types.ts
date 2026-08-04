@@ -1205,6 +1205,8 @@ export type Database = {
           name: string
           senha_reset_exigido: boolean
           telefone_whatsapp: string | null
+          telegram_chat_id: string | null
+          telegram_vinculo_codigo: string | null
           ultimo_acesso_em: string | null
           updated_at: string
         }
@@ -1223,6 +1225,8 @@ export type Database = {
           name?: string
           senha_reset_exigido?: boolean
           telefone_whatsapp?: string | null
+          telegram_chat_id?: string | null
+          telegram_vinculo_codigo?: string | null
           ultimo_acesso_em?: string | null
           updated_at?: string
         }
@@ -1241,6 +1245,8 @@ export type Database = {
           name?: string
           senha_reset_exigido?: boolean
           telefone_whatsapp?: string | null
+          telegram_chat_id?: string | null
+          telegram_vinculo_codigo?: string | null
           ultimo_acesso_em?: string | null
           updated_at?: string
         }
@@ -1854,6 +1860,7 @@ export type Database = {
           sla_resposta_whatsapp_escalar_horas: number
           sla_resposta_whatsapp_horas: number
           tarefa_atrasada_horas: number
+          telegram_ativo: boolean
           updated_at: string
           whatsapp_interno_ativo: boolean
         }
@@ -1891,6 +1898,7 @@ export type Database = {
           sla_resposta_whatsapp_escalar_horas?: number
           sla_resposta_whatsapp_horas?: number
           tarefa_atrasada_horas?: number
+          telegram_ativo?: boolean
           updated_at?: string
           whatsapp_interno_ativo?: boolean
         }
@@ -1928,6 +1936,7 @@ export type Database = {
           sla_resposta_whatsapp_escalar_horas?: number
           sla_resposta_whatsapp_horas?: number
           tarefa_atrasada_horas?: number
+          telegram_ativo?: boolean
           updated_at?: string
           whatsapp_interno_ativo?: boolean
         }

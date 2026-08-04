@@ -21,6 +21,7 @@ import {
 } from "@/lib/usuarios.functions";
 import { UsuarioEditDialog } from "@/components/usuarios/UsuarioEditDialog";
 import { ExcluirUsuarioDialog } from "@/components/usuarios/ExcluirUsuarioDialog";
+import { TelegramVinculoButton } from "@/components/usuarios/TelegramVinculoButton";
 
 export const Route = createFileRoute("/usuarios")({
   component: UsuariosPage,
@@ -223,6 +224,7 @@ function UsuariosPage() {
                     <Button size="sm" variant="outline" className="gap-1" onClick={() => setEditando(r)}>
                       <Pencil className="h-3.5 w-3.5" /> Editar
                     </Button>
+                    <TelegramVinculoButton userId={r.id} nome={r.name} />
                     <Button
                       size="icon"
                       variant="ghost"
