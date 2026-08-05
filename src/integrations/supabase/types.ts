@@ -1122,50 +1122,6 @@ export type Database = {
           },
         ]
       }
-      produto_estoque: {
-        Row: {
-          atualizado_em: string
-          atualizado_por: string | null
-          created_at: string
-          deposito: string
-          id: string
-          origem: string
-          produto_id: string
-          saldo: number
-          saldo_minimo: number
-        }
-        Insert: {
-          atualizado_em?: string
-          atualizado_por?: string | null
-          created_at?: string
-          deposito?: string
-          id?: string
-          origem?: string
-          produto_id: string
-          saldo?: number
-          saldo_minimo?: number
-        }
-        Update: {
-          atualizado_em?: string
-          atualizado_por?: string | null
-          created_at?: string
-          deposito?: string
-          id?: string
-          origem?: string
-          produto_id?: string
-          saldo?: number
-          saldo_minimo?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "produto_estoque_produto_id_fkey"
-            columns: ["produto_id"]
-            isOneToOne: false
-            referencedRelation: "produtos"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       produtos: {
         Row: {
           active: boolean
@@ -1173,6 +1129,7 @@ export type Database = {
           created_at: string
           default_price: number
           description: string
+          estoque_atual: number
           family: string | null
           height_cm: number
           id: string
@@ -1193,6 +1150,7 @@ export type Database = {
           created_at?: string
           default_price?: number
           description?: string
+          estoque_atual?: number
           family?: string | null
           height_cm?: number
           id?: string
@@ -1213,6 +1171,7 @@ export type Database = {
           created_at?: string
           default_price?: number
           description?: string
+          estoque_atual?: number
           family?: string | null
           height_cm?: number
           id?: string
