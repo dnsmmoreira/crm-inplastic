@@ -38,48 +38,31 @@ export const Route = createFileRoute("/estoque")({
   component: EstoquePage,
 });
 
-type EstoqueRow = {
-  id: string;
-  produto_id: string;
-  deposito: string;
-  saldo: number;
-  saldo_minimo: number;
-  atualizado_em: string;
-};
+const SALDO_BAIXO = 100;
 
 function EstoquePage() {
   const products = useCrm((s) => s.products);
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const [q, setQ] = useState("");
-  const [estoque, setEstoque] = useState<EstoqueRow[]>([]);
-  const [editing, setEditing] = useState<{ produtoId: string; nome: string; saldo: string; minimo: string } | null>(null);
+  const [saldos, setSaldos] = useState<Record<string, number>>({});
+  const [editing, setEditing] = useState<{ produtoId: string; nome: string; saldo: string } | null>(null);
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
-    const { data, error } = await supabase
-      .from("produto_estoque")
-      .select("id, produto_id, deposito, saldo, saldo_minimo, atualizado_em");
+    const { data, error } = await supabase.from("produtos").select("id, estoque_atual");
     if (error) {
       console.error(error);
       return;
     }
-    setEstoque((data ?? []) as EstoqueRow[]);
+    const map: Record<string, number> = {};
+    for (const row of data ?? []) map[row.id] = Number(row.estoque_atual) || 0;
+    setSaldos(map);
   }, []);
 
   useEffect(() => {
     void load();
   }, [load]);
-
-  const byProduto = useMemo(() => {
-    const map = new Map<string, { saldo: number; minimo: number }>();
-    for (const e of estoque) {
-      const cur = map.get(e.produto_id) ?? { saldo: 0, minimo: Number(e.saldo_minimo) || 10 };
-      cur.saldo += Number(e.saldo) || 0;
-      map.set(e.produto_id, cur);
-    }
-    return map;
-  }, [estoque]);
 
   const rows = useMemo(() => {
     const term = q.trim().toLowerCase();
@@ -91,17 +74,10 @@ function EstoquePage() {
   async function salvar() {
     if (!editing) return;
     setSaving(true);
-    const { error } = await supabase.from("produto_estoque").upsert(
-      {
-        produto_id: editing.produtoId,
-        deposito: "Principal",
-        saldo: Number(editing.saldo) || 0,
-        saldo_minimo: Number(editing.minimo) || 0,
-        origem: "manual",
-        atualizado_por: user?.id ?? null,
-      },
-      { onConflict: "produto_id,deposito" },
-    );
+    const { error } = await supabase
+      .from("produtos")
+      .update({ estoque_atual: Number(editing.saldo) || 0 })
+      .eq("id", editing.produtoId);
     setSaving(false);
     if (error) {
       toast.error(error.message);
@@ -121,7 +97,8 @@ function EstoquePage() {
         <div>
           <h1 className="font-display text-2xl font-semibold">Estoque</h1>
           <p className="text-sm text-muted-foreground">
-            Saldo por produto. {isAdmin ? "Atualização manual pelo administrador." : "Consulta somente leitura."}
+            Saldo único por produto. Baixa automática a cada pedido.{" "}
+            {isAdmin ? "Entrada manual pelo administrador." : "Consulta somente leitura."}
           </p>
         </div>
       </div>
@@ -130,7 +107,7 @@ function EstoquePage() {
         <CardHeader className="gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <CardTitle className="text-base">Produtos ativos</CardTitle>
-            <CardDescription>{rows.length} item(ns)</CardDescription>
+            <CardDescription>{rows.length} item(ns) · alerta abaixo de {SALDO_BAIXO}</CardDescription>
           </div>
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -162,11 +139,9 @@ function EstoquePage() {
                 </TableRow>
               ) : (
                 rows.map((p) => {
-                  const info = byProduto.get(p.id);
-                  const saldo = info?.saldo ?? 0;
-                  const minimo = info?.minimo ?? 10;
+                  const saldo = saldos[p.id] ?? 0;
                   const zerado = saldo <= 0;
-                  const baixo = !zerado && saldo <= minimo;
+                  const baixo = !zerado && saldo < SALDO_BAIXO;
                   return (
                     <TableRow key={p.id}>
                       <TableCell className="font-mono text-xs">{p.sku}</TableCell>
@@ -190,14 +165,7 @@ function EstoquePage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() =>
-                              setEditing({
-                                produtoId: p.id,
-                                nome: p.name,
-                                saldo: String(saldo),
-                                minimo: String(minimo),
-                              })
-                            }
+                            onClick={() => setEditing({ produtoId: p.id, nome: p.name, saldo: String(saldo) })}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -217,25 +185,14 @@ function EstoquePage() {
           <DialogHeader>
             <DialogTitle>Atualizar saldo — {editing?.nome}</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="saldo">Saldo atual</Label>
-              <Input
-                id="saldo"
-                type="number"
-                value={editing?.saldo ?? ""}
-                onChange={(e) => setEditing((s) => (s ? { ...s, saldo: e.target.value } : s))}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="minimo">Alerta de saldo baixo (mínimo)</Label>
-              <Input
-                id="minimo"
-                type="number"
-                value={editing?.minimo ?? ""}
-                onChange={(e) => setEditing((s) => (s ? { ...s, minimo: e.target.value } : s))}
-              />
-            </div>
+          <div className="grid gap-2">
+            <Label htmlFor="saldo">Saldo atual</Label>
+            <Input
+              id="saldo"
+              type="number"
+              value={editing?.saldo ?? ""}
+              onChange={(e) => setEditing((s) => (s ? { ...s, saldo: e.target.value } : s))}
+            />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditing(null)}>
