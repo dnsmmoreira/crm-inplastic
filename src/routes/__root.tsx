@@ -28,6 +28,8 @@ import {
   Trophy,
   BookOpen,
   BarChart3,
+  Tags,
+
 } from "lucide-react";
 
 
