@@ -339,8 +339,6 @@ function UserBadge() {
         </div>
         <NotificacoesBell />
       </div>
-
-      </div>
       <Button
         variant="outline"
         size="sm"
