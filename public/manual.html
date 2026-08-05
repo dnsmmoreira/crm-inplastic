@@ -4,7 +4,7 @@
 <script>document.documentElement.classList.add("js");</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Manual Animado do CRM Inplastic</title>
+<title>Manual Completo do CRM Inplastic</title>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:ital,wght@0,400;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
 <style>
   :root{
@@ -1160,6 +1160,81 @@
   </div>
 </section>
 
+
+<!-- ============ 9. ROTINA DO DIA ============ -->
+<style>
+  .rotina-lista{list-style:none;counter-reset:rot;padding:0;margin:18px 0}
+  .rotina-lista li{counter-increment:rot;position:relative;background:#fff;border:2px solid var(--borda);
+    border-radius:16px;padding:14px 16px 14px 62px;margin-bottom:10px;font-weight:600;font-size:15.5px}
+  .rotina-lista li::before{content:counter(rot);position:absolute;left:14px;top:50%;transform:translateY(-50%);
+    width:36px;height:36px;background:var(--azul);color:#fff;border-radius:50%;display:flex;align-items:center;
+    justify-content:center;font-family:'Baloo 2';font-weight:800;font-size:18px}
+  .rotina-lista li b{color:var(--azul)}
+  .momento{display:inline-block;font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;
+    color:var(--cinza);background:var(--papel);border-radius:999px;padding:1px 10px;margin-right:6px}
+  .glossario{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0}
+  @media(max-width:640px){.glossario{grid-template-columns:1fr}}
+  .gl{background:#fff;border:2px solid var(--borda);border-radius:14px;padding:12px 14px}
+  .gl .termo{font-family:'Baloo 2';font-weight:800;font-size:15.5px;color:var(--azul-escuro);margin-bottom:2px}
+  .gl .def{font-size:14px;color:var(--cinza);font-weight:600}
+</style>
+
+<section class="chapter">
+  <div class="chapter-head">
+    <div class="badge">9</div>
+    <h2>Sua rotina de todo dia<small>A receita de quem usa bem o CRM</small></h2>
+  </div>
+  <p>Você não precisa decorar nada. Se fizer só estas seis coisinhas todo dia, já está usando o CRM como um profissional — e o Paletinho fica feliz. 👏</p>
+
+  <figure class="figure">
+    <svg width="440" height="120" viewBox="0 0 440 120" role="img" aria-label="Do sol da manhã à lua da noite, sempre com o CRM">
+      <line x1="55" y1="66" x2="385" y2="66" stroke="#9DBEE8" stroke-width="5" stroke-linecap="round" stroke-dasharray="2 12"/>
+      <g class="raios" stroke="#FFC833" stroke-width="4" stroke-linecap="round">
+        <line x1="55" y1="30" x2="55" y2="38"/><line x1="55" y1="94" x2="55" y2="102"/>
+        <line x1="19" y1="66" x2="27" y2="66"/><line x1="83" y1="66" x2="91" y2="66"/>
+      </g>
+      <circle cx="55" cy="66" r="20" fill="#FFC833" stroke="#12315C" stroke-width="3"/>
+      <text x="220" y="60" text-anchor="middle" font-family="Baloo 2" font-weight="800" font-size="15" fill="#1B5FBF">seu dia, do começo ao fim</text>
+      <text x="220" y="80" text-anchor="middle" font-family="Nunito" font-weight="700" font-size="12" fill="#5B77A0">sempre de olho nas tarefas</text>
+      <path d="M385 48 a20 20 0 1 0 6 38 a16 16 0 1 1 -6 -38z" fill="#5C9CF0" stroke="#12315C" stroke-width="3"/>
+    </svg>
+  </figure>
+
+  <ol class="rotina-lista">
+    <li><span class="momento">🌅 De manhã</span> <b>Abra o app</b> e leia o resuminho do Xerife e as suas <b>tarefas do dia</b>. É a sua lista pronta.</li>
+    <li><span class="momento">⚡ Logo cedo</span> <b>Atenda os novos rapidinho:</b> qualquer lead na coluna <b>Novo</b> merece o primeiro alô em até <b>15 minutos</b>. Pão quente! 🥖</li>
+    <li><span class="momento">📞 Durante o dia</span> <b>Faça as tarefas:</b> ligue, mande mensagem ou envie o orçamento — e conclua cada uma com uma notinha do que combinou.</li>
+    <li><span class="momento">🎢 A cada conversa</span> <b>Mova os cartões:</b> conforme o cliente avança, arraste o lead para a próxima etapa do funil.</li>
+    <li><span class="momento">🧊 Sempre</span> <b>Não deixe ninguém parado:</b> se um lead está esfriando, fale com ele hoje — antes que o Xerife precise cobrar.</li>
+    <li><span class="momento">🌙 Fim do dia</span> <b>Confira as pendências:</b> veja se não sobrou tarefa atrasada. Assim seu placar fica lindo! ✨</li>
+  </ol>
+
+  <div class="rule">O segredo em uma linha: <span>tarefa em dia + cliente bem cuidado = mais vendas.</span></div>
+</section>
+
+<!-- ============ 10. GLOSSÁRIO ============ -->
+<section class="chapter">
+  <div class="chapter-head">
+    <div class="badge">10</div>
+    <h2>Palavras difíceis, explicadas fácil<small>O dicionário do CRM</small></h2>
+  </div>
+  <p>Toda área tem suas palavras esquisitas. Aqui estão as do CRM, em português de gente:</p>
+  <div class="glossario">
+    <div class="gl"><div class="termo">🪪 Lead</div><div class="def">Um cliente interessado. Cada um é um cartãozinho no funil.</div></div>
+    <div class="gl"><div class="termo">🎢 Funil (ou Pipeline)</div><div class="def">A "esteira" com as etapas por onde o cliente passa até comprar.</div></div>
+    <div class="gl"><div class="termo">📄 Proposta</div><div class="def">O orçamento com o preço que você manda para o cliente.</div></div>
+    <div class="gl"><div class="termo">⏰ SLA</div><div class="def">Um prazo combinado (ex.: responder em 2h). Estourou, perde ponto.</div></div>
+    <div class="gl"><div class="termo">🔓 Follow-up</div><div class="def">Voltar a falar com o cliente para ele não esfriar.</div></div>
+    <div class="gl"><div class="termo">🤠 Xerife</div><div class="def">O robô do app que vigia prazos e cria tarefas para te ajudar.</div></div>
+    <div class="gl"><div class="termo">🧊 Esfriando</div><div class="def">Cliente parado, sem contato há muitos dias.</div></div>
+    <div class="gl"><div class="termo">🎁 Pós-venda</div><div class="def">Cuidar do cliente depois que ele já comprou.</div></div>
+    <div class="gl"><div class="termo">👜 Carteira</div><div class="def">O conjunto de todos os clientes que são seus.</div></div>
+    <div class="gl"><div class="termo">🎯 Meta</div><div class="def">O valor de vendas que você precisa alcançar no mês.</div></div>
+    <div class="gl"><div class="termo">🤖 Lucas</div><div class="def">A IA que atende no WhatsApp e traz leads já qualificados.</div></div>
+    <div class="gl"><div class="termo">⚙️ CRM (motor de pedidos)</div><div class="def">Quando você marca Ganho, o pedido nasce aqui dentro, sem sistema externo.</div></div>
+  </div>
+</section>
+
 <!-- ============ FINAL ============ -->
 <section class="chapter" style="background:linear-gradient(180deg,#12315C,#1B5FBF);color:#fff;text-align:center;border:none">
   <div class="paletinho-wrap">
@@ -1181,7 +1256,7 @@
 </section>
 
 </main>
-<footer style="text-align:center;font-size:13px;color:var(--cinza);padding:10px 0 40px">Versão 2.0 animada · Julho/2026 · Inplastic — crm.inplastic.com.br</footer>
+<footer style="text-align:center;font-size:13px;color:var(--cinza);padding:10px 0 40px">Versão 3.0 unificada · Julho/2026 · Inplastic — crm.inplastic.com.br</footer>
 
 <script>
 const $=s=>document.querySelector(s);
