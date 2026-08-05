@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UsuariosRouteImport } from './routes/usuarios'
 import { Route as TarefasRouteImport } from './routes/tarefas'
+import { Route as TabelaPrecosRouteImport } from './routes/tabela-precos'
 import { Route as RelatoriosRouteImport } from './routes/relatorios'
 import { Route as ProdutosRouteImport } from './routes/produtos'
 import { Route as PrimeiroAcessoRouteImport } from './routes/primeiro-acesso'
@@ -57,6 +58,11 @@ const UsuariosRoute = UsuariosRouteImport.update({
 const TarefasRoute = TarefasRouteImport.update({
   id: '/tarefas',
   path: '/tarefas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TabelaPrecosRoute = TabelaPrecosRouteImport.update({
+  id: '/tabela-precos',
+  path: '/tabela-precos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RelatoriosRoute = RelatoriosRouteImport.update({
@@ -275,6 +281,7 @@ export interface FileRoutesByFullPath {
   '/primeiro-acesso': typeof PrimeiroAcessoRoute
   '/produtos': typeof ProdutosRoute
   '/relatorios': typeof RelatoriosRoute
+  '/tabela-precos': typeof TabelaPrecosRoute
   '/tarefas': typeof TarefasRoute
   '/usuarios': typeof UsuariosRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
@@ -316,6 +323,7 @@ export interface FileRoutesByTo {
   '/primeiro-acesso': typeof PrimeiroAcessoRoute
   '/produtos': typeof ProdutosRoute
   '/relatorios': typeof RelatoriosRoute
+  '/tabela-precos': typeof TabelaPrecosRoute
   '/tarefas': typeof TarefasRoute
   '/usuarios': typeof UsuariosRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
@@ -358,6 +366,7 @@ export interface FileRoutesById {
   '/primeiro-acesso': typeof PrimeiroAcessoRoute
   '/produtos': typeof ProdutosRoute
   '/relatorios': typeof RelatoriosRoute
+  '/tabela-precos': typeof TabelaPrecosRoute
   '/tarefas': typeof TarefasRoute
   '/usuarios': typeof UsuariosRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
@@ -401,6 +410,7 @@ export interface FileRouteTypes {
     | '/primeiro-acesso'
     | '/produtos'
     | '/relatorios'
+    | '/tabela-precos'
     | '/tarefas'
     | '/usuarios'
     | '/.mcp/list-tools'
@@ -442,6 +452,7 @@ export interface FileRouteTypes {
     | '/primeiro-acesso'
     | '/produtos'
     | '/relatorios'
+    | '/tabela-precos'
     | '/tarefas'
     | '/usuarios'
     | '/.mcp/list-tools'
@@ -483,6 +494,7 @@ export interface FileRouteTypes {
     | '/primeiro-acesso'
     | '/produtos'
     | '/relatorios'
+    | '/tabela-precos'
     | '/tarefas'
     | '/usuarios'
     | '/.mcp/list-tools'
@@ -525,6 +537,7 @@ export interface RootRouteChildren {
   PrimeiroAcessoRoute: typeof PrimeiroAcessoRoute
   ProdutosRoute: typeof ProdutosRoute
   RelatoriosRoute: typeof RelatoriosRoute
+  TabelaPrecosRoute: typeof TabelaPrecosRoute
   TarefasRoute: typeof TarefasRoute
   UsuariosRoute: typeof UsuariosRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
@@ -563,6 +576,13 @@ declare module '@tanstack/react-router' {
       path: '/tarefas'
       fullPath: '/tarefas'
       preLoaderRoute: typeof TarefasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tabela-precos': {
+      id: '/tabela-precos'
+      path: '/tabela-precos'
+      fullPath: '/tabela-precos'
+      preLoaderRoute: typeof TabelaPrecosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/relatorios': {
@@ -845,6 +865,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrimeiroAcessoRoute: PrimeiroAcessoRoute,
   ProdutosRoute: ProdutosRoute,
   RelatoriosRoute: RelatoriosRoute,
+  TabelaPrecosRoute: TabelaPrecosRoute,
   TarefasRoute: TarefasRoute,
   UsuariosRoute: UsuariosRoute,
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
