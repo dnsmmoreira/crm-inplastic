@@ -34,8 +34,8 @@ export function NotificacoesBell({ className }: { className?: string }) {
       return;
     }
     void load();
-    const channel = supabase
-      .channel(`notificacoes-${userId}`)
+    const channel = supabase.channel(`notificacoes-${userId}-${Math.random().toString(36).slice(2)}`);
+    channel
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "notificacoes", filter: `user_id=eq.${userId}` },
@@ -43,9 +43,10 @@ export function NotificacoesBell({ className }: { className?: string }) {
       )
       .subscribe();
     return () => {
-      supabase.removeChannel(channel);
+      void supabase.removeChannel(channel);
     };
   }, [userId, load]);
+
 
   if (!userId) return null;
 
