@@ -229,7 +229,9 @@ function AppShell({ children }: { children: ReactNode }) {
             </div>
             <span className="font-display font-semibold">PDP CRM</span>
           </div>
+          <NotificacoesBell />
         </header>
+
         <nav className="md:hidden flex overflow-x-auto border-b bg-card">
           {nav.map((item) => {
             const active = pathname === item.to;
