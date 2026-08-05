@@ -3,21 +3,40 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 /**
- * Marca a conversa como "humano_atendendo" e desliga a IA.
- * RLS: admin sempre pode; vendedor só se for dono do lead.
+ * Marca a conversa como "humano_atendendo", desliga a IA, garante a atribuição
+ * ao usuário que assumiu e marca as notificações dessa conversa como lidas.
+ * RLS: admin sempre pode; vendedor só se for dono do lead ou o atribuído.
  */
 export const assumirConversa = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data) => z.object({ conversaId: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
+    const { data: atual } = await supabase
+      .from("whatsapp_conversas")
+      .select("atribuido_para")
+      .eq("id", data.conversaId)
+      .maybeSingle();
+
+    const patch: Record<string, unknown> = { status: "humano_atendendo", ia_ativa: false };
+    if (!atual?.atribuido_para) patch.atribuido_para = userId;
+
     const { error } = await supabase
       .from("whatsapp_conversas")
-      .update({ status: "humano_atendendo", ia_ativa: false })
+      .update(patch)
       .eq("id", data.conversaId);
     if (error) throw new Error(error.message);
+
+    await supabase
+      .from("notificacoes")
+      .update({ lida_em: new Date().toISOString() })
+      .eq("conversa_id", data.conversaId)
+      .eq("user_id", userId)
+      .is("lida_em", null);
+
     return { ok: true };
   });
+
 
 /**
  * Devolve a conversa para a IA.
