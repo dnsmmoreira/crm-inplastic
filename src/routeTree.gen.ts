@@ -20,6 +20,7 @@ import { Route as PipelineRouteImport } from './routes/pipeline'
 import { Route as PedidosRouteImport } from './routes/pedidos'
 import { Route as MinhaAgendaRouteImport } from './routes/minha-agenda'
 import { Route as McpRouteImport } from './routes/mcp'
+import { Route as EstoqueRouteImport } from './routes/estoque'
 import { Route as EmpresasRouteImport } from './routes/empresas'
 import { Route as ContatosRouteImport } from './routes/contatos'
 import { Route as CondicoesComerciaisRouteImport } from './routes/condicoes-comerciais'
@@ -103,6 +104,11 @@ const MinhaAgendaRoute = MinhaAgendaRouteImport.update({
 const McpRoute = McpRouteImport.update({
   id: '/mcp',
   path: '/mcp',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EstoqueRoute = EstoqueRouteImport.update({
+  id: '/estoque',
+  path: '/estoque',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EmpresasRoute = EmpresasRouteImport.update({
@@ -273,6 +279,7 @@ export interface FileRoutesByFullPath {
   '/condicoes-comerciais': typeof CondicoesComerciaisRoute
   '/contatos': typeof ContatosRoute
   '/empresas': typeof EmpresasRoute
+  '/estoque': typeof EstoqueRoute
   '/mcp': typeof McpRoute
   '/minha-agenda': typeof MinhaAgendaRoute
   '/pedidos': typeof PedidosRoute
@@ -315,6 +322,7 @@ export interface FileRoutesByTo {
   '/condicoes-comerciais': typeof CondicoesComerciaisRoute
   '/contatos': typeof ContatosRoute
   '/empresas': typeof EmpresasRoute
+  '/estoque': typeof EstoqueRoute
   '/mcp': typeof McpRoute
   '/minha-agenda': typeof MinhaAgendaRoute
   '/pedidos': typeof PedidosRoute
@@ -358,6 +366,7 @@ export interface FileRoutesById {
   '/condicoes-comerciais': typeof CondicoesComerciaisRoute
   '/contatos': typeof ContatosRoute
   '/empresas': typeof EmpresasRoute
+  '/estoque': typeof EstoqueRoute
   '/mcp': typeof McpRoute
   '/minha-agenda': typeof MinhaAgendaRoute
   '/pedidos': typeof PedidosRoute
@@ -402,6 +411,7 @@ export interface FileRouteTypes {
     | '/condicoes-comerciais'
     | '/contatos'
     | '/empresas'
+    | '/estoque'
     | '/mcp'
     | '/minha-agenda'
     | '/pedidos'
@@ -444,6 +454,7 @@ export interface FileRouteTypes {
     | '/condicoes-comerciais'
     | '/contatos'
     | '/empresas'
+    | '/estoque'
     | '/mcp'
     | '/minha-agenda'
     | '/pedidos'
@@ -486,6 +497,7 @@ export interface FileRouteTypes {
     | '/condicoes-comerciais'
     | '/contatos'
     | '/empresas'
+    | '/estoque'
     | '/mcp'
     | '/minha-agenda'
     | '/pedidos'
@@ -529,6 +541,7 @@ export interface RootRouteChildren {
   CondicoesComerciaisRoute: typeof CondicoesComerciaisRoute
   ContatosRoute: typeof ContatosRoute
   EmpresasRoute: typeof EmpresasRoute
+  EstoqueRoute: typeof EstoqueRoute
   McpRoute: typeof McpRoute
   MinhaAgendaRoute: typeof MinhaAgendaRoute
   PedidosRoute: typeof PedidosRoute
@@ -639,6 +652,13 @@ declare module '@tanstack/react-router' {
       path: '/mcp'
       fullPath: '/mcp'
       preLoaderRoute: typeof McpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/estoque': {
+      id: '/estoque'
+      path: '/estoque'
+      fullPath: '/estoque'
+      preLoaderRoute: typeof EstoqueRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/empresas': {
@@ -857,6 +877,7 @@ const rootRouteChildren: RootRouteChildren = {
   CondicoesComerciaisRoute: CondicoesComerciaisRoute,
   ContatosRoute: ContatosRoute,
   EmpresasRoute: EmpresasRoute,
+  EstoqueRoute: EstoqueRoute,
   McpRoute: McpRoute,
   MinhaAgendaRoute: MinhaAgendaRoute,
   PedidosRoute: PedidosRoute,
