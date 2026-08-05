@@ -149,6 +149,8 @@ const NAV = [
   { to: "/pedidos", label: "Pedidos", icon: ClipboardList, adminOnly: false },
   { to: "/relatorios", label: "Relatórios", icon: BarChart3, adminOnly: false, perm: "ver_relatorios" },
   { to: "/tabela-precos", label: "Tabela de Preços", icon: Tags, adminOnly: false },
+  { to: "/estoque", label: "Estoque", icon: Boxes, adminOnly: false },
+
   { to: "/produtos", label: "Produtos", icon: Package, adminOnly: true },
   { to: "/condicoes-comerciais", label: "Condições Comerciais", icon: Settings2, adminOnly: true },
   { to: "/empresas", label: "Empresas do Grupo", icon: Building2, adminOnly: true },
