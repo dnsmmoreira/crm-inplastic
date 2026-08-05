@@ -337,6 +337,9 @@ function UserBadge() {
             {user.role === "admin" ? "Administrador" : "Vendedor"}
           </div>
         </div>
+        <NotificacoesBell />
+      </div>
+
       </div>
       <Button
         variant="outline"
