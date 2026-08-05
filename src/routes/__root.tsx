@@ -134,7 +134,7 @@ const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, adminOnly: false },
   { to: "/pipeline", label: "Funil de Vendas", icon: KanbanSquare, adminOnly: false },
   { to: "/canais", label: "Canais de Entrada", icon: MessageSquare, adminOnly: false, perm: "configurar_integracoes" },
-  { to: "/atendimento-ia", label: "Atendimento IA", icon: Radio, adminOnly: true },
+  { to: "/atendimento-ia", label: "Atendimento IA", icon: Radio, adminOnly: false },
   { to: "/agente-ia", label: "Agente IA", icon: Bot, adminOnly: false },
   { to: "/contatos", label: "Contatos", icon: Users, adminOnly: false },
   { to: "/clientes", label: "Clientes", icon: Building2, adminOnly: false },
@@ -144,12 +144,14 @@ const NAV = [
   { to: "/propostas", label: "Propostas", icon: FileText, adminOnly: false },
   { to: "/pedidos", label: "Pedidos", icon: ClipboardList, adminOnly: false },
   { to: "/relatorios", label: "Relatórios", icon: BarChart3, adminOnly: false, perm: "ver_relatorios" },
-  { to: "/produtos", label: "Produtos", icon: Package, adminOnly: false },
+  { to: "/tabela-precos", label: "Tabela de Preços", icon: Tags, adminOnly: false },
+  { to: "/produtos", label: "Produtos", icon: Package, adminOnly: true },
   { to: "/condicoes-comerciais", label: "Condições Comerciais", icon: Settings2, adminOnly: true },
   { to: "/empresas", label: "Empresas do Grupo", icon: Building2, adminOnly: true },
   { to: "/usuarios", label: "Usuários", icon: UserCog, adminOnly: true, perm: "gerenciar_usuarios" },
 
 ] as const;
+
 
 function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
