@@ -22,7 +22,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import { sendConversaMessage } from "@/lib/canais.functions";
 import { assumirConversa, devolverParaIA } from "@/lib/atendimento.functions";
+import { useAuth } from "@/hooks/use-auth";
 import type { Database } from "@/integrations/supabase/types";
+
 
 type Conversa = Database["public"]["Tables"]["whatsapp_conversas"]["Row"];
 type Mensagem = Database["public"]["Tables"]["whatsapp_mensagens"]["Row"];
@@ -72,22 +74,30 @@ function StatusChip({ status }: { status: Status }) {
 }
 
 function AtendimentoIAPage() {
+  const { user } = useAuth();
   const [conversas, setConversas] = useState<Conversa[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [openLead, setOpenLead] = useState<string | null>(null);
 
+  const isVendedor = user?.role === "vendedor";
+  const userId = user?.id ?? null;
+
   const load = useCallback(async () => {
-    const { data, error } = await supabase
+    let query = supabase
       .from("whatsapp_conversas")
       .select("*")
       .order("last_message_at", { ascending: false, nullsFirst: false })
       .limit(200);
+    // Vendedor só enxerga as conversas atribuídas a ele.
+    if (isVendedor && userId) query = query.eq("atribuido_para", userId);
+    const { data, error } = await query;
     if (error) {
       console.error(error);
       return;
     }
     setConversas(data ?? []);
-  }, []);
+  }, [isVendedor, userId]);
+
 
   useEffect(() => {
     void load();

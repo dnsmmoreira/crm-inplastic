@@ -41,6 +41,8 @@ import { cn } from "@/lib/utils";
 import { useIsAdmin } from "@/lib/crm-store";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
+import { NotificacoesBell } from "@/components/layout/NotificacoesBell";
+
 
 function NotFoundComponent() {
   return (
@@ -227,7 +229,9 @@ function AppShell({ children }: { children: ReactNode }) {
             </div>
             <span className="font-display font-semibold">PDP CRM</span>
           </div>
+          <NotificacoesBell />
         </header>
+
         <nav className="md:hidden flex overflow-x-auto border-b bg-card">
           {nav.map((item) => {
             const active = pathname === item.to;
@@ -337,6 +341,7 @@ function UserBadge() {
             {user.role === "admin" ? "Administrador" : "Vendedor"}
           </div>
         </div>
+        <NotificacoesBell />
       </div>
       <Button
         variant="outline"

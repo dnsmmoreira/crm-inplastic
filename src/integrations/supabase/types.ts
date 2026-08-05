@@ -680,6 +680,44 @@ export type Database = {
           },
         ]
       }
+      notificacoes: {
+        Row: {
+          conversa_id: string | null
+          created_at: string
+          id: string
+          lida_em: string | null
+          tipo: string
+          titulo: string | null
+          user_id: string
+        }
+        Insert: {
+          conversa_id?: string | null
+          created_at?: string
+          id?: string
+          lida_em?: string | null
+          tipo: string
+          titulo?: string | null
+          user_id: string
+        }
+        Update: {
+          conversa_id?: string | null
+          created_at?: string
+          id?: string
+          lida_em?: string | null
+          tipo?: string
+          titulo?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notificacoes_conversa_id_fkey"
+            columns: ["conversa_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_conversas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pedido_fiscal_history: {
         Row: {
           alterado_em: string
@@ -1727,6 +1765,8 @@ export type Database = {
       }
       whatsapp_conversas: {
         Row: {
+          atribuido_em: string | null
+          atribuido_para: string | null
           created_at: string
           ia_ativa: boolean
           id: string
@@ -1741,6 +1781,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          atribuido_em?: string | null
+          atribuido_para?: string | null
           created_at?: string
           ia_ativa?: boolean
           id?: string
@@ -1755,6 +1797,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          atribuido_em?: string | null
+          atribuido_para?: string | null
           created_at?: string
           ia_ativa?: boolean
           id?: string
