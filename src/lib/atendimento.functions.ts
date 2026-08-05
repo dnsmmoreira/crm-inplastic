@@ -18,8 +18,12 @@ export const assumirConversa = createServerFn({ method: "POST" })
       .eq("id", data.conversaId)
       .maybeSingle();
 
-    const patch: Record<string, unknown> = { status: "humano_atendendo", ia_ativa: false };
-    if (!atual?.atribuido_para) patch.atribuido_para = userId;
+    const patch = {
+      status: "humano_atendendo" as const,
+      ia_ativa: false,
+      ...(atual?.atribuido_para ? {} : { atribuido_para: userId }),
+    };
+
 
     const { error } = await supabase
       .from("whatsapp_conversas")
