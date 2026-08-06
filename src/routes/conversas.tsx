@@ -406,13 +406,45 @@ function MinhasConversasPage() {
   );
 }
 
+const STATUS_LABEL: Record<string, string> = {
+  ia_atendendo: "IA atendendo",
+  humano_atendendo: "Atendimento humano",
+  qualificado: "Qualificado",
+  encerrado: "Encerrado",
+};
+
+function diaLabel(iso: string) {
+  const d = new Date(iso);
+  const hoje = new Date();
+  const ontem = new Date();
+  ontem.setDate(hoje.getDate() - 1);
+  const mesmo = (a: Date, b: Date) =>
+    a.getDate() === b.getDate() && a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear();
+  if (mesmo(d, hoje)) return "Hoje";
+  if (mesmo(d, ontem)) return "Ontem";
+  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
 function ChatPanel({ conversa, onChanged }: { conversa: Conversa | null; onChanged: () => void }) {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
   const [mensagens, setMensagens] = useState<Mensagem[]>([]);
+  const [nomesUsuarios, setNomesUsuarios] = useState<Record<string, string>>({});
+  const [vendedores, setVendedores] = useState<Array<{ id: string; name: string }>>([]);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
+  const [acaoEmCurso, setAcaoEmCurso] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const send = useServerFn(sendConversaMessage);
   const assumir = useServerFn(assumirConversa);
+  const devolver = useServerFn(devolverParaIA);
+  const encerrar = useServerFn(encerrarConversa);
+  const transferir = useServerFn(atribuirConversa);
+  const listarVendedores = useServerFn(listarVendedoresAtendimento);
+
+  // Controle de auto-scroll: só rola ao trocar de conversa ou quando chega mensagem nova.
+  const ultimaMsgRef = useRef<string | null>(null);
+  const conversaRef = useRef<string | null>(null);
 
   const loadMensagens = useCallback(async (conversaId: string) => {
     const { data, error } = await supabase
@@ -425,8 +457,23 @@ function ChatPanel({ conversa, onChanged }: { conversa: Conversa | null; onChang
       console.error(error);
       return;
     }
-    setMensagens(data ?? []);
+    const lista = data ?? [];
+    setMensagens(lista);
+    const ids = [...new Set(lista.map((m) => m.usuario_id).filter(Boolean))] as string[];
+    if (ids.length > 0) {
+      const { data: perfis } = await supabase.from("profiles").select("id, name").in("id", ids);
+      const map: Record<string, string> = {};
+      for (const p of perfis ?? []) map[p.id] = p.name;
+      setNomesUsuarios(map);
+    }
   }, []);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    void listarVendedores()
+      .then((v) => setVendedores(v as Array<{ id: string; name: string }>))
+      .catch(() => setVendedores([]));
+  }, [isAdmin, listarVendedores]);
 
   useEffect(() => {
     if (!conversa) {
@@ -456,8 +503,18 @@ function ChatPanel({ conversa, onChanged }: { conversa: Conversa | null; onChang
   }, [conversa, loadMensagens]);
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [mensagens]);
+    const conversaId = conversa?.id ?? null;
+    const ultima = mensagens.length > 0 ? mensagens[mensagens.length - 1]!.id : null;
+    const trocouConversa = conversaRef.current !== conversaId;
+    const chegouNova = !trocouConversa && ultima !== null && ultima !== ultimaMsgRef.current;
+    conversaRef.current = conversaId;
+    ultimaMsgRef.current = ultima;
+    if (!trocouConversa && !chegouNova) return; // polling de 6s não arrasta o scroll
+    scrollRef.current?.scrollTo({
+      top: scrollRef.current.scrollHeight,
+      behavior: trocouConversa ? "auto" : "smooth",
+    });
+  }, [mensagens, conversa]);
 
   if (!conversa) {
     return (
@@ -472,6 +529,22 @@ function ChatPanel({ conversa, onChanged }: { conversa: Conversa | null; onChang
 
   const nome = conversa.name?.trim() || conversa.phone;
   const iaNoControle = conversa.ia_ativa && conversa.status === "ia_atendendo";
+  const encerrada = conversa.status === "encerrado";
+
+  async function rodarAcao(fn: () => Promise<unknown>, ok: string) {
+    setAcaoEmCurso(true);
+    try {
+      await fn();
+      toast.success(ok);
+      onChanged();
+    } catch (e) {
+      toast.error("Não foi possível concluir", {
+        description: e instanceof Error ? e.message : String(e),
+      });
+    } finally {
+      setAcaoEmCurso(false);
+    }
+  }
 
   async function handleSend() {
     if (!conversa || !text.trim()) return;
@@ -489,25 +562,118 @@ function ChatPanel({ conversa, onChanged }: { conversa: Conversa | null; onChang
     }
   }
 
+  const conversaId = conversa.id;
+
   return (
     <div className="flex min-h-0 flex-col bg-background">
-      <div className="flex items-center gap-3 border-b bg-muted/40 px-4 py-3">
-        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-          {iniciais(nome) || "?"}
-        </span>
-        <div className="min-w-0">
-          <div className="truncate text-sm font-medium">{nome}</div>
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Phone className="h-3 w-3" />
-            {conversa.phone}
+      <div className="border-b bg-muted/40 px-4 py-3">
+        <div className="flex items-center gap-3">
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+            {iniciais(nome) || "?"}
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="truncate text-sm font-medium">{nome}</span>
+              <span className="rounded-full border bg-background px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                {STATUS_LABEL[conversa.status] ?? conversa.status}
+              </span>
+              {conversa.requer_humano && (
+                <span className="flex items-center gap-1 rounded-full bg-destructive px-2 py-0.5 text-[10px] font-semibold text-destructive-foreground">
+                  <AlertTriangle className="h-3 w-3" /> Requer humano
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Phone className="h-3 w-3" />
+              {conversa.phone}
+            </div>
           </div>
+        </div>
+
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          {iaNoControle && (
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={acaoEmCurso}
+              onClick={() =>
+                void rodarAcao(() => assumir({ data: { conversaId } }), "Conversa assumida")
+              }
+            >
+              <UserIcon className="mr-1 h-3.5 w-3.5" /> Assumir
+            </Button>
+          )}
+          {!iaNoControle && !encerrada && (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={acaoEmCurso}
+              onClick={() =>
+                void rodarAcao(() => devolver({ data: { conversaId } }), "Devolvida para a IA")
+              }
+            >
+              <Bot className="mr-1 h-3.5 w-3.5" /> Devolver para IA
+            </Button>
+          )}
+          {isAdmin && (
+            <Select
+              value={conversa.atribuido_para ?? undefined}
+              onValueChange={(v) =>
+                void rodarAcao(
+                  () => transferir({ data: { conversaId, vendedorId: v } }),
+                  "Conversa transferida",
+                )
+              }
+            >
+              <SelectTrigger className="h-8 w-[170px] text-xs" aria-label="Transferir conversa">
+                <SelectValue placeholder="Transferir para…" />
+              </SelectTrigger>
+              <SelectContent>
+                {vendedores.map((v) => (
+                  <SelectItem key={v.id} value={v.id}>
+                    {v.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          {!encerrada && (
+            <Button
+              size="sm"
+              variant="destructive"
+              disabled={acaoEmCurso}
+              onClick={() => {
+                if (!window.confirm("Encerrar esta conversa? Ela sairá da fila de atendimento.")) {
+                  return;
+                }
+                void rodarAcao(() => encerrar({ data: { conversaId } }), "Conversa encerrada");
+              }}
+            >
+              <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Finalizar
+            </Button>
+          )}
         </div>
       </div>
 
       <div ref={scrollRef} className="min-h-0 flex-1 space-y-2 overflow-auto p-4">
-        {mensagens.map((m) => (
-          <Bolha key={m.id} m={m} />
-        ))}
+        {mensagens.map((m, i) => {
+          const anterior = i > 0 ? mensagens[i - 1] : undefined;
+          const novoDia =
+            !anterior ||
+            new Date(anterior.created_at).toDateString() !== new Date(m.created_at).toDateString();
+          return (
+            <div key={m.id} className="space-y-2">
+              {novoDia && (
+                <div className="flex justify-center">
+                  <span className="rounded-full bg-muted px-3 py-1 text-[10px] font-medium text-muted-foreground">
+                    {diaLabel(m.created_at)}
+                  </span>
+                </div>
+              )}
+              <Bolha m={m} nomeVendedor={m.usuario_id ? nomesUsuarios[m.usuario_id] : undefined} />
+            </div>
+          );
+        })}
         {mensagens.length === 0 && (
           <div className="py-10 text-center text-xs text-muted-foreground">
             Sem mensagens nesta conversa ainda.
@@ -522,6 +688,26 @@ function ChatPanel({ conversa, onChanged }: { conversa: Conversa | null; onChang
           </div>
         )}
         <div className="flex items-end gap-2">
+          <div className="flex gap-1 pb-1">
+            <Button
+              size="icon"
+              variant="ghost"
+              disabled
+              title="Anexos — em breve"
+              aria-label="Anexos (em breve)"
+            >
+              <Paperclip className="h-4 w-4" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              disabled
+              title="Áudio — em breve"
+              aria-label="Áudio (em breve)"
+            >
+              <Mic className="h-4 w-4" />
+            </Button>
+          </div>
           <Textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
@@ -545,10 +731,25 @@ function ChatPanel({ conversa, onChanged }: { conversa: Conversa | null; onChang
   );
 }
 
-function Bolha({ m }: { m: Mensagem }) {
+/** Extrai a primeira URL utilizável do jsonb `midia`, se houver. */
+function urlDaMidia(midia: unknown): string | null {
+  if (!midia || typeof midia !== "object") return null;
+  const obj = midia as Record<string, unknown>;
+  for (const k of ["url", "link", "fileUrl", "imageUrl", "audioUrl", "documentUrl", "mediaUrl"]) {
+    const v = obj[k];
+    if (typeof v === "string" && /^https?:\/\//.test(v)) return v;
+  }
+  return null;
+}
+
+function Bolha({ m, nomeVendedor }: { m: Mensagem; nomeVendedor?: string }) {
   const isCliente = m.autor === "cliente";
   const isIA = m.autor === "ia";
   const Icon = isIA ? Bot : UserIcon;
+  const rotulo = isCliente ? "Cliente" : isIA ? "IA — Lucas" : (nomeVendedor ?? "Você");
+  const url = urlDaMidia(m.midia);
+  const tipo = (m.tipo ?? "texto").toLowerCase();
+
   return (
     <div className={cn("flex", isCliente ? "justify-start" : "justify-end")}>
       <div
@@ -562,16 +763,35 @@ function Bolha({ m }: { m: Mensagem }) {
         )}
       >
         <div className="mb-0.5 flex items-center gap-1 text-[10px] uppercase tracking-wide opacity-70">
-          <Icon className="h-3 w-3" /> {isCliente ? "Cliente" : isIA ? "IA" : "Você"}
+          <Icon className="h-3 w-3" /> {rotulo}
         </div>
-        <div className="whitespace-pre-wrap break-words">{m.conteudo}</div>
-        <div className="mt-1 text-right text-[10px] opacity-60">
+
+        {url && (tipo.includes("imag") || tipo === "image" || tipo === "photo") ? (
+          <a href={url} target="_blank" rel="noreferrer">
+            <img src={url} alt={m.conteudo || "Imagem recebida"} className="max-h-64 rounded-lg" />
+          </a>
+        ) : url && (tipo.includes("audio") || tipo.includes("ptt") || tipo.includes("voice")) ? (
+          <audio controls src={url} className="w-56" />
+        ) : url ? (
+          <a href={url} target="_blank" rel="noreferrer" className="flex items-center gap-1 underline">
+            <FileText className="h-3.5 w-3.5" /> {m.conteudo?.trim() || "Abrir arquivo"}
+          </a>
+        ) : (
+          <div className="whitespace-pre-wrap break-words">
+            {m.conteudo?.trim() || (tipo !== "texto" ? `[${tipo}]` : "")}
+          </div>
+        )}
+
+        <div className="mt-1 flex items-center justify-end gap-1 text-[10px] opacity-60">
           {new Date(m.created_at).toLocaleTimeString("pt-BR", {
             hour: "2-digit",
             minute: "2-digit",
           })}
+          {/* Check apenas decorativo: não existe status de entrega real no banco. */}
+          {m.external_id && <Check className="h-3 w-3" />}
         </div>
       </div>
     </div>
   );
 }
+
