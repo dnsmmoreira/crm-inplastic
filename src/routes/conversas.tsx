@@ -61,6 +61,37 @@ function horaCurta(iso: string | null) {
 }
 
 type Aba = "aguardando" | "atendendo";
+type Fila =
+  | "todas"
+  | "requer_humano"
+  | "ia_atendendo"
+  | "humano_atendendo"
+  | "qualificado"
+  | "encerrado"
+  | "sem_responsavel";
+
+const FILAS: { value: Fila; label: string; adminOnly?: boolean }[] = [
+  { value: "todas", label: "Todas as filas" },
+  { value: "requer_humano", label: "Requer humano" },
+  { value: "ia_atendendo", label: "IA atendendo" },
+  { value: "humano_atendendo", label: "Em atendimento humano" },
+  { value: "qualificado", label: "Qualificado" },
+  { value: "encerrado", label: "Encerrado" },
+  { value: "sem_responsavel", label: "Sem responsável", adminOnly: true },
+];
+
+function naFila(c: Conversa, fila: Fila) {
+  switch (fila) {
+    case "todas":
+      return true;
+    case "requer_humano":
+      return c.requer_humano;
+    case "sem_responsavel":
+      return !c.atribuido_para;
+    default:
+      return c.status === fila;
+  }
+}
 
 function MinhasConversasPage() {
   const { user } = useAuth();
@@ -75,6 +106,9 @@ function MinhasConversasPage() {
   const [busca, setBusca] = useState("");
   const [todas, setTodas] = useState(false);
   const [aba, setAba] = useState<Aba>("aguardando");
+  const [fila, setFila] = useState<Fila>("todas");
+  const [novoAberto, setNovoAberto] = useState(false);
+
 
   const load = useCallback(async () => {
     if (!userId) return;
