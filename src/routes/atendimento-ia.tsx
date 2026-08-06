@@ -461,9 +461,11 @@ function AtribuirSelect({ conversa, onChanged }: { conversa: Conversa; onChanged
         })();
       }}
     >
-      <SelectTrigger className="h-8 w-[180px] text-xs">
-        <SelectValue placeholder="Atribuir a…" />
+      <span className="text-xs text-muted-foreground hidden sm:inline">Enviar para</span>
+      <SelectTrigger className="h-8 w-[190px] text-xs">
+        <SelectValue placeholder="Enviar para…" />
       </SelectTrigger>
+
       <SelectContent>
         <SelectItem value="none">Sem responsável</SelectItem>
         {vendedores.map((v) => (
