@@ -190,23 +190,25 @@ function MinhasConversasPage() {
     return s;
   }, [conversas, ultimoAutor]);
 
+  const daFila = useMemo(() => conversas.filter((c) => naFila(c, fila)), [conversas, fila]);
+
   const contagem = useMemo(
     () => ({
-      aguardando: conversas.filter((c) => aguardandoIds.has(c.id)).length,
-      atendendo: conversas.filter((c) => !aguardandoIds.has(c.id)).length,
+      aguardando: daFila.filter((c) => aguardandoIds.has(c.id)).length,
+      atendendo: daFila.filter((c) => !aguardandoIds.has(c.id)).length,
     }),
-    [conversas, aguardandoIds],
+    [daFila, aguardandoIds],
   );
 
   const filtradas = useMemo(() => {
     const q = busca.trim().toLowerCase();
-    return conversas.filter((c) => {
+    return daFila.filter((c) => {
       const naAba = aba === "aguardando" ? aguardandoIds.has(c.id) : !aguardandoIds.has(c.id);
       if (!naAba) return false;
       if (!q) return true;
       return (c.name ?? "").toLowerCase().includes(q) || c.phone.includes(q);
     });
-  }, [conversas, busca, aba, aguardandoIds]);
+  }, [daFila, busca, aba, aguardandoIds]);
 
 
   const selected = useMemo(
@@ -218,30 +220,60 @@ function MinhasConversasPage() {
     void navigate({ search: { c: id } });
   };
 
+  const filasVisiveis = FILAS.filter((f) => !f.adminOnly || isAdmin);
+
   return (
     <div className="p-4 md:p-6">
-      <div className="mb-4">
-        <h1 className="text-2xl font-semibold flex items-center gap-2">
-          <MessageSquare className="h-6 w-6 text-primary" /> Minhas Conversas
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Seus atendimentos por WhatsApp, em tempo real.
-        </p>
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold flex items-center gap-2">
+            <MessageSquare className="h-6 w-6 text-primary" /> Minhas Conversas
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Seus atendimentos por WhatsApp, em tempo real.
+          </p>
+        </div>
+        <Button onClick={() => setNovoAberto(true)} className="gap-1.5">
+          <Plus className="h-4 w-4" /> NOVO
+        </Button>
       </div>
+
+      <NovaConversaDialog
+        open={novoAberto}
+        onOpenChange={setNovoAberto}
+        conversas={conversas.map((c) => ({ id: c.id, phone: c.phone, name: c.name }))}
+        onSelectConversa={selecionar}
+      />
 
       <div className="grid gap-0 overflow-hidden rounded-xl border bg-card lg:grid-cols-[340px,1fr] h-[calc(100vh-13rem)] min-h-[540px]">
         {/* Coluna esquerda */}
         <div className="flex min-h-0 flex-col border-b lg:border-b-0 lg:border-r">
           <div className="space-y-2 border-b bg-muted/40 p-3">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                value={busca}
-                onChange={(e) => setBusca(e.target.value)}
-                placeholder="Buscar contato ou telefone"
-                className="pl-8"
-              />
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  value={busca}
+                  onChange={(e) => setBusca(e.target.value)}
+                  placeholder="Buscar contato ou telefone"
+                  className="pl-8"
+                />
+              </div>
+              <Select value={fila} onValueChange={(v) => setFila(v as Fila)}>
+                <SelectTrigger className="w-[132px] shrink-0" aria-label="Filtrar por fila">
+                  <ListFilter className="mr-1 h-3.5 w-3.5 text-muted-foreground" />
+                  <SelectValue placeholder="Filas" />
+                </SelectTrigger>
+                <SelectContent>
+                  {filasVisiveis.map((f) => (
+                    <SelectItem key={f.value} value={f.value}>
+                      {f.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
+
             <div className="grid grid-cols-2 gap-1 rounded-lg bg-background p-1">
               {(["aguardando", "atendendo"] as const).map((k) => (
                 <button
