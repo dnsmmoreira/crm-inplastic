@@ -42,6 +42,7 @@ import { useIsAdmin } from "@/lib/crm-store";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { NotificacoesBell } from "@/components/layout/NotificacoesBell";
+import { NovaConversaAlerta } from "@/components/atendimento/NovaConversaAlerta";
 
 
 function NotFoundComponent() {
@@ -139,6 +140,7 @@ const NAV = [
   { to: "/pipeline", label: "Funil de Vendas", icon: KanbanSquare, adminOnly: false },
   { to: "/canais", label: "Canais de Entrada", icon: MessageSquare, adminOnly: false, perm: "configurar_integracoes" },
   { to: "/atendimento-ia", label: "Atendimento IA", icon: Radio, adminOnly: false },
+  { to: "/conversas", label: "Minhas Conversas", icon: MessageSquare, adminOnly: false },
   { to: "/agente-ia", label: "Agente IA", icon: Bot, adminOnly: false },
   { to: "/contatos", label: "Contatos", icon: Users, adminOnly: false },
   { to: "/clientes", label: "Clientes", icon: Building2, adminOnly: false },
@@ -308,7 +310,12 @@ function AuthGate() {
     return <RedirectToAuth />;
   }
 
-  return <AppShell><Outlet /></AppShell>;
+  return (
+    <>
+      <AppShell><Outlet /></AppShell>
+      <NovaConversaAlerta />
+    </>
+  );
 }
 
 function RedirectToAuth() {
