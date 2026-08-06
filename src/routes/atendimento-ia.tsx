@@ -239,9 +239,12 @@ function ConversationList({
         })}
         {conversas.length === 0 && (
           <li className="p-10 text-center text-sm text-muted-foreground">
-            Nenhuma conversa visível para você ainda.
+            Nenhuma conversa atribuída a você ainda. Peça a um administrador para atribuir uma
+            conversa ou aguarde a chegada de um lead seu.
           </li>
         )}
+
+
       </ul>
     </div>
   );
