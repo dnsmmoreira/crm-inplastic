@@ -2,6 +2,8 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   MessageSquare,
+  ArrowLeft,
+
   Phone,
   Send,
   Bot,
@@ -275,9 +277,15 @@ function MinhasConversasPage() {
         onSelectConversa={selecionar}
       />
 
-      <div className="grid gap-0 overflow-hidden rounded-xl border bg-card lg:grid-cols-[340px,1fr] h-[calc(100vh-13rem)] min-h-[540px]">
+      <div className="grid gap-0 overflow-hidden rounded-xl border bg-card h-[calc(100dvh-11rem)] min-h-[420px] md:h-[calc(100dvh-12rem)] md:min-h-[540px] md:grid-cols-[340px_1fr] xl:grid-cols-[380px_1fr]">
         {/* Coluna esquerda */}
-        <div className="flex min-h-0 flex-col border-b lg:border-b-0 lg:border-r">
+        <div
+          className={cn(
+            "min-h-0 flex-col border-b md:flex md:border-b-0 md:border-r",
+            selectedId ? "hidden" : "flex",
+          )}
+        >
+
           <div className="space-y-2 border-b bg-muted/40 p-3">
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
@@ -412,7 +420,14 @@ function MinhasConversasPage() {
         </div>
 
         {/* Coluna direita */}
-        <ChatPanel conversa={selected} onChanged={load} />
+        <div className={cn("min-h-0 flex-col md:flex", selectedId ? "flex" : "hidden")}>
+          <ChatPanel
+            conversa={selected}
+            onChanged={load}
+            onVoltar={() => void navigate({ search: {} })}
+          />
+        </div>
+
       </div>
     </div>
   );
@@ -437,7 +452,16 @@ function diaLabel(iso: string) {
   return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
-function ChatPanel({ conversa, onChanged }: { conversa: Conversa | null; onChanged: () => void }) {
+function ChatPanel({
+  conversa,
+  onChanged,
+  onVoltar,
+}: {
+  conversa: Conversa | null;
+  onChanged: () => void;
+  onVoltar?: () => void;
+}) {
+
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const [mensagens, setMensagens] = useState<Mensagem[]>([]);
@@ -530,7 +554,7 @@ function ChatPanel({ conversa, onChanged }: { conversa: Conversa | null; onChang
 
   if (!conversa) {
     return (
-      <div className="flex min-h-[320px] items-center justify-center bg-background p-8">
+      <div className="flex h-full min-h-[320px] items-center justify-center bg-background p-8">
         <div className="text-center text-sm text-muted-foreground">
           <MessageSquare className="mx-auto mb-3 h-10 w-10 text-muted-foreground/40" />
           Escolha uma conversa à esquerda para começar a responder.
@@ -577,12 +601,23 @@ function ChatPanel({ conversa, onChanged }: { conversa: Conversa | null; onChang
   const conversaId = conversa.id;
 
   return (
-    <div className="flex min-h-0 flex-col bg-background">
+    <div className="flex h-full min-h-0 flex-col bg-background">
       <div className="border-b bg-muted/40 px-4 py-3">
         <div className="flex items-center gap-3">
+          {onVoltar && (
+            <button
+              type="button"
+              onClick={onVoltar}
+              aria-label="Voltar para a lista"
+              className="-ml-1 shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted md:hidden"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+          )}
           <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
             {iniciais(nome) || "?"}
           </span>
+
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="truncate text-sm font-medium">{nome}</span>
