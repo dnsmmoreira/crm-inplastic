@@ -48,6 +48,22 @@ function iniciais(nome: string) {
     .toUpperCase();
 }
 
+function horaCurta(iso: string | null) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  const hoje = new Date();
+  const mesmoDia =
+    d.getDate() === hoje.getDate() &&
+    d.getMonth() === hoje.getMonth() &&
+    d.getFullYear() === hoje.getFullYear();
+  return mesmoDia
+    ? d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+    : d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+}
+
+type Aba = "aguardando" | "atendendo";
+
 function MinhasConversasPage() {
   const { user } = useAuth();
   const navigate = useNavigate({ from: "/conversas" });
@@ -57,8 +73,10 @@ function MinhasConversasPage() {
 
   const [conversas, setConversas] = useState<Conversa[]>([]);
   const [naoLidas, setNaoLidas] = useState<Record<string, number>>({});
+  const [ultimoAutor, setUltimoAutor] = useState<Record<string, Mensagem["autor"]>>({});
   const [busca, setBusca] = useState("");
   const [todas, setTodas] = useState(false);
+  const [aba, setAba] = useState<Aba>("aguardando");
 
   const load = useCallback(async () => {
     if (!userId) return;
@@ -73,7 +91,8 @@ function MinhasConversasPage() {
       console.error(error);
       return;
     }
-    setConversas(data ?? []);
+    const lista = data ?? [];
+    setConversas(lista);
 
     const { data: notifs } = await supabase
       .from("notificacoes")
@@ -86,6 +105,30 @@ function MinhasConversasPage() {
     for (const n of notifs ?? []) {
       if (n.conversa_id) map[n.conversa_id] = (map[n.conversa_id] ?? 0) + 1;
     }
+
+    // Deriva último autor e não lidas reais a partir das mensagens.
+    const ids = lista.map((c) => c.id);
+    const autores: Record<string, Mensagem["autor"]> = {};
+    if (ids.length > 0) {
+      const { data: msgs } = await supabase
+        .from("whatsapp_mensagens")
+        .select("conversa_id, autor, created_at")
+        .in("conversa_id", ids)
+        .order("created_at", { ascending: false })
+        .limit(2000);
+      const pendentes: Record<string, number> = {};
+      const fechado = new Set<string>();
+      for (const m of msgs ?? []) {
+        if (!autores[m.conversa_id]) autores[m.conversa_id] = m.autor;
+        if (fechado.has(m.conversa_id)) continue;
+        if (m.autor === "cliente") pendentes[m.conversa_id] = (pendentes[m.conversa_id] ?? 0) + 1;
+        else fechado.add(m.conversa_id);
+      }
+      for (const id of ids) {
+        if (autores[id]) map[id] = pendentes[id] ?? 0;
+      }
+    }
+    setUltimoAutor(autores);
     setNaoLidas(map);
   }, [userId, isAdmin, todas]);
 
@@ -109,13 +152,30 @@ function MinhasConversasPage() {
     };
   }, [load]);
 
+  const aguardandoIds = useMemo(() => {
+    const s = new Set<string>();
+    for (const c of conversas) if (ultimoAutor[c.id] === "cliente") s.add(c.id);
+    return s;
+  }, [conversas, ultimoAutor]);
+
+  const contagem = useMemo(
+    () => ({
+      aguardando: conversas.filter((c) => aguardandoIds.has(c.id)).length,
+      atendendo: conversas.filter((c) => !aguardandoIds.has(c.id)).length,
+    }),
+    [conversas, aguardandoIds],
+  );
+
   const filtradas = useMemo(() => {
     const q = busca.trim().toLowerCase();
-    if (!q) return conversas;
-    return conversas.filter(
-      (c) => (c.name ?? "").toLowerCase().includes(q) || c.phone.includes(q),
-    );
-  }, [conversas, busca]);
+    return conversas.filter((c) => {
+      const naAba = aba === "aguardando" ? aguardandoIds.has(c.id) : !aguardandoIds.has(c.id);
+      if (!naAba) return false;
+      if (!q) return true;
+      return (c.name ?? "").toLowerCase().includes(q) || c.phone.includes(q);
+    });
+  }, [conversas, busca, aba, aguardandoIds]);
+
 
   const selected = useMemo(
     () => conversas.find((c) => c.id === selectedId) ?? null,
