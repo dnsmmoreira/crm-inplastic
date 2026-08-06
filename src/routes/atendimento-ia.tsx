@@ -29,6 +29,7 @@ import {
 } from "@/lib/atendimento.functions";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
+import { DistribuirConversasDialog } from "@/components/atendimento/DistribuirConversasDialog";
 import type { Database } from "@/integrations/supabase/types";
 
 
