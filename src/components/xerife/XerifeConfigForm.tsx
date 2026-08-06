@@ -173,6 +173,9 @@ export function XerifeConfigForm() {
           resumo_hora: `${cfg.resumo_hora}:00`,
           ativo: cfg.ativo,
           whatsapp_interno_ativo: cfg.whatsapp_interno_ativo,
+          watchdog_conversa_ativo: cfg.watchdog_conversa_ativo,
+          watchdog_conversa_ia_min: cfg.watchdog_conversa_ia_min,
+          watchdog_conversa_fria_min: cfg.watchdog_conversa_fria_min,
         },
       });
       toast.success("Configuração salva");
