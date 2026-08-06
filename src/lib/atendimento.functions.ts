@@ -60,6 +60,31 @@ export const devolverParaIA = createServerFn({ method: "POST" })
 
 
 /**
+ * Encerra a conversa: status='encerrado' e limpa requer_humano.
+ * Não dispara nenhuma mensagem de WhatsApp.
+ */
+export const encerrarConversa = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) => z.object({ conversaId: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { error } = await supabase
+      .from("whatsapp_conversas")
+      .update({ status: "encerrado", ia_ativa: false, requer_humano: false })
+      .eq("id", data.conversaId);
+    if (error) throw new Error(error.message);
+
+    await supabase
+      .from("notificacoes")
+      .update({ lida_em: new Date().toISOString() })
+      .eq("conversa_id", data.conversaId)
+      .eq("user_id", userId)
+      .is("lida_em", null);
+
+    return { ok: true };
+  });
+
+/**
  * Lista os vendedores ativos (admin apenas) para o seletor de atribuição.
  */
 export const listarVendedoresAtendimento = createServerFn({ method: "GET" })
