@@ -21,7 +21,13 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import { sendConversaMessage } from "@/lib/canais.functions";
-import { assumirConversa, devolverParaIA } from "@/lib/atendimento.functions";
+import {
+  assumirConversa,
+  devolverParaIA,
+  atribuirConversa,
+  listarVendedoresAtendimento,
+} from "@/lib/atendimento.functions";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
 import type { Database } from "@/integrations/supabase/types";
 
