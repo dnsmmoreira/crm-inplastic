@@ -259,26 +259,20 @@ export const Route = createFileRoute("/api/public/zapi/webhook")({
                   lead_id: conv.lead_id,
                   historico,
                 };
+                const { enviarAvisoN8n, enfileirarAvisoN8n, N8N_TIMEOUT_MS } = await import(
+                  "@/lib/n8n-fila.server"
+                );
                 try {
-                  const ctrl = new AbortController();
-                  const timer = setTimeout(() => ctrl.abort(), 3000);
-                  const r = await fetch(n8nUrl, {
-                    method: "POST",
-                    headers: {
-                      "Content-Type": "application/json",
-                      "x-n8n-secret": n8nSecret,
-                    },
-                    body: JSON.stringify(payloadOut),
-                    signal: ctrl.signal,
-                  });
-                  clearTimeout(timer);
-                  console.log("[n8n-notify] sent", {
-                    conversaId,
-                    status: r.status,
-                  });
+                  await enviarAvisoN8n(n8nUrl, n8nSecret, payloadOut, N8N_TIMEOUT_MS);
+                  console.log("[n8n-notify] sent", { conversaId });
                 } catch (e) {
                   const msg = e instanceof Error ? e.message : String(e);
-                  console.error("[n8n-notify] failed:", msg);
+                  console.error("[n8n-notify] failed, enfileirando reenvio:", msg);
+                  await enfileirarAvisoN8n(supabaseAdmin, {
+                    conversaId,
+                    payload: payloadOut,
+                    erro: msg,
+                  });
                 }
               }
             }
