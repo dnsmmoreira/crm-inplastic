@@ -275,9 +275,15 @@ function MinhasConversasPage() {
         onSelectConversa={selecionar}
       />
 
-      <div className="grid gap-0 overflow-hidden rounded-xl border bg-card lg:grid-cols-[340px,1fr] h-[calc(100vh-13rem)] min-h-[540px]">
+      <div className="grid gap-0 overflow-hidden rounded-xl border bg-card h-[calc(100dvh-11rem)] min-h-[420px] md:h-[calc(100dvh-12rem)] md:min-h-[540px] md:grid-cols-[340px_1fr] xl:grid-cols-[380px_1fr]">
         {/* Coluna esquerda */}
-        <div className="flex min-h-0 flex-col border-b lg:border-b-0 lg:border-r">
+        <div
+          className={cn(
+            "min-h-0 flex-col border-b md:flex md:border-b-0 md:border-r",
+            selectedId ? "hidden" : "flex",
+          )}
+        >
+
           <div className="space-y-2 border-b bg-muted/40 p-3">
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
