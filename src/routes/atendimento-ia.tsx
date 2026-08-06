@@ -439,41 +439,43 @@ function AtribuirSelect({ conversa, onChanged }: { conversa: Conversa; onChanged
   if (!isAdmin) return null;
 
   return (
-    <Select
-      value={conversa.atribuido_para ?? "none"}
-      disabled={saving}
-      onValueChange={(v) => {
-        setSaving(true);
-        void (async () => {
-          try {
-            await atribuir({
-              data: { conversaId: conversa.id, vendedorId: v === "none" ? null : v },
-            });
-            toast.success(v === "none" ? "Atribuição removida" : "Conversa atribuída");
-            onChanged();
-          } catch (e) {
-            toast.error("Falha ao atribuir", {
-              description: e instanceof Error ? e.message : String(e),
-            });
-          } finally {
-            setSaving(false);
-          }
-        })();
-      }}
-    >
+    <div className="flex items-center gap-2">
       <span className="text-xs text-muted-foreground hidden sm:inline">Enviar para</span>
-      <SelectTrigger className="h-8 w-[190px] text-xs">
-        <SelectValue placeholder="Enviar para…" />
-      </SelectTrigger>
-
-      <SelectContent>
-        <SelectItem value="none">Sem responsável</SelectItem>
-        {vendedores.map((v) => (
-          <SelectItem key={v.id} value={v.id}>
-            {v.name}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+      <Select
+        value={conversa.atribuido_para ?? "none"}
+        disabled={saving}
+        onValueChange={(v) => {
+          setSaving(true);
+          void (async () => {
+            try {
+              await atribuir({
+                data: { conversaId: conversa.id, vendedorId: v === "none" ? null : v },
+              });
+              toast.success(v === "none" ? "Atribuição removida" : "Conversa enviada ao vendedor");
+              onChanged();
+            } catch (e) {
+              toast.error("Falha ao enviar", {
+                description: e instanceof Error ? e.message : String(e),
+              });
+            } finally {
+              setSaving(false);
+            }
+          })();
+        }}
+      >
+        <SelectTrigger className="h-8 w-[190px] text-xs">
+          <SelectValue placeholder="Enviar para…" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="none">Sem responsável</SelectItem>
+          {vendedores.map((v) => (
+            <SelectItem key={v.id} value={v.id}>
+              {v.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
   );
+
 }
