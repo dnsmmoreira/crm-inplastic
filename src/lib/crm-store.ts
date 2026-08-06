@@ -630,11 +630,11 @@ export type PaymentTerm = {
 
 /** Seed de 20 condições comerciais mais usadas — o administrador pode editar. */
 export const DEFAULT_PAYMENT_TERMS: PaymentTerm[] = [
-  { id: "pix-avista",        label: "PIX à vista",                       method: "PIX",                splits: [0],              notes: "Com 3% de desconto", active: true },
+  { id: "pix-avista",        label: "PIX à vista",                       method: "PIX",                splits: [0],              active: true },
   { id: "pix-7",             label: "PIX 7 dias",                        method: "PIX",                splits: [7],              active: true },
   { id: "pix-14",            label: "PIX 14 dias",                       method: "PIX",                splits: [14],             active: true },
   { id: "pix-28",            label: "PIX 28 dias",                       method: "PIX",                splits: [28],             active: true },
-  { id: "dinheiro-avista",   label: "Dinheiro à vista",                  method: "Dinheiro",           splits: [0],              notes: "Com 5% de desconto", active: true },
+  { id: "dinheiro-avista",   label: "Dinheiro à vista",                  method: "Dinheiro",           splits: [0],              active: true },
   { id: "dep-avista",        label: "Depósito em Conta à vista",         method: "Depósito em Conta",  splits: [0],              active: true },
   { id: "dep-15",            label: "Depósito em Conta 15 dias",         method: "Depósito em Conta",  splits: [15],             active: true },
   { id: "boleto-avista",     label: "Boleto à vista",                    method: "Boleto",             splits: [0],              active: true },
