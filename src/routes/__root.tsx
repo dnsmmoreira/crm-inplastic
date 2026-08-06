@@ -165,6 +165,25 @@ function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isAdmin = useIsAdmin();
   const { user } = useAuth();
+  const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => {
+    try {
+      setCollapsed(window.localStorage.getItem("crm-sidebar-collapsed") === "1");
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  const toggleCollapsed = () => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      try {
+        window.localStorage.setItem("crm-sidebar-collapsed", next ? "1" : "0");
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  };
   const nav = NAV.filter((n) => {
     if (n.adminOnly && !isAdmin) return false;
     const perm = "perm" in n ? n.perm : null;
@@ -173,17 +192,38 @@ function AppShell({ children }: { children: ReactNode }) {
   });
   return (
     <div className="flex min-h-screen bg-background text-foreground">
-      <aside className="hidden md:flex w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground">
-        <div className="flex items-center gap-2 px-6 py-6 border-b border-sidebar-border">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+      <aside
+        className={cn(
+          "hidden md:flex shrink-0 flex-col bg-sidebar text-sidebar-foreground transition-[width] duration-200",
+          collapsed ? "w-16" : "w-64",
+        )}
+      >
+        <div
+          className={cn(
+            "flex items-center gap-2 border-b border-sidebar-border py-6",
+            collapsed ? "flex-col px-2 gap-3" : "px-6",
+          )}
+        >
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
             <Boxes className="h-5 w-5" />
           </div>
-          <div className="leading-tight">
-            <div className="font-display text-sm font-semibold">INPLASTIC - CRM</div>
-            <div className="text-[11px] uppercase tracking-wider text-sidebar-foreground/60">CRM Interno</div>
-          </div>
+          {!collapsed && (
+            <div className="min-w-0 flex-1 leading-tight">
+              <div className="font-display text-sm font-semibold truncate">INPLASTIC - CRM</div>
+              <div className="text-[11px] uppercase tracking-wider text-sidebar-foreground/60">CRM Interno</div>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            aria-label={collapsed ? "Expandir menu" : "Recolher menu"}
+            title={collapsed ? "Expandir menu" : "Recolher menu"}
+            className="shrink-0 rounded-md p-1.5 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          >
+            {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+          </button>
         </div>
-        <nav className="flex-1 space-y-1 p-3">
+        <nav className="flex-1 space-y-1 overflow-y-auto p-3">
           {nav.map((item) => {
             const active = pathname === item.to;
             const Icon = item.icon;
@@ -191,15 +231,17 @@ function AppShell({ children }: { children: ReactNode }) {
               <Link
                 key={item.to}
                 to={item.to}
+                title={collapsed ? item.label : undefined}
                 className={cn(
                   "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                  collapsed && "justify-center px-2",
                   active
                     ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium"
                     : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                 )}
               >
-                <Icon className="h-4 w-4" />
-                {item.label}
+                <Icon className="h-4 w-4 shrink-0" />
+                {!collapsed && item.label}
               </Link>
             );
           })}
@@ -207,22 +249,26 @@ function AppShell({ children }: { children: ReactNode }) {
             href="/manual.html"
             target="_blank"
             rel="noopener noreferrer"
+            title={collapsed ? "Manual do CRM" : undefined}
             className={cn(
               "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+              collapsed && "justify-center px-2",
               "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
             )}
           >
-            <BookOpen className="h-4 w-4" />
-            Manual do CRM
+            <BookOpen className="h-4 w-4 shrink-0" />
+            {!collapsed && "Manual do CRM"}
           </a>
         </nav>
 
-        <UserBadge />
-        <div className="p-4 text-xs text-sidebar-foreground/50 border-t border-sidebar-border">
-
-          v1.0 · palletdeplastico.com.br
-        </div>
+        <UserBadge collapsed={collapsed} />
+        {!collapsed && (
+          <div className="p-4 text-xs text-sidebar-foreground/50 border-t border-sidebar-border">
+            v1.0 · palletdeplastico.com.br
+          </div>
+        )}
       </aside>
+
 
       {/* Mobile top nav */}
       <div className="flex flex-1 flex-col min-w-0">
