@@ -151,14 +151,18 @@ function AtendimentoIAPage() {
 
   return (
     <div className="p-4 md:p-8 space-y-6">
-      <div>
-        <h1 className="text-2xl md:text-3xl font-semibold flex items-center gap-2">
-          <Radio className="h-7 w-7 text-primary" /> Atendimento IA
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Conversas em tempo real. Assuma quando quiser tirar a IA do volante.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-semibold flex items-center gap-2">
+            <Radio className="h-7 w-7 text-primary" /> Atendimento IA
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Conversas em tempo real. Assuma quando quiser tirar a IA do volante.
+          </p>
+        </div>
+        {user?.role === "admin" && <DistribuirConversasDialog onSaved={load} />}
       </div>
+
 
       <div className="grid gap-3 md:grid-cols-4">
         <StatCard label="Total" value={stats.total} />
