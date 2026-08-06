@@ -380,10 +380,33 @@ function RedirectToAuth() {
 }
 
 
-function UserBadge() {
+function UserBadge({ collapsed = false }: { collapsed?: boolean }) {
   const { user, signOut } = useAuth();
   if (!user) return null;
   const initials = user.name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase();
+  if (collapsed) {
+    return (
+      <div className="flex flex-col items-center gap-2 border-t border-sidebar-border p-3">
+        <div
+          className="flex h-8 w-8 items-center justify-center rounded-full text-white text-xs font-semibold"
+          style={{ background: user.avatarColor }}
+          title={user.name}
+        >
+          {initials || "?"}
+        </div>
+        <NotificacoesBell />
+        <button
+          type="button"
+          onClick={() => { void signOut(); }}
+          title="Sair"
+          aria-label="Sair"
+          className="rounded-md p-1.5 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+        >
+          <LogOut className="h-4 w-4" />
+        </button>
+      </div>
+    );
+  }
   return (
     <div className="border-t border-sidebar-border p-3 space-y-2">
       <div className="flex items-center gap-2 px-1">
@@ -413,4 +436,5 @@ function UserBadge() {
     </div>
   );
 }
+
 
