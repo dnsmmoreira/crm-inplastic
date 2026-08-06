@@ -88,8 +88,18 @@ function AtendimentoIAPage() {
       .select("*")
       .order("last_message_at", { ascending: false, nullsFirst: false })
       .limit(200);
-    // Vendedor só enxerga as conversas atribuídas a ele.
-    if (isVendedor && userId) query = query.eq("atribuido_para", userId);
+    // Vendedor enxerga o que foi atribuído a ele + conversas dos leads que são dele.
+    if (isVendedor && userId) {
+      const { data: meusLeads } = await supabase
+        .from("leads")
+        .select("id")
+        .eq("owner_id", userId)
+        .limit(1000);
+      const ids = (meusLeads ?? []).map((l) => l.id);
+      query = ids.length
+        ? query.or(`atribuido_para.eq.${userId},lead_id.in.(${ids.join(",")})`)
+        : query.eq("atribuido_para", userId);
+    }
     const { data, error } = await query;
     if (error) {
       console.error(error);
