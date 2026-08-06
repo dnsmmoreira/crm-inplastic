@@ -258,5 +258,127 @@ export async function runWatchdogConversa(
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // 2ª varredura: conversas FRIAS/ÓRFÃS.
+  // Último autor = CLIENTE e IA desligada há mais de X minutos úteis,
+  // INDEPENDENTE de lead_id e de status. Ninguém pode ficar sem resposta.
+  // ---------------------------------------------------------------------------
+  const friaThresholdIso = subtractBusinessMinutes(
+    cfg.watchdog_conversa_fria_min,
+    win,
+    new Date(),
+  ).toISOString();
+
+  const { data: frias } = await sb
+    .from("whatsapp_conversas")
+    .select("id, phone, name, lead_id, atribuido_para, last_message_at, created_at")
+    .eq("ia_ativa", false)
+    .lt("last_message_at", friaThresholdIso)
+    .order("last_message_at", { ascending: true })
+    .limit(LOTE);
+
+  for (const conv of (frias ?? []) as any[]) {
+    try {
+      // Só interessa quando quem falou por último foi o cliente.
+      const { data: ultima } = await sb
+        .from("whatsapp_mensagens")
+        .select("autor")
+        .eq("conversa_id", conv.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (ultima?.autor !== "cliente") continue;
+
+      stats.frias_candidatas++;
+
+      if (await alreadyActedConversaRegra(sb, conv.id, REGRA_FRIA)) {
+        stats.frias_puladas++;
+        continue;
+      }
+
+      const quem = conv.name?.trim() || conv.phone;
+      if (dryRun) {
+        plan.push({
+          conversa_id: conv.id,
+          phone: conv.phone,
+          name: conv.name ?? null,
+          parada_desde: conv.last_message_at ?? conv.created_at ?? null,
+          acao: conv.atribuido_para
+            ? "notificar responsável (conversa fria)"
+            : "atribuir via fila + notificar (conversa fria/órfã)",
+        });
+        continue;
+      }
+
+      const { garantirResponsavelConversa, notificarUsuario } = await import(
+        "@/lib/xerife/handoff.server"
+      );
+
+      let responsavel: string | null = conv.atribuido_para ?? null;
+      if (!responsavel) {
+        const r = await garantirResponsavelConversa(sb, {
+          conversaId: conv.id,
+          leadId: conv.lead_id ?? null,
+          contexto: `Cliente sem resposta há +${cfg.watchdog_conversa_fria_min} min úteis (IA desligada)`,
+        });
+        responsavel = r.vendedorId;
+        if (responsavel) stats.frias_atribuidas++;
+        else stats.sem_vendedor++;
+      }
+
+      if (responsavel) {
+        await notificarUsuario(sb, {
+          userId: responsavel,
+          tipo: "conversa_sem_resposta",
+          titulo: `Cliente aguardando resposta — ${quem}`,
+          conversaId: conv.id,
+        });
+        const ok = await notifyOwner(
+          responsavel,
+          `⏰ Cliente aguardando resposta\n\nCliente: ${quem}\nTelefone: ${conv.phone}\nSem resposta há +${cfg.watchdog_conversa_fria_min} min úteis (IA desligada).${
+            conv.lead_id ? `\n${crmLeadLink(conv.lead_id)}` : ""
+          }`,
+        );
+        if (ok) stats.frias_notificadas++;
+      }
+
+      await logAction(sb, {
+        regra: REGRA_FRIA,
+        leadId: conv.lead_id ?? null,
+        vendedorId: responsavel,
+        acao: responsavel ? "responsável notificado" : "sem vendedor — alerta admin",
+        payload: {
+          conversa_id: conv.id,
+          phone: conv.phone,
+          janela_min_uteis: cfg.watchdog_conversa_fria_min,
+          parada_desde: conv.last_message_at ?? null,
+        },
+      });
+    } catch (e) {
+      stats.erros++;
+      console.error(
+        "[watchdog-conversa/fria] erro na conversa",
+        conv.id,
+        e instanceof Error ? e.message : String(e),
+      );
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // 3) Reprocessa a fila de reenvio ao n8n (mensagens que o n8n não recebeu).
+  // ---------------------------------------------------------------------------
+  if (!dryRun) {
+    try {
+      const { processarFilaN8n } = await import("@/lib/n8n-fila.server");
+      const r = await processarFilaN8n(sb);
+      if (r.processados) console.log("[watchdog-conversa] fila n8n:", r);
+    } catch (e) {
+      console.error(
+        "[watchdog-conversa] falha ao processar fila n8n:",
+        e instanceof Error ? e.message : String(e),
+      );
+    }
+  }
+
   return { ran: true, dryRun, stats, plan };
 }
