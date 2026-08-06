@@ -450,7 +450,16 @@ function diaLabel(iso: string) {
   return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
-function ChatPanel({ conversa, onChanged }: { conversa: Conversa | null; onChanged: () => void }) {
+function ChatPanel({
+  conversa,
+  onChanged,
+  onVoltar,
+}: {
+  conversa: Conversa | null;
+  onChanged: () => void;
+  onVoltar?: () => void;
+}) {
+
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const [mensagens, setMensagens] = useState<Mensagem[]>([]);
