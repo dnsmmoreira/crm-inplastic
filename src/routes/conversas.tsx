@@ -552,7 +552,7 @@ function ChatPanel({
 
   if (!conversa) {
     return (
-      <div className="flex min-h-[320px] items-center justify-center bg-background p-8">
+      <div className="flex h-full min-h-[320px] items-center justify-center bg-background p-8">
         <div className="text-center text-sm text-muted-foreground">
           <MessageSquare className="mx-auto mb-3 h-10 w-10 text-muted-foreground/40" />
           Escolha uma conversa à esquerda para começar a responder.
