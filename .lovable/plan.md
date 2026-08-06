@@ -1,45 +1,54 @@
-# Diagnóstico — lead "Jhow Reis" (FMJ)
+# Diagnóstico — "Com 3% de desconto" nas propostas
 
-Dados reais consultados no banco (nada foi alterado).
+Verificado em código e no banco. Nada foi alterado.
 
-Conversa: `fcc605e0-…afb`, telefone 5511930028898, `status = humano_atendendo`, `ia_ativa = false`, `requer_humano = false`, **`atribuido_para = NULL`**, `lead_id = c6df3f40-…`, `leads.owner_id = BEATRIZ`, `leads.product = "pallet vazado em polipropileno"`.
-(Existe também uma segunda conversa "Jhow Reis" com phone `132757774696634` — id de grupo/WhatsApp Business — sem lead, ainda em `ia_atendendo`.)
+## (1) Onde o texto é gerado
 
-## BUG 1 — Lucas não conseguiu indicar um pallet
+O texto **não é gerado por nenhum cálculo**: ele é o campo `notes` da condição de pagamento, exibido como está.
 
-Causa raiz: **o agente não tem nenhuma ferramenta de catálogo. Não existe no CRM nenhum endpoint, server fn ou tool MCP que exponha `produtos`/`produtos_omie` para o Lucas.**
+- `src/lib/crm-store.ts:633` — seed: `{ id: "pix-avista", label: "PIX à vista", ..., notes: "Com 3% de desconto" }`
+- `src/lib/crm-store.ts:637` — seed: `dinheiro-avista` com `notes: "Com 5% de desconto"`
+- `src/routes/propostas.$id.tsx:1196-1197` — renderiza `term.notes` abaixo da tabela de parcelas (tela)
+- `src/routes/propostas.$id.tsx:1429` — mesmo `term.notes` na versão de impressão/A4
+- `src/routes/condicoes-comerciais.tsx:414` — campo editável "Observação" da condição, com placeholder `Ex: Com 3% de desconto`
 
-- `src/lib/mcp/index.ts:12-22` — o servidor MCP publica só `list_leads`, `list_tasks`, `pipeline_stats`, `xerife_log_recent`, `placar_atual`, `xerife_config_view`. Nenhuma ferramenta de produto, medida, capacidade ou estoque.
-- `src/routes/api/public/hooks/` — só há `ia-qualificar`, `ia-responder`, `ia-urgente` e os hooks do Xerife. Nenhum hook de consulta de catálogo.
-- `src/routes/api/public/hooks/ia-qualificar.ts:9-21, 107` — o produto viaja como **texto livre** (`dados.produto`) e é apenas gravado em `leads.product`. Não há nenhuma tentativa de casar esse texto com um SKU.
+Nenhum trecho monta a string "Com X% de desconto" dinamicamente — busca por essa expressão só encontra os literais acima.
 
-Portanto (b): não é falha de match exato, de estoque ou de medidas — **não há busca nenhuma**. O Lucas só consegue repetir o que o cliente escreveu (é exatamente o que ele fez: "Entendi, você busca um pallet vazado em polipropileno…" e em seguida transferiu).
+## (2) De onde vem o 3%
 
-Agravantes que impediriam a busca mesmo se ela existisse hoje:
-- `produtos`: 74 ativos, **73 sem `family`** e **0 com `estoque_atual > 0`** — qualquer filtro por família ou por saldo devolveria vazio.
-- As dimensões existem (`height_cm`, `width_cm`, `length_cm`, `weight_kg`), mas não há campo de **carga dinâmica/estática**, material (PP/PEAD), cor ou "vazado x liso" — exatamente os critérios que o Jhow pediu.
+Vem do **banco**, na tabela `condicoes_pagamento`, coluna `notes` — populada a partir do seed de `crm-store.ts`. Consulta atual:
 
-O que faltou (c): uma ferramenta de catálogo (MCP tool ou hook `/api/public/hooks/produtos-buscar`) que receba medida/material/tipo/quantidade e devolva SKUs candidatos, além de enriquecer `produtos` com material, tipo de face e capacidade de carga.
+```
+pix-avista       | PIX à vista       | "Com 3% de desconto"
+dinheiro-avista  | Dinheiro à vista  | "Com 5% de desconto"
+```
 
-## BUG 2 — a conversa não aparece para a Beatriz em /conversas
+Não existe regra por forma de pagamento nem cálculo condicional para "à vista". É texto livre editável em `/condicoes-comerciais`.
 
-Causa raiz: **a Beatriz nunca passou por `assumirConversa`. Ela respondeu direto pela caixa de mensagem, e `sendConversaMessage` muda o status para `humano_atendendo` sem nunca gravar `atribuido_para`.**
+## (3) Afeta o valor?
 
-- `src/lib/canais.functions.ts:46-51` — após enviar, faz `update({ status: "humano_atendendo", ia_ativa: false })`. **Não toca em `atribuido_para`.**
-- Histórico confirma: as duas mensagens de saída (14:34 e 17:05 de hoje) têm `autor = vendedor`, `usuario_id = Beatriz`, e a conversa continua com `atribuido_para = NULL`.
-- `src/routes/conversas.tsx:152` — a lista filtra `.eq("atribuido_para", userId)`. Com `atribuido_para` nulo, a conversa some para ela.
-- Ela **conseguia** ver e responder porque a RLS de `whatsapp_conversas` (política `conversas select`) também permite `leads.owner_id = auth.uid()` — divergência confirmada entre `owner_id` (Beatriz) e `atribuido_para` (nulo). A tela `/conversas` é mais restritiva que a RLS.
-- Armadilha adicional: `src/routes/conversas.tsx:567` só mostra o botão **Assumir** quando `ia_ativa && status === 'ia_atendendo'`. Como a primeira resposta dela já derrubou a IA, o botão sumiu — não existe mais nenhum caminho na UI para ela se atribuir.
+**Não.** É puramente textual.
 
-Respondendo item a item:
-- (a) Ficou **NULL** — nem dela, nem de outro vendedor.
-- (b) A condição "atribui se órfã" (`src/lib/atendimento.functions.ts:24`) **não** foi o bloqueio neste caso (a conversa era órfã). Ela seria um bloqueio real em outro cenário: conversa já atribuída ao vendedor A, o vendedor B clica Assumir e a atribuição não muda — B some da própria lista.
-- (c) Sim, há divergência: o vínculo real é `leads.owner_id`, mas `/conversas` só olha `atribuido_para`.
+- O único desconto real é `propostas.discount_percent` → `discountPercent`, definido manualmente pelo vendedor no campo de desconto (`src/routes/propostas.$id.tsx:1215-1227`, limitado pelo teto do admin).
+- O total sai de `src/lib/crm-store.ts:1403-1408`, que usa apenas `p.discountPercent`; a condição de pagamento não entra na conta.
+- As parcelas são rateio do total já calculado — o `notes` não participa.
+- Confirmado nos dados: as 10 propostas mais recentes, incluindo as com `payment_term_id = pix-avista` e `dinheiro-avista`, todas têm `discount_percent = 0`.
 
-## Correções sugeridas (não aplicadas)
+Ou seja: hoje a proposta **diz** 3% mas **cobra** o valor cheio — divergência entre texto e valor, o que é o risco comercial real aqui.
 
-1. `sendConversaMessage` gravar `atribuido_para = userId` quando estiver nulo (mesma regra do `assumirConversa`).
-2. `/conversas:152` incluir também as conversas cujo lead é do usuário (`leads.owner_id = auth.uid()`), alinhando a tela à RLS.
-3. Mostrar "Assumir/Assumir para mim" sempre que `atribuido_para` for nulo ou diferente do usuário, não só quando a IA está ativa.
-4. Backfill pontual: setar `atribuido_para` a partir de `leads.owner_id` nas conversas humanas órfãs.
-5. Para o BUG 1: criar a ferramenta de busca de catálogo e enriquecer `produtos` (material, tipo, carga, família, estoque).
+## (4) Mudança mínima
+
+Limpar o `notes` das duas condições no banco — nada de código:
+
+```sql
+UPDATE public.condicoes_pagamento
+SET notes = NULL, updated_at = now()
+WHERE id IN ('pix-avista', 'dinheiro-avista');
+```
+
+Isso já remove o texto da tela e da impressão, porque ambos os pontos de render são condicionais (`{term.notes && ...}`).
+
+Complemento recomendado (opcional, mesma mudança mínima):
+- Remover os dois literais `notes:` do seed em `src/lib/crm-store.ts:633` e `:637`, para que uma reinicialização/reseed não traga o texto de volta.
+
+O que **não** muda: o campo de desconto manual da proposta continua funcionando igual, e o admin continua podendo escrever qualquer observação em `/condicoes-comerciais`.
