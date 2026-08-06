@@ -5,28 +5,24 @@ import { ptBR } from "date-fns/locale";
 import {
   Radio,
   Phone,
-  Send,
   Bot,
   User as UserIcon,
   MessageSquare,
-  HandMetal,
   RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
 import { LeadDrawer } from "@/components/crm/LeadDrawer";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
-import { sendConversaMessage } from "@/lib/canais.functions";
 import {
-  assumirConversa,
   devolverParaIA,
   atribuirConversa,
   listarVendedoresAtendimento,
 } from "@/lib/atendimento.functions";
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
 import { DistribuirConversasDialog } from "@/components/atendimento/DistribuirConversasDialog";
@@ -265,14 +261,11 @@ function ConversationPanel({
   onChanged: () => void;
 }) {
   const [mensagens, setMensagens] = useState<Mensagem[]>([]);
-  const [text, setText] = useState("");
-  const [sending, setSending] = useState(false);
   const [busy, setBusy] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
-  const send = useServerFn(sendConversaMessage);
-  const assumir = useServerFn(assumirConversa);
   const devolver = useServerFn(devolverParaIA);
+
 
   const loadMensagens = useCallback(async (conversaId: string) => {
     const { data, error } = await supabase
