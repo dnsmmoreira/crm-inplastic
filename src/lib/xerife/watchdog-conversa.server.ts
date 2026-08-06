@@ -48,6 +48,10 @@ export type WatchdogResult = {
     notificados: number;
     pulados_dedupe: number;
     erros: number;
+    frias_candidatas: number;
+    frias_atribuidas: number;
+    frias_notificadas: number;
+    frias_puladas: number;
   };
   plan: WatchdogPlanItem[];
 };
@@ -55,6 +59,7 @@ export type WatchdogResult = {
 type Cfg = {
   watchdog_conversa_ativo: boolean;
   watchdog_conversa_ia_min: number;
+  watchdog_conversa_fria_min: number;
   dias_uteis_inicio: string;
   dias_uteis_fim: string;
 };
@@ -70,6 +75,7 @@ async function loadCfg(): Promise<Cfg> {
   return {
     watchdog_conversa_ativo: d.watchdog_conversa_ativo ?? false,
     watchdog_conversa_ia_min: d.watchdog_conversa_ia_min ?? 15,
+    watchdog_conversa_fria_min: d.watchdog_conversa_fria_min ?? 20,
     dias_uteis_inicio: (d.dias_uteis_inicio ?? "08:00:00").slice(0, 5),
     dias_uteis_fim: (d.dias_uteis_fim ?? "18:00:00").slice(0, 5),
   };
