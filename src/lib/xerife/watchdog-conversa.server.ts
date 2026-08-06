@@ -106,6 +106,10 @@ export async function runWatchdogConversa(
     notificados: 0,
     pulados_dedupe: 0,
     erros: 0,
+    frias_candidatas: 0,
+    frias_atribuidas: 0,
+    frias_notificadas: 0,
+    frias_puladas: 0,
   };
   const plan: WatchdogPlanItem[] = [];
 
