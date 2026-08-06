@@ -1,7 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { formatDistanceToNow } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { MessageSquare, Phone, Send, Bot, User as UserIcon, Search } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
