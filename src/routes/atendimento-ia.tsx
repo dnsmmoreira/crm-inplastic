@@ -468,3 +468,67 @@ function MessageBubble({ m }: { m: Mensagem }) {
     </div>
   );
 }
+
+function AtribuirSelect({ conversa, onChanged }: { conversa: Conversa; onChanged: () => void }) {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const [vendedores, setVendedores] = useState<Array<{ id: string; name: string }>>([]);
+  const [saving, setSaving] = useState(false);
+  const listar = useServerFn(listarVendedoresAtendimento);
+  const atribuir = useServerFn(atribuirConversa);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    let alive = true;
+    void (async () => {
+      try {
+        const rows = await listar();
+        if (alive) setVendedores(rows);
+      } catch (e) {
+        console.error(e);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [isAdmin, listar]);
+
+  if (!isAdmin) return null;
+
+  return (
+    <Select
+      value={conversa.atribuido_para ?? "none"}
+      disabled={saving}
+      onValueChange={(v) => {
+        setSaving(true);
+        void (async () => {
+          try {
+            await atribuir({
+              data: { conversaId: conversa.id, vendedorId: v === "none" ? null : v },
+            });
+            toast.success(v === "none" ? "Atribuição removida" : "Conversa atribuída");
+            onChanged();
+          } catch (e) {
+            toast.error("Falha ao atribuir", {
+              description: e instanceof Error ? e.message : String(e),
+            });
+          } finally {
+            setSaving(false);
+          }
+        })();
+      }}
+    >
+      <SelectTrigger className="h-8 w-[180px] text-xs">
+        <SelectValue placeholder="Atribuir a…" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="none">Sem responsável</SelectItem>
+        {vendedores.map((v) => (
+          <SelectItem key={v.id} value={v.id}>
+            {v.name}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
