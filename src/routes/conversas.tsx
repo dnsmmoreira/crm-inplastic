@@ -1,6 +1,24 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { MessageSquare, Phone, Send, Bot, User as UserIcon, Search } from "lucide-react";
+import {
+  MessageSquare,
+  Phone,
+  Send,
+  Bot,
+  User as UserIcon,
+  Search,
+  Plus,
+  ListFilter,
+} from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { NovaConversaDialog } from "@/components/atendimento/NovaConversaDialog";
+
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
