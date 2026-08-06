@@ -599,12 +599,23 @@ function ChatPanel({
   const conversaId = conversa.id;
 
   return (
-    <div className="flex min-h-0 flex-col bg-background">
+    <div className="flex h-full min-h-0 flex-col bg-background">
       <div className="border-b bg-muted/40 px-4 py-3">
         <div className="flex items-center gap-3">
+          {onVoltar && (
+            <button
+              type="button"
+              onClick={onVoltar}
+              aria-label="Voltar para a lista"
+              className="-ml-1 shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted md:hidden"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+          )}
           <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
             {iniciais(nome) || "?"}
           </span>
+
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="truncate text-sm font-medium">{nome}</span>
