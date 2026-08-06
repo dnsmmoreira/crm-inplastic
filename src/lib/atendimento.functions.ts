@@ -57,3 +57,47 @@ export const devolverParaIA = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+
+/**
+ * Lista os vendedores ativos (admin apenas) para o seletor de atribuição.
+ */
+export const listarVendedoresAtendimento = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { data: roles } = await supabase.from("user_roles").select("user_id, role");
+    const isAdmin = (roles ?? []).some((r) => r.user_id === userId && r.role === "admin");
+    if (!isAdmin) return [] as Array<{ id: string; name: string }>;
+    const vendedorIds = (roles ?? []).filter((r) => r.role === "vendedor").map((r) => r.user_id);
+    if (vendedorIds.length === 0) return [] as Array<{ id: string; name: string }>;
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, name")
+      .in("id", vendedorIds)
+      .eq("ativo", true)
+      .is("deleted_at", null)
+      .order("name");
+    return (profiles ?? []).map((p) => ({ id: p.id, name: p.name }));
+  });
+
+/**
+ * Atribui a conversa a um vendedor (admin apenas). O gatilho do banco cria a
+ * notificação e preenche `atribuido_em`.
+ */
+export const atribuirConversa = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) =>
+    z.object({ conversaId: z.string().uuid(), vendedorId: z.string().uuid().nullable() }).parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
+    if (!isAdmin) throw new Error("Apenas administradores podem atribuir conversas.");
+    const { error } = await supabase
+      .from("whatsapp_conversas")
+      .update({ atribuido_para: data.vendedorId })
+      .eq("id", data.conversaId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
