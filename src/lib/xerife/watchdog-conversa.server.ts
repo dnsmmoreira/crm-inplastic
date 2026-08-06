@@ -82,15 +82,23 @@ async function loadCfg(): Promise<Cfg> {
 }
 
 /** Já agimos nesta conversa nas últimas N horas? (dedupe por payload.conversa_id) */
-async function alreadyActedConversa(sb: any, conversaId: string): Promise<boolean> {
+async function alreadyActedConversaRegra(
+  sb: any,
+  conversaId: string,
+  regra: string,
+): Promise<boolean> {
   const sinceIso = new Date(Date.now() - DEDUPE_HORAS * 3600 * 1000).toISOString();
   const { count } = await sb
     .from("xerife_log")
     .select("id", { count: "exact", head: true })
-    .eq("regra", REGRA)
+    .eq("regra", regra)
     .gte("created_at", sinceIso)
     .contains("payload", { conversa_id: conversaId });
   return (count ?? 0) > 0;
+}
+
+async function alreadyActedConversa(sb: any, conversaId: string): Promise<boolean> {
+  return alreadyActedConversaRegra(sb, conversaId, REGRA);
 }
 
 export async function runWatchdogConversa(
