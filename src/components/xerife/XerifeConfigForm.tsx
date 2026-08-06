@@ -49,6 +49,9 @@ type Cfg = {
   // Motor
   ativo: boolean;
   whatsapp_interno_ativo: boolean;
+  watchdog_conversa_ativo: boolean;
+  watchdog_conversa_ia_min: number;
+  watchdog_conversa_fria_min: number;
 };
 
 const hhmm = (s: string | null | undefined, d: string) =>
