@@ -398,6 +398,30 @@ export function XerifeConfigForm() {
               onCheckedChange={(v) => upd({ whatsapp_interno_ativo: v })}
             />
           </div>
+          <Separator />
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-sm">Watchdog de conversa</Label>
+              <p className="text-xs text-muted-foreground">
+                Varre conversas paradas na IA e conversas frias (cliente sem resposta),
+                atribui pela fila e avisa o responsável.
+              </p>
+            </div>
+            <Switch
+              checked={cfg.watchdog_conversa_ativo}
+              onCheckedChange={(v) => upd({ watchdog_conversa_ativo: v })}
+            />
+          </div>
+          <NumField
+            label="Conversa parada na IA (minutos úteis)"
+            value={cfg.watchdog_conversa_ia_min}
+            onChange={(v) => upd({ watchdog_conversa_ia_min: v })}
+          />
+          <NumField
+            label="Conversa fria — cliente sem resposta (minutos úteis)"
+            value={cfg.watchdog_conversa_fria_min}
+            onChange={(v) => upd({ watchdog_conversa_fria_min: v })}
+          />
         </Section>
       </div>
 
