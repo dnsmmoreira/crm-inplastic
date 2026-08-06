@@ -44,11 +44,18 @@ export const sendConversaMessage = createServerFn({ method: "POST" })
 
     if (mErr) throw new Error(mErr.message);
 
-    // Sai do modo IA se ainda estava
+    // Sai do modo IA e assume a conversa se ainda não houver responsável
     await supabase
       .from("whatsapp_conversas")
       .update({ status: "humano_atendendo", ia_ativa: false })
       .eq("id", data.conversaId);
+
+    await supabase
+      .from("whatsapp_conversas")
+      .update({ atribuido_para: userId })
+      .eq("id", data.conversaId)
+      .is("atribuido_para", null);
+
 
     return { ok: true };
   });
