@@ -418,7 +418,14 @@ function MinhasConversasPage() {
         </div>
 
         {/* Coluna direita */}
-        <ChatPanel conversa={selected} onChanged={load} />
+        <div className={cn("min-h-0 flex-col md:flex", selectedId ? "flex" : "hidden")}>
+          <ChatPanel
+            conversa={selected}
+            onChanged={load}
+            onVoltar={() => void navigate({ search: {} })}
+          />
+        </div>
+
       </div>
     </div>
   );
