@@ -4,6 +4,7 @@ import { renderErrorPage } from "./lib/error-page";
 // Substitui o `attachSupabaseAuth` gerado: ver comentário em src/lib/auth-bearer.ts
 // (getSession() por chamada causava refreshes concorrentes e derrubava a sessão).
 import { attachAuthBearer } from "@/lib/auth-bearer";
+import { attachSupabaseAuth } from "@/integrations/supabase/auth-attacher";
 
 const errorMiddleware = createMiddleware().server(async ({ next }) => {
   try {
@@ -21,6 +22,6 @@ const errorMiddleware = createMiddleware().server(async ({ next }) => {
 });
 
 export const startInstance = createStart(() => ({
-  functionMiddleware: [attachAuthBearer],
+  functionMiddleware: [attachSupabaseAuth, attachAuthBearer],
   requestMiddleware: [errorMiddleware],
 }));
