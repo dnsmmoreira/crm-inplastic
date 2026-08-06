@@ -21,7 +21,13 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import { sendConversaMessage } from "@/lib/canais.functions";
-import { assumirConversa, devolverParaIA } from "@/lib/atendimento.functions";
+import {
+  assumirConversa,
+  devolverParaIA,
+  atribuirConversa,
+  listarVendedoresAtendimento,
+} from "@/lib/atendimento.functions";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -88,8 +94,18 @@ function AtendimentoIAPage() {
       .select("*")
       .order("last_message_at", { ascending: false, nullsFirst: false })
       .limit(200);
-    // Vendedor só enxerga as conversas atribuídas a ele.
-    if (isVendedor && userId) query = query.eq("atribuido_para", userId);
+    // Vendedor enxerga o que foi atribuído a ele + conversas dos leads que são dele.
+    if (isVendedor && userId) {
+      const { data: meusLeads } = await supabase
+        .from("leads")
+        .select("id")
+        .eq("owner_id", userId)
+        .limit(1000);
+      const ids = (meusLeads ?? []).map((l) => l.id);
+      query = ids.length
+        ? query.or(`atribuido_para.eq.${userId},lead_id.in.(${ids.join(",")})`)
+        : query.eq("atribuido_para", userId);
+    }
     const { data, error } = await query;
     if (error) {
       console.error(error);
@@ -223,9 +239,12 @@ function ConversationList({
         })}
         {conversas.length === 0 && (
           <li className="p-10 text-center text-sm text-muted-foreground">
-            Nenhuma conversa visível para você ainda.
+            Nenhuma conversa atribuída a você ainda. Peça a um administrador para atribuir uma
+            conversa ou aguarde a chegada de um lead seu.
           </li>
         )}
+
+
       </ul>
     </div>
   );
@@ -364,6 +383,8 @@ function ConversationPanel({
         </div>
         <div className="flex items-center gap-2">
           <StatusChip status={conversa.status} />
+          <AtribuirSelect conversa={conversa} onChanged={onChanged} />
+
           {conversa.lead_id && (
             <Button size="sm" variant="outline" onClick={() => onOpenLead(conversa.lead_id!)}>
               Abrir lead
@@ -445,5 +466,69 @@ function MessageBubble({ m }: { m: Mensagem }) {
         </div>
       </div>
     </div>
+  );
+}
+
+function AtribuirSelect({ conversa, onChanged }: { conversa: Conversa; onChanged: () => void }) {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const [vendedores, setVendedores] = useState<Array<{ id: string; name: string }>>([]);
+  const [saving, setSaving] = useState(false);
+  const listar = useServerFn(listarVendedoresAtendimento);
+  const atribuir = useServerFn(atribuirConversa);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    let alive = true;
+    void (async () => {
+      try {
+        const rows = await listar();
+        if (alive) setVendedores(rows);
+      } catch (e) {
+        console.error(e);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [isAdmin, listar]);
+
+  if (!isAdmin) return null;
+
+  return (
+    <Select
+      value={conversa.atribuido_para ?? "none"}
+      disabled={saving}
+      onValueChange={(v) => {
+        setSaving(true);
+        void (async () => {
+          try {
+            await atribuir({
+              data: { conversaId: conversa.id, vendedorId: v === "none" ? null : v },
+            });
+            toast.success(v === "none" ? "Atribuição removida" : "Conversa atribuída");
+            onChanged();
+          } catch (e) {
+            toast.error("Falha ao atribuir", {
+              description: e instanceof Error ? e.message : String(e),
+            });
+          } finally {
+            setSaving(false);
+          }
+        })();
+      }}
+    >
+      <SelectTrigger className="h-8 w-[180px] text-xs">
+        <SelectValue placeholder="Atribuir a…" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="none">Sem responsável</SelectItem>
+        {vendedores.map((v) => (
+          <SelectItem key={v.id} value={v.id}>
+            {v.name}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
