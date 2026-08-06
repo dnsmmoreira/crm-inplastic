@@ -9,6 +9,12 @@ import {
   Search,
   Plus,
   ListFilter,
+  AlertTriangle,
+  CheckCircle2,
+  Paperclip,
+  Mic,
+  FileText,
+  Check,
 } from "lucide-react";
 import {
   Select,
@@ -27,7 +33,13 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import { sendConversaMessage } from "@/lib/canais.functions";
-import { assumirConversa } from "@/lib/atendimento.functions";
+import {
+  assumirConversa,
+  devolverParaIA,
+  encerrarConversa,
+  atribuirConversa,
+  listarVendedoresAtendimento,
+} from "@/lib/atendimento.functions";
 import { useAuth } from "@/hooks/use-auth";
 import type { Database } from "@/integrations/supabase/types";
 
