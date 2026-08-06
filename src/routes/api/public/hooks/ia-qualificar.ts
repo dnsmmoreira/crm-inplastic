@@ -135,61 +135,45 @@ export const Route = createFileRoute("/api/public/hooks/ia-qualificar")({
           })
           .eq("id", conversaId);
 
-        // 3) Distribui ou apenas registra a espera
-        let vendedorId: string | null = null;
-        if (distribuir) {
-          const { data: rpcData, error: rpcErr } = await supabaseAdmin.rpc(
-            "atribuir_proximo_vendedor",
-            { _lead_id: leadId },
-          );
-          if (rpcErr) {
-            console.error("atribuir_proximo_vendedor falhou:", rpcErr);
-            return new Response(
-              JSON.stringify({
-                ok: true,
-                lead_id: leadId,
-                vendedor_id: null,
-                distribuido: false,
-                erro_distribuicao: rpcErr.message,
-              }),
-              { status: 200, headers: { "Content-Type": "application/json", ...CORS } },
-            );
-          }
-          vendedorId = (rpcData as string) ?? null;
-          await supabaseAdmin.from("lead_ai_actions").insert({
-            lead_id: leadId,
-            owner_id: vendedorId,
-            type: "qualify",
-            content: `IA qualificou o lead. ${body.motivo ?? ""}`.trim(),
-            metadata: {
-              canal: "whatsapp",
-              conversa_id: conversaId,
-              dados,
-              distribuido: true,
-              vendedor_id: vendedorId,
-            },
-          });
-        } else {
-          await supabaseAdmin.from("lead_ai_actions").insert({
-            lead_id: leadId,
-            owner_id: null,
-            type: "qualify",
-            content:
-              `IA qualificou o lead — aguardando distribuição (fora do horário). ${
+        // 3) Rede de segurança: a IA foi desligada, então a conversa NUNCA pode
+        //    sair daqui sem responsável — round-robin + notificação ao vendedor.
+        //    Se falhar, marca requer_humano e alerta admin/diretoria.
+        const { garantirResponsavelConversa } = await import("@/lib/xerife/handoff.server");
+        const atribuicao = await garantirResponsavelConversa(supabaseAdmin, {
+          conversaId,
+          leadId,
+          contexto: `Lead qualificado pela IA${body.motivo ? ` — ${body.motivo}` : ""}`,
+        });
+        const vendedorId = atribuicao.vendedorId;
+
+        await supabaseAdmin.from("lead_ai_actions").insert({
+          lead_id: leadId,
+          owner_id: vendedorId,
+          type: "qualify",
+          content: vendedorId
+            ? `IA qualificou o lead. ${body.motivo ?? ""}`.trim()
+            : `IA qualificou o lead — SEM vendedor disponível, aguardando humano. ${
                 body.motivo ?? ""
               }`.trim(),
-            metadata: {
-              canal: "whatsapp",
-              conversa_id: conversaId,
-              dados,
-              distribuido: false,
-              aguardando_distribuicao: true,
-            },
-          });
-        }
+          metadata: {
+            canal: "whatsapp",
+            conversa_id: conversaId,
+            dados,
+            distribuido: !!vendedorId,
+            distribuir_solicitado: distribuir,
+            vendedor_id: vendedorId,
+            erro_distribuicao: atribuicao.erro,
+          },
+        });
 
         return Response.json(
-          { ok: true, lead_id: leadId, vendedor_id: vendedorId, distribuido: distribuir },
+          {
+            ok: true,
+            lead_id: leadId,
+            vendedor_id: vendedorId,
+            distribuido: !!vendedorId,
+            erro_distribuicao: atribuicao.erro,
+          },
           { headers: CORS },
         );
       },

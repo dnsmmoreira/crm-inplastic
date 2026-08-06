@@ -166,7 +166,8 @@ export const Route = createFileRoute("/api/public/zapi/webhook")({
             }
 
             // 5b) Handoff humano para mídia/tipos não conversáveis.
-            //     Apenas estado no banco — nenhum envio de WhatsApp é feito aqui.
+            //     Além do estado no banco, avisa o responsável (ou admin) —
+            //     nunca marcar a flag em silêncio.
             if (TIPOS_COM_HANDOFF.includes(norm.tipo)) {
               const { error: hoErr } = await supabaseAdmin
                 .from("whatsapp_conversas")
@@ -177,6 +178,38 @@ export const Route = createFileRoute("/api/public/zapi/webhook")({
                 })
                 .eq("id", conversaId);
               if (hoErr) console.error("handoff update failed:", hoErr);
+
+              const { data: convHo } = await supabaseAdmin
+                .from("whatsapp_conversas")
+                .select("id, phone, name, atribuido_para, lead_id")
+                .eq("id", conversaId)
+                .maybeSingle();
+              const quem = convHo?.name?.trim() || convHo?.phone || phone;
+              const titulo = `Mídia (${norm.tipo}) aguardando atendimento — ${quem}`;
+              const { notificarUsuario, alertarAdmins } = await import(
+                "@/lib/xerife/handoff.server"
+              );
+              if (convHo?.atribuido_para) {
+                await notificarUsuario(supabaseAdmin, {
+                  userId: convHo.atribuido_para,
+                  tipo: "handoff_midia",
+                  titulo,
+                  conversaId,
+                });
+                const { notifyOwner } = await import("@/lib/xerife/notify.server");
+                await notifyOwner(
+                  convHo.atribuido_para,
+                  `📎 Conversa aguardando atendimento humano\n\nCliente: ${quem}\nMotivo: mídia recebida (${norm.tipo}) — a IA foi desligada.`,
+                );
+              } else {
+                await alertarAdmins(supabaseAdmin, {
+                  tipo: "handoff_midia",
+                  titulo,
+                  conversaId,
+                  mensagem: `📎 Conversa SEM responsável aguardando atendimento humano\n\nCliente: ${quem}\nMotivo: mídia recebida (${norm.tipo}) — a IA foi desligada.`,
+                });
+              }
+
               return Response.json(
                 { ok: true, conversaId, tipo: norm.tipo, handoff: true },
                 { headers: CORS },
@@ -226,26 +259,20 @@ export const Route = createFileRoute("/api/public/zapi/webhook")({
                   lead_id: conv.lead_id,
                   historico,
                 };
+                const { enviarAvisoN8n, enfileirarAvisoN8n, N8N_TIMEOUT_MS } = await import(
+                  "@/lib/n8n-fila.server"
+                );
                 try {
-                  const ctrl = new AbortController();
-                  const timer = setTimeout(() => ctrl.abort(), 3000);
-                  const r = await fetch(n8nUrl, {
-                    method: "POST",
-                    headers: {
-                      "Content-Type": "application/json",
-                      "x-n8n-secret": n8nSecret,
-                    },
-                    body: JSON.stringify(payloadOut),
-                    signal: ctrl.signal,
-                  });
-                  clearTimeout(timer);
-                  console.log("[n8n-notify] sent", {
-                    conversaId,
-                    status: r.status,
-                  });
+                  await enviarAvisoN8n(n8nUrl, n8nSecret, payloadOut, N8N_TIMEOUT_MS);
+                  console.log("[n8n-notify] sent", { conversaId });
                 } catch (e) {
                   const msg = e instanceof Error ? e.message : String(e);
-                  console.error("[n8n-notify] failed:", msg);
+                  console.error("[n8n-notify] failed, enfileirando reenvio:", msg);
+                  await enfileirarAvisoN8n(supabaseAdmin, {
+                    conversaId,
+                    payload: payloadOut,
+                    erro: msg,
+                  });
                 }
               }
             }

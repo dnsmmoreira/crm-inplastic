@@ -680,6 +680,53 @@ export type Database = {
           },
         ]
       }
+      n8n_reenvio_fila: {
+        Row: {
+          conversa_id: string | null
+          created_at: string
+          id: string
+          max_tentativas: number
+          payload: Json
+          proxima_tentativa_em: string
+          status: string
+          tentativas: number
+          ultimo_erro: string | null
+          updated_at: string
+        }
+        Insert: {
+          conversa_id?: string | null
+          created_at?: string
+          id?: string
+          max_tentativas?: number
+          payload: Json
+          proxima_tentativa_em?: string
+          status?: string
+          tentativas?: number
+          ultimo_erro?: string | null
+          updated_at?: string
+        }
+        Update: {
+          conversa_id?: string | null
+          created_at?: string
+          id?: string
+          max_tentativas?: number
+          payload?: Json
+          proxima_tentativa_em?: string
+          status?: string
+          tentativas?: number
+          ultimo_erro?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "n8n_reenvio_fila_conversa_id_fkey"
+            columns: ["conversa_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_conversas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notificacoes: {
         Row: {
           conversa_id: string | null
@@ -1910,6 +1957,7 @@ export type Database = {
           telegram_ativo: boolean
           updated_at: string
           watchdog_conversa_ativo: boolean
+          watchdog_conversa_fria_min: number
           watchdog_conversa_ia_min: number
           whatsapp_interno_ativo: boolean
         }
@@ -1950,6 +1998,7 @@ export type Database = {
           telegram_ativo?: boolean
           updated_at?: string
           watchdog_conversa_ativo?: boolean
+          watchdog_conversa_fria_min?: number
           watchdog_conversa_ia_min?: number
           whatsapp_interno_ativo?: boolean
         }
@@ -1990,6 +2039,7 @@ export type Database = {
           telegram_ativo?: boolean
           updated_at?: string
           watchdog_conversa_ativo?: boolean
+          watchdog_conversa_fria_min?: number
           watchdog_conversa_ia_min?: number
           whatsapp_interno_ativo?: boolean
         }

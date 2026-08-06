@@ -69,6 +69,11 @@ const configSchema = z
     // Motor
     ativo: z.boolean().optional(),
     whatsapp_interno_ativo: z.boolean().optional(),
+
+    // Watchdog de conversa
+    watchdog_conversa_ativo: z.boolean().optional(),
+    watchdog_conversa_ia_min: z.number().int().min(1).max(1440).optional(),
+    watchdog_conversa_fria_min: z.number().int().min(1).max(1440).optional(),
   })
   .refine(
     (d) =>

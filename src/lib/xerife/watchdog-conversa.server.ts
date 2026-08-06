@@ -25,6 +25,7 @@ import { logAction } from "@/lib/xerife/dedupe.server";
 import { notifyOwner, notifyDiretoria, crmLeadLink } from "@/lib/xerife/notify.server";
 
 export const REGRA = "watchdog_conversa_ia";
+export const REGRA_FRIA = "watchdog_conversa_fria";
 const LOTE = 50;
 const DEDUPE_HORAS = 24;
 
@@ -48,6 +49,10 @@ export type WatchdogResult = {
     notificados: number;
     pulados_dedupe: number;
     erros: number;
+    frias_candidatas: number;
+    frias_atribuidas: number;
+    frias_notificadas: number;
+    frias_puladas: number;
   };
   plan: WatchdogPlanItem[];
 };
@@ -55,6 +60,7 @@ export type WatchdogResult = {
 type Cfg = {
   watchdog_conversa_ativo: boolean;
   watchdog_conversa_ia_min: number;
+  watchdog_conversa_fria_min: number;
   dias_uteis_inicio: string;
   dias_uteis_fim: string;
 };
@@ -70,21 +76,30 @@ async function loadCfg(): Promise<Cfg> {
   return {
     watchdog_conversa_ativo: d.watchdog_conversa_ativo ?? false,
     watchdog_conversa_ia_min: d.watchdog_conversa_ia_min ?? 15,
+    watchdog_conversa_fria_min: d.watchdog_conversa_fria_min ?? 20,
     dias_uteis_inicio: (d.dias_uteis_inicio ?? "08:00:00").slice(0, 5),
     dias_uteis_fim: (d.dias_uteis_fim ?? "18:00:00").slice(0, 5),
   };
 }
 
 /** Já agimos nesta conversa nas últimas N horas? (dedupe por payload.conversa_id) */
-async function alreadyActedConversa(sb: any, conversaId: string): Promise<boolean> {
+async function alreadyActedConversaRegra(
+  sb: any,
+  conversaId: string,
+  regra: string,
+): Promise<boolean> {
   const sinceIso = new Date(Date.now() - DEDUPE_HORAS * 3600 * 1000).toISOString();
   const { count } = await sb
     .from("xerife_log")
     .select("id", { count: "exact", head: true })
-    .eq("regra", REGRA)
+    .eq("regra", regra)
     .gte("created_at", sinceIso)
     .contains("payload", { conversa_id: conversaId });
   return (count ?? 0) > 0;
+}
+
+async function alreadyActedConversa(sb: any, conversaId: string): Promise<boolean> {
+  return alreadyActedConversaRegra(sb, conversaId, REGRA);
 }
 
 export async function runWatchdogConversa(
@@ -100,6 +115,10 @@ export async function runWatchdogConversa(
     notificados: 0,
     pulados_dedupe: 0,
     erros: 0,
+    frias_candidatas: 0,
+    frias_atribuidas: 0,
+    frias_notificadas: 0,
+    frias_puladas: 0,
   };
   const plan: WatchdogPlanItem[] = [];
 
@@ -243,6 +262,128 @@ export async function runWatchdogConversa(
       console.error(
         "[watchdog-conversa] erro na conversa",
         conv.id,
+        e instanceof Error ? e.message : String(e),
+      );
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // 2ª varredura: conversas FRIAS/ÓRFÃS.
+  // Último autor = CLIENTE e IA desligada há mais de X minutos úteis,
+  // INDEPENDENTE de lead_id e de status. Ninguém pode ficar sem resposta.
+  // ---------------------------------------------------------------------------
+  const friaThresholdIso = subtractBusinessMinutes(
+    cfg.watchdog_conversa_fria_min,
+    win,
+    new Date(),
+  ).toISOString();
+
+  const { data: frias } = await sb
+    .from("whatsapp_conversas")
+    .select("id, phone, name, lead_id, atribuido_para, last_message_at, created_at")
+    .eq("ia_ativa", false)
+    .lt("last_message_at", friaThresholdIso)
+    .order("last_message_at", { ascending: true })
+    .limit(LOTE);
+
+  for (const conv of (frias ?? []) as any[]) {
+    try {
+      // Só interessa quando quem falou por último foi o cliente.
+      const { data: ultima } = await sb
+        .from("whatsapp_mensagens")
+        .select("autor")
+        .eq("conversa_id", conv.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (ultima?.autor !== "cliente") continue;
+
+      stats.frias_candidatas++;
+
+      if (await alreadyActedConversaRegra(sb, conv.id, REGRA_FRIA)) {
+        stats.frias_puladas++;
+        continue;
+      }
+
+      const quem = conv.name?.trim() || conv.phone;
+      if (dryRun) {
+        plan.push({
+          conversa_id: conv.id,
+          phone: conv.phone,
+          name: conv.name ?? null,
+          parada_desde: conv.last_message_at ?? conv.created_at ?? null,
+          acao: conv.atribuido_para
+            ? "notificar responsável (conversa fria)"
+            : "atribuir via fila + notificar (conversa fria/órfã)",
+        });
+        continue;
+      }
+
+      const { garantirResponsavelConversa, notificarUsuario } = await import(
+        "@/lib/xerife/handoff.server"
+      );
+
+      let responsavel: string | null = conv.atribuido_para ?? null;
+      if (!responsavel) {
+        const r = await garantirResponsavelConversa(sb, {
+          conversaId: conv.id,
+          leadId: conv.lead_id ?? null,
+          contexto: `Cliente sem resposta há +${cfg.watchdog_conversa_fria_min} min úteis (IA desligada)`,
+        });
+        responsavel = r.vendedorId;
+        if (responsavel) stats.frias_atribuidas++;
+        else stats.sem_vendedor++;
+      }
+
+      if (responsavel) {
+        await notificarUsuario(sb, {
+          userId: responsavel,
+          tipo: "conversa_sem_resposta",
+          titulo: `Cliente aguardando resposta — ${quem}`,
+          conversaId: conv.id,
+        });
+        const ok = await notifyOwner(
+          responsavel,
+          `⏰ Cliente aguardando resposta\n\nCliente: ${quem}\nTelefone: ${conv.phone}\nSem resposta há +${cfg.watchdog_conversa_fria_min} min úteis (IA desligada).${
+            conv.lead_id ? `\n${crmLeadLink(conv.lead_id)}` : ""
+          }`,
+        );
+        if (ok) stats.frias_notificadas++;
+      }
+
+      await logAction(sb, {
+        regra: REGRA_FRIA,
+        leadId: conv.lead_id ?? null,
+        vendedorId: responsavel,
+        acao: responsavel ? "responsável notificado" : "sem vendedor — alerta admin",
+        payload: {
+          conversa_id: conv.id,
+          phone: conv.phone,
+          janela_min_uteis: cfg.watchdog_conversa_fria_min,
+          parada_desde: conv.last_message_at ?? null,
+        },
+      });
+    } catch (e) {
+      stats.erros++;
+      console.error(
+        "[watchdog-conversa/fria] erro na conversa",
+        conv.id,
+        e instanceof Error ? e.message : String(e),
+      );
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // 3) Reprocessa a fila de reenvio ao n8n (mensagens que o n8n não recebeu).
+  // ---------------------------------------------------------------------------
+  if (!dryRun) {
+    try {
+      const { processarFilaN8n } = await import("@/lib/n8n-fila.server");
+      const r = await processarFilaN8n(sb);
+      if (r.processados) console.log("[watchdog-conversa] fila n8n:", r);
+    } catch (e) {
+      console.error(
+        "[watchdog-conversa] falha ao processar fila n8n:",
         e instanceof Error ? e.message : String(e),
       );
     }

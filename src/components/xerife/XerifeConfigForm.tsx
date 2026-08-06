@@ -49,6 +49,9 @@ type Cfg = {
   // Motor
   ativo: boolean;
   whatsapp_interno_ativo: boolean;
+  watchdog_conversa_ativo: boolean;
+  watchdog_conversa_ia_min: number;
+  watchdog_conversa_fria_min: number;
 };
 
 const hhmm = (s: string | null | undefined, d: string) =>
@@ -109,6 +112,9 @@ export function XerifeConfigForm() {
         resumo_hora: hhmm(r.resumo_hora, "08:00"),
         ativo: r.ativo ?? true,
         whatsapp_interno_ativo: r.whatsapp_interno_ativo ?? false,
+        watchdog_conversa_ativo: r.watchdog_conversa_ativo ?? false,
+        watchdog_conversa_ia_min: r.watchdog_conversa_ia_min ?? 15,
+        watchdog_conversa_fria_min: r.watchdog_conversa_fria_min ?? 20,
       });
     })();
   }, [getFn]);
@@ -167,6 +173,9 @@ export function XerifeConfigForm() {
           resumo_hora: `${cfg.resumo_hora}:00`,
           ativo: cfg.ativo,
           whatsapp_interno_ativo: cfg.whatsapp_interno_ativo,
+          watchdog_conversa_ativo: cfg.watchdog_conversa_ativo,
+          watchdog_conversa_ia_min: cfg.watchdog_conversa_ia_min,
+          watchdog_conversa_fria_min: cfg.watchdog_conversa_fria_min,
         },
       });
       toast.success("Configuração salva");
@@ -389,6 +398,30 @@ export function XerifeConfigForm() {
               onCheckedChange={(v) => upd({ whatsapp_interno_ativo: v })}
             />
           </div>
+          <Separator />
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-sm">Watchdog de conversa</Label>
+              <p className="text-xs text-muted-foreground">
+                Varre conversas paradas na IA e conversas frias (cliente sem resposta),
+                atribui pela fila e avisa o responsável.
+              </p>
+            </div>
+            <Switch
+              checked={cfg.watchdog_conversa_ativo}
+              onCheckedChange={(v) => upd({ watchdog_conversa_ativo: v })}
+            />
+          </div>
+          <NumField
+            label="Conversa parada na IA (minutos úteis)"
+            value={cfg.watchdog_conversa_ia_min}
+            onChange={(v) => upd({ watchdog_conversa_ia_min: v })}
+          />
+          <NumField
+            label="Conversa fria — cliente sem resposta (minutos úteis)"
+            value={cfg.watchdog_conversa_fria_min}
+            onChange={(v) => upd({ watchdog_conversa_fria_min: v })}
+          />
         </Section>
       </div>
 
