@@ -210,6 +210,31 @@ function MinhasConversasPage() {
                 className="pl-8"
               />
             </div>
+            <div className="grid grid-cols-2 gap-1 rounded-lg bg-background p-1">
+              {(["aguardando", "atendendo"] as const).map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => setAba(k)}
+                  className={cn(
+                    "flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium transition-colors",
+                    aba === k
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-muted",
+                  )}
+                >
+                  {k === "aguardando" ? "Aguardando" : "Atendendo"}
+                  <span
+                    className={cn(
+                      "rounded-full px-1.5 text-[10px] font-semibold",
+                      aba === k ? "bg-primary-foreground/20" : "bg-muted-foreground/15",
+                    )}
+                  >
+                    {k === "aguardando" ? contagem.aguardando : contagem.atendendo}
+                  </span>
+                </button>
+              ))}
+            </div>
             {isAdmin && (
               <label className="flex items-center gap-2 text-xs text-muted-foreground">
                 <input
@@ -226,42 +251,59 @@ function MinhasConversasPage() {
               const nome = c.name?.trim() || c.phone;
               const active = c.id === selectedId;
               const badge = naoLidas[c.id] ?? 0;
+              const aguardando = aguardandoIds.has(c.id);
               return (
                 <li key={c.id}>
                   <button
                     type="button"
                     onClick={() => selecionar(c.id)}
                     className={cn(
-                      "flex w-full items-center gap-3 px-3 py-3 text-left transition-colors",
+                      "flex w-full items-center gap-3 border-l-2 px-3 py-3 text-left transition-colors",
+                      aguardando ? "border-l-destructive bg-destructive/5" : "border-l-transparent",
                       active ? "bg-primary/5" : "hover:bg-muted/50",
                     )}
                   >
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                      {iniciais(nome) || "?"}
+                    <span className="relative shrink-0">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                        {iniciais(nome) || "?"}
+                      </span>
+                      {badge > 0 && (
+                        <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground">
+                          {badge > 99 ? "99+" : badge}
+                        </span>
+                      )}
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center justify-between gap-2">
-                        <span className="truncate text-sm font-medium">{nome}</span>
-                        <span className="shrink-0 text-[10px] text-muted-foreground">
-                          {c.last_message_at
-                            ? formatDistanceToNow(new Date(c.last_message_at), {
-                                locale: ptBR,
-                                addSuffix: true,
-                              })
-                            : "—"}
+                        <span
+                          className={cn(
+                            "truncate text-sm",
+                            aguardando ? "font-semibold" : "font-medium",
+                          )}
+                        >
+                          {nome}
+                        </span>
+                        <span
+                          className={cn(
+                            "shrink-0 text-[10px]",
+                            aguardando ? "font-semibold text-destructive" : "text-muted-foreground",
+                          )}
+                        >
+                          {horaCurta(c.last_message_at)}
                         </span>
                       </span>
                       <span className="mt-0.5 flex items-center justify-between gap-2">
                         <span className="truncate text-xs text-muted-foreground">
                           {c.last_message_preview || "Sem mensagens"}
                         </span>
-                        {badge > 0 && (
-                          <span className="flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground">
-                            {badge > 99 ? "99+" : badge}
+                        {aguardando && (
+                          <span className="shrink-0 text-[10px] font-medium text-destructive">
+                            aguardando
                           </span>
                         )}
                       </span>
                     </span>
+
                   </button>
                 </li>
               );
