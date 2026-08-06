@@ -310,7 +310,12 @@ function AuthGate() {
     return <RedirectToAuth />;
   }
 
-  return <AppShell><Outlet /></AppShell>;
+  return (
+    <>
+      <AppShell><Outlet /></AppShell>
+      <NovaConversaAlerta />
+    </>
+  );
 }
 
 function RedirectToAuth() {
