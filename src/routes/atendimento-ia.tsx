@@ -380,6 +380,8 @@ function ConversationPanel({
         </div>
         <div className="flex items-center gap-2">
           <StatusChip status={conversa.status} />
+          <AtribuirSelect conversa={conversa} onChanged={onChanged} />
+
           {conversa.lead_id && (
             <Button size="sm" variant="outline" onClick={() => onOpenLead(conversa.lead_id!)}>
               Abrir lead
