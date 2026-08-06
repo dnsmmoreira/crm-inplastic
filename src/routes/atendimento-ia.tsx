@@ -330,22 +330,7 @@ function ConversationPanel({
     );
   }
 
-  const canSend = conversa.status === "humano_atendendo" || !conversa.ia_ativa;
   const label = conversa.name?.trim() || conversa.phone;
-
-  async function handleAssumir() {
-    if (!conversa) return;
-    setBusy(true);
-    try {
-      await assumir({ data: { conversaId: conversa.id } });
-      toast.success("Você assumiu a conversa", { description: "IA desligada." });
-      onChanged();
-    } catch (e) {
-      toast.error("Falha ao assumir", { description: e instanceof Error ? e.message : String(e) });
-    } finally {
-      setBusy(false);
-    }
-  }
 
   async function handleDevolver() {
     if (!conversa) return;
@@ -358,21 +343,6 @@ function ConversationPanel({
       toast.error("Falha", { description: e instanceof Error ? e.message : String(e) });
     } finally {
       setBusy(false);
-    }
-  }
-
-  async function handleSend() {
-    if (!conversa || !text.trim()) return;
-    setSending(true);
-    try {
-      await send({ data: { conversaId: conversa.id, message: text.trim() } });
-      setText("");
-      void loadMensagens(conversa.id);
-      onChanged();
-    } catch (e) {
-      toast.error("Falha ao enviar", { description: e instanceof Error ? e.message : String(e) });
-    } finally {
-      setSending(false);
     }
   }
 
@@ -395,13 +365,9 @@ function ConversationPanel({
               Abrir lead
             </Button>
           )}
-          {canSend ? (
+          {!conversa.ia_ativa && (
             <Button size="sm" variant="outline" disabled={busy} onClick={handleDevolver} className="gap-1">
               <RotateCcw className="h-3.5 w-3.5" /> Devolver p/ IA
-            </Button>
-          ) : (
-            <Button size="sm" disabled={busy} onClick={handleAssumir} className="gap-1">
-              <HandMetal className="h-3.5 w-3.5" /> Assumir conversa
             </Button>
           )}
         </div>
@@ -418,35 +384,14 @@ function ConversationPanel({
         )}
       </div>
 
-      <div className="border-t p-3 space-y-2">
-        {!canSend && (
-          <div className="text-[11px] text-muted-foreground">
-            A IA está no controle. Clique em <strong>Assumir conversa</strong> para digitar respostas.
-          </div>
-        )}
-        <div className="flex items-end gap-2">
-          <Textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder={canSend ? "Escreva uma resposta…" : "IA ativa — assuma para responder"}
-            rows={2}
-            disabled={!canSend || sending}
-            className="resize-none"
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                void handleSend();
-              }
-            }}
-          />
-          <Button onClick={handleSend} disabled={!canSend || sending || !text.trim()} className="gap-1">
-            <Send className="h-4 w-4" /> Enviar
-          </Button>
-        </div>
+      <div className="border-t px-4 py-3 text-[11px] text-muted-foreground">
+        Esta tela é somente para acompanhar e <strong>direcionar</strong> a conversa a um vendedor.
+        Para responder o cliente, use a tela <strong>Conversas</strong>.
       </div>
     </div>
   );
 }
+
 
 function MessageBubble({ m }: { m: Mensagem }) {
   const isCliente = m.autor === "cliente";
