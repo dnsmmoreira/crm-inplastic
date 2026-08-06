@@ -112,6 +112,9 @@ export function XerifeConfigForm() {
         resumo_hora: hhmm(r.resumo_hora, "08:00"),
         ativo: r.ativo ?? true,
         whatsapp_interno_ativo: r.whatsapp_interno_ativo ?? false,
+        watchdog_conversa_ativo: r.watchdog_conversa_ativo ?? false,
+        watchdog_conversa_ia_min: r.watchdog_conversa_ia_min ?? 15,
+        watchdog_conversa_fria_min: r.watchdog_conversa_fria_min ?? 20,
       });
     })();
   }, [getFn]);
