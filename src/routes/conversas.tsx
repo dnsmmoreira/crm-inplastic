@@ -1,7 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { formatDistanceToNow } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { MessageSquare, Phone, Send, Bot, User as UserIcon, Search } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -48,6 +46,22 @@ function iniciais(nome: string) {
     .toUpperCase();
 }
 
+function horaCurta(iso: string | null) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  const hoje = new Date();
+  const mesmoDia =
+    d.getDate() === hoje.getDate() &&
+    d.getMonth() === hoje.getMonth() &&
+    d.getFullYear() === hoje.getFullYear();
+  return mesmoDia
+    ? d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+    : d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+}
+
+type Aba = "aguardando" | "atendendo";
+
 function MinhasConversasPage() {
   const { user } = useAuth();
   const navigate = useNavigate({ from: "/conversas" });
@@ -57,8 +71,10 @@ function MinhasConversasPage() {
 
   const [conversas, setConversas] = useState<Conversa[]>([]);
   const [naoLidas, setNaoLidas] = useState<Record<string, number>>({});
+  const [ultimoAutor, setUltimoAutor] = useState<Record<string, Mensagem["autor"]>>({});
   const [busca, setBusca] = useState("");
   const [todas, setTodas] = useState(false);
+  const [aba, setAba] = useState<Aba>("aguardando");
 
   const load = useCallback(async () => {
     if (!userId) return;
@@ -73,7 +89,8 @@ function MinhasConversasPage() {
       console.error(error);
       return;
     }
-    setConversas(data ?? []);
+    const lista = data ?? [];
+    setConversas(lista);
 
     const { data: notifs } = await supabase
       .from("notificacoes")
@@ -86,6 +103,30 @@ function MinhasConversasPage() {
     for (const n of notifs ?? []) {
       if (n.conversa_id) map[n.conversa_id] = (map[n.conversa_id] ?? 0) + 1;
     }
+
+    // Deriva último autor e não lidas reais a partir das mensagens.
+    const ids = lista.map((c) => c.id);
+    const autores: Record<string, Mensagem["autor"]> = {};
+    if (ids.length > 0) {
+      const { data: msgs } = await supabase
+        .from("whatsapp_mensagens")
+        .select("conversa_id, autor, created_at")
+        .in("conversa_id", ids)
+        .order("created_at", { ascending: false })
+        .limit(2000);
+      const pendentes: Record<string, number> = {};
+      const fechado = new Set<string>();
+      for (const m of msgs ?? []) {
+        if (!autores[m.conversa_id]) autores[m.conversa_id] = m.autor;
+        if (fechado.has(m.conversa_id)) continue;
+        if (m.autor === "cliente") pendentes[m.conversa_id] = (pendentes[m.conversa_id] ?? 0) + 1;
+        else fechado.add(m.conversa_id);
+      }
+      for (const id of ids) {
+        if (autores[id]) map[id] = pendentes[id] ?? 0;
+      }
+    }
+    setUltimoAutor(autores);
     setNaoLidas(map);
   }, [userId, isAdmin, todas]);
 
@@ -109,13 +150,30 @@ function MinhasConversasPage() {
     };
   }, [load]);
 
+  const aguardandoIds = useMemo(() => {
+    const s = new Set<string>();
+    for (const c of conversas) if (ultimoAutor[c.id] === "cliente") s.add(c.id);
+    return s;
+  }, [conversas, ultimoAutor]);
+
+  const contagem = useMemo(
+    () => ({
+      aguardando: conversas.filter((c) => aguardandoIds.has(c.id)).length,
+      atendendo: conversas.filter((c) => !aguardandoIds.has(c.id)).length,
+    }),
+    [conversas, aguardandoIds],
+  );
+
   const filtradas = useMemo(() => {
     const q = busca.trim().toLowerCase();
-    if (!q) return conversas;
-    return conversas.filter(
-      (c) => (c.name ?? "").toLowerCase().includes(q) || c.phone.includes(q),
-    );
-  }, [conversas, busca]);
+    return conversas.filter((c) => {
+      const naAba = aba === "aguardando" ? aguardandoIds.has(c.id) : !aguardandoIds.has(c.id);
+      if (!naAba) return false;
+      if (!q) return true;
+      return (c.name ?? "").toLowerCase().includes(q) || c.phone.includes(q);
+    });
+  }, [conversas, busca, aba, aguardandoIds]);
+
 
   const selected = useMemo(
     () => conversas.find((c) => c.id === selectedId) ?? null,
@@ -150,6 +208,31 @@ function MinhasConversasPage() {
                 className="pl-8"
               />
             </div>
+            <div className="grid grid-cols-2 gap-1 rounded-lg bg-background p-1">
+              {(["aguardando", "atendendo"] as const).map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => setAba(k)}
+                  className={cn(
+                    "flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium transition-colors",
+                    aba === k
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-muted",
+                  )}
+                >
+                  {k === "aguardando" ? "Aguardando" : "Atendendo"}
+                  <span
+                    className={cn(
+                      "rounded-full px-1.5 text-[10px] font-semibold",
+                      aba === k ? "bg-primary-foreground/20" : "bg-muted-foreground/15",
+                    )}
+                  >
+                    {k === "aguardando" ? contagem.aguardando : contagem.atendendo}
+                  </span>
+                </button>
+              ))}
+            </div>
             {isAdmin && (
               <label className="flex items-center gap-2 text-xs text-muted-foreground">
                 <input
@@ -166,42 +249,59 @@ function MinhasConversasPage() {
               const nome = c.name?.trim() || c.phone;
               const active = c.id === selectedId;
               const badge = naoLidas[c.id] ?? 0;
+              const aguardando = aguardandoIds.has(c.id);
               return (
                 <li key={c.id}>
                   <button
                     type="button"
                     onClick={() => selecionar(c.id)}
                     className={cn(
-                      "flex w-full items-center gap-3 px-3 py-3 text-left transition-colors",
+                      "flex w-full items-center gap-3 border-l-2 px-3 py-3 text-left transition-colors",
+                      aguardando ? "border-l-destructive bg-destructive/5" : "border-l-transparent",
                       active ? "bg-primary/5" : "hover:bg-muted/50",
                     )}
                   >
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                      {iniciais(nome) || "?"}
+                    <span className="relative shrink-0">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                        {iniciais(nome) || "?"}
+                      </span>
+                      {badge > 0 && (
+                        <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground">
+                          {badge > 99 ? "99+" : badge}
+                        </span>
+                      )}
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center justify-between gap-2">
-                        <span className="truncate text-sm font-medium">{nome}</span>
-                        <span className="shrink-0 text-[10px] text-muted-foreground">
-                          {c.last_message_at
-                            ? formatDistanceToNow(new Date(c.last_message_at), {
-                                locale: ptBR,
-                                addSuffix: true,
-                              })
-                            : "—"}
+                        <span
+                          className={cn(
+                            "truncate text-sm",
+                            aguardando ? "font-semibold" : "font-medium",
+                          )}
+                        >
+                          {nome}
+                        </span>
+                        <span
+                          className={cn(
+                            "shrink-0 text-[10px]",
+                            aguardando ? "font-semibold text-destructive" : "text-muted-foreground",
+                          )}
+                        >
+                          {horaCurta(c.last_message_at)}
                         </span>
                       </span>
                       <span className="mt-0.5 flex items-center justify-between gap-2">
                         <span className="truncate text-xs text-muted-foreground">
                           {c.last_message_preview || "Sem mensagens"}
                         </span>
-                        {badge > 0 && (
-                          <span className="flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground">
-                            {badge > 99 ? "99+" : badge}
+                        {aguardando && (
+                          <span className="shrink-0 text-[10px] font-medium text-destructive">
+                            aguardando
                           </span>
                         )}
                       </span>
                     </span>
+
                   </button>
                 </li>
               );
