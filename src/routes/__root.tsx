@@ -29,6 +29,9 @@ import {
   BookOpen,
   BarChart3,
   Tags,
+  PanelLeftClose,
+  PanelLeftOpen,
+
 
 } from "lucide-react";
 
