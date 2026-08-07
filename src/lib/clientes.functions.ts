@@ -358,7 +358,9 @@ export const updateCliente = createServerFn({ method: "POST" })
     if (!current) throw new Error("Cliente não encontrado ou sem acesso");
 
     const merged: ClienteInput = {
-      cnpj: (current as ClienteRow).cnpj, // CNPJ é imutável
+      tipo_pessoa: ((current as ClienteRow).tipo_pessoa === "PF" ? "PF" : "PJ"),
+      cnpj: (current as ClienteRow).cnpj ?? "", // documento é imutável
+      cpf: (current as ClienteRow).cpf ?? null,
       razao_social: patch.razao_social ?? (current as ClienteRow).razao_social,
       empresa_padrao: patch.empresa_padrao ?? (current as ClienteRow).empresa_padrao ?? "",
       nome_fantasia: patch.nome_fantasia ?? (current as ClienteRow).nome_fantasia,
