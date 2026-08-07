@@ -74,11 +74,18 @@ const formSchema = z.object({
     .regex(/^\s*\d+(\s*[,/]\s*\d+)*\s*$/, "Use números separados por vírgula ou barra (ex: 30, 60, 90)"),
   notes: z.string().max(200, "Máx. 200 caracteres").optional().or(z.literal("")),
   active: z.boolean(),
+  permitePf: z.boolean(),
+  acrescimoRaw: z
+    .string()
+    .trim()
+    .regex(/^\d{1,3}([.,]\d{1,2})?$/, "Use um percentual válido (ex: 3 ou 3,5)"),
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
-const emptyForm: FormValues = { label: "", method: "Boleto", splitsRaw: "", notes: "", active: true };
+const emptyForm: FormValues = { label: "", method: "Boleto", splitsRaw: "", notes: "", active: true, permitePf: false, acrescimoRaw: "0" };
+
+const parsePercent = (v: string) => Math.max(0, Math.min(100, Number(String(v).replace(",", ".")) || 0));
 
 function parseSplits(raw: string): number[] {
   return raw
@@ -144,6 +151,8 @@ function CondicoesComerciais() {
       splitsRaw: t.splits.join(", "),
       notes: t.notes ?? "",
       active: t.active,
+      permitePf: !!t.permitePf,
+      acrescimoRaw: String(t.acrescimoPercent ?? 0).replace(".", ","),
     });
     setErrors({});
     setDialogOpen(true);
@@ -170,6 +179,8 @@ function CondicoesComerciais() {
       splits,
       notes: parsed.data.notes?.trim() || undefined,
       active: parsed.data.active,
+      permitePf: parsed.data.permitePf,
+      acrescimoPercent: parsePercent(parsed.data.acrescimoRaw),
     };
     if (editing) {
       updateTerm(editing.id, payload);
@@ -278,6 +289,8 @@ function CondicoesComerciais() {
                 <TableHead>Meio</TableHead>
                 <TableHead>Parcelas</TableHead>
                 <TableHead>Observações</TableHead>
+                <TableHead className="text-center">Acréscimo</TableHead>
+                <TableHead className="text-center">Pessoa Física</TableHead>
                 <TableHead className="text-center">Ativa</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
@@ -285,7 +298,7 @@ function CondicoesComerciais() {
             <TableBody>
               {terms.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-8">
+                  <TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-8">
                     Nenhuma condição cadastrada.
                   </TableCell>
                 </TableRow>
@@ -304,6 +317,18 @@ function CondicoesComerciais() {
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground max-w-xs truncate">
                     {t.notes ?? "—"}
+                  </TableCell>
+                  <TableCell className="text-center text-sm">
+                    {(t.acrescimoPercent ?? 0) > 0
+                      ? `+${String(t.acrescimoPercent).replace(".", ",")}%`
+                      : "—"}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Switch
+                      checked={!!t.permitePf}
+                      onCheckedChange={(v) => updateTerm(t.id, { permitePf: v })}
+                      aria-label="Permitir para Pessoa Física"
+                    />
                   </TableCell>
                   <TableCell className="text-center">
                     <div className="inline-flex items-center gap-2">
@@ -414,6 +439,30 @@ function CondicoesComerciais() {
                 placeholder="Ex: Com 3% de desconto"
               />
               {errors.notes && <p className="text-xs text-destructive mt-1">{errors.notes}</p>}
+            </div>
+            <div>
+              <Label>Acréscimo (%)</Label>
+              <Input
+                value={form.acrescimoRaw}
+                onChange={(e) => setForm((f) => ({ ...f, acrescimoRaw: e.target.value }))}
+                placeholder="Ex: 3,5"
+              />
+              {errors.acrescimoRaw && <p className="text-xs text-destructive mt-1">{errors.acrescimoRaw}</p>}
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Aplicado sobre o subtotal (após desconto) da proposta.
+              </p>
+            </div>
+            <div className="flex items-center justify-between rounded-md border p-3">
+              <div>
+                <div className="text-sm font-medium">Permitir para Pessoa Física</div>
+                <div className="text-xs text-muted-foreground">
+                  Clientes PF só podem usar condições à vista ou cartão.
+                </div>
+              </div>
+              <Switch
+                checked={form.permitePf}
+                onCheckedChange={(v) => setForm((f) => ({ ...f, permitePf: v }))}
+              />
             </div>
             <div className="flex items-center justify-between rounded-md border p-3">
               <div>
