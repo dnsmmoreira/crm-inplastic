@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +24,7 @@ import {
   listLeadsByCliente,
   listVendedores,
 } from "@/lib/clientes.functions";
+import { iniciarConversaCliente } from "@/lib/canais.functions";
 import { useAuth } from "@/hooks/use-auth";
 import {
   ClienteFormFields,
@@ -74,6 +75,8 @@ function ClienteDetailPage() {
 
   const [form, setForm] = useState<ClienteFormState | null>(null);
   const [saving, setSaving] = useState(false);
+  const [iniciandoConversa, setIniciandoConversa] = useState(false);
+  const iniciarConversaFn = useServerFn(iniciarConversaCliente);
 
   useEffect(() => {
     if (clienteQ.data) setForm(fromRow(clienteQ.data));
@@ -165,9 +168,32 @@ function ClienteDetailPage() {
             </Badge>
           )}
           {!c.ativo && <Badge variant="outline">Inativo</Badge>}
+          <Button
+            variant="outline"
+            disabled={iniciandoConversa}
+            onClick={async () => {
+              setIniciandoConversa(true);
+              try {
+                const { conversaId } = await iniciarConversaFn({ data: { clienteId: id } });
+                navigate({ to: "/conversas", search: { c: conversaId } });
+              } catch (e) {
+                toast.error(e instanceof Error ? e.message : "Falha ao iniciar conversa");
+              } finally {
+                setIniciandoConversa(false);
+              }
+            }}
+          >
+            {iniciandoConversa ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <MessageCircle className="h-4 w-4 mr-2" />
+            )}
+            Iniciar conversa
+          </Button>
           <Button variant="outline" onClick={() => navigate({ to: "/propostas" })}>
             Nova proposta
           </Button>
+
         </div>
       </div>
 
