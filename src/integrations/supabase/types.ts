@@ -21,9 +21,10 @@ export type Database = {
           bairro: string | null
           cep: string | null
           cidade: string | null
-          cnpj: string
+          cnpj: string | null
           complemento: string | null
           contato: string | null
+          cpf: string | null
           criado_em: string
           criado_por: string | null
           email: string | null
@@ -44,6 +45,7 @@ export type Database = {
           suframa_numero: string | null
           telefone: string | null
           telefone2: string | null
+          tipo_pessoa: string
           vendedor_id: string | null
           website: string | null
         }
@@ -53,9 +55,10 @@ export type Database = {
           bairro?: string | null
           cep?: string | null
           cidade?: string | null
-          cnpj: string
+          cnpj?: string | null
           complemento?: string | null
           contato?: string | null
+          cpf?: string | null
           criado_em?: string
           criado_por?: string | null
           email?: string | null
@@ -76,6 +79,7 @@ export type Database = {
           suframa_numero?: string | null
           telefone?: string | null
           telefone2?: string | null
+          tipo_pessoa?: string
           vendedor_id?: string | null
           website?: string | null
         }
@@ -85,9 +89,10 @@ export type Database = {
           bairro?: string | null
           cep?: string | null
           cidade?: string | null
-          cnpj?: string
+          cnpj?: string | null
           complemento?: string | null
           contato?: string | null
+          cpf?: string | null
           criado_em?: string
           criado_por?: string | null
           email?: string | null
@@ -108,6 +113,7 @@ export type Database = {
           suframa_numero?: string | null
           telefone?: string | null
           telefone2?: string | null
+          tipo_pessoa?: string
           vendedor_id?: string | null
           website?: string | null
         }
@@ -115,32 +121,38 @@ export type Database = {
       }
       condicoes_pagamento: {
         Row: {
+          acrescimo_percent: number
           active: boolean
           created_at: string
           id: string
           label: string
           method: string
           notes: string | null
+          permite_pf: boolean
           splits: Json
           updated_at: string
         }
         Insert: {
+          acrescimo_percent?: number
           active?: boolean
           created_at?: string
           id: string
           label: string
           method: string
           notes?: string | null
+          permite_pf?: boolean
           splits?: Json
           updated_at?: string
         }
         Update: {
+          acrescimo_percent?: number
           active?: boolean
           created_at?: string
           id?: string
           label?: string
           method?: string
           notes?: string | null
+          permite_pf?: boolean
           splits?: Json
           updated_at?: string
         }

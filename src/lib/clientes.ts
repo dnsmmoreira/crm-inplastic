@@ -1,5 +1,17 @@
 // Helpers client-safe para tratamento de erros da área de Clientes.
 
+import { formatCnpj, formatCpf } from "@/lib/cnpj";
+
+/** Exibe CPF (Pessoa Física) ou CNPJ (Pessoa Jurídica) já formatado. */
+export function formatDocumentoCliente(c: {
+  tipo_pessoa?: string | null;
+  cnpj?: string | null;
+  cpf?: string | null;
+}): string {
+  if (c?.tipo_pessoa === "PF") return c.cpf ? formatCpf(c.cpf) : "—";
+  return c?.cnpj ? formatCnpj(c.cnpj) : "—";
+}
+
 const GENERIC = "Não foi possível salvar o cliente. Tente novamente.";
 const DUP_CNPJ = "Já existe um cliente com este CNPJ.";
 

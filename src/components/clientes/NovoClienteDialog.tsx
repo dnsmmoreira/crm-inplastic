@@ -112,6 +112,8 @@ export function NovoClienteDialog({ open, onOpenChange, cnpjInicial, onClienteCr
     setSaving(true);
     try {
       const res = await createFn({ data: {
+        tipo_pessoa: state.tipo_pessoa ?? "PJ",
+        cpf: state.cpf ?? null,
         cnpj: state.cnpj,
         razao_social: state.razao_social,
         nome_fantasia: state.nome_fantasia,
@@ -170,15 +172,17 @@ export function NovoClienteDialog({ open, onOpenChange, cnpjInicial, onClienteCr
           <DialogTitle>Novo cliente</DialogTitle>
         </DialogHeader>
 
-        <div className="flex gap-2 pb-2">
-          <Button type="button" variant="outline" onClick={handleLookup} disabled={loadingLookup} className="gap-2">
-            {loadingLookup ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-            Buscar dados na Receita
-          </Button>
-          <span className="text-xs text-muted-foreground self-center">
-            Digite o CNPJ e clique para auto-preencher.
-          </span>
-        </div>
+        {state.tipo_pessoa !== "PF" && (
+          <div className="flex gap-2 pb-2">
+            <Button type="button" variant="outline" onClick={handleLookup} disabled={loadingLookup} className="gap-2">
+              {loadingLookup ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+              Buscar dados na Receita
+            </Button>
+            <span className="text-xs text-muted-foreground self-center">
+              Digite o CNPJ e clique para auto-preencher.
+            </span>
+          </div>
+        )}
 
         <ClienteFormFields
           value={state}

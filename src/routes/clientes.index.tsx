@@ -23,7 +23,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
-import { formatCnpj } from "@/lib/cnpj";
+import { formatDocumentoCliente } from "@/lib/clientes";
 import { relativeTimeShort, displayValue } from "@/lib/format";
 import { listClientes, listVendedores } from "@/lib/clientes.functions";
 import { useAuth } from "@/hooks/use-auth";
@@ -208,7 +208,7 @@ function ClientesListPage() {
                       className="cursor-pointer hover:bg-accent/40"
                       onClick={() => navigate({ to: "/clientes/$id", params: { id: c.id } })}
                     >
-                      <TableCell className="font-mono text-xs">{formatCnpj(c.cnpj)}</TableCell>
+                      <TableCell className="font-mono text-xs">{formatDocumentoCliente(c)}</TableCell>
                       <TableCell className="font-medium">
                         {c.razao_social}
                         {!c.ativo && <Badge variant="outline" className="ml-2">Inativo</Badge>}

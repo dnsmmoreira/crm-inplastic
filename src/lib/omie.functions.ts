@@ -51,7 +51,7 @@ export const gerarPedidoInterno = createServerFn({ method: "POST" })
 
     const { data: proposta, error: propErr } = await loose
       .from("propostas")
-      .select("id, status, lead_id")
+      .select("id, status, lead_id, payment_term_id")
       .eq("id", propostaId)
       .maybeSingle();
     if (propErr) throw new Error(`Falha ao carregar proposta: ${propErr.message}`);
@@ -78,6 +78,37 @@ export const gerarPedidoInterno = createServerFn({ method: "POST" })
     } else if (itens.some((i: { unit_price: number }) => Number(i.unit_price) <= 0)) {
       erros.push("Todos os itens precisam de valor unitário maior que zero.");
     }
+    // Pessoa Física: bloqueia condições a prazo/boleto (apenas à vista ou cartão).
+    const { data: leadRow } = await loose
+      .from("leads")
+      .select("cliente_id")
+      .eq("id", leadId)
+      .maybeSingle();
+    if (leadRow?.cliente_id) {
+      const { data: cli } = await loose
+        .from("clientes")
+        .select("tipo_pessoa")
+        .eq("id", leadRow.cliente_id)
+        .maybeSingle();
+      if (cli?.tipo_pessoa === "PF") {
+        const termId = proposta.payment_term_id as string | null;
+        if (!termId) {
+          erros.push("Cliente Pessoa Física: selecione uma condição de pagamento à vista ou cartão.");
+        } else {
+          const { data: term } = await loose
+            .from("condicoes_pagamento")
+            .select("permite_pf, label")
+            .eq("id", termId)
+            .maybeSingle();
+          if (!term?.permite_pf) {
+            erros.push(
+              `Condição "${term?.label ?? termId}" não é permitida para Pessoa Física — use à vista ou cartão.`,
+            );
+          }
+        }
+      }
+    }
+
     if (erros.length > 0) {
       return { ok: false, validacao_erros: erros, proposta_id: propostaId };
     }

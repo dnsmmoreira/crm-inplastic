@@ -16,8 +16,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatCnpj } from "@/lib/cnpj";
-import { friendlyClienteError } from "@/lib/clientes";
+
+import { friendlyClienteError, formatDocumentoCliente } from "@/lib/clientes";
 import {
   getCliente,
   updateCliente,
@@ -155,7 +155,7 @@ function ClienteDetailPage() {
           </Link>
           <h1 className="text-2xl md:text-3xl font-semibold">{c.razao_social}</h1>
           <div className="text-sm text-muted-foreground">
-            {formatCnpj(c.cnpj)}{c.nome_fantasia ? ` • ${c.nome_fantasia}` : ""}
+            {formatDocumentoCliente(c)}{c.nome_fantasia ? ` • ${c.nome_fantasia}` : ""}
           </div>
         </div>
         <div className="flex items-center gap-2">

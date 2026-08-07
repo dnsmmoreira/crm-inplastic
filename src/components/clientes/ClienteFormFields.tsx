@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { formatCnpj } from "@/lib/cnpj";
+import { formatCnpj, formatCpf, isValidCpf } from "@/lib/cnpj";
 import { formatCep } from "@/lib/format";
 import type { ClienteInput, ClienteRow } from "@/lib/clientes.functions";
 
@@ -19,7 +19,9 @@ export type ClienteFormState = ClienteInput;
 
 export function emptyCliente(cnpjInicial = ""): ClienteFormState {
   return {
+    tipo_pessoa: "PJ",
     cnpj: cnpjInicial,
+    cpf: "",
     razao_social: "",
     nome_fantasia: "",
     inscricao_estadual: "",
@@ -48,7 +50,9 @@ export function emptyCliente(cnpjInicial = ""): ClienteFormState {
 
 export function fromRow(r: ClienteRow): ClienteFormState {
   return {
-    cnpj: r.cnpj,
+    tipo_pessoa: r.tipo_pessoa === "PF" ? "PF" : "PJ",
+    cnpj: r.cnpj ?? "",
+    cpf: r.cpf ?? "",
     razao_social: r.razao_social,
     nome_fantasia: r.nome_fantasia ?? "",
     inscricao_estadual: r.inscricao_estadual ?? "",
@@ -97,12 +101,16 @@ export function ClienteFormFields({
   showInternal = true,
 }: Props) {
   const [cnpjMasked, setCnpjMasked] = useState(formatCnpj(value.cnpj));
+  const [cpfMasked, setCpfMasked] = useState(formatCpf(value.cpf ?? ""));
   const [cepMasked, setCepMasked] = useState(formatCep(value.cep ?? ""));
 
   useEffect(() => setCnpjMasked(formatCnpj(value.cnpj)), [value.cnpj]);
+  useEffect(() => setCpfMasked(formatCpf(value.cpf ?? "")), [value.cpf]);
   useEffect(() => setCepMasked(formatCep(value.cep ?? "")), [value.cep]);
 
   const disabled = !!readOnly;
+  const isPF = value.tipo_pessoa === "PF";
+  const cpfInvalido = isPF && (value.cpf ?? "").length === 11 && !isValidCpf(value.cpf ?? "");
 
   return (
     <div className="space-y-4">
@@ -110,34 +118,76 @@ export function ClienteFormFields({
         <CardHeader className="pb-3"><CardTitle className="text-base">Identificação</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
-            <Label>CNPJ *</Label>
-            <Input
-              value={cnpjMasked}
+            <Label>Tipo de cliente *</Label>
+            <Select
+              value={isPF ? "PF" : "PJ"}
+              onValueChange={(v) =>
+                onChange(
+                  v === "PF"
+                    ? { tipo_pessoa: "PF", cnpj: "", inscricao_estadual: "", ie_isento: false, simples_optante: null, suframa_isento: null, suframa_numero: "" }
+                    : { tipo_pessoa: "PJ", cpf: "" },
+                )
+              }
               disabled={disabled || cnpjDisabled}
-              onChange={(e) => {
-                const digits = e.target.value.replace(/\D/g, "").slice(0, 14);
-                onChange({ cnpj: digits });
-                setCnpjMasked(formatCnpj(digits));
-              }}
-              placeholder="00.000.000/0000-00"
-            />
+            >
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="PJ">Pessoa Jurídica (PJ)</SelectItem>
+                <SelectItem value="PF">Pessoa Física (PF)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
+
+          {isPF ? (
+            <div>
+              <Label>CPF *</Label>
+              <Input
+                value={cpfMasked}
+                disabled={disabled || cnpjDisabled}
+                onChange={(e) => {
+                  const digits = e.target.value.replace(/\D/g, "").slice(0, 11);
+                  onChange({ cpf: digits });
+                  setCpfMasked(formatCpf(digits));
+                }}
+                placeholder="000.000.000-00"
+                aria-invalid={cpfInvalido}
+              />
+              {cpfInvalido && <p className="text-xs text-destructive mt-1">CPF inválido</p>}
+            </div>
+          ) : (
+            <div>
+              <Label>CNPJ *</Label>
+              <Input
+                value={cnpjMasked}
+                disabled={disabled || cnpjDisabled}
+                onChange={(e) => {
+                  const digits = e.target.value.replace(/\D/g, "").slice(0, 14);
+                  onChange({ cnpj: digits });
+                  setCnpjMasked(formatCnpj(digits));
+                }}
+                placeholder="00.000.000/0000-00"
+              />
+            </div>
+          )}
+
           <div>
-            <Label>Razão social *</Label>
+            <Label>{isPF ? "Nome completo *" : "Razão social *"}</Label>
             <Input
               value={value.razao_social}
               disabled={disabled}
               onChange={(e) => onChange({ razao_social: e.target.value })}
             />
           </div>
-          <div>
-            <Label>Nome fantasia</Label>
-            <Input
-              value={value.nome_fantasia ?? ""}
-              disabled={disabled}
-              onChange={(e) => onChange({ nome_fantasia: e.target.value })}
-            />
-          </div>
+          {!isPF && (
+            <div>
+              <Label>Nome fantasia</Label>
+              <Input
+                value={value.nome_fantasia ?? ""}
+                disabled={disabled}
+                onChange={(e) => onChange({ nome_fantasia: e.target.value })}
+              />
+            </div>
+          )}
           <div>
             <Label>Empresa padrão *</Label>
             <Select
@@ -153,24 +203,26 @@ export function ClienteFormFields({
               </SelectContent>
             </Select>
           </div>
-          <div className="md:col-span-2 flex items-end gap-3">
-            <div className="flex-1">
-              <Label>Inscrição estadual</Label>
-              <Input
-                value={value.ie_isento ? "" : (value.inscricao_estadual ?? "")}
-                disabled={disabled || !!value.ie_isento}
-                onChange={(e) => onChange({ inscricao_estadual: e.target.value })}
-              />
+          {!isPF && (
+            <div className="md:col-span-2 flex items-end gap-3">
+              <div className="flex-1">
+                <Label>Inscrição estadual</Label>
+                <Input
+                  value={value.ie_isento ? "" : (value.inscricao_estadual ?? "")}
+                  disabled={disabled || !!value.ie_isento}
+                  onChange={(e) => onChange({ inscricao_estadual: e.target.value })}
+                />
+              </div>
+              <label className="flex items-center gap-2 pb-2">
+                <Switch
+                  checked={!!value.ie_isento}
+                  disabled={disabled}
+                  onCheckedChange={(c) => onChange({ ie_isento: c, inscricao_estadual: c ? "" : (value.inscricao_estadual ?? "") })}
+                />
+                <span className="text-sm">Isento</span>
+              </label>
             </div>
-            <label className="flex items-center gap-2 pb-2">
-              <Switch
-                checked={!!value.ie_isento}
-                disabled={disabled}
-                onCheckedChange={(c) => onChange({ ie_isento: c, inscricao_estadual: c ? "" : (value.inscricao_estadual ?? "") })}
-              />
-              <span className="text-sm">Isento</span>
-            </label>
-          </div>
+          )}
         </CardContent>
       </Card>
 
@@ -255,6 +307,7 @@ export function ClienteFormFields({
         </CardContent>
       </Card>
 
+      {!isPF && (
       <Card>
         <CardHeader className="pb-3"><CardTitle className="text-base">Regime fiscal</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -291,6 +344,7 @@ export function ClienteFormFields({
           </p>
         </CardContent>
       </Card>
+      )}
 
       {showInternal && (
         <Card>
