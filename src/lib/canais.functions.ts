@@ -132,3 +132,64 @@ export const createLeadFromConversa = createServerFn({ method: "POST" })
 
     return { leadId: lead.id };
   });
+
+/**
+ * Inicia (ou reaproveita) uma conversa de WhatsApp a partir de um cliente.
+ * Não envia nenhuma mensagem — apenas garante a linha em whatsapp_conversas.
+ */
+export const iniciarConversaCliente = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) => z.object({ clienteId: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+
+    const { data: cliente, error: cErr } = await supabase
+      .from("clientes")
+      .select("id, razao_social, nome_fantasia, telefone, telefone2")
+      .eq("id", data.clienteId)
+      .maybeSingle();
+    if (cErr || !cliente) throw new Error("Cliente não encontrado ou sem permissão.");
+
+    const raw = (cliente.telefone ?? cliente.telefone2 ?? "").trim();
+    if (!raw) throw new Error("Cliente sem telefone cadastrado");
+
+    const phone = normalizePhoneBR(raw);
+    if (phone.length < 12) throw new Error("Cliente sem telefone cadastrado");
+
+    const nome = cliente.nome_fantasia?.trim() || cliente.razao_social?.trim() || null;
+
+    const { data: existente } = await supabase
+      .from("whatsapp_conversas")
+      .select("id")
+      .eq("phone", phone)
+      .maybeSingle();
+    if (existente) return { conversaId: existente.id };
+
+    // Lead vinculado ao cliente (se houver) para amarrar a conversa ao funil.
+    const { data: lead } = await supabase
+      .from("leads")
+      .select("id")
+      .eq("cliente_id", data.clienteId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    // whatsapp_conversas não aceita INSERT via RLS; usamos o client privilegiado
+    // apenas depois de validar o usuário e o acesso dele ao cliente.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: criada, error: iErr } = await supabaseAdmin
+      .from("whatsapp_conversas")
+      .insert({
+        phone,
+        name: nome,
+        status: "humano_atendendo",
+        ia_ativa: false,
+        atribuido_para: userId,
+        lead_id: lead?.id ?? null,
+      })
+      .select("id")
+      .single();
+    if (iErr || !criada) throw new Error(iErr?.message ?? "Falha ao iniciar conversa.");
+
+    return { conversaId: criada.id };
+  });
