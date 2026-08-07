@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Table,
@@ -109,6 +110,7 @@ function ClienteDetailPage() {
   }
 
   const c = clienteQ.data;
+  const temTelefone = !!((c.telefone ?? "").trim() || (c.telefone2 ?? "").trim());
 
   const handleSave = async () => {
     if (!form) return;
