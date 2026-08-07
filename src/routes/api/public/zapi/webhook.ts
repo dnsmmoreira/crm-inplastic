@@ -165,6 +165,26 @@ export const Route = createFileRoute("/api/public/zapi/webhook")({
               console.error("whatsapp_mensagens insert failed:", msgErr);
             }
 
+            // 5a) Opt-out pedido pelo contato ("sair", "parar", ...).
+            {
+              const { normalizarTexto } = await import("@/lib/zapi-send.server");
+              const txt = normalizarTexto(message);
+              const gatilhos = ["sair", "parar", "pare", "descadastrar", "nao quero", "me tira"];
+              if (gatilhos.some((g) => txt === g || txt.startsWith(g))) {
+                const { error: ooErr } = await supabaseAdmin
+                  .from("whatsapp_optout")
+                  .upsert({ phone, motivo: "pedido do contato" }, { onConflict: "phone" });
+                if (ooErr) console.error("optout upsert failed:", ooErr);
+                await supabaseAdmin
+                  .from("whatsapp_conversas")
+                  .update({ ia_ativa: false })
+                  .eq("id", conversaId);
+                console.warn(`[zapi:comercial:webhook] OPT-OUT registrado phone=${phone}`);
+                return Response.json({ ok: true, conversaId, optout: true }, { headers: CORS });
+              }
+            }
+
+
             // 5b) Handoff humano para mídia/tipos não conversáveis.
             //     Além do estado no banco, avisa o responsável (ou admin) —
             //     nunca marcar a flag em silêncio.
