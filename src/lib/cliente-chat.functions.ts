@@ -191,3 +191,69 @@ export const enviarPropostaPorCanal = createServerFn({ method: "POST" })
 
     return { ok: true, link };
   });
+
+/** Envia mensagem direta ao cliente (WhatsApp ou E-mail), sem depender de conversa. */
+export const enviarMensagemDiretaCliente = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) =>
+    z
+      .object({
+        clienteId: z.string().uuid(),
+        canal: z.enum(["whatsapp", "email"]),
+        destino: z.string().min(1),
+        assunto: z.string().max(200).optional(),
+        message: z.string().min(1).max(4096),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+
+    const { data: cliente, error: cErr } = await supabase
+      .from("clientes")
+      .select("id, razao_social, telefone, telefone2, email")
+      .eq("id", data.clienteId)
+      .maybeSingle();
+    if (cErr || !cliente) throw new Error("Cliente não encontrado ou sem permissão.");
+
+    if (data.canal === "email") {
+      const { sendEmailText } = await import("./email-send.server");
+      await sendEmailText(
+        data.destino.trim(),
+        data.assunto?.trim() || "Mensagem da INPLASTIC",
+        data.message,
+        "enviarMensagemDiretaCliente",
+      );
+    } else {
+      const { sendZapiText } = await import("./zapi-send.server");
+      await sendZapiText(data.destino, data.message, "enviarMensagemDiretaCliente");
+    }
+
+    // Se já existir conversa do cliente (via leads), registra a mensagem no histórico.
+    const { data: leads } = await supabase
+      .from("leads")
+      .select("id")
+      .eq("cliente_id", data.clienteId);
+    const leadIds = (leads ?? []).map((l) => l.id);
+    if (leadIds.length > 0) {
+      const { data: conversa } = await supabase
+        .from("whatsapp_conversas")
+        .select("id")
+        .in("lead_id", leadIds)
+        .order("last_message_at", { ascending: false, nullsFirst: false })
+        .limit(1)
+        .maybeSingle();
+      if (conversa) {
+        await supabase.from("whatsapp_mensagens").insert({
+          conversa_id: conversa.id,
+          direcao: "saida",
+          autor: "vendedor",
+          conteudo: data.message,
+          usuario_id: userId,
+          tipo: data.canal === "email" ? "email" : "texto",
+        });
+      }
+    }
+
+    return { ok: true, canal: data.canal };
+  });
