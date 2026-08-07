@@ -1931,6 +1931,24 @@ export type Database = {
           },
         ]
       }
+      whatsapp_optout: {
+        Row: {
+          created_at: string
+          motivo: string | null
+          phone: string
+        }
+        Insert: {
+          created_at?: string
+          motivo?: string | null
+          phone: string
+        }
+        Update: {
+          created_at?: string
+          motivo?: string | null
+          phone?: string
+        }
+        Relationships: []
+      }
       xerife_config: {
         Row: {
           ativo: boolean
@@ -2097,6 +2115,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      zapi_envios: {
+        Row: {
+          canal: string
+          created_at: string
+          ctx: string | null
+          id: string
+          mensagem_hash: string | null
+          phone: string
+        }
+        Insert: {
+          canal: string
+          created_at?: string
+          ctx?: string | null
+          id?: string
+          mensagem_hash?: string | null
+          phone: string
+        }
+        Update: {
+          canal?: string
+          created_at?: string
+          ctx?: string | null
+          id?: string
+          mensagem_hash?: string | null
+          phone?: string
+        }
+        Relationships: []
       }
       zapi_inbox: {
         Row: {
