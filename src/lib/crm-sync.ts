@@ -207,6 +207,7 @@ function emitterToInsert(e: EmitterProfile, isDefault: boolean): EmitterInsert {
 }
 
 function rowToPayTerm(r: PayTermRow): PaymentTerm {
+  const loose = r as unknown as { permite_pf?: boolean | null; acrescimo_percent?: number | null };
   return {
     id: r.id,
     label: r.label,
@@ -214,6 +215,8 @@ function rowToPayTerm(r: PayTermRow): PaymentTerm {
     splits: Array.isArray(r.splits) ? (r.splits as number[]) : [],
     notes: r.notes ?? undefined,
     active: !!r.active,
+    permitePf: !!loose.permite_pf,
+    acrescimoPercent: Number(loose.acrescimo_percent ?? 0),
   };
 }
 function payTermToInsert(t: PaymentTerm): PayTermInsert {
@@ -224,7 +227,9 @@ function payTermToInsert(t: PaymentTerm): PayTermInsert {
     splits: t.splits as unknown as Json,
     notes: t.notes ?? null,
     active: t.active,
-  };
+    permite_pf: !!t.permitePf,
+    acrescimo_percent: Number(t.acrescimoPercent ?? 0),
+  } as PayTermInsert;
 }
 
 function rowToLead(

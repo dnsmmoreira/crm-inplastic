@@ -33,6 +33,36 @@ export function isValidCnpj(v: string): boolean {
   return d1 === Number(c[12]) && d2 === Number(c[13]);
 }
 
+// ---------------- CPF (Pessoa Física) ----------------
+
+export function onlyDigitsCpf(v: string): string {
+  return (v ?? "").replace(/\D/g, "");
+}
+
+export function formatCpf(v: string): string {
+  const d = onlyDigitsCpf(v).slice(0, 11);
+  return d
+    .replace(/^(\d{3})(\d)/, "$1.$2")
+    .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
+    .replace(/\.(\d{3})(\d{1,2})$/, ".$1-$2");
+}
+
+/** Valida CPF (11 dígitos + dígitos verificadores). */
+export function isValidCpf(v: string): boolean {
+  const c = onlyDigitsCpf(v);
+  if (c.length !== 11) return false;
+  if (/^(\d)\1{10}$/.test(c)) return false;
+
+  const calc = (len: number): number => {
+    let sum = 0;
+    for (let i = 0; i < len; i++) sum += Number(c[i]) * (len + 1 - i);
+    const mod = (sum * 10) % 11;
+    return mod === 10 ? 0 : mod;
+  };
+
+  return calc(9) === Number(c[9]) && calc(10) === Number(c[10]);
+}
+
 /**
  * Converte qualquer erro da consulta de CNPJ em uma mensagem amigável em PT-BR.
  * Nunca vaza JSON cru, stack trace ou detalhes técnicos para o usuário.

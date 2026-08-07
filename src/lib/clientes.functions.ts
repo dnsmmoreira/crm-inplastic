@@ -1,10 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { isValidCnpj, onlyDigitsCnpj } from "@/lib/cnpj";
+import { isValidCnpj, onlyDigitsCnpj, isValidCpf, onlyDigitsCpf } from "@/lib/cnpj";
+
+export type TipoPessoa = "PJ" | "PF";
 
 export type ClienteRow = {
   id: string;
-  cnpj: string;
+  tipo_pessoa: TipoPessoa;
+  cnpj: string | null;
+  cpf: string | null;
   razao_social: string;
   nome_fantasia: string | null;
   inscricao_estadual: string | null;
@@ -36,7 +40,9 @@ export type ClienteRow = {
 };
 
 export type ClienteInput = {
+  tipo_pessoa?: TipoPessoa;
   cnpj: string;
+  cpf?: string | null;
   razao_social: string;
   nome_fantasia?: string | null;
   inscricao_estadual?: string | null;
@@ -64,13 +70,22 @@ export type ClienteInput = {
 
 function validateInput(d: ClienteInput): { errors: string[]; clean: ClienteInput } {
   const errors: string[] = [];
-  const cnpj = onlyDigitsCnpj(d.cnpj);
-  if (cnpj.length !== 14) errors.push("CNPJ deve conter 14 dígitos");
-  else if (!isValidCnpj(cnpj)) errors.push("CNPJ inválido (dígitos verificadores)");
+  const tipo: TipoPessoa = d.tipo_pessoa === "PF" ? "PF" : "PJ";
+
+  const cnpj = onlyDigitsCnpj(d.cnpj ?? "");
+  const cpf = onlyDigitsCpf(d.cpf ?? "");
+
+  if (tipo === "PF") {
+    if (cpf.length !== 11) errors.push("CPF deve conter 11 dígitos");
+    else if (!isValidCpf(cpf)) errors.push("CPF inválido (dígitos verificadores)");
+  } else {
+    if (cnpj.length !== 14) errors.push("CNPJ deve conter 14 dígitos");
+    else if (!isValidCnpj(cnpj)) errors.push("CNPJ inválido (dígitos verificadores)");
+  }
 
   const razao = (d.razao_social ?? "").trim();
-  if (!razao) errors.push("Razão social obrigatória");
-  else if (/^cliente\s/i.test(razao)) errors.push('Razão social não pode começar com "Cliente "');
+  if (!razao) errors.push(tipo === "PF" ? "Nome completo obrigatório" : "Razão social obrigatória");
+  else if (/^cliente\s/i.test(razao)) errors.push('Nome não pode começar com "Cliente "');
 
   const empresa = (d.empresa_padrao ?? "").trim();
   if (!["INPLASTIC", "TAOPLAST", "LICITAPLAS"].includes(empresa)) {
@@ -84,7 +99,15 @@ function validateInput(d: ClienteInput): { errors: string[]; clean: ClienteInput
     errors,
     clean: {
       ...d,
-      cnpj,
+      tipo_pessoa: tipo,
+      cnpj: tipo === "PF" ? "" : cnpj,
+      cpf: tipo === "PF" ? cpf : null,
+      // PF não tem IE / Simples / SUFRAMA
+      inscricao_estadual: tipo === "PF" ? null : d.inscricao_estadual ?? null,
+      ie_isento: tipo === "PF" ? false : !!d.ie_isento,
+      simples_optante: tipo === "PF" ? null : d.simples_optante ?? null,
+      suframa_isento: tipo === "PF" ? null : d.suframa_isento ?? null,
+      suframa_numero: tipo === "PF" ? null : d.suframa_numero ?? null,
       razao_social: razao,
       empresa_padrao: empresa,
       estado: uf || null,

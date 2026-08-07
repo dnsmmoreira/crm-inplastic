@@ -626,30 +626,36 @@ export type PaymentTerm = {
   splits: number[];          // days per installment; [0] = à vista
   notes?: string;
   active: boolean;           // ADM toggle — only active terms show in seller dropdown
+  permitePf?: boolean;       // liberada para cliente Pessoa Física (à vista ou cartão)
+  acrescimoPercent?: number; // % de acréscimo aplicado ao subtotal
 };
+
+/** À vista (splits [0]) ou cartão → elegível para Pessoa Física. */
+export const isTermPf = (t: PaymentTerm): boolean =>
+  t.permitePf ?? (t.method === "Cartão" || (t.splits.length === 1 && t.splits[0] === 0));
 
 /** Seed de 20 condições comerciais mais usadas — o administrador pode editar. */
 export const DEFAULT_PAYMENT_TERMS: PaymentTerm[] = [
-  { id: "pix-avista",        label: "PIX à vista",                       method: "PIX",                splits: [0],              active: true },
-  { id: "pix-7",             label: "PIX 7 dias",                        method: "PIX",                splits: [7],              active: true },
-  { id: "pix-14",            label: "PIX 14 dias",                       method: "PIX",                splits: [14],             active: true },
-  { id: "pix-28",            label: "PIX 28 dias",                       method: "PIX",                splits: [28],             active: true },
-  { id: "dinheiro-avista",   label: "Dinheiro à vista",                  method: "Dinheiro",           splits: [0],              active: true },
-  { id: "dep-avista",        label: "Depósito em Conta à vista",         method: "Depósito em Conta",  splits: [0],              active: true },
-  { id: "dep-15",            label: "Depósito em Conta 15 dias",         method: "Depósito em Conta",  splits: [15],             active: true },
-  { id: "boleto-avista",     label: "Boleto à vista",                    method: "Boleto",             splits: [0],              active: true },
-  { id: "boleto-14",         label: "Boleto 14 dias",                    method: "Boleto",             splits: [14],             active: true },
-  { id: "boleto-21",         label: "Boleto 21 dias",                    method: "Boleto",             splits: [21],             active: true },
-  { id: "boleto-28",         label: "Boleto 28 dias",                    method: "Boleto",             splits: [28],             active: true },
-  { id: "boleto-30",         label: "Boleto 30 dias",                    method: "Boleto",             splits: [30],             active: true },
-  { id: "boleto-2x-30-60",   label: "Boleto 2x — 30/60 dias",            method: "Boleto",             splits: [30, 60],         active: true },
-  { id: "boleto-3x-30-60-90",label: "Boleto 3x — 30/60/90 dias",         method: "Boleto",             splits: [30, 60, 90],     active: true },
-  { id: "boleto-4x",         label: "Boleto 4x — 30/60/90/120 dias",     method: "Boleto",             splits: [30, 60, 90, 120], active: true },
-  { id: "boleto-6x",         label: "Boleto 6x — 30 a 180 dias",         method: "Boleto",             splits: [30, 60, 90, 120, 150, 180], active: true },
-  { id: "boleto-entrada-30", label: "Boleto — entrada + 30 dias",        method: "Boleto",             splits: [0, 30],          active: true },
-  { id: "cartao-avista",     label: "Cartão à vista",                    method: "Cartão",             splits: [0],              active: true },
-  { id: "cartao-3x",         label: "Cartão 3x sem juros",               method: "Cartão",             splits: [0, 30, 60],      active: true },
-  { id: "cartao-6x",         label: "Cartão 6x sem juros",               method: "Cartão",             splits: [0, 30, 60, 90, 120, 150], active: true },
+  { id: "pix-avista",        label: "PIX à vista",                       method: "PIX",                splits: [0],              active: true, permitePf: true,  acrescimoPercent: 0 },
+  { id: "pix-7",             label: "PIX 7 dias",                        method: "PIX",                splits: [7],              active: true, permitePf: false, acrescimoPercent: 0 },
+  { id: "pix-14",            label: "PIX 14 dias",                       method: "PIX",                splits: [14],             active: true, permitePf: false, acrescimoPercent: 0 },
+  { id: "pix-28",            label: "PIX 28 dias",                       method: "PIX",                splits: [28],             active: true, permitePf: false, acrescimoPercent: 0 },
+  { id: "dinheiro-avista",   label: "Dinheiro à vista",                  method: "Dinheiro",           splits: [0],              active: true, permitePf: true,  acrescimoPercent: 0 },
+  { id: "dep-avista",        label: "Depósito em Conta à vista",         method: "Depósito em Conta",  splits: [0],              active: true, permitePf: true,  acrescimoPercent: 0 },
+  { id: "dep-15",            label: "Depósito em Conta 15 dias",         method: "Depósito em Conta",  splits: [15],             active: true, permitePf: false, acrescimoPercent: 0 },
+  { id: "boleto-avista",     label: "Boleto à vista",                    method: "Boleto",             splits: [0],              active: true, permitePf: true,  acrescimoPercent: 0 },
+  { id: "boleto-14",         label: "Boleto 14 dias",                    method: "Boleto",             splits: [14],             active: true, permitePf: false, acrescimoPercent: 0 },
+  { id: "boleto-21",         label: "Boleto 21 dias",                    method: "Boleto",             splits: [21],             active: true, permitePf: false, acrescimoPercent: 0 },
+  { id: "boleto-28",         label: "Boleto 28 dias",                    method: "Boleto",             splits: [28],             active: true, permitePf: false, acrescimoPercent: 0 },
+  { id: "boleto-30",         label: "Boleto 30 dias",                    method: "Boleto",             splits: [30],             active: true, permitePf: false, acrescimoPercent: 2 },
+  { id: "boleto-2x-30-60",   label: "Boleto 2x — 30/60 dias",            method: "Boleto",             splits: [30, 60],         active: true, permitePf: false, acrescimoPercent: 3.5 },
+  { id: "boleto-3x-30-60-90",label: "Boleto 3x — 30/60/90 dias",         method: "Boleto",             splits: [30, 60, 90],     active: true, permitePf: false, acrescimoPercent: 5 },
+  { id: "boleto-4x",         label: "Boleto 4x — 30/60/90/120 dias",     method: "Boleto",             splits: [30, 60, 90, 120], active: true, permitePf: false, acrescimoPercent: 0 },
+  { id: "boleto-6x",         label: "Boleto 6x — 30 a 180 dias",         method: "Boleto",             splits: [30, 60, 90, 120, 150, 180], active: true, permitePf: false, acrescimoPercent: 0 },
+  { id: "boleto-entrada-30", label: "Boleto — entrada + 30 dias",        method: "Boleto",             splits: [0, 30],          active: true, permitePf: false, acrescimoPercent: 0 },
+  { id: "cartao-avista",     label: "Cartão à vista",                    method: "Cartão",             splits: [0],              active: true, permitePf: true,  acrescimoPercent: 3 },
+  { id: "cartao-3x",         label: "Cartão 3x sem juros",               method: "Cartão",             splits: [0, 30, 60],      active: true, permitePf: true,  acrescimoPercent: 6 },
+  { id: "cartao-6x",         label: "Cartão 6x sem juros",               method: "Cartão",             splits: [0, 30, 60, 90, 120, 150], active: true, permitePf: true, acrescimoPercent: 9 },
 ];
 
 /** @deprecated use `useCrm(s => s.paymentTerms)` — kept for legacy imports. */
@@ -1396,16 +1402,28 @@ export const useVisibleProposals = () => {
   );
 };
 
-export const proposalTotals = (p: Proposal) => {
+export const proposalTotals = (p: Proposal, surchargePercent = 0) => {
   const items = Array.isArray(p?.items) ? p.items : [];
   const transport = p?.transport ?? ({} as Proposal["transport"]);
   const subtotal = items.reduce((s, i) => s + (Number(i?.quantity) || 0) * (Number(i?.unitPrice) || 0), 0);
   const pct = Math.max(0, Math.min(100, p?.discountPercent ?? 0));
   const discountAmount = +(subtotal * (pct / 100)).toFixed(2);
   const subtotalAfterDiscount = +(subtotal - discountAmount).toFixed(2);
-  const total = subtotalAfterDiscount + (Number(transport?.freightValue) || 0);
+  const surchargePct = Math.max(0, Math.min(100, Number(surchargePercent) || 0));
+  const surchargeAmount = +(subtotalAfterDiscount * (surchargePct / 100)).toFixed(2);
+  const total = subtotalAfterDiscount + surchargeAmount + (Number(transport?.freightValue) || 0);
   const qty = items.reduce((s, i) => s + (Number(i?.quantity) || 0), 0);
-  return { subtotal, discountPercent: pct, discountAmount, subtotalAfterDiscount, total, qty, count: items.length };
+  return {
+    subtotal,
+    discountPercent: pct,
+    discountAmount,
+    subtotalAfterDiscount,
+    surchargePercent: surchargePct,
+    surchargeAmount,
+    total,
+    qty,
+    count: items.length,
+  };
 };
 
 /** Status de propostas em aberto (contam em pipeline ativo). */
