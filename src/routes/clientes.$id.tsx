@@ -30,7 +30,6 @@ import {
   fromRow,
   type ClienteFormState,
 } from "@/components/clientes/ClienteFormFields";
-import { ComunicacaoSection } from "@/components/clientes/ComunicacaoSection";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -171,9 +170,6 @@ function ClienteDetailPage() {
           </Button>
         </div>
       </div>
-
-      <ComunicacaoSection clienteId={id} email={c.email} telefone={c.telefone} />
-
 
       <Tabs defaultValue="dados">
         <TabsList>

@@ -13,64 +13,26 @@ function normalizePhoneBR(phone: string) {
 }
 
 /**
- * Envia mensagem ao cliente pelo canal escolhido e registra em
- * whatsapp_mensagens (autor='vendedor', direcao='saida').
- * - canal "whatsapp": envia via Z-API (padrão, comportamento histórico).
- * - canal "email": envia via provedor de e-mail; destinatário vem de `to`,
- *   do lead vinculado ou do cliente vinculado ao lead.
+ * Envia mensagem via Z-API e registra em whatsapp_mensagens (autor='vendedor', direcao='saida').
  */
 export const sendConversaMessage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data) =>
-    z
-      .object({
-        conversaId: z.string().uuid(),
-        message: z.string().min(1).max(4096),
-        canal: z.enum(["whatsapp", "email"]).default("whatsapp"),
-        assunto: z.string().max(200).optional(),
-        to: z.string().email().optional(),
-      })
-      .parse(data),
+    z.object({ conversaId: z.string().uuid(), message: z.string().min(1).max(4096) }).parse(data),
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
+
     const { data: conversa, error: cErr } = await supabase
       .from("whatsapp_conversas")
-      .select("id, phone, name, lead_id")
+      .select("id, phone")
       .eq("id", data.conversaId)
       .maybeSingle();
     if (cErr || !conversa) throw new Error("Conversa não encontrada ou sem permissão.");
 
-    let externalRef: string | null = null;
-
-    if (data.canal === "email") {
-      let destino = data.to ?? null;
-      if (!destino && conversa.lead_id) {
-        const { data: lead } = await supabase
-          .from("leads")
-          .select("email, cliente_id")
-          .eq("id", conversa.lead_id)
-          .maybeSingle();
-        destino = lead?.email ?? null;
-        if (!destino && lead?.cliente_id) {
-          const { data: cli } = await supabase
-            .from("clientes")
-            .select("email")
-            .eq("id", lead.cliente_id)
-            .maybeSingle();
-          destino = cli?.email ?? null;
-        }
-      }
-      if (!destino) throw new Error("Nenhum e-mail cadastrado para este cliente.");
-      const { sendEmailText } = await import("./email-send.server");
-      const assunto = data.assunto?.trim() || "Mensagem da INPLASTIC";
-      await sendEmailText(destino, assunto, data.message, "sendConversaMessage");
-      externalRef = `email:${destino}`;
-    } else {
-      const { sendZapiText } = await import("./zapi-send.server");
-      await sendZapiText(conversa.phone, data.message, "sendConversaMessage");
-    }
+    const { sendZapiText } = await import("./zapi-send.server");
+    await sendZapiText(conversa.phone, data.message, "sendConversaMessage");
 
     const { error: mErr } = await supabase.from("whatsapp_mensagens").insert({
       conversa_id: data.conversaId,
@@ -78,8 +40,6 @@ export const sendConversaMessage = createServerFn({ method: "POST" })
       autor: "vendedor",
       conteudo: data.message,
       usuario_id: userId,
-      tipo: data.canal === "email" ? "email" : "texto",
-      ...(externalRef ? { external_id: externalRef } : {}),
     });
 
     if (mErr) throw new Error(mErr.message);
@@ -97,9 +57,8 @@ export const sendConversaMessage = createServerFn({ method: "POST" })
       .is("atribuido_para", null);
 
 
-    return { ok: true, canal: data.canal };
+    return { ok: true };
   });
-
 
 /**
  * Cria lead a partir de uma conversa sem lead vinculado.
