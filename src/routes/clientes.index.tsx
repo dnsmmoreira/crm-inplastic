@@ -23,7 +23,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
-import { formatCnpj } from "@/lib/cnpj";
+import { formatDocumentoCliente } from "@/lib/clientes";
 import { relativeTimeShort, displayValue } from "@/lib/format";
 import { listClientes, listVendedores } from "@/lib/clientes.functions";
 import { useAuth } from "@/hooks/use-auth";
