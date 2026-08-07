@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { formatCnpj } from "@/lib/cnpj";
+import { formatCnpj, formatCpf, isValidCpf } from "@/lib/cnpj";
 import { formatCep } from "@/lib/format";
 import type { ClienteInput, ClienteRow } from "@/lib/clientes.functions";
 
