@@ -165,9 +165,32 @@ function ClienteDetailPage() {
             </Badge>
           )}
           {!c.ativo && <Badge variant="outline">Inativo</Badge>}
+          <Button
+            variant="outline"
+            disabled={iniciandoConversa}
+            onClick={async () => {
+              setIniciandoConversa(true);
+              try {
+                const { conversaId } = await iniciarConversaFn({ data: { clienteId: id } });
+                navigate({ to: "/conversas", search: { c: conversaId } });
+              } catch (e) {
+                toast.error(e instanceof Error ? e.message : "Falha ao iniciar conversa");
+              } finally {
+                setIniciandoConversa(false);
+              }
+            }}
+          >
+            {iniciandoConversa ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <MessageCircle className="h-4 w-4 mr-2" />
+            )}
+            Iniciar conversa
+          </Button>
           <Button variant="outline" onClick={() => navigate({ to: "/propostas" })}>
             Nova proposta
           </Button>
+
         </div>
       </div>
 
