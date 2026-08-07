@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Table,
@@ -109,6 +110,7 @@ function ClienteDetailPage() {
   }
 
   const c = clienteQ.data;
+  const temTelefone = !!((c.telefone ?? "").trim() || (c.telefone2 ?? "").trim());
 
   const handleSave = async () => {
     if (!form) return;
@@ -168,28 +170,40 @@ function ClienteDetailPage() {
             </Badge>
           )}
           {!c.ativo && <Badge variant="outline">Inativo</Badge>}
-          <Button
-            variant="outline"
-            disabled={iniciandoConversa}
-            onClick={async () => {
-              setIniciandoConversa(true);
-              try {
-                const { conversaId } = await iniciarConversaFn({ data: { clienteId: id } });
-                navigate({ to: "/conversas", search: { c: conversaId } });
-              } catch (e) {
-                toast.error(e instanceof Error ? e.message : "Falha ao iniciar conversa");
-              } finally {
-                setIniciandoConversa(false);
-              }
-            }}
-          >
-            {iniciandoConversa ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <MessageCircle className="h-4 w-4 mr-2" />
-            )}
-            Iniciar conversa
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>
+                  <Button
+                    variant="outline"
+                    disabled={iniciandoConversa || !temTelefone}
+                    onClick={async () => {
+                      setIniciandoConversa(true);
+                      try {
+                        const { conversaId } = await iniciarConversaFn({ data: { clienteId: id } });
+                        navigate({ to: "/conversas", search: { c: conversaId } });
+                      } catch (e) {
+                        toast.error(e instanceof Error ? e.message : "Falha ao iniciar conversa");
+                      } finally {
+                        setIniciandoConversa(false);
+                      }
+                    }}
+                  >
+                    {iniciandoConversa ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <MessageCircle className="h-4 w-4 mr-2" />
+                    )}
+                    Conversar no WhatsApp
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              {!temTelefone && (
+                <TooltipContent>Cliente sem telefone cadastrado</TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
+
           <Button variant="outline" onClick={() => navigate({ to: "/propostas" })}>
             Nova proposta
           </Button>
