@@ -32,6 +32,7 @@ import {
 } from "@/lib/crm-store";
 import { calculateFreightDistance } from "@/lib/freight.functions";
 import { gerarPedidoOmie } from "@/lib/omie.functions";
+import { formatDocumentoCliente } from "@/lib/clientes";
 import { getVendedorDaProposta, type VendedorContato, type ClienteRow } from "@/lib/clientes.functions";
 import { useQuery } from "@tanstack/react-query";
 import { formatCnpj } from "@/lib/cnpj";
@@ -1347,7 +1348,7 @@ function PropostaDetalhe() {
             <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Para</div>
             <div className="font-semibold">{clienteRow?.razao_social || lead.company}</div>
             <div className="text-[11px] leading-relaxed">
-              {clienteRow?.cnpj && <div>CNPJ: {formatCnpj(clienteRow.cnpj)}</div>}
+              {clienteRow && <div>{formatDocumentoCliente(clienteRow) !== "—" ? `${clienteRow.tipo_pessoa === "PF" ? "CPF" : "CNPJ"}: ${formatDocumentoCliente(clienteRow)}` : ""}</div>}
               {(clienteRow?.endereco || clienteRow?.numero) && (
                 <div>
                   {[clienteRow?.endereco, clienteRow?.numero].filter(Boolean).join(", ")}
@@ -1410,6 +1411,7 @@ function PropostaDetalhe() {
               <th className="border p-1.5">Soma das Qtdes</th>
               <th className="border p-1.5">Subtotal dos itens</th>
               <th className="border p-1.5">Desconto</th>
+              <th className="border p-1.5">Acréscimo</th>
               <th className="border p-1.5">Frete</th>
               <th className="border p-1.5">Total da proposta</th>
             </tr>
