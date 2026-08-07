@@ -171,6 +171,9 @@ function ClienteDetailPage() {
         </div>
       </div>
 
+      <ComunicacaoSection clienteId={id} email={c.email} telefone={c.telefone} />
+
+
       <Tabs defaultValue="dados">
         <TabsList>
           <TabsTrigger value="dados">Dados fiscais</TabsTrigger>
