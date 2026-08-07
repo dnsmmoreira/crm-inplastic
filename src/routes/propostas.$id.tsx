@@ -195,7 +195,14 @@ function PropostaDetalhe() {
   const gerarPedido = useServerFn(gerarPedidoOmie);
   const [omieBusy, setOmieBusy] = useState(false);
 
-  const totals = useMemo(() => (proposal ? proposalTotals(proposal) : null), [proposal]);
+  const selectedTerm = useMemo(
+    () => paymentTerms.find((t: PaymentTerm) => t.id === proposal?.paymentTermId) ?? null,
+    [paymentTerms, proposal?.paymentTermId],
+  );
+  const totals = useMemo(
+    () => (proposal ? proposalTotals(proposal, selectedTerm?.acrescimoPercent ?? 0) : null),
+    [proposal, selectedTerm],
+  );
   const owner = proposal ? USERS.find((u) => u.id === proposal.ownerId) : null;
 
   // Vendedor real (tabela de usuários) — vinculado ao cliente da proposta.
@@ -226,6 +233,21 @@ function PropostaDetalhe() {
     })();
     return () => { alive = false; };
   }, [clienteId]);
+
+  // Pessoa Física: só condições à vista ou cartão (permite_pf).
+  const isClientePf = clienteRow?.tipo_pessoa === "PF";
+  const visiblePaymentTerms = useMemo(
+    () => (isClientePf ? activePaymentTerms.filter((t: PaymentTerm) => !!t.permitePf) : activePaymentTerms),
+    [activePaymentTerms, isClientePf],
+  );
+  useEffect(() => {
+    if (!proposal || !isClientePf || !proposal.paymentTermId) return;
+    const term = paymentTerms.find((t: PaymentTerm) => t.id === proposal.paymentTermId);
+    if (term && !term.permitePf) {
+      _updateProposal(proposal.id, { paymentTermId: undefined });
+      toast.warning("Condição a prazo não permitida para Pessoa Física — escolha à vista ou cartão.");
+    }
+  }, [isClientePf, proposal, paymentTerms, _updateProposal]);
 
 
   
@@ -797,6 +819,12 @@ function PropostaDetalhe() {
                     <span className="font-semibold w-32 text-right">− {formatBRL(totals.discountAmount)}</span>
                   </div>
                 )}
+                {totals.surchargeAmount > 0 && (
+                  <div className="flex justify-end gap-6 text-amber-700">
+                    <span>Acréscimo ({String(totals.surchargePercent).replace(".", ",")}%):</span>
+                    <span className="font-semibold w-32 text-right">+ {formatBRL(totals.surchargeAmount)}</span>
+                  </div>
+                )}
                 {proposal.transport.freightValue > 0 && (
                   <div className="flex justify-end gap-6">
                     <span className="text-muted-foreground">Frete:</span>
@@ -1129,16 +1157,23 @@ function PropostaDetalhe() {
                 >
                   <SelectTrigger><SelectValue placeholder="Escolha uma condição cadastrada" /></SelectTrigger>
                   <SelectContent className="max-h-80">
-                    {activePaymentTerms.map((t: PaymentTerm) => (
+                    {visiblePaymentTerms.map((t: PaymentTerm) => (
                       <SelectItem key={t.id} value={t.id}>
                         <span className="font-medium">{t.label}</span>
-                        <span className="text-muted-foreground text-xs ml-2">· {t.method}</span>
+                        <span className="text-muted-foreground text-xs ml-2">
+                          · {t.method}
+                          {(t.acrescimoPercent ?? 0) > 0
+                            ? ` · +${String(t.acrescimoPercent).replace(".", ",")}%`
+                            : ""}
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 <p className="text-[11px] text-muted-foreground mt-1">
-                  Somente o administrador pode cadastrar novas condições.
+                  {isClientePf
+                    ? "Cliente Pessoa Física: apenas condições à vista ou cartão (com acréscimo)."
+                    : "Somente o administrador pode cadastrar novas condições."}
                 </p>
               </div>
 
@@ -1387,6 +1422,11 @@ function PropostaDetalhe() {
               <td className="border p-1.5 text-right">
                 {(totals?.discountPercent ?? 0) > 0
                   ? `− ${formatBRL(totals?.discountAmount ?? 0)} (${totals?.discountPercent}%)`
+                  : "—"}
+              </td>
+              <td className="border p-1.5 text-right">
+                {(totals?.surchargeAmount ?? 0) > 0
+                  ? `+ ${formatBRL(totals?.surchargeAmount ?? 0)} (${String(totals?.surchargePercent).replace(".", ",")}%)`
                   : "—"}
               </td>
               <td className="border p-1.5 text-right">{formatBRL(proposal.transport.freightValue)}</td>
