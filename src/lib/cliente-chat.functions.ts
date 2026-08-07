@@ -1,6 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { Database } from "@/integrations/supabase/types";
+
+type ConversaRow = Database["public"]["Tables"]["whatsapp_conversas"]["Row"];
 
 /**
  * Server functions do CHAT HUB do cliente (/cliente/$id/chat).
@@ -32,7 +35,7 @@ export const getClienteChatContext = createServerFn({ method: "GET" })
       .eq("cliente_id", data.clienteId);
     const leadIds = (leads ?? []).map((l) => l.id);
 
-    const conversas: Record<string, unknown>[] = [];
+    const conversas: ConversaRow[] = [];
     if (leadIds.length > 0) {
       const { data: byLead } = await supabase
         .from("whatsapp_conversas")
@@ -55,14 +58,14 @@ export const getClienteChatContext = createServerFn({ method: "GET" })
         .order("last_message_at", { ascending: false, nullsFirst: false })
         .limit(50);
       for (const c of byPhone ?? []) {
-        if (!conversas.some((x) => (x as { id: string }).id === c.id)) conversas.push(c);
+        if (!conversas.some((x) => x.id === c.id)) conversas.push(c);
       }
     }
 
     return {
       cliente,
       leads: leads ?? [],
-      conversas: conversas as unknown as Array<Record<string, unknown>>,
+      conversas,
     };
   });
 
