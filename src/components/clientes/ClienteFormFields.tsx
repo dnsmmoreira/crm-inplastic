@@ -19,7 +19,9 @@ export type ClienteFormState = ClienteInput;
 
 export function emptyCliente(cnpjInicial = ""): ClienteFormState {
   return {
+    tipo_pessoa: "PJ",
     cnpj: cnpjInicial,
+    cpf: "",
     razao_social: "",
     nome_fantasia: "",
     inscricao_estadual: "",
@@ -48,7 +50,9 @@ export function emptyCliente(cnpjInicial = ""): ClienteFormState {
 
 export function fromRow(r: ClienteRow): ClienteFormState {
   return {
-    cnpj: r.cnpj,
+    tipo_pessoa: r.tipo_pessoa === "PF" ? "PF" : "PJ",
+    cnpj: r.cnpj ?? "",
+    cpf: r.cpf ?? "",
     razao_social: r.razao_social,
     nome_fantasia: r.nome_fantasia ?? "",
     inscricao_estadual: r.inscricao_estadual ?? "",
