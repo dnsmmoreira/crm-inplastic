@@ -37,6 +37,7 @@ import { Route as PropostasIdRouteImport } from './routes/propostas.$id'
 import { Route as ClientesIdRouteImport } from './routes/clientes.$id'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
+import { Route as ClienteIdChatRouteImport } from './routes/cliente.$id.chat'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as ApiPublicZapiWebhookRouteImport } from './routes/api/public/zapi/webhook'
@@ -194,6 +195,11 @@ const Char91DotmcpChar93ListToolsRoute =
     path: '/.mcp/list-tools',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ClienteIdChatRoute = ClienteIdChatRouteImport.update({
+  id: '/cliente/$id/chat',
+  path: '/cliente/$id/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const Char91DotmcpChar93InvokeToolToolRoute =
   Char91DotmcpChar93InvokeToolToolRouteImport.update({
     id: '/.mcp/invoke-tool/$tool',
@@ -306,6 +312,7 @@ export interface FileRoutesByFullPath {
   '/propostas/': typeof PropostasIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/cliente/$id/chat': typeof ClienteIdChatRoute
   '/api/public/hooks/ia-qualificar': typeof ApiPublicHooksIaQualificarRoute
   '/api/public/hooks/ia-responder': typeof ApiPublicHooksIaResponderRoute
   '/api/public/hooks/ia-urgente': typeof ApiPublicHooksIaUrgenteRoute
@@ -350,6 +357,7 @@ export interface FileRoutesByTo {
   '/propostas': typeof PropostasIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/cliente/$id/chat': typeof ClienteIdChatRoute
   '/api/public/hooks/ia-qualificar': typeof ApiPublicHooksIaQualificarRoute
   '/api/public/hooks/ia-responder': typeof ApiPublicHooksIaResponderRoute
   '/api/public/hooks/ia-urgente': typeof ApiPublicHooksIaUrgenteRoute
@@ -395,6 +403,7 @@ export interface FileRoutesById {
   '/propostas/': typeof PropostasIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/cliente/$id/chat': typeof ClienteIdChatRoute
   '/api/public/hooks/ia-qualificar': typeof ApiPublicHooksIaQualificarRoute
   '/api/public/hooks/ia-responder': typeof ApiPublicHooksIaResponderRoute
   '/api/public/hooks/ia-urgente': typeof ApiPublicHooksIaUrgenteRoute
@@ -441,6 +450,7 @@ export interface FileRouteTypes {
     | '/propostas/'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/cliente/$id/chat'
     | '/api/public/hooks/ia-qualificar'
     | '/api/public/hooks/ia-responder'
     | '/api/public/hooks/ia-urgente'
@@ -485,6 +495,7 @@ export interface FileRouteTypes {
     | '/propostas'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/cliente/$id/chat'
     | '/api/public/hooks/ia-qualificar'
     | '/api/public/hooks/ia-responder'
     | '/api/public/hooks/ia-urgente'
@@ -529,6 +540,7 @@ export interface FileRouteTypes {
     | '/propostas/'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/cliente/$id/chat'
     | '/api/public/hooks/ia-qualificar'
     | '/api/public/hooks/ia-responder'
     | '/api/public/hooks/ia-urgente'
@@ -574,6 +586,7 @@ export interface RootRouteChildren {
   PropostasIndexRoute: typeof PropostasIndexRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
+  ClienteIdChatRoute: typeof ClienteIdChatRoute
   ApiPublicHooksIaQualificarRoute: typeof ApiPublicHooksIaQualificarRoute
   ApiPublicHooksIaResponderRoute: typeof ApiPublicHooksIaResponderRoute
   ApiPublicHooksIaUrgenteRoute: typeof ApiPublicHooksIaUrgenteRoute
@@ -786,6 +799,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cliente/$id/chat': {
+      id: '/cliente/$id/chat'
+      path: '/cliente/$id/chat'
+      fullPath: '/cliente/$id/chat'
+      preLoaderRoute: typeof ClienteIdChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/.mcp/invoke-tool/$tool': {
       id: '/.mcp/invoke-tool/$tool'
       path: '/.mcp/invoke-tool/$tool'
@@ -919,6 +939,7 @@ const rootRouteChildren: RootRouteChildren = {
   PropostasIndexRoute: PropostasIndexRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
+  ClienteIdChatRoute: ClienteIdChatRoute,
   ApiPublicHooksIaQualificarRoute: ApiPublicHooksIaQualificarRoute,
   ApiPublicHooksIaResponderRoute: ApiPublicHooksIaResponderRoute,
   ApiPublicHooksIaUrgenteRoute: ApiPublicHooksIaUrgenteRoute,
