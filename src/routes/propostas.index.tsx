@@ -529,7 +529,7 @@ function NovaPropostaDialog({ open, onOpenChange }: { open: boolean; onOpenChang
           tags: [],
           source: "Cliente",
           notes: "",
-          cnpj: c.cnpj,
+          cnpj: c.cnpj ?? undefined,
           razaoSocial: c.razao_social,
           nomeFantasia: c.nome_fantasia ?? undefined,
           clienteId: c.id,
