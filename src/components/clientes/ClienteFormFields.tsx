@@ -307,6 +307,7 @@ export function ClienteFormFields({
         </CardContent>
       </Card>
 
+      {!isPF && (
       <Card>
         <CardHeader className="pb-3"><CardTitle className="text-base">Regime fiscal</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -343,6 +344,7 @@ export function ClienteFormFields({
           </p>
         </CardContent>
       </Card>
+      )}
 
       {showInternal && (
         <Card>
