@@ -178,15 +178,20 @@ function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+const RETRY_BACKOFF_MS = [2000, 5000];
+const RETRY_STATUS = new Set([429, 500, 502, 503, 504]);
+
 export async function sendZapiText(
   phoneRaw: string,
   message: string,
   ctx?: string,
   canal: ZapiCanal = "comercial",
+  opts?: { bypassGuards?: boolean },
 ): Promise<ZapiSendResult> {
   const { instanceId, token, clientToken } = credenciais(canal);
   const tag = ctx ? `[zapi:${canal}:${ctx}]` : `[zapi:${canal}]`;
   const phone = normalizePhoneBR(phoneRaw);
+  const bypass = opts?.bypassGuards === true;
 
   console.log(
     `${tag} env instance=${!!instanceId}(${instanceId?.length ?? 0}) token=${!!token}(${token?.length ?? 0}) clientToken=${!!clientToken}(${clientToken?.length ?? 0})`,
@@ -200,121 +205,178 @@ export async function sendZapiText(
   }
 
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-  // (5) Opt-out do contato
-  const { data: optout } = await supabaseAdmin
-    .from("whatsapp_optout")
-    .select("phone")
-    .eq("phone", phone)
-    .maybeSingle();
-  if (optout) {
-    bloquear(tag, "optout", phone);
-    throw new Error("Contato optou por nao receber mensagens.");
-  }
-
-  // (5) Janela de envio para automáticos
-  const { hora, domingo } = agoraSaoPaulo();
-  const foraDaJanela = domingo || hora < 7 || hora >= 20;
-  if (foraDaJanela) {
-    if (isAutomatico(ctx)) {
-      bloquear(tag, domingo ? "domingo" : "fora_da_janela_07_20", phone);
-      throw new Error(
-        "Fora da janela de envio automatico (07:00-20:00, exceto domingos). Mensagem nao enviada.",
-      );
-    }
-    console.warn(`${tag} AVISO envio manual fora da janela 07:00-20:00 phone=${phone}`);
-  }
-
-  const nowMs = Date.now();
-  const isoDesde = (ms: number) => new Date(nowMs - ms).toISOString();
-
-  // (3) Rate limit: mesmo telefone nos últimos 20s
-  const { count: cMesmoPhone } = await supabaseAdmin
-    .from("zapi_envios")
-    .select("id", { count: "exact", head: true })
-    .eq("phone", phone)
-    .gte("created_at", isoDesde(JANELA_MESMO_PHONE_MS));
-  if ((cMesmoPhone ?? 0) > 0) {
-    bloquear(tag, "rate_limit_mesmo_phone_20s", phone);
-    throw new Error("Aguarde 20 segundos antes de enviar outra mensagem para este contato.");
-  }
-
-  // (3) Rate limit: canal por minuto
-  const { count: cCanalMin } = await supabaseAdmin
-    .from("zapi_envios")
-    .select("id", { count: "exact", head: true })
-    .eq("canal", canal)
-    .gte("created_at", isoDesde(JANELA_CANAL_MIN_MS));
-  if ((cCanalMin ?? 0) >= LIMITE_CANAL_MIN) {
-    bloquear(tag, "rate_limit_canal_minuto", phone);
-    throw new Error("Limite de envios por minuto atingido neste canal. Tente novamente em instantes.");
-  }
-
-  // (3) Rate limit: canal por 24h
-  const { count: cCanal24h } = await supabaseAdmin
-    .from("zapi_envios")
-    .select("id", { count: "exact", head: true })
-    .eq("canal", canal)
-    .gte("created_at", isoDesde(24 * 60 * 60_000));
-  if ((cCanal24h ?? 0) >= LIMITE_CANAL_24H) {
-    bloquear(tag, "rate_limit_canal_24h", phone);
-    throw new Error("Limite diario de envios deste canal atingido (200 em 24h).");
-  }
-
-  // (4) Anti-duplicado
   const mensagemHash = await hashMensagem(message);
-  const { count: cDup } = await supabaseAdmin
-    .from("zapi_envios")
-    .select("id", { count: "exact", head: true })
-    .eq("phone", phone)
-    .eq("mensagem_hash", mensagemHash)
-    .gte("created_at", isoDesde(JANELA_DUPLICADO_MS));
-  if ((cDup ?? 0) > 0) {
-    bloquear(tag, "duplicado_10min", phone);
-    throw new Error("Mensagem duplicada bloqueada (anti-spam).");
+
+  if (!bypass) {
+    // (5) Opt-out do contato
+    const { data: optout } = await supabaseAdmin
+      .from("whatsapp_optout")
+      .select("phone")
+      .eq("phone", phone)
+      .maybeSingle();
+    if (optout) {
+      bloquear(tag, "optout", phone);
+      throw new Error("Contato optou por nao receber mensagens.");
+    }
+
+    // (5) Janela de envio para automáticos
+    const { hora, domingo } = agoraSaoPaulo();
+    const foraDaJanela = domingo || hora < 7 || hora >= 20;
+    if (foraDaJanela) {
+      if (isAutomatico(ctx)) {
+        bloquear(tag, domingo ? "domingo" : "fora_da_janela_07_20", phone);
+        throw new Error(
+          "Fora da janela de envio automatico (07:00-20:00, exceto domingos). Mensagem nao enviada.",
+        );
+      }
+      console.warn(`${tag} AVISO envio manual fora da janela 07:00-20:00 phone=${phone}`);
+    }
+
+    const nowMs = Date.now();
+    const isoDesde = (ms: number) => new Date(nowMs - ms).toISOString();
+
+    // (3) Rate limit: mesmo telefone nos últimos 20s
+    const { count: cMesmoPhone } = await supabaseAdmin
+      .from("zapi_envios")
+      .select("id", { count: "exact", head: true })
+      .eq("phone", phone)
+      .gte("created_at", isoDesde(JANELA_MESMO_PHONE_MS));
+    if ((cMesmoPhone ?? 0) > 0) {
+      bloquear(tag, "rate_limit_mesmo_phone_20s", phone);
+      throw new Error("Aguarde 20 segundos antes de enviar outra mensagem para este contato.");
+    }
+
+    // (3) Rate limit: canal por minuto
+    const { count: cCanalMin } = await supabaseAdmin
+      .from("zapi_envios")
+      .select("id", { count: "exact", head: true })
+      .eq("canal", canal)
+      .gte("created_at", isoDesde(JANELA_CANAL_MIN_MS));
+    if ((cCanalMin ?? 0) >= LIMITE_CANAL_MIN) {
+      bloquear(tag, "rate_limit_canal_minuto", phone);
+      throw new Error("Limite de envios por minuto atingido neste canal. Tente novamente em instantes.");
+    }
+
+    // (3) Rate limit: canal por 24h
+    const { count: cCanal24h } = await supabaseAdmin
+      .from("zapi_envios")
+      .select("id", { count: "exact", head: true })
+      .eq("canal", canal)
+      .gte("created_at", isoDesde(24 * 60 * 60_000));
+    if ((cCanal24h ?? 0) >= LIMITE_CANAL_24H) {
+      bloquear(tag, "rate_limit_canal_24h", phone);
+      throw new Error("Limite diario de envios deste canal atingido (200 em 24h).");
+    }
+
+    // (4) Anti-duplicado
+    const { count: cDup } = await supabaseAdmin
+      .from("zapi_envios")
+      .select("id", { count: "exact", head: true })
+      .eq("phone", phone)
+      .eq("mensagem_hash", mensagemHash)
+      .gte("created_at", isoDesde(JANELA_DUPLICADO_MS));
+    if ((cDup ?? 0) > 0) {
+      bloquear(tag, "duplicado_10min", phone);
+      throw new Error("Mensagem duplicada bloqueada (anti-spam).");
+    }
+
+    // (1) Guarda de conexão
+    await garantirConectado(canal, { instanceId, token, clientToken }, tag, phone);
+
+    // (3) Jitter humano
+    await sleep(JITTER_MIN_MS + Math.floor(Math.random() * (JITTER_MAX_MS - JITTER_MIN_MS)));
   }
-
-  // (1) Guarda de conexão
-  await garantirConectado(canal, { instanceId, token, clientToken }, tag, phone);
-
-  // (3) Jitter humano
-  await sleep(JITTER_MIN_MS + Math.floor(Math.random() * (JITTER_MAX_MS - JITTER_MIN_MS)));
 
   const url = `https://api.z-api.io/instances/${instanceId}/token/${token}/send-text`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Client-Token": clientToken,
-    },
-    body: JSON.stringify({ phone, message }),
-  });
-  const body = await res.text();
-  console.log(`${tag} send-text status=${res.status} phone=${phone} bodyLen=${body.length}`);
-  if (!res.ok) {
-    console.error(`${tag} send-text falhou [${res.status}]: ${body}`);
-    throw new Error(`Z-API [${res.status}]: ${body}`);
+
+  /** (8) Idempotência: já existe registro deste phone+hash nos últimos 60s? */
+  async function jaEnviadoRecentemente() {
+    const desde = new Date(Date.now() - 60_000).toISOString();
+    const { count } = await supabaseAdmin
+      .from("zapi_envios")
+      .select("id", { count: "exact", head: true })
+      .eq("phone", phone)
+      .eq("mensagem_hash", mensagemHash)
+      .gte("created_at", desde);
+    return (count ?? 0) > 0;
   }
 
-  // (2) Validação real de entrega
-  let zaapId: string | null = null;
-  let messageId: string | null = null;
-  try {
-    const parsed = JSON.parse(body) as { zaapId?: string; messageId?: string };
-    zaapId = parsed.zaapId ?? null;
-    messageId = parsed.messageId ?? null;
-  } catch {
-    /* body não-JSON → tratado como falha abaixo */
-  }
-  if (!zaapId && !messageId) {
-    console.error(`${tag} resposta sem zaapId/messageId — envio NAO confirmado: ${body.slice(0, 300)}`);
-    throw new Error("Envio nao confirmado pelo WhatsApp (sem identificador de mensagem).");
+  let ultimoErro: Error = new Error("Falha desconhecida no envio Z-API.");
+
+  // (8) Tentativa inicial + no máximo 2 retentativas com backoff 2s e 5s,
+  // exclusivamente para falhas transitórias (rede/timeout, 429 e 5xx).
+  for (let tentativa = 1; tentativa <= RETRY_BACKOFF_MS.length + 1; tentativa++) {
+    if (tentativa > 1) {
+      if (await jaEnviadoRecentemente()) {
+        console.warn(`${tag} tentativa=${tentativa} abortada — envio ja registrado (idempotencia).`);
+        return { ok: true, status: 200, body: "", phone, messageId: null, zaapId: null };
+      }
+      const espera = RETRY_BACKOFF_MS[tentativa - 2]!;
+      console.warn(`${tag} retry em ${espera}ms (tentativa=${tentativa}) motivo=${ultimoErro.message}`);
+      await sleep(espera);
+    }
+
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Client-Token": clientToken,
+        },
+        body: JSON.stringify({ phone, message }),
+      });
+    } catch (e) {
+      // Falha transitória de rede/timeout → elegível a retry
+      ultimoErro = new Error(
+        `Falha de rede ao enviar pelo WhatsApp: ${e instanceof Error ? e.message : String(e)}`,
+      );
+      console.error(`${tag} tentativa=${tentativa} erro de rede: ${ultimoErro.message}`);
+      continue;
+    }
+
+    const body = await res.text();
+    console.log(
+      `${tag} tentativa=${tentativa} send-text status=${res.status} phone=${phone} bodyLen=${body.length}`,
+    );
+
+    if (!res.ok) {
+      console.error(`${tag} tentativa=${tentativa} send-text falhou [${res.status}]: ${body}`);
+      const erro = new Error(`Z-API [${res.status}]: ${body}`);
+      if (RETRY_STATUS.has(res.status)) {
+        ultimoErro = erro;
+        continue; // transitório → retry
+      }
+      throw erro; // 4xx (exceto 429) → nunca retenta
+    }
+
+    // (2) Validação real de entrega
+    let zaapId: string | null = null;
+    let messageId: string | null = null;
+    try {
+      const parsed = JSON.parse(body) as { zaapId?: string; messageId?: string };
+      zaapId = parsed.zaapId ?? null;
+      messageId = parsed.messageId ?? null;
+    } catch {
+      /* body não-JSON → tratado como falha abaixo */
+    }
+    if (!zaapId && !messageId) {
+      console.error(
+        `${tag} tentativa=${tentativa} resposta sem zaapId/messageId — envio NAO confirmado: ${body.slice(0, 300)}`,
+      );
+      // Sem identificador não há retry (pode ter entregue).
+      throw new Error("Envio nao confirmado pelo WhatsApp (sem identificador de mensagem).");
+    }
+
+    // (8) Registro único por mensagem
+    const { error: regErr } = await supabaseAdmin
+      .from("zapi_envios")
+      .insert({ canal, phone, ctx: ctx ?? null, mensagem_hash: mensagemHash });
+    if (regErr) console.error(`${tag} falha ao registrar envio:`, regErr.message);
+
+    return { ok: true, status: res.status, body, phone, messageId, zaapId };
   }
 
-  const { error: regErr } = await supabaseAdmin
-    .from("zapi_envios")
-    .insert({ canal, phone, ctx: ctx ?? null, mensagem_hash: mensagemHash });
-  if (regErr) console.error(`${tag} falha ao registrar envio:`, regErr.message);
-
-  return { ok: true, status: res.status, body, phone, messageId, zaapId };
+  throw ultimoErro;
 }
+
