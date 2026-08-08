@@ -31,7 +31,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import { zapiStatus } from "@/lib/zapi.functions";
 import { sendConversaMessage, createLeadFromConversa } from "@/lib/canais.functions";
-import { painelWhatsapp, removerOptout } from "@/lib/zapi-painel.functions";
+import {
+  painelWhatsapp,
+  removerOptout,
+  diagnosticoCanaisInternos,
+  enviarAlertaTeste,
+} from "@/lib/zapi-painel.functions";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Database } from "@/integrations/supabase/types";
 
 type Conversa = Database["public"]["Tables"]["whatsapp_conversas"]["Row"];
