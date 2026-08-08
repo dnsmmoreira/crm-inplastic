@@ -613,3 +613,201 @@ function IntegrationRow({
     </div>
   );
 }
+
+/** (6) Status REAL da instância Z-API — substitui o badge fixo antigo. */
+function ZapiStatusRow() {
+  const check = useServerFn(zapiStatus);
+  const [estado, setEstado] = useState<"carregando" | "conectado" | "desconectado" | "nao_configurado">(
+    "carregando",
+  );
+  const [checadoEm, setChecadoEm] = useState<Date | null>(null);
+
+  const verificar = useCallback(async () => {
+    setEstado("carregando");
+    try {
+      const r = await check();
+      if (!r.configured) {
+        setEstado("nao_configurado");
+      } else {
+        let ok = false;
+        try {
+          const p = JSON.parse(r.raw) as { connected?: boolean; smartphoneConnected?: boolean };
+          ok = p.connected === true && p.smartphoneConnected === true;
+        } catch {
+          ok = false;
+        }
+        setEstado(ok ? "conectado" : "desconectado");
+      }
+    } catch {
+      setEstado("desconectado");
+    } finally {
+      setChecadoEm(new Date());
+    }
+  }, [check]);
+
+  useEffect(() => {
+    void verificar();
+  }, [verificar]);
+
+  const cfg = {
+    carregando: { label: "Verificando...", cls: "border-muted-foreground/40 text-muted-foreground" },
+    conectado: { label: "Conectado", cls: "border-emerald-500/50 text-emerald-700" },
+    desconectado: { label: "Desconectado", cls: "border-red-500/50 text-red-700" },
+    nao_configurado: { label: "Nao configurado", cls: "border-amber-500/50 text-amber-700" },
+  }[estado];
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between text-sm">
+        <span>WhatsApp Business (Z-API)</span>
+        <div className="flex items-center gap-1.5">
+          <Badge variant="outline" className={cn("text-[10px]", cfg.cls)}>
+            {cfg.label}
+          </Badge>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-6 w-6"
+            onClick={() => void verificar()}
+            disabled={estado === "carregando"}
+            title="Recarregar status"
+          >
+            <RefreshCw className={cn("h-3.5 w-3.5", estado === "carregando" && "animate-spin")} />
+          </Button>
+        </div>
+      </div>
+      <div className="text-[10px] text-muted-foreground">
+        {checadoEm
+          ? `Última verificação: ${format(checadoEm, "dd/MM/yyyy HH:mm:ss")}`
+          : "Nunca verificado"}
+      </div>
+    </div>
+  );
+}
+
+type PainelData = Awaited<ReturnType<typeof painelWhatsapp>>;
+
+/** (6/7) Resumo de envios, opt-outs e alertas — somente administrador. */
+function PainelSaudeWhatsapp() {
+  const carregar = useServerFn(painelWhatsapp);
+  const remover = useServerFn(removerOptout);
+  const [data, setData] = useState<PainelData | null>(null);
+  const [negado, setNegado] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      setData(await carregar());
+      setNegado(false);
+    } catch {
+      setNegado(true);
+    }
+  }, [carregar]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  async function handleRemover(phone: string) {
+    if (!window.confirm(`Remover o opt-out de ${phone}? O contato voltará a receber mensagens.`)) return;
+    try {
+      await remover({ data: { phone } });
+      toast.success("Opt-out removido");
+      void load();
+    } catch (e) {
+      toast.error("Falha ao remover", { description: e instanceof Error ? e.message : String(e) });
+    }
+  }
+
+  if (negado || !data) return null;
+
+  return (
+    <div className="rounded-xl border bg-card p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <Activity className="h-4 w-4 text-primary" /> Saúde de envios (admin)
+        </div>
+        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => void load()}>
+          <RefreshCw className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 text-xs">
+        <div className="rounded-md border p-2">
+          <div className="text-muted-foreground">Últimas 24h</div>
+          <div className="text-lg font-semibold">{data.envios.total24h}</div>
+          <div className="text-[10px] text-muted-foreground">
+            {Object.entries(data.envios.porCanal24h)
+              .map(([c, n]) => `${c}: ${n}`)
+              .join(" · ") || "sem envios"}
+          </div>
+        </div>
+        <div className="rounded-md border p-2">
+          <div className="text-muted-foreground">Última hora</div>
+          <div className="text-lg font-semibold">{data.envios.ultimaHora}</div>
+        </div>
+      </div>
+
+      <div className="space-y-1">
+        <div className="text-xs font-medium">Últimos envios</div>
+        <ul className="max-h-48 overflow-y-auto divide-y text-[11px]">
+          {data.envios.recentes.map((e) => (
+            <li key={e.id} className="py-1 flex items-center justify-between gap-2">
+              <span className="font-mono">{e.phone}</span>
+              <span className="text-muted-foreground truncate">
+                {e.canal}
+                {e.ctx ? ` · ${e.ctx}` : ""}
+              </span>
+              <span className="text-muted-foreground shrink-0">
+                {format(new Date(e.created_at), "dd/MM HH:mm")}
+              </span>
+            </li>
+          ))}
+          {data.envios.recentes.length === 0 && (
+            <li className="py-2 text-muted-foreground">Nenhum envio registrado.</li>
+          )}
+        </ul>
+      </div>
+
+      <div className="space-y-1">
+        <div className="text-xs font-medium">Opt-outs ({data.optouts.total})</div>
+        <ul className="max-h-40 overflow-y-auto divide-y text-[11px]">
+          {data.optouts.recentes.map((o) => (
+            <li key={o.phone} className="py-1 flex items-center justify-between gap-2">
+              <span className="font-mono">{o.phoneMascarado}</span>
+              <span className="text-muted-foreground truncate">{o.motivo ?? "—"}</span>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 px-2 text-[10px]"
+                onClick={() => void handleRemover(o.phone)}
+              >
+                Remover
+              </Button>
+            </li>
+          ))}
+          {data.optouts.recentes.length === 0 && (
+            <li className="py-2 text-muted-foreground">Nenhum opt-out.</li>
+          )}
+        </ul>
+      </div>
+
+      <div className="space-y-1">
+        <div className="text-xs font-medium">Alertas (48h)</div>
+        <ul className="max-h-40 overflow-y-auto divide-y text-[11px]">
+          {data.alertas48h.map((a) => (
+            <li key={a.id} className="py-1 flex items-center justify-between gap-2">
+              <span className="text-destructive">{a.tipo}</span>
+              <span className="text-muted-foreground">{a.canal}</span>
+              <span className="text-muted-foreground shrink-0">
+                {format(new Date(a.created_at), "dd/MM HH:mm")}
+              </span>
+            </li>
+          ))}
+          {data.alertas48h.length === 0 && (
+            <li className="py-2 text-muted-foreground">Nenhum alerta nas últimas 48h.</li>
+          )}
+        </ul>
+      </div>
+    </div>
+  );
+}
