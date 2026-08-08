@@ -2116,6 +2116,30 @@ export type Database = {
           },
         ]
       }
+      zapi_alertas: {
+        Row: {
+          canal: string
+          created_at: string
+          detalhe: string | null
+          id: string
+          tipo: string
+        }
+        Insert: {
+          canal: string
+          created_at?: string
+          detalhe?: string | null
+          id?: string
+          tipo: string
+        }
+        Update: {
+          canal?: string
+          created_at?: string
+          detalhe?: string | null
+          id?: string
+          tipo?: string
+        }
+        Relationships: []
+      }
       zapi_envios: {
         Row: {
           canal: string

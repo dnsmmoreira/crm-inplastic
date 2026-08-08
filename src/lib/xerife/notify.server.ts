@@ -54,7 +54,7 @@ export async function enviarNotificacaoInterna(
   destino: string | null | undefined,
   texto: string,
   ctx = "interno",
-  opts?: { telegramChatId?: string | null },
+  opts?: { telegramChatId?: string | null; bypassGuards?: boolean },
 ): Promise<ResultadoNotificacaoInterna> {
   try {
     // ---- Trilho TELEGRAM (tem precedência quando xerife_config.telegram_ativo = true) ----
@@ -107,7 +107,7 @@ export async function enviarNotificacaoInterna(
     }
 
     const { sendZapiText } = await import("@/lib/zapi-send.server");
-    await sendZapiText(alvo, texto, ctx, "interno");
+    await sendZapiText(alvo, texto, ctx, "interno", { bypassGuards: opts?.bypassGuards === true });
     return { enviado: true };
   } catch (e) {
     console.error(
