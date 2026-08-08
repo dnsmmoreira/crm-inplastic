@@ -34,6 +34,42 @@ export type ResultadoNotificacaoInterna = {
     | "sem_chat_id";
 };
 
+/**
+ * (C) Rastreio: quando não há canal interno configurado, o alerta não chega em
+ * ninguém. Grava em `zapi_alertas` para ficar visível no painel. Nunca lança e
+ * NUNCA registra valores de variáveis — apenas os NOMES que faltam.
+ */
+async function registrarAlertaNaoEntregue(canal: string, faltantes: string[]) {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await supabaseAdmin.from("zapi_alertas").insert({
+      canal,
+      tipo: "alerta_nao_entregue",
+      detalhe: faltantes.length
+        ? `Variáveis ausentes: ${faltantes.join(", ")}`
+        : "Nenhum canal interno configurado",
+    });
+  } catch (e) {
+    console.error(
+      "[notificacao-interna] falha ao registrar alerta_nao_entregue:",
+      e instanceof Error ? e.message : String(e),
+    );
+  }
+}
+
+function faltantesTelegram(chatId: string | null | undefined): string[] {
+  const f: string[] = [];
+  if (!(process.env.TELEGRAM_BOT_TOKEN ?? "").trim()) f.push("TELEGRAM_BOT_TOKEN");
+  if (!(chatId ?? "").trim()) f.push("TELEGRAM_CHAT_DIRETORIA");
+  return f;
+}
+
+function faltantesZapiInterno(): string[] {
+  return (["ZAPI_INTERNO_INSTANCE_ID", "ZAPI_INTERNO_TOKEN", "ZAPI_INTERNO_CLIENT_TOKEN"] as const).filter(
+    (n) => !(process.env[n] ?? "").trim(),
+  );
+}
+
 export async function getOwnerPhone(sb: SB, ownerId: string): Promise<string | null> {
   if (phoneCache.has(ownerId)) return phoneCache.get(ownerId)!;
   const { data } = await sb
@@ -71,10 +107,14 @@ export async function enviarNotificacaoInterna(
           console.warn(
             "[notificacao-interna] TELEGRAM_BOT_TOKEN ausente — nada enviado (sem fallback WhatsApp/comercial).",
           );
+          await registrarAlertaNaoEntregue(ctx, faltantesTelegram(opts?.telegramChatId));
           return { enviado: false, motivo: "telegram_sem_token" };
         }
         const chatId = (opts?.telegramChatId ?? "").trim();
-        if (!chatId) return { enviado: false, motivo: "sem_chat_id" };
+        if (!chatId) {
+          await registrarAlertaNaoEntregue(ctx, faltantesTelegram(null));
+          return { enviado: false, motivo: "sem_chat_id" };
+        }
         const { sendTelegramText } = await import("@/lib/telegram-send.server");
         const tg = await sendTelegramText(chatId, texto, ctx);
         return tg.ok ? { enviado: true } : { enviado: false, motivo: "erro_envio" };
@@ -82,7 +122,10 @@ export async function enviarNotificacaoInterna(
     }
 
     const alvo = (destino ?? "").trim();
-    if (!alvo) return { enviado: false, motivo: "sem_destino" };
+    if (!alvo) {
+      await registrarAlertaNaoEntregue(ctx, [...faltantesZapiInterno(), "WHATSAPP_FINANCEIRO"]);
+      return { enviado: false, motivo: "sem_destino" };
+    }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: cfg } = await supabaseAdmin
@@ -93,6 +136,7 @@ export async function enviarNotificacaoInterna(
 
     if (!cfg?.whatsapp_interno_ativo) {
       console.warn("[notificacao-interna] canal interno desligado — nada enviado.");
+      await registrarAlertaNaoEntregue(ctx, []);
       return { enviado: false, motivo: "canal_interno_desligado" };
     }
 
@@ -103,8 +147,10 @@ export async function enviarNotificacaoInterna(
       console.warn(
         "[notificacao-interna] credenciais ZAPI_INTERNO_* ausentes — nada enviado (sem fallback comercial).",
       );
+      await registrarAlertaNaoEntregue(ctx, faltantesZapiInterno());
       return { enviado: false, motivo: "canal_interno_sem_credencial" };
     }
+
 
     const { sendZapiText } = await import("@/lib/zapi-send.server");
     await sendZapiText(alvo, texto, ctx, "interno", { bypassGuards: opts?.bypassGuards === true });

@@ -31,7 +31,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import { zapiStatus } from "@/lib/zapi.functions";
 import { sendConversaMessage, createLeadFromConversa } from "@/lib/canais.functions";
-import { painelWhatsapp, removerOptout } from "@/lib/zapi-painel.functions";
+import {
+  painelWhatsapp,
+  removerOptout,
+  diagnosticoCanaisInternos,
+  enviarAlertaTeste,
+} from "@/lib/zapi-painel.functions";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Database } from "@/integrations/supabase/types";
 
 type Conversa = Database["public"]["Tables"]["whatsapp_conversas"]["Row"];
@@ -689,13 +695,20 @@ function ZapiStatusRow() {
 }
 
 type PainelData = Awaited<ReturnType<typeof painelWhatsapp>>;
+type DiagCanais = Awaited<ReturnType<typeof diagnosticoCanaisInternos>>;
 
 /** (6/7) Resumo de envios, opt-outs e alertas — somente administrador. */
 function PainelSaudeWhatsapp() {
   const carregar = useServerFn(painelWhatsapp);
   const remover = useServerFn(removerOptout);
+  const diagnosticar = useServerFn(diagnosticoCanaisInternos);
+  const testar = useServerFn(enviarAlertaTeste);
   const [data, setData] = useState<PainelData | null>(null);
+  const [diag, setDiag] = useState<DiagCanais | null>(null);
+  const [testando, setTestando] = useState(false);
+  const [resultadoTeste, setResultadoTeste] = useState<string | null>(null);
   const [negado, setNegado] = useState(false);
+
 
   const load = useCallback(async () => {
     try {
@@ -703,8 +716,14 @@ function PainelSaudeWhatsapp() {
       setNegado(false);
     } catch {
       setNegado(true);
+      return;
     }
-  }, [carregar]);
+    try {
+      setDiag(await diagnosticar());
+    } catch {
+      setDiag(null);
+    }
+  }, [carregar, diagnosticar]);
 
   useEffect(() => {
     void load();
@@ -720,6 +739,33 @@ function PainelSaudeWhatsapp() {
       toast.error("Falha ao remover", { description: e instanceof Error ? e.message : String(e) });
     }
   }
+
+  async function handleTeste() {
+    if (
+      !window.confirm(
+        "Enviar UMA notificação interna de teste agora para o canal de alerta interno?",
+      )
+    )
+      return;
+    setTestando(true);
+    setResultadoTeste(null);
+    try {
+      const r = await testar();
+      if (r.enviado) {
+        setResultadoTeste("Entregue: a notificação de teste foi enviada ao canal interno.");
+        toast.success("Alerta de teste entregue");
+      } else {
+        setResultadoTeste(`Falhou — motivo: ${r.motivo ?? "desconhecido"}`);
+        toast.error("Alerta de teste não entregue", { description: r.motivo ?? "desconhecido" });
+      }
+    } catch (e) {
+      setResultadoTeste(`Falhou — ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setTestando(false);
+      void load();
+    }
+  }
+
 
   if (negado || !data) return null;
 
@@ -794,8 +840,70 @@ function PainelSaudeWhatsapp() {
         </ul>
       </div>
 
+      {diag && (
+        <div className="space-y-2 rounded-md border p-3">
+          <div className="text-xs font-medium">Canais de alerta interno</div>
+          <div className="flex flex-wrap items-center gap-2 text-[11px]">
+            <span className="text-muted-foreground">WhatsApp interno</span>
+            <Badge variant={diag.canais.interno_whatsapp.pronto ? "default" : "destructive"}>
+              {diag.canais.interno_whatsapp.pronto ? "Configurado" : "NÃO configurado"}
+            </Badge>
+            <span className="ml-2 text-muted-foreground">Telegram diretoria</span>
+            <Badge variant={diag.canais.telegram_diretoria.pronto ? "default" : "destructive"}>
+              {diag.canais.telegram_diretoria.pronto ? "Configurado" : "NÃO configurado"}
+            </Badge>
+          </div>
+
+          {!(diag.canais.interno_whatsapp.pronto && diag.canais.telegram_diretoria.pronto) && (
+            <div className="rounded-md border border-destructive/40 bg-destructive/5 p-2 text-[11px] text-destructive">
+              <div className="flex items-start gap-1.5">
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <div>
+                  <div>
+                    Os alertas de desconexão estão sendo gravados mas NÃO estão sendo entregues a
+                    ninguém.
+                  </div>
+                  <div className="mt-1 font-mono">
+                    Variáveis ausentes: {diag.faltantes.join(", ") || "—"}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center gap-2">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-[11px]"
+                      disabled={!diag.algumPronto || testando}
+                      onClick={() => void handleTeste()}
+                    >
+                      {testando ? "Enviando…" : "Enviar alerta de teste"}
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {diag.algumPronto
+                    ? "Dispara uma única notificação interna de teste."
+                    : "Nenhum canal de alerta interno está configurado."}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            {resultadoTeste && (
+              <span className="text-[11px] text-muted-foreground">{resultadoTeste}</span>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="space-y-1">
         <div className="text-xs font-medium">Alertas (48h)</div>
+
         <ul className="max-h-40 overflow-y-auto divide-y text-[11px]">
           {data.alertas48h.map((a) => (
             <li key={a.id} className="py-1 flex items-center justify-between gap-2">
