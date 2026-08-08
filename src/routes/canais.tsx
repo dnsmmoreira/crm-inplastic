@@ -126,12 +126,15 @@ function CanaisPage() {
             <div className="flex items-center gap-2 text-sm font-medium">
               <Radio className="h-4 w-4 text-primary" /> Integrações
             </div>
-            <IntegrationRow name="WhatsApp Business (Z-API)" status="conectado" />
+            <ZapiStatusRow />
             <IntegrationRow name="Formulário do site" status="pendente" />
             <IntegrationRow name="Instagram DM" status="pendente" />
           </div>
 
           <ZapiCard />
+
+          <PainelSaudeWhatsapp />
+
         </aside>
       </div>
 
