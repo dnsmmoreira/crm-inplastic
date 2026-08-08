@@ -695,6 +695,7 @@ function ZapiStatusRow() {
 }
 
 type PainelData = Awaited<ReturnType<typeof painelWhatsapp>>;
+type DiagCanais = Awaited<ReturnType<typeof diagnosticoCanaisInternos>>;
 
 /** (6/7) Resumo de envios, opt-outs e alertas — somente administrador. */
 function PainelSaudeWhatsapp() {
