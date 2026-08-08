@@ -34,6 +34,42 @@ export type ResultadoNotificacaoInterna = {
     | "sem_chat_id";
 };
 
+/**
+ * (C) Rastreio: quando não há canal interno configurado, o alerta não chega em
+ * ninguém. Grava em `zapi_alertas` para ficar visível no painel. Nunca lança e
+ * NUNCA registra valores de variáveis — apenas os NOMES que faltam.
+ */
+async function registrarAlertaNaoEntregue(canal: string, faltantes: string[]) {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await supabaseAdmin.from("zapi_alertas").insert({
+      canal,
+      tipo: "alerta_nao_entregue",
+      detalhe: faltantes.length
+        ? `Variáveis ausentes: ${faltantes.join(", ")}`
+        : "Nenhum canal interno configurado",
+    });
+  } catch (e) {
+    console.error(
+      "[notificacao-interna] falha ao registrar alerta_nao_entregue:",
+      e instanceof Error ? e.message : String(e),
+    );
+  }
+}
+
+function faltantesTelegram(chatId: string | null | undefined): string[] {
+  const f: string[] = [];
+  if (!(process.env.TELEGRAM_BOT_TOKEN ?? "").trim()) f.push("TELEGRAM_BOT_TOKEN");
+  if (!(chatId ?? "").trim()) f.push("TELEGRAM_CHAT_DIRETORIA");
+  return f;
+}
+
+function faltantesZapiInterno(): string[] {
+  return (["ZAPI_INTERNO_INSTANCE_ID", "ZAPI_INTERNO_TOKEN", "ZAPI_INTERNO_CLIENT_TOKEN"] as const).filter(
+    (n) => !(process.env[n] ?? "").trim(),
+  );
+}
+
 export async function getOwnerPhone(sb: SB, ownerId: string): Promise<string | null> {
   if (phoneCache.has(ownerId)) return phoneCache.get(ownerId)!;
   const { data } = await sb
