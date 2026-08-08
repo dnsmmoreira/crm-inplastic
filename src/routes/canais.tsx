@@ -840,8 +840,70 @@ function PainelSaudeWhatsapp() {
         </ul>
       </div>
 
+      {diag && (
+        <div className="space-y-2 rounded-md border p-3">
+          <div className="text-xs font-medium">Canais de alerta interno</div>
+          <div className="flex flex-wrap items-center gap-2 text-[11px]">
+            <span className="text-muted-foreground">WhatsApp interno</span>
+            <Badge variant={diag.canais.interno_whatsapp.pronto ? "default" : "destructive"}>
+              {diag.canais.interno_whatsapp.pronto ? "Configurado" : "NÃO configurado"}
+            </Badge>
+            <span className="ml-2 text-muted-foreground">Telegram diretoria</span>
+            <Badge variant={diag.canais.telegram_diretoria.pronto ? "default" : "destructive"}>
+              {diag.canais.telegram_diretoria.pronto ? "Configurado" : "NÃO configurado"}
+            </Badge>
+          </div>
+
+          {!(diag.canais.interno_whatsapp.pronto && diag.canais.telegram_diretoria.pronto) && (
+            <div className="rounded-md border border-destructive/40 bg-destructive/5 p-2 text-[11px] text-destructive">
+              <div className="flex items-start gap-1.5">
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <div>
+                  <div>
+                    Os alertas de desconexão estão sendo gravados mas NÃO estão sendo entregues a
+                    ninguém.
+                  </div>
+                  <div className="mt-1 font-mono">
+                    Variáveis ausentes: {diag.faltantes.join(", ") || "—"}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center gap-2">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-[11px]"
+                      disabled={!diag.algumPronto || testando}
+                      onClick={() => void handleTeste()}
+                    >
+                      {testando ? "Enviando…" : "Enviar alerta de teste"}
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {diag.algumPronto
+                    ? "Dispara uma única notificação interna de teste."
+                    : "Nenhum canal de alerta interno está configurado."}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            {resultadoTeste && (
+              <span className="text-[11px] text-muted-foreground">{resultadoTeste}</span>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="space-y-1">
         <div className="text-xs font-medium">Alertas (48h)</div>
+
         <ul className="max-h-40 overflow-y-auto divide-y text-[11px]">
           {data.alertas48h.map((a) => (
             <li key={a.id} className="py-1 flex items-center justify-between gap-2">
