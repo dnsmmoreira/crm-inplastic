@@ -107,10 +107,14 @@ export async function enviarNotificacaoInterna(
           console.warn(
             "[notificacao-interna] TELEGRAM_BOT_TOKEN ausente — nada enviado (sem fallback WhatsApp/comercial).",
           );
+          await registrarAlertaNaoEntregue(ctx, faltantesTelegram(opts?.telegramChatId));
           return { enviado: false, motivo: "telegram_sem_token" };
         }
         const chatId = (opts?.telegramChatId ?? "").trim();
-        if (!chatId) return { enviado: false, motivo: "sem_chat_id" };
+        if (!chatId) {
+          await registrarAlertaNaoEntregue(ctx, faltantesTelegram(null));
+          return { enviado: false, motivo: "sem_chat_id" };
+        }
         const { sendTelegramText } = await import("@/lib/telegram-send.server");
         const tg = await sendTelegramText(chatId, texto, ctx);
         return tg.ok ? { enviado: true } : { enviado: false, motivo: "erro_envio" };
@@ -118,7 +122,10 @@ export async function enviarNotificacaoInterna(
     }
 
     const alvo = (destino ?? "").trim();
-    if (!alvo) return { enviado: false, motivo: "sem_destino" };
+    if (!alvo) {
+      await registrarAlertaNaoEntregue(ctx, [...faltantesZapiInterno(), "WHATSAPP_FINANCEIRO"]);
+      return { enviado: false, motivo: "sem_destino" };
+    }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: cfg } = await supabaseAdmin
@@ -129,6 +136,7 @@ export async function enviarNotificacaoInterna(
 
     if (!cfg?.whatsapp_interno_ativo) {
       console.warn("[notificacao-interna] canal interno desligado — nada enviado.");
+      await registrarAlertaNaoEntregue(ctx, []);
       return { enviado: false, motivo: "canal_interno_desligado" };
     }
 
@@ -139,8 +147,10 @@ export async function enviarNotificacaoInterna(
       console.warn(
         "[notificacao-interna] credenciais ZAPI_INTERNO_* ausentes — nada enviado (sem fallback comercial).",
       );
+      await registrarAlertaNaoEntregue(ctx, faltantesZapiInterno());
       return { enviado: false, motivo: "canal_interno_sem_credencial" };
     }
+
 
     const { sendZapiText } = await import("@/lib/zapi-send.server");
     await sendZapiText(alvo, texto, ctx, "interno", { bypassGuards: opts?.bypassGuards === true });
