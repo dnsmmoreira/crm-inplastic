@@ -109,9 +109,47 @@ async function garantirConectado(
   if (!connected) {
     console.error(`${tag} instancia nao conectada — status=${raw.slice(0, 300)}`);
     bloquear(tag, "instancia_desconectada", phone);
+    await registrarAlertaDesconexao(canal, raw);
     throw new Error("WhatsApp desconectado (Z-API). Mensagem nao enviada.");
   }
 }
+
+/**
+ * (7) Alerta de desconexão: grava em `zapi_alertas` e dispara UMA notificação
+ * interna por canal a cada 60 minutos. Nunca lança — falha aqui jamais pode
+ * derrubar o fluxo principal nem mascarar o erro original.
+ */
+async function registrarAlertaDesconexao(canal: ZapiCanal, detalhe: string) {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const desde = new Date(Date.now() - 60 * 60_000).toISOString();
+    const { count } = await supabaseAdmin
+      .from("zapi_alertas")
+      .select("id", { count: "exact", head: true })
+      .eq("canal", canal)
+      .eq("tipo", "desconectado")
+      .gte("created_at", desde);
+
+    await supabaseAdmin
+      .from("zapi_alertas")
+      .insert({ canal, tipo: "desconectado", detalhe: detalhe.slice(0, 1000) || null });
+
+    if ((count ?? 0) > 0) return; // já avisou nos últimos 60 min
+
+    const { enviarNotificacaoInterna } = await import("@/lib/xerife/notify.server");
+    const phone = (process.env.WHATSAPP_DIRETORIA ?? "").trim();
+    const chatId = (process.env.TELEGRAM_CHAT_DIRETORIA ?? "").trim() || null;
+    await enviarNotificacaoInterna(
+      phone,
+      `ALERTA: a instancia Z-API do canal ${canal} esta desconectada. Nenhuma mensagem esta saindo.`,
+      "zapi-alerta",
+      { telegramChatId: chatId, bypassGuards: true },
+    );
+  } catch (e) {
+    console.error("[zapi:alerta] falha ao registrar/enviar alerta:", e instanceof Error ? e.message : String(e));
+  }
+}
+
 
 function bloquear(tag: string, motivo: string, phone: string) {
   console.warn(`${tag} BLOQUEADO motivo=${motivo} phone=${phone}`);
