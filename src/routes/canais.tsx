@@ -716,8 +716,14 @@ function PainelSaudeWhatsapp() {
       setNegado(false);
     } catch {
       setNegado(true);
+      return;
     }
-  }, [carregar]);
+    try {
+      setDiag(await diagnosticar());
+    } catch {
+      setDiag(null);
+    }
+  }, [carregar, diagnosticar]);
 
   useEffect(() => {
     void load();
@@ -733,6 +739,33 @@ function PainelSaudeWhatsapp() {
       toast.error("Falha ao remover", { description: e instanceof Error ? e.message : String(e) });
     }
   }
+
+  async function handleTeste() {
+    if (
+      !window.confirm(
+        "Enviar UMA notificação interna de teste agora para o canal de alerta interno?",
+      )
+    )
+      return;
+    setTestando(true);
+    setResultadoTeste(null);
+    try {
+      const r = await testar();
+      if (r.enviado) {
+        setResultadoTeste("Entregue: a notificação de teste foi enviada ao canal interno.");
+        toast.success("Alerta de teste entregue");
+      } else {
+        setResultadoTeste(`Falhou — motivo: ${r.motivo ?? "desconhecido"}`);
+        toast.error("Alerta de teste não entregue", { description: r.motivo ?? "desconhecido" });
+      }
+    } catch (e) {
+      setResultadoTeste(`Falhou — ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setTestando(false);
+      void load();
+    }
+  }
+
 
   if (negado || !data) return null;
 
