@@ -16,6 +16,8 @@ import {
   CheckCircle2,
   Paperclip,
   AlertTriangle,
+  RefreshCw,
+  Activity,
 
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -29,6 +31,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import { zapiStatus } from "@/lib/zapi.functions";
 import { sendConversaMessage, createLeadFromConversa } from "@/lib/canais.functions";
+import { painelWhatsapp, removerOptout } from "@/lib/zapi-painel.functions";
 import type { Database } from "@/integrations/supabase/types";
 
 type Conversa = Database["public"]["Tables"]["whatsapp_conversas"]["Row"];
