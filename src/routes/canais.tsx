@@ -694,8 +694,14 @@ type PainelData = Awaited<ReturnType<typeof painelWhatsapp>>;
 function PainelSaudeWhatsapp() {
   const carregar = useServerFn(painelWhatsapp);
   const remover = useServerFn(removerOptout);
+  const diagnosticar = useServerFn(diagnosticoCanaisInternos);
+  const testar = useServerFn(enviarAlertaTeste);
   const [data, setData] = useState<PainelData | null>(null);
+  const [diag, setDiag] = useState<DiagCanais | null>(null);
+  const [testando, setTestando] = useState(false);
+  const [resultadoTeste, setResultadoTeste] = useState<string | null>(null);
   const [negado, setNegado] = useState(false);
+
 
   const load = useCallback(async () => {
     try {
