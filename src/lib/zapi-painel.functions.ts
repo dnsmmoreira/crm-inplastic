@@ -94,3 +94,79 @@ export const removerOptout = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+/**
+ * (A) Diagnóstico dos canais de alerta interno — somente admin.
+ * Retorna APENAS booleanos de presença. Jamais expõe valores, prefixos,
+ * sufixos ou tamanhos das variáveis.
+ */
+export const diagnosticoCanaisInternos = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    await exigirAdmin(supabase, userId);
+
+    const nomes = [
+      "ZAPI_INTERNO_INSTANCE_ID",
+      "ZAPI_INTERNO_TOKEN",
+      "ZAPI_INTERNO_CLIENT_TOKEN",
+      "TELEGRAM_BOT_TOKEN",
+      "TELEGRAM_CHAT_DIRETORIA",
+      "WHATSAPP_FINANCEIRO",
+    ] as const;
+
+    const variaveis = Object.fromEntries(
+      nomes.map((n) => [n, ((process.env[n] ?? "") as string).trim().length > 0]),
+    ) as Record<(typeof nomes)[number], boolean>;
+
+    const internoWhatsapp =
+      variaveis.ZAPI_INTERNO_INSTANCE_ID &&
+      variaveis.ZAPI_INTERNO_TOKEN &&
+      variaveis.ZAPI_INTERNO_CLIENT_TOKEN &&
+      variaveis.WHATSAPP_FINANCEIRO;
+    const telegramDiretoria = variaveis.TELEGRAM_BOT_TOKEN && variaveis.TELEGRAM_CHAT_DIRETORIA;
+
+    const faltantes = nomes.filter((n) => !variaveis[n]);
+
+    return {
+      variaveis,
+      canais: {
+        interno_whatsapp: {
+          pronto: internoWhatsapp,
+          faltantes: [
+            "ZAPI_INTERNO_INSTANCE_ID",
+            "ZAPI_INTERNO_TOKEN",
+            "ZAPI_INTERNO_CLIENT_TOKEN",
+            "WHATSAPP_FINANCEIRO",
+          ].filter((n) => !variaveis[n as (typeof nomes)[number]]),
+        },
+        telegram_diretoria: {
+          pronto: telegramDiretoria,
+          faltantes: ["TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_DIRETORIA"].filter(
+            (n) => !variaveis[n as (typeof nomes)[number]],
+          ),
+        },
+      },
+      algumPronto: internoWhatsapp || telegramDiretoria,
+      faltantes,
+    };
+  });
+
+/** (D) Dispara UMA notificação interna de teste — somente admin, sob clique. */
+export const enviarAlertaTeste = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    await exigirAdmin(supabase, userId);
+
+    const { enviarNotificacaoInterna } = await import("@/lib/xerife/notify.server");
+    const phone = (process.env.WHATSAPP_FINANCEIRO ?? "").trim();
+    const chatId = (process.env.TELEGRAM_CHAT_DIRETORIA ?? "").trim() || null;
+    const r = await enviarNotificacaoInterna(
+      phone,
+      "TESTE: verificacao do canal de alerta interno do CRM. Nenhuma acao necessaria.",
+      "alerta-teste",
+      { telegramChatId: chatId, bypassGuards: true },
+    );
+    return r;
+  });
