@@ -54,6 +54,31 @@ export const sendConversaMessage = createServerFn({ method: "POST" })
     if (cErr || !conversa) throw new Error("Conversa não encontrada ou sem permissão.");
 
 
+    const { mascararTelefoneLog } = await import("./zapi-send.server");
+    const phoneLog = mascararTelefoneLog(conversa.phone);
+    const bloquear = (motivo: string, msg: string) => {
+      console.warn(`[chat-manual] BLOQUEADO motivo=${motivo} phone=${phoneLog}`);
+      throw new Error(msg);
+    };
+
+    const texto = data.message.trim();
+
+    // (A1) Texto sem conteúdo útil
+    if (textoUtil(texto).length < 2) {
+      bloquear(
+        "texto_sem_conteudo",
+        "Escreva uma mensagem com pelo menos 2 caracteres de texto — só emoji ou pontuação não é enviado.",
+      );
+    }
+
+    // (A2) Texto longo demais
+    if (texto.length > 1200) {
+      bloquear(
+        "texto_muito_longo",
+        "Mensagem muito longa (máximo de 1200 caracteres). Divida o conteúdo em partes menores.",
+      );
+    }
+
     // Papel resolvido SEMPRE no servidor a partir da sessão autenticada.
     // Qualquer incerteza (erro/nulo) => tratado como NÃO administrador.
     let isAdmin = false;
@@ -68,17 +93,57 @@ export const sendConversaMessage = createServerFn({ method: "POST" })
     }
 
     // Existe mensagem recebida do cliente nesta conversa?
-    let temInbound = false;
-    if (isAdmin) {
-      const { count, error: inErr } = await supabase
-        .from("whatsapp_mensagens")
-        .select("id", { count: "exact", head: true })
-        .eq("conversa_id", data.conversaId)
-        .eq("direcao", "entrada");
-      temInbound = !inErr && (count ?? 0) > 0;
+    const { count: inboundCount, error: inErr } = await supabase
+      .from("whatsapp_mensagens")
+      .select("id", { count: "exact", head: true })
+      .eq("conversa_id", data.conversaId)
+      .eq("direcao", "entrada");
+    const temInbound = !inErr && (inboundCount ?? 0) > 0;
+
+    // (A3) Sem inbound e fora da janela comercial (admin com inbound já é exceção manual_admin)
+    if (!temInbound) {
+      const { hora, domingo } = agoraSaoPaulo();
+      if (domingo || hora < 7 || hora >= 20) {
+        bloquear(
+          domingo ? "sem_inbound_domingo" : "sem_inbound_fora_da_janela",
+          "Esta conversa ainda não tem mensagem do cliente. Envios só são permitidos de segunda a sábado, das 07:00 às 20:00.",
+        );
+      }
+    }
+
+    // (A4) Máximo de 8 mensagens do mesmo vendedor nesta conversa nos últimos 10 minutos
+    const desde10min = new Date(Date.now() - 10 * 60_000).toISOString();
+    const { count: recentes } = await supabase
+      .from("whatsapp_mensagens")
+      .select("id", { count: "exact", head: true })
+      .eq("conversa_id", data.conversaId)
+      .eq("usuario_id", userId)
+      .eq("autor", "vendedor")
+      .gte("created_at", desde10min);
+    if ((recentes ?? 0) >= 8) {
+      bloquear(
+        "limite_8_por_conversa_10min",
+        "Você já enviou 8 mensagens para esta conversa nos últimos 10 minutos. Aguarde antes de enviar outra.",
+      );
+    }
+
+    // (A5) Duas mensagens consecutivas do vendedor sem resposta do cliente
+    const { data: ultimas } = await supabase
+      .from("whatsapp_mensagens")
+      .select("autor, created_at")
+      .eq("conversa_id", data.conversaId)
+      .order("created_at", { ascending: false })
+      .limit(2);
+    const seqVendedor = (ultimas ?? []).filter((m) => m.autor === "vendedor").length;
+    if ((ultimas ?? []).length >= 2 && seqVendedor >= 2) {
+      bloquear(
+        "duas_mensagens_sem_resposta",
+        "Já existem 2 mensagens suas sem resposta do cliente. Aguarde o retorno antes de enviar outra.",
+      );
     }
 
     const origem = isAdmin && temInbound ? "manual_admin" : "iniciado_sistema";
+
 
     const { sendZapiText } = await import("./zapi-send.server");
     await sendZapiText(conversa.phone, data.message, "sendConversaMessage", "comercial", {
