@@ -181,17 +181,27 @@ function sleep(ms: number) {
 const RETRY_BACKOFF_MS = [2000, 5000];
 const RETRY_STATUS = new Set([429, 500, 502, 503, 504]);
 
+/**
+ * Origem do envio.
+ * - 'iniciado_sistema' (PADRÃO): disparo do próprio CRM (filas, follow-up, régua,
+ *   campanhas, pg_cron, n8n). Respeita integralmente a janela 07:00-20:00 e domingos.
+ * - 'resposta_inbound': resposta a uma mensagem recebida do cliente. Só esta origem
+ *   fica liberada 24/7. NUNCA inverter o padrão.
+ */
+export type ZapiOrigem = "iniciado_sistema" | "resposta_inbound";
+
 export async function sendZapiText(
   phoneRaw: string,
   message: string,
   ctx?: string,
   canal: ZapiCanal = "comercial",
-  opts?: { bypassGuards?: boolean },
+  opts?: { bypassGuards?: boolean; origem?: ZapiOrigem },
 ): Promise<ZapiSendResult> {
   const { instanceId, token, clientToken } = credenciais(canal);
   const tag = ctx ? `[zapi:${canal}:${ctx}]` : `[zapi:${canal}]`;
   const phone = normalizePhoneBR(phoneRaw);
   const bypass = opts?.bypassGuards === true;
+  const origem: ZapiOrigem = opts?.origem ?? "iniciado_sistema";
 
   console.log(
     `${tag} env instance=${!!instanceId}(${instanceId?.length ?? 0}) token=${!!token}(${token?.length ?? 0}) clientToken=${!!clientToken}(${clientToken?.length ?? 0})`,
@@ -223,13 +233,19 @@ export async function sendZapiText(
     const { hora, domingo } = agoraSaoPaulo();
     const foraDaJanela = domingo || hora < 7 || hora >= 20;
     if (foraDaJanela) {
-      if (isAutomatico(ctx)) {
+      if (origem === "resposta_inbound") {
+        // Liberado 24/7: é resposta a mensagem iniciada pelo cliente.
+        console.log(
+          `${tag} envio fora da janela liberado motivo=resposta_inbound${domingo ? " (domingo)" : ""}`,
+        );
+      } else if (isAutomatico(ctx)) {
         bloquear(tag, domingo ? "domingo" : "fora_da_janela_07_20", phone);
         throw new Error(
           "Fora da janela de envio automatico (07:00-20:00, exceto domingos). Mensagem nao enviada.",
         );
+      } else {
+        console.warn(`${tag} AVISO envio manual fora da janela 07:00-20:00 phone=${phone}`);
       }
-      console.warn(`${tag} AVISO envio manual fora da janela 07:00-20:00 phone=${phone}`);
     }
 
     const nowMs = Date.now();

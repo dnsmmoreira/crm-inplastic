@@ -63,9 +63,18 @@ export const Route = createFileRoute("/api/public/hooks/ia-responder")({
           );
         }
 
+        // Só é "resposta_inbound" (liberada 24/7) se o cliente já enviou mensagem
+        // nesta conversa. Caso contrário mantém o padrão 'iniciado_sistema'.
+        const { count: inboundCount } = await supabaseAdmin
+          .from("whatsapp_mensagens")
+          .select("id", { count: "exact", head: true })
+          .eq("conversa_id", conversaId)
+          .eq("direcao", "entrada");
+        const origem = (inboundCount ?? 0) > 0 ? "resposta_inbound" : "iniciado_sistema";
+
         try {
           const { sendZapiText } = await import("@/lib/zapi-send.server");
-          await sendZapiText(conv.phone, mensagem, "ia-responder");
+          await sendZapiText(conv.phone, mensagem, "ia-responder", "comercial", { origem });
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);
           console.error("ia-responder envio Z-API falhou:", msg);
