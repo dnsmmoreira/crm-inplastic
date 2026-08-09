@@ -10,6 +10,12 @@ function onlyDigits(s: string) {
   return String(s ?? "").replace(/\D/g, "");
 }
 
+/** Mascara telefone para logs: apenas os 4 ultimos digitos (ex.: ****7690). */
+function mascararTelefoneLog(s: string) {
+  const d = onlyDigits(s);
+  return d ? `****${d.slice(-4)}` : "****";
+}
+
 /** Comparação em tempo constante (evita timing attack). Nunca loga valores. */
 function compararTempoConstante(a: string, b: string) {
   const ea = new TextEncoder().encode(a);
@@ -48,10 +54,23 @@ type ZapiPayload = Record<string, unknown> & {
  *   4) O trigger de banco atualiza `last_message_at` da conversa e
  *      `last_interaction_at` do lead vinculado (quando houver).
  */
+/** Resposta generica para metodos nao suportados (sem vazar informacao). */
+function metodoNaoPermitido() {
+  return new Response(JSON.stringify({ ok: false }), {
+    status: 405,
+    headers: { "Content-Type": "application/json", Allow: "POST, OPTIONS", ...CORS },
+  });
+}
+
 export const Route = createFileRoute("/api/public/zapi/webhook")({
   server: {
     handlers: {
       OPTIONS: async () => new Response(null, { status: 204, headers: CORS }),
+      GET: async () => metodoNaoPermitido(),
+      PUT: async () => metodoNaoPermitido(),
+      PATCH: async () => metodoNaoPermitido(),
+      DELETE: async () => metodoNaoPermitido(),
+      HEAD: async () => metodoNaoPermitido(),
       POST: async ({ request }) => {
         // --- Autenticação do webhook (B1..B4) ---
         const secret = (process.env.ZAPI_WEBHOOK_SECRET ?? "").trim();
@@ -233,7 +252,7 @@ export const Route = createFileRoute("/api/public/zapi/webhook")({
                   .from("whatsapp_conversas")
                   .update({ ia_ativa: false })
                   .eq("id", conversaId);
-                console.warn(`[zapi:comercial:webhook] OPT-OUT registrado phone=${phone}`);
+                console.warn(`[zapi:comercial:webhook] OPT-OUT registrado phone=${mascararTelefoneLog(phone)}`);
                 return Response.json({ ok: true, conversaId, optout: true }, { headers: CORS });
               }
             }
