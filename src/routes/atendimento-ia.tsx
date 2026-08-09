@@ -16,6 +16,7 @@ import { LeadDrawer } from "@/components/crm/LeadDrawer";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { limparOrigemAnuncio } from "@/lib/mensagem-display";
 import { useServerFn } from "@tanstack/react-start";
 import {
   devolverParaIA,
@@ -237,7 +238,7 @@ function ConversationList({
                   <StatusChip status={c.status} />
                 </div>
                 <div className="text-xs text-muted-foreground truncate">
-                  {c.last_message_preview || "—"}
+                  {limparOrigemAnuncio(c.last_message_preview ?? "").trim() || "—"}
                 </div>
                 <div className="text-[11px] text-muted-foreground">{since}</div>
               </button>
@@ -428,7 +429,7 @@ function MessageBubble({ m }: { m: Mensagem }) {
         <div className="flex items-center gap-1 text-[10px] uppercase tracking-wide opacity-75 mb-0.5">
           <Icon className="h-3 w-3" /> {authorLabel}
         </div>
-        <div className="whitespace-pre-wrap break-words">{m.conteudo}</div>
+        <div className="whitespace-pre-wrap break-words">{limparOrigemAnuncio(m.conteudo ?? "")}</div>
         <div className="mt-1 text-[10px] opacity-60">
           {new Date(m.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
         </div>
