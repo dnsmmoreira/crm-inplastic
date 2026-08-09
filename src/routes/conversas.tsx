@@ -797,6 +797,16 @@ function ChatPanel({
             A IA está atendendo. Ao enviar, você assume a conversa automaticamente.
           </div>
         )}
+        {iaPreview && (
+          <IAPreview
+            texto={iaPreview}
+            onUsar={() => {
+              setText(iaPreview);
+              setIaPreview(null);
+            }}
+            onDescartar={() => setIaPreview(null)}
+          />
+        )}
         <div className="flex items-end gap-2">
           <div className="flex gap-1 pb-1">
             <TemplatesButton
@@ -804,6 +814,11 @@ function ChatPanel({
               empresa={empresaLead ?? conversa.name}
               disabled={sending}
               onInserir={(t) => setText((prev) => (prev.trim() ? `${prev.trim()}\n${t}` : t))}
+            />
+            <IAButton
+              disabled={sending}
+              loading={iaLoading}
+              onAcao={(modo) => void handleIA(modo)}
             />
             <Button
 
