@@ -543,6 +543,22 @@ function ChatPanel({
   }, [conversa, loadMensagens]);
 
   useEffect(() => {
+    const leadId = conversa?.lead_id ?? null;
+    if (!leadId) {
+      setEmpresaLead(null);
+      return;
+    }
+    void supabase
+      .from("leads")
+      .select("company, contact_name")
+      .eq("id", leadId)
+      .maybeSingle()
+      .then(({ data }) => setEmpresaLead(data?.company ?? null));
+  }, [conversa?.lead_id]);
+
+
+
+  useEffect(() => {
     const conversaId = conversa?.id ?? null;
     const ultima = mensagens.length > 0 ? mensagens[mensagens.length - 1]!.id : null;
     const trocouConversa = conversaRef.current !== conversaId;
