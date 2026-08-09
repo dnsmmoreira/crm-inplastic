@@ -31,8 +31,37 @@ export const sendConversaMessage = createServerFn({ method: "POST" })
       .maybeSingle();
     if (cErr || !conversa) throw new Error("Conversa não encontrada ou sem permissão.");
 
+    // Papel resolvido SEMPRE no servidor a partir da sessão autenticada.
+    // Qualquer incerteza (erro/nulo) => tratado como NÃO administrador.
+    let isAdmin = false;
+    try {
+      const { data: adminFlag } = await supabase.rpc("has_role", {
+        _user_id: userId,
+        _role: "admin",
+      });
+      isAdmin = adminFlag === true;
+    } catch {
+      isAdmin = false;
+    }
+
+    // Existe mensagem recebida do cliente nesta conversa?
+    let temInbound = false;
+    if (isAdmin) {
+      const { count, error: inErr } = await supabase
+        .from("whatsapp_mensagens")
+        .select("id", { count: "exact", head: true })
+        .eq("conversa_id", data.conversaId)
+        .eq("direcao", "entrada");
+      temInbound = !inErr && (count ?? 0) > 0;
+    }
+
+    const origem = isAdmin && temInbound ? "manual_admin" : "iniciado_sistema";
+
     const { sendZapiText } = await import("./zapi-send.server");
-    await sendZapiText(conversa.phone, data.message, "sendConversaMessage");
+    await sendZapiText(conversa.phone, data.message, "sendConversaMessage", "comercial", {
+      origem,
+    });
+
 
     const { error: mErr } = await supabase.from("whatsapp_mensagens").insert({
       conversa_id: data.conversaId,
