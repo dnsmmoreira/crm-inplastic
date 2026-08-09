@@ -314,9 +314,12 @@ function ConversationPanel({
     };
   }, [conversa, loadMensagens]);
 
-  useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [mensagens]);
+  const { temNovas, onScroll, scrollParaFim } = useAutoScrollMensagens(
+    scrollRef,
+    conversa?.id ?? null,
+    mensagens,
+  );
+
 
   if (!conversa) {
     return (
