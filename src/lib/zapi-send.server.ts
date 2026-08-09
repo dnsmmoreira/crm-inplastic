@@ -234,7 +234,7 @@ export async function sendZapiText(
       throw new Error("Contato optou por nao receber mensagens.");
     }
 
-    // (5) Janela de envio para automáticos
+    // (5) Janela de envio
     const { hora, domingo } = agoraSaoPaulo();
     const foraDaJanela = domingo || hora < 7 || hora >= 20;
     if (foraDaJanela) {
@@ -243,15 +243,20 @@ export async function sendZapiText(
         console.log(
           `${tag} envio fora da janela liberado motivo=resposta_inbound${domingo ? " (domingo)" : ""}`,
         );
-      } else if (isAutomatico(ctx)) {
-        bloquear(tag, domingo ? "domingo" : "fora_da_janela_07_20", phone);
-        throw new Error(
-          "Fora da janela de envio automatico (07:00-20:00, exceto domingos). Mensagem nao enviada.",
+      } else if (origem === "manual_admin") {
+        // Liberado 24/7: admin autenticado respondendo conversa com inbound.
+        // Log curto e sem PII (sem telefone completo, sem conteúdo).
+        console.log(
+          `${tag} envio fora da janela liberado motivo=manual_admin_com_inbound${domingo ? " (domingo)" : ""}`,
         );
       } else {
-        console.warn(`${tag} AVISO envio manual fora da janela 07:00-20:00 phone=${phone}`);
+        bloquear(tag, domingo ? "domingo" : "fora_da_janela_07_20", phone);
+        throw new Error(
+          "Fora da janela de envio (07:00-20:00, exceto domingos). Mensagem nao enviada.",
+        );
       }
     }
+
 
     const nowMs = Date.now();
     const isoDesde = (ms: number) => new Date(nowMs - ms).toISOString();
