@@ -181,12 +181,21 @@ function sleep(ms: number) {
 const RETRY_BACKOFF_MS = [2000, 5000];
 const RETRY_STATUS = new Set([429, 500, 502, 503, 504]);
 
+/**
+ * Origem do envio.
+ * - 'iniciado_sistema' (PADRÃO): disparo do próprio CRM (filas, follow-up, régua,
+ *   campanhas, pg_cron, n8n). Respeita integralmente a janela 07:00-20:00 e domingos.
+ * - 'resposta_inbound': resposta a uma mensagem recebida do cliente. Só esta origem
+ *   fica liberada 24/7. NUNCA inverter o padrão.
+ */
+export type ZapiOrigem = "iniciado_sistema" | "resposta_inbound";
+
 export async function sendZapiText(
   phoneRaw: string,
   message: string,
   ctx?: string,
   canal: ZapiCanal = "comercial",
-  opts?: { bypassGuards?: boolean },
+  opts?: { bypassGuards?: boolean; origem?: ZapiOrigem },
 ): Promise<ZapiSendResult> {
   const { instanceId, token, clientToken } = credenciais(canal);
   const tag = ctx ? `[zapi:${canal}:${ctx}]` : `[zapi:${canal}]`;
