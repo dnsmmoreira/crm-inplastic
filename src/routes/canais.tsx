@@ -28,6 +28,7 @@ import { LeadDrawer } from "@/components/crm/LeadDrawer";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { limparOrigemAnuncio } from "@/lib/mensagem-display";
 import { useServerFn } from "@tanstack/react-start";
 import { zapiStatus } from "@/lib/zapi.functions";
 import { sendConversaMessage, createLeadFromConversa } from "@/lib/canais.functions";
@@ -182,7 +183,7 @@ function ConversationList({
         {conversas.map((c) => {
           const label = c.name?.trim() || c.phone;
           const initial = label.slice(0, 1).toUpperCase();
-          const preview = c.last_message_preview ?? "—";
+          const preview = limparOrigemAnuncio(c.last_message_preview ?? "").trim() || "—";
           const when = c.last_message_at
             ? formatDistanceToNow(new Date(c.last_message_at), { locale: ptBR, addSuffix: true })
             : "sem mensagens";
@@ -480,7 +481,7 @@ function MessageBubble({ m }: { m: Mensagem }) {
           <span>·</span>
           <span>{format(new Date(m.created_at), "HH:mm")}</span>
         </div>
-        <div className="whitespace-pre-wrap break-words">{m.conteudo}</div>
+        <div className="whitespace-pre-wrap break-words">{limparOrigemAnuncio(m.conteudo ?? "")}</div>
         <MidiaPreview m={m} />
       </div>
     </div>

@@ -28,6 +28,7 @@ import {
 import { NovaConversaDialog } from "@/components/atendimento/NovaConversaDialog";
 
 import { toast } from "sonner";
+import { limparOrigemAnuncio } from "@/lib/mensagem-display";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -401,7 +402,8 @@ function MinhasConversasPage() {
                       </span>
                       <span className="mt-0.5 flex items-center justify-between gap-2">
                         <span className="truncate text-xs text-muted-foreground">
-                          {c.last_message_preview || "Sem mensagens"}
+                          {limparOrigemAnuncio(c.last_message_preview ?? "").trim() ||
+                            "Sem mensagens"}
                         </span>
                         {aguardando && (
                           <span className="shrink-0 text-[10px] font-medium text-destructive">
