@@ -10,6 +10,19 @@ function onlyDigits(s: string) {
   return String(s ?? "").replace(/\D/g, "");
 }
 
+/** Comparação em tempo constante (evita timing attack). Nunca loga valores. */
+function compararTempoConstante(a: string, b: string) {
+  const ea = new TextEncoder().encode(a);
+  const eb = new TextEncoder().encode(b);
+  const tamanho = Math.max(ea.length, eb.length);
+  let diff = ea.length ^ eb.length;
+  for (let i = 0; i < tamanho; i++) {
+    diff |= (ea[i] ?? 0) ^ (eb[i] ?? 0);
+  }
+  return diff === 0;
+}
+
+
 type ZapiPayload = Record<string, unknown> & {
   type?: string;
   phone?: string;
@@ -20,6 +33,8 @@ type ZapiPayload = Record<string, unknown> & {
   text?: { message?: string };
   message?: string;
   messageId?: string;
+  instanceId?: string;
+
 };
 
 /**
@@ -38,8 +53,47 @@ export const Route = createFileRoute("/api/public/zapi/webhook")({
     handlers: {
       OPTIONS: async () => new Response(null, { status: 204, headers: CORS }),
       POST: async ({ request }) => {
+        // --- Autenticação do webhook (B1..B4) ---
+        const secret = (process.env.ZAPI_WEBHOOK_SECRET ?? "").trim();
+        if (!secret) {
+          console.error("ZAPI_WEBHOOK_SECRET ausente");
+          return new Response(JSON.stringify({ ok: false }), {
+            status: 503,
+            headers: { "Content-Type": "application/json", ...CORS },
+          });
+        }
+
+        const url = new URL(request.url);
+        const tokenRecebido =
+          (url.searchParams.get("token") ?? request.headers.get("x-zapi-token") ?? "").trim();
+
+        if (!tokenRecebido || !compararTempoConstante(tokenRecebido, secret)) {
+          const origem =
+            request.headers.get("cf-connecting-ip") ??
+            request.headers.get("x-forwarded-for") ??
+            request.headers.get("origin") ??
+            "desconhecida";
+          console.warn(`[zapi-webhook] token inválido — origem=${origem}`);
+          return new Response(JSON.stringify({ ok: false }), {
+            status: 401,
+            headers: { "Content-Type": "application/json", ...CORS },
+          });
+        }
+
         try {
           const payload = (await request.json()) as ZapiPayload;
+
+          const instanciaEsperada = (process.env.ZAPI_INSTANCE_ID ?? "").trim();
+          const instanciaRecebida =
+            typeof payload.instanceId === "string" ? payload.instanceId.trim() : "";
+          if (instanciaRecebida && instanciaEsperada && instanciaRecebida !== instanciaEsperada) {
+            console.warn("[zapi-webhook] instanceId não corresponde à instância configurada");
+            return new Response(JSON.stringify({ ok: false }), {
+              status: 403,
+              headers: { "Content-Type": "application/json", ...CORS },
+            });
+          }
+
 
           const phoneRaw = payload.phone ?? "";
           const phone = onlyDigits(phoneRaw);
