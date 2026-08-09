@@ -794,6 +794,20 @@ function ChatPanel({
           </div>
         )}
       </div>
+        {temNovas && (
+          <button
+            type="button"
+            onClick={() => {
+              const el = scrollRef.current;
+              if (el) el.scrollTop = el.scrollHeight;
+              setTemNovas(false);
+            }}
+            className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full border bg-background/95 px-3 py-1 text-[11px] font-medium shadow-md backdrop-blur"
+          >
+            Novas mensagens
+          </button>
+        )}
+      </div>
 
       <div className="space-y-2 border-t p-3">
         <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
