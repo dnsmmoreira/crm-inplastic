@@ -290,6 +290,50 @@ export type Database = {
         }
         Relationships: []
       }
+      ia_respostas_pendentes: {
+        Row: {
+          conversa_id: string
+          created_at: string
+          enviado_em: string | null
+          erro: string | null
+          id: string
+          mensagem: string
+          responder_apos: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          conversa_id: string
+          created_at?: string
+          enviado_em?: string | null
+          erro?: string | null
+          id?: string
+          mensagem: string
+          responder_apos?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          conversa_id?: string
+          created_at?: string
+          enviado_em?: string | null
+          erro?: string | null
+          id?: string
+          mensagem?: string
+          responder_apos?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ia_respostas_pendentes_conversa_id_fkey"
+            columns: ["conversa_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_conversas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_ai_actions: {
         Row: {
           content: string
@@ -2230,6 +2274,48 @@ export type Database = {
           id?: string
           mensagem_hash?: string | null
           phone?: string
+        }
+        Relationships: []
+      }
+      zapi_estado: {
+        Row: {
+          chave: string
+          updated_at: string
+          valor: Json
+        }
+        Insert: {
+          chave: string
+          updated_at?: string
+          valor?: Json
+        }
+        Update: {
+          chave?: string
+          updated_at?: string
+          valor?: Json
+        }
+        Relationships: []
+      }
+      zapi_eventos: {
+        Row: {
+          created_at: string
+          id: string
+          payload: Json
+          telefone_mascarado: string | null
+          tipo: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          payload?: Json
+          telefone_mascarado?: string | null
+          tipo: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          payload?: Json
+          telefone_mascarado?: string | null
+          tipo?: string
         }
         Relationships: []
       }
