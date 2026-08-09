@@ -564,17 +564,30 @@ function ChatPanel({
 
 
   useEffect(() => {
+    const el = scrollRef.current;
     const conversaId = conversa?.id ?? null;
     const ultima = mensagens.length > 0 ? mensagens[mensagens.length - 1]!.id : null;
     const trocouConversa = conversaRef.current !== conversaId;
     const chegouNova = !trocouConversa && ultima !== null && ultima !== ultimaMsgRef.current;
     conversaRef.current = conversaId;
     ultimaMsgRef.current = ultima;
-    if (!trocouConversa && !chegouNova) return; // polling de 6s não arrasta o scroll
-    scrollRef.current?.scrollTo({
-      top: scrollRef.current.scrollHeight,
-      behavior: trocouConversa ? "auto" : "smooth",
-    });
+    if (!el) return;
+
+    if (trocouConversa) {
+      el.scrollTop = el.scrollHeight;
+      setTemNovas(false);
+      return;
+    }
+    if (!chegouNova) return;
+
+    const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+    if (isNearBottom) {
+      el.scrollTop = el.scrollHeight;
+      setTemNovas(false);
+    } else {
+      // Usuário está lendo o histórico: não tocar no scroll.
+      setTemNovas(true);
+    }
   }, [mensagens, conversa]);
 
   if (!conversa) {
