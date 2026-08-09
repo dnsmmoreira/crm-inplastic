@@ -921,7 +921,8 @@ function Bolha({ m, nomeVendedor }: { m: Mensagem; nomeVendedor?: string }) {
           </a>
         ) : (
           <div className="whitespace-pre-wrap break-words">
-            {m.conteudo?.trim() || (tipo !== "texto" ? `[${tipo}]` : "")}
+            {limparOrigemAnuncio(m.conteudo ?? "").trim() ||
+              (tipo !== "texto" ? `[${tipo}]` : "")}
           </div>
         )}
 
