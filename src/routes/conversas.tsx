@@ -471,6 +471,8 @@ function ChatPanel({
   const [vendedores, setVendedores] = useState<Array<{ id: string; name: string }>>([]);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
+  const [empresaLead, setEmpresaLead] = useState<string | null>(null);
+
   const [acaoEmCurso, setAcaoEmCurso] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const send = useServerFn(sendConversaMessage);
