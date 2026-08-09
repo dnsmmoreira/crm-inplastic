@@ -42,6 +42,7 @@ import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.
 import { Route as ApiPublicZapiWebhookRouteImport } from './routes/api/public/zapi/webhook'
 import { Route as ApiPublicZapiStatusRouteImport } from './routes/api/public/zapi/status'
 import { Route as ApiPublicZapiDesconectadoRouteImport } from './routes/api/public/zapi/desconectado'
+import { Route as ApiPublicZapiConectadoRouteImport } from './routes/api/public/zapi/conectado'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram/webhook'
 import { Route as ApiPublicHooksXerifeWatchdogConversaRouteImport } from './routes/api/public/hooks/xerife-watchdog-conversa'
 import { Route as ApiPublicHooksXerifePedidosRouteImport } from './routes/api/public/hooks/xerife-pedidos'
@@ -223,6 +224,11 @@ const ApiPublicZapiDesconectadoRoute =
     path: '/api/public/zapi/desconectado',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicZapiConectadoRoute = ApiPublicZapiConectadoRouteImport.update({
+  id: '/api/public/zapi/conectado',
+  path: '/api/public/zapi/conectado',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicTelegramWebhookRoute =
   ApiPublicTelegramWebhookRouteImport.update({
     id: '/api/public/telegram/webhook',
@@ -330,6 +336,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/xerife-pedidos': typeof ApiPublicHooksXerifePedidosRoute
   '/api/public/hooks/xerife-watchdog-conversa': typeof ApiPublicHooksXerifeWatchdogConversaRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
+  '/api/public/zapi/conectado': typeof ApiPublicZapiConectadoRoute
   '/api/public/zapi/desconectado': typeof ApiPublicZapiDesconectadoRoute
   '/api/public/zapi/status': typeof ApiPublicZapiStatusRoute
   '/api/public/zapi/webhook': typeof ApiPublicZapiWebhookRoute
@@ -376,6 +383,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/xerife-pedidos': typeof ApiPublicHooksXerifePedidosRoute
   '/api/public/hooks/xerife-watchdog-conversa': typeof ApiPublicHooksXerifeWatchdogConversaRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
+  '/api/public/zapi/conectado': typeof ApiPublicZapiConectadoRoute
   '/api/public/zapi/desconectado': typeof ApiPublicZapiDesconectadoRoute
   '/api/public/zapi/status': typeof ApiPublicZapiStatusRoute
   '/api/public/zapi/webhook': typeof ApiPublicZapiWebhookRoute
@@ -423,6 +431,7 @@ export interface FileRoutesById {
   '/api/public/hooks/xerife-pedidos': typeof ApiPublicHooksXerifePedidosRoute
   '/api/public/hooks/xerife-watchdog-conversa': typeof ApiPublicHooksXerifeWatchdogConversaRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
+  '/api/public/zapi/conectado': typeof ApiPublicZapiConectadoRoute
   '/api/public/zapi/desconectado': typeof ApiPublicZapiDesconectadoRoute
   '/api/public/zapi/status': typeof ApiPublicZapiStatusRoute
   '/api/public/zapi/webhook': typeof ApiPublicZapiWebhookRoute
@@ -471,6 +480,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/xerife-pedidos'
     | '/api/public/hooks/xerife-watchdog-conversa'
     | '/api/public/telegram/webhook'
+    | '/api/public/zapi/conectado'
     | '/api/public/zapi/desconectado'
     | '/api/public/zapi/status'
     | '/api/public/zapi/webhook'
@@ -517,6 +527,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/xerife-pedidos'
     | '/api/public/hooks/xerife-watchdog-conversa'
     | '/api/public/telegram/webhook'
+    | '/api/public/zapi/conectado'
     | '/api/public/zapi/desconectado'
     | '/api/public/zapi/status'
     | '/api/public/zapi/webhook'
@@ -563,6 +574,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/xerife-pedidos'
     | '/api/public/hooks/xerife-watchdog-conversa'
     | '/api/public/telegram/webhook'
+    | '/api/public/zapi/conectado'
     | '/api/public/zapi/desconectado'
     | '/api/public/zapi/status'
     | '/api/public/zapi/webhook'
@@ -610,6 +622,7 @@ export interface RootRouteChildren {
   ApiPublicHooksXerifePedidosRoute: typeof ApiPublicHooksXerifePedidosRoute
   ApiPublicHooksXerifeWatchdogConversaRoute: typeof ApiPublicHooksXerifeWatchdogConversaRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
+  ApiPublicZapiConectadoRoute: typeof ApiPublicZapiConectadoRoute
   ApiPublicZapiDesconectadoRoute: typeof ApiPublicZapiDesconectadoRoute
   ApiPublicZapiStatusRoute: typeof ApiPublicZapiStatusRoute
   ApiPublicZapiWebhookRoute: typeof ApiPublicZapiWebhookRoute
@@ -848,6 +861,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicZapiDesconectadoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/zapi/conectado': {
+      id: '/api/public/zapi/conectado'
+      path: '/api/public/zapi/conectado'
+      fullPath: '/api/public/zapi/conectado'
+      preLoaderRoute: typeof ApiPublicZapiConectadoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/telegram/webhook': {
       id: '/api/public/telegram/webhook'
       path: '/api/public/telegram/webhook'
@@ -972,6 +992,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksXerifeWatchdogConversaRoute:
     ApiPublicHooksXerifeWatchdogConversaRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
+  ApiPublicZapiConectadoRoute: ApiPublicZapiConectadoRoute,
   ApiPublicZapiDesconectadoRoute: ApiPublicZapiDesconectadoRoute,
   ApiPublicZapiStatusRoute: ApiPublicZapiStatusRoute,
   ApiPublicZapiWebhookRoute: ApiPublicZapiWebhookRoute,
