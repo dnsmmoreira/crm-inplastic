@@ -628,6 +628,21 @@ function ChatPanel({
     }
   }
 
+  async function handleIA(modo: ModoIA) {
+    if (!conversa) return;
+    setIaLoading(true);
+    try {
+      const r = await pedirIA({ data: { conversaId: conversa.id, rascunho: text, modo } });
+      setIaPreview(r.texto);
+    } catch (e) {
+      toast.error("Assistente de IA indisponível", {
+        description: e instanceof Error ? e.message : String(e),
+      });
+    } finally {
+      setIaLoading(false);
+    }
+  }
+
   const conversaId = conversa.id;
 
   return (
