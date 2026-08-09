@@ -54,7 +54,7 @@ export const assistenteRedacao = createServerFn({ method: "POST" })
       if (rascunho.length < 2) {
         throw new Error("Escreva um rascunho antes de pedir a correção.");
       }
-      userPrompt = `Rascunho do vendedor:\n"""\n${rascunho}\n"""`;
+      userPrompt = `<rascunho>\n${rascunho}\n</rascunho>`;
     } else {
       const { data: msgs } = await supabase
         .from("whatsapp_mensagens")
@@ -65,15 +65,17 @@ export const assistenteRedacao = createServerFn({ method: "POST" })
       const historico = historicoParaTexto([...(msgs ?? [])].reverse());
       if (!historico) throw new Error("Ainda não há mensagens suficientes para sugerir uma resposta.");
       userPrompt = [
-        `Contato: ${conversa.name?.trim() || "não identificado"}`,
-        "Últimas mensagens da conversa (mais antiga primeiro):",
+        `<contato>${conversa.name?.trim() || "não identificado"}</contato>`,
+        "<conversa>",
         historico,
-        rascunho ? `\nRascunho parcial do vendedor (use como base):\n${rascunho}` : "",
+        "</conversa>",
+        rascunho ? `<rascunho>\n${rascunho}\n</rascunho>` : "",
       ]
         .filter(Boolean)
         .join("\n");
     }
 
+    // Só conta no limite se a geração for bem-sucedida e passar na validação.
     const texto = await gerarTexto(promptDoModo(data.modo), userPrompt);
 
     await supabase.from("assistente_redacao_uso").insert({
