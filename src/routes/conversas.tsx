@@ -44,6 +44,8 @@ import {
 } from "@/lib/atendimento.functions";
 import { useAuth } from "@/hooks/use-auth";
 import { TemplatesButton } from "@/components/atendimento/TemplatesButton";
+import { IAButton, IAPreview, type ModoIA } from "@/components/atendimento/IAAssistButton";
+import { assistenteRedacao } from "@/lib/assistente-redacao.functions";
 
 import type { Database } from "@/integrations/supabase/types";
 
@@ -472,10 +474,13 @@ function ChatPanel({
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [empresaLead, setEmpresaLead] = useState<string | null>(null);
+  const [iaLoading, setIaLoading] = useState(false);
+  const [iaPreview, setIaPreview] = useState<string | null>(null);
 
   const [acaoEmCurso, setAcaoEmCurso] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const send = useServerFn(sendConversaMessage);
+  const pedirIA = useServerFn(assistenteRedacao);
   const assumir = useServerFn(assumirConversa);
   const devolver = useServerFn(devolverParaIA);
   const encerrar = useServerFn(encerrarConversa);
@@ -620,6 +625,21 @@ function ChatPanel({
       toast.error("Falha ao enviar", { description: e instanceof Error ? e.message : String(e) });
     } finally {
       setSending(false);
+    }
+  }
+
+  async function handleIA(modo: ModoIA) {
+    if (!conversa) return;
+    setIaLoading(true);
+    try {
+      const r = await pedirIA({ data: { conversaId: conversa.id, rascunho: text, modo } });
+      setIaPreview(r.texto);
+    } catch (e) {
+      toast.error("Assistente de IA indisponível", {
+        description: e instanceof Error ? e.message : String(e),
+      });
+    } finally {
+      setIaLoading(false);
     }
   }
 
@@ -777,6 +797,16 @@ function ChatPanel({
             A IA está atendendo. Ao enviar, você assume a conversa automaticamente.
           </div>
         )}
+        {iaPreview && (
+          <IAPreview
+            texto={iaPreview}
+            onUsar={() => {
+              setText(iaPreview);
+              setIaPreview(null);
+            }}
+            onDescartar={() => setIaPreview(null)}
+          />
+        )}
         <div className="flex items-end gap-2">
           <div className="flex gap-1 pb-1">
             <TemplatesButton
@@ -784,6 +814,11 @@ function ChatPanel({
               empresa={empresaLead ?? conversa.name}
               disabled={sending}
               onInserir={(t) => setText((prev) => (prev.trim() ? `${prev.trim()}\n${t}` : t))}
+            />
+            <IAButton
+              disabled={sending}
+              loading={iaLoading}
+              onAcao={(modo) => void handleIA(modo)}
             />
             <Button
 
