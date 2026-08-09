@@ -1890,6 +1890,8 @@ export type Database = {
           atribuido_em: string | null
           atribuido_para: string | null
           created_at: string
+          handoff_alertado_em: string | null
+          handoff_realertado_em: string | null
           ia_ativa: boolean
           id: string
           last_message_at: string | null
@@ -1906,6 +1908,8 @@ export type Database = {
           atribuido_em?: string | null
           atribuido_para?: string | null
           created_at?: string
+          handoff_alertado_em?: string | null
+          handoff_realertado_em?: string | null
           ia_ativa?: boolean
           id?: string
           last_message_at?: string | null
@@ -1922,6 +1926,8 @@ export type Database = {
           atribuido_em?: string | null
           atribuido_para?: string | null
           created_at?: string
+          handoff_alertado_em?: string | null
+          handoff_realertado_em?: string | null
           ia_ativa?: boolean
           id?: string
           last_message_at?: string | null
@@ -2333,6 +2339,7 @@ export type Database = {
         | "humano_atendendo"
         | "qualificado"
         | "encerrado"
+        | "aguardando_humano"
       interaction_type: "email" | "call" | "meeting" | "note" | "whatsapp"
       lead_stage:
         | "atendimento"
@@ -2503,6 +2510,7 @@ export const Constants = {
         "humano_atendendo",
         "qualificado",
         "encerrado",
+        "aguardando_humano",
       ],
       interaction_type: ["email", "call", "meeting", "note", "whatsapp"],
       lead_stage: [
