@@ -854,7 +854,7 @@ function PainelSaudeWhatsapp() {
             </Badge>
           </div>
 
-          {!(diag.canais.interno_whatsapp.pronto && diag.canais.telegram_diretoria.pronto) && (
+          {!diag.canais.interno_whatsapp.pronto && !diag.canais.telegram_diretoria.pronto && (
             <div className="rounded-md border border-destructive/40 bg-destructive/5 p-2 text-[11px] text-destructive">
               <div className="flex items-start gap-1.5">
                 <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
@@ -870,6 +870,19 @@ function PainelSaudeWhatsapp() {
               </div>
             </div>
           )}
+
+          {diag.canais.telegram_diretoria.pronto && !diag.canais.interno_whatsapp.pronto && (
+            <div className="rounded-md border bg-muted/40 p-2 text-[11px] text-muted-foreground">
+              <div>
+                Alertas serão entregues via Telegram. O canal WhatsApp interno é opcional e está
+                desativado.
+              </div>
+              <div className="mt-1 font-mono">
+                Variáveis ausentes: {diag.faltantes.join(", ") || "—"}
+              </div>
+            </div>
+          )}
+
 
           <div className="flex items-center gap-2">
             <TooltipProvider>
