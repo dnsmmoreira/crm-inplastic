@@ -259,17 +259,23 @@ export const Route = createFileRoute("/api/public/zapi/webhook")({
 
 
             // 5b) Handoff humano para mídia/tipos não conversáveis.
-            //     Além do estado no banco, avisa o responsável (ou admin) —
-            //     nunca marcar a flag em silêncio.
+            //     B1: status vira 'aguardando_humano' (a IA NÃO é desligada — B3).
+            //     B2: alerta imediato no canal INTERNO (Telegram) com link direto.
+            //     B4: a IA responde apenas um aviso curto, sem interpretar a mídia.
             if (TIPOS_COM_HANDOFF.includes(norm.tipo)) {
+              const agoraIso = new Date().toISOString();
               const { error: hoErr } = await supabaseAdmin
                 .from("whatsapp_conversas")
                 .update({
                   requer_humano: true,
                   motivo_handoff: `midia_${norm.tipo}`,
-                  ia_ativa: false,
+                  ia_ativa: true,
+                  status: "aguardando_humano",
+                  handoff_alertado_em: agoraIso,
+                  handoff_realertado_em: null,
                 })
-                .eq("id", conversaId);
+                .eq("id", conversaId)
+                .in("status", ["ia_atendendo", "aguardando_humano"]);
               if (hoErr) console.error("handoff update failed:", hoErr);
 
               const { data: convHo } = await supabaseAdmin
@@ -278,7 +284,11 @@ export const Route = createFileRoute("/api/public/zapi/webhook")({
                 .eq("id", conversaId)
                 .maybeSingle();
               const quem = convHo?.name?.trim() || convHo?.phone || phone;
+              const link = `https://crm.inplastic.com.br/conversas?c=${conversaId}`;
               const titulo = `Mídia (${norm.tipo}) aguardando atendimento — ${quem}`;
+              const corpo =
+                `📎 Conversa aguardando especialista\n\n` +
+                `Cliente: ${quem}\nMotivo: midia_${norm.tipo}\n${link}`;
               const { notificarUsuario, alertarAdmins } = await import(
                 "@/lib/xerife/handoff.server"
               );
@@ -290,17 +300,43 @@ export const Route = createFileRoute("/api/public/zapi/webhook")({
                   conversaId,
                 });
                 const { notifyOwner } = await import("@/lib/xerife/notify.server");
-                await notifyOwner(
-                  convHo.atribuido_para,
-                  `📎 Conversa aguardando atendimento humano\n\nCliente: ${quem}\nMotivo: mídia recebida (${norm.tipo}) — a IA foi desligada.`,
-                );
+                await notifyOwner(convHo.atribuido_para, corpo);
               } else {
                 await alertarAdmins(supabaseAdmin, {
                   tipo: "handoff_midia",
                   titulo,
                   conversaId,
-                  mensagem: `📎 Conversa SEM responsável aguardando atendimento humano\n\nCliente: ${quem}\nMotivo: mídia recebida (${norm.tipo}) — a IA foi desligada.`,
+                  mensagem: `⚠️ SEM responsável — ${corpo}`,
                 });
+              }
+              console.warn(
+                `[zapi:comercial:webhook] HANDOFF midia tipo=${norm.tipo} status=aguardando_humano atribuido=${
+                  convHo?.atribuido_para ? "sim" : "nao"
+                } phone=${mascararTelefoneLog(phone)}`,
+              );
+
+              // B4 — aviso curto automático (nunca interpreta o arquivo).
+              try {
+                const aviso =
+                  "Recebemos seu arquivo! Um especialista da nossa equipe vai analisar e responder por aqui em instantes. Enquanto isso, se puder, me conte a quantidade e a aplicação do pallet que já adianto seu orçamento.";
+                const { sendZapiText } = await import("@/lib/zapi-send.server");
+                await sendZapiText(phone, aviso, "handoff-midia", "comercial", {
+                  origem: "resposta_inbound",
+                });
+                await supabaseAdmin.from("whatsapp_mensagens").insert({
+                  conversa_id: conversaId,
+                  direcao: "saida",
+                  autor: "ia",
+                  conteudo: aviso,
+                });
+                console.log(
+                  `[zapi:comercial:webhook] aviso de mídia enviado phone=${mascararTelefoneLog(phone)}`,
+                );
+              } catch (e) {
+                console.error(
+                  `[zapi:comercial:webhook] falha ao avisar mídia phone=${mascararTelefoneLog(phone)}:`,
+                  e instanceof Error ? e.message : String(e),
+                );
               }
 
               return Response.json(
