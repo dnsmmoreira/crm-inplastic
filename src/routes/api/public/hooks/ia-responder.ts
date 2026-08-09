@@ -63,38 +63,46 @@ export const Route = createFileRoute("/api/public/hooks/ia-responder")({
           );
         }
 
-        // Só é "resposta_inbound" (liberada 24/7) se o cliente já enviou mensagem
-        // nesta conversa. Caso contrário mantém o padrão 'iniciado_sistema'.
-        const { count: inboundCount } = await supabaseAdmin
-          .from("whatsapp_mensagens")
-          .select("id", { count: "exact", head: true })
-          .eq("conversa_id", conversaId)
-          .eq("direcao", "entrada");
-        const origem = (inboundCount ?? 0) > 0 ? "resposta_inbound" : "iniciado_sistema";
+        // (E4) Disjuntor aberto: a IA não envia agora — a mensagem fica na fila
+        // e sai quando o disjuntor fechar (o handoff/alerta interno segue normal).
+        const { envioAutomaticoPausado } = await import("@/lib/zapi-disjuntor.server");
+        const pausado = await envioAutomaticoPausado();
 
+        // (E1) Atraso humano de 20s a 90s antes de QUALQUER resposta automática.
+        // A resposta é enfileirada (responder_apos) e despachada depois; respostas
+        // pendentes anteriores da mesma conversa são canceladas (agregação).
+        const { enfileirarRespostaIA, aguardarEDespachar } = await import("@/lib/ia-fila.server");
+        let enfileirada: { id: string; atrasoMs: number; responderApos: string };
         try {
-          const { sendZapiText } = await import("@/lib/zapi-send.server");
-          await sendZapiText(conv.phone, mensagem, "ia-responder", "comercial", { origem });
+          enfileirada = await enfileirarRespostaIA(conversaId, mensagem);
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);
-          console.error("ia-responder envio Z-API falhou:", msg);
+          console.error("ia-responder enfileirar falhou:", msg);
           return new Response(JSON.stringify({ error: msg }), {
-            status: 502,
+            status: 500,
             headers: { "Content-Type": "application/json", ...CORS },
           });
         }
 
-        const { error: mErr } = await supabaseAdmin.from("whatsapp_mensagens").insert({
-          conversa_id: conversaId,
-          direcao: "saida",
-          autor: "ia",
-          conteudo: mensagem,
-        });
-        if (mErr) {
-          console.error("ia-responder insert mensagem falhou:", mErr);
+        if (pausado) {
+          return Response.json(
+            { ok: true, agendado: true, pausado: true, responder_apos: enfileirada.responderApos },
+            { headers: CORS },
+          );
         }
 
-        return Response.json({ ok: true }, { headers: CORS });
+        const r = await aguardarEDespachar(enfileirada.id, enfileirada.atrasoMs, mensagem);
+
+        return Response.json(
+          {
+            ok: true,
+            agendado: true,
+            enviado: r.enviado,
+            motivo: r.motivo ?? null,
+            responder_apos: enfileirada.responderApos,
+          },
+          { headers: CORS },
+        );
       },
     },
   },

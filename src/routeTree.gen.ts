@@ -40,6 +40,9 @@ import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as ApiPublicZapiWebhookRouteImport } from './routes/api/public/zapi/webhook'
+import { Route as ApiPublicZapiStatusRouteImport } from './routes/api/public/zapi/status'
+import { Route as ApiPublicZapiDesconectadoRouteImport } from './routes/api/public/zapi/desconectado'
+import { Route as ApiPublicZapiConectadoRouteImport } from './routes/api/public/zapi/conectado'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram/webhook'
 import { Route as ApiPublicHooksXerifeWatchdogConversaRouteImport } from './routes/api/public/hooks/xerife-watchdog-conversa'
 import { Route as ApiPublicHooksXerifePedidosRouteImport } from './routes/api/public/hooks/xerife-pedidos'
@@ -51,6 +54,7 @@ import { Route as ApiPublicHooksXerifeRouteImport } from './routes/api/public/ho
 import { Route as ApiPublicHooksIaUrgenteRouteImport } from './routes/api/public/hooks/ia-urgente'
 import { Route as ApiPublicHooksIaResponderRouteImport } from './routes/api/public/hooks/ia-responder'
 import { Route as ApiPublicHooksIaQualificarRouteImport } from './routes/api/public/hooks/ia-qualificar'
+import { Route as ApiPublicHooksIaFilaEnvioRouteImport } from './routes/api/public/hooks/ia-fila-envio'
 
 const UsuariosRoute = UsuariosRouteImport.update({
   id: '/usuarios',
@@ -210,6 +214,22 @@ const ApiPublicZapiWebhookRoute = ApiPublicZapiWebhookRouteImport.update({
   path: '/api/public/zapi/webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicZapiStatusRoute = ApiPublicZapiStatusRouteImport.update({
+  id: '/api/public/zapi/status',
+  path: '/api/public/zapi/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicZapiDesconectadoRoute =
+  ApiPublicZapiDesconectadoRouteImport.update({
+    id: '/api/public/zapi/desconectado',
+    path: '/api/public/zapi/desconectado',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicZapiConectadoRoute = ApiPublicZapiConectadoRouteImport.update({
+  id: '/api/public/zapi/conectado',
+  path: '/api/public/zapi/conectado',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicTelegramWebhookRoute =
   ApiPublicTelegramWebhookRouteImport.update({
     id: '/api/public/telegram/webhook',
@@ -274,6 +294,12 @@ const ApiPublicHooksIaQualificarRoute =
     path: '/api/public/hooks/ia-qualificar',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksIaFilaEnvioRoute =
+  ApiPublicHooksIaFilaEnvioRouteImport.update({
+    id: '/api/public/hooks/ia-fila-envio',
+    path: '/api/public/hooks/ia-fila-envio',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -306,6 +332,7 @@ export interface FileRoutesByFullPath {
   '/propostas/': typeof PropostasIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/api/public/hooks/ia-fila-envio': typeof ApiPublicHooksIaFilaEnvioRoute
   '/api/public/hooks/ia-qualificar': typeof ApiPublicHooksIaQualificarRoute
   '/api/public/hooks/ia-responder': typeof ApiPublicHooksIaResponderRoute
   '/api/public/hooks/ia-urgente': typeof ApiPublicHooksIaUrgenteRoute
@@ -317,6 +344,9 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/xerife-pedidos': typeof ApiPublicHooksXerifePedidosRoute
   '/api/public/hooks/xerife-watchdog-conversa': typeof ApiPublicHooksXerifeWatchdogConversaRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
+  '/api/public/zapi/conectado': typeof ApiPublicZapiConectadoRoute
+  '/api/public/zapi/desconectado': typeof ApiPublicZapiDesconectadoRoute
+  '/api/public/zapi/status': typeof ApiPublicZapiStatusRoute
   '/api/public/zapi/webhook': typeof ApiPublicZapiWebhookRoute
 }
 export interface FileRoutesByTo {
@@ -350,6 +380,7 @@ export interface FileRoutesByTo {
   '/propostas': typeof PropostasIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/api/public/hooks/ia-fila-envio': typeof ApiPublicHooksIaFilaEnvioRoute
   '/api/public/hooks/ia-qualificar': typeof ApiPublicHooksIaQualificarRoute
   '/api/public/hooks/ia-responder': typeof ApiPublicHooksIaResponderRoute
   '/api/public/hooks/ia-urgente': typeof ApiPublicHooksIaUrgenteRoute
@@ -361,6 +392,9 @@ export interface FileRoutesByTo {
   '/api/public/hooks/xerife-pedidos': typeof ApiPublicHooksXerifePedidosRoute
   '/api/public/hooks/xerife-watchdog-conversa': typeof ApiPublicHooksXerifeWatchdogConversaRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
+  '/api/public/zapi/conectado': typeof ApiPublicZapiConectadoRoute
+  '/api/public/zapi/desconectado': typeof ApiPublicZapiDesconectadoRoute
+  '/api/public/zapi/status': typeof ApiPublicZapiStatusRoute
   '/api/public/zapi/webhook': typeof ApiPublicZapiWebhookRoute
 }
 export interface FileRoutesById {
@@ -395,6 +429,7 @@ export interface FileRoutesById {
   '/propostas/': typeof PropostasIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/api/public/hooks/ia-fila-envio': typeof ApiPublicHooksIaFilaEnvioRoute
   '/api/public/hooks/ia-qualificar': typeof ApiPublicHooksIaQualificarRoute
   '/api/public/hooks/ia-responder': typeof ApiPublicHooksIaResponderRoute
   '/api/public/hooks/ia-urgente': typeof ApiPublicHooksIaUrgenteRoute
@@ -406,6 +441,9 @@ export interface FileRoutesById {
   '/api/public/hooks/xerife-pedidos': typeof ApiPublicHooksXerifePedidosRoute
   '/api/public/hooks/xerife-watchdog-conversa': typeof ApiPublicHooksXerifeWatchdogConversaRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
+  '/api/public/zapi/conectado': typeof ApiPublicZapiConectadoRoute
+  '/api/public/zapi/desconectado': typeof ApiPublicZapiDesconectadoRoute
+  '/api/public/zapi/status': typeof ApiPublicZapiStatusRoute
   '/api/public/zapi/webhook': typeof ApiPublicZapiWebhookRoute
 }
 export interface FileRouteTypes {
@@ -441,6 +479,7 @@ export interface FileRouteTypes {
     | '/propostas/'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/api/public/hooks/ia-fila-envio'
     | '/api/public/hooks/ia-qualificar'
     | '/api/public/hooks/ia-responder'
     | '/api/public/hooks/ia-urgente'
@@ -452,6 +491,9 @@ export interface FileRouteTypes {
     | '/api/public/hooks/xerife-pedidos'
     | '/api/public/hooks/xerife-watchdog-conversa'
     | '/api/public/telegram/webhook'
+    | '/api/public/zapi/conectado'
+    | '/api/public/zapi/desconectado'
+    | '/api/public/zapi/status'
     | '/api/public/zapi/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -485,6 +527,7 @@ export interface FileRouteTypes {
     | '/propostas'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/api/public/hooks/ia-fila-envio'
     | '/api/public/hooks/ia-qualificar'
     | '/api/public/hooks/ia-responder'
     | '/api/public/hooks/ia-urgente'
@@ -496,6 +539,9 @@ export interface FileRouteTypes {
     | '/api/public/hooks/xerife-pedidos'
     | '/api/public/hooks/xerife-watchdog-conversa'
     | '/api/public/telegram/webhook'
+    | '/api/public/zapi/conectado'
+    | '/api/public/zapi/desconectado'
+    | '/api/public/zapi/status'
     | '/api/public/zapi/webhook'
   id:
     | '__root__'
@@ -529,6 +575,7 @@ export interface FileRouteTypes {
     | '/propostas/'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/api/public/hooks/ia-fila-envio'
     | '/api/public/hooks/ia-qualificar'
     | '/api/public/hooks/ia-responder'
     | '/api/public/hooks/ia-urgente'
@@ -540,6 +587,9 @@ export interface FileRouteTypes {
     | '/api/public/hooks/xerife-pedidos'
     | '/api/public/hooks/xerife-watchdog-conversa'
     | '/api/public/telegram/webhook'
+    | '/api/public/zapi/conectado'
+    | '/api/public/zapi/desconectado'
+    | '/api/public/zapi/status'
     | '/api/public/zapi/webhook'
   fileRoutesById: FileRoutesById
 }
@@ -574,6 +624,7 @@ export interface RootRouteChildren {
   PropostasIndexRoute: typeof PropostasIndexRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
+  ApiPublicHooksIaFilaEnvioRoute: typeof ApiPublicHooksIaFilaEnvioRoute
   ApiPublicHooksIaQualificarRoute: typeof ApiPublicHooksIaQualificarRoute
   ApiPublicHooksIaResponderRoute: typeof ApiPublicHooksIaResponderRoute
   ApiPublicHooksIaUrgenteRoute: typeof ApiPublicHooksIaUrgenteRoute
@@ -585,6 +636,9 @@ export interface RootRouteChildren {
   ApiPublicHooksXerifePedidosRoute: typeof ApiPublicHooksXerifePedidosRoute
   ApiPublicHooksXerifeWatchdogConversaRoute: typeof ApiPublicHooksXerifeWatchdogConversaRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
+  ApiPublicZapiConectadoRoute: typeof ApiPublicZapiConectadoRoute
+  ApiPublicZapiDesconectadoRoute: typeof ApiPublicZapiDesconectadoRoute
+  ApiPublicZapiStatusRoute: typeof ApiPublicZapiStatusRoute
   ApiPublicZapiWebhookRoute: typeof ApiPublicZapiWebhookRoute
 }
 
@@ -807,6 +861,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicZapiWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/zapi/status': {
+      id: '/api/public/zapi/status'
+      path: '/api/public/zapi/status'
+      fullPath: '/api/public/zapi/status'
+      preLoaderRoute: typeof ApiPublicZapiStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/zapi/desconectado': {
+      id: '/api/public/zapi/desconectado'
+      path: '/api/public/zapi/desconectado'
+      fullPath: '/api/public/zapi/desconectado'
+      preLoaderRoute: typeof ApiPublicZapiDesconectadoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/zapi/conectado': {
+      id: '/api/public/zapi/conectado'
+      path: '/api/public/zapi/conectado'
+      fullPath: '/api/public/zapi/conectado'
+      preLoaderRoute: typeof ApiPublicZapiConectadoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/telegram/webhook': {
       id: '/api/public/telegram/webhook'
       path: '/api/public/telegram/webhook'
@@ -884,6 +959,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksIaQualificarRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/ia-fila-envio': {
+      id: '/api/public/hooks/ia-fila-envio'
+      path: '/api/public/hooks/ia-fila-envio'
+      fullPath: '/api/public/hooks/ia-fila-envio'
+      preLoaderRoute: typeof ApiPublicHooksIaFilaEnvioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -919,6 +1001,7 @@ const rootRouteChildren: RootRouteChildren = {
   PropostasIndexRoute: PropostasIndexRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
+  ApiPublicHooksIaFilaEnvioRoute: ApiPublicHooksIaFilaEnvioRoute,
   ApiPublicHooksIaQualificarRoute: ApiPublicHooksIaQualificarRoute,
   ApiPublicHooksIaResponderRoute: ApiPublicHooksIaResponderRoute,
   ApiPublicHooksIaUrgenteRoute: ApiPublicHooksIaUrgenteRoute,
@@ -931,6 +1014,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksXerifeWatchdogConversaRoute:
     ApiPublicHooksXerifeWatchdogConversaRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
+  ApiPublicZapiConectadoRoute: ApiPublicZapiConectadoRoute,
+  ApiPublicZapiDesconectadoRoute: ApiPublicZapiDesconectadoRoute,
+  ApiPublicZapiStatusRoute: ApiPublicZapiStatusRoute,
   ApiPublicZapiWebhookRoute: ApiPublicZapiWebhookRoute,
 }
 export const routeTree = rootRouteImport

@@ -226,6 +226,16 @@ export async function sendZapiText(
   const mensagemHash = await hashMensagem(message);
 
   if (!bypass) {
+    // (E4) Disjuntor: enquanto pausado, nenhum envio AUTOMÁTICO sai do canal
+    // comercial. Envio manual de admin continua permitido.
+    if (canal === "comercial" && origem !== "manual_admin") {
+      const { envioAutomaticoPausado } = await import("./zapi-disjuntor.server");
+      if (await envioAutomaticoPausado()) {
+        bloquear(tag, "disjuntor_aberto", phone);
+        throw new Error("Envios automaticos pausados temporariamente (disjuntor). Tente mais tarde.");
+      }
+    }
+
     // (5) Opt-out do contato
     const { data: optout } = await supabaseAdmin
       .from("whatsapp_optout")
