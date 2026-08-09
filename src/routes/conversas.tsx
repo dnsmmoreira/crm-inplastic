@@ -570,6 +570,11 @@ function ChatPanel({
   const nome = conversa.name?.trim() || conversa.phone;
   const iaNoControle = conversa.ia_ativa && conversa.status === "ia_atendendo";
   const encerrada = conversa.status === "encerrado";
+  const temInbound = mensagens.some((m) => m.direcao === "entrada");
+  const agoraSP = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+  const dentroDaJanela =
+    agoraSP.getDay() !== 0 && agoraSP.getHours() >= 7 && agoraSP.getHours() < 20;
+
 
   async function rodarAcao(fn: () => Promise<unknown>, ok: string) {
     setAcaoEmCurso(true);
