@@ -741,12 +741,10 @@ function ChatPanel({
       <div className="relative flex min-h-0 flex-1 flex-col">
       <div
         ref={scrollRef}
-        onScroll={(e) => {
-          const el = e.currentTarget;
-          if (el.scrollHeight - el.scrollTop - el.clientHeight < 120) setTemNovas(false);
-        }}
+        onScroll={onScroll}
         className="min-h-0 flex-1 space-y-2 overflow-auto p-4"
       >
+
         {mensagens.map((m, i) => {
           const anterior = i > 0 ? mensagens[i - 1] : undefined;
           const novoDia =
