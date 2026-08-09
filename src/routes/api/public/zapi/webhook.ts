@@ -374,7 +374,13 @@ export const Route = createFileRoute("/api/public/zapi/webhook")({
                 ia_ativa: conv?.ia_ativa,
                 status: conv?.status,
               });
-              if (conv && conv.ia_ativa && conv.status === "ia_atendendo") {
+              // B3: mesmo em 'aguardando_humano' (requer_humano=true) o Lucas
+              // continua respondendo as mensagens de TEXTO seguintes.
+              if (
+                conv &&
+                conv.ia_ativa &&
+                (conv.status === "ia_atendendo" || conv.status === "aguardando_humano")
+              ) {
                 const { data: hist } = await supabaseAdmin
                   .from("whatsapp_mensagens")
                   .select("autor, conteudo, created_at")
