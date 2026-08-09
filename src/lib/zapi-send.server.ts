@@ -201,6 +201,7 @@ export async function sendZapiText(
   const tag = ctx ? `[zapi:${canal}:${ctx}]` : `[zapi:${canal}]`;
   const phone = normalizePhoneBR(phoneRaw);
   const bypass = opts?.bypassGuards === true;
+  const origem: ZapiOrigem = opts?.origem ?? "iniciado_sistema";
 
   console.log(
     `${tag} env instance=${!!instanceId}(${instanceId?.length ?? 0}) token=${!!token}(${token?.length ?? 0}) clientToken=${!!clientToken}(${clientToken?.length ?? 0})`,
