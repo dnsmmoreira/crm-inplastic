@@ -10,6 +10,19 @@ function onlyDigits(s: string) {
   return String(s ?? "").replace(/\D/g, "");
 }
 
+/** Comparação em tempo constante (evita timing attack). Nunca loga valores. */
+function compararTempoConstante(a: string, b: string) {
+  const ea = new TextEncoder().encode(a);
+  const eb = new TextEncoder().encode(b);
+  const tamanho = Math.max(ea.length, eb.length);
+  let diff = ea.length ^ eb.length;
+  for (let i = 0; i < tamanho; i++) {
+    diff |= (ea[i] ?? 0) ^ (eb[i] ?? 0);
+  }
+  return diff === 0;
+}
+
+
 type ZapiPayload = Record<string, unknown> & {
   type?: string;
   phone?: string;
