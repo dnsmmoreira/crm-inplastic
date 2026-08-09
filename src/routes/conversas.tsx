@@ -43,6 +43,8 @@ import {
   listarVendedoresAtendimento,
 } from "@/lib/atendimento.functions";
 import { useAuth } from "@/hooks/use-auth";
+import { TemplatesButton } from "@/components/atendimento/TemplatesButton";
+
 import type { Database } from "@/integrations/supabase/types";
 
 type Conversa = Database["public"]["Tables"]["whatsapp_conversas"]["Row"];
@@ -469,6 +471,8 @@ function ChatPanel({
   const [vendedores, setVendedores] = useState<Array<{ id: string; name: string }>>([]);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
+  const [empresaLead, setEmpresaLead] = useState<string | null>(null);
+
   const [acaoEmCurso, setAcaoEmCurso] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const send = useServerFn(sendConversaMessage);
@@ -539,6 +543,22 @@ function ChatPanel({
   }, [conversa, loadMensagens]);
 
   useEffect(() => {
+    const leadId = conversa?.lead_id ?? null;
+    if (!leadId) {
+      setEmpresaLead(null);
+      return;
+    }
+    void supabase
+      .from("leads")
+      .select("company, contact_name")
+      .eq("id", leadId)
+      .maybeSingle()
+      .then(({ data }) => setEmpresaLead(data?.company ?? null));
+  }, [conversa?.lead_id]);
+
+
+
+  useEffect(() => {
     const conversaId = conversa?.id ?? null;
     const ultima = mensagens.length > 0 ? mensagens[mensagens.length - 1]!.id : null;
     const trocouConversa = conversaRef.current !== conversaId;
@@ -566,6 +586,11 @@ function ChatPanel({
   const nome = conversa.name?.trim() || conversa.phone;
   const iaNoControle = conversa.ia_ativa && conversa.status === "ia_atendendo";
   const encerrada = conversa.status === "encerrado";
+  const temInbound = mensagens.some((m) => m.direcao === "entrada");
+  const agoraSP = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+  const dentroDaJanela =
+    agoraSP.getDay() !== 0 && agoraSP.getHours() >= 7 && agoraSP.getHours() < 20;
+
 
   async function rodarAcao(fn: () => Promise<unknown>, ok: string) {
     setAcaoEmCurso(true);
@@ -729,6 +754,24 @@ function ChatPanel({
       </div>
 
       <div className="space-y-2 border-t p-3">
+        <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full px-2 py-0.5",
+              dentroDaJanela ? "bg-emerald-500/10 text-emerald-600" : "bg-amber-500/10 text-amber-600",
+            )}
+          >
+            {dentroDaJanela ? "Dentro da janela (07:00–20:00)" : "Fora da janela de envio"}
+          </span>
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full px-2 py-0.5",
+              temInbound ? "bg-muted text-muted-foreground" : "bg-amber-500/10 text-amber-600",
+            )}
+          >
+            {temInbound ? "Cliente já respondeu" : "Sem mensagem do cliente"}
+          </span>
+        </div>
         {iaNoControle && (
           <div className="text-[11px] text-muted-foreground">
             A IA está atendendo. Ao enviar, você assume a conversa automaticamente.
@@ -736,7 +779,14 @@ function ChatPanel({
         )}
         <div className="flex items-end gap-2">
           <div className="flex gap-1 pb-1">
+            <TemplatesButton
+              nome={conversa.name}
+              empresa={empresaLead ?? conversa.name}
+              disabled={sending}
+              onInserir={(t) => setText((prev) => (prev.trim() ? `${prev.trim()}\n${t}` : t))}
+            />
             <Button
+
               size="icon"
               variant="ghost"
               disabled
