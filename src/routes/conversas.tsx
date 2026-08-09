@@ -729,6 +729,24 @@ function ChatPanel({
       </div>
 
       <div className="space-y-2 border-t p-3">
+        <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full px-2 py-0.5",
+              dentroDaJanela ? "bg-emerald-500/10 text-emerald-600" : "bg-amber-500/10 text-amber-600",
+            )}
+          >
+            {dentroDaJanela ? "Dentro da janela (07:00–20:00)" : "Fora da janela de envio"}
+          </span>
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full px-2 py-0.5",
+              temInbound ? "bg-muted text-muted-foreground" : "bg-amber-500/10 text-amber-600",
+            )}
+          >
+            {temInbound ? "Cliente já respondeu" : "Sem mensagem do cliente"}
+          </span>
+        </div>
         {iaNoControle && (
           <div className="text-[11px] text-muted-foreground">
             A IA está atendendo. Ao enviar, você assume a conversa automaticamente.
@@ -736,7 +754,14 @@ function ChatPanel({
         )}
         <div className="flex items-end gap-2">
           <div className="flex gap-1 pb-1">
+            <TemplatesButton
+              nome={conversa.name}
+              empresa={empresaLead ?? conversa.name}
+              disabled={sending}
+              onInserir={(t) => setText((prev) => (prev.trim() ? `${prev.trim()}\n${t}` : t))}
+            />
             <Button
+
               size="icon"
               variant="ghost"
               disabled
