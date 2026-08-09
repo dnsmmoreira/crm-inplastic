@@ -378,16 +378,32 @@ function ConversationPanel({
         </div>
       </div>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-2 bg-muted/10">
-        {mensagens.map((m) => (
-          <MessageBubble key={m.id} m={m} />
-        ))}
-        {mensagens.length === 0 && (
-          <div className="text-center text-xs text-muted-foreground py-10">
-            Sem mensagens nesta conversa.
-          </div>
+      <div className="relative flex flex-1 min-h-0 flex-col">
+        <div
+          ref={scrollRef}
+          onScroll={onScroll}
+          className="flex-1 overflow-y-auto p-4 space-y-2 bg-muted/10"
+        >
+          {mensagens.map((m) => (
+            <MessageBubble key={m.id} m={m} />
+          ))}
+          {mensagens.length === 0 && (
+            <div className="text-center text-xs text-muted-foreground py-10">
+              Sem mensagens nesta conversa.
+            </div>
+          )}
+        </div>
+        {temNovas && (
+          <button
+            type="button"
+            onClick={scrollParaFim}
+            className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full border bg-background/95 px-3 py-1 text-[11px] font-medium shadow-md backdrop-blur"
+          >
+            Novas mensagens
+          </button>
         )}
       </div>
+
 
       <div className="border-t p-3 flex gap-2">
         <Textarea
