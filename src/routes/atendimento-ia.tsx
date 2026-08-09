@@ -49,6 +49,11 @@ const STATUS_META: Record<
     className: "bg-blue-500/10 text-blue-600 border-blue-500/30",
     dot: "bg-blue-500",
   },
+  aguardando_humano: {
+    label: "Aguardando humano",
+    className: "bg-amber-500/10 text-amber-700 border-amber-500/30",
+    dot: "bg-amber-500",
+  },
   humano_atendendo: {
     label: "Humano no controle",
     className: "bg-amber-500/10 text-amber-600 border-amber-500/30",
