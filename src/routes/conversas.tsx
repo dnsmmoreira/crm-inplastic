@@ -43,6 +43,7 @@ import {
   listarVendedoresAtendimento,
 } from "@/lib/atendimento.functions";
 import { useAuth } from "@/hooks/use-auth";
+import { useAutoScrollMensagens } from "@/hooks/use-auto-scroll-mensagens";
 import { TemplatesButton } from "@/components/atendimento/TemplatesButton";
 import { IAButton, IAPreview, type ModoIA } from "@/components/atendimento/IAAssistButton";
 import { assistenteRedacao } from "@/lib/assistente-redacao.functions";
@@ -479,7 +480,7 @@ function ChatPanel({
 
   const [acaoEmCurso, setAcaoEmCurso] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const [temNovas, setTemNovas] = useState(false);
+
   const send = useServerFn(sendConversaMessage);
   const pedirIA = useServerFn(assistenteRedacao);
   const assumir = useServerFn(assumirConversa);
@@ -489,8 +490,12 @@ function ChatPanel({
   const listarVendedores = useServerFn(listarVendedoresAtendimento);
 
   // Controle de auto-scroll: só rola ao trocar de conversa ou quando chega mensagem nova.
-  const ultimaMsgRef = useRef<string | null>(null);
-  const conversaRef = useRef<string | null>(null);
+  const { temNovas, onScroll, scrollParaFim } = useAutoScrollMensagens(
+    scrollRef,
+    conversa?.id ?? null,
+    mensagens,
+  );
+
 
   const loadMensagens = useCallback(async (conversaId: string) => {
     const { data, error } = await supabase
@@ -563,33 +568,6 @@ function ChatPanel({
   }, [conversa?.lead_id]);
 
 
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    const conversaId = conversa?.id ?? null;
-    const ultima = mensagens.length > 0 ? mensagens[mensagens.length - 1]!.id : null;
-    const trocouConversa = conversaRef.current !== conversaId;
-    const chegouNova = !trocouConversa && ultima !== null && ultima !== ultimaMsgRef.current;
-    conversaRef.current = conversaId;
-    ultimaMsgRef.current = ultima;
-    if (!el) return;
-
-    if (trocouConversa) {
-      el.scrollTop = el.scrollHeight;
-      setTemNovas(false);
-      return;
-    }
-    if (!chegouNova) return;
-
-    const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
-    if (isNearBottom) {
-      el.scrollTop = el.scrollHeight;
-      setTemNovas(false);
-    } else {
-      // Usuário está lendo o histórico: não tocar no scroll.
-      setTemNovas(true);
-    }
-  }, [mensagens, conversa]);
 
   if (!conversa) {
     return (
@@ -764,12 +742,10 @@ function ChatPanel({
       <div className="relative flex min-h-0 flex-1 flex-col">
       <div
         ref={scrollRef}
-        onScroll={(e) => {
-          const el = e.currentTarget;
-          if (el.scrollHeight - el.scrollTop - el.clientHeight < 120) setTemNovas(false);
-        }}
+        onScroll={onScroll}
         className="min-h-0 flex-1 space-y-2 overflow-auto p-4"
       >
+
         {mensagens.map((m, i) => {
           const anterior = i > 0 ? mensagens[i - 1] : undefined;
           const novoDia =
@@ -797,11 +773,8 @@ function ChatPanel({
         {temNovas && (
           <button
             type="button"
-            onClick={() => {
-              const el = scrollRef.current;
-              if (el) el.scrollTop = el.scrollHeight;
-              setTemNovas(false);
-            }}
+            onClick={scrollParaFim}
+
             className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full border bg-background/95 px-3 py-1 text-[11px] font-medium shadow-md backdrop-blur"
           >
             Novas mensagens
