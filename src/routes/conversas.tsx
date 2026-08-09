@@ -479,6 +479,7 @@ function ChatPanel({
 
   const [acaoEmCurso, setAcaoEmCurso] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [temNovas, setTemNovas] = useState(false);
   const send = useServerFn(sendConversaMessage);
   const pedirIA = useServerFn(assistenteRedacao);
   const assumir = useServerFn(assumirConversa);
@@ -564,17 +565,30 @@ function ChatPanel({
 
 
   useEffect(() => {
+    const el = scrollRef.current;
     const conversaId = conversa?.id ?? null;
     const ultima = mensagens.length > 0 ? mensagens[mensagens.length - 1]!.id : null;
     const trocouConversa = conversaRef.current !== conversaId;
     const chegouNova = !trocouConversa && ultima !== null && ultima !== ultimaMsgRef.current;
     conversaRef.current = conversaId;
     ultimaMsgRef.current = ultima;
-    if (!trocouConversa && !chegouNova) return; // polling de 6s não arrasta o scroll
-    scrollRef.current?.scrollTo({
-      top: scrollRef.current.scrollHeight,
-      behavior: trocouConversa ? "auto" : "smooth",
-    });
+    if (!el) return;
+
+    if (trocouConversa) {
+      el.scrollTop = el.scrollHeight;
+      setTemNovas(false);
+      return;
+    }
+    if (!chegouNova) return;
+
+    const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+    if (isNearBottom) {
+      el.scrollTop = el.scrollHeight;
+      setTemNovas(false);
+    } else {
+      // Usuário está lendo o histórico: não tocar no scroll.
+      setTemNovas(true);
+    }
   }, [mensagens, conversa]);
 
   if (!conversa) {
@@ -747,7 +761,15 @@ function ChatPanel({
         </div>
       </div>
 
-      <div ref={scrollRef} className="min-h-0 flex-1 space-y-2 overflow-auto p-4">
+      <div className="relative flex min-h-0 flex-1 flex-col">
+      <div
+        ref={scrollRef}
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          if (el.scrollHeight - el.scrollTop - el.clientHeight < 120) setTemNovas(false);
+        }}
+        className="min-h-0 flex-1 space-y-2 overflow-auto p-4"
+      >
         {mensagens.map((m, i) => {
           const anterior = i > 0 ? mensagens[i - 1] : undefined;
           const novoDia =
@@ -770,6 +792,20 @@ function ChatPanel({
           <div className="py-10 text-center text-xs text-muted-foreground">
             Sem mensagens nesta conversa ainda.
           </div>
+        )}
+      </div>
+        {temNovas && (
+          <button
+            type="button"
+            onClick={() => {
+              const el = scrollRef.current;
+              if (el) el.scrollTop = el.scrollHeight;
+              setTemNovas(false);
+            }}
+            className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full border bg-background/95 px-3 py-1 text-[11px] font-medium shadow-md backdrop-blur"
+          >
+            Novas mensagens
+          </button>
         )}
       </div>
 

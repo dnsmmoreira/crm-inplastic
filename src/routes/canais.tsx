@@ -477,6 +477,10 @@ function StatusChip({
 }) {
   const map: Record<Conversa["status"], { label: string; cls: string }> = {
     ia_atendendo: { label: "IA", cls: "border-blue-500/50 text-blue-700" },
+    aguardando_humano: {
+      label: "Aguardando humano",
+      cls: "border-amber-500/50 text-amber-700",
+    },
     humano_atendendo: { label: "Humano", cls: "border-emerald-500/50 text-emerald-700" },
     qualificado: { label: "Qualificado", cls: "border-violet-500/50 text-violet-700" },
     encerrado: { label: "Encerrado", cls: "border-muted-foreground/40 text-muted-foreground" },

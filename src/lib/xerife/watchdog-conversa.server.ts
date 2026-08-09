@@ -389,5 +389,58 @@ export async function runWatchdogConversa(
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // 4) (B5) Handoff sem dono há +15 min: reenvia o alerta interno UMA única vez.
+  // ---------------------------------------------------------------------------
+  if (!dryRun) {
+    try {
+      await reenviarAlertasHandoff(sb);
+    } catch (e) {
+      console.error(
+        "[watchdog-conversa] falha no reenvio de handoff:",
+        e instanceof Error ? e.message : String(e),
+      );
+    }
+  }
+
   return { ran: true, dryRun, stats, plan };
+}
+
+/** Reenvia (uma só vez) o alerta interno de conversas em handoff sem responsável. */
+export async function reenviarAlertasHandoff(sb: any): Promise<number> {
+  const limiteIso = new Date(Date.now() - 15 * 60_000).toISOString();
+  const { data: pendentes } = await sb
+    .from("whatsapp_conversas")
+    .select("id, phone, name, motivo_handoff, handoff_alertado_em")
+    .eq("requer_humano", true)
+    .is("atribuido_para", null)
+    .is("handoff_realertado_em", null)
+    .not("handoff_alertado_em", "is", null)
+    .lt("handoff_alertado_em", limiteIso)
+    .limit(LOTE);
+
+  const { mascararTelefoneLog } = await import("@/lib/zapi-send.server");
+  const { alertarAdmins } = await import("@/lib/xerife/handoff.server");
+  let n = 0;
+  for (const c of (pendentes ?? []) as any[]) {
+    const quem = c.name?.trim() || c.phone;
+    await alertarAdmins(sb, {
+      tipo: "handoff_sem_dono",
+      titulo: `Ainda sem responsável há +15 min — ${quem}`,
+      conversaId: c.id,
+      mensagem:
+        `🚨 Conversa em handoff há mais de 15 minutos SEM responsável\n\n` +
+        `Cliente: ${quem}\nMotivo: ${c.motivo_handoff ?? "-"}\n` +
+        `https://crm.inplastic.com.br/conversas?c=${c.id}`,
+    });
+    await sb
+      .from("whatsapp_conversas")
+      .update({ handoff_realertado_em: new Date().toISOString() })
+      .eq("id", c.id);
+    console.warn(
+      `[watchdog-conversa] REENVIO handoff phone=${mascararTelefoneLog(c.phone)} conversa=${c.id}`,
+    );
+    n++;
+  }
+  return n;
 }
