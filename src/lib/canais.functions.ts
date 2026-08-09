@@ -12,6 +12,28 @@ function normalizePhoneBR(phone: string) {
   return p;
 }
 
+/** Texto útil: sem emoji, pontuação, espaços. */
+function textoUtil(s: string) {
+  return s
+    .replace(/[\p{Extended_Pictographic}\p{Emoji_Presentation}\uFE0F\u200D]/gu, "")
+    .replace(/[^\p{L}\p{N}]/gu, "")
+    .trim();
+}
+
+/** Retorna { hora, domingo } no fuso America/Sao_Paulo. */
+function agoraSaoPaulo() {
+  const fmt = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Sao_Paulo",
+    hour: "2-digit",
+    hour12: false,
+    weekday: "short",
+  });
+  const parts = fmt.formatToParts(new Date());
+  const hora = Number(parts.find((p) => p.type === "hour")?.value ?? "0");
+  const weekday = parts.find((p) => p.type === "weekday")?.value ?? "";
+  return { hora, domingo: weekday === "Sun" };
+}
+
 /**
  * Envia mensagem via Z-API e registra em whatsapp_mensagens (autor='vendedor', direcao='saida').
  */
@@ -30,6 +52,7 @@ export const sendConversaMessage = createServerFn({ method: "POST" })
       .eq("id", data.conversaId)
       .maybeSingle();
     if (cErr || !conversa) throw new Error("Conversa não encontrada ou sem permissão.");
+
 
     // Papel resolvido SEMPRE no servidor a partir da sessão autenticada.
     // Qualquer incerteza (erro/nulo) => tratado como NÃO administrador.
