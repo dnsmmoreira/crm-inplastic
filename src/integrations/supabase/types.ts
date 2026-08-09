@@ -692,6 +692,42 @@ export type Database = {
           },
         ]
       }
+      mensagem_templates: {
+        Row: {
+          ativo: boolean
+          categoria: string
+          corpo: string
+          created_at: string
+          criado_por: string | null
+          id: string
+          ordem: number
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          categoria: string
+          corpo: string
+          created_at?: string
+          criado_por?: string | null
+          id?: string
+          ordem?: number
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          categoria?: string
+          corpo?: string
+          created_at?: string
+          criado_por?: string | null
+          id?: string
+          ordem?: number
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       n8n_reenvio_fila: {
         Row: {
           conversa_id: string | null
