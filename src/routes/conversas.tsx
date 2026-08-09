@@ -44,6 +44,8 @@ import {
 } from "@/lib/atendimento.functions";
 import { useAuth } from "@/hooks/use-auth";
 import { TemplatesButton } from "@/components/atendimento/TemplatesButton";
+import { IAButton, IAPreview, type ModoIA } from "@/components/atendimento/IAAssistButton";
+import { assistenteRedacao } from "@/lib/assistente-redacao.functions";
 
 import type { Database } from "@/integrations/supabase/types";
 
