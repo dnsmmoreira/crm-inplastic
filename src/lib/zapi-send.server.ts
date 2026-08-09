@@ -16,6 +16,13 @@ function onlyDigits(s: string) {
   return String(s ?? "").replace(/\D/g, "");
 }
 
+/** Mascara telefone para logs: apenas os 4 ultimos digitos (ex.: ****7690). */
+export function mascararTelefoneLog(phone: string): string {
+  const d = onlyDigits(phone);
+  if (!d) return "****";
+  return `****${d.slice(-4)}`;
+}
+
 function normalizePhoneBR(phone: string) {
   let p = onlyDigits(phone);
   if (!p.startsWith("55") && p.length <= 11) p = `55${p}`;
@@ -152,7 +159,7 @@ async function registrarAlertaDesconexao(canal: ZapiCanal, detalhe: string) {
 
 
 function bloquear(tag: string, motivo: string, phone: string) {
-  console.warn(`${tag} BLOQUEADO motivo=${motivo} phone=${phone}`);
+  console.warn(`${tag} BLOQUEADO motivo=${motivo} phone=${mascararTelefoneLog(phone)}`);
 }
 
 
@@ -359,7 +366,7 @@ export async function sendZapiText(
 
     const body = await res.text();
     console.log(
-      `${tag} tentativa=${tentativa} send-text status=${res.status} phone=${phone} bodyLen=${body.length}`,
+      `${tag} tentativa=${tentativa} send-text status=${res.status} phone=${mascararTelefoneLog(phone)} bodyLen=${body.length}`,
     );
 
     if (!res.ok) {
