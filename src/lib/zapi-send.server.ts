@@ -155,10 +155,6 @@ function bloquear(tag: string, motivo: string, phone: string) {
   console.warn(`${tag} BLOQUEADO motivo=${motivo} phone=${phone}`);
 }
 
-function isAutomatico(ctx?: string) {
-  const c = (ctx ?? "").toLowerCase();
-  return c === "ia-responder" || c.includes("xerife");
-}
 
 /** Retorna { hora, domingo } no fuso America/Sao_Paulo. */
 function agoraSaoPaulo() {
