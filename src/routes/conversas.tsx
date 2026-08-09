@@ -489,8 +489,12 @@ function ChatPanel({
   const listarVendedores = useServerFn(listarVendedoresAtendimento);
 
   // Controle de auto-scroll: só rola ao trocar de conversa ou quando chega mensagem nova.
-  const ultimaMsgRef = useRef<string | null>(null);
-  const conversaRef = useRef<string | null>(null);
+  const { temNovas, onScroll, scrollParaFim } = useAutoScrollMensagens(
+    scrollRef,
+    conversa?.id ?? null,
+    mensagens,
+  );
+
 
   const loadMensagens = useCallback(async (conversaId: string) => {
     const { data, error } = await supabase
