@@ -35,7 +35,7 @@ export async function lerEstadoDisjuntor(): Promise<EstadoValor> {
   try {
     const sb = await admin();
     const { data } = await sb.from("zapi_estado").select("valor").eq("chave", CHAVE).maybeSingle();
-    return ((data?.valor ?? {}) as EstadoValor) ?? {};
+    return (data?.valor ?? {}) as EstadoValor;
   } catch (e) {
     console.error("[disjuntor] falha ao ler estado:", e instanceof Error ? e.message : String(e));
     return {};
