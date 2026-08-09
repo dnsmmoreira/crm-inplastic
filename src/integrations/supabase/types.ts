@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      assistente_redacao_uso: {
+        Row: {
+          conversa_id: string | null
+          created_at: string
+          id: string
+          modo: string
+          usuario_id: string
+        }
+        Insert: {
+          conversa_id?: string | null
+          created_at?: string
+          id?: string
+          modo: string
+          usuario_id: string
+        }
+        Update: {
+          conversa_id?: string | null
+          created_at?: string
+          id?: string
+          modo?: string
+          usuario_id?: string
+        }
+        Relationships: []
+      }
       clientes: {
         Row: {
           ativo: boolean
