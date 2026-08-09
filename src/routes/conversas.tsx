@@ -43,6 +43,8 @@ import {
   listarVendedoresAtendimento,
 } from "@/lib/atendimento.functions";
 import { useAuth } from "@/hooks/use-auth";
+import { TemplatesButton } from "@/components/atendimento/TemplatesButton";
+
 import type { Database } from "@/integrations/supabase/types";
 
 type Conversa = Database["public"]["Tables"]["whatsapp_conversas"]["Row"];
