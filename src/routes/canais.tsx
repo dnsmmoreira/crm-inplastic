@@ -39,6 +39,7 @@ import {
 } from "@/lib/zapi-painel.functions";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Database } from "@/integrations/supabase/types";
+import { useAutoScrollMensagens } from "@/hooks/use-auto-scroll-mensagens";
 
 type Conversa = Database["public"]["Tables"]["whatsapp_conversas"]["Row"];
 type Mensagem = Database["public"]["Tables"]["whatsapp_mensagens"]["Row"];

@@ -43,6 +43,7 @@ import {
   listarVendedoresAtendimento,
 } from "@/lib/atendimento.functions";
 import { useAuth } from "@/hooks/use-auth";
+import { useAutoScrollMensagens } from "@/hooks/use-auto-scroll-mensagens";
 import { TemplatesButton } from "@/components/atendimento/TemplatesButton";
 import { IAButton, IAPreview, type ModoIA } from "@/components/atendimento/IAAssistButton";
 import { assistenteRedacao } from "@/lib/assistente-redacao.functions";

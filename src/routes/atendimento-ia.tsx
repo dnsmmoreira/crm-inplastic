@@ -25,6 +25,7 @@ import {
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
+import { useAutoScrollMensagens } from "@/hooks/use-auto-scroll-mensagens";
 import { DistribuirConversasDialog } from "@/components/atendimento/DistribuirConversasDialog";
 import type { Database } from "@/integrations/supabase/types";
 
