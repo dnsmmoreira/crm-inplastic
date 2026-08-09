@@ -33,6 +33,8 @@ type ZapiPayload = Record<string, unknown> & {
   text?: { message?: string };
   message?: string;
   messageId?: string;
+  instanceId?: string;
+
 };
 
 /**
