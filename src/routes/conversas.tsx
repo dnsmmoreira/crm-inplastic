@@ -474,10 +474,13 @@ function ChatPanel({
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [empresaLead, setEmpresaLead] = useState<string | null>(null);
+  const [iaLoading, setIaLoading] = useState(false);
+  const [iaPreview, setIaPreview] = useState<string | null>(null);
 
   const [acaoEmCurso, setAcaoEmCurso] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const send = useServerFn(sendConversaMessage);
+  const pedirIA = useServerFn(assistenteRedacao);
   const assumir = useServerFn(assumirConversa);
   const devolver = useServerFn(devolverParaIA);
   const encerrar = useServerFn(encerrarConversa);
