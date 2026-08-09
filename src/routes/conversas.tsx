@@ -479,7 +479,7 @@ function ChatPanel({
 
   const [acaoEmCurso, setAcaoEmCurso] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const [temNovas, setTemNovas] = useState(false);
+
   const send = useServerFn(sendConversaMessage);
   const pedirIA = useServerFn(assistenteRedacao);
   const assumir = useServerFn(assumirConversa);
