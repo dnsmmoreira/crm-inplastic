@@ -1,3 +1,9 @@
+/**
+ * DEPRECATED - Z-API desativada.
+ * Mantido apenas para absorver chamadas residuais sem gerar 405/retry infinito.
+ * Este endpoint APENAS grava o corpo bruto em `zapi_inbox`. Nao processa
+ * mensagem, nao aciona IA e nao envia nada. Dados historicos preservados.
+ */
 import { createFileRoute } from "@tanstack/react-router";
 
 const CORS = {
@@ -54,11 +60,11 @@ type ZapiPayload = Record<string, unknown> & {
  *   4) O trigger de banco atualiza `last_message_at` da conversa e
  *      `last_interaction_at` do lead vinculado (quando houver).
  */
-/** Resposta generica para metodos nao suportados (sem vazar informacao). */
+/** DEPRECATED: responde 200 a qualquer metodo para evitar retry infinito. */
 function metodoNaoPermitido() {
-  return new Response(JSON.stringify({ ok: false }), {
-    status: 405,
-    headers: { "Content-Type": "application/json", Allow: "POST, OPTIONS", ...CORS },
+  return new Response(JSON.stringify({ ok: true, deprecated: true }), {
+    status: 200,
+    headers: { "Content-Type": "application/json", ...CORS },
   });
 }
 
@@ -142,25 +148,8 @@ export const Route = createFileRoute("/api/public/zapi/webhook")({
             console.error("zapi_inbox insert failed:", inboxRes.error);
           }
 
-          // 2) Filtros de processamento (após o registro bruto).
-          if (payload.fromMe || payload.isGroup) {
-            return Response.json({ ok: true, ignored: true }, { headers: CORS });
-          }
-
-          // 3) Pipeline de entrada compartilhado (mesmo usado pelo Cloud API).
-          const { processarEntradaWhatsapp } = await import("@/lib/whatsapp-inbound.server");
-          const resultado = await processarEntradaWhatsapp({
-            phone,
-            message,
-            name,
-            externalId,
-            tipo: norm.tipo,
-            midia: norm.midia ?? null,
-            tag: "zapi-webhook",
-          });
-
-          return Response.json(resultado, { headers: CORS });
-
+          // DEPRECATED: nenhum processamento a partir daqui. Sem IA, sem envio.
+          return Response.json({ ok: true, deprecated: true }, { headers: CORS });
 
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);
