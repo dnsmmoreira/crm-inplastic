@@ -9,6 +9,8 @@
  * opt-out, handoff de mídia e aviso ao n8n. Nada foi alterado.
  */
 
+import type { MensagemTipo } from "@/lib/zapi-normalize";
+
 function onlyDigits(s: string) {
   return String(s ?? "").replace(/\D/g, "");
 }
@@ -24,7 +26,7 @@ export type EntradaWhatsapp = {
   message: string;
   name: string | null;
   externalId: string | null;
-  tipo: string;
+  tipo: MensagemTipo;
   midia: unknown | null;
   /** Prefixo de log, ex.: "zapi-webhook" ou "wa-cloud-webhook". */
   tag: string;
