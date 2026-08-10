@@ -17,8 +17,9 @@ import { useAuth, type AppRole } from "@/hooks/use-auth";
 import { createUser } from "@/lib/invites.functions";
 import { listFila, addFilaMember, removeFilaMember, toggleFilaAtivo, reorderFila } from "@/lib/fila.functions";
 import {
-  listUsuarios, setUsuarioAtivo, forcarRedefinicaoSenha, type UsuarioRow,
+  listUsuarios, setUsuarioAtivo, type UsuarioRow,
 } from "@/lib/usuarios.functions";
+import { DefinirSenhaDialog } from "@/components/usuarios/DefinirSenhaDialog";
 import { UsuarioEditDialog } from "@/components/usuarios/UsuarioEditDialog";
 import { ExcluirUsuarioDialog } from "@/components/usuarios/ExcluirUsuarioDialog";
 import { TelegramVinculoButton } from "@/components/usuarios/TelegramVinculoButton";
@@ -41,7 +42,6 @@ function UsuariosPage() {
   const { user, loading } = useAuth();
   const listar = useServerFn(listUsuarios);
   const toggleAtivo = useServerFn(setUsuarioAtivo);
-  const resetSenha = useServerFn(forcarRedefinicaoSenha);
   const removerFila = useServerFn(removeFilaMember);
 
   const [rows, setRows] = useState<UsuarioRow[] | null>(null);
@@ -52,6 +52,7 @@ function UsuariosPage() {
   const [saving, setSaving] = useState<string | null>(null);
   const [editando, setEditando] = useState<UsuarioRow | null>(null);
   const [excluindo, setExcluindo] = useState<UsuarioRow | null>(null);
+  const [definindoSenha, setDefinindoSenha] = useState<UsuarioRow | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -237,9 +238,9 @@ function UsuariosPage() {
                     <Button
                       size="icon"
                       variant="ghost"
-                      title="Redefinir senha"
+                      title="Definir senha"
                       disabled={saving === r.id || !!r.deletedAt}
-                      onClick={() => acao(r.id, () => resetSenha({ data: { userId: r.id } }), "Senha zerada — use /primeiro-acesso")}
+                      onClick={() => setDefinindoSenha(r)}
                     >
                       <KeyRound className="h-4 w-4" />
                     </Button>
@@ -275,6 +276,12 @@ function UsuariosPage() {
         open={!!editando}
         onOpenChange={(v) => { if (!v) setEditando(null); }}
         onSaved={load}
+      />
+      <DefinirSenhaDialog
+        usuario={definindoSenha}
+        open={!!definindoSenha}
+        onOpenChange={(v) => { if (!v) setDefinindoSenha(null); }}
+        onDone={load}
       />
       <ExcluirUsuarioDialog
         usuario={excluindo}

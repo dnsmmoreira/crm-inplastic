@@ -359,6 +359,12 @@ function AuthGate() {
     return <RedirectToAuth />;
   }
 
+  // Troca de senha obrigatória: bloqueia qualquer outra rota até concluir.
+  if (user.mustChangePassword && pathname !== "/trocar-senha") {
+    return <RedirectTo to="/trocar-senha" />;
+  }
+  if (pathname === "/trocar-senha") return <Outlet />;
+
   return (
     <>
       <AppShell><Outlet /></AppShell>
@@ -368,10 +374,14 @@ function AuthGate() {
 }
 
 function RedirectToAuth() {
+  return <RedirectTo to="/auth" />;
+}
+
+function RedirectTo({ to }: { to: string }) {
   const router = useRouter();
   useEffect(() => {
-    void router.navigate({ to: "/auth", replace: true });
-  }, [router]);
+    void router.navigate({ to, replace: true });
+  }, [router, to]);
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
       <div className="text-sm text-muted-foreground">Redirecionando…</div>
