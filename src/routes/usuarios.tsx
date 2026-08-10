@@ -17,7 +17,7 @@ import { useAuth, type AppRole } from "@/hooks/use-auth";
 import { createUser } from "@/lib/invites.functions";
 import { listFila, addFilaMember, removeFilaMember, toggleFilaAtivo, reorderFila } from "@/lib/fila.functions";
 import {
-  listUsuarios, setUsuarioAtivo, forcarRedefinicaoSenha, type UsuarioRow,
+  listUsuarios, setUsuarioAtivo, type UsuarioRow,
 } from "@/lib/usuarios.functions";
 import { DefinirSenhaDialog } from "@/components/usuarios/DefinirSenhaDialog";
 import { UsuarioEditDialog } from "@/components/usuarios/UsuarioEditDialog";
@@ -42,7 +42,6 @@ function UsuariosPage() {
   const { user, loading } = useAuth();
   const listar = useServerFn(listUsuarios);
   const toggleAtivo = useServerFn(setUsuarioAtivo);
-  const resetSenha = useServerFn(forcarRedefinicaoSenha);
   const removerFila = useServerFn(removeFilaMember);
 
   const [rows, setRows] = useState<UsuarioRow[] | null>(null);
