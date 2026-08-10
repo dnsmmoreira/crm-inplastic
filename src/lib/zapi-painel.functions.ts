@@ -288,7 +288,11 @@ export const diagnosticoCloud = createServerFn({ method: "POST" })
         : null;
     console.log(`WA-CLOUD diagnostico http_status=${r.http_status ?? "-"} erro_codigo=${codigo ?? "-"}`);
 
-    return { configurado: r.configurado, http_status: r.http_status, dados: r.dados };
+    return {
+      configurado: r.configurado,
+      http_status: r.http_status,
+      dados_json: JSON.stringify(r.dados ?? null),
+    };
   });
 
 /**
