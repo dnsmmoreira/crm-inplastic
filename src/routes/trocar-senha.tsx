@@ -47,7 +47,7 @@ function TrocarSenhaPage() {
       }
       const { error } = await supabase.auth.updateUser({ password: senha });
       if (error) throw new Error(error.message);
-      await concluir({ data: {} });
+      await concluir(undefined as never);
       await refresh();
       toast.success("Senha atualizada!");
     } catch (err) {
