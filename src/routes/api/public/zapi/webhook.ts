@@ -117,8 +117,7 @@ export const Route = createFileRoute("/api/public/zapi/webhook")({
           const phoneRaw = payload.phone ?? "";
           const phone = onlyDigits(phoneRaw);
 
-          const { normalizarPayloadZapi, TIPOS_COM_RESPOSTA_AUTOMATICA, TIPOS_COM_HANDOFF } =
-            await import("@/lib/zapi-normalize");
+          const { normalizarPayloadZapi } = await import("@/lib/zapi-normalize");
           const norm = normalizarPayloadZapi(payload as Record<string, unknown>);
           const message = norm.texto;
 

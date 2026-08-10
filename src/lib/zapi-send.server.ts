@@ -326,6 +326,10 @@ export async function sendZapiText(
     await sleep(JITTER_MIN_MS + Math.floor(Math.random() * (JITTER_MAX_MS - JITTER_MIN_MS)));
   }
 
+  // (Driver) `zapi` (padrão) mantém o comportamento atual; `cloud` usa a
+  // WhatsApp Cloud API oficial da Meta no ponto final do envio.
+  const driver = (process.env.WHATSAPP_DRIVER ?? "zapi").trim().toLowerCase();
+
   const url = `https://api.z-api.io/instances/${instanceId}/token/${token}/send-text`;
 
   /** (8) Idempotência: já existe registro deste phone+hash nos últimos 60s? */
@@ -353,6 +357,40 @@ export async function sendZapiText(
       const espera = RETRY_BACKOFF_MS[tentativa - 2]!;
       console.warn(`${tag} retry em ${espera}ms (tentativa=${tentativa}) motivo=${ultimoErro.message}`);
       await sleep(espera);
+    }
+
+    // (Driver) Quando WHATSAPP_DRIVER=cloud, o envio final sai pela Cloud API
+    // oficial da Meta. Todas as guardas acima permanecem idênticas.
+    if (driver === "cloud") {
+      const { cloudSendText } = await import("./whatsapp-cloud.server");
+      const r = await cloudSendText(phone, message);
+      if (!r.ok) {
+        const erro = new Error(`WhatsApp Cloud API${r.status ? ` [${r.status}]` : ""}: ${r.error ?? "falha"}`);
+        console.error(`${tag} tentativa=${tentativa} cloud send falhou: ${erro.message}`);
+        if (r.status !== undefined && RETRY_STATUS.has(r.status)) {
+          ultimoErro = erro;
+          continue;
+        }
+        if (r.status === undefined) {
+          ultimoErro = erro; // falha de rede/timeout → transitório
+          continue;
+        }
+        throw erro;
+      }
+
+      const { error: regErrCloud } = await supabaseAdmin
+        .from("zapi_envios")
+        .insert({ canal, phone, ctx: ctx ?? null, mensagem_hash: mensagemHash });
+      if (regErrCloud) console.error(`${tag} falha ao registrar envio:`, regErrCloud.message);
+
+      return {
+        ok: true,
+        status: r.status ?? 200,
+        body: "",
+        phone,
+        messageId: r.messageId ?? null,
+        zaapId: null,
+      };
     }
 
     let res: Response;
