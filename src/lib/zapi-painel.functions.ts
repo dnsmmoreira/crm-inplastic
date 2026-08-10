@@ -271,3 +271,48 @@ export const testarEnvioCloud = createServerFn({ method: "POST" })
       telefone_mascarado: mascararPhone(phone),
     };
   });
+
+/** (A) Diagnóstico somente leitura do número na Cloud API — somente admin. */
+export const diagnosticoCloud = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    await exigirAdmin(supabase, userId);
+
+    const { cloudDiagnosticoNumero } = await import("./whatsapp-cloud.server");
+    const r = await cloudDiagnosticoNumero();
+
+    const codigo =
+      r.dados && typeof r.dados === "object" && "error" in (r.dados as Record<string, unknown>)
+        ? ((r.dados as { error?: { code?: number } }).error?.code ?? null)
+        : null;
+    console.log(`WA-CLOUD diagnostico http_status=${r.http_status ?? "-"} erro_codigo=${codigo ?? "-"}`);
+
+    return { configurado: r.configurado, http_status: r.http_status, dados: r.dados };
+  });
+
+/**
+ * (B) Registro do número na Cloud API — somente admin.
+ * O PIN vem do formulário, vai direto para a Graph API e não é gravado nem logado.
+ */
+export const registrarNumeroCloud = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) => z.object({ pin: z.string().regex(/^\d{6}$/) }).parse(data))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await exigirAdmin(supabase, userId);
+
+    const { cloudRegistrarNumero } = await import("./whatsapp-cloud.server");
+    const r = await cloudRegistrarNumero(data.pin);
+
+    console.log(
+      `WA-CLOUD registro http_status=${r.http_status ?? "-"} erro_codigo=${r.erro_codigo ?? "-"}`,
+    );
+
+    return {
+      ok: r.ok,
+      http_status: r.http_status,
+      erro_codigo: r.erro_codigo,
+      erro_mensagem: r.erro_mensagem,
+    };
+  });
