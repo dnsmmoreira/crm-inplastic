@@ -1,4 +1,6 @@
 /**
+ * DEPRECATED - Z-API desativada. Apenas grava o corpo bruto em `zapi_eventos`.
+ * Responde 200 a qualquer metodo para evitar 405/retry infinito.
  * (E3) Webhook de observabilidade da Z-API — instância desconectada.
  */
 import { createFileRoute } from "@tanstack/react-router";
@@ -10,9 +12,9 @@ const CORS = {
 } as const;
 
 function metodoNaoPermitido() {
-  return new Response(JSON.stringify({ ok: false }), {
-    status: 405,
-    headers: { "Content-Type": "application/json", Allow: "POST, OPTIONS", ...CORS },
+  return new Response(JSON.stringify({ ok: true, deprecated: true }), {
+    status: 200,
+    headers: { "Content-Type": "application/json", ...CORS },
   });
 }
 
