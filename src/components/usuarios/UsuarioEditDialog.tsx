@@ -185,6 +185,7 @@ export function UsuarioEditDialog({
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
@@ -447,12 +448,13 @@ export function UsuarioEditDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
+    </Dialog>
       <DefinirSenhaDialog
         usuario={{ id: usuario.id, name: usuario.name, email: usuario.email }}
         open={senhaOpen}
         onOpenChange={setSenhaOpen}
         onDone={onSaved}
       />
-    </Dialog>
+    </>
   );
 }
