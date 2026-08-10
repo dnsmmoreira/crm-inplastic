@@ -19,13 +19,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import {
   updateUsuario,
+  forcarRedefinicaoSenha,
   encerrarSessoes,
   listAuditoriaUsuario,
   PERMISSAO_KEYS,
   type UsuarioRow,
   type PermissoesUsuario,
 } from "@/lib/usuarios.functions";
-import { DefinirSenhaDialog } from "@/components/usuarios/DefinirSenhaDialog";
 
 const FUSOS = [
   "America/Sao_Paulo",
@@ -81,6 +81,7 @@ export function UsuarioEditDialog({
   onSaved: () => Promise<void> | void;
 }) {
   const save = useServerFn(updateUsuario);
+  const resetSenha = useServerFn(forcarRedefinicaoSenha);
   const encerrar = useServerFn(encerrarSessoes);
   const loadAudit = useServerFn(listAuditoriaUsuario);
 
@@ -102,7 +103,6 @@ export function UsuarioEditDialog({
   const [perms, setPerms] = useState<PermissoesUsuario | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [audit, setAudit] = useState<AuditRow[] | null>(null);
-  const [senhaOpen, setSenhaOpen] = useState(false);
 
   useEffect(() => {
     if (!usuario) return;
@@ -174,6 +174,19 @@ export function UsuarioEditDialog({
     }
   };
 
+  const handleReset = async () => {
+    setBusy("reset");
+    try {
+      await resetSenha({ data: { userId: usuario.id } });
+      toast.success("Senha zerada", {
+        description: "Peça ao usuário para definir a senha em /primeiro-acesso.",
+      });
+      await onSaved();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao redefinir senha");
+    } finally { setBusy(null); }
+  };
+
   const handleEncerrar = async () => {
     setBusy("sessions");
     try {
@@ -185,7 +198,6 @@ export function UsuarioEditDialog({
   };
 
   return (
-    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
@@ -299,13 +311,11 @@ export function UsuarioEditDialog({
 
             <div className="flex items-center justify-between rounded-lg border p-3">
               <div>
-                <div className="text-sm font-medium">Definir senha</div>
-                <p className="text-xs text-muted-foreground">
-                  Define uma senha provisória; o usuário é obrigado a trocá-la no próximo login.
-                </p>
+                <div className="text-sm font-medium">Forçar redefinição de senha</div>
+                <p className="text-xs text-muted-foreground">Zera a senha atual; o usuário recria em /primeiro-acesso.</p>
               </div>
-              <Button variant="outline" size="sm" disabled={busy !== null} onClick={() => setSenhaOpen(true)}>
-                Definir senha
+              <Button variant="outline" size="sm" disabled={busy !== null} onClick={handleReset}>
+                {busy === "reset" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Redefinir"}
               </Button>
             </div>
 
@@ -449,12 +459,5 @@ export function UsuarioEditDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-      <DefinirSenhaDialog
-        usuario={{ id: usuario.id, name: usuario.name, email: usuario.email }}
-        open={senhaOpen}
-        onOpenChange={setSenhaOpen}
-        onDone={onSaved}
-      />
-    </>
   );
 }
