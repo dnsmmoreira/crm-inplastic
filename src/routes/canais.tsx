@@ -38,6 +38,9 @@ import {
   diagnosticoCanaisInternos,
   enviarAlertaTeste,
   testarEnvioCloud,
+  diagnosticoCloud,
+  registrarNumeroCloud,
+
 } from "@/lib/zapi-painel.functions";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Database } from "@/integrations/supabase/types";
