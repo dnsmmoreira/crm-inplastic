@@ -37,6 +37,7 @@ import {
   removerOptout,
   diagnosticoCanaisInternos,
   enviarAlertaTeste,
+  testarEnvioCloud,
 } from "@/lib/zapi-painel.functions";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Database } from "@/integrations/supabase/types";
@@ -728,11 +729,48 @@ function PainelSaudeWhatsapp() {
   const remover = useServerFn(removerOptout);
   const diagnosticar = useServerFn(diagnosticoCanaisInternos);
   const testar = useServerFn(enviarAlertaTeste);
+  const testarCloud = useServerFn(testarEnvioCloud);
   const [data, setData] = useState<PainelData | null>(null);
   const [diag, setDiag] = useState<DiagCanais | null>(null);
   const [testando, setTestando] = useState(false);
   const [resultadoTeste, setResultadoTeste] = useState<string | null>(null);
   const [negado, setNegado] = useState(false);
+  const [cloudTel, setCloudTel] = useState("");
+  const [cloudTemplate, setCloudTemplate] = useState("hello_world");
+  const [cloudIdioma, setCloudIdioma] = useState("en_US");
+  const [cloudEnviando, setCloudEnviando] = useState(false);
+  const [cloudResultado, setCloudResultado] = useState<string | null>(null);
+
+  async function handleTesteCloud() {
+    const tel = cloudTel.replace(/\D/g, "");
+    if (tel.length < 10) {
+      toast.error("Informe o telefone com DDD (e DDI, se estrangeiro).");
+      return;
+    }
+    setCloudEnviando(true);
+    setCloudResultado(null);
+    try {
+      const r = await testarCloud({
+        data: {
+          telefone: tel,
+          template: cloudTemplate.trim() || "hello_world",
+          idioma: cloudIdioma.trim() || "en_US",
+        },
+      });
+      const resumo = `ok=${r.ok} · http=${r.http_status ?? "-"} · id=${r.message_id ?? "-"}${
+        r.erro_codigo ? ` · código=${r.erro_codigo}` : ""
+      }${r.erro_mensagem ? ` · ${r.erro_mensagem}` : ""}`;
+      setCloudResultado(resumo);
+      if (r.ok) toast.success("Envio de teste aceito pela Meta");
+      else toast.error("Envio de teste falhou", { description: r.erro_mensagem ?? "sem detalhe" });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setCloudResultado(`Falhou — ${msg}`);
+      toast.error("Envio de teste bloqueado", { description: msg });
+    } finally {
+      setCloudEnviando(false);
+    }
+  }
 
 
   const load = useCallback(async () => {
@@ -820,6 +858,46 @@ function PainelSaudeWhatsapp() {
           <div className="text-lg font-semibold">{data.envios.ultimaHora}</div>
         </div>
       </div>
+
+      <div className="space-y-2 rounded-md border p-3">
+        <div className="text-xs font-medium">Testar WhatsApp Cloud (Meta)</div>
+        <div className="grid grid-cols-3 gap-2">
+          <input
+            className="h-8 rounded-md border bg-background px-2 text-[11px]"
+            placeholder="Telefone (DDI+DDD)"
+            value={cloudTel}
+            onChange={(e) => setCloudTel(e.target.value)}
+          />
+          <input
+            className="h-8 rounded-md border bg-background px-2 text-[11px]"
+            placeholder="hello_world"
+            value={cloudTemplate}
+            onChange={(e) => setCloudTemplate(e.target.value)}
+          />
+          <input
+            className="h-8 rounded-md border bg-background px-2 text-[11px]"
+            placeholder="en_US"
+            value={cloudIdioma}
+            onChange={(e) => setCloudIdioma(e.target.value)}
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-[11px]"
+            disabled={cloudEnviando}
+            onClick={() => void handleTesteCloud()}
+          >
+            {cloudEnviando ? "Enviando…" : "Testar WhatsApp Cloud"}
+          </Button>
+          {cloudResultado && (
+            <span className="text-[11px] text-muted-foreground break-all">{cloudResultado}</span>
+          )}
+        </div>
+      </div>
+
+
 
       <div className="space-y-1">
         <div className="text-xs font-medium">Últimos envios</div>

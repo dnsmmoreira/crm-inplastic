@@ -167,7 +167,16 @@ export async function sendZapiText(
   message: string,
   ctx?: string,
   canal: ZapiCanal = "comercial",
-  opts?: { bypassGuards?: boolean; origem?: ZapiOrigem },
+  opts?: {
+    bypassGuards?: boolean;
+    origem?: ZapiOrigem;
+    /**
+     * Força o envio como template aprovado com nome/idioma explícitos e SEM
+     * parâmetros de corpo (usado pelo teste administrativo, ex.: hello_world).
+     * Todas as guardas continuam valendo normalmente.
+     */
+    templateOverride?: { name: string; lang: string };
+  },
 ): Promise<ZapiSendResult> {
   const tag = ctx ? `[wa:${canal}:${ctx}]` : `[wa:${canal}]`;
   const phone = normalizePhoneBR(phoneRaw);
@@ -304,13 +313,15 @@ export async function sendZapiText(
    * - `resposta_inbound` e `manual_admin` só ocorrem com inbound recente → texto.
    * - `iniciado_sistema`: consulta a janela de 24h; fechada → template aprovado.
    */
-  let usarTemplate = false;
-  if (origem === "iniciado_sistema") {
+  const override = opts?.templateOverride;
+  let usarTemplate = !!override;
+  if (!override && origem === "iniciado_sistema") {
     usarTemplate = !(await janelaAtendimentoAberta(phone));
   }
 
-  const templateName = (process.env.META_TEMPLATE_NAME ?? "").trim();
-  const templateLang = (process.env.META_TEMPLATE_LANG ?? "pt_BR").trim() || "pt_BR";
+  const templateName = override?.name ?? (process.env.META_TEMPLATE_NAME ?? "").trim();
+  const templateLang =
+    override?.lang ?? ((process.env.META_TEMPLATE_LANG ?? "pt_BR").trim() || "pt_BR");
   if (usarTemplate && !templateName) {
     bloquear(tag, "fora_janela_24h_sem_template", phone);
     throw new Error(
@@ -350,9 +361,14 @@ export async function sendZapiText(
     }
 
     const r = usarTemplate
-      ? await cloudSendTemplate(phone, templateName, templateLang, [
-          { type: "body", parameters: [{ type: "text", text: message.slice(0, 900) }] },
-        ])
+      ? await cloudSendTemplate(
+          phone,
+          templateName,
+          templateLang,
+          override
+            ? []
+            : [{ type: "body", parameters: [{ type: "text", text: message.slice(0, 900) }] }],
+        )
       : await cloudSendText(phone, message);
 
     console.log(
