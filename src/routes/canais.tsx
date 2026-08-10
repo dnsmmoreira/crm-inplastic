@@ -733,7 +733,61 @@ function PainelSaudeWhatsapp() {
   const diagnosticar = useServerFn(diagnosticoCanaisInternos);
   const testar = useServerFn(enviarAlertaTeste);
   const testarCloud = useServerFn(testarEnvioCloud);
+  const diagCloudFn = useServerFn(diagnosticoCloud);
+  const registrarCloudFn = useServerFn(registrarNumeroCloud);
+  const [diagCloudCarregando, setDiagCloudCarregando] = useState(false);
+  const [diagCloudResultado, setDiagCloudResultado] = useState<string | null>(null);
+  const [pinCloud, setPinCloud] = useState("");
+  const [registrando, setRegistrando] = useState(false);
+  const [registroResultado, setRegistroResultado] = useState<string | null>(null);
+
+  async function handleDiagnosticoCloud() {
+    setDiagCloudCarregando(true);
+    setDiagCloudResultado(null);
+    try {
+      const r = await diagCloudFn();
+      let corpo = r.dados_json;
+      try {
+        corpo = JSON.stringify(JSON.parse(r.dados_json), null, 2);
+      } catch {
+        /* mantém string bruta */
+      }
+      setDiagCloudResultado(
+        `http=${r.http_status ?? "-"} · configurado=${r.configurado}\n${corpo}`,
+      );
+    } catch (e) {
+      setDiagCloudResultado(`Falhou — ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setDiagCloudCarregando(false);
+    }
+  }
+
+  async function handleRegistrarCloud() {
+    if (!/^\d{6}$/.test(pinCloud)) {
+      toast.error("Informe um PIN de 6 dígitos.");
+      return;
+    }
+    setRegistrando(true);
+    setRegistroResultado(null);
+    try {
+      const r = await registrarCloudFn({ data: { pin: pinCloud } });
+      setPinCloud("");
+      setRegistroResultado(
+        `ok=${r.ok} · http=${r.http_status ?? "-"}${r.erro_codigo ? ` · código=${r.erro_codigo}` : ""}${
+          r.erro_mensagem ? ` · ${r.erro_mensagem}` : ""
+        }`,
+      );
+      if (r.ok) toast.success("Número registrado na Cloud API");
+      else toast.error("Registro falhou", { description: r.erro_mensagem ?? "sem detalhe" });
+    } catch (e) {
+      setRegistroResultado(`Falhou — ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setRegistrando(false);
+    }
+  }
+
   const [data, setData] = useState<PainelData | null>(null);
+
   const [diag, setDiag] = useState<DiagCanais | null>(null);
   const [testando, setTestando] = useState(false);
   const [resultadoTeste, setResultadoTeste] = useState<string | null>(null);
