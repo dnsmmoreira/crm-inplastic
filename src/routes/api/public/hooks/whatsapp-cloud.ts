@@ -58,9 +58,11 @@ export const Route = createFileRoute("/api/public/hooks/whatsapp-cloud")({
       GET: async ({ request }) => {
         const url = new URL(request.url);
         const mode = url.searchParams.get("hub.mode");
-        const token = url.searchParams.get("hub.verify_token") ?? "";
+        const tokenRecebido = url.searchParams.get("hub.verify_token") ?? "";
+        const token = tokenRecebido.trim();
         const challenge = url.searchParams.get("hub.challenge") ?? "";
-        const esperado = (process.env.META_WEBHOOK_VERIFY_TOKEN ?? "").trim();
+        const secretEsperado = process.env.META_WEBHOOK_VERIFY_TOKEN;
+        const esperado = (secretEsperado ?? "").trim();
 
         if (mode === "subscribe" && esperado && compararTempoConstante(token, esperado)) {
           return new Response(challenge, {
@@ -68,7 +70,17 @@ export const Route = createFileRoute("/api/public/hooks/whatsapp-cloud")({
             headers: { "Content-Type": "text/plain; charset=utf-8" },
           });
         }
-        console.warn("[wa-cloud-webhook] verificação recusada");
+        if (mode !== "subscribe") {
+          console.warn("[wa-cloud-webhook] verificação recusada motivo=modo_invalido");
+        } else if (!secretEsperado || !esperado) {
+          console.warn("[wa-cloud-webhook] verificação recusada motivo=secret_ausente");
+        } else {
+          console.warn("[wa-cloud-webhook] verificação recusada motivo=token_divergente", {
+            len_esperado: secretEsperado.length,
+            len_recebido: tokenRecebido.length,
+            igual_apos_trim: compararTempoConstante(tokenRecebido.trim(), secretEsperado.trim()),
+          });
+        }
         return new Response("Forbidden", { status: 403, headers: { "Content-Type": "text/plain" } });
       },
 
