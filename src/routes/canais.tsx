@@ -897,7 +897,53 @@ function PainelSaudeWhatsapp() {
           {cloudResultado && (
             <span className="text-[11px] text-muted-foreground break-all">{cloudResultado}</span>
           )}
+      </div>
+
+      <div className="space-y-2 rounded-md border p-3">
+        <div className="text-xs font-medium">Número na Cloud API (Meta)</div>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-[11px]"
+            disabled={diagCloudCarregando}
+            onClick={() => void handleDiagnosticoCloud()}
+          >
+            {diagCloudCarregando ? "Consultando…" : "Diagnóstico Cloud"}
+          </Button>
         </div>
+        {diagCloudResultado && (
+          <pre className="max-h-48 overflow-auto rounded-md bg-muted p-2 text-[10px] whitespace-pre-wrap break-all">
+            {diagCloudResultado}
+          </pre>
+        )}
+        <div className="flex items-center gap-2">
+          <input
+            type="password"
+            inputMode="numeric"
+            maxLength={6}
+            className="h-8 w-32 rounded-md border bg-background px-2 text-[11px]"
+            placeholder="PIN (6 dígitos)"
+            value={pinCloud}
+            onChange={(e) => setPinCloud(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            autoComplete="off"
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-[11px]"
+            disabled={registrando}
+            onClick={() => void handleRegistrarCloud()}
+          >
+            {registrando ? "Registrando…" : "Registrar número na Cloud API"}
+          </Button>
+          {registroResultado && (
+            <span className="text-[11px] text-muted-foreground break-all">{registroResultado}</span>
+          )}
+        </div>
+      </div>
+
+
       </div>
 
 
