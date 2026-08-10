@@ -37,6 +37,7 @@ import {
   removerOptout,
   diagnosticoCanaisInternos,
   enviarAlertaTeste,
+  testarEnvioCloud,
 } from "@/lib/zapi-painel.functions";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Database } from "@/integrations/supabase/types";
