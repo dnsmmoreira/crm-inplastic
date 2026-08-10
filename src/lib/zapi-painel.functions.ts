@@ -170,3 +170,104 @@ export const enviarAlertaTeste = createServerFn({ method: "POST" })
     );
     return r;
   });
+
+/**
+ * Envio de TESTE pela Cloud API oficial (somente admin).
+ * Usa o MESMO driver de saída (`sendZapiText`), com todas as guardas ativas,
+ * e grava conversa/mensagem pelo mesmo fluxo dos envios normais.
+ */
+export const testarEnvioCloud = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) =>
+    z
+      .object({
+        telefone: z.string().min(8).max(20),
+        template: z.string().trim().min(1).max(80).optional(),
+        idioma: z.string().trim().min(2).max(10).optional(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await exigirAdmin(supabase, userId);
+
+    const template = data.template?.trim() || "hello_world";
+    const idioma = data.idioma?.trim() || "en_US";
+
+    let phone = String(data.telefone).replace(/\D/g, "");
+    if (!phone.startsWith("55") && phone.length <= 11) phone = `55${phone}`;
+    if (phone.length < 10) throw new Error("Telefone inválido.");
+
+    const conteudo = `[teste] template=${template} (${idioma})`;
+
+    let ok = false;
+    let httpStatus: number | null = null;
+    let messageId: string | null = null;
+    let erroCodigo: string | null = null;
+    let erroMensagem: string | null = null;
+
+    try {
+      const { sendZapiText } = await import("./whatsapp-send.server");
+      const r = await sendZapiText(phone, conteudo, "teste-cloud", "comercial", {
+        templateOverride: { name: template, lang: idioma },
+      });
+      ok = r.ok;
+      httpStatus = r.status ?? null;
+      messageId = r.messageId ?? null;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      erroMensagem = msg.slice(0, 500);
+      const mStatus = msg.match(/\[(\d{3})\]/);
+      if (mStatus) httpStatus = Number(mStatus[1]);
+      const mCode = msg.match(/"code"\s*:\s*(\d+)/);
+      if (mCode) erroCodigo = mCode[1] ?? null;
+    }
+
+    // Log único, sem nenhum valor de token/secret.
+    console.log(
+      `WA-CLOUD teste_envio http_status=${httpStatus ?? "-"} message_id=${messageId ?? "-"} erro_codigo=${erroCodigo ?? "-"}`,
+    );
+
+    if (ok) {
+      // Persistência pelo fluxo existente: conversa + mensagem de saída.
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: existente } = await supabaseAdmin
+        .from("whatsapp_conversas")
+        .select("id")
+        .eq("phone", phone)
+        .maybeSingle();
+      let conversaId = existente?.id ?? null;
+      if (!conversaId) {
+        const { data: criada } = await supabaseAdmin
+          .from("whatsapp_conversas")
+          .insert({
+            phone,
+            name: null,
+            status: "humano_atendendo",
+            ia_ativa: false,
+            atribuido_para: userId,
+          })
+          .select("id")
+          .single();
+        conversaId = criada?.id ?? null;
+      }
+      if (conversaId) {
+        await supabaseAdmin.from("whatsapp_mensagens").insert({
+          conversa_id: conversaId,
+          direcao: "saida",
+          autor: "vendedor",
+          conteudo,
+          usuario_id: userId,
+        });
+      }
+    }
+
+    return {
+      ok,
+      http_status: httpStatus,
+      message_id: messageId,
+      erro_codigo: erroCodigo,
+      erro_mensagem: erroMensagem,
+      telefone_mascarado: mascararPhone(phone),
+    };
+  });
