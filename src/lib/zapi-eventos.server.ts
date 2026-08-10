@@ -44,8 +44,11 @@ export async function tratarEventoZapi(request: Request, tipo: TipoEventoZapi) {
   }
 
   const url = new URL(request.url);
-  const tokenRecebido =
-    (url.searchParams.get("token") ?? request.headers.get("x-zapi-token") ?? "").trim();
+  const tokenRecebido = (
+    url.searchParams.get("token") ??
+    request.headers.get("x-zapi-token") ??
+    ""
+  ).trim();
   if (!tokenRecebido || !compararTempoConstante(tokenRecebido, secret)) {
     const origem =
       request.headers.get("cf-connecting-ip") ??

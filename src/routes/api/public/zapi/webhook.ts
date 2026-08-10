@@ -34,7 +34,6 @@ function compararTempoConstante(a: string, b: string) {
   return diff === 0;
 }
 
-
 type ZapiPayload = Record<string, unknown> & {
   type?: string;
   phone?: string;
@@ -46,7 +45,6 @@ type ZapiPayload = Record<string, unknown> & {
   message?: string;
   messageId?: string;
   instanceId?: string;
-
 };
 
 /**
@@ -89,8 +87,11 @@ export const Route = createFileRoute("/api/public/zapi/webhook")({
         }
 
         const url = new URL(request.url);
-        const tokenRecebido =
-          (url.searchParams.get("token") ?? request.headers.get("x-zapi-token") ?? "").trim();
+        const tokenRecebido = (
+          url.searchParams.get("token") ??
+          request.headers.get("x-zapi-token") ??
+          ""
+        ).trim();
 
         if (!tokenRecebido || !compararTempoConstante(tokenRecebido, secret)) {
           const origem =
@@ -119,7 +120,6 @@ export const Route = createFileRoute("/api/public/zapi/webhook")({
             });
           }
 
-
           const phoneRaw = payload.phone ?? "";
           const phone = onlyDigits(phoneRaw);
 
@@ -128,9 +128,10 @@ export const Route = createFileRoute("/api/public/zapi/webhook")({
           const message = norm.texto;
 
           const name = payload.senderName || payload.chatName || null;
-          const externalId = typeof payload.messageId === "string" && payload.messageId.trim() !== ""
-            ? payload.messageId
-            : null;
+          const externalId =
+            typeof payload.messageId === "string" && payload.messageId.trim() !== ""
+              ? payload.messageId
+              : null;
 
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
           const rawJson = JSON.parse(JSON.stringify(payload)) as Record<string, unknown>;
@@ -150,7 +151,6 @@ export const Route = createFileRoute("/api/public/zapi/webhook")({
 
           // DEPRECATED: nenhum processamento a partir daqui. Sem IA, sem envio.
           return Response.json({ ok: true, deprecated: true }, { headers: CORS });
-
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);
           console.error("zapi webhook error:", msg);

@@ -103,7 +103,10 @@ async function registrarAlertaIndisponivel(canal: ZapiCanal, detalhe: string) {
       { telegramChatId: chatId, bypassGuards: true },
     );
   } catch (e) {
-    console.error("[wa:alerta] falha ao registrar/enviar alerta:", e instanceof Error ? e.message : String(e));
+    console.error(
+      "[wa:alerta] falha ao registrar/enviar alerta:",
+      e instanceof Error ? e.message : String(e),
+    );
   }
 }
 
@@ -179,7 +182,8 @@ export async function sendZapiText(
     );
   }
 
-  const { cloudEnabled, cloudSendText, cloudSendTemplate } = await import("./whatsapp-cloud.server");
+  const { cloudEnabled, cloudSendText, cloudSendTemplate } =
+    await import("./whatsapp-cloud.server");
 
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const mensagemHash = await hashMensagem(message);
@@ -191,7 +195,9 @@ export async function sendZapiText(
       const { envioAutomaticoPausado } = await import("./zapi-disjuntor.server");
       if (await envioAutomaticoPausado()) {
         bloquear(tag, "disjuntor_aberto", phone);
-        throw new Error("Envios automaticos pausados temporariamente (disjuntor). Tente mais tarde.");
+        throw new Error(
+          "Envios automaticos pausados temporariamente (disjuntor). Tente mais tarde.",
+        );
       }
     }
 
@@ -250,7 +256,9 @@ export async function sendZapiText(
       .gte("created_at", isoDesde(JANELA_CANAL_MIN_MS));
     if ((cCanalMin ?? 0) >= LIMITE_CANAL_MIN) {
       bloquear(tag, "rate_limit_canal_minuto", phone);
-      throw new Error("Limite de envios por minuto atingido neste canal. Tente novamente em instantes.");
+      throw new Error(
+        "Limite de envios por minuto atingido neste canal. Tente novamente em instantes.",
+      );
     }
 
     // (3) Rate limit: canal por 24h
@@ -329,11 +337,15 @@ export async function sendZapiText(
   for (let tentativa = 1; tentativa <= RETRY_BACKOFF_MS.length + 1; tentativa++) {
     if (tentativa > 1) {
       if (await jaEnviadoRecentemente()) {
-        console.warn(`${tag} tentativa=${tentativa} abortada — envio ja registrado (idempotencia).`);
+        console.warn(
+          `${tag} tentativa=${tentativa} abortada — envio ja registrado (idempotencia).`,
+        );
         return { ok: true, status: 200, body: "", phone, messageId: null, zaapId: null };
       }
       const espera = RETRY_BACKOFF_MS[tentativa - 2]!;
-      console.warn(`${tag} retry em ${espera}ms (tentativa=${tentativa}) motivo=${ultimoErro.message}`);
+      console.warn(
+        `${tag} retry em ${espera}ms (tentativa=${tentativa}) motivo=${ultimoErro.message}`,
+      );
       await sleep(espera);
     }
 
