@@ -94,7 +94,15 @@ export const Route = createFileRoute("/api/public/hooks/whatsapp-cloud")({
           const recebida = header.startsWith("sha256=") ? header.slice(7) : header;
           const esperada = await hmacSha256Hex(appSecret, corpo);
           if (!recebida || !compararTempoConstante(recebida, esperada)) {
-            console.warn("[wa-cloud-webhook] assinatura inválida");
+            console.warn("[wa-cloud-webhook] assinatura inválida", {
+              header_presente: header.length > 0,
+              header_com_prefixo_sha256: header.startsWith("sha256="),
+              len_assinatura_recebida: recebida.length,
+              len_assinatura_esperada: esperada.length,
+              len_app_secret: appSecret.length,
+              app_secret_so_hex: /^[0-9a-f]+$/i.test(appSecret),
+              len_corpo: corpo.length,
+            });
             return new Response(JSON.stringify({ ok: false }), {
               status: 401,
               headers: { "Content-Type": "application/json", ...CORS },
