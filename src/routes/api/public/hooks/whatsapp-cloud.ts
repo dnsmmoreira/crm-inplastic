@@ -106,8 +106,49 @@ export const Route = createFileRoute("/api/public/hooks/whatsapp-cloud")({
 
         try {
           const payload = JSON.parse(corpo || "{}") as {
-            entry?: Array<{ changes?: Array<{ value?: CloudValue }> }>;
+            entry?: Array<{ id?: string; changes?: Array<{ value?: CloudValue }> }>;
           };
+
+          // --- Guarda de payload de teste do painel da Meta ---
+          const aceitarTeste = (process.env.META_ACEITAR_TESTE ?? "").trim() === "true";
+          if (!aceitarTeste) {
+            const phoneNumberIdCfg = (process.env.META_PHONE_NUMBER_ID ?? "").trim();
+            const wabaIdCfg = (process.env.META_WABA_ID ?? "").trim();
+
+            let phone_number_id_confere = true;
+            let waba_id_confere = true;
+            let numero_de_amostra = false;
+
+            for (const entry of payload.entry ?? []) {
+              const entryId = String(entry.id ?? "").trim();
+              if (wabaIdCfg && entryId && entryId !== wabaIdCfg) waba_id_confere = false;
+              for (const change of entry.changes ?? []) {
+                const value = (change.value ?? {}) as CloudValue & {
+                  metadata?: { phone_number_id?: string };
+                };
+                const pnid = String(value.metadata?.phone_number_id ?? "").trim();
+                if (phoneNumberIdCfg && pnid && pnid !== phoneNumberIdCfg) {
+                  phone_number_id_confere = false;
+                }
+                for (const c of value.contacts ?? []) {
+                  if (onlyDigits(String(c?.wa_id ?? "")) === "16505551111") numero_de_amostra = true;
+                }
+                for (const m of value.messages ?? []) {
+                  if (onlyDigits(String(m['from'] ?? "")) === "16505551111") numero_de_amostra = true;
+                }
+              }
+            }
+
+            if (!phone_number_id_confere || !waba_id_confere || numero_de_amostra) {
+              console.warn("WA-CLOUD teste_meta ignorado", {
+                phone_number_id_confere,
+                waba_id_confere,
+                numero_de_amostra,
+              });
+              return Response.json({ ok: true }, { headers: CORS });
+            }
+          }
+
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
           for (const entry of payload.entry ?? []) {
