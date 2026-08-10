@@ -313,13 +313,15 @@ export async function sendZapiText(
    * - `resposta_inbound` e `manual_admin` só ocorrem com inbound recente → texto.
    * - `iniciado_sistema`: consulta a janela de 24h; fechada → template aprovado.
    */
-  let usarTemplate = false;
-  if (origem === "iniciado_sistema") {
+  const override = opts?.templateOverride;
+  let usarTemplate = !!override;
+  if (!override && origem === "iniciado_sistema") {
     usarTemplate = !(await janelaAtendimentoAberta(phone));
   }
 
-  const templateName = (process.env.META_TEMPLATE_NAME ?? "").trim();
-  const templateLang = (process.env.META_TEMPLATE_LANG ?? "pt_BR").trim() || "pt_BR";
+  const templateName = override?.name ?? (process.env.META_TEMPLATE_NAME ?? "").trim();
+  const templateLang =
+    override?.lang ?? ((process.env.META_TEMPLATE_LANG ?? "pt_BR").trim() || "pt_BR");
   if (usarTemplate && !templateName) {
     bloquear(tag, "fora_janela_24h_sem_template", phone);
     throw new Error(
