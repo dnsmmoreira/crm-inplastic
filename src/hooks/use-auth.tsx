@@ -51,6 +51,7 @@ export type AuthUser = {
   avatarColor: string;
   role: AppRole;
   permissions: UserPermissions;
+  mustChangePassword: boolean;
 };
 
 type AuthContextValue = {
@@ -77,7 +78,7 @@ async function loadAuthUser(supaUser: SupaUser): Promise<AuthUser> {
   const [{ data: profile }, { data: roles }, { data: perms }] = await Promise.all([
     supabase
       .from("profiles")
-      .select("name, avatar_color, ativo, deleted_at")
+      .select("name, avatar_color, ativo, deleted_at, senha_reset_exigido")
       .eq("id", supaUser.id)
       .maybeSingle(),
     supabase.from("user_roles").select("role").eq("user_id", supaUser.id),
@@ -95,7 +96,7 @@ async function loadAuthUser(supaUser: SupaUser): Promise<AuthUser> {
     : { ...base };
   // Administrador nunca perde o acesso à gestão de usuários.
   if (role === "admin") permissions.gerenciar_usuarios = true;
-  return { id: supaUser.id, email: supaUser.email ?? "", name, avatarColor, role, permissions };
+  return { id: supaUser.id, email: supaUser.email ?? "", name, avatarColor, role, permissions, mustChangePassword: !!profile?.senha_reset_exigido };
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {

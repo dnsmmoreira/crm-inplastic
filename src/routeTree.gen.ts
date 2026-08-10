@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UsuariosRouteImport } from './routes/usuarios'
+import { Route as TrocarSenhaRouteImport } from './routes/trocar-senha'
 import { Route as TarefasRouteImport } from './routes/tarefas'
 import { Route as TabelaPrecosRouteImport } from './routes/tabela-precos'
 import { Route as RelatoriosRouteImport } from './routes/relatorios'
@@ -60,6 +61,11 @@ import { Route as ApiPublicHooksIaFilaEnvioRouteImport } from './routes/api/publ
 const UsuariosRoute = UsuariosRouteImport.update({
   id: '/usuarios',
   path: '/usuarios',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TrocarSenhaRoute = TrocarSenhaRouteImport.update({
+  id: '/trocar-senha',
+  path: '/trocar-senha',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TarefasRoute = TarefasRouteImport.update({
@@ -330,6 +336,7 @@ export interface FileRoutesByFullPath {
   '/relatorios': typeof RelatoriosRoute
   '/tabela-precos': typeof TabelaPrecosRoute
   '/tarefas': typeof TarefasRoute
+  '/trocar-senha': typeof TrocarSenhaRoute
   '/usuarios': typeof UsuariosRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -379,6 +386,7 @@ export interface FileRoutesByTo {
   '/relatorios': typeof RelatoriosRoute
   '/tabela-precos': typeof TabelaPrecosRoute
   '/tarefas': typeof TarefasRoute
+  '/trocar-senha': typeof TrocarSenhaRoute
   '/usuarios': typeof UsuariosRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -429,6 +437,7 @@ export interface FileRoutesById {
   '/relatorios': typeof RelatoriosRoute
   '/tabela-precos': typeof TabelaPrecosRoute
   '/tarefas': typeof TarefasRoute
+  '/trocar-senha': typeof TrocarSenhaRoute
   '/usuarios': typeof UsuariosRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -480,6 +489,7 @@ export interface FileRouteTypes {
     | '/relatorios'
     | '/tabela-precos'
     | '/tarefas'
+    | '/trocar-senha'
     | '/usuarios'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
@@ -529,6 +539,7 @@ export interface FileRouteTypes {
     | '/relatorios'
     | '/tabela-precos'
     | '/tarefas'
+    | '/trocar-senha'
     | '/usuarios'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
@@ -578,6 +589,7 @@ export interface FileRouteTypes {
     | '/relatorios'
     | '/tabela-precos'
     | '/tarefas'
+    | '/trocar-senha'
     | '/usuarios'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
@@ -628,6 +640,7 @@ export interface RootRouteChildren {
   RelatoriosRoute: typeof RelatoriosRoute
   TabelaPrecosRoute: typeof TabelaPrecosRoute
   TarefasRoute: typeof TarefasRoute
+  TrocarSenhaRoute: typeof TrocarSenhaRoute
   UsuariosRoute: typeof UsuariosRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -663,6 +676,13 @@ declare module '@tanstack/react-router' {
       path: '/usuarios'
       fullPath: '/usuarios'
       preLoaderRoute: typeof UsuariosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/trocar-senha': {
+      id: '/trocar-senha'
+      path: '/trocar-senha'
+      fullPath: '/trocar-senha'
+      preLoaderRoute: typeof TrocarSenhaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/tarefas': {
@@ -1012,6 +1032,7 @@ const rootRouteChildren: RootRouteChildren = {
   RelatoriosRoute: RelatoriosRoute,
   TabelaPrecosRoute: TabelaPrecosRoute,
   TarefasRoute: TarefasRoute,
+  TrocarSenhaRoute: TrocarSenhaRoute,
   UsuariosRoute: UsuariosRoute,
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
