@@ -361,9 +361,14 @@ export async function sendZapiText(
     }
 
     const r = usarTemplate
-      ? await cloudSendTemplate(phone, templateName, templateLang, [
-          { type: "body", parameters: [{ type: "text", text: message.slice(0, 900) }] },
-        ])
+      ? await cloudSendTemplate(
+          phone,
+          templateName,
+          templateLang,
+          override
+            ? []
+            : [{ type: "body", parameters: [{ type: "text", text: message.slice(0, 900) }] }],
+        )
       : await cloudSendText(phone, message);
 
     console.log(
