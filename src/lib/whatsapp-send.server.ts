@@ -167,7 +167,16 @@ export async function sendZapiText(
   message: string,
   ctx?: string,
   canal: ZapiCanal = "comercial",
-  opts?: { bypassGuards?: boolean; origem?: ZapiOrigem },
+  opts?: {
+    bypassGuards?: boolean;
+    origem?: ZapiOrigem;
+    /**
+     * Força o envio como template aprovado com nome/idioma explícitos e SEM
+     * parâmetros de corpo (usado pelo teste administrativo, ex.: hello_world).
+     * Todas as guardas continuam valendo normalmente.
+     */
+    templateOverride?: { name: string; lang: string };
+  },
 ): Promise<ZapiSendResult> {
   const tag = ctx ? `[wa:${canal}:${ctx}]` : `[wa:${canal}]`;
   const phone = normalizePhoneBR(phoneRaw);
