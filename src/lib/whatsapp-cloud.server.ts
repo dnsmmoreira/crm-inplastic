@@ -144,3 +144,106 @@ export async function cloudHealth(): Promise<{
     clearTimeout(timer);
   }
 }
+
+/** (Diagnóstico) GET no próprio phone number id — somente leitura, não altera nada na Meta. */
+export async function cloudDiagnosticoNumero(): Promise<{
+  configurado: boolean;
+  http_status: number | null;
+  dados: unknown;
+}> {
+  const { version, phoneNumberId, accessToken } = creds();
+  if (!phoneNumberId || !accessToken) return { configurado: false, http_status: null, dados: null };
+
+  const campos = [
+    "verified_name",
+    "code_verification_status",
+    "quality_rating",
+    "platform_type",
+    "throughput",
+    "name_status",
+  ].join(",");
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  try {
+    const res = await fetch(
+      `https://graph.facebook.com/${version}/${phoneNumberId}?fields=${campos}`,
+      { headers: { Authorization: `Bearer ${accessToken}` }, signal: controller.signal },
+    );
+    const texto = await res.text();
+    let dados: unknown = texto.slice(0, 1000);
+    try {
+      dados = JSON.parse(texto);
+    } catch {
+      /* corpo não-JSON */
+    }
+    return { configurado: true, http_status: res.status, dados };
+  } catch (e) {
+    return {
+      configurado: true,
+      http_status: null,
+      dados: { error: { message: e instanceof Error ? e.message : String(e) } },
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * (Registro) POST /{phone-number-id}/register com PIN de 6 dígitos.
+ * O PIN só trafega desta chamada para a Graph API: nunca é gravado nem logado.
+ */
+export async function cloudRegistrarNumero(pin: string): Promise<{
+  ok: boolean;
+  http_status: number | null;
+  erro_codigo: number | null;
+  erro_mensagem: string | null;
+}> {
+  const { version, phoneNumberId, accessToken } = creds();
+  if (!phoneNumberId || !accessToken) {
+    return {
+      ok: false,
+      http_status: null,
+      erro_codigo: null,
+      erro_mensagem: "WhatsApp Cloud API não configurado (variáveis ausentes).",
+    };
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  try {
+    const res = await fetch(`https://graph.facebook.com/${version}/${phoneNumberId}/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ messaging_product: "whatsapp", pin }),
+      signal: controller.signal,
+    });
+    const texto = await res.text();
+    let erroCodigo: number | null = null;
+    let erroMensagem: string | null = null;
+    let sucesso = res.ok;
+    try {
+      const parsed = JSON.parse(texto) as {
+        success?: boolean;
+        error?: { code?: number; message?: string };
+      };
+      if (parsed.error) {
+        erroCodigo = parsed.error.code ?? null;
+        erroMensagem = parsed.error.message ?? null;
+      }
+      if (typeof parsed.success === "boolean") sucesso = res.ok && parsed.success;
+    } catch {
+      if (!res.ok) erroMensagem = texto.slice(0, 300);
+    }
+    return { ok: sucesso, http_status: res.status, erro_codigo: erroCodigo, erro_mensagem: erroMensagem };
+  } catch (e) {
+    return {
+      ok: false,
+      http_status: null,
+      erro_codigo: null,
+      erro_mensagem: e instanceof Error ? e.message : String(e),
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
