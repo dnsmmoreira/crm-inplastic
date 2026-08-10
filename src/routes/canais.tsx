@@ -859,6 +859,46 @@ function PainelSaudeWhatsapp() {
         </div>
       </div>
 
+      <div className="space-y-2 rounded-md border p-3">
+        <div className="text-xs font-medium">Testar WhatsApp Cloud (Meta)</div>
+        <div className="grid grid-cols-3 gap-2">
+          <input
+            className="h-8 rounded-md border bg-background px-2 text-[11px]"
+            placeholder="Telefone (DDI+DDD)"
+            value={cloudTel}
+            onChange={(e) => setCloudTel(e.target.value)}
+          />
+          <input
+            className="h-8 rounded-md border bg-background px-2 text-[11px]"
+            placeholder="hello_world"
+            value={cloudTemplate}
+            onChange={(e) => setCloudTemplate(e.target.value)}
+          />
+          <input
+            className="h-8 rounded-md border bg-background px-2 text-[11px]"
+            placeholder="en_US"
+            value={cloudIdioma}
+            onChange={(e) => setCloudIdioma(e.target.value)}
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-[11px]"
+            disabled={cloudEnviando}
+            onClick={() => void handleTesteCloud()}
+          >
+            {cloudEnviando ? "Enviando…" : "Testar WhatsApp Cloud"}
+          </Button>
+          {cloudResultado && (
+            <span className="text-[11px] text-muted-foreground break-all">{cloudResultado}</span>
+          )}
+        </div>
+      </div>
+
+
+
       <div className="space-y-1">
         <div className="text-xs font-medium">Últimos envios</div>
         <ul className="max-h-48 overflow-y-auto divide-y text-[11px]">
