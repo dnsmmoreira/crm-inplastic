@@ -1929,6 +1929,39 @@ export type Database = {
         }
         Relationships: []
       }
+      wa_cloud_eventos: {
+        Row: {
+          erro: string | null
+          id: number
+          payload: Json | null
+          phone: string | null
+          processado: boolean
+          recebido_em: string
+          tipo: string | null
+          wa_message_id: string | null
+        }
+        Insert: {
+          erro?: string | null
+          id?: number
+          payload?: Json | null
+          phone?: string | null
+          processado?: boolean
+          recebido_em?: string
+          tipo?: string | null
+          wa_message_id?: string | null
+        }
+        Update: {
+          erro?: string | null
+          id?: number
+          payload?: Json | null
+          phone?: string | null
+          processado?: boolean
+          recebido_em?: string
+          tipo?: string | null
+          wa_message_id?: string | null
+        }
+        Relationships: []
+      }
       whatsapp_conversas: {
         Row: {
           atribuido_em: string | null

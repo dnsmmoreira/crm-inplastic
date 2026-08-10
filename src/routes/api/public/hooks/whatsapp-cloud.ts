@@ -1,0 +1,207 @@
+/**
+ * (Cloud API) Webhook oficial da Meta — verificação (GET) e eventos (POST).
+ * Mensagens de texto reaproveitam o MESMO pipeline de entrada do webhook Z-API
+ * (`processarEntradaWhatsapp`). Nenhuma regra de negócio é duplicada aqui.
+ */
+import { createFileRoute } from "@tanstack/react-router";
+
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, X-Hub-Signature-256",
+} as const;
+
+function onlyDigits(s: string) {
+  return String(s ?? "").replace(/\D/g, "");
+}
+
+function mascararTelefoneLog(s: string) {
+  const d = onlyDigits(s);
+  return d ? `****${d.slice(-4)}` : "****";
+}
+
+function compararTempoConstante(a: string, b: string) {
+  const ea = new TextEncoder().encode(a);
+  const eb = new TextEncoder().encode(b);
+  const tamanho = Math.max(ea.length, eb.length);
+  let diff = ea.length ^ eb.length;
+  for (let i = 0; i < tamanho; i++) diff |= (ea[i] ?? 0) ^ (eb[i] ?? 0);
+  return diff === 0;
+}
+
+async function hmacSha256Hex(secret: string, corpo: string) {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(corpo));
+  return Array.from(new Uint8Array(sig))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+type CloudValue = {
+  messages?: Array<Record<string, unknown>>;
+  statuses?: Array<Record<string, unknown>>;
+  contacts?: Array<{ profile?: { name?: string }; wa_id?: string }>;
+};
+
+export const Route = createFileRoute("/api/public/hooks/whatsapp-cloud")({
+  server: {
+    handlers: {
+      OPTIONS: async () => new Response(null, { status: 204, headers: CORS }),
+      HEAD: async () => new Response(null, { status: 200, headers: CORS }),
+
+      GET: async ({ request }) => {
+        const url = new URL(request.url);
+        const mode = url.searchParams.get("hub.mode");
+        const token = url.searchParams.get("hub.verify_token") ?? "";
+        const challenge = url.searchParams.get("hub.challenge") ?? "";
+        const esperado = (process.env.META_WEBHOOK_VERIFY_TOKEN ?? "").trim();
+
+        if (mode === "subscribe" && esperado && compararTempoConstante(token, esperado)) {
+          return new Response(challenge, {
+            status: 200,
+            headers: { "Content-Type": "text/plain; charset=utf-8" },
+          });
+        }
+        console.warn("[wa-cloud-webhook] verificação recusada");
+        return new Response("Forbidden", { status: 403, headers: { "Content-Type": "text/plain" } });
+      },
+
+      POST: async ({ request }) => {
+        const corpo = await request.text();
+
+        // Assinatura HMAC do corpo cru.
+        const appSecret = (process.env.META_APP_SECRET ?? "").trim();
+        if (appSecret) {
+          const header = (request.headers.get("x-hub-signature-256") ?? "").trim();
+          const recebida = header.startsWith("sha256=") ? header.slice(7) : header;
+          const esperada = await hmacSha256Hex(appSecret, corpo);
+          if (!recebida || !compararTempoConstante(recebida, esperada)) {
+            console.warn("[wa-cloud-webhook] assinatura inválida");
+            return new Response(JSON.stringify({ ok: false }), {
+              status: 401,
+              headers: { "Content-Type": "application/json", ...CORS },
+            });
+          }
+        } else {
+          console.warn("[wa-cloud-webhook] META_APP_SECRET ausente — assinatura NÃO verificada");
+        }
+
+        try {
+          const payload = JSON.parse(corpo || "{}") as {
+            entry?: Array<{ changes?: Array<{ value?: CloudValue }> }>;
+          };
+          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+          for (const entry of payload.entry ?? []) {
+            for (const change of entry.changes ?? []) {
+              const value = change.value ?? {};
+              const nomeContato = value.contacts?.[0]?.profile?.name ?? null;
+
+              // --- statuses (entrega/leitura/falha) ---
+              for (const st of value.statuses ?? []) {
+                const waId = typeof st['id'] === "string" ? (st['id'] as string) : null;
+                const phone =
+                  typeof st['recipient_id'] === "string" ? onlyDigits(st['recipient_id'] as string) : null;
+                await supabaseAdmin.from("wa_cloud_eventos").upsert(
+                  {
+                    tipo: `status_${String(st['status'] ?? "desconhecido")}`,
+                    wa_message_id: waId ? `status:${waId}:${String(st['status'] ?? "")}` : null,
+                    phone,
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    payload: st as any,
+                    processado: true,
+                  },
+                  { onConflict: "wa_message_id", ignoreDuplicates: true },
+                );
+              }
+
+              // --- messages (entrada) ---
+              for (const msg of value.messages ?? []) {
+                const waId = typeof msg['id'] === "string" ? (msg['id'] as string) : null;
+                const phone = onlyDigits(String(msg['from'] ?? ""));
+                const tipoBruto = String(msg['type'] ?? "desconhecido");
+
+                // Idempotência por wa_message_id.
+                if (waId) {
+                  const { data: ja } = await supabaseAdmin
+                    .from("wa_cloud_eventos")
+                    .select("id")
+                    .eq("wa_message_id", waId)
+                    .maybeSingle();
+                  if (ja?.id) {
+                    console.warn(`[wa-cloud-webhook] evento duplicado ignorado phone=${mascararTelefoneLog(phone)}`);
+                    continue;
+                  }
+                }
+
+                const { error: evErr } = await supabaseAdmin.from("wa_cloud_eventos").insert({
+                  tipo: `mensagem_${tipoBruto}`,
+                  wa_message_id: waId,
+                  phone,
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  payload: msg as any,
+                });
+                if (evErr && evErr.code === "23505") continue;
+                if (evErr) console.error("wa_cloud_eventos insert failed:", evErr);
+
+                if (tipoBruto !== "text") {
+                  console.warn(
+                    `[wa-cloud-webhook] tipo=${tipoBruto} apenas registrado phone=${mascararTelefoneLog(phone)}`,
+                  );
+                  continue;
+                }
+
+                const texto = String(
+                  (msg['text'] as { body?: string } | undefined)?.body ?? "",
+                ).trim();
+                if (!phone || !texto) continue;
+
+                const { processarEntradaWhatsapp } = await import("@/lib/whatsapp-inbound.server");
+                try {
+                  await processarEntradaWhatsapp({
+                    phone,
+                    message: texto,
+                    name: nomeContato,
+                    externalId: waId,
+                    tipo: "texto",
+                    midia: null,
+                    tag: "wa-cloud-webhook",
+                  });
+                  if (waId) {
+                    await supabaseAdmin
+                      .from("wa_cloud_eventos")
+                      .update({ processado: true })
+                      .eq("wa_message_id", waId);
+                  }
+                } catch (e) {
+                  const m = e instanceof Error ? e.message : String(e);
+                  console.error(`[wa-cloud-webhook] pipeline falhou: ${m}`);
+                  if (waId) {
+                    await supabaseAdmin
+                      .from("wa_cloud_eventos")
+                      .update({ erro: m.slice(0, 500) })
+                      .eq("wa_message_id", waId);
+                  }
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.error(
+            "[wa-cloud-webhook] erro:",
+            e instanceof Error ? e.message : String(e),
+          );
+        }
+
+        // A Meta exige 200 rápido sempre.
+        return Response.json({ ok: true }, { headers: CORS });
+      },
+    },
+  },
+});
