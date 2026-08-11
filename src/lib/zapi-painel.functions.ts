@@ -206,10 +206,14 @@ export const testarEnvioCloud = createServerFn({ method: "POST" })
     let erroCodigo: string | null = null;
     let erroMensagem: string | null = null;
 
+    // Flag fixa no código: somente este teste administrativo ignora a janela.
+    const janelaIgnorada = true;
+
     try {
       const { sendZapiText } = await import("./whatsapp-send.server");
       const r = await sendZapiText(phone, conteudo, "teste-cloud", "comercial", {
         templateOverride: { name: template, lang: idioma },
+        ignorarJanelaHorario: janelaIgnorada,
       });
       ok = r.ok;
       httpStatus = r.status ?? null;
@@ -225,8 +229,9 @@ export const testarEnvioCloud = createServerFn({ method: "POST" })
 
     // Log único, sem nenhum valor de token/secret.
     console.log(
-      `WA-CLOUD teste_envio http_status=${httpStatus ?? "-"} message_id=${messageId ?? "-"} erro_codigo=${erroCodigo ?? "-"}`,
+      `WA-CLOUD teste_envio http_status=${httpStatus ?? "-"} message_id=${messageId ?? "-"} erro_codigo=${erroCodigo ?? "-"} janela_ignorada=${janelaIgnorada}`,
     );
+
 
     if (ok) {
       // Persistência pelo fluxo existente: conversa + mensagem de saída.
