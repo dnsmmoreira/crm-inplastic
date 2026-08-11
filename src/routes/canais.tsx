@@ -40,6 +40,8 @@ import {
   testarEnvioCloud,
   diagnosticoCloud,
   registrarNumeroCloud,
+  listarAppsInscritos,
+  inscreverWaba,
 
 } from "@/lib/zapi-painel.functions";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
