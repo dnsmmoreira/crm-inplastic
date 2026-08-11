@@ -1026,7 +1026,33 @@ function PainelSaudeWhatsapp() {
             <span className="text-[11px] text-muted-foreground break-all">{registroResultado}</span>
           )}
         </div>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-[11px]"
+            disabled={wabaCarregando}
+            onClick={() => void handleAssinaturaWaba("ver")}
+          >
+            {wabaCarregando ? "Consultando…" : "Ver assinatura da WABA"}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-[11px]"
+            disabled={wabaCarregando}
+            onClick={() => void handleAssinaturaWaba("assinar")}
+          >
+            {wabaCarregando ? "Enviando…" : "Assinar WABA no app"}
+          </Button>
+        </div>
+        {wabaResultado && (
+          <pre className="max-h-48 overflow-auto rounded-md bg-muted p-2 text-[10px] whitespace-pre-wrap break-all">
+            {wabaResultado}
+          </pre>
+        )}
       </div>
+
 
 
       </div>
