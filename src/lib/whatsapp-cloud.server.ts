@@ -189,6 +189,61 @@ export async function cloudDiagnosticoNumero(): Promise<{
   }
 }
 
+/** (Assinatura) GET /{waba-id}/subscribed_apps — somente leitura. */
+export async function cloudListarAppsInscritos(): Promise<{
+  ok: boolean;
+  http_status: number | null;
+  body: unknown;
+}> {
+  return subscribedApps("GET");
+}
+
+/** (Assinatura) POST /{waba-id}/subscribed_apps — inscreve o app na WABA. */
+export async function cloudInscreverWaba(): Promise<{
+  ok: boolean;
+  http_status: number | null;
+  body: unknown;
+}> {
+  return subscribedApps("POST");
+}
+
+async function subscribedApps(method: "GET" | "POST") {
+  const { version, wabaId, accessToken } = creds();
+  if (!wabaId || !accessToken) {
+    return {
+      ok: false,
+      http_status: null,
+      body: { error: { message: "WABA não configurada (variáveis ausentes)." } },
+    };
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  try {
+    const res = await fetch(`https://graph.facebook.com/${version}/${wabaId}/subscribed_apps`, {
+      method,
+      headers: { Authorization: `Bearer ${accessToken}` },
+      signal: controller.signal,
+    });
+    const texto = await res.text();
+    let body: unknown = texto.slice(0, 1000);
+    try {
+      body = JSON.parse(texto);
+    } catch {
+      /* corpo não-JSON */
+    }
+    return { ok: res.ok, http_status: res.status, body };
+  } catch (e) {
+    return {
+      ok: false,
+      http_status: null,
+      body: { error: { message: e instanceof Error ? e.message : String(e) } },
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /**
  * (Registro) POST /{phone-number-id}/register com PIN de 6 dígitos.
  * O PIN só trafega desta chamada para a Graph API: nunca é gravado nem logado.
