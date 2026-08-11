@@ -229,27 +229,32 @@ export async function sendZapiText(
       throw new Error("Contato optou por nao receber mensagens.");
     }
 
-    // (2) Janela de envio
-    const { hora, domingo } = agoraSaoPaulo();
-    const foraDaJanela = domingo || hora < 7 || hora >= 20;
-    if (foraDaJanela) {
-      if (origem === "resposta_inbound") {
-        // Liberado 24/7: é resposta a mensagem iniciada pelo cliente.
-        console.log(
-          `${tag} envio fora da janela liberado motivo=resposta_inbound${domingo ? " (domingo)" : ""}`,
-        );
-      } else if (origem === "manual_admin") {
-        // Liberado 24/7: admin autenticado respondendo conversa com inbound.
-        console.log(
-          `${tag} envio fora da janela liberado motivo=manual_admin_com_inbound${domingo ? " (domingo)" : ""}`,
-        );
-      } else {
-        bloquear(tag, domingo ? "domingo" : "fora_da_janela_07_20", phone);
-        throw new Error(
-          "Fora da janela de envio (07:00-20:00, exceto domingos). Mensagem nao enviada.",
-        );
+    // (2) Janela de envio — pulada apenas no teste administrativo.
+    if (ignorarJanelaHorario) {
+      console.log(`${tag} janela de horario ignorada motivo=teste_admin`);
+    } else {
+      const { hora, domingo } = agoraSaoPaulo();
+      const foraDaJanela = domingo || hora < 7 || hora >= 20;
+      if (foraDaJanela) {
+        if (origem === "resposta_inbound") {
+          // Liberado 24/7: é resposta a mensagem iniciada pelo cliente.
+          console.log(
+            `${tag} envio fora da janela liberado motivo=resposta_inbound${domingo ? " (domingo)" : ""}`,
+          );
+        } else if (origem === "manual_admin") {
+          // Liberado 24/7: admin autenticado respondendo conversa com inbound.
+          console.log(
+            `${tag} envio fora da janela liberado motivo=manual_admin_com_inbound${domingo ? " (domingo)" : ""}`,
+          );
+        } else {
+          bloquear(tag, domingo ? "domingo" : "fora_da_janela_07_20", phone);
+          throw new Error(
+            "Fora da janela de envio (07:00-20:00, exceto domingos). Mensagem nao enviada.",
+          );
+        }
       }
     }
+
 
     const nowMs = Date.now();
     const isoDesde = (ms: number) => new Date(nowMs - ms).toISOString();
