@@ -300,6 +300,34 @@ export const diagnosticoCloud = createServerFn({ method: "POST" })
     };
   });
 
+/** (Assinatura) Lista apps inscritos na WABA — somente admin, somente leitura. */
+export const listarAppsInscritos = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    await exigirAdmin(supabase, userId);
+
+    const { cloudListarAppsInscritos } = await import("./whatsapp-cloud.server");
+    const r = await cloudListarAppsInscritos();
+    console.log(`WA-CLOUD subscribed_apps_listar http_status=${r.http_status ?? "-"} ok=${r.ok}`);
+
+    return { ok: r.ok, http_status: r.http_status, dados_json: JSON.stringify(r.body ?? null) };
+  });
+
+/** (Assinatura) Inscreve o app na WABA — somente admin. */
+export const inscreverWaba = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    await exigirAdmin(supabase, userId);
+
+    const { cloudInscreverWaba } = await import("./whatsapp-cloud.server");
+    const r = await cloudInscreverWaba();
+    console.log(`WA-CLOUD subscribed_apps_inscrever http_status=${r.http_status ?? "-"} ok=${r.ok}`);
+
+    return { ok: r.ok, http_status: r.http_status, dados_json: JSON.stringify(r.body ?? null) };
+  });
+
 /**
  * (B) Registro do número na Cloud API — somente admin.
  * O PIN vem do formulário, vai direto para a Graph API e não é gravado nem logado.
