@@ -157,6 +157,26 @@ export const Route = createFileRoute("/api/public/hooks/whatsapp-cloud")({
             }
           }
 
+          let qtd_mensagens = 0;
+          let qtd_statuses = 0;
+          let qtd_errors = 0;
+          for (const entry of payload.entry ?? []) {
+            for (const change of entry.changes ?? []) {
+              const value = (change.value ?? {}) as CloudValue & {
+                errors?: Array<Record<string, unknown>>;
+              };
+              qtd_mensagens += value.messages?.length ?? 0;
+              qtd_statuses += value.statuses?.length ?? 0;
+              qtd_errors += value.errors?.length ?? 0;
+            }
+          }
+          console.warn("WA-CLOUD webhook recebido", {
+            qtd_entries: payload.entry?.length ?? 0,
+            qtd_mensagens,
+            qtd_statuses,
+            qtd_errors,
+          });
+
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
           for (const entry of payload.entry ?? []) {
@@ -167,6 +187,18 @@ export const Route = createFileRoute("/api/public/hooks/whatsapp-cloud")({
               // --- statuses (entrega/leitura/falha) ---
               for (const st of value.statuses ?? []) {
                 const waId = typeof st['id'] === "string" ? (st['id'] as string) : null;
+                const erros = Array.isArray(st['errors'])
+                  ? (st['errors'] as Array<Record<string, unknown>>)
+                  : [];
+                const err0 = erros[0];
+                console.warn("WA-CLOUD status", {
+                  status: st['status'] ?? null,
+                  erro_codigo: err0?.['code'] ?? null,
+                  erro_titulo: err0?.['title'] ?? null,
+                  erro_detalhe:
+                    (err0?.['error_data'] as { details?: unknown } | undefined)?.details ?? null,
+                  tem_wamid: Boolean(waId),
+                });
                 const phone =
                   typeof st['recipient_id'] === "string" ? onlyDigits(st['recipient_id'] as string) : null;
                 await supabaseAdmin.from("wa_cloud_eventos").upsert(
