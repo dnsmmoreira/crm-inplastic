@@ -176,12 +176,20 @@ export async function sendZapiText(
      * Todas as guardas continuam valendo normalmente.
      */
     templateOverride?: { name: string; lang: string };
+    /**
+     * Só pode ser ativada pelo teste administrativo (`testarEnvioCloud`).
+     * Quando true, pula APENAS a verificação da janela 07:00-20:00 / domingo.
+     * Todas as demais guardas continuam valendo.
+     */
+    ignorarJanelaHorario?: boolean;
   },
 ): Promise<ZapiSendResult> {
   const tag = ctx ? `[wa:${canal}:${ctx}]` : `[wa:${canal}]`;
   const phone = normalizePhoneBR(phoneRaw);
   const bypass = opts?.bypassGuards === true;
+  const ignorarJanelaHorario = opts?.ignorarJanelaHorario === true;
   const origem: ZapiOrigem = opts?.origem ?? "iniciado_sistema";
+
 
   // (ITEM E) Driver único: cloud. Default cloud; valor diferente é recusado.
   const driver = (process.env.WHATSAPP_DRIVER ?? "cloud").trim().toLowerCase();
