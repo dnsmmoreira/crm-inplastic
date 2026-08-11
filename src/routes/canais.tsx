@@ -737,11 +737,40 @@ function PainelSaudeWhatsapp() {
   const testarCloud = useServerFn(testarEnvioCloud);
   const diagCloudFn = useServerFn(diagnosticoCloud);
   const registrarCloudFn = useServerFn(registrarNumeroCloud);
+  const listarAppsFn = useServerFn(listarAppsInscritos);
+  const inscreverWabaFn = useServerFn(inscreverWaba);
   const [diagCloudCarregando, setDiagCloudCarregando] = useState(false);
   const [diagCloudResultado, setDiagCloudResultado] = useState<string | null>(null);
   const [pinCloud, setPinCloud] = useState("");
   const [registrando, setRegistrando] = useState(false);
   const [registroResultado, setRegistroResultado] = useState<string | null>(null);
+  const [wabaCarregando, setWabaCarregando] = useState(false);
+  const [wabaResultado, setWabaResultado] = useState<string | null>(null);
+
+  async function handleAssinaturaWaba(acao: "ver" | "assinar") {
+    setWabaCarregando(true);
+    setWabaResultado(null);
+    try {
+      const r = acao === "ver" ? await listarAppsFn() : await inscreverWabaFn();
+      let corpo = r.dados_json;
+      try {
+        corpo = JSON.stringify(JSON.parse(r.dados_json), null, 2);
+      } catch {
+        /* mantém string bruta */
+      }
+      setWabaResultado(`ok=${r.ok} · http=${r.http_status ?? "-"}\n${corpo}`);
+      if (acao === "assinar") {
+        if (r.ok) toast.success("WABA inscrita no app");
+        else toast.error("Assinatura da WABA falhou");
+      }
+    } catch (e) {
+      setWabaResultado(`Falhou — ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setWabaCarregando(false);
+    }
+  }
+
+
 
   async function handleDiagnosticoCloud() {
     setDiagCloudCarregando(true);
