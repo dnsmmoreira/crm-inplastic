@@ -218,12 +218,24 @@ export type CreateClienteResult =
       clienteId?: string;
     };
 
-export const createCliente = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((data: ClienteInput) => data)
-  .handler(async ({ data, context }): Promise<CreateClienteResult> => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type LooseDb = any;
+
+/**
+ * Núcleo do cadastro de cliente — MESMA lógica usada por `createCliente`.
+ * Extraído para poder ser reutilizado por fluxos internos do servidor
+ * (ex.: promoção automática de lead → cliente ao marcar Ganho).
+ */
+export async function criarClienteCore(
+  supabase: LooseDb,
+  userId: string,
+  data: ClienteInput,
+): Promise<CreateClienteResult> {
+  const context = { supabase, userId };
+  {
     const { errors, clean } = validateInput(data);
     if (errors.length) throw new Error(errors.join("; "));
+
 
     // Checagem via RPC SECURITY DEFINER (enxerga cross-vendor sem expor dados sensíveis)
     const { data: statusRows, error: statusErr } = await context.supabase
