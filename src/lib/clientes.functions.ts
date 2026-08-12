@@ -657,8 +657,15 @@ export async function garantirClienteDoLead(
       .update({ cliente_id: existenteId })
       .eq("id", leadId);
     if (linkErr) return { ok: false, erros: [linkErr.message] };
+    await registrarAuditoriaPromocao(supabase, {
+      leadId,
+      clienteId: existenteId,
+      criado: false,
+      userId,
+    });
     return { ok: true, clienteId: existenteId, criado: false };
   }
+
 
   // (B2) Não existe → cria pelo mesmo fluxo do cadastro manual.
   const empresaPadrao = ["INPLASTIC", "TAOPLAST", "LICITAPLAS"].includes(
