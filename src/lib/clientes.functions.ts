@@ -712,5 +712,37 @@ export async function garantirClienteDoLead(
     .eq("id", leadId);
   if (linkErr) return { ok: false, erros: [linkErr.message] };
 
+  await registrarAuditoriaPromocao(supabase, {
+    leadId,
+    clienteId: res.cliente.id,
+    criado: true,
+    userId,
+  });
+
   return { ok: true, clienteId: res.cliente.id, criado: true };
 }
+
+/**
+ * Auditoria da promoção lead → cliente.
+ * Reutiliza o mecanismo JÁ existente (`lead_interactions`, append-only,
+ * mesmo padrão usado em `canais.functions.ts`). Nenhuma tabela nova.
+ * Falha aqui nunca bloqueia a promoção.
+ */
+export async function registrarAuditoriaPromocao(
+  supabase: LooseDb,
+  args: { leadId: string; clienteId: string; criado: boolean; userId: string },
+): Promise<void> {
+  try {
+    await supabase.from("lead_interactions").insert({
+      lead_id: args.leadId,
+      owner_id: args.userId,
+      type: "note",
+      content: `Promoção lead → cliente: cliente ${
+        args.criado ? "criado" : "vinculado"
+      } (cliente_id=${args.clienteId}) por usuário ${args.userId}.`,
+    });
+  } catch (e) {
+    console.error("[promocao_cliente] falha ao registrar auditoria:", e);
+  }
+}
+
