@@ -84,12 +84,22 @@ export function useMoveLeadStage() {
         const r = await mover({ data: { lead_id: leadId } });
         if (!r.ok) {
           toast.dismiss(t);
-          toast.error("Pendências antes do Ganho", {
-            description: (r.validacao_erros ?? ["Erro desconhecido"]).join("\n"),
-            duration: 8000,
-          });
+          const erros = r.validacao_erros ?? ["Erro desconhecido"];
+          const docMsg = erros.find((m) => /CNPJ ou CPF/i.test(m));
+          if (docMsg) {
+            toast.error(docMsg, {
+              description: "O lead só pode ir para Ganho com o documento do contato preenchido.",
+              duration: 8000,
+            });
+          } else {
+            toast.error("Pendências antes do Ganho", {
+              description: erros.join("\n"),
+              duration: 8000,
+            });
+          }
           return { ok: false as const, result: r };
         }
+
 
         moveLead(leadId, "ganho");
         toast.dismiss(t);
