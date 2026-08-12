@@ -331,7 +331,16 @@ export async function criarClienteCore(
       throw new Error("Não foi possível salvar o cliente. Tente novamente.");
     }
     return { ok: true, cliente: inserted as ClienteRow };
-  });
+  }
+}
+
+export const createCliente = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: ClienteInput) => data)
+  .handler(async ({ data, context }): Promise<CreateClienteResult> =>
+    criarClienteCore(context.supabase, context.userId, data),
+  );
+
 
 // ==========================
 // REATIVAR CLIENTE (dono ou admin, via RLS de UPDATE)
