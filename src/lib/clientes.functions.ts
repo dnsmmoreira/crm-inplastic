@@ -571,3 +571,139 @@ export const getVendedorDaProposta = createServerFn({ method: "GET" })
       email,
     };
   });
+
+// ==========================
+// PROMOÇÃO AUTOMÁTICA LEAD → CLIENTE (usada ao marcar o lead como GANHO)
+// ==========================
+export type PromocaoClienteResult =
+  | { ok: true; clienteId: string; criado: boolean; jaVinculado?: boolean }
+  | { ok: false; erros: string[] };
+
+/**
+ * Garante que o lead tenha um cliente vinculado (`leads.cliente_id`).
+ * - Idempotente: se já houver `cliente_id`, apenas mantém o vínculo.
+ * - Exige CNPJ (14) ou CPF (11) válido no lead — mesma validação do cadastro.
+ * - Se já existir cliente com o mesmo documento, apenas vincula (sem duplicar).
+ * - Caso contrário, cria o cliente pelo MESMO fluxo de `createCliente`.
+ * Opera com o client do usuário autenticado → respeita RLS (vendedor_id/owner_id).
+ */
+export async function garantirClienteDoLead(
+  supabase: LooseDb,
+  userId: string,
+  leadId: string,
+): Promise<PromocaoClienteResult> {
+  const { data: lead, error: leadErr } = await supabase
+    .from("leads")
+    .select(
+      "id, cliente_id, cnpj, razao_social, nome_fantasia, company, contact_name, email, phone, telefone_whatsapp, telefone2, empresa, endereco, numero, complemento, bairro, cep, cidade, estado, inscricao_estadual, owner_id",
+    )
+    .eq("id", leadId)
+    .maybeSingle();
+  if (leadErr) return { ok: false, erros: [leadErr.message] };
+  if (!lead) return { ok: false, erros: ["Lead não encontrado ou sem acesso."] };
+
+  // (C) Idempotência — já vinculado, nada a fazer.
+  if (lead.cliente_id) {
+    return { ok: true, clienteId: lead.cliente_id as string, criado: false, jaVinculado: true };
+  }
+
+  // (A) Documento obrigatório e válido — mesma validação do cadastro de cliente.
+  const digits = onlyDigitsCnpj(String(lead.cnpj ?? ""));
+  const DOC_MSG = "Preencha o CNPJ ou CPF do contato antes de marcar como Ganho.";
+  let tipo: TipoPessoa;
+  if (digits.length === 14) {
+    if (!isValidCnpj(digits)) return { ok: false, erros: ["CNPJ inválido (dígitos verificadores)."] };
+    tipo = "PJ";
+  } else if (digits.length === 11) {
+    if (!isValidCpf(digits)) return { ok: false, erros: ["CPF inválido (dígitos verificadores)."] };
+    tipo = "PF";
+  } else {
+    return { ok: false, erros: [DOC_MSG] };
+  }
+
+  // (B1) Já existe cliente com o mesmo documento? → apenas vincula.
+  let existenteId: string | null = null;
+
+  if (tipo === "PJ") {
+    // Checagem cross-vendor via RPC SECURITY DEFINER já existente.
+    const { data: statusRows } = await supabase.rpc("cnpj_status", { _cnpj: digits });
+    const st = (statusRows ?? [])[0] as
+      | { existe: boolean; ativo: boolean; mesmo_vendedor: boolean; cliente_id: string | null }
+      | undefined;
+    if (st?.existe) {
+      if (!st.mesmo_vendedor) {
+        return {
+          ok: false,
+          erros: ["Já existe um cliente com este CNPJ com outro vendedor. Peça a transferência ao admin."],
+        };
+      }
+      existenteId = st.cliente_id ?? null;
+    }
+  } else {
+    const { data: rows } = await supabase
+      .from("clientes")
+      .select("id, cpf")
+      .ilike("cpf", `%${digits}%`)
+      .limit(5);
+    const match = (rows ?? []).find(
+      (r: { cpf: string | null }) => onlyDigitsCpf(String(r.cpf ?? "")) === digits,
+    );
+    existenteId = (match as { id: string } | undefined)?.id ?? null;
+  }
+
+  if (existenteId) {
+    const { error: linkErr } = await supabase
+      .from("leads")
+      .update({ cliente_id: existenteId })
+      .eq("id", leadId);
+    if (linkErr) return { ok: false, erros: [linkErr.message] };
+    return { ok: true, clienteId: existenteId, criado: false };
+  }
+
+  // (B2) Não existe → cria pelo mesmo fluxo do cadastro manual.
+  const empresaPadrao = ["INPLASTIC", "TAOPLAST", "LICITAPLAS"].includes(
+    String(lead.empresa ?? "").toUpperCase(),
+  )
+    ? String(lead.empresa).toUpperCase()
+    : "INPLASTIC";
+
+  const nome =
+    String(lead.razao_social ?? "").trim() ||
+    String(lead.company ?? "").trim() ||
+    String(lead.contact_name ?? "").trim();
+  if (!nome) {
+    return { ok: false, erros: ["Preencha a razão social ou o nome da empresa antes de marcar como Ganho."] };
+  }
+
+  const res = await criarClienteCore(supabase, userId, {
+    tipo_pessoa: tipo,
+    cnpj: tipo === "PJ" ? digits : "",
+    cpf: tipo === "PF" ? digits : null,
+    razao_social: nome,
+    nome_fantasia: (lead.nome_fantasia as string | null) ?? null,
+    inscricao_estadual: tipo === "PJ" ? ((lead.inscricao_estadual as string | null) ?? null) : null,
+    endereco: (lead.endereco as string | null) ?? null,
+    numero: (lead.numero as string | null) ?? null,
+    complemento: (lead.complemento as string | null) ?? null,
+    bairro: (lead.bairro as string | null) ?? null,
+    cep: (lead.cep as string | null) ?? null,
+    cidade: (lead.cidade as string | null) ?? null,
+    estado: (lead.estado as string | null) ?? null,
+    contato: (lead.contact_name as string | null) ?? null,
+    email: (lead.email as string | null) ?? null,
+    telefone: ((lead.phone as string | null) ?? (lead.telefone_whatsapp as string | null)) ?? null,
+    telefone2: (lead.telefone2 as string | null) ?? null,
+    empresa_padrao: empresaPadrao,
+    vendedor_id: (lead.owner_id as string | null) ?? userId,
+  });
+
+  if (!res.ok) return { ok: false, erros: [res.message] };
+
+  const { error: linkErr } = await supabase
+    .from("leads")
+    .update({ cliente_id: res.cliente.id })
+    .eq("id", leadId);
+  if (linkErr) return { ok: false, erros: [linkErr.message] };
+
+  return { ok: true, clienteId: res.cliente.id, criado: true };
+}
