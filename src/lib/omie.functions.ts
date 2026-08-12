@@ -115,6 +115,14 @@ export const gerarPedidoInterno = createServerFn({ method: "POST" })
       return { ok: false, validacao_erros: erros, proposta_id: propostaId };
     }
 
+    // Gate + promoção automática lead → cliente (exige CNPJ/CPF válido).
+    const promo = await garantirClienteDoLead(loose, userId, leadId);
+    if (!promo.ok) {
+      return { ok: false, validacao_erros: promo.erros, proposta_id: propostaId };
+    }
+
+
+
     // Fluxo de aprovação (mantém o gate existente).
     if (proposta.status !== "pedido") {
       if (data.requer_aprovacao) {
