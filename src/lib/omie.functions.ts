@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { garantirClienteDoLead } from "@/lib/clientes.functions";
+
 
 /**
  * Fluxo interno de fechamento de pedido — SEM integração externa (nenhum ERP).
