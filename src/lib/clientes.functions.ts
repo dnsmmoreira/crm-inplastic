@@ -286,7 +286,10 @@ export async function criarClienteCore(
     const { data: inserted, error } = await context.supabase
       .from("clientes")
       .insert({
-        cnpj: clean.cnpj,
+        tipo_pessoa: clean.tipo_pessoa ?? "PJ",
+        cnpj: clean.tipo_pessoa === "PF" ? null : clean.cnpj,
+        cpf: clean.tipo_pessoa === "PF" ? (clean.cpf ?? null) : null,
+
         razao_social: clean.razao_social,
         nome_fantasia: clean.nome_fantasia ?? null,
         inscricao_estadual: clean.ie_isento ? null : (clean.inscricao_estadual ?? null),
