@@ -123,7 +123,15 @@ function ContactsPage() {
                     onClick={() => setOpenLead(l.id)}
                     className="cursor-pointer"
                   >
-                    <TableCell className="font-medium">{displayValue(l.company)}</TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <span>{displayValue(l.company)}</span>
+                        {l.clienteId ? (
+                          <Badge variant="secondary" className="text-[10px]">Cliente</Badge>
+                        ) : null}
+                      </div>
+                    </TableCell>
+
                     <TableCell>
                       <div className="text-sm">{displayValue(l.contactName)}</div>
                       <div className="text-xs text-muted-foreground">{displayValue(l.email)}</div>
