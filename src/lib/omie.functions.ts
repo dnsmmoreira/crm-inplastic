@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { garantirClienteDoLead } from "@/lib/clientes.functions";
+
 
 /**
  * Fluxo interno de fechamento de pedido — SEM integração externa (nenhum ERP).
@@ -113,6 +115,14 @@ export const gerarPedidoInterno = createServerFn({ method: "POST" })
       return { ok: false, validacao_erros: erros, proposta_id: propostaId };
     }
 
+    // Gate + promoção automática lead → cliente (exige CNPJ/CPF válido).
+    const promo = await garantirClienteDoLead(loose, userId, leadId);
+    if (!promo.ok) {
+      return { ok: false, validacao_erros: promo.erros, proposta_id: propostaId };
+    }
+
+
+
     // Fluxo de aprovação (mantém o gate existente).
     if (proposta.status !== "pedido") {
       if (data.requer_aprovacao) {
@@ -173,7 +183,15 @@ export const moverParaGanho = createServerFn({ method: "POST" })
         ],
       };
     }
+
+    // Gate + promoção automática lead → cliente (exige CNPJ/CPF válido).
+    const promo = await garantirClienteDoLead(loose, context.userId, data.lead_id);
+    if (!promo.ok) {
+      return { ok: false, validacao_erros: promo.erros };
+    }
+
     await loose.from("leads").update({ stage: "ganho" }).eq("id", data.lead_id);
+
 
     // Fase 2 — cria pedido operacional interno de forma idempotente.
     // Não bloqueia o Ganho se algo falhar aqui (idempotência protege reexecução).
