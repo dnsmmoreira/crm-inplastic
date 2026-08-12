@@ -18,6 +18,7 @@ function makeSupabase(opts: {
     clientes: opts.clientes ? [...opts.clientes] : [],
     interactions: [] as Record<string, unknown>[],
     updates: [] as Record<string, unknown>[],
+    pendingInsert: undefined as Record<string, unknown> | undefined,
   };
 
   function builder(table: string) {
