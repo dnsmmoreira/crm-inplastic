@@ -183,7 +183,15 @@ export const moverParaGanho = createServerFn({ method: "POST" })
         ],
       };
     }
+
+    // Gate + promoção automática lead → cliente (exige CNPJ/CPF válido).
+    const promo = await garantirClienteDoLead(loose, context.userId, data.lead_id);
+    if (!promo.ok) {
+      return { ok: false, validacao_erros: promo.erros };
+    }
+
     await loose.from("leads").update({ stage: "ganho" }).eq("id", data.lead_id);
+
 
     // Fase 2 — cria pedido operacional interno de forma idempotente.
     // Não bloqueia o Ganho se algo falhar aqui (idempotência protege reexecução).
