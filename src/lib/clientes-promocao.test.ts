@@ -76,6 +76,7 @@ function makeSupabase(opts: {
           order: () => api,
           limit: async () => ({ data: state.clientes, error: null }),
           maybeSingle: async () => ({ data: null, error: null }),
+          single: (api as { single: () => unknown }).single,
         };
       }
       return api;
