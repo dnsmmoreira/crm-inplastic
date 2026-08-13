@@ -667,8 +667,9 @@ function PainelSaudeWhatsapp() {
   const [resultadoTeste, setResultadoTeste] = useState<string | null>(null);
   const [negado, setNegado] = useState(false);
   const [cloudTel, setCloudTel] = useState("");
-  const [cloudTemplate, setCloudTemplate] = useState("hello_world");
-  const [cloudIdioma, setCloudIdioma] = useState("en_US");
+  const [cloudTemplate, setCloudTemplate] = useState("retomada_atendimento");
+  const [cloudIdioma, setCloudIdioma] = useState("pt_BR");
+  const [cloudParam, setCloudParam] = useState("");
   const [cloudEnviando, setCloudEnviando] = useState(false);
   const [cloudResultado, setCloudResultado] = useState<string | null>(null);
 
@@ -684,10 +685,12 @@ function PainelSaudeWhatsapp() {
       const r = await testarCloud({
         data: {
           telefone: tel,
-          template: cloudTemplate.trim() || "hello_world",
-          idioma: cloudIdioma.trim() || "en_US",
+          template: cloudTemplate.trim() || "retomada_atendimento",
+          idioma: cloudIdioma.trim() || "pt_BR",
+          ...(cloudParam.trim() ? { parametro: cloudParam.trim() } : {}),
         },
       });
+
       const resumo = `ok=${r.ok} · http=${r.http_status ?? "-"} · id=${r.message_id ?? "-"}${
         r.erro_codigo ? ` · código=${r.erro_codigo}` : ""
       }${r.erro_mensagem ? ` · ${r.erro_mensagem}` : ""}`;
