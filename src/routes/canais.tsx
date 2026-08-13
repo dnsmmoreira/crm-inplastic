@@ -667,8 +667,9 @@ function PainelSaudeWhatsapp() {
   const [resultadoTeste, setResultadoTeste] = useState<string | null>(null);
   const [negado, setNegado] = useState(false);
   const [cloudTel, setCloudTel] = useState("");
-  const [cloudTemplate, setCloudTemplate] = useState("hello_world");
-  const [cloudIdioma, setCloudIdioma] = useState("en_US");
+  const [cloudTemplate, setCloudTemplate] = useState("retomada_atendimento");
+  const [cloudIdioma, setCloudIdioma] = useState("pt_BR");
+  const [cloudParam, setCloudParam] = useState("");
   const [cloudEnviando, setCloudEnviando] = useState(false);
   const [cloudResultado, setCloudResultado] = useState<string | null>(null);
 
@@ -684,10 +685,12 @@ function PainelSaudeWhatsapp() {
       const r = await testarCloud({
         data: {
           telefone: tel,
-          template: cloudTemplate.trim() || "hello_world",
-          idioma: cloudIdioma.trim() || "en_US",
+          template: cloudTemplate.trim() || "retomada_atendimento",
+          idioma: cloudIdioma.trim() || "pt_BR",
+          ...(cloudParam.trim() ? { parametro: cloudParam.trim() } : {}),
         },
       });
+
       const resumo = `ok=${r.ok} · http=${r.http_status ?? "-"} · id=${r.message_id ?? "-"}${
         r.erro_codigo ? ` · código=${r.erro_codigo}` : ""
       }${r.erro_mensagem ? ` · ${r.erro_mensagem}` : ""}`;
@@ -792,7 +795,7 @@ function PainelSaudeWhatsapp() {
 
       <div className="space-y-2 rounded-md border p-3">
         <div className="text-xs font-medium">Testar WhatsApp Cloud (Meta)</div>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-4 gap-2">
           <input
             className="h-8 rounded-md border bg-background px-2 text-[11px]"
             placeholder="Telefone (DDI+DDD)"
@@ -801,17 +804,24 @@ function PainelSaudeWhatsapp() {
           />
           <input
             className="h-8 rounded-md border bg-background px-2 text-[11px]"
-            placeholder="hello_world"
+            placeholder="retomada_atendimento"
             value={cloudTemplate}
             onChange={(e) => setCloudTemplate(e.target.value)}
           />
           <input
             className="h-8 rounded-md border bg-background px-2 text-[11px]"
-            placeholder="en_US"
+            placeholder="pt_BR"
             value={cloudIdioma}
             onChange={(e) => setCloudIdioma(e.target.value)}
           />
+          <input
+            className="h-8 rounded-md border bg-background px-2 text-[11px]"
+            placeholder="Parâmetro {{1}} (opcional)"
+            value={cloudParam}
+            onChange={(e) => setCloudParam(e.target.value)}
+          />
         </div>
+
         <div className="flex items-center gap-2">
           <Button
             size="sm"

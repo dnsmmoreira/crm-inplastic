@@ -160,6 +160,52 @@ export async function janelaAtendimentoAberta(phone: string): Promise<boolean> {
   return (count ?? 0) > 0;
 }
 
+/**
+ * Resolve o primeiro nome do contato para preencher {{1}} do template.
+ * Ordem: conversa (name) → lead vinculado (contact_name) → cliente do lead.
+ * Nunca lança: em qualquer falha retorna o fallback seguro.
+ */
+export async function resolverPrimeiroNomeContato(phone: string): Promise<string> {
+  const { primeiroNome, NOME_FALLBACK } = await import("./whatsapp-template");
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: conversa } = await supabaseAdmin
+      .from("whatsapp_conversas")
+      .select("name, lead_id")
+      .eq("phone", phone)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (conversa?.name && primeiroNome(conversa.name) !== NOME_FALLBACK) {
+      return primeiroNome(conversa.name);
+    }
+
+    if (conversa?.lead_id) {
+      const { data: lead } = await supabaseAdmin
+        .from("leads")
+        .select("contact_name, cliente_id")
+        .eq("id", conversa.lead_id)
+        .maybeSingle();
+      if (lead?.contact_name && primeiroNome(lead.contact_name) !== NOME_FALLBACK) {
+        return primeiroNome(lead.contact_name);
+      }
+      if (lead?.cliente_id) {
+        const { data: cliente } = await supabaseAdmin
+          .from("clientes")
+          .select("contato, nome_fantasia, razao_social")
+          .eq("id", lead.cliente_id)
+          .maybeSingle();
+        const candidato = cliente?.contato ?? cliente?.nome_fantasia ?? cliente?.razao_social;
+        if (candidato && primeiroNome(candidato) !== NOME_FALLBACK) return primeiroNome(candidato);
+      }
+    }
+  } catch (e) {
+    console.warn(`[wa] falha ao resolver nome do contato: ${e instanceof Error ? e.message : e}`);
+  }
+  return NOME_FALLBACK;
+}
+
 export async function sendWhatsappText(
   phoneRaw: string,
   message: string,
@@ -169,11 +215,11 @@ export async function sendWhatsappText(
     bypassGuards?: boolean;
     origem?: ZapiOrigem;
     /**
-     * Força o envio como template aprovado com nome/idioma explícitos e SEM
-     * parâmetros de corpo (usado pelo teste administrativo, ex.: hello_world).
+     * Força o envio como template aprovado com nome/idioma explícitos
+     * (usado pelo teste administrativo). Parâmetros de corpo opcionais.
      * Todas as guardas continuam valendo normalmente.
      */
-    templateOverride?: { name: string; lang: string };
+    templateOverride?: { name: string; lang: string; params?: string[] };
     /**
      * Só pode ser ativada pelo teste administrativo (`testarEnvioCloud`).
      * Quando true, pula APENAS a verificação da janela 07:00-20:00 / domingo.
@@ -182,6 +228,7 @@ export async function sendWhatsappText(
     ignorarJanelaHorario?: boolean;
   },
 ): Promise<ZapiSendResult> {
+
   const tag = ctx ? `[wa:${canal}:${ctx}]` : `[wa:${canal}]`;
   const phone = normalizePhoneBR(phoneRaw);
   const bypass = opts?.bypassGuards === true;
@@ -322,7 +369,12 @@ export async function sendWhatsappText(
     usarTemplate = !(await janelaAtendimentoAberta(phone));
   }
 
-  const templateName = override?.name ?? (process.env.META_TEMPLATE_NAME ?? "").trim();
+  const { montarComponenteBody, TEMPLATES_PROIBIDOS_PRODUCAO } =
+    await import("./whatsapp-template");
+
+  const templateName =
+    override?.name ??
+    ((process.env.META_TEMPLATE_NAME ?? "").trim() || "retomada_atendimento");
   const templateLang =
     override?.lang ?? ((process.env.META_TEMPLATE_LANG ?? "pt_BR").trim() || "pt_BR");
   if (usarTemplate && !templateName) {
@@ -331,6 +383,23 @@ export async function sendWhatsappText(
       "Fora da janela de 24h do cliente: e obrigatorio um template aprovado (META_TEMPLATE_NAME nao configurado).",
     );
   }
+  // Nunca usar template de demonstração em envio de produção (só no teste admin).
+  if (usarTemplate && !override && TEMPLATES_PROIBIDOS_PRODUCAO.has(templateName)) {
+    bloquear(tag, "template_proibido_producao", phone);
+    throw new Error(
+      `Template "${templateName}" nao pode ser usado em producao. Configure META_TEMPLATE_NAME com um template aprovado em pt_BR.`,
+    );
+  }
+
+  // Componente BODY: {{1}} = primeiro nome do contato (automático) ou os
+  // parâmetros explícitos informados pelo teste administrativo.
+  let componentes: unknown[] = [];
+  if (usarTemplate) {
+    componentes = override
+      ? montarComponenteBody(override.params ?? [])
+      : montarComponenteBody([await resolverPrimeiroNomeContato(phone)]);
+  }
+
 
   /** (8) Idempotência: já existe registro deste phone+hash nos últimos 60s? */
   async function jaEnviadoRecentemente() {
@@ -364,15 +433,9 @@ export async function sendWhatsappText(
     }
 
     const r = usarTemplate
-      ? await cloudSendTemplate(
-          phone,
-          templateName,
-          templateLang,
-          override
-            ? []
-            : [{ type: "body", parameters: [{ type: "text", text: message.slice(0, 900) }] }],
-        )
+      ? await cloudSendTemplate(phone, templateName, templateLang, componentes)
       : await cloudSendText(phone, message);
+
 
     console.log(
       `${tag} tentativa=${tentativa} ${usarTemplate ? "template" : "texto"} ok=${r.ok} status=${r.status ?? "-"} phone=${mascararTelefoneLog(phone)}`,

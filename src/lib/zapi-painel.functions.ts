@@ -172,6 +172,7 @@ export const testarEnvioCloud = createServerFn({ method: "POST" })
         telefone: z.string().min(8).max(20),
         template: z.string().trim().min(1).max(80).optional(),
         idioma: z.string().trim().min(2).max(10).optional(),
+        parametro: z.string().trim().min(1).max(200).optional(),
       })
       .parse(data),
   )
@@ -179,8 +180,9 @@ export const testarEnvioCloud = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     await exigirAdmin(supabase, userId);
 
-    const template = data.template?.trim() || "hello_world";
-    const idioma = data.idioma?.trim() || "en_US";
+    const template = data.template?.trim() || "retomada_atendimento";
+    const idioma = data.idioma?.trim() || "pt_BR";
+    const parametro = data.parametro?.trim() || "";
 
     let phone = String(data.telefone).replace(/\D/g, "");
     if (!phone.startsWith("55") && phone.length <= 11) phone = `55${phone}`;
@@ -200,7 +202,11 @@ export const testarEnvioCloud = createServerFn({ method: "POST" })
     try {
       const { sendWhatsappText } = await import("./whatsapp-send.server");
       const r = await sendWhatsappText(phone, conteudo, "teste-cloud", "comercial", {
-        templateOverride: { name: template, lang: idioma },
+        templateOverride: {
+          name: template,
+          lang: idioma,
+          ...(parametro ? { params: [parametro] } : {}),
+        },
         ignorarJanelaHorario: janelaIgnorada,
       });
       ok = r.ok;
