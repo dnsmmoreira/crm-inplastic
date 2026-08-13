@@ -99,6 +99,8 @@ export async function cloudSendTemplate(
   langCode: string,
   components?: unknown[],
 ): Promise<CloudResult> {
+  // Normaliza: `components` vazio nunca deve ser enviado à Meta.
+  const comps = Array.isArray(components) ? components.filter(Boolean) : [];
   return postMessages(
     {
       messaging_product: "whatsapp",
@@ -108,12 +110,13 @@ export async function cloudSendTemplate(
       template: {
         name: templateName,
         language: { code: langCode },
-        ...(components && components.length ? { components } : {}),
+        ...(comps.length ? { components: comps } : {}),
       },
     },
     "send-template",
   );
 }
+
 
 /** Diagnóstico do número — nunca expõe o token. */
 export async function cloudHealth(): Promise<{
