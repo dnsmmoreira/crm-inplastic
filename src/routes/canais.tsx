@@ -30,7 +30,6 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { limparOrigemAnuncio } from "@/lib/mensagem-display";
 import { useServerFn } from "@tanstack/react-start";
-import { zapiStatus } from "@/lib/zapi.functions";
 import { sendConversaMessage, createLeadFromConversa } from "@/lib/canais.functions";
 import {
   painelWhatsapp,
@@ -114,7 +113,7 @@ function CanaisPage() {
             <MessageSquare className="h-7 w-7 text-primary" /> Canais de Entrada
           </h1>
           <p className="text-sm text-muted-foreground">
-            Conversas de WhatsApp em tempo real · integração Z-API
+            Conversas de WhatsApp em tempo real · WhatsApp Cloud API (Meta)
           </p>
         </div>
       </div>
@@ -143,12 +142,10 @@ function CanaisPage() {
             <div className="flex items-center gap-2 text-sm font-medium">
               <Radio className="h-4 w-4 text-primary" /> Integrações
             </div>
-            <ZapiStatusRow />
+            <IntegrationRow name="WhatsApp Business (Cloud API)" status="conectado" />
             <IntegrationRow name="Formulário do site" status="pendente" />
             <IntegrationRow name="Instagram DM" status="pendente" />
           </div>
-
-          <ZapiCard />
 
           <PainelSaudeWhatsapp />
 
@@ -520,89 +517,6 @@ function StatusChip({
   );
 }
 
-function ZapiCard() {
-  const check = useServerFn(zapiStatus);
-  const [state, setState] = useState<"idle" | "loading" | "ok" | "err">("idle");
-  const [info, setInfo] = useState<string>("");
-  const [webhookUrl, setWebhookUrl] = useState("");
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setWebhookUrl(`${window.location.origin}/api/public/zapi/webhook`);
-    }
-  }, []);
-
-  async function testar() {
-    setState("loading");
-    try {
-      const r = await check();
-      if (!r.configured) {
-        setState("err");
-        setInfo("Variáveis Z-API ausentes.");
-        return;
-      }
-      setState(r.status && r.status >= 200 && r.status < 300 ? "ok" : "err");
-      setInfo(r.raw.slice(0, 240));
-    } catch (e) {
-      setState("err");
-      setInfo(e instanceof Error ? e.message : String(e));
-    }
-  }
-
-  return (
-    <div className="rounded-xl border bg-card p-4 space-y-3">
-      <div className="flex items-center gap-2 text-sm font-medium">
-        <Wifi className="h-4 w-4 text-primary" /> Z-API (WhatsApp)
-      </div>
-      <div className="space-y-1.5">
-        <Label className="text-xs">URL do Webhook (cole no painel Z-API → "Ao receber")</Label>
-        <div className="flex gap-1.5">
-          <input
-            readOnly
-            value={webhookUrl}
-            className="flex-1 rounded-md border bg-muted/40 px-2 py-1.5 text-xs font-mono"
-          />
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              void navigator.clipboard.writeText(webhookUrl);
-              toast.success("URL copiada");
-            }}
-          >
-            <Copy className="h-3.5 w-3.5" />
-          </Button>
-        </div>
-      </div>
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={testar}
-        disabled={state === "loading"}
-        className="w-full"
-      >
-        {state === "loading" ? "Testando..." : "Testar conexão"}
-      </Button>
-      {state !== "idle" && state !== "loading" && (
-        <div
-          className={cn(
-            "rounded-md border p-2 text-[11px] font-mono break-all",
-            state === "ok"
-              ? "border-emerald-500/40 bg-emerald-500/5 text-emerald-700"
-              : "border-red-500/40 bg-red-500/5 text-red-700",
-          )}
-        >
-          {info || (state === "ok" ? "OK" : "Erro")}
-        </div>
-      )}
-      <p className="text-[11px] text-muted-foreground">
-        Configure também "Ao enviar" e "Status da mensagem" apontando para a mesma URL se desejar
-        registro completo.
-      </p>
-    </div>
-  );
-}
-
 function StatCard({
   label,
   value,
@@ -650,77 +564,6 @@ function IntegrationRow({
       >
         {status}
       </Badge>
-    </div>
-  );
-}
-
-/** (6) Status REAL da instância Z-API — substitui o badge fixo antigo. */
-function ZapiStatusRow() {
-  const check = useServerFn(zapiStatus);
-  const [estado, setEstado] = useState<"carregando" | "conectado" | "desconectado" | "nao_configurado">(
-    "carregando",
-  );
-  const [checadoEm, setChecadoEm] = useState<Date | null>(null);
-
-  const verificar = useCallback(async () => {
-    setEstado("carregando");
-    try {
-      const r = await check();
-      if (!r.configured) {
-        setEstado("nao_configurado");
-      } else {
-        let ok = false;
-        try {
-          const p = JSON.parse(r.raw) as { connected?: boolean; smartphoneConnected?: boolean };
-          ok = p.connected === true && p.smartphoneConnected === true;
-        } catch {
-          ok = false;
-        }
-        setEstado(ok ? "conectado" : "desconectado");
-      }
-    } catch {
-      setEstado("desconectado");
-    } finally {
-      setChecadoEm(new Date());
-    }
-  }, [check]);
-
-  useEffect(() => {
-    void verificar();
-  }, [verificar]);
-
-  const cfg = {
-    carregando: { label: "Verificando...", cls: "border-muted-foreground/40 text-muted-foreground" },
-    conectado: { label: "Conectado", cls: "border-emerald-500/50 text-emerald-700" },
-    desconectado: { label: "Desconectado", cls: "border-red-500/50 text-red-700" },
-    nao_configurado: { label: "Nao configurado", cls: "border-amber-500/50 text-amber-700" },
-  }[estado];
-
-  return (
-    <div className="space-y-1">
-      <div className="flex items-center justify-between text-sm">
-        <span>WhatsApp Business (Z-API)</span>
-        <div className="flex items-center gap-1.5">
-          <Badge variant="outline" className={cn("text-[10px]", cfg.cls)}>
-            {cfg.label}
-          </Badge>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-6 w-6"
-            onClick={() => void verificar()}
-            disabled={estado === "carregando"}
-            title="Recarregar status"
-          >
-            <RefreshCw className={cn("h-3.5 w-3.5", estado === "carregando" && "animate-spin")} />
-          </Button>
-        </div>
-      </div>
-      <div className="text-[10px] text-muted-foreground">
-        {checadoEm
-          ? `Última verificação: ${format(checadoEm, "dd/MM/yyyy HH:mm:ss")}`
-          : "Nunca verificado"}
-      </div>
     </div>
   );
 }

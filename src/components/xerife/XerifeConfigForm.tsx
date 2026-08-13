@@ -386,11 +386,10 @@ export function XerifeConfigForm() {
           <Separator />
           <div className="flex items-center justify-between">
             <div>
-              <Label className="text-sm">Notificações internas por WhatsApp (segundo número)</Label>
+              <Label className="text-sm">Notificações internas por WhatsApp (descontinuado)</Label>
               <p className="text-xs text-muted-foreground">
-                Envia alertas para vendedores, admins e diretoria por um número separado do
-                comercial. Exige as credenciais ZAPI_INTERNO_INSTANCE_ID, ZAPI_INTERNO_TOKEN e
-                ZAPI_INTERNO_CLIENT_TOKEN; sem elas nada é enviado.
+                O canal interno de WhatsApp foi descontinuado com a saída da Z-API. Os alertas
+                internos saem exclusivamente pelo Telegram.
               </p>
             </div>
             <Switch

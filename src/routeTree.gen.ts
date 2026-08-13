@@ -40,10 +40,6 @@ import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } fr
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
-import { Route as ApiPublicZapiWebhookRouteImport } from './routes/api/public/zapi/webhook'
-import { Route as ApiPublicZapiStatusRouteImport } from './routes/api/public/zapi/status'
-import { Route as ApiPublicZapiDesconectadoRouteImport } from './routes/api/public/zapi/desconectado'
-import { Route as ApiPublicZapiConectadoRouteImport } from './routes/api/public/zapi/conectado'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram/webhook'
 import { Route as ApiPublicHooksXerifeWatchdogConversaRouteImport } from './routes/api/public/hooks/xerife-watchdog-conversa'
 import { Route as ApiPublicHooksXerifePedidosRouteImport } from './routes/api/public/hooks/xerife-pedidos'
@@ -216,27 +212,6 @@ const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
   path: '/.lovable/oauth/consent',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicZapiWebhookRoute = ApiPublicZapiWebhookRouteImport.update({
-  id: '/api/public/zapi/webhook',
-  path: '/api/public/zapi/webhook',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicZapiStatusRoute = ApiPublicZapiStatusRouteImport.update({
-  id: '/api/public/zapi/status',
-  path: '/api/public/zapi/status',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicZapiDesconectadoRoute =
-  ApiPublicZapiDesconectadoRouteImport.update({
-    id: '/api/public/zapi/desconectado',
-    path: '/api/public/zapi/desconectado',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicZapiConectadoRoute = ApiPublicZapiConectadoRouteImport.update({
-  id: '/api/public/zapi/conectado',
-  path: '/api/public/zapi/conectado',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiPublicTelegramWebhookRoute =
   ApiPublicTelegramWebhookRouteImport.update({
     id: '/api/public/telegram/webhook',
@@ -359,10 +334,6 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/xerife-pedidos': typeof ApiPublicHooksXerifePedidosRoute
   '/api/public/hooks/xerife-watchdog-conversa': typeof ApiPublicHooksXerifeWatchdogConversaRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
-  '/api/public/zapi/conectado': typeof ApiPublicZapiConectadoRoute
-  '/api/public/zapi/desconectado': typeof ApiPublicZapiDesconectadoRoute
-  '/api/public/zapi/status': typeof ApiPublicZapiStatusRoute
-  '/api/public/zapi/webhook': typeof ApiPublicZapiWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -409,10 +380,6 @@ export interface FileRoutesByTo {
   '/api/public/hooks/xerife-pedidos': typeof ApiPublicHooksXerifePedidosRoute
   '/api/public/hooks/xerife-watchdog-conversa': typeof ApiPublicHooksXerifeWatchdogConversaRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
-  '/api/public/zapi/conectado': typeof ApiPublicZapiConectadoRoute
-  '/api/public/zapi/desconectado': typeof ApiPublicZapiDesconectadoRoute
-  '/api/public/zapi/status': typeof ApiPublicZapiStatusRoute
-  '/api/public/zapi/webhook': typeof ApiPublicZapiWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -460,10 +427,6 @@ export interface FileRoutesById {
   '/api/public/hooks/xerife-pedidos': typeof ApiPublicHooksXerifePedidosRoute
   '/api/public/hooks/xerife-watchdog-conversa': typeof ApiPublicHooksXerifeWatchdogConversaRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
-  '/api/public/zapi/conectado': typeof ApiPublicZapiConectadoRoute
-  '/api/public/zapi/desconectado': typeof ApiPublicZapiDesconectadoRoute
-  '/api/public/zapi/status': typeof ApiPublicZapiStatusRoute
-  '/api/public/zapi/webhook': typeof ApiPublicZapiWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -512,10 +475,6 @@ export interface FileRouteTypes {
     | '/api/public/hooks/xerife-pedidos'
     | '/api/public/hooks/xerife-watchdog-conversa'
     | '/api/public/telegram/webhook'
-    | '/api/public/zapi/conectado'
-    | '/api/public/zapi/desconectado'
-    | '/api/public/zapi/status'
-    | '/api/public/zapi/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -562,10 +521,6 @@ export interface FileRouteTypes {
     | '/api/public/hooks/xerife-pedidos'
     | '/api/public/hooks/xerife-watchdog-conversa'
     | '/api/public/telegram/webhook'
-    | '/api/public/zapi/conectado'
-    | '/api/public/zapi/desconectado'
-    | '/api/public/zapi/status'
-    | '/api/public/zapi/webhook'
   id:
     | '__root__'
     | '/'
@@ -612,10 +567,6 @@ export interface FileRouteTypes {
     | '/api/public/hooks/xerife-pedidos'
     | '/api/public/hooks/xerife-watchdog-conversa'
     | '/api/public/telegram/webhook'
-    | '/api/public/zapi/conectado'
-    | '/api/public/zapi/desconectado'
-    | '/api/public/zapi/status'
-    | '/api/public/zapi/webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -663,10 +614,6 @@ export interface RootRouteChildren {
   ApiPublicHooksXerifePedidosRoute: typeof ApiPublicHooksXerifePedidosRoute
   ApiPublicHooksXerifeWatchdogConversaRoute: typeof ApiPublicHooksXerifeWatchdogConversaRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
-  ApiPublicZapiConectadoRoute: typeof ApiPublicZapiConectadoRoute
-  ApiPublicZapiDesconectadoRoute: typeof ApiPublicZapiDesconectadoRoute
-  ApiPublicZapiStatusRoute: typeof ApiPublicZapiStatusRoute
-  ApiPublicZapiWebhookRoute: typeof ApiPublicZapiWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -888,34 +835,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DotlovableOauthConsentRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/zapi/webhook': {
-      id: '/api/public/zapi/webhook'
-      path: '/api/public/zapi/webhook'
-      fullPath: '/api/public/zapi/webhook'
-      preLoaderRoute: typeof ApiPublicZapiWebhookRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/zapi/status': {
-      id: '/api/public/zapi/status'
-      path: '/api/public/zapi/status'
-      fullPath: '/api/public/zapi/status'
-      preLoaderRoute: typeof ApiPublicZapiStatusRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/zapi/desconectado': {
-      id: '/api/public/zapi/desconectado'
-      path: '/api/public/zapi/desconectado'
-      fullPath: '/api/public/zapi/desconectado'
-      preLoaderRoute: typeof ApiPublicZapiDesconectadoRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/zapi/conectado': {
-      id: '/api/public/zapi/conectado'
-      path: '/api/public/zapi/conectado'
-      fullPath: '/api/public/zapi/conectado'
-      preLoaderRoute: typeof ApiPublicZapiConectadoRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/public/telegram/webhook': {
       id: '/api/public/telegram/webhook'
       path: '/api/public/telegram/webhook'
@@ -1057,10 +976,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksXerifeWatchdogConversaRoute:
     ApiPublicHooksXerifeWatchdogConversaRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
-  ApiPublicZapiConectadoRoute: ApiPublicZapiConectadoRoute,
-  ApiPublicZapiDesconectadoRoute: ApiPublicZapiDesconectadoRoute,
-  ApiPublicZapiStatusRoute: ApiPublicZapiStatusRoute,
-  ApiPublicZapiWebhookRoute: ApiPublicZapiWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

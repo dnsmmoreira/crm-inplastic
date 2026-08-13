@@ -1,9 +1,7 @@
 /**
  * Envio de WhatsApp — driver ÚNICO: Cloud API oficial da Meta.
  *
- * (ITEM E) A Z-API saiu do caminho de saída. `WHATSAPP_DRIVER` tem default
- * `cloud` e qualquer outro valor é recusado — não existe mais chamada HTTP
- * para api.z-api.io neste arquivo.
+ * A Z-API foi removida do projeto. Este é o único caminho de saída.
  *
  * TODAS as guardas anteriores continuam valendo, na mesma ordem:
  *   0) disjuntor (envio automático pausado)
@@ -162,7 +160,7 @@ export async function janelaAtendimentoAberta(phone: string): Promise<boolean> {
   return (count ?? 0) > 0;
 }
 
-export async function sendZapiText(
+export async function sendWhatsappText(
   phoneRaw: string,
   message: string,
   ctx?: string,
@@ -190,14 +188,6 @@ export async function sendZapiText(
   const ignorarJanelaHorario = opts?.ignorarJanelaHorario === true;
   const origem: ZapiOrigem = opts?.origem ?? "iniciado_sistema";
 
-
-  // (ITEM E) Driver único: cloud. Default cloud; valor diferente é recusado.
-  const driver = (process.env.WHATSAPP_DRIVER ?? "cloud").trim().toLowerCase();
-  if (driver !== "cloud") {
-    throw new Error(
-      `WHATSAPP_DRIVER inválido ("${driver}"). A Z-API foi desativada; o único driver suportado é "cloud".`,
-    );
-  }
 
   const { cloudEnabled, cloudSendText, cloudSendTemplate } =
     await import("./whatsapp-cloud.server");
@@ -422,5 +412,4 @@ export async function sendZapiText(
   throw ultimoErro;
 }
 
-/** Alias explícito para novos usos. */
-export const sendWhatsappText = sendZapiText;
+

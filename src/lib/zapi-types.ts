@@ -1,6 +1,6 @@
 /**
  * Tipos compartilhados do envio de WhatsApp.
- * Extraídos de `zapi-send.server.ts` para poderem ser importados por módulos
+ * Extraídos de `whatsapp-send.server.ts` para poderem ser importados por módulos
  * que não são server-only. Nomes mantidos para não quebrar imports existentes.
  */
 

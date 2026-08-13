@@ -80,7 +80,7 @@ dev: `vite` ^8.0.16, `typescript` ^5.8.3, `vitest` ^4.1.10, `nitro` 3.0.260603-b
       |                                                          |
       +--> supabaseAdmin (service_role, só após validar caller) --+
       |
-      +--> src/lib/zapi-send.server.ts ----> Z-API (WhatsApp comercial/interno)
+      +--> src/lib/whatsapp-send.server.ts -> WhatsApp Cloud API (Meta)
       +--> src/lib/telegram-send.server.ts -> Telegram Bot API
       +--> src/lib/n8n-fila.server.ts ------> n8n (agente IA) [+ fila de reenvio]
       +--> Google Maps Distance Matrix / CNPJá / Lovable AI Gateway
@@ -109,7 +109,7 @@ src/
 │  ├─ *.functions.ts       # server functions (RPC tipado) por domínio: clientes, pedidos, propostas,
 │  │                       #   atendimento, canais, fila, placar, relatórios, usuários, xerife, omie…
 │  ├─ *.server.ts          # código exclusivo de servidor (bloqueado no bundle do cliente):
-│  │                       #   zapi-send.server.ts (camada anti-bloqueio), telegram-send.server.ts,
+│  │                       #   whatsapp-send.server.ts (camada anti-bloqueio), telegram-send.server.ts,
 │  │                       #   n8n-fila.server.ts
 │  ├─ xerife/              # motor Xerife: notify, dedupe, handoff, businessTime, rollover,
 │  │                       #   watchdog-conversa (+ testes)
@@ -245,20 +245,14 @@ Arquivo `.env.example` na raiz lista todas as chaves vazias.
 | `SUPABASE_PUBLISHABLE_KEY` | Chave pública (RLS aplicada) | `client.ts:34`, `auth-middleware.ts:37`, `src/lib/mcp/tools/*.ts` | Sim | Lovable Cloud |
 | `SUPABASE_SERVICE_ROLE_KEY` | Cliente privilegiado (ignora RLS) | `src/integrations/supabase/client.server.ts:34` | Sim | Lovable Cloud (não exposta ao usuário) |
 | `SUPABASE_PROJECT_ID` / `VITE_SUPABASE_*` | Identificação do projeto no cliente e no MCP | `.env`, `src/lib/mcp/index.ts:10` | Sim | Lovable Cloud |
-| `ZAPI_INSTANCE_ID` | Instância Z-API do canal **comercial** | `src/lib/zapi-send.server.ts:67`, `src/lib/zapi.functions.ts:35` | Sim | Painel Z-API |
-| `ZAPI_TOKEN` | Token da instância comercial | `zapi-send.server.ts:68`, `zapi.functions.ts:36` | Sim | Painel Z-API |
-| `ZAPI_CLIENT_TOKEN` | Header `Client-Token` da conta Z-API | `zapi-send.server.ts:70`, `zapi.functions.ts:37` | Sim | Painel Z-API (Segurança) |
-| `ZAPI_INTERNO_INSTANCE_ID` | Instância do canal **interno** (avisos à equipe) | `zapi-send.server.ts:67`, `src/lib/xerife/notify.server.ts:99` | Sim | Painel Z-API |
-| `ZAPI_INTERNO_TOKEN` | Token do canal interno | `zapi-send.server.ts:68`, `notify.server.ts:100` | Sim | Painel Z-API |
-| `ZAPI_INTERNO_CLIENT_TOKEN` | `Client-Token` do canal interno | `zapi-send.server.ts:70`, `notify.server.ts:101` | Sim | Painel Z-API |
 | `N8N_WEBHOOK_URL` | URL do fluxo n8n que roda o agente de IA | `src/lib/n8n-fila.server.ts:72` | Sim (para IA) | Instância n8n do dono |
 | `N8N_SECRET` | Segredo compartilhado dos hooks IA | `n8n-fila.server.ts:73`, `src/routes/api/public/hooks/ia-responder.ts:20`, `ia-qualificar.ts:34`, `ia-urgente.ts:34` | Sim (para IA) | Definido pelo dono (string aleatória forte) |
 | `XERIFE_SECRET` | Segredo dos hooks do motor Xerife (cron) | `hooks/xerife-engine.ts:667`, `xerife-checkpoint.ts:86`, `xerife-fechamento.ts:215`, `xerife-agenda-diaria.ts:159` | Sim | Definido pelo dono |
 | `TELEGRAM_BOT_TOKEN` | Bot de notificações internas | `src/lib/telegram-send.server.ts:12`, `src/lib/xerife/notify.server.ts:69` | Não (opcional) | @BotFather |
 | `TELEGRAM_BOT_USERNAME` | Deep link de vínculo do usuário | `src/lib/telegram-vinculo.functions.ts:27` | Não | @BotFather |
-| `TELEGRAM_CHAT_DIRETORIA` | Chat que recebe alertas críticos | `notify.server.ts:138`, `zapi-send.server.ts:141` | Não | ID do chat/grupo |
+| `TELEGRAM_CHAT_DIRETORIA` | Chat que recebe alertas críticos | `notify.server.ts:138`, `whatsapp-send.server.ts` | Não | ID do chat/grupo |
 | `TELEGRAM_CHAT_FINANCEIRO` | Chat do financeiro | `notify.server.ts:148` | Não | ID do chat/grupo |
-| `WHATSAPP_DIRETORIA` | Telefone da diretoria para alertas | `zapi-send.server.ts:140`, `notify.server.ts:137`, `hooks/ia-urgente.ts:146` | Não | Definido pelo dono |
+| `WHATSAPP_DIRETORIA` | Telefone da diretoria para alertas | `whatsapp-send.server.ts`, `notify.server.ts:137`, `hooks/ia-urgente.ts:146` | Não | Definido pelo dono |
 | `WHATSAPP_FINANCEIRO` | Telefone do financeiro | `notify.server.ts:147` | Não | Definido pelo dono |
 | `GOOGLE_MAPS_API_KEY` | Distância/rota para cálculo de frete | `src/lib/logistica.functions.ts:22`, `src/lib/freight.functions.ts:8` | Não (frete degrada) | Google Cloud Console (Distance Matrix API) |
 | `VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY` | Chave de navegador do conector Maps | `.env` (fallback do conector) | Não | Conector Lovable / Google Cloud |
@@ -269,12 +263,11 @@ Arquivo `.env.example` na raiz lista todas as chaves vazias.
 
 ## 7) INTEGRAÇÕES EXTERNAS
 
-### 7.1 Z-API (WhatsApp) — comercial e interno
-- **O que faz:** envia e recebe mensagens de WhatsApp. Dois canais fisicamente separados: `comercial` (fala com cliente) e `interno` (alertas para a equipe). Sem fallback entre eles.
-- **Endpoints:** `POST https://api.z-api.io/instances/{id}/token/{token}/send-text` e `GET .../status`, sempre com header `Client-Token`.
-- **Arquivos:** `src/lib/zapi-send.server.ts` (único caminho de envio), `src/lib/zapi.functions.ts` (status), `src/lib/zapi-painel.functions.ts` (painel admin), `src/routes/api/public/zapi/webhook.ts` (entrada), `src/lib/zapi-normalize.ts`.
-- **Custo:** plano pago por instância na Z-API (duas instâncias/números).
-- **Troca de conta:** 1) criar conta Z-API e duas instâncias; 2) conectar cada número por QR Code; 3) copiar Instance ID, Token e Client-Token; 4) atualizar os 6 secrets `ZAPI_*`; 5) apontar o webhook "ao receber" de cada instância para `https://<dominio>/api/public/zapi/webhook`; 6) validar em `/canais` que o status ficou verde; 7) enviar 1 mensagem de teste manual.
+### 7.1 WhatsApp Cloud API (Meta)
+- **O que faz:** envia e recebe mensagens de WhatsApp pelo canal oficial da Meta. A Z-API foi removida do projeto (envio, webhooks e variáveis `ZAPI_*`).
+- **Endpoints:** `POST https://graph.facebook.com/{versao}/{phone-number-id}/messages` (envio, leitura, template) e webhook `/(api)/public/hooks/whatsapp-cloud` (GET verify + POST com HMAC).
+- **Arquivos:** `src/lib/whatsapp-send.server.ts` (único caminho de envio, com a regra de janela de 24h), `src/lib/whatsapp-cloud.server.ts` (chamadas cruas), `src/lib/whatsapp-presenca.server.ts` (marcar como lida), `src/lib/whatsapp-inbound.server.ts` (pipeline de entrada), `src/routes/api/public/hooks/whatsapp-cloud.ts`.
+- **Alertas internos:** só por Telegram.
 
 ### 7.2 n8n (agente de IA "Lucas")
 - **O que faz:** recebe eventos do CRM, roda o prompt do agente e devolve a resposta/qualificação pelos hooks públicos.
@@ -315,7 +308,7 @@ Arquivo `.env.example` na raiz lista todas as chaves vazias.
 
 ## 8) REGRAS DE NEGÓCIO CRÍTICAS (anti-bloqueio do WhatsApp)
 
-Tudo vive em **`src/lib/zapi-send.server.ts`**, que é o **único** caminho de envio.
+Tudo vive em **`src/lib/whatsapp-send.server.ts`**, que é o **único** caminho de envio.
 Motivo histórico: o número comercial já foi bloqueado pelo WhatsApp uma vez, e a Z-API respondia HTTP 200
 mesmo com a instância desconectada. **Nada abaixo pode ser removido, afrouxado ou contornado.**
 
@@ -347,7 +340,7 @@ Outras regras de negócio relevantes:
 
 ## 9) OPERAÇÃO E MONITORAMENTO
 
-- **Painel de Saúde do WhatsApp:** `/canais` (admin). Mostra status real da instância (verde conectado / vermelho desconectado / amarelo não configurado), horário da última verificação e botão de recarregar; resumo de envios (24h por canal e última hora), últimos 20 envios com telefone mascarado, opt-outs (com remoção mediante confirmação) e alertas das últimas 48h. Backend: `src/lib/zapi-painel.functions.ts` e `src/lib/zapi.functions.ts`.
+- **Painel de Saúde do WhatsApp:** `/canais` (admin). Mostra status real da instância (verde conectado / vermelho desconectado / amarelo não configurado), horário da última verificação e botão de recarregar; resumo de envios (24h por canal e última hora), últimos 20 envios com telefone mascarado, opt-outs (com remoção mediante confirmação) e alertas das últimas 48h. Backend: `src/lib/zapi-painel.functions.ts` (nome legado; opera sobre a Cloud API).
 - **Logs:** console do backend (Lovable Cloud → logs de função/servidor). Procure pelos prefixos `[zapi:...]`, `BLOQUEADO`, `[zapi:alerta]`.
 - **Tabelas de auditoria:** `zapi_envios`, `zapi_alertas`, `zapi_inbox`, `xerife_log`, `lead_stage_history`, `lead_owner_history`, `user_audit_log`, `pedido_stage_history`.
 - **Quando a instância cai:** 1) confirmar em `/canais`; 2) abrir o painel Z-API e reconectar o QR Code no celular do número; 3) aguardar até 60s (cache do status) e recarregar; 4) checar `zapi_alertas` para saber desde quando; 5) mensagens bloqueadas **não** ficam em fila — precisam ser reenviadas manualmente pelo vendedor; 6) se o bloqueio for do WhatsApp (não desconexão), não force envios: as travas existem exatamente para permitir o aquecimento do número.

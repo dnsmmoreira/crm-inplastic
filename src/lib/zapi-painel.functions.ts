@@ -107,9 +107,6 @@ export const diagnosticoCanaisInternos = createServerFn({ method: "POST" })
     await exigirAdmin(supabase, userId);
 
     const nomes = [
-      "ZAPI_INTERNO_INSTANCE_ID",
-      "ZAPI_INTERNO_TOKEN",
-      "ZAPI_INTERNO_CLIENT_TOKEN",
       "TELEGRAM_BOT_TOKEN",
       "TELEGRAM_CHAT_DIRETORIA",
       "WHATSAPP_FINANCEIRO",
@@ -119,11 +116,7 @@ export const diagnosticoCanaisInternos = createServerFn({ method: "POST" })
       nomes.map((n) => [n, ((process.env[n] ?? "") as string).trim().length > 0]),
     ) as Record<(typeof nomes)[number], boolean>;
 
-    const internoWhatsapp =
-      variaveis.ZAPI_INTERNO_INSTANCE_ID &&
-      variaveis.ZAPI_INTERNO_TOKEN &&
-      variaveis.ZAPI_INTERNO_CLIENT_TOKEN &&
-      variaveis.WHATSAPP_FINANCEIRO;
+    const internoWhatsapp = false;
     const telegramDiretoria = variaveis.TELEGRAM_BOT_TOKEN && variaveis.TELEGRAM_CHAT_DIRETORIA;
 
     const faltantes = nomes.filter((n) => !variaveis[n]);
@@ -133,12 +126,7 @@ export const diagnosticoCanaisInternos = createServerFn({ method: "POST" })
       canais: {
         interno_whatsapp: {
           pronto: internoWhatsapp,
-          faltantes: [
-            "ZAPI_INTERNO_INSTANCE_ID",
-            "ZAPI_INTERNO_TOKEN",
-            "ZAPI_INTERNO_CLIENT_TOKEN",
-            "WHATSAPP_FINANCEIRO",
-          ].filter((n) => !variaveis[n as (typeof nomes)[number]]),
+          faltantes: ["Canal desativado — alertas internos saem por Telegram"],
         },
         telegram_diretoria: {
           pronto: telegramDiretoria,
@@ -173,7 +161,7 @@ export const enviarAlertaTeste = createServerFn({ method: "POST" })
 
 /**
  * Envio de TESTE pela Cloud API oficial (somente admin).
- * Usa o MESMO driver de saída (`sendZapiText`), com todas as guardas ativas,
+ * Usa o MESMO driver de saída (`sendWhatsappText`), com todas as guardas ativas,
  * e grava conversa/mensagem pelo mesmo fluxo dos envios normais.
  */
 export const testarEnvioCloud = createServerFn({ method: "POST" })
@@ -210,8 +198,8 @@ export const testarEnvioCloud = createServerFn({ method: "POST" })
     const janelaIgnorada = true;
 
     try {
-      const { sendZapiText } = await import("./whatsapp-send.server");
-      const r = await sendZapiText(phone, conteudo, "teste-cloud", "comercial", {
+      const { sendWhatsappText } = await import("./whatsapp-send.server");
+      const r = await sendWhatsappText(phone, conteudo, "teste-cloud", "comercial", {
         templateOverride: { name: template, lang: idioma },
         ignorarJanelaHorario: janelaIgnorada,
       });

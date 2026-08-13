@@ -15,7 +15,7 @@ import {
   calcularTypingMs,
   sleep,
 } from "./zapi-humanizacao";
-import { mascararTelefoneLog } from "./zapi-send.server";
+import { mascararTelefoneLog } from "./whatsapp-send.server";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SB = any;
@@ -124,10 +124,9 @@ export async function despacharResposta(id: string): Promise<{ enviado: boolean;
     .limit(1)
     .maybeSingle();
 
-  const { marcarComoLida, definirDigitando } = await import("./zapi-presenca.server");
+  const { marcarComoLida } = await import("./whatsapp-presenca.server");
   await marcarComoLida(phone, ultimaEntrada?.external_id ?? null, "ia-fila");
   const typingMs = calcularTypingMs(linha.mensagem);
-  await definirDigitando(phone, true, "ia-fila");
   await sleep(typingMs);
 
   // Origem: resposta_inbound quando o cliente já escreveu nesta conversa.
@@ -139,8 +138,8 @@ export async function despacharResposta(id: string): Promise<{ enviado: boolean;
   const origem = (inboundCount ?? 0) > 0 ? "resposta_inbound" : "iniciado_sistema";
 
   try {
-    const { sendZapiText } = await import("./zapi-send.server");
-    await sendZapiText(phone, linha.mensagem, "ia-responder", "comercial", { origem });
+    const { sendWhatsappText } = await import("./whatsapp-send.server");
+    await sendWhatsappText(phone, linha.mensagem, "ia-responder", "comercial", { origem });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error(`[ia-fila] envio falhou phone=${mascararTelefoneLog(phone)}: ${msg}`);
@@ -156,11 +155,9 @@ export async function despacharResposta(id: string): Promise<{ enviado: boolean;
       telefone_mascarado: mascararTelefoneLog(phone),
     });
     await registrarFalhaEntrega(msg);
-    await definirDigitando(phone, false, "ia-fila");
     return { enviado: false, motivo: "erro_envio" };
   }
 
-  await definirDigitando(phone, false, "ia-fila");
 
   await sb.from("whatsapp_mensagens").insert({
     conversa_id: linha.conversa_id,
