@@ -795,7 +795,7 @@ function PainelSaudeWhatsapp() {
 
       <div className="space-y-2 rounded-md border p-3">
         <div className="text-xs font-medium">Testar WhatsApp Cloud (Meta)</div>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-4 gap-2">
           <input
             className="h-8 rounded-md border bg-background px-2 text-[11px]"
             placeholder="Telefone (DDI+DDD)"
@@ -804,17 +804,24 @@ function PainelSaudeWhatsapp() {
           />
           <input
             className="h-8 rounded-md border bg-background px-2 text-[11px]"
-            placeholder="hello_world"
+            placeholder="retomada_atendimento"
             value={cloudTemplate}
             onChange={(e) => setCloudTemplate(e.target.value)}
           />
           <input
             className="h-8 rounded-md border bg-background px-2 text-[11px]"
-            placeholder="en_US"
+            placeholder="pt_BR"
             value={cloudIdioma}
             onChange={(e) => setCloudIdioma(e.target.value)}
           />
+          <input
+            className="h-8 rounded-md border bg-background px-2 text-[11px]"
+            placeholder="Parâmetro {{1}} (opcional)"
+            value={cloudParam}
+            onChange={(e) => setCloudParam(e.target.value)}
+          />
         </div>
+
         <div className="flex items-center gap-2">
           <Button
             size="sm"
