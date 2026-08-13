@@ -117,40 +117,15 @@ export async function enviarNotificacaoInterna(
       }
     }
 
-    const alvo = (destino ?? "").trim();
-    if (!alvo) {
-      await registrarAlertaNaoEntregue(ctx, ["WHATSAPP_FINANCEIRO"]);
-      return { enviado: false, motivo: "sem_destino" };
-    }
+    // Fora do Telegram não existe mais canal interno: a Z-API foi removida e
+    // o número comercial da Cloud API não é usado para alertas internos.
+    void destino;
+    console.warn(
+      "[notificacao-interna] Telegram inativo/indisponível — nada enviado (sem fallback WhatsApp).",
+    );
+    await registrarAlertaNaoEntregue(ctx, faltantesTelegram(opts?.telegramChatId));
+    return { enviado: false, motivo: "canal_interno_desligado" };
 
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: cfg } = await supabaseAdmin
-      .from("xerife_config")
-      .select("whatsapp_interno_ativo")
-      .eq("id", 1)
-      .maybeSingle();
-
-    if (!cfg?.whatsapp_interno_ativo) {
-      console.warn("[notificacao-interna] canal interno desligado — nada enviado.");
-      await registrarAlertaNaoEntregue(ctx, []);
-      return { enviado: false, motivo: "canal_interno_desligado" };
-    }
-
-    const instanceId = (process.env.ZAPI_INTERNO_INSTANCE_ID ?? "").trim();
-    const token = (process.env.ZAPI_INTERNO_TOKEN ?? "").trim();
-    const clientToken = (process.env.ZAPI_INTERNO_CLIENT_TOKEN ?? "").trim();
-    if (!instanceId || !token || !clientToken) {
-      console.warn(
-        "[notificacao-interna] credenciais ZAPI_INTERNO_* ausentes — nada enviado (sem fallback comercial).",
-      );
-      await registrarAlertaNaoEntregue(ctx, faltantesZapiInterno());
-      return { enviado: false, motivo: "canal_interno_sem_credencial" };
-    }
-
-
-    const { sendZapiText } = await import("@/lib/zapi-send.server");
-    await sendZapiText(alvo, texto, ctx, "interno", { bypassGuards: opts?.bypassGuards === true });
-    return { enviado: true };
   } catch (e) {
     console.error(
       "[notificacao-interna] erro:",
