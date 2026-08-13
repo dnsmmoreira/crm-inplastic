@@ -29,9 +29,9 @@ function parseHour(hhmm: string): number {
 /**
  * Envia mensagem WhatsApp para público INTERNO do Xerife.
  * Passa obrigatoriamente pelo ponto único `enviarNotificacaoInterna`
- * (canal interno ZAPI_INTERNO_*, desligado por padrão).
+ * (Telegram; canal interno de WhatsApp descontinuado).
  */
-async function sendZapiText(phoneRaw: string, message: string): Promise<boolean> {
+async function enviarAlertaInterno(phoneRaw: string, message: string): Promise<boolean> {
   const { enviarNotificacaoInterna } = await import("@/lib/xerife/notify.server");
   const r = await enviarNotificacaoInterna(phoneRaw, message, "xerife");
   return r.enviado;
@@ -129,7 +129,7 @@ async function runXerife(dryRun = false): Promise<{
     if ((count ?? 0) > 0) return;
     const phone = await getOwnerPhone(ownerId);
     if (!phone) return;
-    const ok = await sendZapiText(phone, msg);
+    const ok = await enviarAlertaInterno(phone, msg);
     if (!ok) return;
     await supabaseAdmin.from("lead_ai_actions").insert({
       lead_id: leadId,
@@ -393,7 +393,7 @@ async function runResumoDiario(force = false): Promise<{
     const total = s.leadsUrgentes.length + s.tarefasHoje.length + s.tarefasVencidas.length + s.propostasParadas.length;
     if (total === 0) continue;
     const msg = formatMsg(prof?.name ?? "vendedor", false, s);
-    const ok = await sendZapiText(phone, msg);
+    const ok = await enviarAlertaInterno(phone, msg);
     if (ok) {
       vendedoresNotificados++;
       await supabaseAdmin.from("lead_ai_actions").insert({
@@ -435,7 +435,7 @@ async function runResumoDiario(force = false): Promise<{
     const phone = prof?.telefone_whatsapp?.trim();
     if (!phone) continue;
     const msg = formatMsg(prof?.name ?? "admin", true, consolidated) + (placarBlock ? "\n" + placarBlock : "");
-    const ok = await sendZapiText(phone, msg);
+    const ok = await enviarAlertaInterno(phone, msg);
     if (ok) {
       adminsNotificados++;
       await supabaseAdmin.from("lead_ai_actions").insert({
