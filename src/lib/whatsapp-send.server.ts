@@ -369,7 +369,12 @@ export async function sendWhatsappText(
     usarTemplate = !(await janelaAtendimentoAberta(phone));
   }
 
-  const templateName = override?.name ?? (process.env.META_TEMPLATE_NAME ?? "").trim();
+  const { montarComponenteBody, TEMPLATES_PROIBIDOS_PRODUCAO } =
+    await import("./whatsapp-template");
+
+  const templateName =
+    override?.name ??
+    ((process.env.META_TEMPLATE_NAME ?? "").trim() || "retomada_atendimento");
   const templateLang =
     override?.lang ?? ((process.env.META_TEMPLATE_LANG ?? "pt_BR").trim() || "pt_BR");
   if (usarTemplate && !templateName) {
@@ -378,6 +383,23 @@ export async function sendWhatsappText(
       "Fora da janela de 24h do cliente: e obrigatorio um template aprovado (META_TEMPLATE_NAME nao configurado).",
     );
   }
+  // Nunca usar template de demonstração em envio de produção (só no teste admin).
+  if (usarTemplate && !override && TEMPLATES_PROIBIDOS_PRODUCAO.has(templateName)) {
+    bloquear(tag, "template_proibido_producao", phone);
+    throw new Error(
+      `Template "${templateName}" nao pode ser usado em producao. Configure META_TEMPLATE_NAME com um template aprovado em pt_BR.`,
+    );
+  }
+
+  // Componente BODY: {{1}} = primeiro nome do contato (automático) ou os
+  // parâmetros explícitos informados pelo teste administrativo.
+  let componentes: unknown[] = [];
+  if (usarTemplate) {
+    componentes = override
+      ? montarComponenteBody(override.params ?? [])
+      : montarComponenteBody([await resolverPrimeiroNomeContato(phone)]);
+  }
+
 
   /** (8) Idempotência: já existe registro deste phone+hash nos últimos 60s? */
   async function jaEnviadoRecentemente() {
