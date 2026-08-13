@@ -1,54 +1,45 @@
-# Diagnóstico: Cliente x Contato (somente investigação)
+# Finalizar migração WhatsApp: Cloud API (Meta) como único canal
 
-## Resumo
+## (b) Confirmação: o helper de envio Cloud já existe
 
-Não existe um campo "tipo = cliente/contato". São **duas tabelas totalmente separadas**, com telas, cadastros e regras diferentes:
+- `src/lib/whatsapp-cloud.server.ts` — camada crua da Meta: `cloudSendText`, `cloudSendTemplate`, `cloudHealth`, diagnóstico e registro do número. É o mesmo caminho usado pelo botão "Testar WhatsApp Cloud".
+- `src/lib/whatsapp-send.server.ts` — motor de saída com todas as guardas (disjuntor, opt-out, janela de horário, rate limit, jitter, retry, anti-duplicado) e a **regra das 24h**: dentro da janela envia texto de sessão, fora envia template aprovado (`META_TEMPLATE_NAME` / `META_TEMPLATE_LANG`). É a função `sendZapiText` (nome legado) exportada também como `sendWhatsappText`.
+- `src/lib/zapi-send.server.ts` hoje é apenas um arquivo-ponte que re-exporta o motor acima — **não fala com a Z-API**.
 
-- **Contatos** (`/contatos`) = a tabela `leads`. É a mesma base do Pipeline/Kanban, só exibida em lista.
-- **Clientes** (`/clientes`) = a tabela `clientes`. Cadastro fiscal (CNPJ/CPF, IE, endereço, empresa padrão).
+Ou seja: o envio comercial (IA "Lucas", `sendConversaMessage`, fila da IA, teste do admin) **já sai 100% pela Cloud API**. O que resta de Z-API é recebimento legado, presença (lida/digitando), alerta interno e UI.
 
-A ligação entre as duas é opcional e feita por um único campo: `leads.cliente_id`. Hoje, dos 92 leads existentes, apenas **8 têm cliente vinculado**; há **37 clientes** cadastrados (36 ativos).
+## (a) Plano e arquivos a alterar
 
-## 1) Qual regra define "cliente" ou "contato"?
+### 1. Envio — consolidar nomes e remover a ponte
+- Renomear o export para `sendWhatsappText` como nome principal em `src/lib/whatsapp-send.server.ts` (mantendo o comportamento e todas as guardas).
+- Excluir `src/lib/zapi-send.server.ts` e apontar os importadores direto para `whatsapp-send.server`: `src/lib/ia-fila.server.ts`, `src/lib/canais.functions.ts`, `src/lib/xerife/notify.server.ts`.
+- Sem qualquer fallback para Z-API (o driver já rejeita valor diferente de `cloud`; a chave `WHATSAPP_DRIVER` será removida do código).
 
-Nenhuma regra automática. O registro só vira cliente se **alguém criar explicitamente** um cadastro na tabela `clientes`:
+### 2. Presença (marcar como lida / digitando)
+- `src/lib/zapi-presenca.server.ts`: hoje chama `api.z-api.io`. Substituir por "marcar como lida" via Cloud API (`messages` com `status: read`) e remover o "digitando" (a Meta não oferece). Arquivo passa a se chamar `src/lib/whatsapp-presenca.server.ts`.
+- Ajustar o import em `src/lib/ia-fila.server.ts`.
 
-- `src/components/clientes/NovoClienteDialog.tsx` → chama `createCliente` (`src/lib/clientes.functions.ts:221`), acionado pelo botão "Novo cliente" em `/clientes` ou dentro do fluxo "Nova proposta".
-- `src/routes/propostas.index.tsx:466` usa `vincularClienteAoLead` (`src/lib/clientes.functions.ts:483`) para gravar `leads.cliente_id`.
+### 3. Alerta interno (Xerife)
+- `src/lib/xerife/notify.server.ts`: remover o ramo `ZAPI_INTERNO_*` e o envio pelo número interno. Alertas internos passam a sair só por Telegram (já implementado), com registro de falha em `zapi_alertas` preservado.
 
-Ou seja: **criar lead nunca cria cliente**. `addLead` (`src/lib/crm-store.ts:831`) grava só em `leads`. Não há gatilho no banco nem código que promova um lead a cliente ao ganhar, ao virar pedido ou ao receber proposta.
+### 4. Recebimento Z-API — remover
+- Excluir as rotas `src/routes/api/public/zapi/webhook.ts`, `status.ts`, `conectado.ts`, `desconectado.ts` (já deprecadas, sem tráfego novo).
+- Excluir `src/lib/zapi-eventos.server.ts` e `src/lib/zapi.functions.ts` (status da instância Z-API).
+- Manter intacto o recebimento Cloud: `src/routes/api/public/hooks/whatsapp-cloud.ts` e `src/lib/whatsapp-inbound.server.ts`.
 
-## 2) Diferença entre formulário/webhook, manual e I.A.
+### 5. UI de Canais
+- `src/routes/canais.tsx`: remover o card "Z-API (WhatsApp)" com URL de webhook e "Testar conexão", remover o badge de status da instância Z-API e o uso de `zapiStatus`. Trocar o rótulo "integração Z-API" por "WhatsApp Cloud API (Meta)" e o rótulo do canal para "WhatsApp Business (Cloud API)". **Mantidos**: Diagnóstico Cloud, registro do número, inscrição da WABA e o botão de teste de envio.
+- `src/lib/zapi-painel.functions.ts`: remover a seção de diagnóstico das variáveis `ZAPI_INTERNO_*`; manter métricas de envio/alertas e as funções Cloud.
 
-Todos os três caminhos criam **apenas leads (contatos)** — nenhum cria cliente:
+### 6. Limpeza final
+- Remover `scripts/test-zapi-inbox-rls.ts` e o utilitário `src/lib/zapi-normalize.ts` se ficarem sem uso (verifico antes de excluir).
+- Remover chaves `ZAPI_*` de `.env.example` e das referências em `HANDOVER.md`.
 
-- **Automático / webhook WhatsApp**: `src/lib/whatsapp-inbound.server.ts` cria a conversa e tenta apenas *achar* um lead pelo telefone (linhas 85-96). Não cria lead nem cliente.
-- **I.A. (n8n)**: `src/routes/api/public/hooks/ia-qualificar.ts:99-120` insere em `leads` com `stage: "novo"`, `origem: "whatsapp"`, `source: "WhatsApp IA"`, `owner_id: null` — depois um vendedor é atribuído por round-robin. Nunca toca em `clientes`, nunca preenche `cliente_id`.
-- **Manual pelo vendedor**: `NewLeadDialog` → `addLead` em `src/lib/crm-store.ts:831`, com validação de CNPJ duplicado apenas **entre leads**. Também sem criar cliente.
-- **Cadastro manual de cliente**: só pela tela `/clientes` (ou pelo dialog dentro de Nova Proposta), com validação forte de CNPJ/CPF, empresa padrão e checagem de duplicidade via RPC `cnpj_status`.
+## O que NÃO muda
+- Webhook Cloud (GET verify + POST HMAC) e todo o pipeline de entrada.
+- Guardas de envio: janela 07:00–20:00, bloqueio de domingo, rate limits, opt-out, disjuntor — exceto o botão de teste do admin, que continua ignorando só a janela de horário.
+- Tabelas históricas (`zapi_inbox`, `zapi_eventos`, `zapi_estado`, `zapi_alertas`, `zapi_envios`) permanecem com os dados; nenhuma migration destrutiva.
+- Nada é publicado.
 
-Consequência prática: leads vindos de formulário e da I.A. **sempre** nascem como "contato" e nunca aparecerão em Clientes até alguém cadastrá-los lá.
-
-## 3) Por que a aba Clientes "não mostra" registros
-
-Três causas independentes, todas confirmadas no código/banco:
-
-1. **O registro simplesmente não existe em `clientes`.** Ele é um lead. A tela `/clientes` lê só a tabela `clientes` (`listClientes`, `src/lib/clientes.functions.ts:121`), nunca leads.
-2. **Filtro padrão "somente ativos".** `src/routes/clientes.index.tsx` inicia com `somenteAtivos = true` e `listClientes` aplica `.eq("ativo", true)` (linha 145). Como a exclusão é soft-delete (política `clientes_no_delete` bloqueia DELETE), clientes desativados somem da lista.
-3. **RLS por dono.** Política `clientes_select_dono_ou_admin`: `vendedor_id = auth.uid() OR has_role(admin)`. Um vendedor não vê clientes de outro vendedor. O equivalente em leads é `owner_id`, então o mesmo negócio pode estar visível em Contatos (lead do vendedor) e invisível em Clientes (cadastro de outro vendedor) — e vice-versa.
-
-Detalhe adicional: a busca em `listClientes` (linhas 149-158) só procura por CNPJ quando o termo tem 3+ dígitos; caso contrário busca só em `razao_social`/`nome_fantasia` — não busca por CPF nem por e-mail/telefone, o que também dá a impressão de "não aparece".
-
-## Arquivos relevantes
-
-- `src/lib/clientes.functions.ts` — CRUD de clientes, `listClientes`, `vincularClienteAoLead`
-- `src/routes/clientes.index.tsx` — tela Clientes (filtros, paginação)
-- `src/routes/contatos.tsx` — tela Contatos (lista de `leads`)
-- `src/lib/crm-store.ts:831` — `addLead` (cadastro manual)
-- `src/routes/api/public/hooks/ia-qualificar.ts` — criação de lead pela I.A.
-- `src/lib/whatsapp-inbound.server.ts` — entrada de WhatsApp
-- Políticas RLS de `clientes` e `leads` no banco
-
-## Próximo passo (nada implementado)
-
-Se quiser, o passo seguinte seria decidir uma regra de promoção lead → cliente (por exemplo: ao ganhar, ou ao gerar pedido, criar/vincular cliente automaticamente) e/ou mostrar em Contatos um selo "já é cliente". Nada disso existe hoje.
+## Detalhe técnico
+Nenhuma mudança de schema. Os nomes de tabela legados com prefixo `zapi_` continuam (renomear exigiria migration e reescrita ampla); só o código e a UI deixam de mencionar Z-API como integração ativa.
