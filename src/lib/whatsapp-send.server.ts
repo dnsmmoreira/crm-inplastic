@@ -433,15 +433,9 @@ export async function sendWhatsappText(
     }
 
     const r = usarTemplate
-      ? await cloudSendTemplate(
-          phone,
-          templateName,
-          templateLang,
-          override
-            ? []
-            : [{ type: "body", parameters: [{ type: "text", text: message.slice(0, 900) }] }],
-        )
+      ? await cloudSendTemplate(phone, templateName, templateLang, componentes)
       : await cloudSendText(phone, message);
+
 
     console.log(
       `${tag} tentativa=${tentativa} ${usarTemplate ? "template" : "texto"} ok=${r.ok} status=${r.status ?? "-"} phone=${mascararTelefoneLog(phone)}`,
