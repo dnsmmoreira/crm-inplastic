@@ -80,7 +80,7 @@ dev: `vite` ^8.0.16, `typescript` ^5.8.3, `vitest` ^4.1.10, `nitro` 3.0.260603-b
       |                                                          |
       +--> supabaseAdmin (service_role, só após validar caller) --+
       |
-      +--> src/lib/zapi-send.server.ts ----> Z-API (WhatsApp comercial/interno)
+      +--> src/lib/whatsapp-send.server.ts -> WhatsApp Cloud API (Meta)
       +--> src/lib/telegram-send.server.ts -> Telegram Bot API
       +--> src/lib/n8n-fila.server.ts ------> n8n (agente IA) [+ fila de reenvio]
       +--> Google Maps Distance Matrix / CNPJá / Lovable AI Gateway
@@ -109,7 +109,7 @@ src/
 │  ├─ *.functions.ts       # server functions (RPC tipado) por domínio: clientes, pedidos, propostas,
 │  │                       #   atendimento, canais, fila, placar, relatórios, usuários, xerife, omie…
 │  ├─ *.server.ts          # código exclusivo de servidor (bloqueado no bundle do cliente):
-│  │                       #   zapi-send.server.ts (camada anti-bloqueio), telegram-send.server.ts,
+│  │                       #   whatsapp-send.server.ts (camada anti-bloqueio), telegram-send.server.ts,
 │  │                       #   n8n-fila.server.ts
 │  ├─ xerife/              # motor Xerife: notify, dedupe, handoff, businessTime, rollover,
 │  │                       #   watchdog-conversa (+ testes)
@@ -308,7 +308,7 @@ Arquivo `.env.example` na raiz lista todas as chaves vazias.
 
 ## 8) REGRAS DE NEGÓCIO CRÍTICAS (anti-bloqueio do WhatsApp)
 
-Tudo vive em **`src/lib/zapi-send.server.ts`**, que é o **único** caminho de envio.
+Tudo vive em **`src/lib/whatsapp-send.server.ts`**, que é o **único** caminho de envio.
 Motivo histórico: o número comercial já foi bloqueado pelo WhatsApp uma vez, e a Z-API respondia HTTP 200
 mesmo com a instância desconectada. **Nada abaixo pode ser removido, afrouxado ou contornado.**
 
@@ -340,7 +340,7 @@ Outras regras de negócio relevantes:
 
 ## 9) OPERAÇÃO E MONITORAMENTO
 
-- **Painel de Saúde do WhatsApp:** `/canais` (admin). Mostra status real da instância (verde conectado / vermelho desconectado / amarelo não configurado), horário da última verificação e botão de recarregar; resumo de envios (24h por canal e última hora), últimos 20 envios com telefone mascarado, opt-outs (com remoção mediante confirmação) e alertas das últimas 48h. Backend: `src/lib/zapi-painel.functions.ts` e `src/lib/zapi.functions.ts`.
+- **Painel de Saúde do WhatsApp:** `/canais` (admin). Mostra status real da instância (verde conectado / vermelho desconectado / amarelo não configurado), horário da última verificação e botão de recarregar; resumo de envios (24h por canal e última hora), últimos 20 envios com telefone mascarado, opt-outs (com remoção mediante confirmação) e alertas das últimas 48h. Backend: `src/lib/zapi-painel.functions.ts` (nome legado; opera sobre a Cloud API).
 - **Logs:** console do backend (Lovable Cloud → logs de função/servidor). Procure pelos prefixos `[zapi:...]`, `BLOQUEADO`, `[zapi:alerta]`.
 - **Tabelas de auditoria:** `zapi_envios`, `zapi_alertas`, `zapi_inbox`, `xerife_log`, `lead_stage_history`, `lead_owner_history`, `user_audit_log`, `pedido_stage_history`.
 - **Quando a instância cai:** 1) confirmar em `/canais`; 2) abrir o painel Z-API e reconectar o QR Code no celular do número; 3) aguardar até 60s (cache do status) e recarregar; 4) checar `zapi_alertas` para saber desde quando; 5) mensagens bloqueadas **não** ficam em fila — precisam ser reenviadas manualmente pelo vendedor; 6) se o bloqueio for do WhatsApp (não desconexão), não force envios: as travas existem exatamente para permitir o aquecimento do número.
