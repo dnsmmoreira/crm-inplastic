@@ -419,7 +419,7 @@ export async function reenviarAlertasHandoff(sb: any): Promise<number> {
     .lt("handoff_alertado_em", limiteIso)
     .limit(LOTE);
 
-  const { mascararTelefoneLog } = await import("@/lib/zapi-send.server");
+  const { mascararTelefoneLog } = await import("@/lib/whatsapp-send.server");
   const { alertarAdmins } = await import("@/lib/xerife/handoff.server");
   let n = 0;
   for (const c of (pendentes ?? []) as any[]) {

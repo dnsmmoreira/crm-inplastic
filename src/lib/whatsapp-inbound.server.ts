@@ -132,7 +132,7 @@ export async function processarEntradaWhatsapp(
 
   // 5a) Opt-out pedido pelo contato ("sair", "parar", ...).
   {
-    const { normalizarTexto } = await import("@/lib/zapi-send.server");
+    const { normalizarTexto } = await import("@/lib/whatsapp-send.server");
     const txt = normalizarTexto(message);
     const gatilhos = ["sair", "parar", "pare", "descadastrar", "nao quero", "me tira"];
     if (gatilhos.some((g) => txt === g || txt.startsWith(g))) {
@@ -204,8 +204,8 @@ export async function processarEntradaWhatsapp(
     try {
       const aviso =
         "Recebemos seu arquivo! Um especialista da nossa equipe vai analisar e responder por aqui em instantes. Enquanto isso, se puder, me conte a quantidade e a aplicação do pallet que já adianto seu orçamento.";
-      const { sendZapiText } = await import("@/lib/zapi-send.server");
-      await sendZapiText(phone, aviso, "handoff-midia", "comercial", {
+      const { sendWhatsappText } = await import("@/lib/whatsapp-send.server");
+      await sendWhatsappText(phone, aviso, "handoff-midia", "comercial", {
         origem: "resposta_inbound",
       });
       await supabaseAdmin.from("whatsapp_mensagens").insert({

@@ -1,7 +1,7 @@
 /**
  * Notificações INTERNAS (vendedores / admins / diretoria).
  * Ponto único de estrangulamento: `enviarNotificacaoInterna`.
- * Usa exclusivamente o canal 'interno' da Z-API (ZAPI_INTERNO_*).
+ * Usa exclusivamente o Telegram para alertas internos.
  * NUNCA envia para leads e NUNCA cai nas credenciais comerciais.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -64,11 +64,7 @@ function faltantesTelegram(chatId: string | null | undefined): string[] {
   return f;
 }
 
-function faltantesZapiInterno(): string[] {
-  return (["ZAPI_INTERNO_INSTANCE_ID", "ZAPI_INTERNO_TOKEN", "ZAPI_INTERNO_CLIENT_TOKEN"] as const).filter(
-    (n) => !(process.env[n] ?? "").trim(),
-  );
-}
+
 
 export async function getOwnerPhone(sb: SB, ownerId: string): Promise<string | null> {
   if (phoneCache.has(ownerId)) return phoneCache.get(ownerId)!;
@@ -123,7 +119,7 @@ export async function enviarNotificacaoInterna(
 
     const alvo = (destino ?? "").trim();
     if (!alvo) {
-      await registrarAlertaNaoEntregue(ctx, [...faltantesZapiInterno(), "WHATSAPP_FINANCEIRO"]);
+      await registrarAlertaNaoEntregue(ctx, ["WHATSAPP_FINANCEIRO"]);
       return { enviado: false, motivo: "sem_destino" };
     }
 

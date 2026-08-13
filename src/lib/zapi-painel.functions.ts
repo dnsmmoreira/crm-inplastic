@@ -173,7 +173,7 @@ export const enviarAlertaTeste = createServerFn({ method: "POST" })
 
 /**
  * Envio de TESTE pela Cloud API oficial (somente admin).
- * Usa o MESMO driver de saída (`sendZapiText`), com todas as guardas ativas,
+ * Usa o MESMO driver de saída (`sendWhatsappText`), com todas as guardas ativas,
  * e grava conversa/mensagem pelo mesmo fluxo dos envios normais.
  */
 export const testarEnvioCloud = createServerFn({ method: "POST" })
@@ -210,8 +210,8 @@ export const testarEnvioCloud = createServerFn({ method: "POST" })
     const janelaIgnorada = true;
 
     try {
-      const { sendZapiText } = await import("./whatsapp-send.server");
-      const r = await sendZapiText(phone, conteudo, "teste-cloud", "comercial", {
+      const { sendWhatsappText } = await import("./whatsapp-send.server");
+      const r = await sendWhatsappText(phone, conteudo, "teste-cloud", "comercial", {
         templateOverride: { name: template, lang: idioma },
         ignorarJanelaHorario: janelaIgnorada,
       });

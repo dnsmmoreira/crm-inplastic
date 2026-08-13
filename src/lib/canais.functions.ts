@@ -54,7 +54,7 @@ export const sendConversaMessage = createServerFn({ method: "POST" })
     if (cErr || !conversa) throw new Error("Conversa não encontrada ou sem permissão.");
 
 
-    const { mascararTelefoneLog } = await import("./zapi-send.server");
+    const { mascararTelefoneLog } = await import("./whatsapp-send.server");
     const phoneLog = mascararTelefoneLog(conversa.phone);
     const bloquear = (motivo: string, msg: string) => {
       console.warn(`[chat-manual] BLOQUEADO motivo=${motivo} phone=${phoneLog}`);
@@ -145,8 +145,8 @@ export const sendConversaMessage = createServerFn({ method: "POST" })
     const origem = isAdmin && temInbound ? "manual_admin" : "iniciado_sistema";
 
 
-    const { sendZapiText } = await import("./zapi-send.server");
-    await sendZapiText(conversa.phone, data.message, "sendConversaMessage", "comercial", {
+    const { sendWhatsappText } = await import("./whatsapp-send.server");
+    await sendWhatsappText(conversa.phone, data.message, "sendConversaMessage", "comercial", {
       origem,
     });
 
