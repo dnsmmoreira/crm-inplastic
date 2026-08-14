@@ -1255,7 +1255,18 @@ export const useCrm = create<CrmState>()(
         })),
       setProposalStatus: (id, status) =>
         set((s) => ({
-          proposals: s.proposals.map((p) => (p.id === id ? { ...p, status } : p)),
+          proposals: s.proposals.map((p) =>
+            p.id === id
+              ? {
+                  ...p,
+                  status,
+                  // Primeira transição para "enviada" carimba sentAt; nunca sobrescreve.
+                  ...(status === "enviada" && !p.sentAt
+                    ? { sentAt: new Date().toISOString() }
+                    : {}),
+                }
+              : p,
+          ),
         })),
 
       // ============ Payment Terms (ADM catalogue) ============
