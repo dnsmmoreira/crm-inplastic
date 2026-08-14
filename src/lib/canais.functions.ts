@@ -310,3 +310,156 @@ export const iniciarConversaCliente = createServerFn({ method: "POST" })
 
     return { conversaId: criada.id };
   });
+
+/* ------------------------------------------------------------------ *
+ * Templates aprovados da Meta (envio fora da janela de 24h)
+ * ------------------------------------------------------------------ */
+
+/** Lista os templates APROVADOS da WABA (cache curto no servidor). */
+export const listarTemplatesAprovados = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) => z.object({ forcar: z.boolean().optional() }).parse(data ?? {}))
+  .handler(async ({ data }) => {
+    const { cloudListarTemplatesAprovados } = await import("./whatsapp-cloud.server");
+    return cloudListarTemplatesAprovados(data.forcar === true);
+  });
+
+/** Status da janela de 24h desta conversa (última mensagem do cliente). */
+export const statusJanelaConversa = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) => z.object({ conversaId: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+
+    const { data: conversa, error } = await supabase
+      .from("whatsapp_conversas")
+      .select("id, phone, name")
+      .eq("id", data.conversaId)
+      .maybeSingle();
+    if (error || !conversa) throw new Error("Conversa não encontrada ou sem permissão.");
+
+    const { data: ultima } = await supabase
+      .from("whatsapp_mensagens")
+      .select("created_at")
+      .eq("conversa_id", data.conversaId)
+      .eq("autor", "cliente")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const ultimaInboundEm = ultima?.created_at ?? null;
+    const expiraEm = ultimaInboundEm
+      ? new Date(new Date(ultimaInboundEm).getTime() + 24 * 3600_000).toISOString()
+      : null;
+    const janelaAberta = !!expiraEm && new Date(expiraEm).getTime() > Date.now();
+
+    const { resolverPrimeiroNomeContato } = await import("./whatsapp-send.server");
+    const primeiroNomeSugerido = await resolverPrimeiroNomeContato(conversa.phone);
+
+    return { janelaAberta, expiraEm, ultimaInboundEm, primeiroNomeSugerido };
+  });
+
+/** Envia um template aprovado nesta conversa (respeita todas as guardas). */
+export const enviarTemplateConversa = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) =>
+    z
+      .object({
+        conversaId: z.string().uuid(),
+        templateName: z.string().min(1),
+        lang: z.string().min(2),
+        params: z.array(z.string()).max(10).optional(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+
+    const { data: conversa, error: cErr } = await supabase
+      .from("whatsapp_conversas")
+      .select("id, phone, lead_id")
+      .eq("id", data.conversaId)
+      .maybeSingle();
+    if (cErr || !conversa) throw new Error("Conversa não encontrada ou sem permissão.");
+
+    // Janela comercial: envio manual do atendente segue a mesma regra do automático.
+    const { hora, domingo } = agoraSaoPaulo();
+    if (domingo || hora < 7 || hora >= 20) {
+      throw new Error(
+        "Envios só são permitidos de segunda a sábado, das 07:00 às 20:00. Modelo não enviado.",
+      );
+    }
+
+    // Só templates realmente aprovados e suportados no v1.
+    const { cloudListarTemplatesAprovados } = await import("./whatsapp-cloud.server");
+    const lista = await cloudListarTemplatesAprovados();
+    if (!lista.ok) throw new Error(lista.erro ?? "Não foi possível consultar os modelos aprovados.");
+    const tpl = lista.itens.find(
+      (t) => t.name === data.templateName && t.language === data.lang,
+    );
+    if (!tpl) throw new Error("Modelo não está aprovado para este idioma.");
+    if (!tpl.suportado) {
+      throw new Error(tpl.motivoNaoSuportado ?? "Modelo não suportado no momento.");
+    }
+
+    const params = (data.params ?? []).map((p) => p.trim());
+    if (params.length !== tpl.variaveis || params.some((p) => p.length === 0)) {
+      throw new Error("Preencha todas as variáveis do modelo antes de enviar.");
+    }
+
+    // Limite por conversa: 8 mensagens do mesmo atendente em 10 minutos.
+    const desde10min = new Date(Date.now() - 10 * 60_000).toISOString();
+    const { count: recentes } = await supabase
+      .from("whatsapp_mensagens")
+      .select("id", { count: "exact", head: true })
+      .eq("conversa_id", data.conversaId)
+      .eq("usuario_id", userId)
+      .eq("autor", "vendedor")
+      .gte("created_at", desde10min);
+    if ((recentes ?? 0) >= 8) {
+      throw new Error(
+        "Você já enviou 8 mensagens para esta conversa nos últimos 10 minutos. Aguarde antes de enviar outra.",
+      );
+    }
+
+    const { aplicarVariaveis } = await import("./whatsapp-template");
+    const textoFinal = aplicarVariaveis(tpl.bodyText, params);
+
+    // Motor único de saída: opt-out, disjuntor, rate limits e retry continuam valendo.
+    const { sendWhatsappText } = await import("./whatsapp-send.server");
+    await sendWhatsappText(conversa.phone, textoFinal, "enviarTemplateConversa", "comercial", {
+      origem: "iniciado_sistema",
+      templateOverride: { name: tpl.name, lang: tpl.language, params },
+    });
+
+    const { error: mErr } = await supabase.from("whatsapp_mensagens").insert({
+      conversa_id: data.conversaId,
+      direcao: "saida",
+      autor: "vendedor",
+      conteudo: textoFinal,
+      usuario_id: userId,
+    });
+    if (mErr) throw new Error(mErr.message);
+
+    await supabase
+      .from("whatsapp_conversas")
+      .update({ status: "humano_atendendo", ia_ativa: false })
+      .eq("id", data.conversaId);
+    await supabase
+      .from("whatsapp_conversas")
+      .update({ atribuido_para: userId })
+      .eq("id", data.conversaId)
+      .is("atribuido_para", null);
+
+    // Auditoria
+    if (conversa.lead_id) {
+      await supabase.from("lead_interactions").insert({
+        lead_id: conversa.lead_id,
+        owner_id: userId,
+        type: "whatsapp",
+        content: `Template enviado: ${tpl.name} — ${textoFinal}`,
+      });
+    }
+
+    return { ok: true, texto: textoFinal };
+  });
