@@ -25,6 +25,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
@@ -537,18 +548,34 @@ export function LeadDrawer({
 
           <div className="flex justify-between">
             {isAdmin ? (
-              <Button
-                variant="ghost"
-                className="text-destructive hover:text-destructive"
-                onClick={() => {
-                  if (!confirm(`Excluir lead ${lead.company}? Esta ação não pode ser desfeita.`)) return;
-                  removeLead(lead.id);
-                  onOpenChange(false);
-                  toast.success("Lead removido");
-                }}
-              >
-                <Trash2 className="h-4 w-4 mr-2" /> Excluir lead
-              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" className="text-destructive hover:text-destructive">
+                    <Trash2 className="h-4 w-4 mr-2" /> Excluir lead
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Excluir lead</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Excluir definitivamente o lead {lead.company}? Esta ação não pode ser desfeita.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      onClick={() => {
+                        removeLead(lead.id);
+                        onOpenChange(false);
+                        toast.success("Lead removido");
+                      }}
+                    >
+                      Excluir
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             ) : (
               <span className="text-xs text-muted-foreground self-center">
                 Apenas administradores podem excluir leads
