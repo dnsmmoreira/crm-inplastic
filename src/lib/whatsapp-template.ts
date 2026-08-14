@@ -56,3 +56,19 @@ export function montarComponenteBody(params: Array<string | null | undefined>): 
   if (parameters.length === 0) return [];
   return [{ type: "body", parameters }];
 }
+
+/** Maior índice de variável {{n}} presente no corpo do template. */
+export function contarVariaveis(body: string): number {
+  const nums: number[] = [];
+  for (const m of String(body ?? "").matchAll(/\{\{\s*(\d+)\s*\}\}/g)) nums.push(Number(m[1]));
+  return nums.length === 0 ? 0 : Math.max(...nums);
+}
+
+/** Substitui {{1}}, {{2}}… pelos parâmetros informados (preview do texto final). */
+export function aplicarVariaveis(body: string, params: Array<string | null | undefined>): string {
+  return String(body ?? "").replace(/\{\{\s*(\d+)\s*\}\}/g, (m, n) => {
+    const v = params[Number(n) - 1];
+    const limpo = sanitizarParametro(v ?? "");
+    return limpo || m;
+  });
+}
