@@ -257,11 +257,15 @@ export async function processarEntradaWhatsapp(
         .order("created_at", { ascending: false })
         .limit(20);
       const historico = (hist ?? []).slice().reverse();
+      const { obterPromptAgenteIA } = await import("@/lib/ia-agente-prompt.server");
+      const systemPrompt = await obterPromptAgenteIA(supabaseAdmin);
       const payloadOut = {
         conversa_id: conv.id,
         phone: conv.phone,
         lead_id: conv.lead_id,
         historico,
+        agente: "Gabriel",
+        system_prompt: systemPrompt,
       };
       const { enviarAvisoN8n, enfileirarAvisoN8n, N8N_TIMEOUT_MS } = await import(
         "@/lib/n8n-fila.server"
