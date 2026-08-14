@@ -35,20 +35,102 @@ function agoraSaoPaulo() {
 }
 
 /**
- * Envia mensagem via Z-API e registra em whatsapp_mensagens (autor='vendedor', direcao='saida').
+ * Aplica a posse da conversa ao usuário que está atendendo.
+ * - sem dono: assume automaticamente
+ * - dono é outro: só transfere com confirmação explícita (assumirPosse) e audita
+ * - já é dono: nada muda
+ */
+async function aplicarPosseConversa(
+  conversaId: string,
+  userId: string,
+  donoAtual: string | null,
+  assumirPosse: boolean,
+) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+  await supabaseAdmin
+    .from("whatsapp_conversas")
+    .update({ status: "humano_atendendo", ia_ativa: false })
+    .eq("id", conversaId);
+
+  if (donoAtual === userId) return { posse: "mantida" as const };
+
+  if (!donoAtual) {
+    await supabaseAdmin
+      .from("whatsapp_conversas")
+      .update({ atribuido_para: userId, atribuido_em: new Date().toISOString() })
+      .eq("id", conversaId)
+      .is("atribuido_para", null);
+    return { posse: "assumida" as const };
+  }
+
+  if (!assumirPosse) return { posse: "inalterada" as const };
+
+  await supabaseAdmin
+    .from("whatsapp_conversas")
+    .update({ atribuido_para: userId, atribuido_em: new Date().toISOString() })
+    .eq("id", conversaId);
+
+  await supabaseAdmin.from("user_audit_log").insert({
+    alvo_user_id: donoAtual,
+    ator_user_id: userId,
+    campo: "conversa_atribuido_para",
+    valor_anterior: donoAtual,
+    valor_novo: userId,
+  });
+
+  return { posse: "transferida" as const };
+}
+
+/**
+ * Posse atual da conversa (para confirmar transferência antes de enviar).
+ */
+export const posseConversa = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) => z.object({ conversaId: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: conversa, error } = await supabase
+      .from("whatsapp_conversas")
+      .select("id, atribuido_para")
+      .eq("id", data.conversaId)
+      .maybeSingle();
+    if (error || !conversa) throw new Error("Conversa não encontrada ou sem permissão.");
+    const dono = conversa.atribuido_para ?? null;
+    let nomeDono: string | null = null;
+    if (dono && dono !== userId) {
+      const { data: perfil } = await supabase
+        .from("profiles")
+        .select("name")
+        .eq("id", dono)
+        .maybeSingle();
+      nomeDono = perfil?.name ?? "outro atendente";
+    }
+    return { donoId: dono, nomeDono, souDono: dono === userId, semDono: !dono };
+  });
+
+/**
+ * Envia mensagem via WhatsApp Cloud e registra em whatsapp_mensagens (autor='vendedor').
  */
 export const sendConversaMessage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data) =>
-    z.object({ conversaId: z.string().uuid(), message: z.string().min(1).max(4096) }).parse(data),
+    z
+      .object({
+        conversaId: z.string().uuid(),
+        message: z.string().min(1).max(4096),
+        assumirPosse: z.boolean().optional(),
+      })
+      .parse(data),
   )
+
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
 
     const { data: conversa, error: cErr } = await supabase
       .from("whatsapp_conversas")
-      .select("id, phone")
+      .select("id, phone, atribuido_para")
       .eq("id", data.conversaId)
       .maybeSingle();
     if (cErr || !conversa) throw new Error("Conversa não encontrada ou sem permissão.");
@@ -161,20 +243,16 @@ export const sendConversaMessage = createServerFn({ method: "POST" })
 
     if (mErr) throw new Error(mErr.message);
 
-    // Sai do modo IA e assume a conversa se ainda não houver responsável
-    await supabase
-      .from("whatsapp_conversas")
-      .update({ status: "humano_atendendo", ia_ativa: false })
-      .eq("id", data.conversaId);
+    // Posse: assume se estiver sem dono; transfere só com confirmação explícita.
+    const posse = await aplicarPosseConversa(
+      data.conversaId,
+      userId,
+      conversa.atribuido_para ?? null,
+      data.assumirPosse === true,
+    );
 
-    await supabase
-      .from("whatsapp_conversas")
-      .update({ atribuido_para: userId })
-      .eq("id", data.conversaId)
-      .is("atribuido_para", null);
+    return { ok: true, posse: posse.posse };
 
-
-    return { ok: true };
   });
 
 /**
@@ -369,6 +447,7 @@ export const enviarTemplateConversa = createServerFn({ method: "POST" })
         templateName: z.string().min(1),
         lang: z.string().min(2),
         params: z.array(z.string()).max(10).optional(),
+        assumirPosse: z.boolean().optional(),
       })
       .parse(data),
   )
@@ -377,7 +456,7 @@ export const enviarTemplateConversa = createServerFn({ method: "POST" })
 
     const { data: conversa, error: cErr } = await supabase
       .from("whatsapp_conversas")
-      .select("id, phone, lead_id")
+      .select("id, phone, lead_id, atribuido_para")
       .eq("id", data.conversaId)
       .maybeSingle();
     if (cErr || !conversa) throw new Error("Conversa não encontrada ou sem permissão.");
@@ -441,15 +520,13 @@ export const enviarTemplateConversa = createServerFn({ method: "POST" })
     });
     if (mErr) throw new Error(mErr.message);
 
-    await supabase
-      .from("whatsapp_conversas")
-      .update({ status: "humano_atendendo", ia_ativa: false })
-      .eq("id", data.conversaId);
-    await supabase
-      .from("whatsapp_conversas")
-      .update({ atribuido_para: userId })
-      .eq("id", data.conversaId)
-      .is("atribuido_para", null);
+    await aplicarPosseConversa(
+      data.conversaId,
+      userId,
+      conversa.atribuido_para ?? null,
+      data.assumirPosse === true,
+    );
+
 
     // Auditoria
     if (conversa.lead_id) {
