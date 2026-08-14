@@ -143,30 +143,6 @@ export type Database = {
         }
         Relationships: []
       }
-      condicoes_comerciais: {
-        Row: {
-          ativo: boolean
-          created_at: string
-          dias: number[]
-          id: string
-          nome: string
-        }
-        Insert: {
-          ativo?: boolean
-          created_at?: string
-          dias: number[]
-          id?: string
-          nome: string
-        }
-        Update: {
-          ativo?: boolean
-          created_at?: string
-          dias?: number[]
-          id?: string
-          nome?: string
-        }
-        Relationships: []
-      }
       condicoes_pagamento: {
         Row: {
           acrescimo_percent: number
@@ -1578,7 +1554,6 @@ export type Database = {
           approval_requested_at: string | null
           approved_at: string | null
           approved_by_user_id: string | null
-          condicao_comercial_id: string | null
           created_at: string
           discount_percent: number
           emitter_id: string
@@ -1610,7 +1585,6 @@ export type Database = {
           approval_requested_at?: string | null
           approved_at?: string | null
           approved_by_user_id?: string | null
-          condicao_comercial_id?: string | null
           created_at?: string
           discount_percent?: number
           emitter_id: string
@@ -1642,7 +1616,6 @@ export type Database = {
           approval_requested_at?: string | null
           approved_at?: string | null
           approved_by_user_id?: string | null
-          condicao_comercial_id?: string | null
           created_at?: string
           discount_percent?: number
           emitter_id?: string
@@ -1670,13 +1643,6 @@ export type Database = {
           validity_days?: number
         }
         Relationships: [
-          {
-            foreignKeyName: "propostas_condicao_comercial_id_fkey"
-            columns: ["condicao_comercial_id"]
-            isOneToOne: false
-            referencedRelation: "condicoes_comerciais"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "propostas_emitter_id_fkey"
             columns: ["emitter_id"]
