@@ -1449,10 +1449,7 @@ function PropostaDetalhe() {
         {proposal.installments.length > 0 && (
           <div className="mb-4 print-block">
             <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1 print-title">
-              Vencimentos{(() => {
-                const c = condicoesComerciais.find((x) => x.id === proposal.comercialConditionId);
-                return c ? ` ${c.nome}` : "";
-              })()}
+              Vencimentos{selectedTerm ? ` ${selectedTerm.label}` : ""}
             </div>
             <table className="w-full text-[11px] border-collapse">
               <tbody>
