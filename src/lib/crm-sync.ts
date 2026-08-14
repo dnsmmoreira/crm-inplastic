@@ -435,6 +435,12 @@ function proposalToInsert(p: Proposal): ProposalInsert {
     approved_by_user_id: p.approvedByUserId ?? null,
     approved_at: p.approvedAt ?? null,
     order_created_at: p.orderCreatedAt ?? null,
+    sent_at: p.sentAt ?? null,
+    edit_requested_at: p.editRequestedAt ?? null,
+    edit_request_reason: p.editRequestReason ?? null,
+    edit_requested_by_user_id: p.editRequestedByUserId ?? null,
+    edit_unlocked_at: p.editUnlockedAt ?? null,
+    edit_unlocked_by_user_id: p.editUnlockedByUserId ?? null,
     ...(p.expectedDeliveryDate !== undefined
       ? { expected_delivery_date: p.expectedDeliveryDate ?? null }
       : {}),
