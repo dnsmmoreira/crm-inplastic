@@ -605,6 +605,7 @@ export type Proposal = {
   approvedByUserId?: string;
   approvedAt?: string;
   orderCreatedAt?: string;
+  sentAt?: string;          // primeira vez que a proposta foi enviada ao cliente
   expectedDeliveryDate?: string; // yyyy-MM-dd — informa data prevista de entrega ao Omie
   // Solicitação/liberação de alteração em pedido já fechado
   editRequestedAt?: string;
