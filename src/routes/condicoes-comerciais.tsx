@@ -51,6 +51,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { CondicoesComerciaisCard } from "@/components/comercial/CondicoesComerciaisCard";
 
 export const Route = createFileRoute("/condicoes-comerciais")({
   head: () => ({
@@ -268,6 +269,8 @@ function CondicoesComerciais() {
           </div>
         </CardContent>
       </Card>
+
+      <CondicoesComerciaisCard />
 
       <FrotaCard />
 

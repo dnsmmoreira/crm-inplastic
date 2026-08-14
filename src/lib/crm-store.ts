@@ -541,7 +541,10 @@ export type PaymentInstallment = {
   days: number;
   amount: number;
   notes: string;
+  /** Vencimento absoluto (yyyy-MM-dd) calculado a partir da previsão de faturamento. */
+  dueDate?: string;
 };
+
 
 export type TransportInfo = {
   carrier: string;
@@ -593,6 +596,9 @@ export type Proposal = {
   customerOrderNumber?: string; // Número do pedido do cliente (PO/OC)
   orderNotes?: string;          // Observações do pedido (separado de observations)
   paymentTermId?: string;   // ADM-managed payment term chosen by seller
+  comercialConditionId?: string;  // condição comercial (prazos) escolhida
+  billingForecastDate?: string;   // previsão de faturamento (yyyy-MM-dd)
+
   emitterId: string;        // qual CNPJ do grupo emite esta proposta
   discountPercent: number;  // % de desconto aplicado sobre o subtotal (limite gerido pelo ADM)
   approvalRequestedAt?: string;

@@ -37,6 +37,9 @@ import { getVendedorDaProposta, type VendedorContato, type ClienteRow } from "@/
 import { useQuery } from "@tanstack/react-query";
 import { formatCep } from "@/lib/format";
 import { useServerFn } from "@tanstack/react-start";
+import { CondicaoComercialCard } from "@/components/propostas/CondicaoComercialCard";
+import { useQuery as useRQ } from "@tanstack/react-query";
+import { CONDICOES_COMERCIAIS_KEY, listarCondicoesComerciais, formatDateBr } from "@/lib/condicoes-comerciais";
 
 
 /** Build display installments (equal split) from an ADM payment term and the proposal total. */
@@ -134,6 +137,11 @@ function PropostaDetalhe() {
       emitters[0],
     [emitters, proposal?.emitterId, defaultEmitterId],
   );
+
+  const { data: condicoesComerciais = [] } = useRQ({
+    queryKey: CONDICOES_COMERCIAIS_KEY,
+    queryFn: listarCondicoesComerciais,
+  });
 
   // Sugestão dinâmica de empresa emitente com base nos flags fiscais do cliente vinculado.
   const [emitterSuggestion, setEmitterSuggestion] = useState<{ id: string; reason: string } | null>(null);
@@ -1301,6 +1309,12 @@ function PropostaDetalhe() {
             </CardContent>
           </Card>
 
+          <CondicaoComercialCard
+            proposalId={proposal.id}
+            total={totals?.total ?? 0}
+            readOnly={readOnly}
+          />
+
         </div>
       </div>
 
@@ -1314,6 +1328,12 @@ function PropostaDetalhe() {
               <span>PROPOSTA Nº <strong>{proposal.number}</strong></span>
               <span> · {format(new Date(proposal.createdAt), "dd/MM/yyyy")}</span>
             </div>
+          </div>
+        </div>
+        <div className="print-running-footer" aria-hidden="true">
+          <div className="print-running-footer-inner">
+            <span>{emitter.legalName} · CNPJ {emitter.cnpj} · {emitter.phone} · {emitter.email}</span>
+            <span className="print-page-counter" />
           </div>
         </div>
         <div className="flex items-start justify-between border-b pb-4 mb-4">
@@ -1437,6 +1457,63 @@ function PropostaDetalhe() {
         </table>
 
 
+        {proposal.installments.length > 0 && (
+          <div className="mb-4 print-block">
+            <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1 print-title">
+              Vencimentos{(() => {
+                const c = condicoesComerciais.find((x) => x.id === proposal.comercialConditionId);
+                return c ? ` ${c.nome}` : "";
+              })()}
+            </div>
+            <table className="w-full text-[11px] border-collapse">
+              <tbody>
+                <tr className="print-head-row">
+                  <th className="border p-1.5 text-left w-28">Parcela</th>
+                  {proposal.installments.map((p, i) => (
+                    <th key={`n-${p.id}`} className="border p-1.5 text-center">{i + 1}</th>
+                  ))}
+                </tr>
+                <tr>
+                  <td className="border p-1.5 bg-muted/40 font-medium">Vencimento</td>
+                  {proposal.installments.map((p) => (
+                    <td key={`d-${p.id}`} className="border p-1.5 text-center">
+                      {p.dueDate ? formatDateBr(p.dueDate) : (p.days === 0 ? "à vista" : `${p.days} dias`)}
+                    </td>
+                  ))}
+                </tr>
+                <tr>
+                  <td className="border p-1.5 bg-muted/40 font-medium">Valor (R$)</td>
+                  {proposal.installments.map((p) => (
+                    <td key={`v-${p.id}`} className="border p-1.5 text-center">{formatBRL(p.amount)}</td>
+                  ))}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <div className="mb-4 print-block">
+          <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1 print-title">Outras Informações</div>
+          <table className="w-full text-[11px] border-collapse">
+            <tbody>
+              <tr>
+                <td className="border p-1.5 bg-muted/40 font-medium w-44">Proposta incluída em</td>
+                <td className="border p-1.5">{format(new Date(proposal.createdAt), "dd/MM/yyyy")}</td>
+                <td className="border p-1.5 bg-muted/40 font-medium w-44">Previsão de faturamento</td>
+                <td className="border p-1.5">{formatDateBr(proposal.billingForecastDate)}</td>
+              </tr>
+              <tr>
+                <td className="border p-1.5 bg-muted/40 font-medium">Vendedor(a)</td>
+                <td className="border p-1.5">{vendedor?.name ?? owner?.name ?? "—"}</td>
+                <td className="border p-1.5 bg-muted/40 font-medium">Frete</td>
+                <td className="border p-1.5">
+                  {proposal.transport.freightPayer} · {formatBRL(proposal.transport.freightValue)}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
         <div className="grid grid-cols-2 gap-6 mb-4">
           <div>
             <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Condições comerciais</div>
@@ -1546,57 +1623,82 @@ function PropostaDetalhe() {
       </div>
 
       <style>{`
-        /* Print-only running header is hidden on screen */
-        .print-running-header { display: none; }
+        /* Elementos exclusivos de impressão ficam ocultos na tela */
+        .print-running-header,
+        .print-running-footer { display: none; }
 
-        @page { size: A4; margin: 22mm 12mm 12mm 12mm; }
+        /* Folha A4 com margens do modelo anterior */
+        @page {
+          size: A4;
+          margin: 14mm 12mm 16mm 12mm;
+        }
 
         @media print {
           body { background: white; }
+          /* Nenhum elemento de interface é impresso */
           aside, header, nav { display: none !important; }
           .print\\:hidden { display: none !important; }
+          [data-sonner-toaster] { display: none !important; }
 
-          /* Repeating header on every printed page — sits inside the top page margin */
+          #proposta-print {
+            padding: 0 !important;
+            font-size: 9pt;
+            line-height: 1.35;
+            color: #111827;
+            background: #fff;
+          }
+          #proposta-print table { font-size: 8pt; width: 100%; }
+          #proposta-print th, #proposta-print td { padding: 1.2mm 1.5mm; }
+
+          /* Cabeçalho corrido em todas as páginas */
           #proposta-print .print-running-header {
             display: block;
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 14mm;
+            top: 0; left: 0; right: 0;
+            height: 10mm;
             box-sizing: border-box;
-            padding: 4mm 6mm 3mm 6mm;
+            padding: 2mm 0;
             background: white;
-            border-bottom: 1px solid #d1d5db;
-            font-size: 10px;
-            z-index: 9999;
+            border-bottom: 0.3mm solid #0e7c6b;
+            font-size: 8pt;
           }
-          #proposta-print .print-running-header-inner {
+          #proposta-print .print-running-header-inner,
+          #proposta-print .print-running-footer-inner {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 12px;
+            gap: 6mm;
           }
           #proposta-print .print-running-header-brand {
             font-weight: 700;
-            letter-spacing: 0.02em;
-            color: #111827;
+            color: #0e7c6b;
           }
-          #proposta-print .print-running-header-meta {
-            color: #374151;
+          #proposta-print .print-running-header-meta { color: #374151; }
+
+          /* Rodapé com dados da empresa e numeração */
+          #proposta-print .print-running-footer {
+            display: block;
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            height: 10mm;
+            box-sizing: border-box;
+            padding: 2mm 0;
+            background: white;
+            border-top: 0.3mm solid #d1d5db;
+            font-size: 7pt;
+            color: #4b5563;
+          }
+          #proposta-print .print-page-counter::after {
+            content: "Página " counter(page) " de " counter(pages);
           }
 
-          /* Header space is reserved via @page margin-top; no container padding needed */
-          #proposta-print { padding-top: 0 !important; }
-
-          /* Keep each logical section (direct children) whole across pages */
+          /* Blocos inteiros e linhas não quebram entre páginas */
           #proposta-print > div,
-          #proposta-print > table {
+          #proposta-print > table,
+          #proposta-print .print-block {
             break-inside: avoid;
             page-break-inside: avoid;
           }
-
-          /* Keep tables and each row from splitting across pages */
           #proposta-print table,
           #proposta-print thead,
           #proposta-print tbody,
@@ -1604,8 +1706,35 @@ function PropostaDetalhe() {
             break-inside: avoid;
             page-break-inside: avoid;
           }
+          #proposta-print .print-title,
+          #proposta-print .text-xs.uppercase {
+            break-after: avoid;
+            page-break-after: avoid;
+          }
+
+          /* Cabeçalho da tabela de itens repete a cada quebra de página */
           #proposta-print thead { display: table-header-group; }
           #proposta-print tfoot { display: table-footer-group; }
+
+          /* Verde institucional nos cabeçalhos e destaques + zebra */
+          #proposta-print thead tr,
+          #proposta-print tr.print-head-row {
+            background: #0e7c6b !important;
+            color: #ffffff !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          #proposta-print thead th,
+          #proposta-print tr.print-head-row th {
+            color: #ffffff !important;
+            border-color: #0e7c6b !important;
+          }
+          #proposta-print tbody tr:nth-child(even) td {
+            background: #f3f4f6 !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          #proposta-print .text-primary { color: #0e7c6b !important; }
         }
       `}</style>
     </div>
