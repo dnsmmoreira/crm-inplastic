@@ -605,6 +605,7 @@ export type Proposal = {
   approvedByUserId?: string;
   approvedAt?: string;
   orderCreatedAt?: string;
+  sentAt?: string;          // primeira vez que a proposta foi enviada ao cliente
   expectedDeliveryDate?: string; // yyyy-MM-dd — informa data prevista de entrega ao Omie
   // Solicitação/liberação de alteração em pedido já fechado
   editRequestedAt?: string;
@@ -1254,7 +1255,18 @@ export const useCrm = create<CrmState>()(
         })),
       setProposalStatus: (id, status) =>
         set((s) => ({
-          proposals: s.proposals.map((p) => (p.id === id ? { ...p, status } : p)),
+          proposals: s.proposals.map((p) =>
+            p.id === id
+              ? {
+                  ...p,
+                  status,
+                  // Primeira transição para "enviada" carimba sentAt; nunca sobrescreve.
+                  ...(status === "enviada" && !p.sentAt
+                    ? { sentAt: new Date().toISOString() }
+                    : {}),
+                }
+              : p,
+          ),
         })),
 
       // ============ Payment Terms (ADM catalogue) ============

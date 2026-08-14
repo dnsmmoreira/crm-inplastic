@@ -1556,6 +1556,11 @@ export type Database = {
           approved_by_user_id: string | null
           created_at: string
           discount_percent: number
+          edit_request_reason: string | null
+          edit_requested_at: string | null
+          edit_requested_by_user_id: string | null
+          edit_unlocked_at: string | null
+          edit_unlocked_by_user_id: string | null
           emitter_id: string
           expected_delivery_date: string | null
           id: string
@@ -1587,6 +1592,11 @@ export type Database = {
           approved_by_user_id?: string | null
           created_at?: string
           discount_percent?: number
+          edit_request_reason?: string | null
+          edit_requested_at?: string | null
+          edit_requested_by_user_id?: string | null
+          edit_unlocked_at?: string | null
+          edit_unlocked_by_user_id?: string | null
           emitter_id: string
           expected_delivery_date?: string | null
           id?: string
@@ -1618,6 +1628,11 @@ export type Database = {
           approved_by_user_id?: string | null
           created_at?: string
           discount_percent?: number
+          edit_request_reason?: string | null
+          edit_requested_at?: string | null
+          edit_requested_by_user_id?: string | null
+          edit_unlocked_at?: string | null
+          edit_unlocked_by_user_id?: string | null
           emitter_id?: string
           expected_delivery_date?: string | null
           id?: string
