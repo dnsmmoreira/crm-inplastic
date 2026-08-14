@@ -30,7 +30,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { limparOrigemAnuncio } from "@/lib/mensagem-display";
 import { useServerFn } from "@tanstack/react-start";
-import { sendConversaMessage, createLeadFromConversa } from "@/lib/canais.functions";
+import { sendConversaMessage, createLeadFromConversa, posseConversa } from "@/lib/canais.functions";
 import {
   painelWhatsapp,
   removerOptout,
@@ -257,6 +257,7 @@ function ConversationPanel({
 
   const send = useServerFn(sendConversaMessage);
   const createLead = useServerFn(createLeadFromConversa);
+  const verificarPosse = useServerFn(posseConversa);
 
   const loadMensagens = useCallback(async (conversaId: string) => {
     const { data, error } = await supabase
@@ -322,7 +323,14 @@ function ConversationPanel({
     if (!text.trim()) return;
     setSending(true);
     try {
-      await send({ data: { conversaId: conversa.id, message: text.trim() } });
+      let assumirPosse = false;
+      const posse = await verificarPosse({ data: { conversaId: conversa.id } });
+      if (!posse.souDono && !posse.semDono) {
+        assumirPosse = window.confirm(
+          `Esta conversa está com ${posse.nomeDono ?? "outro atendente"}. Assumir o atendimento?`,
+        );
+      }
+      await send({ data: { conversaId: conversa.id, message: text.trim(), assumirPosse } });
       setText("");
       void loadMensagens(conversa.id);
     } catch (e) {

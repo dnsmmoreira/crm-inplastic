@@ -35,7 +35,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
-import { sendConversaMessage, statusJanelaConversa } from "@/lib/canais.functions";
+import { sendConversaMessage, statusJanelaConversa, posseConversa } from "@/lib/canais.functions";
 import {
   assumirConversa,
   devolverParaIA,
@@ -492,6 +492,7 @@ function ChatPanel({
   const transferir = useServerFn(atribuirConversa);
   const listarVendedores = useServerFn(listarVendedoresAtendimento);
   const buscarJanela = useServerFn(statusJanelaConversa);
+  const verificarPosse = useServerFn(posseConversa);
 
   const [modelosAberto, setModelosAberto] = useState(false);
   const [janela24h, setJanela24h] = useState<{ aberta: boolean; nome: string } | null>(null);
@@ -634,8 +635,15 @@ function ChatPanel({
     if (!conversa || !text.trim()) return;
     setSending(true);
     try {
+      let assumirPosse = false;
+      const posse = await verificarPosse({ data: { conversaId: conversa.id } });
+      if (!posse.souDono && !posse.semDono) {
+        assumirPosse = window.confirm(
+          `Esta conversa está com ${posse.nomeDono ?? "outro atendente"}. Assumir o atendimento?`,
+        );
+      }
       if (iaNoControle) await assumir({ data: { conversaId: conversa.id } });
-      await send({ data: { conversaId: conversa.id, message: text.trim() } });
+      await send({ data: { conversaId: conversa.id, message: text.trim(), assumirPosse } });
       setText("");
       void loadMensagens(conversa.id);
       onChanged();
