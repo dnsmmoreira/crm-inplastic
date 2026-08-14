@@ -18,6 +18,8 @@ type QualifyBody = {
     cidade_uf?: string;
   };
   motivo?: string;
+  /** Resumo telegráfico da IA para o vendedor (gravado em lead_interactions). */
+  resumo?: string;
   distribuir?: boolean;
 };
 
