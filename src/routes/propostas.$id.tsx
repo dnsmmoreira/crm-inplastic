@@ -136,10 +136,6 @@ function PropostaDetalhe() {
     [emitters, proposal?.emitterId, defaultEmitterId],
   );
 
-  const { data: condicoesComerciais = [] } = useRQ({
-    queryKey: CONDICOES_COMERCIAIS_KEY,
-    queryFn: listarCondicoesComerciais,
-  });
 
   // Sugestão dinâmica de empresa emitente com base nos flags fiscais do cliente vinculado.
   const [emitterSuggestion, setEmitterSuggestion] = useState<{ id: string; reason: string } | null>(null);
@@ -1307,11 +1303,6 @@ function PropostaDetalhe() {
             </CardContent>
           </Card>
 
-          <CondicaoComercialCard
-            proposalId={proposal.id}
-            total={totals?.total ?? 0}
-            readOnly={readOnly}
-          />
 
         </div>
       </div>
