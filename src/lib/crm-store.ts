@@ -541,7 +541,10 @@ export type PaymentInstallment = {
   days: number;
   amount: number;
   notes: string;
+  /** Vencimento absoluto (yyyy-MM-dd) calculado a partir da previsão de faturamento. */
+  dueDate?: string;
 };
+
 
 export type TransportInfo = {
   carrier: string;
