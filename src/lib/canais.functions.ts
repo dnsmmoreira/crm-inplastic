@@ -449,6 +449,7 @@ export const enviarTemplateConversa = createServerFn({ method: "POST" })
         templateName: z.string().min(1),
         lang: z.string().min(2),
         params: z.array(z.string()).max(10).optional(),
+        assumirPosse: z.boolean().optional(),
       })
       .parse(data),
   )
@@ -457,7 +458,7 @@ export const enviarTemplateConversa = createServerFn({ method: "POST" })
 
     const { data: conversa, error: cErr } = await supabase
       .from("whatsapp_conversas")
-      .select("id, phone, lead_id")
+      .select("id, phone, lead_id, atribuido_para")
       .eq("id", data.conversaId)
       .maybeSingle();
     if (cErr || !conversa) throw new Error("Conversa não encontrada ou sem permissão.");
