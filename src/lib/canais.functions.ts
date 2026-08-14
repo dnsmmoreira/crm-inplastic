@@ -521,15 +521,14 @@ export const enviarTemplateConversa = createServerFn({ method: "POST" })
     });
     if (mErr) throw new Error(mErr.message);
 
-    await supabase
-      .from("whatsapp_conversas")
-      .update({ status: "humano_atendendo", ia_ativa: false })
-      .eq("id", data.conversaId);
-    await supabase
-      .from("whatsapp_conversas")
-      .update({ atribuido_para: userId })
-      .eq("id", data.conversaId)
-      .is("atribuido_para", null);
+    await aplicarPosseConversa(
+      supabase,
+      data.conversaId,
+      userId,
+      conversa.atribuido_para ?? null,
+      data.assumirPosse === true,
+    );
+
 
     // Auditoria
     if (conversa.lead_id) {
