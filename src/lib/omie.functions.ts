@@ -25,6 +25,7 @@ export type InternalOrderResult = {
   ok: boolean;
   validacao_erros?: string[];
   proposta_id?: string;
+  pedido_number?: string;
 };
 
 export type OmieResult = InternalOrderResult;
