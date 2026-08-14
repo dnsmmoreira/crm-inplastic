@@ -305,3 +305,119 @@ export async function cloudRegistrarNumero(pin: string): Promise<{
     clearTimeout(timer);
   }
 }
+
+/* ------------------------------------------------------------------ *
+ * (Templates) Lista de templates APROVADOS da WABA, com cache curto.
+ * ------------------------------------------------------------------ */
+
+export type TemplateAprovado = {
+  name: string;
+  language: string;
+  category: string;
+  bodyText: string;
+  variaveis: number;
+  exemplos: string[];
+  suportado: boolean;
+  motivoNaoSuportado?: string;
+};
+
+type MetaComponent = {
+  type?: string;
+  format?: string;
+  text?: string;
+  example?: { body_text?: string[][]; header_text?: string[] };
+  buttons?: Array<{ type?: string; url?: string }>;
+};
+
+const CACHE_TTL_MS = 5 * 60_000;
+let cacheTemplates: { at: number; itens: TemplateAprovado[] } | null = null;
+
+/** Conta variáveis {{n}} distintas do corpo. */
+function contarVars(body: string): number {
+  const nums = new Set<number>();
+  for (const m of body.matchAll(/\{\{\s*(\d+)\s*\}\}/g)) nums.add(Number(m[1]));
+  return nums.size === 0 ? 0 : Math.max(...nums);
+}
+
+function normalizarTemplate(t: {
+  name?: string;
+  language?: string;
+  category?: string;
+  components?: MetaComponent[];
+}): TemplateAprovado | null {
+  const comps = t.components ?? [];
+  const body = comps.find((c) => (c.type ?? "").toUpperCase() === "BODY");
+  if (!body?.text) return null;
+
+  const header = comps.find((c) => (c.type ?? "").toUpperCase() === "HEADER");
+  const botoes = comps.find((c) => (c.type ?? "").toUpperCase() === "BUTTONS");
+
+  let suportado = true;
+  let motivo: string | undefined;
+
+  const formato = (header?.format ?? "TEXT").toUpperCase();
+  if (header && formato !== "TEXT") {
+    suportado = false;
+    motivo = "Template com mídia no cabeçalho não é suportado no momento.";
+  } else if (header?.text && contarVars(header.text) > 0) {
+    suportado = false;
+    motivo = "Template com variável no cabeçalho não é suportado no momento.";
+  } else if ((botoes?.buttons ?? []).some((b) => (b.url ?? "").includes("{{"))) {
+    suportado = false;
+    motivo = "Template com botão de URL dinâmico não é suportado no momento.";
+  }
+
+  return {
+    name: t.name ?? "",
+    language: t.language ?? "",
+    category: t.category ?? "",
+    bodyText: body.text,
+    variaveis: contarVars(body.text),
+    exemplos: body.example?.body_text?.[0] ?? [],
+    suportado,
+    ...(motivo ? { motivoNaoSuportado: motivo } : {}),
+  };
+}
+
+/** GET /{waba-id}/message_templates?status=APPROVED — somente leitura, cache 5 min. */
+export async function cloudListarTemplatesAprovados(
+  forcar = false,
+): Promise<{ ok: boolean; erro?: string; itens: TemplateAprovado[] }> {
+  if (!forcar && cacheTemplates && Date.now() - cacheTemplates.at < CACHE_TTL_MS) {
+    return { ok: true, itens: cacheTemplates.itens };
+  }
+
+  const { version, wabaId, accessToken } = creds();
+  if (!wabaId || !accessToken) {
+    return { ok: false, erro: "WABA não configurada (variáveis ausentes).", itens: [] };
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  try {
+    const url =
+      `https://graph.facebook.com/${version}/${wabaId}/message_templates` +
+      `?status=APPROVED&limit=100&fields=name,language,category,status,components`;
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      signal: controller.signal,
+    });
+    const texto = await res.text();
+    if (!res.ok) {
+      console.error(`[wa-cloud:templates] status=${res.status} body=${texto.slice(0, 300)}`);
+      return { ok: false, erro: texto.slice(0, 300), itens: [] };
+    }
+    const parsed = JSON.parse(texto) as { data?: Array<Record<string, unknown>> };
+    const itens = (parsed.data ?? [])
+      .map((t) => normalizarTemplate(t as never))
+      .filter((t): t is TemplateAprovado => t !== null);
+    cacheTemplates = { at: Date.now(), itens };
+    return { ok: true, itens };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error(`[wa-cloud:templates] erro: ${msg}`);
+    return { ok: false, erro: msg, itens: [] };
+  } finally {
+    clearTimeout(timer);
+  }
+}
