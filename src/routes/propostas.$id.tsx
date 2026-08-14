@@ -37,6 +37,9 @@ import { getVendedorDaProposta, type VendedorContato, type ClienteRow } from "@/
 import { useQuery } from "@tanstack/react-query";
 import { formatCep } from "@/lib/format";
 import { useServerFn } from "@tanstack/react-start";
+import { CondicaoComercialCard } from "@/components/propostas/CondicaoComercialCard";
+import { useQuery as useRQ } from "@tanstack/react-query";
+import { CONDICOES_COMERCIAIS_KEY, listarCondicoesComerciais, formatDateBr } from "@/lib/condicoes-comerciais";
 
 
 /** Build display installments (equal split) from an ADM payment term and the proposal total. */
@@ -1300,6 +1303,12 @@ function PropostaDetalhe() {
               </div>
             </CardContent>
           </Card>
+
+          <CondicaoComercialCard
+            proposalId={proposal.id}
+            total={totals?.total ?? 0}
+            readOnly={readOnly}
+          />
 
         </div>
       </div>
