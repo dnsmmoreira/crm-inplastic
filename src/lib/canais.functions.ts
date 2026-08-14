@@ -41,7 +41,6 @@ function agoraSaoPaulo() {
  * - já é dono: nada muda
  */
 async function aplicarPosseConversa(
-  supabase: { from: (t: string) => any },
   conversaId: string,
   userId: string,
   donoAtual: string | null,
@@ -246,7 +245,6 @@ export const sendConversaMessage = createServerFn({ method: "POST" })
 
     // Posse: assume se estiver sem dono; transfere só com confirmação explícita.
     const posse = await aplicarPosseConversa(
-      supabase,
       data.conversaId,
       userId,
       conversa.atribuido_para ?? null,
@@ -523,7 +521,6 @@ export const enviarTemplateConversa = createServerFn({ method: "POST" })
     if (mErr) throw new Error(mErr.message);
 
     await aplicarPosseConversa(
-      supabase,
       data.conversaId,
       userId,
       conversa.atribuido_para ?? null,
