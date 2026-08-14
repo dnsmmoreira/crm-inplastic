@@ -43,20 +43,53 @@ export const assumirConversa = createServerFn({ method: "POST" })
 
 
 /**
- * Devolve a conversa para a IA.
+ * Devolve a conversa para a IA: limpa a posse e reativa o atendimento automático.
+ * Permitido ao dono da conversa e ao administrador.
  */
 export const devolverParaIA = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data) => z.object({ conversaId: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
-    const { error } = await supabase
+    const { supabase, userId } = context;
+
+    const { data: conversa, error: cErr } = await supabase
       .from("whatsapp_conversas")
-      .update({ status: "ia_atendendo", ia_ativa: true })
+      .select("id, atribuido_para")
+      .eq("id", data.conversaId)
+      .maybeSingle();
+    if (cErr || !conversa) throw new Error("Conversa não encontrada ou sem permissão.");
+
+    const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
+    const dono = conversa.atribuido_para ?? null;
+    if (!isAdmin && dono && dono !== userId) {
+      throw new Error("Somente o responsável pela conversa ou um administrador pode devolvê-la.");
+    }
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("whatsapp_conversas")
+      .update({
+        status: "ia_atendendo",
+        ia_ativa: true,
+        atribuido_para: null,
+        atribuido_em: null,
+      })
       .eq("id", data.conversaId);
     if (error) throw new Error(error.message);
+
+    if (dono) {
+      await supabaseAdmin.from("user_audit_log").insert({
+        alvo_user_id: dono,
+        ator_user_id: userId,
+        campo: "conversa_devolvida_ia",
+        valor_anterior: dono,
+        valor_novo: null,
+      });
+    }
+
     return { ok: true };
   });
+
 
 
 /**
