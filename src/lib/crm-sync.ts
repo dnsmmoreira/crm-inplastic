@@ -393,6 +393,8 @@ function rowToProposal(
     customerOrderNumber: (r as unknown as { numero_pedido_cliente?: string | null }).numero_pedido_cliente ?? undefined,
     orderNotes: (r as unknown as { observacoes_pedido?: string | null }).observacoes_pedido ?? undefined,
     paymentTermId: r.payment_term_id ?? undefined,
+    comercialConditionId: (r as unknown as { condicao_comercial_id?: string | null }).condicao_comercial_id ?? undefined,
+    billingForecastDate: (r as unknown as { previsao_faturamento?: string | null }).previsao_faturamento ?? undefined,
     emitterId: r.emitter_id,
     discountPercent: Number(r.discount_percent ?? 0),
     approvalRequestedAt: r.approval_requested_at ?? undefined,
@@ -420,6 +422,8 @@ function proposalToInsert(p: Proposal): ProposalInsert {
     emitter_id: p.emitterId,
     observations: p.observations ?? "",
     payment_term_id: p.paymentTermId ?? null,
+    condicao_comercial_id: p.comercialConditionId ?? null,
+    previsao_faturamento: p.billingForecastDate ?? null,
     discount_percent: p.discountPercent ?? 0,
     transport: p.transport as unknown as Json,
     approval_requested_at: p.approvalRequestedAt ?? null,
@@ -592,6 +596,7 @@ async function loadAll(userId: string) {
       days: r.days,
       amount: Number(r.amount ?? 0),
       notes: r.notes ?? "",
+      dueDate: (r as unknown as { due_date?: string | null }).due_date ?? undefined,
     };
     const arr = parcByProp.get(r.proposta_id) ?? [];
     arr.push(p);
@@ -916,6 +921,7 @@ async function doSave() {
         days: x.parc.days,
         amount: x.parc.amount,
         notes: x.parc.notes ?? "",
+        due_date: x.parc.dueDate ?? null,
       }),
     upsert: (rows) =>
       supabase.from("proposta_parcelas").upsert(
@@ -926,6 +932,7 @@ async function doSave() {
           days: x.parc.days,
           amount: x.parc.amount,
           notes: x.parc.notes ?? "",
+          due_date: x.parc.dueDate ?? null,
         })),
         { onConflict: "id" },
       ),
