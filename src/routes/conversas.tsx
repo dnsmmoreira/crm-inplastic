@@ -35,7 +35,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
-import { sendConversaMessage } from "@/lib/canais.functions";
+import { sendConversaMessage, statusJanelaConversa } from "@/lib/canais.functions";
 import {
   assumirConversa,
   devolverParaIA,
@@ -46,6 +46,7 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { useAutoScrollMensagens } from "@/hooks/use-auto-scroll-mensagens";
 import { TemplatesButton } from "@/components/atendimento/TemplatesButton";
+import { TemplateMetaDialog } from "@/components/atendimento/TemplateMetaDialog";
 import { IAButton, IAPreview, type ModoIA } from "@/components/atendimento/IAAssistButton";
 import { assistenteRedacao } from "@/lib/assistente-redacao.functions";
 
@@ -490,6 +491,10 @@ function ChatPanel({
   const encerrar = useServerFn(encerrarConversa);
   const transferir = useServerFn(atribuirConversa);
   const listarVendedores = useServerFn(listarVendedoresAtendimento);
+  const buscarJanela = useServerFn(statusJanelaConversa);
+
+  const [modelosAberto, setModelosAberto] = useState(false);
+  const [janela24h, setJanela24h] = useState<{ aberta: boolean; nome: string } | null>(null);
 
   // Controle de auto-scroll: só rola ao trocar de conversa ou quando chega mensagem nova.
   const { temNovas, onScroll, scrollParaFim } = useAutoScrollMensagens(
@@ -570,6 +575,25 @@ function ChatPanel({
   }, [conversa?.lead_id]);
 
 
+
+  useEffect(() => {
+    const id = conversa?.id;
+    if (!id) {
+      setJanela24h(null);
+      return;
+    }
+    let ativo = true;
+    void buscarJanela({ data: { conversaId: id } })
+      .then((r) => {
+        if (ativo) setJanela24h({ aberta: r.janelaAberta, nome: r.primeiroNomeSugerido });
+      })
+      .catch(() => {
+        if (ativo) setJanela24h(null);
+      });
+    return () => {
+      ativo = false;
+    };
+  }, [conversa?.id, mensagens.length, buscarJanela]);
 
   if (!conversa) {
     return (
@@ -808,6 +832,11 @@ function ChatPanel({
             A IA está atendendo. Ao enviar, você assume a conversa automaticamente.
           </div>
         )}
+        {janela24h?.aberta === false && (
+          <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-700">
+            Janela de 24h encerrada. Só é possível enviar um modelo aprovado.
+          </div>
+        )}
         {iaPreview && (
           <IAPreview
             texto={iaPreview}
@@ -820,6 +849,15 @@ function ChatPanel({
         )}
         <div className="flex items-end gap-2">
           <div className="flex gap-1 pb-1">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-9"
+              disabled={sending}
+              onClick={() => setModelosAberto(true)}
+            >
+              {janela24h?.aberta === false ? "Escolher modelo" : "Modelos"}
+            </Button>
             <TemplatesButton
               nome={conversa.name}
               empresa={empresaLead ?? conversa.name}
@@ -854,9 +892,13 @@ function ChatPanel({
           <Textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Escreva uma mensagem…"
+            placeholder={
+              janela24h?.aberta === false
+                ? "Janela de 24h encerrada — envie um modelo aprovado"
+                : "Escreva uma mensagem…"
+            }
             rows={2}
-            disabled={sending}
+            disabled={sending || janela24h?.aberta === false}
             className="resize-none"
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
@@ -865,10 +907,24 @@ function ChatPanel({
               }
             }}
           />
-          <Button onClick={handleSend} disabled={sending || !text.trim()} className="gap-1">
+          <Button
+            onClick={handleSend}
+            disabled={sending || !text.trim() || janela24h?.aberta === false}
+            className="gap-1"
+          >
             <Send className="h-4 w-4" /> Enviar
           </Button>
         </div>
+        <TemplateMetaDialog
+          open={modelosAberto}
+          onOpenChange={setModelosAberto}
+          conversaId={conversa.id}
+          nomeSugerido={janela24h?.nome}
+          onEnviado={() => {
+            void loadMensagens(conversa.id);
+            onChanged();
+          }}
+        />
       </div>
     </div>
   );
