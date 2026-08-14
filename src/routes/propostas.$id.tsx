@@ -1193,47 +1193,151 @@ function PropostaDetalhe() {
                   Opcional. Se vazio, usa hoje + 7 dias como referência.
                 </p>
               </div>
-
-
-              <div className="rounded-md border-l-4 border-amber-500 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-800">
-                <span className="font-semibold">Válido após aprovação financeira.</span>
-              </div>
-
-
               {(() => {
-                const term = paymentTerms.find((t: PaymentTerm) => t.id === proposal.paymentTermId);
-                if (!term) return (
-                  <p className="text-xs text-muted-foreground italic">Nenhuma condição selecionada.</p>
-                );
-                const rows = buildTermInstallments(term, totals?.total ?? 0);
+                const term = selectedTerm;
+                const total = totals?.total ?? 0;
+                const previsao = proposal.billingForecastDate;
+                const parcelas = proposal.installments ?? [];
+
+                const gerarParcelas = (base?: string, t: PaymentTerm | null = term) => {
+                  const dataBase = base ?? previsao;
+                  if (!t || !dataBase) return;
+                  const valores = dividirValor(total, t.splits.length);
+                  updateProposal(proposal.id, {
+                    installments: t.splits.map((d, i) => ({
+                      id: crypto.randomUUID(),
+                      days: d,
+                      amount: valores[i],
+                      notes: "",
+                      dueDate: addDaysToDateInput(dataBase, d),
+                    })),
+                  });
+                };
+
+                const patchParcela = (id: string, patch: Partial<PaymentInstallment>) =>
+                  updateProposal(proposal.id, {
+                    installments: parcelas.map((p) => (p.id === id ? { ...p, ...patch } : p)),
+                  });
+
+                const soma = parcelas.reduce((acc, p) => acc + (p.amount || 0), 0);
+                const divergente = parcelas.length > 0 && Math.abs(soma - total) > 0.009;
+                const preview = term ? buildTermInstallments(term, total) : [];
+
                 return (
-                  <div className="rounded-md border bg-muted/30">
-                    <div className="px-3 py-2 border-b flex items-center justify-between text-xs">
-                      <span className="font-medium">{term.label}</span>
-                      <span className="text-muted-foreground">{term.method}</span>
+                  <>
+                    <div>
+                      <Label>Previsão de faturamento</Label>
+                      <Input
+                        type="date"
+                        disabled={readOnly}
+                        value={previsao ?? ""}
+                        onChange={(e) => {
+                          const v = e.target.value || undefined;
+                          updateProposal(proposal.id, { billingForecastDate: v });
+                          if (v) gerarParcelas(v);
+                        }}
+                      />
+                      <p className="text-[11px] text-muted-foreground mt-1">
+                        Os vencimentos são calculados como previsão de faturamento + prazo de cada parcela.
+                      </p>
                     </div>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="h-8">Parcela</TableHead>
-                          <TableHead className="h-8">Vencimento</TableHead>
-                          <TableHead className="h-8 text-right">Valor</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {rows.map((r, i) => (
-                          <TableRow key={i} className="text-xs">
-                            <TableCell className="py-1.5">{i + 1}/{rows.length}</TableCell>
-                            <TableCell className="py-1.5">{r.days === 0 ? "à vista" : `${r.days} dias`}</TableCell>
-                            <TableCell className="py-1.5 text-right font-medium">{formatBRL(r.amount)}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                    {term.notes && (
-                      <div className="px-3 py-2 border-t text-[11px] text-muted-foreground">{term.notes}</div>
+
+                    <div className="rounded-md border-l-4 border-amber-500 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-800">
+                      <span className="font-semibold">Válido após aprovação financeira.</span>
+                    </div>
+
+                    {!term ? (
+                      <p className="text-xs text-muted-foreground italic">Nenhuma condição selecionada.</p>
+                    ) : (
+                      <div className="rounded-md border bg-muted/30">
+                        <div className="px-3 py-2 border-b flex items-center justify-between gap-2 text-xs">
+                          <span className="font-medium">{term.label}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-muted-foreground">{term.method}</span>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-[11px]"
+                              disabled={readOnly || !previsao}
+                              onClick={() => {
+                                gerarParcelas();
+                                toast.success("Parcelas refeitas");
+                              }}
+                            >
+                              <RefreshCw className="h-3.5 w-3.5 mr-1" />
+                              Refazer parcelas
+                            </Button>
+                          </div>
+                        </div>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="h-8 w-16">Parcela</TableHead>
+                              <TableHead className="h-8">Prazo</TableHead>
+                              <TableHead className="h-8">Vencimento</TableHead>
+                              <TableHead className="h-8 text-right">Valor (R$)</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {parcelas.length === 0 &&
+                              preview.map((r, i) => (
+                                <TableRow key={`prev-${i}`} className="text-xs">
+                                  <TableCell className="py-1.5">{i + 1}/{preview.length}</TableCell>
+                                  <TableCell className="py-1.5">{r.days === 0 ? "à vista" : `${r.days} dias`}</TableCell>
+                                  <TableCell className="py-1.5 text-muted-foreground">
+                                    {previsao ? formatDateBr(addDaysToDateInput(previsao, r.days)) : "—"}
+                                  </TableCell>
+                                  <TableCell className="py-1.5 text-right font-medium">{formatBRL(r.amount)}</TableCell>
+                                </TableRow>
+                              ))}
+                            {parcelas.map((p, i) => (
+                              <TableRow key={p.id} className="text-xs">
+                                <TableCell className="py-1.5">{i + 1}/{parcelas.length}</TableCell>
+                                <TableCell className="py-1.5">{p.days === 0 ? "à vista" : `${p.days} dias`}</TableCell>
+                                <TableCell className="py-1.5">
+                                  <Input
+                                    type="date"
+                                    className="h-8"
+                                    disabled={readOnly}
+                                    value={p.dueDate ?? ""}
+                                    onChange={(e) => patchParcela(p.id, { dueDate: e.target.value || undefined })}
+                                  />
+                                </TableCell>
+                                <TableCell className="py-1.5">
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    min={0}
+                                    className="h-8 text-right"
+                                    disabled={readOnly}
+                                    value={p.amount}
+                                    onChange={(e) => patchParcela(p.id, { amount: Number(e.target.value) || 0 })}
+                                  />
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                        {parcelas.length === 0 && (
+                          <div className="px-3 py-2 border-t text-[11px] text-muted-foreground">
+                            Informe a previsão de faturamento para gerar as parcelas com datas reais.
+                          </div>
+                        )}
+                        {parcelas.length > 0 && (
+                          <div className="flex items-center justify-between px-3 py-2 border-t text-[11px]">
+                            <span className="text-muted-foreground">Soma das parcelas</span>
+                            <span className={divergente ? "font-semibold text-destructive" : "font-semibold"}>
+                              {formatBRL(soma)}
+                              {divergente ? ` · difere do total (${formatBRL(total)})` : ""}
+                            </span>
+                          </div>
+                        )}
+                        {term.notes && (
+                          <div className="px-3 py-2 border-t text-[11px] text-muted-foreground">{term.notes}</div>
+                        )}
+                      </div>
                     )}
-                  </div>
+                  </>
                 );
               })()}
 
