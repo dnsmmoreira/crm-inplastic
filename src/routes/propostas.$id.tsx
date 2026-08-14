@@ -138,6 +138,11 @@ function PropostaDetalhe() {
     [emitters, proposal?.emitterId, defaultEmitterId],
   );
 
+  const { data: condicoesComerciais = [] } = useRQ({
+    queryKey: CONDICOES_COMERCIAIS_KEY,
+    queryFn: listarCondicoesComerciais,
+  });
+
   // Sugestão dinâmica de empresa emitente com base nos flags fiscais do cliente vinculado.
   const [emitterSuggestion, setEmitterSuggestion] = useState<{ id: string; reason: string } | null>(null);
   useEffect(() => {
@@ -1445,6 +1450,63 @@ function PropostaDetalhe() {
           </tbody>
         </table>
 
+
+        {proposal.installments.length > 0 && (
+          <div className="mb-4 print-block">
+            <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1 print-title">
+              Vencimentos{(() => {
+                const c = condicoesComerciais.find((x) => x.id === proposal.comercialConditionId);
+                return c ? ` ${c.nome}` : "";
+              })()}
+            </div>
+            <table className="w-full text-[11px] border-collapse">
+              <tbody>
+                <tr className="print-head-row">
+                  <th className="border p-1.5 text-left w-28">Parcela</th>
+                  {proposal.installments.map((p, i) => (
+                    <th key={`n-${p.id}`} className="border p-1.5 text-center">{i + 1}</th>
+                  ))}
+                </tr>
+                <tr>
+                  <td className="border p-1.5 bg-muted/40 font-medium">Vencimento</td>
+                  {proposal.installments.map((p) => (
+                    <td key={`d-${p.id}`} className="border p-1.5 text-center">
+                      {p.dueDate ? formatDateBr(p.dueDate) : (p.days === 0 ? "à vista" : `${p.days} dias`)}
+                    </td>
+                  ))}
+                </tr>
+                <tr>
+                  <td className="border p-1.5 bg-muted/40 font-medium">Valor (R$)</td>
+                  {proposal.installments.map((p) => (
+                    <td key={`v-${p.id}`} className="border p-1.5 text-center">{formatBRL(p.amount)}</td>
+                  ))}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <div className="mb-4 print-block">
+          <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1 print-title">Outras Informações</div>
+          <table className="w-full text-[11px] border-collapse">
+            <tbody>
+              <tr>
+                <td className="border p-1.5 bg-muted/40 font-medium w-44">Proposta incluída em</td>
+                <td className="border p-1.5">{format(new Date(proposal.createdAt), "dd/MM/yyyy")}</td>
+                <td className="border p-1.5 bg-muted/40 font-medium w-44">Previsão de faturamento</td>
+                <td className="border p-1.5">{formatDateBr(proposal.billingForecastDate)}</td>
+              </tr>
+              <tr>
+                <td className="border p-1.5 bg-muted/40 font-medium">Vendedor(a)</td>
+                <td className="border p-1.5">{vendedor?.name ?? owner?.name ?? "—"}</td>
+                <td className="border p-1.5 bg-muted/40 font-medium">Frete</td>
+                <td className="border p-1.5">
+                  {proposal.transport.freightPayer} · {formatBRL(proposal.transport.freightValue)}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
         <div className="grid grid-cols-2 gap-6 mb-4">
           <div>
