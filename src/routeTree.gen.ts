@@ -52,6 +52,7 @@ import { Route as ApiPublicHooksWhatsappCloudRouteImport } from './routes/api/pu
 import { Route as ApiPublicHooksIaUrgenteRouteImport } from './routes/api/public/hooks/ia-urgente'
 import { Route as ApiPublicHooksIaResponderRouteImport } from './routes/api/public/hooks/ia-responder'
 import { Route as ApiPublicHooksIaQualificarRouteImport } from './routes/api/public/hooks/ia-qualificar'
+import { Route as ApiPublicHooksIaHandoffRouteImport } from './routes/api/public/hooks/ia-handoff'
 import { Route as ApiPublicHooksIaFilaEnvioRouteImport } from './routes/api/public/hooks/ia-fila-envio'
 
 const UsuariosRoute = UsuariosRouteImport.update({
@@ -282,6 +283,11 @@ const ApiPublicHooksIaQualificarRoute =
     path: '/api/public/hooks/ia-qualificar',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksIaHandoffRoute = ApiPublicHooksIaHandoffRouteImport.update({
+  id: '/api/public/hooks/ia-handoff',
+  path: '/api/public/hooks/ia-handoff',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicHooksIaFilaEnvioRoute =
   ApiPublicHooksIaFilaEnvioRouteImport.update({
     id: '/api/public/hooks/ia-fila-envio',
@@ -322,6 +328,7 @@ export interface FileRoutesByFullPath {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/hooks/ia-fila-envio': typeof ApiPublicHooksIaFilaEnvioRoute
+  '/api/public/hooks/ia-handoff': typeof ApiPublicHooksIaHandoffRoute
   '/api/public/hooks/ia-qualificar': typeof ApiPublicHooksIaQualificarRoute
   '/api/public/hooks/ia-responder': typeof ApiPublicHooksIaResponderRoute
   '/api/public/hooks/ia-urgente': typeof ApiPublicHooksIaUrgenteRoute
@@ -368,6 +375,7 @@ export interface FileRoutesByTo {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/hooks/ia-fila-envio': typeof ApiPublicHooksIaFilaEnvioRoute
+  '/api/public/hooks/ia-handoff': typeof ApiPublicHooksIaHandoffRoute
   '/api/public/hooks/ia-qualificar': typeof ApiPublicHooksIaQualificarRoute
   '/api/public/hooks/ia-responder': typeof ApiPublicHooksIaResponderRoute
   '/api/public/hooks/ia-urgente': typeof ApiPublicHooksIaUrgenteRoute
@@ -415,6 +423,7 @@ export interface FileRoutesById {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/hooks/ia-fila-envio': typeof ApiPublicHooksIaFilaEnvioRoute
+  '/api/public/hooks/ia-handoff': typeof ApiPublicHooksIaHandoffRoute
   '/api/public/hooks/ia-qualificar': typeof ApiPublicHooksIaQualificarRoute
   '/api/public/hooks/ia-responder': typeof ApiPublicHooksIaResponderRoute
   '/api/public/hooks/ia-urgente': typeof ApiPublicHooksIaUrgenteRoute
@@ -463,6 +472,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/api/public/hooks/ia-fila-envio'
+    | '/api/public/hooks/ia-handoff'
     | '/api/public/hooks/ia-qualificar'
     | '/api/public/hooks/ia-responder'
     | '/api/public/hooks/ia-urgente'
@@ -509,6 +519,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/api/public/hooks/ia-fila-envio'
+    | '/api/public/hooks/ia-handoff'
     | '/api/public/hooks/ia-qualificar'
     | '/api/public/hooks/ia-responder'
     | '/api/public/hooks/ia-urgente'
@@ -555,6 +566,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/api/public/hooks/ia-fila-envio'
+    | '/api/public/hooks/ia-handoff'
     | '/api/public/hooks/ia-qualificar'
     | '/api/public/hooks/ia-responder'
     | '/api/public/hooks/ia-urgente'
@@ -602,6 +614,7 @@ export interface RootRouteChildren {
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiPublicHooksIaFilaEnvioRoute: typeof ApiPublicHooksIaFilaEnvioRoute
+  ApiPublicHooksIaHandoffRoute: typeof ApiPublicHooksIaHandoffRoute
   ApiPublicHooksIaQualificarRoute: typeof ApiPublicHooksIaQualificarRoute
   ApiPublicHooksIaResponderRoute: typeof ApiPublicHooksIaResponderRoute
   ApiPublicHooksIaUrgenteRoute: typeof ApiPublicHooksIaUrgenteRoute
@@ -919,6 +932,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksIaQualificarRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/ia-handoff': {
+      id: '/api/public/hooks/ia-handoff'
+      path: '/api/public/hooks/ia-handoff'
+      fullPath: '/api/public/hooks/ia-handoff'
+      preLoaderRoute: typeof ApiPublicHooksIaHandoffRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/ia-fila-envio': {
       id: '/api/public/hooks/ia-fila-envio'
       path: '/api/public/hooks/ia-fila-envio'
@@ -963,6 +983,7 @@ const rootRouteChildren: RootRouteChildren = {
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiPublicHooksIaFilaEnvioRoute: ApiPublicHooksIaFilaEnvioRoute,
+  ApiPublicHooksIaHandoffRoute: ApiPublicHooksIaHandoffRoute,
   ApiPublicHooksIaQualificarRoute: ApiPublicHooksIaQualificarRoute,
   ApiPublicHooksIaResponderRoute: ApiPublicHooksIaResponderRoute,
   ApiPublicHooksIaUrgenteRoute: ApiPublicHooksIaUrgenteRoute,

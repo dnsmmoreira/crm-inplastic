@@ -18,6 +18,8 @@ type QualifyBody = {
     cidade_uf?: string;
   };
   motivo?: string;
+  /** Resumo telegráfico da IA para o vendedor (gravado em lead_interactions). */
+  resumo?: string;
   distribuir?: boolean;
 };
 
@@ -124,16 +126,30 @@ export const Route = createFileRoute("/api/public/hooks/ia-qualificar")({
           leadId = lead.id;
         }
 
+        // 1b) Resumo da IA para o vendedor — gravado ANTES do handoff.
+        const resumo = body.resumo?.trim();
+        if (resumo) {
+          const { error: rErr } = await supabaseAdmin.from("lead_interactions").insert({
+            lead_id: leadId,
+            owner_id: null,
+            type: "note",
+            content: `Resumo da IA (Gabriel) antes do handoff:\n${resumo}`,
+          });
+          if (rErr) console.error("[ia-qualificar] falha ao gravar resumo:", rErr.message);
+        }
+
         // 2) Vincula lead à conversa + marca como qualificado e desliga IA
         await supabaseAdmin
           .from("whatsapp_conversas")
           .update({
             lead_id: leadId,
             status: "qualificado",
+            motivo_handoff: "qualificado",
             ia_ativa: false,
             updated_at: new Date().toISOString(),
           })
           .eq("id", conversaId);
+
 
         // 3) Rede de segurança: a IA foi desligada, então a conversa NUNCA pode
         //    sair daqui sem responsável — round-robin + notificação ao vendedor.
