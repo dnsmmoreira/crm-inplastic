@@ -157,7 +157,20 @@ export const gerarPedidoInterno = createServerFn({ method: "POST" })
     // Move o lead para ganho automaticamente.
     await loose.from("leads").update({ stage: "ganho" }).eq("id", leadId);
 
-    return { ok: true, proposta_id: propostaId };
+    // Cria (ou reutiliza) o pedido operacional interno — idempotente.
+    let pedidoNumber: string | undefined;
+    try {
+      const ped = await ensurePedidoFromProposta(loose, {
+        propostaId,
+        leadId,
+        callerId: userId,
+      });
+      pedidoNumber = ped.number;
+    } catch (e) {
+      console.error("[gerarPedidoInterno] falha ao criar pedido operacional:", e);
+    }
+
+    return { ok: true, proposta_id: propostaId, pedido_number: pedidoNumber };
   });
 
 export const moverParaGanho = createServerFn({ method: "POST" })
