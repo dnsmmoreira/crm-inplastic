@@ -361,7 +361,9 @@ function PropostaDetalhe() {
       } else if (requerAprovacao) {
         toast.success("Enviado ao supervisor ADM");
       } else {
-        toast.success("Pedido gerado", { description: "Lead movido para Ganho." });
+        toast.success(r.pedido_number ? `Pedido ${r.pedido_number} gerado` : "Pedido gerado", {
+          description: "Lead movido para Ganho.",
+        });
       }
       // Espelha status no store (o sync já persiste no DB).
       if (r.ok && !requerAprovacao) {
