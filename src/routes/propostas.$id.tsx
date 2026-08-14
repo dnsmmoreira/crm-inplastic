@@ -1330,6 +1330,12 @@ function PropostaDetalhe() {
             </div>
           </div>
         </div>
+        <div className="print-running-footer" aria-hidden="true">
+          <div className="print-running-footer-inner">
+            <span>{emitter.legalName} · CNPJ {emitter.cnpj} · {emitter.phone} · {emitter.email}</span>
+            <span className="print-page-counter" />
+          </div>
+        </div>
         <div className="flex items-start justify-between border-b pb-4 mb-4">
           <div>
             <div className="text-xl font-display font-bold text-primary">{emitter.brand}</div>
@@ -1617,57 +1623,82 @@ function PropostaDetalhe() {
       </div>
 
       <style>{`
-        /* Print-only running header is hidden on screen */
-        .print-running-header { display: none; }
+        /* Elementos exclusivos de impressão ficam ocultos na tela */
+        .print-running-header,
+        .print-running-footer { display: none; }
 
-        @page { size: A4; margin: 22mm 12mm 12mm 12mm; }
+        /* Folha A4 com margens do modelo anterior */
+        @page {
+          size: A4;
+          margin: 14mm 12mm 16mm 12mm;
+        }
 
         @media print {
           body { background: white; }
+          /* Nenhum elemento de interface é impresso */
           aside, header, nav { display: none !important; }
           .print\\:hidden { display: none !important; }
+          [data-sonner-toaster] { display: none !important; }
 
-          /* Repeating header on every printed page — sits inside the top page margin */
+          #proposta-print {
+            padding: 0 !important;
+            font-size: 9pt;
+            line-height: 1.35;
+            color: #111827;
+            background: #fff;
+          }
+          #proposta-print table { font-size: 8pt; width: 100%; }
+          #proposta-print th, #proposta-print td { padding: 1.2mm 1.5mm; }
+
+          /* Cabeçalho corrido em todas as páginas */
           #proposta-print .print-running-header {
             display: block;
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 14mm;
+            top: 0; left: 0; right: 0;
+            height: 10mm;
             box-sizing: border-box;
-            padding: 4mm 6mm 3mm 6mm;
+            padding: 2mm 0;
             background: white;
-            border-bottom: 1px solid #d1d5db;
-            font-size: 10px;
-            z-index: 9999;
+            border-bottom: 0.3mm solid #0e7c6b;
+            font-size: 8pt;
           }
-          #proposta-print .print-running-header-inner {
+          #proposta-print .print-running-header-inner,
+          #proposta-print .print-running-footer-inner {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 12px;
+            gap: 6mm;
           }
           #proposta-print .print-running-header-brand {
             font-weight: 700;
-            letter-spacing: 0.02em;
-            color: #111827;
+            color: #0e7c6b;
           }
-          #proposta-print .print-running-header-meta {
-            color: #374151;
+          #proposta-print .print-running-header-meta { color: #374151; }
+
+          /* Rodapé com dados da empresa e numeração */
+          #proposta-print .print-running-footer {
+            display: block;
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            height: 10mm;
+            box-sizing: border-box;
+            padding: 2mm 0;
+            background: white;
+            border-top: 0.3mm solid #d1d5db;
+            font-size: 7pt;
+            color: #4b5563;
+          }
+          #proposta-print .print-page-counter::after {
+            content: "Página " counter(page) " de " counter(pages);
           }
 
-          /* Header space is reserved via @page margin-top; no container padding needed */
-          #proposta-print { padding-top: 0 !important; }
-
-          /* Keep each logical section (direct children) whole across pages */
+          /* Blocos inteiros e linhas não quebram entre páginas */
           #proposta-print > div,
-          #proposta-print > table {
+          #proposta-print > table,
+          #proposta-print .print-block {
             break-inside: avoid;
             page-break-inside: avoid;
           }
-
-          /* Keep tables and each row from splitting across pages */
           #proposta-print table,
           #proposta-print thead,
           #proposta-print tbody,
@@ -1675,8 +1706,35 @@ function PropostaDetalhe() {
             break-inside: avoid;
             page-break-inside: avoid;
           }
+          #proposta-print .print-title,
+          #proposta-print .text-xs.uppercase {
+            break-after: avoid;
+            page-break-after: avoid;
+          }
+
+          /* Cabeçalho da tabela de itens repete a cada quebra de página */
           #proposta-print thead { display: table-header-group; }
           #proposta-print tfoot { display: table-footer-group; }
+
+          /* Verde institucional nos cabeçalhos e destaques + zebra */
+          #proposta-print thead tr,
+          #proposta-print tr.print-head-row {
+            background: #0e7c6b !important;
+            color: #ffffff !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          #proposta-print thead th,
+          #proposta-print tr.print-head-row th {
+            color: #ffffff !important;
+            border-color: #0e7c6b !important;
+          }
+          #proposta-print tbody tr:nth-child(even) td {
+            background: #f3f4f6 !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          #proposta-print .text-primary { color: #0e7c6b !important; }
         }
       `}</style>
     </div>
