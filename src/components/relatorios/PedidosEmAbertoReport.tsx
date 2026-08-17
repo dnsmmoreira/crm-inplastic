@@ -671,7 +671,7 @@ export function PedidosEmAbertoReport() {
   function GroupRow({ n, depth }: { n: Node; depth: number }) {
     const fechado = !!colapsados[n.path];
     const subtotal = n.rows.reduce((s, r) => s + r.total, 0);
-    const qtde = n.rows.reduce((s, r) => s + qtdeItens(r), 0);
+    const qtde = n.rows.reduce((s, r) => s + qtdeUnidades(r, n.produtoFiltro), 0);
     const atrasados = n.rows.filter((r) => estaAtrasado(r.previsao_entrega)).length;
     const pct = totalGeral > 0 ? (subtotal / totalGeral) * 100 : 0;
     // Ordem visual das colunas numéricas para os agregados
