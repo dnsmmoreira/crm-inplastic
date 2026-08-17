@@ -71,7 +71,7 @@ const COLUMNS: {
 ];
 
 const DEFAULT_ORDER = COLUMNS.map((c) => c.key);
-const GROUPABLE = COLUMNS.filter((c) => c.groupable).map((c) => c.key) as GroupKey[];
+
 
 function colDef(key: ColKey) {
   return COLUMNS.find((c) => c.key === key)!;
