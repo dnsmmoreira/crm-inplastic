@@ -703,9 +703,8 @@ export function PedidosEmAbertoReport() {
     });
   }
 
-  const activeLabel = activeId
-    ? colDef(activeId.replace(/^(col|chip):/, "") as ColKey).label
-    : null;
+  const activeLabel = activeId ? colDef(activeId.slice(4) as ColKey).label : null;
+
 
   return (
     <DndContext
