@@ -444,8 +444,7 @@ export function PedidosEmAbertoReport() {
   );
 
   const totalGeral = filtered.reduce((s, r) => s + r.total, 0);
-  const hasFilters =
-    cliente || produto !== "todos" || vendedor !== "todos" || de || ate || groupLevels.length > 0;
+  const hasFilters = cliente || produto !== "todos" || vendedor !== "todos" || de || ate;
 
   function limpar() {
     setCliente("");
@@ -453,8 +452,8 @@ export function PedidosEmAbertoReport() {
     setVendedor("todos");
     setDe("");
     setAte("");
-    setGroupLevels([]);
   }
+
 
   function toggleSort(key: ColKey) {
     if (key === sortKey) setSortAsc((v) => !v);
