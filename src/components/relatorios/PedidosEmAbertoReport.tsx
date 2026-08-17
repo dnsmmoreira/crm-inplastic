@@ -187,12 +187,28 @@ function groupValues(r: PedidoAbertoRow, key: Exclude<GroupKey, "nenhum">): stri
   }
 }
 
-type Node = { nome: string; rows: PedidoAbertoRow[]; children: Node[] | null; path: string };
+type Node = {
+  nome: string;
+  rows: PedidoAbertoRow[];
+  children: Node[] | null;
+  path: string;
+  /** Produto herdado do nível de agrupamento (quando agrupado por Produto). */
+  produtoFiltro: string | null;
+};
+
+/** Unidades do pedido; se houver produto no contexto do grupo, só as daquele produto. */
+function qtdeUnidades(r: PedidoAbertoRow, produtoFiltro: string | null) {
+  const itens = produtoFiltro
+    ? r.itens.filter((i) => (i.description || i.sku) === produtoFiltro)
+    : r.itens;
+  return itens.reduce((s, i) => s + Number(i.quantity || 0), 0);
+}
 
 function buildTree(
   rows: PedidoAbertoRow[],
   levels: Exclude<GroupKey, "nenhum">[],
   prefix = "",
+  produtoHerdado: string | null = null,
 ): Node[] {
   const [head, ...rest] = levels;
   const map = new Map<string, PedidoAbertoRow[]>();
@@ -205,14 +221,18 @@ function buildTree(
   }
   return Array.from(map, ([nome, list]) => {
     const path = `${prefix}/${head}:${nome}`;
+    const produtoFiltro =
+      head === "produto" && nome !== "Sem produto" ? nome : produtoHerdado;
     return {
       nome,
       rows: list,
       path,
-      children: rest.length ? buildTree(list, rest, path) : null,
+      produtoFiltro,
+      children: rest.length ? buildTree(list, rest, path, produtoFiltro) : null,
     };
   }).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
 }
+
 
 function readLS<T>(key: string, fallback: T, validate: (v: unknown) => T | null): T {
   if (typeof window === "undefined") return fallback;
