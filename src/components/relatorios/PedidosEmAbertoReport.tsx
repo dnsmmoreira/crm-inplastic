@@ -245,76 +245,8 @@ function HeaderCell({
   );
 }
 
-function GroupChip({
-  gkey,
-  onRemove,
-  overId,
-}: {
-  gkey: GroupKey;
-  onRemove: () => void;
-  overId: string | null;
-}) {
-  const draggable = useDraggable({ id: `chip:${gkey}` });
-  const droppable = useDroppable({ id: `dropchip:${gkey}` });
-  const isOver = overId === `dropchip:${gkey}`;
-  return (
-    <span
-      ref={droppable.setNodeRef}
-      className={cn(
-        "relative inline-flex items-center gap-1 rounded-md border bg-background px-2 py-1 text-xs",
-        isOver && "ring-2 ring-primary",
-        draggable.isDragging && "opacity-40",
-      )}
-    >
-      <button
-        type="button"
-        ref={draggable.setNodeRef}
-        {...draggable.listeners}
-        {...draggable.attributes}
-        className="cursor-grab text-muted-foreground/60 hover:text-foreground"
-      >
-        <GripVertical className="h-3 w-3" />
-      </button>
-      {colDef(gkey).label}
-      <button type="button" onClick={onRemove} className="text-muted-foreground hover:text-destructive">
-        <X className="h-3 w-3" />
-      </button>
-    </span>
-  );
-}
 
-function GroupBar({
-  levels,
-  onRemove,
-  overId,
-}: {
-  levels: GroupKey[];
-  onRemove: (k: GroupKey) => void;
-  overId: string | null;
-}) {
-  const droppable = useDroppable({ id: "groupbar" });
-  const isOver = overId === "groupbar";
-  return (
-    <div
-      ref={droppable.setNodeRef}
-      className={cn(
-        "flex min-h-[44px] flex-wrap items-center gap-2 rounded-lg border border-dashed bg-card p-2",
-        isOver && "border-primary bg-primary/5",
-      )}
-    >
-      <span className="text-xs font-medium text-muted-foreground">Agrupar por:</span>
-      {levels.length === 0 ? (
-        <span className="text-xs text-muted-foreground">
-          Arraste cabeçalhos de coluna para cá para agrupar
-        </span>
-      ) : (
-        levels.map((k) => (
-          <GroupChip key={k} gkey={k} overId={overId} onRemove={() => onRemove(k)} />
-        ))
-      )}
-    </div>
-  );
-}
+
 
 /* ---------- Componente principal ---------- */
 
