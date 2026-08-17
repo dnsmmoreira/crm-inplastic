@@ -50,7 +50,7 @@ type GroupKey = "cliente" | "produto" | "vendedor" | "stage";
 type PeriodoCampo = "created_at" | "previsao_entrega";
 
 const LS_COLS = "relatorio-abertos:colunas";
-const LS_GRUPOS = "relatorio-abertos:grupos";
+
 
 const COLUMNS: {
   key: ColKey;
@@ -71,7 +71,7 @@ const COLUMNS: {
 ];
 
 const DEFAULT_ORDER = COLUMNS.map((c) => c.key);
-const GROUPABLE = COLUMNS.filter((c) => c.groupable).map((c) => c.key) as GroupKey[];
+
 
 function colDef(key: ColKey) {
   return COLUMNS.find((c) => c.key === key)!;
@@ -245,76 +245,8 @@ function HeaderCell({
   );
 }
 
-function GroupChip({
-  gkey,
-  onRemove,
-  overId,
-}: {
-  gkey: GroupKey;
-  onRemove: () => void;
-  overId: string | null;
-}) {
-  const draggable = useDraggable({ id: `chip:${gkey}` });
-  const droppable = useDroppable({ id: `dropchip:${gkey}` });
-  const isOver = overId === `dropchip:${gkey}`;
-  return (
-    <span
-      ref={droppable.setNodeRef}
-      className={cn(
-        "relative inline-flex items-center gap-1 rounded-md border bg-background px-2 py-1 text-xs",
-        isOver && "ring-2 ring-primary",
-        draggable.isDragging && "opacity-40",
-      )}
-    >
-      <button
-        type="button"
-        ref={draggable.setNodeRef}
-        {...draggable.listeners}
-        {...draggable.attributes}
-        className="cursor-grab text-muted-foreground/60 hover:text-foreground"
-      >
-        <GripVertical className="h-3 w-3" />
-      </button>
-      {colDef(gkey).label}
-      <button type="button" onClick={onRemove} className="text-muted-foreground hover:text-destructive">
-        <X className="h-3 w-3" />
-      </button>
-    </span>
-  );
-}
 
-function GroupBar({
-  levels,
-  onRemove,
-  overId,
-}: {
-  levels: GroupKey[];
-  onRemove: (k: GroupKey) => void;
-  overId: string | null;
-}) {
-  const droppable = useDroppable({ id: "groupbar" });
-  const isOver = overId === "groupbar";
-  return (
-    <div
-      ref={droppable.setNodeRef}
-      className={cn(
-        "flex min-h-[44px] flex-wrap items-center gap-2 rounded-lg border border-dashed bg-card p-2",
-        isOver && "border-primary bg-primary/5",
-      )}
-    >
-      <span className="text-xs font-medium text-muted-foreground">Agrupar por:</span>
-      {levels.length === 0 ? (
-        <span className="text-xs text-muted-foreground">
-          Arraste cabeçalhos de coluna para cá para agrupar
-        </span>
-      ) : (
-        levels.map((k) => (
-          <GroupChip key={k} gkey={k} overId={overId} onRemove={() => onRemove(k)} />
-        ))
-      )}
-    </div>
-  );
-}
+
 
 /* ---------- Componente principal ---------- */
 
@@ -345,13 +277,6 @@ export function PedidosEmAbertoReport() {
       return [...keep, ...missing];
     }),
   );
-  const [groupLevels, setGroupLevels] = useState<GroupKey[]>(() =>
-    readLS<GroupKey[]>(LS_GRUPOS, [], (v) =>
-      Array.isArray(v)
-        ? Array.from(new Set(v.filter((k): k is GroupKey => GROUPABLE.includes(k as GroupKey))))
-        : null,
-    ),
-  );
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
@@ -363,20 +288,24 @@ export function PedidosEmAbertoReport() {
       /* ignore */
     }
   }, [colOrder]);
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(LS_GRUPOS, JSON.stringify(groupLevels));
-    } catch {
-      /* ignore */
-    }
-  }, [groupLevels]);
 
   const rows: PedidoAbertoRow[] = useMemo(() => data ?? [], [data]);
+
+  // Agrupamento automático: prefixo de colunas agrupáveis da esquerda para a direita.
+  const groupLevels = useMemo<GroupKey[]>(() => {
+    const levels: GroupKey[] = [];
+    for (const k of colOrder) {
+      if (!colDef(k).groupable) break;
+      levels.push(k as GroupKey);
+    }
+    return levels;
+  }, [colOrder]);
 
   const visibleCols = useMemo(
     () => colOrder.filter((k) => !groupLevels.includes(k as GroupKey)),
     [colOrder, groupLevels],
   );
+
 
   const produtosDisponiveis = useMemo(() => {
     const set = new Set<string>();
@@ -444,8 +373,7 @@ export function PedidosEmAbertoReport() {
   );
 
   const totalGeral = filtered.reduce((s, r) => s + r.total, 0);
-  const hasFilters =
-    cliente || produto !== "todos" || vendedor !== "todos" || de || ate || groupLevels.length > 0;
+  const hasFilters = cliente || produto !== "todos" || vendedor !== "todos" || de || ate;
 
   function limpar() {
     setCliente("");
@@ -453,8 +381,8 @@ export function PedidosEmAbertoReport() {
     setVendedor("todos");
     setDe("");
     setAte("");
-    setGroupLevels([]);
   }
+
 
   function toggleSort(key: ColKey) {
     if (key === sortKey) setSortAsc((v) => !v);
@@ -475,51 +403,17 @@ export function PedidosEmAbertoReport() {
     const over = e.over ? String(e.over.id) : null;
     setActiveId(null);
     setOverId(null);
-    if (!over) return;
-
-    if (active.startsWith("col:")) {
-      const key = active.slice(4) as ColKey;
-      if (over === "groupbar" || over.startsWith("dropchip:")) {
-        if (!colDef(key).groupable) {
-          toast.error(`A coluna "${colDef(key).label}" não pode ser usada como agrupamento.`);
-          return;
-        }
-        const gk = key as GroupKey;
-        setGroupLevels((prev) => {
-          if (prev.includes(gk)) return prev;
-          if (over === "groupbar") return [...prev, gk];
-          const idx = prev.indexOf(over.slice(9) as GroupKey);
-          const next = [...prev];
-          next.splice(idx < 0 ? prev.length : idx, 0, gk);
-          return next;
-        });
-        return;
-      }
-      if (over.startsWith("dropcol:")) {
-        const target = over.slice(8) as ColKey;
-        if (target === key) return;
-        setColOrder((prev) => {
-          const next = prev.filter((k) => k !== key);
-          next.splice(next.indexOf(target), 0, key);
-          return next;
-        });
-      }
-      return;
-    }
-
-    if (active.startsWith("chip:")) {
-      const key = active.slice(5) as GroupKey;
-      if (over.startsWith("dropchip:")) {
-        const target = over.slice(9) as GroupKey;
-        if (target === key) return;
-        setGroupLevels((prev) => {
-          const next = prev.filter((k) => k !== key);
-          next.splice(next.indexOf(target), 0, key);
-          return next;
-        });
-      }
-    }
+    if (!over || !active.startsWith("col:") || !over.startsWith("dropcol:")) return;
+    const key = active.slice(4) as ColKey;
+    const target = over.slice(8) as ColKey;
+    if (target === key) return;
+    setColOrder((prev) => {
+      const next = prev.filter((k) => k !== key);
+      next.splice(next.indexOf(target), 0, key);
+      return next;
+    });
   }
+
 
   async function exportCSV() {
     try {
@@ -703,9 +597,8 @@ export function PedidosEmAbertoReport() {
     });
   }
 
-  const activeLabel = activeId
-    ? colDef(activeId.replace(/^(col|chip):/, "") as ColKey).label
-    : null;
+  const activeLabel = activeId ? colDef(activeId.slice(4) as ColKey).label : null;
+
 
   return (
     <DndContext
@@ -722,7 +615,9 @@ export function PedidosEmAbertoReport() {
         <div className="flex items-start justify-between gap-4 no-print">
           <p className="text-sm text-muted-foreground">
             Pedidos ainda não entregues, com destaque para os que passaram da previsão de entrega.
-            Arraste os cabeçalhos para reordenar colunas ou criar agrupamentos.
+            Arraste os cabeçalhos para reordenar colunas — colunas agrupáveis nas primeiras
+            posições viram níveis de agrupamento.
+
           </p>
           <Button variant="outline" size="sm" onClick={exportCSV} disabled={sorted.length === 0}>
             <Download className="h-4 w-4 mr-2" /> Exportar CSV
@@ -810,14 +705,18 @@ export function PedidosEmAbertoReport() {
           </div>
         </div>
 
-        {/* Barra de agrupamento */}
-        <div className="no-print">
-          <GroupBar
-            levels={groupLevels}
-            overId={overId}
-            onRemove={(k) => setGroupLevels((prev) => prev.filter((x) => x !== k))}
-          />
+        {/* Estado do agrupamento */}
+        <div className="no-print text-xs text-muted-foreground">
+          {groupLevels.length > 0 ? (
+            <>
+              <span className="font-medium text-foreground">Agrupado por: </span>
+              {groupLevels.map((k) => colDef(k).label).join(" → ")}
+            </>
+          ) : (
+            "Sem agrupamento — arraste uma coluna agrupável (Cliente, Produto(s), Vendedor, Estágio) para a primeira posição para agrupar."
+          )}
         </div>
+
 
         {/* Tabela */}
         <div id="relatorio-print" className="rounded-lg border bg-card overflow-x-auto">
