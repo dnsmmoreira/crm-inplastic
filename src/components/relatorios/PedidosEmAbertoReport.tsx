@@ -475,51 +475,17 @@ export function PedidosEmAbertoReport() {
     const over = e.over ? String(e.over.id) : null;
     setActiveId(null);
     setOverId(null);
-    if (!over) return;
-
-    if (active.startsWith("col:")) {
-      const key = active.slice(4) as ColKey;
-      if (over === "groupbar" || over.startsWith("dropchip:")) {
-        if (!colDef(key).groupable) {
-          toast.error(`A coluna "${colDef(key).label}" não pode ser usada como agrupamento.`);
-          return;
-        }
-        const gk = key as GroupKey;
-        setGroupLevels((prev) => {
-          if (prev.includes(gk)) return prev;
-          if (over === "groupbar") return [...prev, gk];
-          const idx = prev.indexOf(over.slice(9) as GroupKey);
-          const next = [...prev];
-          next.splice(idx < 0 ? prev.length : idx, 0, gk);
-          return next;
-        });
-        return;
-      }
-      if (over.startsWith("dropcol:")) {
-        const target = over.slice(8) as ColKey;
-        if (target === key) return;
-        setColOrder((prev) => {
-          const next = prev.filter((k) => k !== key);
-          next.splice(next.indexOf(target), 0, key);
-          return next;
-        });
-      }
-      return;
-    }
-
-    if (active.startsWith("chip:")) {
-      const key = active.slice(5) as GroupKey;
-      if (over.startsWith("dropchip:")) {
-        const target = over.slice(9) as GroupKey;
-        if (target === key) return;
-        setGroupLevels((prev) => {
-          const next = prev.filter((k) => k !== key);
-          next.splice(next.indexOf(target), 0, key);
-          return next;
-        });
-      }
-    }
+    if (!over || !active.startsWith("col:") || !over.startsWith("dropcol:")) return;
+    const key = active.slice(4) as ColKey;
+    const target = over.slice(8) as ColKey;
+    if (target === key) return;
+    setColOrder((prev) => {
+      const next = prev.filter((k) => k !== key);
+      next.splice(next.indexOf(target), 0, key);
+      return next;
+    });
   }
+
 
   async function exportCSV() {
     try {
