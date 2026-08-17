@@ -13,7 +13,7 @@ import {
   type DragOverEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { ChevronDown, ChevronRight, Download, GripVertical, Layers, Search, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Download, GripVertical, Printer, Search, X } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
@@ -40,41 +40,62 @@ type ColKey =
   | "number"
   | "cliente"
   | "produto"
+  | "qtde"
   | "total"
   | "vendedor"
   | "created_at"
   | "previsao_entrega"
   | "stage"
   | "dias";
-type GroupKey = "cliente" | "produto" | "vendedor" | "stage";
+type GroupKey = "nenhum" | "produto" | "cliente" | "vendedor" | "stage";
 type PeriodoCampo = "created_at" | "previsao_entrega";
+type PeriodoPreset = "hoje" | "7dias" | "mes" | "custom";
+type OrdemKey = "created_at" | "previsao_entrega" | "total" | "dias" | "cliente";
 
 const LS_COLS = "relatorio-abertos:colunas";
-
+const LS_PREFS = "relatorio-abertos:prefs";
 
 const COLUMNS: {
   key: ColKey;
   label: string;
   align?: "right";
-  sortable: boolean;
-  groupable: boolean;
 }[] = [
-  { key: "number", label: "Nº", sortable: true, groupable: false },
-  { key: "cliente", label: "Cliente", sortable: true, groupable: true },
-  { key: "produto", label: "Produto(s)", sortable: false, groupable: true },
-  { key: "total", label: "Valor total", align: "right", sortable: true, groupable: false },
-  { key: "vendedor", label: "Vendedor", sortable: true, groupable: true },
-  { key: "created_at", label: "Data do pedido", sortable: true, groupable: false },
-  { key: "previsao_entrega", label: "Previsão entrega", sortable: true, groupable: false },
-  { key: "stage", label: "Estágio", sortable: true, groupable: true },
-  { key: "dias", label: "Dias em aberto", align: "right", sortable: true, groupable: false },
+  { key: "number", label: "Nº" },
+  { key: "cliente", label: "Cliente" },
+  { key: "produto", label: "Produto(s)" },
+  { key: "qtde", label: "Qtde", align: "right" },
+  { key: "total", label: "Valor total", align: "right" },
+  { key: "vendedor", label: "Vendedor" },
+  { key: "created_at", label: "Data do pedido" },
+  { key: "previsao_entrega", label: "Previsão entrega" },
+  { key: "stage", label: "Estágio" },
+  { key: "dias", label: "Dias em aberto", align: "right" },
 ];
 
 const DEFAULT_ORDER = COLUMNS.map((c) => c.key);
 
+const GROUP_OPTIONS: { value: GroupKey; label: string }[] = [
+  { value: "nenhum", label: "Nenhum" },
+  { value: "produto", label: "Produto" },
+  { value: "cliente", label: "Cliente" },
+  { value: "vendedor", label: "Vendedor" },
+  { value: "stage", label: "Estágio" },
+];
+
+const ORDEM_OPTIONS: { value: OrdemKey; label: string }[] = [
+  { value: "created_at", label: "Data do pedido" },
+  { value: "previsao_entrega", label: "Previsão de entrega" },
+  { value: "total", label: "Valor" },
+  { value: "dias", label: "Dias em aberto" },
+  { value: "cliente", label: "Cliente" },
+];
 
 function colDef(key: ColKey) {
   return COLUMNS.find((c) => c.key === key)!;
+}
+
+function groupLabel(k: GroupKey) {
+  return GROUP_OPTIONS.find((g) => g.value === k)?.label ?? "";
 }
 
 function fmtDate(iso: string | null | undefined) {
@@ -109,6 +130,10 @@ function stageLabel(id: PedidoStageId) {
   return PEDIDO_STAGES.find((s) => s.id === id)?.label ?? id;
 }
 
+function qtdeItens(r: PedidoAbertoRow) {
+  return r.itens.reduce((s, i) => s + Number(i.quantity || 0), 0);
+}
+
 function produtoResumo(r: PedidoAbertoRow) {
   if (r.itens.length === 0) return "—";
   const first = r.itens[0];
@@ -130,6 +155,8 @@ function cellText(r: PedidoAbertoRow, key: ColKey): string {
       return r.cliente ?? "";
     case "produto":
       return produtosTexto(r);
+    case "qtde":
+      return String(qtdeItens(r));
     case "total":
       return r.total.toFixed(2).replace(".", ",");
     case "vendedor":
@@ -145,7 +172,7 @@ function cellText(r: PedidoAbertoRow, key: ColKey): string {
   }
 }
 
-function groupValues(r: PedidoAbertoRow, key: GroupKey): string[] {
+function groupValues(r: PedidoAbertoRow, key: Exclude<GroupKey, "nenhum">): string[] {
   switch (key) {
     case "cliente":
       return [r.cliente ?? "Sem cliente"];
@@ -162,7 +189,11 @@ function groupValues(r: PedidoAbertoRow, key: GroupKey): string[] {
 
 type Node = { nome: string; rows: PedidoAbertoRow[]; children: Node[] | null; path: string };
 
-function buildTree(rows: PedidoAbertoRow[], levels: GroupKey[], prefix = ""): Node[] {
+function buildTree(
+  rows: PedidoAbertoRow[],
+  levels: Exclude<GroupKey, "nenhum">[],
+  prefix = "",
+): Node[] {
   const [head, ...rest] = levels;
   const map = new Map<string, PedidoAbertoRow[]>();
   for (const r of rows) {
@@ -194,22 +225,48 @@ function readLS<T>(key: string, fallback: T, validate: (v: unknown) => T | null)
   }
 }
 
-/* ---------- DnD helpers ---------- */
+function isoDay(d: Date) {
+  return format(d, "yyyy-MM-dd");
+}
+
+function presetRange(p: PeriodoPreset): { de: string; ate: string } | null {
+  const hoje = new Date();
+  if (p === "hoje") return { de: isoDay(hoje), ate: isoDay(hoje) };
+  if (p === "7dias") {
+    const d = new Date(hoje.getTime() - 6 * 86_400_000);
+    return { de: isoDay(d), ate: isoDay(hoje) };
+  }
+  if (p === "mes") {
+    const d = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    return { de: isoDay(d), ate: isoDay(hoje) };
+  }
+  return null;
+}
+
+const PRINT_CSS = `
+@media print {
+  @page { size: A4 landscape; margin: 10mm; }
+  body * { visibility: hidden !important; }
+  #relatorio-abertos-print, #relatorio-abertos-print * { visibility: visible !important; }
+  #relatorio-abertos-print { position: absolute; left: 0; top: 0; width: 100%; }
+  #relatorio-abertos-print { border: none !important; overflow: visible !important; }
+  #relatorio-abertos-print table { font-size: 10px; width: 100%; }
+  #relatorio-abertos-print th, #relatorio-abertos-print td { padding: 2px 4px !important; }
+  #relatorio-abertos-print thead { position: static !important; }
+  .no-print { display: none !important; }
+}
+`;
+
+/* ---------- DnD: reordenação de colunas (sem efeito de agrupamento) ---------- */
 
 function HeaderCell({
   col,
-  sortKey,
-  sortAsc,
-  onSort,
   overId,
-  groupingLevel,
+  sticky,
 }: {
   col: (typeof COLUMNS)[number];
-  sortKey: ColKey;
-  sortAsc: boolean;
-  onSort: (k: ColKey) => void;
   overId: string | null;
-  groupingLevel: number | null;
+  sticky: boolean;
 }) {
   const draggable = useDraggable({ id: `col:${col.key}` });
   const droppable = useDroppable({ id: `dropcol:${col.key}` });
@@ -218,49 +275,29 @@ function HeaderCell({
     <th
       ref={droppable.setNodeRef}
       className={cn(
-        "relative px-3 py-2 font-medium select-none whitespace-nowrap",
+        "relative bg-muted/50 px-3 py-2 font-medium select-none whitespace-nowrap",
+        sticky && "sticky top-0 z-10",
         col.align === "right" && "text-right",
-        groupingLevel !== null && "bg-primary/5",
         draggable.isDragging && "opacity-40",
       )}
     >
       {isOver ? <span className="absolute inset-y-0 left-0 w-0.5 bg-primary" /> : null}
-      <span className="inline-flex items-center gap-1">
+      <span className={cn("inline-flex items-center gap-1", col.align === "right" && "justify-end")}>
         <button
           type="button"
           ref={draggable.setNodeRef}
           {...draggable.listeners}
           {...draggable.attributes}
-          className="cursor-grab text-muted-foreground/60 hover:text-foreground"
-          title="Arraste para reordenar ou agrupar"
+          className="cursor-grab text-muted-foreground/60 hover:text-foreground no-print"
+          title="Arraste para reordenar a coluna"
         >
           <GripVertical className="h-3.5 w-3.5" />
         </button>
-        <span
-          className={cn(col.sortable && "cursor-pointer")}
-          onClick={() => col.sortable && onSort(col.key)}
-        >
-          {col.label}
-          {col.sortable && sortKey === col.key ? (sortAsc ? " ↑" : " ↓") : ""}
-        </span>
-        {groupingLevel !== null ? (
-          <Badge
-            variant="secondary"
-            className="ml-1 gap-1 px-1.5 py-0 text-[10px] font-normal"
-            title="Esta coluna está sendo usada como nível de agrupamento. Arraste-a para fora das primeiras posições para desagrupar."
-          >
-            <Layers className="h-3 w-3" />
-            agrupando {groupingLevel + 1}
-          </Badge>
-        ) : null}
+        {col.label}
       </span>
     </th>
   );
 }
-
-
-
-
 
 /* ---------- Componente principal ---------- */
 
@@ -272,14 +309,42 @@ export function PedidosEmAbertoReport() {
     queryFn: () => fetchAbertos(),
   });
 
+  const prefs = useMemo(
+    () =>
+      readLS<{
+        grupo: GroupKey;
+        sub: GroupKey;
+        ordem: OrdemKey;
+        preset: PeriodoPreset;
+        periodoCampo: PeriodoCampo;
+        de: string;
+        ate: string;
+      }>(
+        LS_PREFS,
+        {
+          grupo: "nenhum",
+          sub: "nenhum",
+          ordem: "created_at",
+          preset: "mes",
+          periodoCampo: "created_at",
+          de: "",
+          ate: "",
+        },
+        (v) => (v && typeof v === "object" ? (v as never) : null),
+      ),
+    [],
+  );
+
   const [cliente, setCliente] = useState("");
   const [produto, setProduto] = useState("todos");
   const [vendedor, setVendedor] = useState("todos");
-  const [periodoCampo, setPeriodoCampo] = useState<PeriodoCampo>("created_at");
-  const [de, setDe] = useState("");
-  const [ate, setAte] = useState("");
-  const [sortKey, setSortKey] = useState<ColKey>("created_at");
-  const [sortAsc, setSortAsc] = useState(false);
+  const [preset, setPreset] = useState<PeriodoPreset>(prefs.preset ?? "mes");
+  const [periodoCampo, setPeriodoCampo] = useState<PeriodoCampo>(prefs.periodoCampo ?? "created_at");
+  const [de, setDe] = useState(prefs.de ?? "");
+  const [ate, setAte] = useState(prefs.ate ?? "");
+  const [grupo, setGrupo] = useState<GroupKey>(prefs.grupo ?? "nenhum");
+  const [sub, setSub] = useState<GroupKey>(prefs.sub ?? "nenhum");
+  const [ordem, setOrdem] = useState<OrdemKey>(prefs.ordem ?? "created_at");
   const [colapsados, setColapsados] = useState<Record<string, boolean>>({});
   const [expandidos, setExpandidos] = useState<Record<string, boolean>>({});
 
@@ -303,23 +368,28 @@ export function PedidosEmAbertoReport() {
     }
   }, [colOrder]);
 
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        LS_PREFS,
+        JSON.stringify({ grupo, sub, ordem, preset, periodoCampo, de, ate }),
+      );
+    } catch {
+      /* ignore */
+    }
+  }, [grupo, sub, ordem, preset, periodoCampo, de, ate]);
+
+  // Período efetivo: presets calculam as datas; "custom" usa os campos.
+  const range = useMemo(() => presetRange(preset) ?? { de, ate }, [preset, de, ate]);
+
   const rows: PedidoAbertoRow[] = useMemo(() => data ?? [], [data]);
 
-  // Agrupamento automático: prefixo de colunas agrupáveis da esquerda para a direita.
-  const groupLevels = useMemo<GroupKey[]>(() => {
-    const levels: GroupKey[] = [];
-    for (const k of colOrder) {
-      if (!colDef(k).groupable) break;
-      levels.push(k as GroupKey);
-    }
-    return levels;
-  }, [colOrder]);
-
-  // Nenhuma coluna some: todas permanecem no cabeçalho e nas linhas.
-  const visibleCols = colOrder;
-
-
-
+  const groupLevels = useMemo<Exclude<GroupKey, "nenhum">[]>(() => {
+    const l: Exclude<GroupKey, "nenhum">[] = [];
+    if (grupo !== "nenhum") l.push(grupo);
+    if (grupo !== "nenhum" && sub !== "nenhum" && sub !== grupo) l.push(sub);
+    return l;
+  }, [grupo, sub]);
 
   const produtosDisponiveis = useMemo(() => {
     const set = new Set<string>();
@@ -346,40 +416,37 @@ export function PedidosEmAbertoReport() {
         return false;
       if (vendedor !== "todos" && (r.vendedor_id ?? "sem") !== vendedor) return false;
       const campo = periodoCampo === "created_at" ? r.created_at : r.previsao_entrega;
-      if (!inRange(campo, de, ate)) return false;
+      if (!inRange(campo, range.de, range.ate)) return false;
       return true;
     });
-  }, [rows, cliente, produto, vendedor, periodoCampo, de, ate]);
+  }, [rows, cliente, produto, vendedor, periodoCampo, range]);
 
   const sorted = useMemo(() => {
-    const dir = sortAsc ? 1 : -1;
-    const val = (r: PedidoAbertoRow) => {
-      switch (sortKey) {
-        case "number":
-          return r.number;
-        case "cliente":
-          return r.cliente ?? "";
+    const val = (r: PedidoAbertoRow): string | number => {
+      switch (ordem) {
         case "total":
           return r.total;
-        case "vendedor":
-          return r.vendedor_nome ?? "";
-        case "previsao_entrega":
-          return r.previsao_entrega ?? "";
-        case "stage":
-          return stageLabel(r.stage);
         case "dias":
           return diasEmAberto(r.created_at);
+        case "cliente":
+          return r.cliente ?? "";
+        case "previsao_entrega":
+          return r.previsao_entrega ?? "";
         default:
           return r.created_at;
       }
     };
+    const asc = ordem === "cliente" || ordem === "previsao_entrega";
     return [...filtered].sort((a, b) => {
       const x = val(a);
       const y = val(b);
-      if (typeof x === "number" && typeof y === "number") return (x - y) * dir;
-      return String(x).localeCompare(String(y), "pt-BR") * dir;
+      const cmp =
+        typeof x === "number" && typeof y === "number"
+          ? x - y
+          : String(x).localeCompare(String(y), "pt-BR");
+      return asc ? cmp : -cmp;
     });
-  }, [filtered, sortKey, sortAsc]);
+  }, [filtered, ordem]);
 
   const tree = useMemo(
     () => (groupLevels.length ? buildTree(sorted, groupLevels) : null),
@@ -387,23 +454,13 @@ export function PedidosEmAbertoReport() {
   );
 
   const totalGeral = filtered.reduce((s, r) => s + r.total, 0);
-  const hasFilters = cliente || produto !== "todos" || vendedor !== "todos" || de || ate;
+  const qtdeGeral = filtered.reduce((s, r) => s + qtdeItens(r), 0);
+  const hasFilters = cliente || produto !== "todos" || vendedor !== "todos";
 
   function limpar() {
     setCliente("");
     setProduto("todos");
     setVendedor("todos");
-    setDe("");
-    setAte("");
-  }
-
-
-  function toggleSort(key: ColKey) {
-    if (key === sortKey) setSortAsc((v) => !v);
-    else {
-      setSortKey(key);
-      setSortAsc(true);
-    }
   }
 
   function onDragStart(e: DragStartEvent) {
@@ -428,7 +485,6 @@ export function PedidosEmAbertoReport() {
     });
   }
 
-
   async function exportCSV() {
     try {
       await checkExport();
@@ -438,15 +494,33 @@ export function PedidosEmAbertoReport() {
     }
     const cols = colOrder;
     const header = [
+      ...(groupLevels[0] ? [`Grupo (${groupLabel(groupLevels[0])})`] : []),
+      ...(groupLevels[1] ? [`Subgrupo (${groupLabel(groupLevels[1])})`] : []),
       ...cols.map((k) => colDef(k).label),
       "Responsável atual",
       "Atrasado",
     ];
-    const lines = sorted.map((r) => [
-      ...cols.map((k) => cellText(r, k)),
-      r.responsavel_nome ?? "",
-      estaAtrasado(r.previsao_entrega) ? "Sim" : "Não",
-    ]);
+    const lines: string[][] = [];
+    const push = (r: PedidoAbertoRow, g?: string, s?: string) => {
+      lines.push([
+        ...(groupLevels[0] ? [g ?? ""] : []),
+        ...(groupLevels[1] ? [s ?? ""] : []),
+        ...cols.map((k) => cellText(r, k)),
+        r.responsavel_nome ?? "",
+        estaAtrasado(r.previsao_entrega) ? "Sim" : "Não",
+      ]);
+    };
+    if (tree) {
+      for (const n of tree) {
+        if (n.children) {
+          for (const c of n.children) for (const r of c.rows) push(r, n.nome, c.nome);
+        } else {
+          for (const r of n.rows) push(r, n.nome);
+        }
+      }
+    } else {
+      for (const r of sorted) push(r);
+    }
     const csv = [header, ...lines]
       .map((c) => c.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(";"))
       .join("\r\n");
@@ -459,7 +533,7 @@ export function PedidosEmAbertoReport() {
     URL.revokeObjectURL(url);
   }
 
-  const COLS = visibleCols.length + 1;
+  const COLS = colOrder.length + 1;
 
   function Cell({ r, k }: { r: PedidoAbertoRow; k: ColKey }) {
     const atrasado = estaAtrasado(r.previsao_entrega);
@@ -487,6 +561,8 @@ export function PedidosEmAbertoReport() {
             </TooltipProvider>
           </td>
         );
+      case "qtde":
+        return <td className="px-3 py-2 text-right whitespace-nowrap">{qtdeItens(r)}</td>;
       case "total":
         return <td className="px-3 py-2 text-right whitespace-nowrap">{formatBRL(r.total)}</td>;
       case "vendedor":
@@ -529,7 +605,7 @@ export function PedidosEmAbertoReport() {
     }
   }
 
-  function Linha({ r, rowKey }: { r: PedidoAbertoRow; rowKey: string }) {
+  function Linha({ r, rowKey, depth }: { r: PedidoAbertoRow; rowKey: string; depth: number }) {
     const atrasado = estaAtrasado(r.previsao_entrega);
     const aberto = !!expandidos[r.id];
     return (
@@ -537,9 +613,15 @@ export function PedidosEmAbertoReport() {
         <tr
           className={cn("border-b last:border-0 hover:bg-muted/30", atrasado && "bg-destructive/5")}
         >
-          {visibleCols.map((k) => (
+          {colOrder.map((k, idx) => (
             <Fragment key={`${rowKey}-${k}`}>
-              <Cell r={r} k={k} />
+              {idx === 0 && depth > 0 ? (
+                <td className="px-3 py-2" style={{ paddingLeft: 12 + depth * 20 }}>
+                  <span className="font-medium">{cellText(r, k)}</span>
+                </td>
+              ) : (
+                <Cell r={r} k={k} />
+              )}
             </Fragment>
           ))}
           <td className="px-3 py-2">
@@ -566,44 +648,88 @@ export function PedidosEmAbertoReport() {
     );
   }
 
+  function GroupRow({ n, depth }: { n: Node; depth: number }) {
+    const fechado = !!colapsados[n.path];
+    const subtotal = n.rows.reduce((s, r) => s + r.total, 0);
+    const qtde = n.rows.reduce((s, r) => s + qtdeItens(r), 0);
+    const atrasados = n.rows.filter((r) => estaAtrasado(r.previsao_entrega)).length;
+    const pct = totalGeral > 0 ? (subtotal / totalGeral) * 100 : 0;
+    // Ordem visual das colunas numéricas para os agregados
+    const numericos: Partial<Record<ColKey, ReactNode>> = {
+      qtde: qtde,
+      total: formatBRL(subtotal),
+      dias: `${n.rows.length} ped.`,
+    };
+    let primeiraLivre = true;
+    return (
+      <tr
+        className={cn(
+          "border-b cursor-pointer",
+          depth === 0 ? "bg-muted/50 font-medium" : "bg-muted/25",
+        )}
+        onClick={() => setColapsados((p) => ({ ...p, [n.path]: !p[n.path] }))}
+      >
+        {colOrder.map((k) => {
+          const agg = numericos[k];
+          if (agg !== undefined) {
+            return (
+              <td key={k} className="px-3 py-2 text-right whitespace-nowrap">
+                {agg}
+              </td>
+            );
+          }
+          if (primeiraLivre) {
+            primeiraLivre = false;
+            return (
+              <td key={k} className="px-3 py-2">
+                <span
+                  className="inline-flex items-center gap-1.5"
+                  style={{ paddingLeft: depth * 16 }}
+                >
+                  {fechado ? (
+                    <ChevronRight className="h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" />
+                  )}
+                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    {groupLabel(groupLevels[depth])}:
+                  </span>
+                  {n.nome}
+                  <span className="text-xs font-normal text-muted-foreground">
+                    · {n.rows.length} pedido{n.rows.length > 1 ? "s" : ""} · {pct.toFixed(1)}%
+                  </span>
+                  {atrasados > 0 ? (
+                    <Badge variant="destructive" className="ml-1 px-1.5 py-0 text-[10px]">
+                      {atrasados} atrasado{atrasados > 1 ? "s" : ""}
+                    </Badge>
+                  ) : null}
+                </span>
+              </td>
+            );
+          }
+          return <td key={k} className="px-3 py-2" />;
+        })}
+        <td className="px-3 py-2" />
+      </tr>
+    );
+  }
+
   function renderNodes(nodes: Node[], depth: number): ReactNode {
     return nodes.map((n) => {
       const fechado = !!colapsados[n.path];
-      const subtotal = n.rows.reduce((s, r) => s + r.total, 0);
       return (
         <Fragment key={n.path}>
-          <tr
-            className={cn("border-b cursor-pointer", depth === 0 ? "bg-muted/40" : "bg-muted/20")}
-            onClick={() => setColapsados((p) => ({ ...p, [n.path]: !p[n.path] }))}
-          >
-            <td colSpan={Math.max(1, COLS - 1)} className="px-3 py-2 font-medium">
-              <span
-                className="inline-flex items-center gap-1.5"
-                style={{ paddingLeft: depth * 16 }}
-              >
-                {fechado ? (
-                  <ChevronRight className="h-4 w-4" />
-                ) : (
-                  <ChevronDown className="h-4 w-4" />
-                )}
-                <span className="text-xs uppercase tracking-wide text-muted-foreground">
-                  {colDef(groupLevels[depth]).label}:
-                </span>
-                {n.nome}
-                <span className="text-xs font-normal text-muted-foreground">
-                  · {n.rows.length} pedido{n.rows.length > 1 ? "s" : ""}
-                </span>
-              </span>
-            </td>
-            <td className="px-3 py-2 text-right font-medium whitespace-nowrap">
-              {formatBRL(subtotal)}
-            </td>
-          </tr>
+          <GroupRow n={n} depth={depth} />
           {!fechado
             ? n.children
               ? renderNodes(n.children, depth + 1)
               : n.rows.map((r) => (
-                  <Linha key={`${n.path}-${r.id}`} r={r} rowKey={`${n.path}-${r.id}`} />
+                  <Linha
+                    key={`${n.path}-${r.id}`}
+                    r={r}
+                    rowKey={`${n.path}-${r.id}`}
+                    depth={depth + 1}
+                  />
                 ))
             : null}
         </Fragment>
@@ -612,7 +738,6 @@ export function PedidosEmAbertoReport() {
   }
 
   const activeLabel = activeId ? colDef(activeId.slice(4) as ColKey).label : null;
-
 
   return (
     <DndContext
@@ -625,22 +750,132 @@ export function PedidosEmAbertoReport() {
         setOverId(null);
       }}
     >
+      <style dangerouslySetInnerHTML={{ __html: PRINT_CSS }} />
       <div className="space-y-6">
         <div className="flex items-start justify-between gap-4 no-print">
           <p className="text-sm text-muted-foreground">
-            Pedidos ainda não entregues, com destaque para os que passaram da previsão de entrega.
-            Arraste os cabeçalhos para reordenar colunas — colunas agrupáveis nas primeiras
-            posições viram níveis de agrupamento.
-
+            Pedidos ainda não entregues, com destaque para os que passaram da previsão de entrega. O
+            relatório atualiza ao vivo conforme os filtros abaixo.
           </p>
-          <Button variant="outline" size="sm" onClick={exportCSV} disabled={sorted.length === 0}>
-            <Download className="h-4 w-4 mr-2" /> Exportar CSV
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => window.print()}>
+              <Printer className="h-4 w-4 mr-2" /> Imprimir
+            </Button>
+            <Button variant="outline" size="sm" onClick={exportCSV} disabled={sorted.length === 0}>
+              <Download className="h-4 w-4 mr-2" /> Exportar CSV
+            </Button>
+          </div>
         </div>
 
-        {/* Filtros */}
+        {/* Painel de controle */}
         <div className="rounded-lg border bg-card p-4 space-y-4 no-print">
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Período</label>
+              <Select value={preset} onValueChange={(v) => setPreset(v as PeriodoPreset)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="hoje">Hoje</SelectItem>
+                  <SelectItem value="7dias">Últimos 7 dias</SelectItem>
+                  <SelectItem value="mes">Mês atual</SelectItem>
+                  <SelectItem value="custom">De um período</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Data inicial</label>
+              <Input
+                type="date"
+                value={preset === "custom" ? de : range.de}
+                disabled={preset !== "custom"}
+                onChange={(e) => setDe(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Data final</label>
+              <Input
+                type="date"
+                value={preset === "custom" ? ate : range.ate}
+                disabled={preset !== "custom"}
+                onChange={(e) => setAte(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Data considerada</label>
+              <Select value={periodoCampo} onValueChange={(v) => setPeriodoCampo(v as PeriodoCampo)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="created_at">Data do pedido</SelectItem>
+                  <SelectItem value="previsao_entrega">Previsão de entrega</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-3">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Agrupar por</label>
+              <Select
+                value={grupo}
+                onValueChange={(v) => {
+                  const g = v as GroupKey;
+                  setGrupo(g);
+                  if (g === "nenhum" || g === sub) setSub("nenhum");
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {GROUP_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Sub agrupar por</label>
+              <Select
+                value={sub}
+                onValueChange={(v) => setSub(v as GroupKey)}
+                disabled={grupo === "nenhum"}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {GROUP_OPTIONS.filter((o) => o.value !== grupo).map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Ordenar por</label>
+              <Select value={ordem} onValueChange={(v) => setOrdem(v as OrdemKey)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ORDEM_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-3">
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground">Cliente</label>
               <div className="relative">
@@ -687,29 +922,13 @@ export function PedidosEmAbertoReport() {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">Período por</label>
-              <Select value={periodoCampo} onValueChange={(v) => setPeriodoCampo(v as PeriodoCampo)}>
-                <SelectTrigger className="w-[210px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="created_at">Data do pedido</SelectItem>
-                  <SelectItem value="previsao_entrega">Previsão de entrega</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-center gap-2">
-              <Input type="date" value={de} onChange={(e) => setDe(e.target.value)} />
-              <span className="text-xs text-muted-foreground">até</span>
-              <Input type="date" value={ate} onChange={(e) => setAte(e.target.value)} />
-            </div>
-          </div>
-
           <div className="flex items-center justify-between border-t pt-3">
             <div className="text-xs text-muted-foreground">
-              {filtered.length} de {rows.length} pedidos em aberto · Total {formatBRL(totalGeral)}
+              {filtered.length} de {rows.length} pedidos em aberto · {qtdeGeral} itens · Total{" "}
+              {formatBRL(totalGeral)}
+              {groupLevels.length
+                ? ` · Agrupado por ${groupLevels.map(groupLabel).join(" → ")}`
+                : ""}
             </div>
             {hasFilters ? (
               <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={limpar}>
@@ -719,43 +938,24 @@ export function PedidosEmAbertoReport() {
           </div>
         </div>
 
-        {/* Estado do agrupamento */}
-        <div className="no-print text-xs text-muted-foreground">
-          {groupLevels.length > 0 ? (
-            <>
-              <span className="font-medium text-foreground">Agrupado por: </span>
-              {groupLevels.map((k) => colDef(k).label).join(" → ")}
-            </>
-          ) : (
-            "Sem agrupamento — arraste uma coluna agrupável (Cliente, Produto(s), Vendedor, Estágio) para a primeira posição para agrupar."
-          )}
-        </div>
-
-
         {/* Tabela */}
-        <div id="relatorio-print" className="rounded-lg border bg-card overflow-x-auto">
+        <div
+          id="relatorio-abertos-print"
+          className="rounded-lg border bg-card overflow-x-auto max-h-[70vh] overflow-y-auto"
+        >
           <div className="hidden print:block p-2 text-sm font-semibold">
             Pedidos em Aberto — {format(new Date(), "dd/MM/yyyy")}
+            {groupLevels.length
+              ? ` · Agrupado por ${groupLevels.map(groupLabel).join(" → ")}`
+              : ""}
           </div>
           <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-left">
+            <thead className="text-left">
               <tr className="border-b">
-                {visibleCols.map((k) => (
-                  <HeaderCell
-                    key={k}
-                    col={colDef(k)}
-                    sortKey={sortKey}
-                    sortAsc={sortAsc}
-                    onSort={toggleSort}
-                    overId={overId}
-                    groupingLevel={
-                      groupLevels.indexOf(k as GroupKey) >= 0
-                        ? groupLevels.indexOf(k as GroupKey)
-                        : null
-                    }
-                  />
+                {colOrder.map((k) => (
+                  <HeaderCell key={k} col={colDef(k)} overId={overId} sticky />
                 ))}
-                <th className="px-3 py-2 font-medium" />
+                <th className="sticky top-0 z-10 bg-muted/50 px-3 py-2 font-medium" />
               </tr>
             </thead>
             <tbody>
@@ -780,14 +980,14 @@ export function PedidosEmAbertoReport() {
               ) : tree ? (
                 renderNodes(tree, 0)
               ) : (
-                sorted.map((r) => <Linha key={r.id} r={r} rowKey={r.id} />)
+                sorted.map((r) => <Linha key={r.id} r={r} rowKey={r.id} depth={0} />)
               )}
             </tbody>
             {sorted.length > 0 ? (
               <tfoot>
                 <tr className="border-t bg-muted/30 font-medium">
                   <td className="px-3 py-2" colSpan={Math.max(1, COLS - 1)}>
-                    Total geral ({filtered.length} pedidos)
+                    Total geral ({filtered.length} pedidos · {qtdeGeral} itens)
                   </td>
                   <td className="px-3 py-2 text-right">{formatBRL(totalGeral)}</td>
                 </tr>
