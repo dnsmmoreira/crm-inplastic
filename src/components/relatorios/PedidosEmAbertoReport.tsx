@@ -345,13 +345,6 @@ export function PedidosEmAbertoReport() {
       return [...keep, ...missing];
     }),
   );
-  const [groupLevels, setGroupLevels] = useState<GroupKey[]>(() =>
-    readLS<GroupKey[]>(LS_GRUPOS, [], (v) =>
-      Array.isArray(v)
-        ? Array.from(new Set(v.filter((k): k is GroupKey => GROUPABLE.includes(k as GroupKey))))
-        : null,
-    ),
-  );
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
@@ -363,20 +356,24 @@ export function PedidosEmAbertoReport() {
       /* ignore */
     }
   }, [colOrder]);
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(LS_GRUPOS, JSON.stringify(groupLevels));
-    } catch {
-      /* ignore */
-    }
-  }, [groupLevels]);
 
   const rows: PedidoAbertoRow[] = useMemo(() => data ?? [], [data]);
+
+  // Agrupamento automático: prefixo de colunas agrupáveis da esquerda para a direita.
+  const groupLevels = useMemo<GroupKey[]>(() => {
+    const levels: GroupKey[] = [];
+    for (const k of colOrder) {
+      if (!colDef(k).groupable) break;
+      levels.push(k as GroupKey);
+    }
+    return levels;
+  }, [colOrder]);
 
   const visibleCols = useMemo(
     () => colOrder.filter((k) => !groupLevels.includes(k as GroupKey)),
     [colOrder, groupLevels],
   );
+
 
   const produtosDisponiveis = useMemo(() => {
     const set = new Set<string>();
