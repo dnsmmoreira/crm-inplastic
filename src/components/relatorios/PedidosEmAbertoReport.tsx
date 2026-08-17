@@ -13,7 +13,7 @@ import {
   type DragOverEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { ChevronDown, ChevronRight, Download, GripVertical, Search, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Download, GripVertical, Layers, Search, X } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
