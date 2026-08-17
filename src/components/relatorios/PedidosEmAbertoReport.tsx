@@ -615,7 +615,9 @@ export function PedidosEmAbertoReport() {
         <div className="flex items-start justify-between gap-4 no-print">
           <p className="text-sm text-muted-foreground">
             Pedidos ainda não entregues, com destaque para os que passaram da previsão de entrega.
-            Arraste os cabeçalhos para reordenar colunas ou criar agrupamentos.
+            Arraste os cabeçalhos para reordenar colunas — colunas agrupáveis nas primeiras
+            posições viram níveis de agrupamento.
+
           </p>
           <Button variant="outline" size="sm" onClick={exportCSV} disabled={sorted.length === 0}>
             <Download className="h-4 w-4 mr-2" /> Exportar CSV
