@@ -50,7 +50,7 @@ type GroupKey = "cliente" | "produto" | "vendedor" | "stage";
 type PeriodoCampo = "created_at" | "previsao_entrega";
 
 const LS_COLS = "relatorio-abertos:colunas";
-const LS_GRUPOS = "relatorio-abertos:grupos";
+
 
 const COLUMNS: {
   key: ColKey;
