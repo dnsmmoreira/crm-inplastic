@@ -810,14 +810,18 @@ export function PedidosEmAbertoReport() {
           </div>
         </div>
 
-        {/* Barra de agrupamento */}
-        <div className="no-print">
-          <GroupBar
-            levels={groupLevels}
-            overId={overId}
-            onRemove={(k) => setGroupLevels((prev) => prev.filter((x) => x !== k))}
-          />
+        {/* Estado do agrupamento */}
+        <div className="no-print text-xs text-muted-foreground">
+          {groupLevels.length > 0 ? (
+            <>
+              <span className="font-medium text-foreground">Agrupado por: </span>
+              {groupLevels.map((k) => colDef(k).label).join(" → ")}
+            </>
+          ) : (
+            "Sem agrupamento — arraste uma coluna agrupável (Cliente, Produto(s), Vendedor, Estágio) para a primeira posição para agrupar."
+          )}
         </div>
+
 
         {/* Tabela */}
         <div id="relatorio-print" className="rounded-lg border bg-card overflow-x-auto">
