@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -621,7 +621,7 @@ export function PedidosEmAbertoReport() {
     }
   }
 
-  function Linha({ r, rowKey, depth }: { r: PedidoAbertoRow; rowKey: string; depth: number }) {
+  function Linha({ r, rowKey }: { r: PedidoAbertoRow; rowKey: string }) {
     const atrasado = estaAtrasado(r.previsao_entrega);
     const aberto = !!expandidos[r.id];
     return (
@@ -629,11 +629,8 @@ export function PedidosEmAbertoReport() {
         <tr
           className={cn("border-b last:border-0 hover:bg-muted/30", atrasado && "bg-destructive/5")}
         >
-          {visibleCols.map((k, i) => (
+          {visibleCols.map((k) => (
             <Fragment key={`${rowKey}-${k}`}>
-              {i === 0 && depth > 0 ? (
-                <td className="w-0 p-0" style={{ paddingLeft: depth * 14 }} />
-              ) : null}
               <Cell r={r} k={k} />
             </Fragment>
           ))}
@@ -645,7 +642,7 @@ export function PedidosEmAbertoReport() {
         </tr>
         {aberto && r.itens.length > 0 ? (
           <tr className="border-b bg-muted/20">
-            <td colSpan={COLS + (depth > 0 ? 1 : 0)} className="px-6 py-2 text-xs text-muted-foreground">
+            <td colSpan={COLS} className="px-6 py-2 text-xs text-muted-foreground">
               <ul className="space-y-0.5">
                 {r.itens.map((i, idx) => (
                   <li key={`${r.id}-${idx}`}>
@@ -661,7 +658,7 @@ export function PedidosEmAbertoReport() {
     );
   }
 
-  function renderNodes(nodes: Node[], depth: number): React.ReactNode {
+  function renderNodes(nodes: Node[], depth: number): ReactNode {
     return nodes.map((n) => {
       const fechado = !!colapsados[n.path];
       const subtotal = n.rows.reduce((s, r) => s + r.total, 0);
@@ -698,7 +695,7 @@ export function PedidosEmAbertoReport() {
             ? n.children
               ? renderNodes(n.children, depth + 1)
               : n.rows.map((r) => (
-                  <Linha key={`${n.path}-${r.id}`} r={r} rowKey={`${n.path}-${r.id}`} depth={0} />
+                  <Linha key={`${n.path}-${r.id}`} r={r} rowKey={`${n.path}-${r.id}`} />
                 ))
             : null}
         </Fragment>
@@ -865,7 +862,7 @@ export function PedidosEmAbertoReport() {
               ) : tree ? (
                 renderNodes(tree, 0)
               ) : (
-                sorted.map((r) => <Linha key={r.id} r={r} rowKey={r.id} depth={0} />)
+                sorted.map((r) => <Linha key={r.id} r={r} rowKey={r.id} />)
               )}
             </tbody>
             {sorted.length > 0 ? (
