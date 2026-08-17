@@ -294,6 +294,8 @@ function RelatoriosPage() {
           ) : null}
         </table>
       </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
