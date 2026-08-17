@@ -748,6 +748,11 @@ export function PedidosEmAbertoReport() {
                     sortAsc={sortAsc}
                     onSort={toggleSort}
                     overId={overId}
+                    groupingLevel={
+                      groupLevels.indexOf(k as GroupKey) >= 0
+                        ? groupLevels.indexOf(k as GroupKey)
+                        : null
+                    }
                   />
                 ))}
                 <th className="px-3 py-2 font-medium" />
