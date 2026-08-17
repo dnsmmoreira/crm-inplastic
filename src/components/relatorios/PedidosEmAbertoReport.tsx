@@ -301,10 +301,10 @@ export function PedidosEmAbertoReport() {
     return levels;
   }, [colOrder]);
 
-  const visibleCols = useMemo(
-    () => colOrder.filter((k) => !groupLevels.includes(k as GroupKey)),
-    [colOrder, groupLevels],
-  );
+  // Nenhuma coluna some: todas permanecem no cabeçalho e nas linhas.
+  const visibleCols = colOrder;
+
+
 
 
   const produtosDisponiveis = useMemo(() => {
