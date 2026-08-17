@@ -1008,7 +1008,8 @@ export function PedidosEmAbertoReport() {
               <tfoot>
                 <tr className="border-t bg-muted/30 font-medium">
                   <td className="px-3 py-2" colSpan={Math.max(1, COLS - 1)}>
-                    Total geral ({filtered.length} pedidos · {qtdeGeral} itens)
+                    Total geral ({filtered.length} pedidos ·{" "}
+                    {qtdeGeral.toLocaleString("pt-BR")} un)
                   </td>
                   <td className="px-3 py-2 text-right">{formatBRL(totalGeral)}</td>
                 </tr>
