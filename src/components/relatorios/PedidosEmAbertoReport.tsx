@@ -716,7 +716,8 @@ export function PedidosEmAbertoReport() {
                   </span>
                   {n.nome}
                   <span className="text-xs font-normal text-muted-foreground">
-                    · {n.rows.length} pedido{n.rows.length > 1 ? "s" : ""} · {pct.toFixed(1)}%
+                    · {n.rows.length} pedido{n.rows.length > 1 ? "s" : ""} ·{" "}
+                    {qtde.toLocaleString("pt-BR")} un · {pct.toFixed(1)}%
                   </span>
                   {atrasados > 0 ? (
                     <Badge variant="destructive" className="ml-1 px-1.5 py-0 text-[10px]">
