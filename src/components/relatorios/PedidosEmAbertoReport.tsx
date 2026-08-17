@@ -13,7 +13,7 @@ import {
   type DragOverEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { ChevronDown, ChevronRight, Download, GripVertical, Search, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Download, GripVertical, Layers, Search, X } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
@@ -202,12 +202,14 @@ function HeaderCell({
   sortAsc,
   onSort,
   overId,
+  groupingLevel,
 }: {
   col: (typeof COLUMNS)[number];
   sortKey: ColKey;
   sortAsc: boolean;
   onSort: (k: ColKey) => void;
   overId: string | null;
+  groupingLevel: number | null;
 }) {
   const draggable = useDraggable({ id: `col:${col.key}` });
   const droppable = useDroppable({ id: `dropcol:${col.key}` });
@@ -218,6 +220,7 @@ function HeaderCell({
       className={cn(
         "relative px-3 py-2 font-medium select-none whitespace-nowrap",
         col.align === "right" && "text-right",
+        groupingLevel !== null && "bg-primary/5",
         draggable.isDragging && "opacity-40",
       )}
     >
@@ -240,10 +243,21 @@ function HeaderCell({
           {col.label}
           {col.sortable && sortKey === col.key ? (sortAsc ? " ↑" : " ↓") : ""}
         </span>
+        {groupingLevel !== null ? (
+          <Badge
+            variant="secondary"
+            className="ml-1 gap-1 px-1.5 py-0 text-[10px] font-normal"
+            title="Esta coluna está sendo usada como nível de agrupamento. Arraste-a para fora das primeiras posições para desagrupar."
+          >
+            <Layers className="h-3 w-3" />
+            agrupando {groupingLevel + 1}
+          </Badge>
+        ) : null}
       </span>
     </th>
   );
 }
+
 
 
 
@@ -301,10 +315,10 @@ export function PedidosEmAbertoReport() {
     return levels;
   }, [colOrder]);
 
-  const visibleCols = useMemo(
-    () => colOrder.filter((k) => !groupLevels.includes(k as GroupKey)),
-    [colOrder, groupLevels],
-  );
+  // Nenhuma coluna some: todas permanecem no cabeçalho e nas linhas.
+  const visibleCols = colOrder;
+
+
 
 
   const produtosDisponiveis = useMemo(() => {
@@ -734,6 +748,11 @@ export function PedidosEmAbertoReport() {
                     sortAsc={sortAsc}
                     onSort={toggleSort}
                     overId={overId}
+                    groupingLevel={
+                      groupLevels.indexOf(k as GroupKey) >= 0
+                        ? groupLevels.indexOf(k as GroupKey)
+                        : null
+                    }
                   />
                 ))}
                 <th className="px-3 py-2 font-medium" />
