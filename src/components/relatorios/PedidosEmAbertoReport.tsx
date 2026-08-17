@@ -945,7 +945,8 @@ export function PedidosEmAbertoReport() {
 
           <div className="flex items-center justify-between border-t pt-3">
             <div className="text-xs text-muted-foreground">
-              {filtered.length} de {rows.length} pedidos em aberto · {qtdeGeral} itens · Total{" "}
+              {filtered.length} de {rows.length} pedidos em aberto ·{" "}
+              {qtdeGeral.toLocaleString("pt-BR")} un · Total{" "}
               {formatBRL(totalGeral)}
               {groupLevels.length
                 ? ` · Agrupado por ${groupLevels.map(groupLabel).join(" → ")}`
