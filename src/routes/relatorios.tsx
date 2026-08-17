@@ -141,13 +141,28 @@ function RelatoriosPage() {
         }
       `}</style>
 
+      <div className="no-print">
+        <h1 className="font-display text-2xl font-semibold">Relatórios</h1>
+        <p className="text-sm text-muted-foreground">
+          Relatórios operacionais do CRM.
+        </p>
+      </div>
+
+      <Tabs defaultValue="pedidos" className="space-y-6">
+        <TabsList className="no-print">
+          <TabsTrigger value="pedidos">Pedidos</TabsTrigger>
+          <TabsTrigger value="abertos">Pedidos em Aberto</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="abertos" className="space-y-6">
+          <PedidosEmAbertoReport />
+        </TabsContent>
+
+        <TabsContent value="pedidos" className="space-y-6">
       <div className="flex items-start justify-between gap-4 no-print">
-        <div>
-          <h1 className="font-display text-2xl font-semibold">Relatórios</h1>
-          <p className="text-sm text-muted-foreground">
-            Relatório de pedidos operacionais (gerados a partir de propostas ganhas).
-          </p>
-        </div>
+        <p className="text-sm text-muted-foreground">
+          Relatório de pedidos operacionais (gerados a partir de propostas ganhas).
+        </p>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={exportCSV} disabled={filtered.length === 0}>
             <Download className="h-4 w-4 mr-2" /> Exportar CSV
