@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PedidosEmAbertoReport } from "@/components/relatorios/PedidosEmAbertoReport";
 import { cn } from "@/lib/utils";
 import { formatBRL } from "@/lib/crm-store";
 import { PEDIDO_STAGES, type PedidoStageId } from "@/lib/pedidos.functions";
