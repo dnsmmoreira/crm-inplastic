@@ -462,6 +462,21 @@ export function UsuarioEditDialog({
               </div>
             </div>
 
+            {String(Number(meta) || 0) !== String(Number(metaInicial) || 0) && (
+              <div className="space-y-1 rounded-lg border p-3">
+                <Label htmlFor="ue-meta-motivo">Motivo da alteração da meta (opcional)</Label>
+                <Input
+                  id="ue-meta-motivo"
+                  value={metaMotivo}
+                  onChange={(e) => setMetaMotivo(e.target.value)}
+                  maxLength={300}
+                  placeholder="Ex.: ajuste de rampa acordado em reunião comercial"
+                />
+                <p className="text-xs text-muted-foreground">Fica registrado na auditoria junto da mudança de meta.</p>
+              </div>
+            )}
+
+
             <div className="flex items-center justify-between rounded-lg border p-3">
               <div>
                 <div className="text-sm font-medium">Participa da fila round-robin</div>
