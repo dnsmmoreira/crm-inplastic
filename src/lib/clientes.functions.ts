@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireSupabaseAuth } from "@/lib/auth.middleware";
 import { isValidCnpj, onlyDigitsCnpj, isValidCpf, onlyDigitsCpf } from "@/lib/cnpj";
 
 export type TipoPessoa = "PJ" | "PF";

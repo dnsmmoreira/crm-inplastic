@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireSupabaseAuth } from "@/lib/auth.middleware";
 
 /** Converte YYYY-MM-DD (input date) para ISO ancorado ao meio-dia UTC,
  *  preservando o dia escolhido em qualquer TZ (evita shift para o dia anterior). */

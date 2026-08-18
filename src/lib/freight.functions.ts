@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireSupabaseAuth } from "@/lib/auth.middleware";
 
 const GATEWAY = "https://connector-gateway.lovable.dev/google_maps";
 
