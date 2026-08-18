@@ -61,9 +61,11 @@ describe("middleware de conta ativa", () => {
   dirs.forEach((d) => walk(join(process.cwd(), d)));
 
   it("nenhuma server function importa o middleware gerado direto", () => {
-    const infratores = arquivos.filter((p) =>
-      readFileSync(p, "utf8").includes('from "@/integrations/supabase/auth-middleware"'),
-    );
+    const infratores = arquivos
+      .filter((p) => !/auth\.middleware\.ts$|seguranca-p0\.test\.ts$/.test(p))
+      .filter((p) =>
+        readFileSync(p, "utf8").includes('from "@/integrations/supabase/auth-middleware"'),
+      );
     expect(infratores).toEqual([]);
   });
 
