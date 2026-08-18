@@ -73,8 +73,9 @@ function PlacarPage() {
             Placar de Vendedores
           </h1>
           <p className="text-sm text-muted-foreground">
-            Fonte única de ranking · visível para todo o time
+            ARENA · Premiação e Performance comercial — fonte única de ranking, visível para todo o time
           </p>
+
         </div>
         <div className="flex items-center gap-2">
           <HistoricoDialog isAdmin={isAdmin} />
@@ -117,11 +118,17 @@ function PlacarPage() {
               </div>
             </div>
             <div className="text-right hidden sm:block">
-              <div className="text-xs uppercase tracking-wider text-muted-foreground">Score</div>
+              <div className="text-xs uppercase tracking-wider text-muted-foreground">
+                Score de Atividade
+              </div>
+              <div className="text-[10px] uppercase tracking-wider text-amber-700 font-semibold">
+                ARENA Premiação
+              </div>
               <div className="font-display text-3xl font-semibold text-primary">
                 {lider.score.toFixed(0)}
               </div>
             </div>
+
           </CardContent>
         </Card>
       ) : (
@@ -142,13 +149,28 @@ function PlacarPage() {
           ) : (
             <table className="w-full text-sm">
               <thead className="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground">
+                <tr className="border-b">
+                  <th className="px-3 py-1.5" colSpan={2} />
+                  <th
+                    className="px-3 py-1.5 text-left text-[10px] font-semibold text-amber-700 border-l"
+                    colSpan={2}
+                  >
+                    ARENA Premiação
+                  </th>
+                  <th
+                    className="px-3 py-1.5 text-left text-[10px] font-semibold text-primary border-l"
+                    colSpan={showMetaCol ? 10 : 9}
+                  >
+                    ARENA Performance
+                  </th>
+                </tr>
                 <tr>
                   <Th>#</Th>
                   <Th>Vendedor</Th>
-                  <Th className="text-right">Score</Th>
+                  <Th className="text-right border-l">Score de Atividade</Th>
                   <Th>Progresso</Th>
-                  <Th className="text-right">Ganhos</Th>
-                  {showMetaCol && <Th className="text-right">Meta</Th>}
+                  <Th className="text-right border-l">Ganhos</Th>
+                  {showMetaCol && <Th className="text-right">% da Meta</Th>}
                   <Th className="text-right">Propostas</Th>
                   <Th className="text-right">Conv.</Th>
                   <Th className="text-right">Perdas</Th>
@@ -159,6 +181,7 @@ function PlacarPage() {
                   <Th className="text-right">Pós-venda</Th>
                 </tr>
               </thead>
+
               <tbody>
                 {vendedores.map((v) => (
                   <Row
@@ -175,9 +198,23 @@ function PlacarPage() {
         </CardContent>
       </Card>
 
-      <p className="text-xs text-muted-foreground">
-        Meta em R$ é individual (apenas você vê a sua; admin vê todas). Bônus escalonado no score: 50% · 80% · 100% · 120%.
-      </p>
+      <div className="space-y-1 text-xs text-muted-foreground">
+        <p>
+          <span className="font-medium text-amber-700">ARENA Premiação</span> — Score de Atividade:
+          pontos de disciplina comercial (propostas, tarefas, pós-venda no prazo, penalidade de SLA),
+          com bônus escalonado por faixa da meta: 50% · 80% · 100% · 120%.
+        </p>
+        <p>
+          <span className="font-medium text-primary">ARENA Performance</span> — resultado comercial
+          observado: ganhos, % da meta, conversão, perdas, tempo de 1ª resposta, SLAs, carteira e
+          pós-venda.
+        </p>
+        <p>
+          O Score de Atividade não é o Score do lead (oportunidade) e não define distribuição de
+          leads. Meta em R$ é individual: apenas você vê a sua; admin vê todas.
+        </p>
+      </div>
+
     </div>
   );
 }
@@ -220,7 +257,10 @@ function MinhaMetaCard({ v }: { v: PlacarVendedor }) {
           : "text-primary"
         )} />
         <div className="flex-1 min-w-[240px]">
-          <div className="text-xs uppercase tracking-wider text-muted-foreground">Sua meta do mês</div>
+          <div className="text-xs uppercase tracking-wider text-muted-foreground">
+            Sua meta do mês <span className="text-primary font-semibold">· ARENA Performance</span>
+          </div>
+
           <div className="mt-0.5 font-display text-lg font-semibold">
             {formatBRL(v.ganhos_valor)} <span className="text-muted-foreground text-sm font-normal">de {formatBRL(meta)}</span>
           </div>
@@ -309,8 +349,11 @@ function Row({
           )}
         </div>
       </Td>
-      <Td className="text-right">
-        <div className="inline-flex items-center gap-1 font-display font-semibold text-base">
+      <Td className="text-right border-l">
+        <div
+          className="inline-flex items-center gap-1 font-display font-semibold text-base"
+          title="Score de Atividade — ARENA Premiação"
+        >
           {v.score.toFixed(0)}
           {trend === "up" && <TrendingUp className="h-3.5 w-3.5 text-emerald-600" />}
           {trend === "down" && <TrendingDown className="h-3.5 w-3.5 text-destructive" />}
@@ -325,10 +368,11 @@ function Row({
           />
         </div>
       </Td>
-      <Td className="text-right whitespace-nowrap">
+      <Td className="text-right whitespace-nowrap border-l">
         <div className="font-medium">{v.ganhos_qtd}</div>
         <div className="text-xs text-muted-foreground">{formatBRL(v.ganhos_valor)}</div>
       </Td>
+
       {showMetaCol && (
         <Td className="text-right whitespace-nowrap min-w-[130px]">
           {v.meta_valor == null ? (

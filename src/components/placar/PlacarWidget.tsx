@@ -30,7 +30,10 @@ export function PlacarWidget() {
                 <Trophy className="h-4 w-4 text-amber-500" />
                 Placar de Vendedores
               </CardTitle>
-              <CardDescription>Ranking do mês · atualizado em tempo real</CardDescription>
+              <CardDescription>
+                ARENA Premiação · Score de Atividade do mês
+              </CardDescription>
+
             </div>
             <span className="text-xs text-primary flex items-center gap-1 group-hover:underline">
               Ver placar <ArrowUpRight className="h-3 w-3" />
@@ -66,9 +69,13 @@ export function PlacarWidget() {
                     {v.nome}
                     {v.meta_batida && <span title="Meta do mês batida" className="text-xs">🎯</span>}
                   </div>
-                  <div className="font-display font-semibold text-primary">
+                  <div
+                    className="font-display font-semibold text-primary"
+                    title="Score de Atividade — ARENA Premiação"
+                  >
                     {v.score.toFixed(0)} pts
                   </div>
+
                 </li>
               ))}
             </ul>
@@ -80,7 +87,10 @@ export function PlacarWidget() {
             return (
               <div className="rounded-md border bg-background/70 p-2.5">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">Sua meta do mês</span>
+                  <span className="text-muted-foreground">
+                    Sua meta do mês <span className="text-primary font-medium">· ARENA Performance</span>
+                  </span>
+
                   <span className={self.meta_batida ? "text-emerald-600 font-semibold" : "font-medium"}>
                     {(self.meta_pct ?? 0).toFixed(0)}%
                   </span>
