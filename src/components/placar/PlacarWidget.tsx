@@ -69,9 +69,13 @@ export function PlacarWidget() {
                     {v.nome}
                     {v.meta_batida && <span title="Meta do mês batida" className="text-xs">🎯</span>}
                   </div>
-                  <div className="font-display font-semibold text-primary">
+                  <div
+                    className="font-display font-semibold text-primary"
+                    title="Score de Atividade — ARENA Premiação"
+                  >
                     {v.score.toFixed(0)} pts
                   </div>
+
                 </li>
               ))}
             </ul>
