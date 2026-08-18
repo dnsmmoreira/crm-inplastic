@@ -193,7 +193,7 @@ export const listPedidosEmAberto = createServerFn({ method: "GET" })
           "leads:lead_id(company)",
         ].join(", "),
       )
-      .is("entregue_em", null)
+      .is("encerrado_em", null)
       .not("stage", "in", `(${PEDIDO_STAGES_FECHADOS.join(",")})`)
       .order("created_at", { ascending: false })
       .limit(1000);
