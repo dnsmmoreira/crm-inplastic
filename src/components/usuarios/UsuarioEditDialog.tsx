@@ -279,13 +279,15 @@ export function UsuarioEditDialog({
           defaultValue="dados"
           onValueChange={(v) => { if (v === "auditoria" && audit === null) void carregarAuditoria(); }}
         >
-          <TabsList className="grid grid-cols-5 w-full">
+          <TabsList className={`grid ${isAdmin ? "grid-cols-6" : "grid-cols-5"} w-full`}>
             <TabsTrigger value="dados">Dados</TabsTrigger>
             <TabsTrigger value="acesso">Acesso</TabsTrigger>
             <TabsTrigger value="vendas">Vendas</TabsTrigger>
+            {isAdmin && <TabsTrigger value="arena">ARENA</TabsTrigger>}
             <TabsTrigger value="permissoes">Permissões</TabsTrigger>
             <TabsTrigger value="auditoria">Auditoria</TabsTrigger>
           </TabsList>
+
 
           {/* 1. Dados cadastrais */}
           <TabsContent value="dados" className="space-y-4 pt-4">
