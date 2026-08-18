@@ -31,6 +31,8 @@ import {
   Tags,
   PanelLeftClose,
   PanelLeftOpen,
+  ChevronDown,
+
 
 
 } from "lucide-react";
@@ -138,31 +140,94 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
-const NAV = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, adminOnly: false },
-  { to: "/pipeline", label: "Funil de Vendas", icon: KanbanSquare, adminOnly: false },
-  { to: "/canais", label: "Canais de Entrada", icon: MessageSquare, adminOnly: false, perm: "configurar_integracoes" },
-  { to: "/atendimento-ia", label: "Atendimento IA", icon: Radio, adminOnly: false },
-  { to: "/conversas", label: "Minhas Conversas", icon: MessageSquare, adminOnly: false },
-  { to: "/agente-ia", label: "Agente IA", icon: Bot, adminOnly: false },
-  { to: "/contatos", label: "Contatos", icon: Users, adminOnly: false },
-  { to: "/clientes", label: "Clientes", icon: Building2, adminOnly: false },
-  { to: "/tarefas", label: "Tarefas", icon: CheckSquare, adminOnly: false },
-  { to: "/minha-agenda", label: "Minha Agenda", icon: ClipboardList, adminOnly: false },
-  { to: "/placar", label: "Placar", icon: Trophy, adminOnly: false },
-  { to: "/propostas", label: "Propostas", icon: FileText, adminOnly: false },
-  { to: "/pedidos", label: "Pedidos", icon: ClipboardList, adminOnly: false },
-  { to: "/relatorios", label: "Relatórios", icon: BarChart3, adminOnly: false, perm: "ver_relatorios" },
-  { to: "/tabela-precos", label: "Tabela de Preços", icon: Tags, adminOnly: false },
-  { to: "/estoque", label: "Estoque", icon: Boxes, adminOnly: false },
+type NavCtx = { isAdmin: boolean; user: ReturnType<typeof useAuth>["user"] };
 
-  { to: "/produtos", label: "Produtos", icon: Package, adminOnly: true },
-  { to: "/condicoes-comerciais", label: "Condições Comerciais", icon: Settings2, adminOnly: true },
-  { to: "/arena", label: "ARENA", icon: Trophy, adminOnly: true },
-  { to: "/empresas", label: "Empresas do Grupo", icon: Building2, adminOnly: true },
-  { to: "/usuarios", label: "Usuários", icon: UserCog, adminOnly: true, perm: "gerenciar_usuarios" },
+type NavItem = {
+  to: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  show: (c: NavCtx) => boolean;
+};
 
-] as const;
+type NavGroup = { id: string; label: string; icon: typeof LayoutDashboard; items: NavItem[] };
+
+/** Vendedor comum = perfil de vendas (chave propostas.editar). Financeiro/Operacional não têm. */
+const isVendedorComum = (c: NavCtx) => !c.isAdmin && hasPerm(c.user, "propostas.editar");
+const key = (chave: string) => (c: NavCtx) => c.isAdmin || hasPerm(c.user, chave);
+const adminOnly = (c: NavCtx) => c.isAdmin;
+const always = () => true;
+const vendas = (c: NavCtx) => c.isAdmin || isVendedorComum(c);
+const vendasOu = (chave: string) => (c: NavCtx) => vendas(c) || hasPerm(c.user, chave);
+
+const NAV_ROOT: NavItem[] = [
+  { to: "/", label: "Início", icon: LayoutDashboard, show: always },
+  { to: "/pipeline", label: "Pipeline", icon: KanbanSquare, show: vendas },
+  { to: "/conversas", label: "Conversas", icon: MessageSquare, show: key("whatsapp.atender") },
+  { to: "/placar", label: "Placar", icon: Trophy, show: vendas },
+];
+
+const NAV_GROUPS: NavGroup[] = [
+  {
+    id: "cadastros",
+    label: "Cadastros",
+    icon: Building2,
+    items: [
+      { to: "/clientes", label: "Clientes", icon: Building2, show: vendasOu("clientes.ver_todos") },
+      { to: "/contatos", label: "Contatos", icon: Users, show: vendasOu("clientes.ver_todos") },
+      { to: "/empresas", label: "Empresas", icon: Building2, show: vendasOu("clientes.ver_todos") },
+      { to: "/produtos", label: "Produtos", icon: Package, show: vendasOu("clientes.ver_todos") },
+    ],
+  },
+  {
+    id: "negocios",
+    label: "Negócios",
+    icon: FileText,
+    items: [
+      { to: "/propostas", label: "Propostas", icon: FileText, show: vendasOu("propostas.ver_todas") },
+      { to: "/pedidos", label: "Pedidos", icon: ClipboardList, show: vendasOu("pedidos.ver_todos") },
+      { to: "/condicoes-comerciais", label: "Condições Comerciais", icon: Settings2, show: adminOnly },
+      { to: "/tabela-precos", label: "Tabela de Preços", icon: Tags, show: vendas },
+    ],
+  },
+  {
+    id: "meu-dia",
+    label: "Meu Dia",
+    icon: ClipboardList,
+    items: [
+      { to: "/minha-agenda", label: "Minha Agenda", icon: ClipboardList, show: always },
+      { to: "/tarefas", label: "Tarefas", icon: CheckSquare, show: always },
+    ],
+  },
+  {
+    id: "empresa",
+    label: "Empresa",
+    icon: BarChart3,
+    items: [
+      { to: "/relatorios", label: "Relatórios", icon: BarChart3, show: key("relatorios.ver") },
+      { to: "/estoque", label: "Estoque", icon: Boxes, show: key("estoque.ver") },
+      { to: "/arena", label: "ARENA", icon: Trophy, show: adminOnly },
+      {
+        to: "/usuarios",
+        label: "Usuários",
+        icon: UserCog,
+        show: (c) => c.isAdmin && hasPerm(c.user, "usuarios.gerenciar"),
+      },
+    ],
+  },
+  {
+    id: "ia-canais",
+    label: "IA & Canais",
+    icon: Bot,
+    items: [
+      { to: "/atendimento-ia", label: "Atendimento IA", icon: Radio, show: adminOnly },
+      { to: "/agente-ia", label: "Agente IA", icon: Bot, show: adminOnly },
+      { to: "/canais", label: "Canais", icon: MessageSquare, show: adminOnly },
+    ],
+  },
+];
+
+const OPEN_STORAGE_KEY = "crm-sidebar-groups";
+
 
 
 function AppShell({ children }: { children: ReactNode }) {
@@ -188,18 +253,51 @@ function AppShell({ children }: { children: ReactNode }) {
       return next;
     });
   };
-  const nav = NAV.filter((n) => {
-    if (n.adminOnly && !isAdmin) return false;
-    const perm = "perm" in n ? n.perm : null;
-    // Chave granular equivalente (perfis) — só AMPLIA o acesso atual.
-    const chaveGranular: Record<string, string> = {
-      ver_relatorios: "relatorios.ver",
-      configurar_integracoes: "canais.configurar",
-      gerenciar_usuarios: "usuarios.gerenciar",
-    };
-    if (perm && user && !user.permissions[perm] && !hasPerm(user, chaveGranular[perm] ?? "")) return false;
-    return true;
-  });
+  const ctx: NavCtx = { isAdmin, user };
+  const rootItems = NAV_ROOT.filter((i) => i.show(ctx));
+  const groups = NAV_GROUPS.map((g) => ({ ...g, items: g.items.filter((i) => i.show(ctx)) })).filter(
+    (g) => g.items.length > 0,
+  );
+
+  const activeGroupId = groups.find((g) => g.items.some((i) => i.to === pathname))?.id ?? null;
+  const [openGroups, setOpenGroups] = useState<string[]>([]);
+  const [mobileOpen, setMobileOpen] = useState<string | null>(null);
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(OPEN_STORAGE_KEY);
+      if (raw) setOpenGroups(JSON.parse(raw) as string[]);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  useEffect(() => {
+    if (!activeGroupId) return;
+    setOpenGroups((prev) => (prev.includes(activeGroupId) ? prev : [...prev, activeGroupId]));
+    setMobileOpen(activeGroupId);
+  }, [activeGroupId]);
+  const toggleGroup = (id: string) => {
+    setOpenGroups((prev) => {
+      const next = prev.includes(id) ? prev.filter((g) => g !== id) : [...prev, id];
+      try {
+        window.localStorage.setItem(OPEN_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  };
+  const toggleMobileGroup = (id: string) => setMobileOpen((prev) => (prev === id ? null : id));
+
+  const itemLinkClass = (active: boolean, indent: boolean) =>
+    cn(
+      "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+      collapsed && "justify-center px-2",
+      indent && !collapsed && "pl-9",
+      active
+        ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium"
+        : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+    );
+
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
@@ -235,27 +333,57 @@ function AppShell({ children }: { children: ReactNode }) {
           </button>
         </div>
         <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-          {nav.map((item) => {
-            const active = pathname === item.to;
+          {rootItems.map((item) => {
             const Icon = item.icon;
             return (
               <Link
                 key={item.to}
                 to={item.to}
                 title={collapsed ? item.label : undefined}
-                className={cn(
-                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
-                  collapsed && "justify-center px-2",
-                  active
-                    ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium"
-                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                )}
+                className={itemLinkClass(pathname === item.to, false)}
               >
                 <Icon className="h-4 w-4 shrink-0" />
                 {!collapsed && item.label}
               </Link>
             );
           })}
+
+          {groups.map((group) => {
+            const GroupIcon = group.icon;
+            const open = collapsed || openGroups.includes(group.id);
+            return (
+              <div key={group.id} className="pt-1">
+                {!collapsed && (
+                  <button
+                    type="button"
+                    onClick={() => toggleGroup(group.id)}
+                    aria-expanded={open}
+                    className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  >
+                    <GroupIcon className="h-4 w-4 shrink-0" />
+                    <span className="flex-1 text-left">{group.label}</span>
+                    <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", !open && "-rotate-90")} />
+                  </button>
+                )}
+                {open &&
+                  group.items.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <Link
+                        key={item.to}
+                        to={item.to}
+                        title={collapsed ? item.label : undefined}
+                        className={itemLinkClass(pathname === item.to, true)}
+                      >
+                        <Icon className="h-4 w-4 shrink-0" />
+                        {!collapsed && item.label}
+                      </Link>
+                    );
+                  })}
+              </div>
+            );
+          })}
+
           <a
             href="/manual.html"
             target="_blank"
@@ -293,19 +421,16 @@ function AppShell({ children }: { children: ReactNode }) {
           <NotificacoesBell />
         </header>
 
-        <nav className="md:hidden flex overflow-x-auto border-b bg-card">
-          {nav.map((item) => {
-            const active = pathname === item.to;
+        <nav className="md:hidden border-b bg-card p-2 space-y-1">
+          {rootItems.map((item) => {
             const Icon = item.icon;
             return (
               <Link
                 key={item.to}
                 to={item.to}
                 className={cn(
-                  "flex items-center gap-2 whitespace-nowrap px-4 py-3 text-sm border-b-2",
-                  active
-                    ? "border-primary text-primary font-medium"
-                    : "border-transparent text-muted-foreground",
+                  "flex items-center gap-2 rounded-md px-3 py-2 text-sm",
+                  pathname === item.to ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground",
                 )}
               >
                 <Icon className="h-4 w-4" />
@@ -313,6 +438,44 @@ function AppShell({ children }: { children: ReactNode }) {
               </Link>
             );
           })}
+          {groups.map((group) => {
+            const GroupIcon = group.icon;
+            const open = mobileOpen === group.id;
+            return (
+              <div key={group.id}>
+                <button
+                  type="button"
+                  onClick={() => toggleMobileGroup(group.id)}
+                  aria-expanded={open}
+                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+                >
+                  <GroupIcon className="h-4 w-4" />
+                  <span className="flex-1 text-left">{group.label}</span>
+                  <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", !open && "-rotate-90")} />
+                </button>
+                {open &&
+                  group.items.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <Link
+                        key={item.to}
+                        to={item.to}
+                        className={cn(
+                          "flex items-center gap-2 rounded-md py-2 pl-9 pr-3 text-sm",
+                          pathname === item.to
+                            ? "bg-primary/10 text-primary font-medium"
+                            : "text-muted-foreground",
+                        )}
+                      >
+                        <Icon className="h-4 w-4" />
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+              </div>
+            );
+          })}
+
           <a
             href="/manual.html"
             target="_blank"
