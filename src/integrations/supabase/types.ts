@@ -14,6 +14,72 @@ export type Database = {
   }
   public: {
     Tables: {
+      arena_config: {
+        Row: {
+          arena_cap_temporada: number
+          arena_orcamento_mensal: number
+          base_calculo_default: string
+          base_calculo_logiscal: string
+          carencia_meses_default: number
+          comissao_kelly_pct: number
+          comissao_logiscal_pct: number
+          created_at: string
+          custo_interno_teto_pct: number
+          encargos_fator: number
+          id: number
+          margem_minima_pct: number
+          meta_canal_representante: number
+          piso_preco_pct: number
+          rampa_metas: Json
+          rodada_piso_ativo: boolean
+          rodada_piso_pace_pct: number
+          temporada_inicio: string
+          updated_at: string
+        }
+        Insert: {
+          arena_cap_temporada?: number
+          arena_orcamento_mensal?: number
+          base_calculo_default?: string
+          base_calculo_logiscal?: string
+          carencia_meses_default?: number
+          comissao_kelly_pct?: number
+          comissao_logiscal_pct?: number
+          created_at?: string
+          custo_interno_teto_pct?: number
+          encargos_fator?: number
+          id?: number
+          margem_minima_pct?: number
+          meta_canal_representante?: number
+          piso_preco_pct?: number
+          rampa_metas?: Json
+          rodada_piso_ativo?: boolean
+          rodada_piso_pace_pct?: number
+          temporada_inicio?: string
+          updated_at?: string
+        }
+        Update: {
+          arena_cap_temporada?: number
+          arena_orcamento_mensal?: number
+          base_calculo_default?: string
+          base_calculo_logiscal?: string
+          carencia_meses_default?: number
+          comissao_kelly_pct?: number
+          comissao_logiscal_pct?: number
+          created_at?: string
+          custo_interno_teto_pct?: number
+          encargos_fator?: number
+          id?: number
+          margem_minima_pct?: number
+          meta_canal_representante?: number
+          piso_preco_pct?: number
+          rampa_metas?: Json
+          rodada_piso_ativo?: boolean
+          rodada_piso_pace_pct?: number
+          temporada_inicio?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       arena_participacao: {
         Row: {
           carencia_inicio: string | null
