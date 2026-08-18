@@ -26,7 +26,16 @@ import {
   type PermissoesUsuario,
 } from "@/lib/usuarios.functions";
 import { getPerfilDoUsuario, setPerfilDoUsuario } from "@/lib/perfis.functions";
+import {
+  ARENA_TIPOS,
+  ARENA_PARTICIPACAO_PADRAO,
+  getArenaParticipacao,
+  saveArenaParticipacao,
+  type ArenaParticipacao,
+  type ArenaTipoComercial,
+} from "@/lib/arena.functions";
 import { DefinirSenhaDialog } from "@/components/usuarios/DefinirSenhaDialog";
+
 
 type PerfilOpcao = { id: string; nome: string; baseRole: "admin" | "vendedor"; ativo: boolean };
 
@@ -73,12 +82,14 @@ type AuditRow = {
 export function UsuarioEditDialog({
   usuario,
   currentUserId,
+  isAdmin = false,
   open,
   onOpenChange,
   onSaved,
 }: {
   usuario: UsuarioRow | null;
   currentUserId: string;
+  isAdmin?: boolean;
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onSaved: () => Promise<void> | void;
@@ -88,6 +99,8 @@ export function UsuarioEditDialog({
   const loadAudit = useServerFn(listAuditoriaUsuario);
   const loadPerfil = useServerFn(getPerfilDoUsuario);
   const savePerfilVinculo = useServerFn(setPerfilDoUsuario);
+  const loadArena = useServerFn(getArenaParticipacao);
+  const saveArena = useServerFn(saveArenaParticipacao);
 
   const isSelf = usuario?.id === currentUserId;
 
@@ -100,6 +113,8 @@ export function UsuarioEditDialog({
   const [role, setRole] = useState<"admin" | "vendedor">("vendedor");
   const [ativo, setAtivo] = useState(true);
   const [meta, setMeta] = useState("0");
+  const [metaInicial, setMetaInicial] = useState("0");
+  const [metaMotivo, setMetaMotivo] = useState("");
   const [naFila, setNaFila] = useState(false);
   const [filaAtivo, setFilaAtivo] = useState(true);
   const [limite, setLimite] = useState("");
@@ -111,6 +126,9 @@ export function UsuarioEditDialog({
   const [perfis, setPerfis] = useState<PerfilOpcao[]>([]);
   const [perfilId, setPerfilId] = useState<string>("");
   const [perfilInicial, setPerfilInicial] = useState<string>("");
+  const [arena, setArena] = useState<ArenaParticipacao>({ ...ARENA_PARTICIPACAO_PADRAO });
+  const [arenaInicial, setArenaInicial] = useState<ArenaParticipacao>({ ...ARENA_PARTICIPACAO_PADRAO });
+
 
   useEffect(() => {
     if (!usuario) return;
@@ -123,12 +141,16 @@ export function UsuarioEditDialog({
     setRole(usuario.role);
     setAtivo(usuario.ativo);
     setMeta(String(usuario.metaMensal ?? 0));
+    setMetaInicial(String(usuario.metaMensal ?? 0));
+    setMetaMotivo("");
     setNaFila(usuario.naFila);
     setFilaAtivo(usuario.filaAtivo);
     setLimite(usuario.limiteLeads === null ? "" : String(usuario.limiteLeads));
     setCanais(usuario.canaisEntrada);
     setPerms({ ...usuario.permissoes });
     setAudit(null);
+    setArena({ ...ARENA_PARTICIPACAO_PADRAO });
+    setArenaInicial({ ...ARENA_PARTICIPACAO_PADRAO });
     void (async () => {
       try {
         const res = (await loadPerfil({ data: { userId: usuario.id } })) as {
@@ -142,7 +164,19 @@ export function UsuarioEditDialog({
         console.error("getPerfilDoUsuario", e);
       }
     })();
-  }, [usuario, loadPerfil]);
+    if (isAdmin) {
+      void (async () => {
+        try {
+          const ap = (await loadArena({ data: { userId: usuario.id } })) as ArenaParticipacao;
+          setArena(ap);
+          setArenaInicial(ap);
+        } catch (e) {
+          console.error("getArenaParticipacao", e);
+        }
+      })();
+    }
+  }, [usuario, loadPerfil, loadArena, isAdmin]);
+
 
   const carregarAuditoria = useCallback(async () => {
     if (!usuario) return;
@@ -177,6 +211,7 @@ export function UsuarioEditDialog({
           acesso: { role, ativo },
           vendas: {
             metaMensal: Number(meta) || 0,
+            metaMotivo: metaMotivo.trim() || undefined,
             naFila,
             filaAtivo,
             limiteLeads: limite.trim() === "" ? null : Math.max(0, Number(limite) || 0),
@@ -191,6 +226,23 @@ export function UsuarioEditDialog({
         });
         setPerfilInicial(perfilId);
       }
+      if (isAdmin && JSON.stringify(arena) !== JSON.stringify(arenaInicial)) {
+        await saveArena({
+          data: {
+            userId: usuario.id,
+            participaArena: arena.participaArena,
+            tipoComercial: arena.tipoComercial,
+            carenciaInicio: arena.carenciaInicio || null,
+            carenciaMeses: arena.carenciaMeses,
+            faseRampa: arena.faseRampa,
+            observacao: arena.observacao?.trim() ? arena.observacao.trim() : null,
+          },
+        });
+        setArenaInicial(arena);
+      }
+      setMetaInicial(String(Number(meta) || 0));
+      setMetaMotivo("");
+
       toast.success("Usuário atualizado");
       await onSaved();
       onOpenChange(false);
@@ -227,13 +279,15 @@ export function UsuarioEditDialog({
           defaultValue="dados"
           onValueChange={(v) => { if (v === "auditoria" && audit === null) void carregarAuditoria(); }}
         >
-          <TabsList className="grid grid-cols-5 w-full">
+          <TabsList className={`grid ${isAdmin ? "grid-cols-6" : "grid-cols-5"} w-full`}>
             <TabsTrigger value="dados">Dados</TabsTrigger>
             <TabsTrigger value="acesso">Acesso</TabsTrigger>
             <TabsTrigger value="vendas">Vendas</TabsTrigger>
+            {isAdmin && <TabsTrigger value="arena">ARENA</TabsTrigger>}
             <TabsTrigger value="permissoes">Permissões</TabsTrigger>
             <TabsTrigger value="auditoria">Auditoria</TabsTrigger>
           </TabsList>
+
 
           {/* 1. Dados cadastrais */}
           <TabsContent value="dados" className="space-y-4 pt-4">
@@ -410,6 +464,21 @@ export function UsuarioEditDialog({
               </div>
             </div>
 
+            {String(Number(meta) || 0) !== String(Number(metaInicial) || 0) && (
+              <div className="space-y-1 rounded-lg border p-3">
+                <Label htmlFor="ue-meta-motivo">Motivo da alteração da meta (opcional)</Label>
+                <Input
+                  id="ue-meta-motivo"
+                  value={metaMotivo}
+                  onChange={(e) => setMetaMotivo(e.target.value)}
+                  maxLength={300}
+                  placeholder="Ex.: ajuste de rampa acordado em reunião comercial"
+                />
+                <p className="text-xs text-muted-foreground">Fica registrado na auditoria junto da mudança de meta.</p>
+              </div>
+            )}
+
+
             <div className="flex items-center justify-between rounded-lg border p-3">
               <div>
                 <div className="text-sm font-medium">Participa da fila round-robin</div>
@@ -452,6 +521,95 @@ export function UsuarioEditDialog({
               </div>
             </div>
           </TabsContent>
+
+          {/* 3b. ARENA (admin) */}
+          {isAdmin && (
+            <TabsContent value="arena" className="space-y-4 pt-4">
+              <div className="flex items-center justify-between rounded-lg border p-3">
+                <div>
+                  <div className="text-sm font-medium">Participa da ARENA</div>
+                  <p className="text-xs text-muted-foreground">
+                    Define se o usuário entra no placar (Premiação e Performance).
+                  </p>
+                </div>
+                <Switch
+                  checked={arena.participaArena}
+                  onCheckedChange={(v) => setArena((a) => ({ ...a, participaArena: v }))}
+                />
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-1">
+                  <Label htmlFor="ue-arena-tipo">Tipo comercial</Label>
+                  <select
+                    id="ue-arena-tipo"
+                    value={arena.tipoComercial}
+                    onChange={(e) =>
+                      setArena((a) => ({ ...a, tipoComercial: e.target.value as ArenaTipoComercial }))
+                    }
+                    className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                  >
+                    {ARENA_TIPOS.map((t) => (
+                      <option key={t.id} value={t.id}>{t.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="ue-arena-inicio">Início da carência</Label>
+                  <Input
+                    id="ue-arena-inicio"
+                    type="date"
+                    value={arena.carenciaInicio ?? ""}
+                    onChange={(e) => setArena((a) => ({ ...a, carenciaInicio: e.target.value || null }))}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="ue-arena-meses">Meses de carência</Label>
+                  <Input
+                    id="ue-arena-meses"
+                    type="number"
+                    min={0}
+                    max={60}
+                    value={String(arena.carenciaMeses)}
+                    onChange={(e) =>
+                      setArena((a) => ({ ...a, carenciaMeses: Math.max(0, Number(e.target.value) || 0) }))
+                    }
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="ue-arena-fase">Fase da rampa</Label>
+                  <Input
+                    id="ue-arena-fase"
+                    type="number"
+                    min={0}
+                    max={10}
+                    value={String(arena.faseRampa)}
+                    onChange={(e) =>
+                      setArena((a) => ({ ...a, faseRampa: Math.max(0, Number(e.target.value) || 0) }))
+                    }
+                  />
+                  <p className="text-xs text-muted-foreground">0 = sem rampa (meta plena).</p>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="ue-arena-obs">Observação</Label>
+                <Input
+                  id="ue-arena-obs"
+                  value={arena.observacao ?? ""}
+                  onChange={(e) => setArena((a) => ({ ...a, observacao: e.target.value || null }))}
+                  maxLength={500}
+                  placeholder="Contexto da participação, acordo de rampa, etc."
+                />
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                Seção restrita a administradores. Alterações ficam registradas na auditoria do usuário.
+              </p>
+            </TabsContent>
+          )}
+
+
 
           {/* 4. Permissões */}
           <TabsContent value="permissoes" className="space-y-2 pt-4">

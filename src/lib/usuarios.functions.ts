@@ -268,12 +268,14 @@ const updateSchema = z.object({
   vendas: z
     .object({
       metaMensal: z.number().min(0).max(1_000_000_000),
+      metaMotivo: z.string().trim().max(300).optional(),
       naFila: z.boolean(),
       filaAtivo: z.boolean(),
       limiteLeads: z.number().int().min(0).max(10000).nullable(),
       canaisEntrada: z.array(z.string().max(40)).max(20),
     })
     .optional(),
+
   permissoes: z
     .object(
       Object.fromEntries(PERMISSAO_KEYS.map((k) => [k, z.boolean()])) as Record<
@@ -411,7 +413,12 @@ export const updateUsuario = createServerFn({ method: "POST" })
           anterior: metaAtual?.meta_valor_mensal ?? 0,
           novo: v.metaMensal,
         });
+        const motivo = (v.metaMotivo ?? "").trim();
+        if (motivo) {
+          audit.push({ campo: "meta_mensal_motivo", anterior: null, novo: motivo });
+        }
       }
+
 
       const { data: filaAtual } = await sb
         .from("fila_vendedores")
