@@ -23,6 +23,8 @@ import { DefinirSenhaDialog } from "@/components/usuarios/DefinirSenhaDialog";
 import { UsuarioEditDialog } from "@/components/usuarios/UsuarioEditDialog";
 import { ExcluirUsuarioDialog } from "@/components/usuarios/ExcluirUsuarioDialog";
 import { TelegramVinculoButton } from "@/components/usuarios/TelegramVinculoButton";
+import { PerfisPermissoesPanel } from "@/components/usuarios/PerfisPermissoesPanel";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export const Route = createFileRoute("/usuarios")({
   component: UsuariosPage,
