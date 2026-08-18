@@ -44,6 +44,7 @@ import {
   listarVendedoresAtendimento,
 } from "@/lib/atendimento.functions";
 import { useAuth } from "@/hooks/use-auth";
+import { usePoll } from "@/hooks/use-poll";
 import { useAutoScrollMensagens } from "@/hooks/use-auto-scroll-mensagens";
 import { TemplatesButton } from "@/components/atendimento/TemplatesButton";
 import { TemplateMetaDialog } from "@/components/atendimento/TemplateMetaDialog";
@@ -555,12 +556,15 @@ function ChatPanel({
         () => void loadMensagens(id),
       )
       .subscribe();
-    const t = setInterval(() => void loadMensagens(id), 6000);
     return () => {
       void supabase.removeChannel(channel);
-      clearInterval(t);
     };
   }, [conversa, loadMensagens]);
+
+  const conversaId = conversa?.id ?? null;
+  usePoll(() => {
+    if (conversaId) void loadMensagens(conversaId);
+  }, 12000, conversaId !== null);
 
   useEffect(() => {
     const leadId = conversa?.lead_id ?? null;

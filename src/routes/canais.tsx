@@ -28,6 +28,7 @@ import { LeadDrawer } from "@/components/crm/LeadDrawer";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { usePoll } from "@/hooks/use-poll";
 import { limparOrigemAnuncio } from "@/lib/mensagem-display";
 import { useServerFn } from "@tanstack/react-start";
 import { sendConversaMessage, createLeadFromConversa, posseConversa } from "@/lib/canais.functions";
@@ -86,12 +87,12 @@ function CanaisPage() {
         () => void loadConversas(),
       )
       .subscribe();
-    const t = setInterval(loadConversas, 5000);
     return () => {
       supabase.removeChannel(channel);
-      clearInterval(t);
     };
   }, [loadConversas]);
+
+  usePoll(() => void loadConversas(), selectedId ? 15000 : 45000);
 
   const selected = useMemo(
     () => conversas.find((c) => c.id === selectedId) ?? null,
@@ -293,12 +294,15 @@ function ConversationPanel({
         () => void loadMensagens(conversaId),
       )
       .subscribe();
-    const t = setInterval(() => void loadMensagens(conversaId), 5000);
     return () => {
       supabase.removeChannel(channel);
-      clearInterval(t);
     };
   }, [conversa, loadMensagens]);
+
+  const conversaIdAtual = conversa?.id ?? null;
+  usePoll(() => {
+    if (conversaIdAtual) void loadMensagens(conversaIdAtual);
+  }, 12000, conversaIdAtual !== null);
 
   const { temNovas, onScroll, scrollParaFim } = useAutoScrollMensagens(
     scrollRef,
