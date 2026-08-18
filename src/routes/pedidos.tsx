@@ -228,7 +228,7 @@ function PedidosKanbanPage() {
     const from = pedido.stage;
     if (from === target) return;
 
-    if (target === "concluido" && (pedido.ocorrencias_abertas ?? 0) > 0) {
+    if (target === "pos_venda" && (pedido.ocorrencias_abertas ?? 0) > 0) {
       toast.error(
         "Não é possível concluir: há ocorrência(s) em aberto. Resolva-as antes de concluir.",
       );
