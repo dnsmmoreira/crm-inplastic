@@ -758,11 +758,23 @@ export const definirSenhaUsuario = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
-/** O próprio usuário conclui a troca obrigatória: limpa a flag do perfil. */
+/**
+ * O próprio usuário conclui a troca obrigatória.
+ *
+ * A senha É TROCADA AQUI (server-side, para o usuário do token) e só então a
+ * flag é limpa — não existe caminho para "concluir" sem realmente trocar.
+ */
 export const concluirTrocaSenha = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .inputValidator((data) => z.object({ password: senhaForte }).parse(data))
+  .handler(async ({ data, context }) => {
     const sb = await admin();
+
+    const { error: pErr } = await sb.auth.admin.updateUserById(context.userId, {
+      password: data.password,
+    });
+    if (pErr) throw new Error(pErr.message);
+
     const { error } = await sb
       .from("profiles")
       .update({ senha_reset_exigido: false })
