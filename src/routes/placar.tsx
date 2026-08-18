@@ -73,8 +73,9 @@ function PlacarPage() {
             Placar de Vendedores
           </h1>
           <p className="text-sm text-muted-foreground">
-            Fonte única de ranking · visível para todo o time
+            ARENA · Premiação e Performance comercial — fonte única de ranking, visível para todo o time
           </p>
+
         </div>
         <div className="flex items-center gap-2">
           <HistoricoDialog isAdmin={isAdmin} />
