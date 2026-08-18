@@ -117,11 +117,17 @@ function PlacarPage() {
               </div>
             </div>
             <div className="text-right hidden sm:block">
-              <div className="text-xs uppercase tracking-wider text-muted-foreground">Score</div>
+              <div className="text-xs uppercase tracking-wider text-muted-foreground">
+                Score de Atividade
+              </div>
+              <div className="text-[10px] uppercase tracking-wider text-amber-700 font-semibold">
+                ARENA Premiação
+              </div>
               <div className="font-display text-3xl font-semibold text-primary">
                 {lider.score.toFixed(0)}
               </div>
             </div>
+
           </CardContent>
         </Card>
       ) : (
