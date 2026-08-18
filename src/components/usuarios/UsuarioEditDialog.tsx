@@ -86,6 +86,8 @@ export function UsuarioEditDialog({
   const save = useServerFn(updateUsuario);
   const encerrar = useServerFn(encerrarSessoes);
   const loadAudit = useServerFn(listAuditoriaUsuario);
+  const loadPerfil = useServerFn(getPerfilDoUsuario);
+  const savePerfilVinculo = useServerFn(setPerfilDoUsuario);
 
   const isSelf = usuario?.id === currentUserId;
 
