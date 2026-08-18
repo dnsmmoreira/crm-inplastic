@@ -136,12 +136,13 @@ export const listPedidosRelatorio = createServerFn({ method: "GET" })
 
 /* ===========================================================================
  * Relatório "Pedidos em Aberto"
- * Em aberto = entregue_em IS NULL e stage fora dos finais (entregue/concluído).
- * O enum `pedido_stage` não possui valor de cancelamento.
+ * Fechado = reprovado_financeiro OU pós-venda já encerrado (`encerrado_em`).
+ * Um pedido em faturado_em_rota / pós-venda com a tarefa AINDA aberta continua
+ * contando como aberto.
  * Visibilidade segue o RLS de `pedidos` (admin vê todos; vendedor, os seus).
  * =========================================================================*/
 
-export const PEDIDO_STAGES_FECHADOS: PedidoStageId[] = ["pedido_entregue", "concluido"];
+export const PEDIDO_STAGES_FECHADOS: PedidoStageId[] = ["reprovado_financeiro"];
 
 export type PedidoAbertoRow = {
   id: string;
