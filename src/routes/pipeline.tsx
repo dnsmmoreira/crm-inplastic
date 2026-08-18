@@ -272,9 +272,16 @@ function Column({
   const { setNodeRef, isOver } = useDroppable({ id: stage.id });
   const valueMap = useLeadValueMap();
   const total = leads.reduce((s, l) => s + (valueMap.get(l.id) ?? l.estimatedValue), 0);
+
+  const [page, setPage] = useState(0);
+  const pageCount = Math.max(1, Math.ceil(leads.length / CARDS_PER_PAGE));
+  const safePage = Math.min(page, pageCount - 1);
+  const start = safePage * CARDS_PER_PAGE;
+  const visible = leads.slice(start, start + CARDS_PER_PAGE);
+
   return (
     <div className="w-[300px] shrink-0 flex flex-col">
-      <div className="px-1 pb-2 flex items-center justify-between">
+      <div className="sticky top-0 z-20 px-1 pb-2 pt-1 flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/70">
         <div className="flex items-center gap-2">
           <span className="stage-dot" style={{ background: stage.color }} />
           <span className="font-medium text-sm">{stage.label}</span>
@@ -289,11 +296,40 @@ function Column({
           isOver ? "bg-accent/40 border-primary" : "bg-muted/30 border-border",
         )}
       >
-        {leads.map((l) => (
+        {visible.map((l) => (
           <LeadCard key={l.id} lead={l} onOpen={onOpen} />
         ))}
         {leads.length === 0 && (
           <div className="text-xs text-muted-foreground text-center py-8 italic">Solte aqui</div>
+        )}
+        {leads.length > CARDS_PER_PAGE && (
+          <div className="flex items-center justify-between gap-1 border-t pt-2 text-[11px] text-muted-foreground">
+            <span>
+              {start + 1}–{start + visible.length} de {leads.length}
+            </span>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                aria-label="Página anterior"
+                disabled={safePage === 0}
+                onClick={() => setPage(Math.max(0, safePage - 1))}
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                aria-label="Próxima página"
+                disabled={safePage >= pageCount - 1}
+                onClick={() => setPage(Math.min(pageCount - 1, safePage + 1))}
+              >
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
         )}
       </div>
     </div>
@@ -301,6 +337,7 @@ function Column({
 }
 
 function LeadCard({
+
   lead,
   onOpen,
   dragging = false,
