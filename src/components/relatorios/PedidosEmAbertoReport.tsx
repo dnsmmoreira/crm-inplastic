@@ -730,10 +730,14 @@ export function PedidosEmAbertoReport() {
                     {groupLabel(groupLevels[depth])}:
                   </span>
                   {n.nome}
+                  {n.sku ? (
+                    <span className="text-xs font-normal text-muted-foreground">— {n.sku}</span>
+                  ) : null}
                   <span className="text-xs font-normal text-muted-foreground">
                     · {n.rows.length} pedido{n.rows.length > 1 ? "s" : ""} ·{" "}
                     {qtde.toLocaleString("pt-BR")} un · {pct.toFixed(1)}%
                   </span>
+
                   {atrasados > 0 ? (
                     <Badge variant="destructive" className="ml-1 px-1.5 py-0 text-[10px]">
                       {atrasados} atrasado{atrasados > 1 ? "s" : ""}
