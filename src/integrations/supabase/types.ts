@@ -1285,6 +1285,90 @@ export type Database = {
           },
         ]
       }
+      perfil_permissoes: {
+        Row: {
+          perfil_id: string
+          permissao_chave: string
+          valor_numerico: number | null
+        }
+        Insert: {
+          perfil_id: string
+          permissao_chave: string
+          valor_numerico?: number | null
+        }
+        Update: {
+          perfil_id?: string
+          permissao_chave?: string
+          valor_numerico?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "perfil_permissoes_perfil_id_fkey"
+            columns: ["perfil_id"]
+            isOneToOne: false
+            referencedRelation: "perfis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "perfil_permissoes_permissao_chave_fkey"
+            columns: ["permissao_chave"]
+            isOneToOne: false
+            referencedRelation: "permissoes"
+            referencedColumns: ["chave"]
+          },
+        ]
+      }
+      perfis: {
+        Row: {
+          ativo: boolean
+          base_role: Database["public"]["Enums"]["app_role"]
+          created_at: string
+          descricao: string | null
+          id: string
+          nome: string
+        }
+        Insert: {
+          ativo?: boolean
+          base_role: Database["public"]["Enums"]["app_role"]
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome: string
+        }
+        Update: {
+          ativo?: boolean
+          base_role?: Database["public"]["Enums"]["app_role"]
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome?: string
+        }
+        Relationships: []
+      }
+      permissoes: {
+        Row: {
+          chave: string
+          descricao: string | null
+          grupo: string
+          rotulo: string
+          tipo: string
+        }
+        Insert: {
+          chave: string
+          descricao?: string | null
+          grupo: string
+          rotulo: string
+          tipo?: string
+        }
+        Update: {
+          chave?: string
+          descricao?: string | null
+          grupo?: string
+          rotulo?: string
+          tipo?: string
+        }
+        Relationships: []
+      }
       produtos: {
         Row: {
           active: boolean
@@ -1808,6 +1892,32 @@ export type Database = {
           valor_novo?: string | null
         }
         Relationships: []
+      }
+      user_perfis: {
+        Row: {
+          created_at: string
+          perfil_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          perfil_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          perfil_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_perfis_perfil_id_fkey"
+            columns: ["perfil_id"]
+            isOneToOne: false
+            referencedRelation: "perfis"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_permissions: {
         Row: {
@@ -2462,6 +2572,14 @@ export type Database = {
       }
       snapshot_metas_mes: {
         Args: { _ano: number; _mes: number }
+        Returns: number
+      }
+      tem_permissao: {
+        Args: { _chave: string; _user_id: string }
+        Returns: boolean
+      }
+      valor_permissao: {
+        Args: { _chave: string; _user_id: string }
         Returns: number
       }
     }
