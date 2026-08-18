@@ -148,13 +148,28 @@ function PlacarPage() {
           ) : (
             <table className="w-full text-sm">
               <thead className="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground">
+                <tr className="border-b">
+                  <th className="px-3 py-1.5" colSpan={2} />
+                  <th
+                    className="px-3 py-1.5 text-left text-[10px] font-semibold text-amber-700 border-l"
+                    colSpan={2}
+                  >
+                    ARENA Premiação
+                  </th>
+                  <th
+                    className="px-3 py-1.5 text-left text-[10px] font-semibold text-primary border-l"
+                    colSpan={showMetaCol ? 10 : 9}
+                  >
+                    ARENA Performance
+                  </th>
+                </tr>
                 <tr>
                   <Th>#</Th>
                   <Th>Vendedor</Th>
-                  <Th className="text-right">Score</Th>
+                  <Th className="text-right border-l">Score de Atividade</Th>
                   <Th>Progresso</Th>
-                  <Th className="text-right">Ganhos</Th>
-                  {showMetaCol && <Th className="text-right">Meta</Th>}
+                  <Th className="text-right border-l">Ganhos</Th>
+                  {showMetaCol && <Th className="text-right">% da Meta</Th>}
                   <Th className="text-right">Propostas</Th>
                   <Th className="text-right">Conv.</Th>
                   <Th className="text-right">Perdas</Th>
@@ -165,6 +180,7 @@ function PlacarPage() {
                   <Th className="text-right">Pós-venda</Th>
                 </tr>
               </thead>
+
               <tbody>
                 {vendedores.map((v) => (
                   <Row
