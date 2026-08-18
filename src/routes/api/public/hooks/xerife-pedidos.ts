@@ -12,6 +12,7 @@
  * Rodar 2x seguidas nunca duplica tarefa.
  */
 import { createFileRoute } from "@tanstack/react-router";
+import { requireXerifeCronAuth } from "@/lib/xerife/cron-auth.server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { logAction } from "@/lib/xerife/dedupe.server";
 
@@ -425,20 +426,10 @@ export const Route = createFileRoute("/api/public/hooks/xerife-pedidos")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const isCron = request.headers.get("apikey") === process.env.SUPABASE_PUBLISHABLE_KEY;
-        const provided = request.headers.get("x-xerife-secret");
-        const expected = process.env.XERIFE_SECRET;
-        if (!isCron && (!expected || provided !== expected)) {
-          return new Response(JSON.stringify({ error: "unauthorized" }), {
-            status: 401,
-            headers: { "Content-Type": "application/json" },
-          });
-        }
+        const denied = await requireXerifeCronAuth(request);
+        if (denied) return denied;
         try {
-          const url = new URL(request.url);
-          const force = url.searchParams.get("force") === "1";
-          const dryRun = url.searchParams.get("dryRun") === "1";
-          const r = await runXerifePedidos({ force, dryRun });
+          const r = await runXerifePedidos({ force: false, dryRun: false });
           return Response.json({ ok: true, at: new Date().toISOString(), ...r });
         } catch (e) {
           console.error("[xerife-pedidos]", e);

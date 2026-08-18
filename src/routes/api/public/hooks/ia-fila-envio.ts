@@ -3,20 +3,14 @@
  * já venceu. Mesmo padrão de auth do watchdog (x-xerife-secret OU apikey).
  */
 import { createFileRoute } from "@tanstack/react-router";
+import { requireXerifeCronAuth } from "@/lib/xerife/cron-auth.server";
 
 export const Route = createFileRoute("/api/public/hooks/ia-fila-envio")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const expected = process.env.XERIFE_SECRET;
-        const provided = request.headers.get("x-xerife-secret");
-        const isCron = request.headers.get("apikey") === process.env.SUPABASE_PUBLISHABLE_KEY;
-        if (!isCron && (!expected || provided !== expected)) {
-          return new Response(JSON.stringify({ error: "unauthorized" }), {
-            status: 401,
-            headers: { "Content-Type": "application/json" },
-          });
-        }
+        const denied = await requireXerifeCronAuth(request);
+        if (denied) return denied;
         try {
           const { processarRespostasPendentes } = await import("@/lib/ia-fila.server");
           const r = await processarRespostasPendentes();

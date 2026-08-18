@@ -5,6 +5,7 @@
  * Idempotente: xerife_log regra='fechamento' + janela 20h.
  */
 import { createFileRoute } from "@tanstack/react-router";
+import { requireXerifeCronAuth } from "@/lib/xerife/cron-auth.server";
 import { alreadyActed, logAction } from "@/lib/xerife/dedupe.server";
 import { notifyOwner, notifyDiretoria } from "@/lib/xerife/notify.server";
 import {
@@ -210,18 +211,10 @@ export const Route = createFileRoute("/api/public/hooks/xerife-fechamento")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const isCron = request.headers.get("apikey") === process.env.SUPABASE_PUBLISHABLE_KEY;
-        const provided = request.headers.get("x-xerife-secret");
-        const expected = process.env.XERIFE_SECRET;
-        if (!isCron && (!expected || provided !== expected)) {
-          return new Response(JSON.stringify({ error: "unauthorized" }), {
-            status: 401, headers: { "Content-Type": "application/json" },
-          });
-        }
+        const denied = await requireXerifeCronAuth(request);
+        if (denied) return denied;
         try {
-          const url = new URL(request.url);
-          const force = url.searchParams.get("force") === "1";
-          const r = await runFechamento(force);
+          const r = await runFechamento(false);
           return Response.json({ ok: true, at: new Date().toISOString(), ...r });
         } catch (e) {
           console.error("[xerife-fechamento]", e);
