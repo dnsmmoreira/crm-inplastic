@@ -77,6 +77,7 @@ export const listPedidos = createServerFn({ method: "GET" })
           "equipe_responsavel, responsavel_atual_id, fiscal_status, nf_numero",
           "forma_atendimento, prioridade, ocorrencia",
           "vendedor_proprietario_id, proposta_id, lead_id",
+          "modalidade_entrega, entrega_confirmada, encerrado_em, aprovacao_rota, reprovacao_motivo",
           "leads:lead_id(company)",
           "propostas:proposta_id(number)",
         ].join(", "),
