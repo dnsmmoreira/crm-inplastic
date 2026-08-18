@@ -675,17 +675,16 @@ function attachRealtime(userId: string, role: "admin" | "vendedor") {
     "emitters",
     "condicoes_pagamento",
   ];
+  // um único canal com N listeners (antes: um canal por tabela = 10 subscriptions)
+  let ch = supabase.channel(`crm-sync-${userId}`);
   tables.forEach((table) => {
-    const ch = supabase
-      .channel(`crm-sync-${table}-${userId}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table },
-        () => scheduleReload(),
-      )
-      .subscribe();
-    realtimeChannels.push(ch);
+    ch = ch.on(
+      "postgres_changes",
+      { event: "*", schema: "public", table },
+      () => scheduleReload(),
+    );
   });
+  realtimeChannels.push(ch.subscribe());
   void role; // reservado para uso futuro (canais específicos por role)
 }
 
@@ -717,8 +716,39 @@ function scheduleReload() {
 
 // ============ Save (write-through com diff) ============
 
+/** Referências das fatias persistidas no último agendamento — evita agendar save
+ *  para mudanças de estado puramente locais/efêmeras (filtros, UI, seleção). */
+let lastPersistedRefs: unknown[] = [];
+
+function persistedRefs() {
+  const s = useCrm.getState();
+  return [
+    s.leads,
+    s.tasks,
+    s.proposals,
+    s.products,
+    s.emitters,
+    s.paymentTerms,
+    s.defaultEmitterId,
+    s.leadTags,
+    s.leadSegments,
+    s.freightConfig,
+    s.fleet,
+    s.maxDiscountPercentVendedor,
+    s.agent,
+  ];
+}
+
 function scheduleSave() {
   if (!hydrated || !currentUserId || suppressSave) return;
+  const refs = persistedRefs();
+  if (
+    lastPersistedRefs.length === refs.length &&
+    refs.every((r, i) => r === lastPersistedRefs[i])
+  ) {
+    return;
+  }
+  lastPersistedRefs = refs;
   if (saveTimer) clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
     void doSave().catch((e) => console.warn("[crm-sync] save:", e));

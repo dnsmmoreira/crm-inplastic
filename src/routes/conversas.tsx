@@ -44,6 +44,7 @@ import {
   listarVendedoresAtendimento,
 } from "@/lib/atendimento.functions";
 import { useAuth } from "@/hooks/use-auth";
+import { usePoll } from "@/hooks/use-poll";
 import { useAutoScrollMensagens } from "@/hooks/use-auto-scroll-mensagens";
 import { TemplatesButton } from "@/components/atendimento/TemplatesButton";
 import { TemplateMetaDialog } from "@/components/atendimento/TemplateMetaDialog";
@@ -216,12 +217,13 @@ function MinhasConversasPage() {
         () => void load(),
       )
       .subscribe();
-    const t = setInterval(() => void load(), 8000);
     return () => {
       void supabase.removeChannel(channel);
-      clearInterval(t);
     };
   }, [load]);
+
+  // fallback de polling: pausa com a aba oculta e afrouxa sem conversa aberta
+  usePoll(() => void load(), selectedId ? 15000 : 45000);
 
   const aguardandoIds = useMemo(() => {
     const s = new Set<string>();
@@ -554,12 +556,15 @@ function ChatPanel({
         () => void loadMensagens(id),
       )
       .subscribe();
-    const t = setInterval(() => void loadMensagens(id), 6000);
     return () => {
       void supabase.removeChannel(channel);
-      clearInterval(t);
     };
   }, [conversa, loadMensagens]);
+
+  const conversaIdAtual = conversa?.id ?? null;
+  usePoll(() => {
+    if (conversaIdAtual) void loadMensagens(conversaIdAtual);
+  }, 12000, conversaIdAtual !== null);
 
   useEffect(() => {
     const leadId = conversa?.lead_id ?? null;
