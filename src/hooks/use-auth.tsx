@@ -51,8 +51,18 @@ export type AuthUser = {
   avatarColor: string;
   role: AppRole;
   permissions: UserPermissions;
+  /** Chaves granulares vindas dos perfis (etapa de perfis). Só AMPLIAM o acesso. */
+  permKeys: string[];
   mustChangePassword: boolean;
 };
+
+/** Verifica uma chave granular de permissão. Admin sempre liberado. */
+export function hasPerm(user: AuthUser | null | undefined, chave: string): boolean {
+  if (!user) return false;
+  if (user.role === "admin") return true;
+  return user.permKeys.includes(chave);
+}
+
 
 type AuthContextValue = {
   user: AuthUser | null;
