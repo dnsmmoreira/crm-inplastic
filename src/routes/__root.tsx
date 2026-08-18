@@ -419,19 +419,16 @@ function AppShell({ children }: { children: ReactNode }) {
           <NotificacoesBell />
         </header>
 
-        <nav className="md:hidden flex overflow-x-auto border-b bg-card">
-          {nav.map((item) => {
-            const active = pathname === item.to;
+        <nav className="md:hidden border-b bg-card p-2 space-y-1">
+          {rootItems.map((item) => {
             const Icon = item.icon;
             return (
               <Link
                 key={item.to}
                 to={item.to}
                 className={cn(
-                  "flex items-center gap-2 whitespace-nowrap px-4 py-3 text-sm border-b-2",
-                  active
-                    ? "border-primary text-primary font-medium"
-                    : "border-transparent text-muted-foreground",
+                  "flex items-center gap-2 rounded-md px-3 py-2 text-sm",
+                  pathname === item.to ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground",
                 )}
               >
                 <Icon className="h-4 w-4" />
@@ -439,6 +436,44 @@ function AppShell({ children }: { children: ReactNode }) {
               </Link>
             );
           })}
+          {groups.map((group) => {
+            const GroupIcon = group.icon;
+            const open = mobileOpen === group.id;
+            return (
+              <div key={group.id}>
+                <button
+                  type="button"
+                  onClick={() => toggleMobileGroup(group.id)}
+                  aria-expanded={open}
+                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+                >
+                  <GroupIcon className="h-4 w-4" />
+                  <span className="flex-1 text-left">{group.label}</span>
+                  <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", !open && "-rotate-90")} />
+                </button>
+                {open &&
+                  group.items.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <Link
+                        key={item.to}
+                        to={item.to}
+                        className={cn(
+                          "flex items-center gap-2 rounded-md py-2 pl-9 pr-3 text-sm",
+                          pathname === item.to
+                            ? "bg-primary/10 text-primary font-medium"
+                            : "text-muted-foreground",
+                        )}
+                      >
+                        <Icon className="h-4 w-4" />
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+              </div>
+            );
+          })}
+
           <a
             href="/manual.html"
             target="_blank"
