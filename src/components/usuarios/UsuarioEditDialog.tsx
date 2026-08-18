@@ -141,12 +141,16 @@ export function UsuarioEditDialog({
     setRole(usuario.role);
     setAtivo(usuario.ativo);
     setMeta(String(usuario.metaMensal ?? 0));
+    setMetaInicial(String(usuario.metaMensal ?? 0));
+    setMetaMotivo("");
     setNaFila(usuario.naFila);
     setFilaAtivo(usuario.filaAtivo);
     setLimite(usuario.limiteLeads === null ? "" : String(usuario.limiteLeads));
     setCanais(usuario.canaisEntrada);
     setPerms({ ...usuario.permissoes });
     setAudit(null);
+    setArena({ ...ARENA_PARTICIPACAO_PADRAO });
+    setArenaInicial({ ...ARENA_PARTICIPACAO_PADRAO });
     void (async () => {
       try {
         const res = (await loadPerfil({ data: { userId: usuario.id } })) as {
@@ -160,7 +164,19 @@ export function UsuarioEditDialog({
         console.error("getPerfilDoUsuario", e);
       }
     })();
-  }, [usuario, loadPerfil]);
+    if (isAdmin) {
+      void (async () => {
+        try {
+          const ap = (await loadArena({ data: { userId: usuario.id } })) as ArenaParticipacao;
+          setArena(ap);
+          setArenaInicial(ap);
+        } catch (e) {
+          console.error("getArenaParticipacao", e);
+        }
+      })();
+    }
+  }, [usuario, loadPerfil, loadArena, isAdmin]);
+
 
   const carregarAuditoria = useCallback(async () => {
     if (!usuario) return;
