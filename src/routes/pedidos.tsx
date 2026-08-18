@@ -79,7 +79,7 @@ function PedidosKanbanPage() {
   const [tAtrasados, setTAtrasados] = useState(false);
   const [tBloqueados, setTBloqueados] = useState(false);
   const [tOcorrencia, setTOcorrencia] = useState(false);
-  const [tConcluidos, setTConcluidos] = useState(false);
+  const [tReprovados, setTReprovados] = useState(false);
 
 
   const pedidosQ = useQuery({
