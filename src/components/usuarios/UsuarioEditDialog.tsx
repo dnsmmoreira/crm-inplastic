@@ -108,6 +108,9 @@ export function UsuarioEditDialog({
   const [busy, setBusy] = useState<string | null>(null);
   const [audit, setAudit] = useState<AuditRow[] | null>(null);
   const [senhaOpen, setSenhaOpen] = useState(false);
+  const [perfis, setPerfis] = useState<PerfilOpcao[]>([]);
+  const [perfilId, setPerfilId] = useState<string>("");
+  const [perfilInicial, setPerfilInicial] = useState<string>("");
 
   useEffect(() => {
     if (!usuario) return;
@@ -126,7 +129,20 @@ export function UsuarioEditDialog({
     setCanais(usuario.canaisEntrada);
     setPerms({ ...usuario.permissoes });
     setAudit(null);
-  }, [usuario]);
+    void (async () => {
+      try {
+        const res = (await loadPerfil({ data: { userId: usuario.id } })) as {
+          perfilId: string | null;
+          perfis: PerfilOpcao[];
+        };
+        setPerfis(res.perfis);
+        setPerfilId(res.perfilId ?? "");
+        setPerfilInicial(res.perfilId ?? "");
+      } catch (e) {
+        console.error("getPerfilDoUsuario", e);
+      }
+    })();
+  }, [usuario, loadPerfil]);
 
   const carregarAuditoria = useCallback(async () => {
     if (!usuario) return;
