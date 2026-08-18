@@ -286,6 +286,8 @@ function UsuariosPage() {
       <UsuarioEditDialog
         usuario={editando}
         currentUserId={user.id}
+        isAdmin={user.role === "admin"}
+
         open={!!editando}
         onOpenChange={(v) => { if (!v) setEditando(null); }}
         onSaved={load}
