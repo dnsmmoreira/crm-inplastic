@@ -897,7 +897,139 @@
   </div>
 </section>
 
+<!-- ============ 6½. CLIENTE OU LEAD ============ -->
+<style>
+  .cxl-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:24px 0 6px}
+  @media (max-width:760px){.cxl-grid{grid-template-columns:1fr}}
+  .cxl-box{border:2px solid var(--borda,#DCE9F7);border-radius:22px;padding:20px 20px 18px;background:var(--papel,#F2F7FC)}
+  .cxl-box.is-cad{border-color:#BFE6CA;background:#F1FAF3}
+  .cxl-box.is-lead{border-color:#C6DBF7;background:#F0F6FE}
+  .cxl-caminho{font-size:12.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--cinza,#5B77A0);margin-bottom:10px}
+  .cxl-btn{display:inline-block;font-weight:800;font-size:14.5px;border-radius:12px;padding:8px 16px;color:#fff;margin-bottom:14px;box-shadow:0 3px 0 rgba(0,0,0,.12)}
+  .cxl-btn.v{background:var(--verde,#2FA84F)}
+  .cxl-btn.a{background:var(--azul,#1B5FBF)}
+  .cxl-box h4{margin:0 0 8px;font-size:17px;color:var(--azul-escuro,#12315C)}
+  .cxl-box p{margin:0 0 10px;font-size:14.5px;line-height:1.55}
+  .cxl-tag{display:block;font-weight:800;font-size:14px;border-radius:12px;padding:9px 12px;margin:12px 0}
+  .cxl-tag.nao{background:#FDECE8;color:#B23A26}
+  .cxl-tag.sim{background:#EAF5EC;color:#1F7C39}
+  .cxl-quando{font-size:13.5px;line-height:1.5;margin:0;padding-left:18px}
+  .cxl-quando li{margin-bottom:4px}
+  .cxl-zero{display:flex;gap:16px;align-items:flex-start;border:2px dashed var(--amarelo,#FFC833);background:#FFF9E8;border-radius:20px;padding:18px 20px;margin:22px 0}
+  .cxl-zero .cxl-ic{font-size:30px;line-height:1}
+  .cxl-zero p{margin:0 0 8px;font-size:14.5px;line-height:1.6}
+  .cxl-zero p:last-child{margin-bottom:0}
+  .cxl-erros{display:grid;gap:12px;margin:22px 0 6px}
+  .cxl-erro{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media (max-width:760px){.cxl-erro{grid-template-columns:1fr}}
+  .cxl-erro>div{border-radius:16px;padding:13px 15px;font-size:14px;line-height:1.5}
+  .cxl-erro .x{background:#FDECE8;border:1.5px solid #F3C6BC}
+  .cxl-erro .v{background:#EAF5EC;border:1.5px solid #BFE6CA}
+  .cxl-erro b{display:block;font-size:12.5px;letter-spacing:.4px;text-transform:uppercase;margin-bottom:4px}
+  .cxl-erro .x b{color:#B23A26}
+  .cxl-erro .v b{color:#1F7C39}
+</style>
+
+<section class="chapter">
+  <div class="chapter-head">
+    <div class="badge">6½</div>
+    <h2>Cliente ou Lead?<small>Atenção · Os dois botões que todo mundo troca</small></h2>
+  </div>
+
+  <p>Existem <strong>dois botões diferentes</strong> no CRM, e eles fazem coisas diferentes.
+  Trocar um pelo outro é o erro nº 1 de quem está começando — e o motivo de aparecerem
+  cartões de <strong>R$ 0,00</strong> no funil.</p>
+
+  <div class="cxl-grid">
+
+    <div class="cxl-box is-cad">
+      <div class="cxl-caminho">Cadastros › Clientes</div>
+      <span class="cxl-btn v">+ Novo cliente</span>
+      <h4>🗂️ Guarda a ficha da empresa</h4>
+      <p>CNPJ, razão social, endereço, contato, regime fiscal e o vendedor responsável.
+      É o <em>cadastro</em> — a identidade do cliente dentro do CRM.</p>
+      <span class="cxl-tag nao">❌ NÃO cria cartão no funil</span>
+      <strong style="font-size:13.5px">Use quando:</strong>
+      <ul class="cxl-quando">
+        <li>o cliente é novo mas ainda não tem pedido nem cotação;</li>
+        <li>você precisa corrigir ou completar dados;</li>
+        <li>é um cadastro para faturamento.</li>
+      </ul>
+    </div>
+
+    <div class="cxl-box is-lead">
+      <div class="cxl-caminho">Pipeline › + Novo</div>
+      <span class="cxl-btn a">Criar lead</span>
+      <h4>🎢 Cria um cartão no funil</h4>
+      <p>Abre a janela <strong>“Novo lead”</strong> e coloca um cartão na coluna
+      <strong>Nova Solicitação</strong>. É uma <em>oportunidade</em> para trabalhar,
+      não um cadastro.</p>
+      <span class="cxl-tag sim">✅ Só use se existe demanda real</span>
+      <strong style="font-size:13.5px">Use quando:</strong>
+      <ul class="cxl-quando">
+        <li>o cliente pediu preço, prazo ou quantidade;</li>
+        <li>chegou uma solicitação pelo site, telefone ou indicação;</li>
+        <li>existe algo para vender <em>agora</em>.</li>
+      </ul>
+    </div>
+
+  </div>
+
+  <div class="rule">Cadastro é ficha. Lead é oportunidade. Só crie lead quando tiver o que vender.</div>
+
+  <div class="cxl-zero">
+    <div class="cxl-ic">💰</div>
+    <div>
+      <p><strong>“Mas por que o cartão nasceu com R$ 0,00?”</strong></p>
+      <p>Porque no lead <strong>não existe valor</strong>. O próprio formulário avisa lá embaixo:
+      <em>“Produto, quantidade e valor são registrados na proposta comercial após a qualificação
+      — não no cadastro do lead.”</em></p>
+      <p>Ou seja: cartão zerado <strong>não é erro</strong>. É um lead que ainda não tem proposta.
+      O valor aparece quando você gera a proposta em <strong>Negócios › Propostas</strong> —
+      aí o cartão passa a mostrar o dinheiro que está em jogo.</p>
+    </div>
+  </div>
+
+  <h3 style="font-size:18px;margin:26px 0 4px">Os três tropeços mais comuns</h3>
+
+  <div class="cxl-erros">
+
+    <div class="cxl-erro">
+      <div class="x"><b>❌ O que acontece</b>“Cadastrei o cliente novo pelo botão do Pipeline.”
+      Resultado: nasceu um cartão de R$ 0,00 entupindo o funil.</div>
+      <div class="v"><b>✅ O certo</b>Cadastro de cliente é em <strong>Cadastros › Clientes ›
+      + Novo cliente</strong>. O funil continua limpo.</div>
+    </div>
+
+    <div class="cxl-erro">
+      <div class="x"><b>❌ O que acontece</b>“Vi um cartão R$ 0,00 e achei que a proposta
+      tinha sido feita errado.”</div>
+      <div class="v"><b>✅ O certo</b>Cartão zerado = lead <em>sem proposta ainda</em>.
+      Qualifique, gere a proposta, e o valor aparece sozinho.</div>
+    </div>
+
+    <div class="cxl-erro">
+      <div class="x"><b>❌ O que acontece</b>“Tentei colocar o valor do pedido no cadastro
+      do cliente.”</div>
+      <div class="v"><b>✅ O certo</b>Produto, quantidade e valor só existem na
+      <strong>proposta</strong>. O cadastro guarda quem é o cliente, não quanto ele compra.</div>
+    </div>
+
+  </div>
+
+  <p style="margin-top:22px"><strong>Já criou errado?</strong> Sem drama. Abra o cartão e,
+  se não existe oportunidade real, marque <strong>Perdido</strong> com o motivo
+  (ex.: “cadastro sem demanda”). O cliente continua cadastrado no CRM — só o cartão sai do funil.</p>
+
+  <div class="kid">Paletinho explica: o <strong>cadastro</strong> é a fichinha do amiguinho —
+  nome, telefone, onde ele mora. O <strong>lead</strong> é quando ele te chama pra brincar.
+  Guardar a fichinha de todo mundo é ótimo. Mas só entra na fila do escorregador quem
+  realmente quer descer. 🎢</div>
+
+</section>
+
 <!-- ============ 7. QUANTO ============ -->
+
 <section class="chapter">
   <div class="chapter-head">
     <div class="badge">7</div>
@@ -1221,6 +1353,11 @@
   <p>Toda área tem suas palavras esquisitas. Aqui estão as do CRM, em português de gente:</p>
   <div class="glossario">
     <div class="gl"><div class="termo">🪪 Lead</div><div class="def">Um cliente interessado. Cada um é um cartãozinho no funil.</div></div>
+    <div class="gl">
+      <div class="termo">🗂️ Cadastro</div>
+      <div class="def">A ficha da empresa (CNPJ, endereço, contato). Fica em Cadastros › Clientes e não cria cartão no funil.</div>
+    </div>
+
     <div class="gl"><div class="termo">🎢 Funil (ou Pipeline)</div><div class="def">A "esteira" com as etapas por onde o cliente passa até comprar.</div></div>
     <div class="gl"><div class="termo">📄 Proposta</div><div class="def">O orçamento com o preço que você manda para o cliente.</div></div>
     <div class="gl"><div class="termo">⏰ SLA</div><div class="def">Um prazo combinado (ex.: responder em 2h). Estourou, perde ponto.</div></div>
