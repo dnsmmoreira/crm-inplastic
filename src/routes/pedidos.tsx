@@ -146,7 +146,7 @@ function PedidosKanbanPage() {
     };
   }, [allRows]);
 
-  const terminalStages: PedidoStageId[] = ["pedido_entregue", "concluido"];
+  const terminalStages: PedidoStageId[] = ["pos_venda", "reprovado_financeiro"];
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
