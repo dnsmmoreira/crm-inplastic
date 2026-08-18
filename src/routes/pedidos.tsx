@@ -294,7 +294,7 @@ function PedidosKanbanPage() {
         tAtrasados={tAtrasados} setTAtrasados={setTAtrasados}
         tBloqueados={tBloqueados} setTBloqueados={setTBloqueados}
         tOcorrencia={tOcorrencia} setTOcorrencia={setTOcorrencia}
-        tConcluidos={tConcluidos} setTConcluidos={setTConcluidos}
+        tReprovados={tReprovados} setTReprovados={setTReprovados}
         activeCount={activeFilterCount}
         onClear={clearFilters}
         totalCount={allRows.length}
@@ -316,7 +316,7 @@ function PedidosKanbanPage() {
             {PEDIDO_STAGES.map((stage) => {
               const blockedByOcorrencia =
                 !!activePedido &&
-                stage.id === "concluido" &&
+                stage.id === "pos_venda" &&
                 (activePedido.ocorrencias_abertas ?? 0) > 0;
               const canDrop = activePedido
                 ? isTransitionAllowed(activePedido.stage, stage.id) && !blockedByOcorrencia
@@ -446,7 +446,7 @@ function PedidoCard({
     differenceInCalendarDays(new Date(), new Date(pedido.stage_changed_at)),
   );
 
-  const terminalStages: PedidoStageId[] = ["pedido_entregue", "concluido"];
+  const terminalStages: PedidoStageId[] = ["pos_venda", "reprovado_financeiro"];
   const previsao = pedido.previsao_entrega ? new Date(pedido.previsao_entrega) : null;
   const atrasado =
     previsao !== null &&
@@ -459,7 +459,7 @@ function PedidoCard({
   const forma = pedido.forma_atendimento?.trim() || null;
 
   const pendencias: string[] = [];
-  if (pedido.stage === "aguardando_aprovacao") pendencias.push("Aguardando aprovação");
+  if (pedido.stage === "analise_financeira") pendencias.push("Aguardando aprovação");
   if (
     pedido.fiscal_status &&
     pedido.fiscal_status !== "nao_iniciado" &&
@@ -639,8 +639,8 @@ function BackwardMotiveDialog({
 function KpiBar({ pedidos }: { pedidos: PedidoRow[] }) {
   const kpis = useMemo(() => {
     const now = new Date();
-    const terminal: PedidoStageId[] = ["pedido_entregue", "concluido"];
-    const ativos = pedidos.filter((p) => p.stage !== "concluido");
+    const terminal: PedidoStageId[] = ["pos_venda", "reprovado_financeiro"];
+    const ativos = pedidos.filter((p) => !terminal.includes(p.stage));
     const valorAtivos = ativos.reduce((s, p) => s + p.total, 0);
 
     const atrasados = pedidos.filter((p) => {
@@ -658,11 +658,9 @@ function KpiBar({ pedidos }: { pedidos: PedidoRow[] }) {
     }).length;
 
     const emProducao = pedidos.filter((p) => p.stage === "em_producao").length;
-    const aguardSaida = pedidos.filter(
-      (p) => p.stage === "faturado_aguardando_coleta",
-    ).length;
-    const emTransporte = pedidos.filter((p) => p.stage === "despachado_transporte").length;
-    const entregues = pedidos.filter((p) => p.stage === "pedido_entregue").length;
+    const aguardSaida = pedidos.filter((p) => p.stage === "pronto").length;
+    const emTransporte = pedidos.filter((p) => p.stage === "faturado_em_rota").length;
+    const entregues = pedidos.filter((p) => p.stage === "pos_venda").length;
     const comOcorrencia = pedidos.filter((p) => (p.ocorrencias_abertas ?? 0) > 0).length;
 
     const diasArr = pedidos
