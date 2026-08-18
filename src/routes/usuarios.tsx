@@ -313,6 +313,8 @@ function UsuariosPage() {
         </p>
         <p>Se você definir uma senha inicial no formulário acima, o usuário já pode entrar direto pela tela de login com esse e-mail e senha.</p>
       </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
