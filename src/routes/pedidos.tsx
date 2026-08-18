@@ -181,7 +181,7 @@ function PedidosKanbanPage() {
       if (p.stage === "pos_venda" && p.encerrado_em && !tReprovados) return false;
       return true;
     });
-  }, [allRows, search, fVendedor, fResponsavel, fStage, fForma, tAtrasados, tBloqueados, tOcorrencia, tConcluidos]);
+  }, [allRows, search, fVendedor, fResponsavel, fStage, fForma, tAtrasados, tBloqueados, tOcorrencia, tReprovados]);
 
   const activeFilterCount =
     (fVendedor !== "all" ? 1 : 0) +
