@@ -216,12 +216,13 @@ function MinhasConversasPage() {
         () => void load(),
       )
       .subscribe();
-    const t = setInterval(() => void load(), 8000);
     return () => {
       void supabase.removeChannel(channel);
-      clearInterval(t);
     };
   }, [load]);
+
+  // fallback de polling: pausa com a aba oculta e afrouxa sem conversa aberta
+  usePoll(() => void load(), selectedId ? 15000 : 45000);
 
   const aguardandoIds = useMemo(() => {
     const s = new Set<string>();
