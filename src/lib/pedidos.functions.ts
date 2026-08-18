@@ -60,6 +60,11 @@ export type PedidoRow = {
   lead_id: string | null;
   lead_company: string | null;
   proposta_number: string | null;
+  modalidade_entrega: string | null;
+  entrega_confirmada: string | null;
+  encerrado_em: string | null;
+  aprovacao_rota: string | null;
+  reprovacao_motivo: string | null;
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
