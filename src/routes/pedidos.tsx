@@ -207,9 +207,8 @@ function PedidosKanbanPage() {
 
   const byStage = useMemo(() => {
     const map: Record<PedidoStageId, PedidoRow[]> = {
-      pedido_recebido: [], em_validacao: [], aguardando_aprovacao: [], aprovado_programado: [],
-      em_producao: [], separacao_conferencia: [], faturado_aguardando_coleta: [],
-      despachado_transporte: [], pedido_entregue: [], concluido: [],
+      analise_financeira: [], programacao: [], em_producao: [],
+      pronto: [], faturado_em_rota: [], pos_venda: [], reprovado_financeiro: [],
     };
     filtered.forEach((p) => map[p.stage]?.push(p));
     return map;
