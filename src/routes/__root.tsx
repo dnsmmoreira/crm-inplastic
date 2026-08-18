@@ -331,27 +331,57 @@ function AppShell({ children }: { children: ReactNode }) {
           </button>
         </div>
         <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-          {nav.map((item) => {
-            const active = pathname === item.to;
+          {rootItems.map((item) => {
             const Icon = item.icon;
             return (
               <Link
                 key={item.to}
                 to={item.to}
                 title={collapsed ? item.label : undefined}
-                className={cn(
-                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
-                  collapsed && "justify-center px-2",
-                  active
-                    ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium"
-                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                )}
+                className={itemLinkClass(pathname === item.to, false)}
               >
                 <Icon className="h-4 w-4 shrink-0" />
                 {!collapsed && item.label}
               </Link>
             );
           })}
+
+          {groups.map((group) => {
+            const GroupIcon = group.icon;
+            const open = collapsed || openGroups.includes(group.id);
+            return (
+              <div key={group.id} className="pt-1">
+                {!collapsed && (
+                  <button
+                    type="button"
+                    onClick={() => toggleGroup(group.id)}
+                    aria-expanded={open}
+                    className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  >
+                    <GroupIcon className="h-4 w-4 shrink-0" />
+                    <span className="flex-1 text-left">{group.label}</span>
+                    <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", !open && "-rotate-90")} />
+                  </button>
+                )}
+                {open &&
+                  group.items.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <Link
+                        key={item.to}
+                        to={item.to}
+                        title={collapsed ? item.label : undefined}
+                        className={itemLinkClass(pathname === item.to, true)}
+                      >
+                        <Icon className="h-4 w-4 shrink-0" />
+                        {!collapsed && item.label}
+                      </Link>
+                    );
+                  })}
+              </div>
+            );
+          })}
+
           <a
             href="/manual.html"
             target="_blank"
