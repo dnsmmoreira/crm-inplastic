@@ -26,7 +26,7 @@ import { Switch } from "@/components/ui/switch";
 import { formatDocumentoCliente } from "@/lib/clientes";
 import { relativeTimeShort, displayValue } from "@/lib/format";
 import { listClientes, listVendedores } from "@/lib/clientes.functions";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth, hasPerm } from "@/hooks/use-auth";
 import { NovoClienteDialog } from "@/components/clientes/NovoClienteDialog";
 
 export const Route = createFileRoute("/clientes/")({
