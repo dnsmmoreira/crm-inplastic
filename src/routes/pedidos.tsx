@@ -854,8 +854,8 @@ function FilterBar(props: FilterBarProps) {
         <ToggleChip active={tOcorrencia} onClick={() => setTOcorrencia(!tOcorrencia)} tone="warning">
           <Ban className="h-3 w-3 mr-1" /> Com ocorrência
         </ToggleChip>
-        <ToggleChip active={tConcluidos} onClick={() => setTConcluidos(!tConcluidos)} tone="success">
-          <CheckCircle2 className="h-3 w-3 mr-1" /> Concluídos
+        <ToggleChip active={tReprovados} onClick={() => setTReprovados(!tReprovados)} tone="danger">
+          <Ban className="h-3 w-3 mr-1" /> Mostrar reprovados/encerrados
         </ToggleChip>
 
         <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
