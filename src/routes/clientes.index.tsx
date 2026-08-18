@@ -26,7 +26,7 @@ import { Switch } from "@/components/ui/switch";
 import { formatDocumentoCliente } from "@/lib/clientes";
 import { relativeTimeShort, displayValue } from "@/lib/format";
 import { listClientes, listVendedores } from "@/lib/clientes.functions";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth, hasPerm } from "@/hooks/use-auth";
 import { NovoClienteDialog } from "@/components/clientes/NovoClienteDialog";
 
 export const Route = createFileRoute("/clientes/")({
@@ -58,7 +58,9 @@ function useDebounced<T>(value: T, delay = 300): T {
 function ClientesListPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
+  // Só amplia: admin continua vendo tudo; vendedor comum permanece igual.
+  const isAdmin = user?.role === "admin" || hasPerm(user, "clientes.ver_todos");
+
 
   const [q, setQ] = useState("");
   const [qDeb, setQDeb] = useState("");

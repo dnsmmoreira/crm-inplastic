@@ -29,6 +29,11 @@ export type RelatorioPedidoRow = {
 type LooseClient = any;
 
 /** Lê a permissão do próprio usuário no servidor (admin sempre liberado). */
+const CHAVE_GRANULAR: Record<string, string> = {
+  ver_relatorios: "relatorios.ver",
+  exportar_dados: "pedidos.exportar",
+};
+
 async function assertPermissao(
   sb: LooseClient,
   userId: string,
@@ -38,8 +43,13 @@ async function assertPermissao(
   const { data: isAdmin } = await sb.rpc("has_role", { _user_id: userId, _role: "admin" });
   if (isAdmin) return;
   const { data } = await sb.from("user_permissions").select(perm).eq("user_id", userId).maybeSingle();
-  if (!data || data[perm] !== true) throw new Error(mensagem);
+  if (data && data[perm] === true) return;
+  // Amplia via perfis (etapa de permissões granulares) — nunca restringe.
+  const { data: viaPerfil } = await sb.rpc("tem_permissao", { _user_id: userId, _chave: CHAVE_GRANULAR[perm] });
+  if (viaPerfil === true) return;
+  throw new Error(mensagem);
 }
+
 
 export const assertPodeExportarRelatorio = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

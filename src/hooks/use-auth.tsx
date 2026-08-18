@@ -51,8 +51,18 @@ export type AuthUser = {
   avatarColor: string;
   role: AppRole;
   permissions: UserPermissions;
+  /** Chaves granulares vindas dos perfis (etapa de perfis). Só AMPLIAM o acesso. */
+  permKeys: string[];
   mustChangePassword: boolean;
 };
+
+/** Verifica uma chave granular de permissão. Admin sempre liberado. */
+export function hasPerm(user: AuthUser | null | undefined, chave: string): boolean {
+  if (!user) return false;
+  if (user.role === "admin") return true;
+  return user.permKeys.includes(chave);
+}
+
 
 type AuthContextValue = {
   user: AuthUser | null;
@@ -96,7 +106,25 @@ async function loadAuthUser(supaUser: SupaUser): Promise<AuthUser> {
     : { ...base };
   // Administrador nunca perde o acesso à gestão de usuários.
   if (role === "admin") permissions.gerenciar_usuarios = true;
-  return { id: supaUser.id, email: supaUser.email ?? "", name, avatarColor, role, permissions, mustChangePassword: !!profile?.senha_reset_exigido };
+
+  // Chaves granulares dos perfis do usuário (somente ampliam o acesso).
+  let permKeys: string[] = [];
+  try {
+    const { data: vinculos } = await supabase.from("user_perfis").select("perfil_id").eq("user_id", supaUser.id);
+    const perfilIds = (vinculos ?? []).map((v) => v.perfil_id);
+    if (perfilIds.length > 0) {
+      const { data: chaves } = await supabase
+        .from("perfil_permissoes")
+        .select("permissao_chave")
+        .in("perfil_id", perfilIds);
+      permKeys = Array.from(new Set((chaves ?? []).map((c) => c.permissao_chave)));
+    }
+  } catch (e) {
+    console.error("loadPermKeys failed", e);
+  }
+
+  return { id: supaUser.id, email: supaUser.email ?? "", name, avatarColor, role, permissions, permKeys, mustChangePassword: !!profile?.senha_reset_exigido };
+
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
