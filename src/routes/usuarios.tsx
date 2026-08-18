@@ -23,6 +23,8 @@ import { DefinirSenhaDialog } from "@/components/usuarios/DefinirSenhaDialog";
 import { UsuarioEditDialog } from "@/components/usuarios/UsuarioEditDialog";
 import { ExcluirUsuarioDialog } from "@/components/usuarios/ExcluirUsuarioDialog";
 import { TelegramVinculoButton } from "@/components/usuarios/TelegramVinculoButton";
+import { PerfisPermissoesPanel } from "@/components/usuarios/PerfisPermissoesPanel";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export const Route = createFileRoute("/usuarios")({
   component: UsuariosPage,
@@ -136,6 +138,17 @@ function UsuariosPage() {
         </div>
       </div>
 
+      <Tabs defaultValue="equipe">
+        <TabsList>
+          <TabsTrigger value="equipe">Equipe</TabsTrigger>
+          <TabsTrigger value="perfis">Perfis e Permissões</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="perfis" className="pt-4">
+          <PerfisPermissoesPanel />
+        </TabsContent>
+
+        <TabsContent value="equipe" className="pt-4">
       <CreateUserCard onCreated={load} />
 
       <Card className="mt-6">
@@ -302,6 +315,8 @@ function UsuariosPage() {
         </p>
         <p>Se você definir uma senha inicial no formulário acima, o usuário já pode entrar direto pela tela de login com esse e-mail e senha.</p>
       </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

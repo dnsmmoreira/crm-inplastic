@@ -25,7 +25,10 @@ import {
   type UsuarioRow,
   type PermissoesUsuario,
 } from "@/lib/usuarios.functions";
+import { getPerfilDoUsuario, setPerfilDoUsuario } from "@/lib/perfis.functions";
 import { DefinirSenhaDialog } from "@/components/usuarios/DefinirSenhaDialog";
+
+type PerfilOpcao = { id: string; nome: string; baseRole: "admin" | "vendedor"; ativo: boolean };
 
 const FUSOS = [
   "America/Sao_Paulo",
@@ -83,6 +86,8 @@ export function UsuarioEditDialog({
   const save = useServerFn(updateUsuario);
   const encerrar = useServerFn(encerrarSessoes);
   const loadAudit = useServerFn(listAuditoriaUsuario);
+  const loadPerfil = useServerFn(getPerfilDoUsuario);
+  const savePerfilVinculo = useServerFn(setPerfilDoUsuario);
 
   const isSelf = usuario?.id === currentUserId;
 
@@ -103,6 +108,9 @@ export function UsuarioEditDialog({
   const [busy, setBusy] = useState<string | null>(null);
   const [audit, setAudit] = useState<AuditRow[] | null>(null);
   const [senhaOpen, setSenhaOpen] = useState(false);
+  const [perfis, setPerfis] = useState<PerfilOpcao[]>([]);
+  const [perfilId, setPerfilId] = useState<string>("");
+  const [perfilInicial, setPerfilInicial] = useState<string>("");
 
   useEffect(() => {
     if (!usuario) return;
@@ -121,7 +129,20 @@ export function UsuarioEditDialog({
     setCanais(usuario.canaisEntrada);
     setPerms({ ...usuario.permissoes });
     setAudit(null);
-  }, [usuario]);
+    void (async () => {
+      try {
+        const res = (await loadPerfil({ data: { userId: usuario.id } })) as {
+          perfilId: string | null;
+          perfis: PerfilOpcao[];
+        };
+        setPerfis(res.perfis);
+        setPerfilId(res.perfilId ?? "");
+        setPerfilInicial(res.perfilId ?? "");
+      } catch (e) {
+        console.error("getPerfilDoUsuario", e);
+      }
+    })();
+  }, [usuario, loadPerfil]);
 
   const carregarAuditoria = useCallback(async () => {
     if (!usuario) return;
@@ -164,6 +185,12 @@ export function UsuarioEditDialog({
           permissoes: perms,
         },
       });
+      if (perfilId !== perfilInicial) {
+        await savePerfilVinculo({
+          data: { userId: usuario.id, perfilId: perfilId === "" ? null : perfilId },
+        });
+        setPerfilInicial(perfilId);
+      }
       toast.success("Usuário atualizado");
       await onSaved();
       onOpenChange(false);
@@ -288,6 +315,45 @@ export function UsuarioEditDialog({
               </select>
               {isSelf && <p className="text-xs text-muted-foreground">Você não pode alterar o próprio papel.</p>}
             </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="ue-perfil">Perfil de permissões</Label>
+              <select
+                id="ue-perfil"
+                value={perfilId}
+                onChange={(e) => setPerfilId(e.target.value)}
+                className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+              >
+                <option value="">Sem perfil</option>
+                {perfis.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nome}
+                    {p.ativo ? "" : " (inativo)"}
+                  </option>
+                ))}
+              </select>
+              {(() => {
+                const sel = perfis.find((p) => p.id === perfilId);
+                if (!sel) {
+                  return (
+                    <p className="text-xs text-muted-foreground">
+                      Sem perfil vinculado — o acesso segue apenas o papel acima.
+                    </p>
+                  );
+                }
+                const incoerente = sel.baseRole !== role;
+                return (
+                  <p className={`text-xs ${incoerente ? "text-amber-600" : "text-muted-foreground"}`}>
+                    Papel base do perfil: <strong>{sel.baseRole}</strong>.
+                    {incoerente
+                      ? ` Atenção: o papel do usuário é "${role}". O perfil só amplia permissões — o papel efetivo continua sendo o do campo acima.`
+                      : " O perfil só amplia permissões; o papel efetivo continua sendo o do campo acima."}
+                  </p>
+                );
+              })()}
+            </div>
+
+
 
             <div className="flex items-center justify-between rounded-lg border p-3">
               <div>
