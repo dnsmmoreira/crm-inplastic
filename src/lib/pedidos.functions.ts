@@ -8,55 +8,24 @@ import { requireSupabaseAuth } from "@/lib/auth.middleware";
  * Nada altera leads/propostas nem dispara integrações externas.
  */
 
-export const PEDIDO_STAGES = [
-  { id: "pedido_recebido", label: "Pedido Recebido", color: "#94a3b8" },
-  { id: "em_validacao", label: "Em Validação", color: "#64748b" },
-  { id: "aguardando_aprovacao", label: "Aguard. Aprovação", color: "#f59e0b" },
-  { id: "aprovado_programado", label: "Aprovado / Programado", color: "#6366f1" },
-  { id: "em_producao", label: "Em Produção", color: "#8b5cf6" },
-  { id: "separacao_conferencia", label: "Separação / Conferência", color: "#0ea5e9" },
-  { id: "faturado_aguardando_coleta", label: "Faturado / Aguard. Coleta", color: "#06b6d4" },
-  { id: "despachado_transporte", label: "Despachado / Transporte", color: "#14b8a6" },
-  { id: "pedido_entregue", label: "Pedido Entregue", color: "#22c55e" },
-  { id: "concluido", label: "Concluído", color: "#16a34a" },
-] as const;
+export {
+  PEDIDO_STAGES,
+  PEDIDO_STAGE_REPROVADO,
+  PEDIDO_STAGE_REPROVADO_LABEL,
+  PEDIDO_STAGE_IDS,
+  ALLOWED_FORWARD,
+  isBackward,
+  isTransitionAllowed,
+  stageLabel,
+  stageColor,
+  isPedidoFechado,
+  MODALIDADES_ENTREGA,
+  modalidadeLabel,
+  entregaBadgeLabel,
+  APROVACAO_ROTA_LABEL,
+} from "@/lib/pedidos-stages";
+export type { PedidoStageId, ModalidadeEntrega, AprovacaoRota } from "@/lib/pedidos-stages";
 
-export type PedidoStageId = (typeof PEDIDO_STAGES)[number]["id"];
-const PEDIDO_STAGE_IDS = PEDIDO_STAGES.map((s) => s.id) as [PedidoStageId, ...PedidoStageId[]];
-const STAGE_ORDER: Record<PedidoStageId, number> = PEDIDO_STAGES.reduce(
-  (acc, s, i) => {
-    acc[s.id] = i;
-    return acc;
-  },
-  {} as Record<PedidoStageId, number>,
-);
-
-/**
- * Matriz de transições FORWARD permitidas (documento seção 18).
- * Voltar (backward) para qualquer etapa anterior é permitido, mas exige motivo.
- */
-export const ALLOWED_FORWARD: Record<PedidoStageId, PedidoStageId[]> = {
-  pedido_recebido: ["em_validacao"],
-  em_validacao: ["aguardando_aprovacao", "aprovado_programado"],
-  aguardando_aprovacao: ["aprovado_programado"],
-  aprovado_programado: ["em_producao", "separacao_conferencia"],
-  em_producao: ["separacao_conferencia"],
-  separacao_conferencia: ["faturado_aguardando_coleta"],
-  faturado_aguardando_coleta: ["despachado_transporte"],
-  despachado_transporte: ["pedido_entregue"],
-  pedido_entregue: ["concluido"],
-  concluido: [],
-};
-
-export function isBackward(from: PedidoStageId, to: PedidoStageId): boolean {
-  return STAGE_ORDER[to] < STAGE_ORDER[from];
-}
-
-export function isTransitionAllowed(from: PedidoStageId, to: PedidoStageId): boolean {
-  if (from === to) return false;
-  if (isBackward(from, to)) return true; // permitido com motivo
-  return ALLOWED_FORWARD[from].includes(to);
-}
 
 export type PedidoRow = {
   id: string;
