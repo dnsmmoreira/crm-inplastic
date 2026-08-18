@@ -327,8 +327,27 @@ export const updatePedidoStage = createServerFn({ method: "POST" })
       };
     }
 
-    // Bloqueio de conclusão por ocorrência aberta (doc 7.9 e 22)
-    if (to === "concluido") {
+    // Reprovação financeira: só admin/financeiro e sempre com motivo.
+    if (to === PEDIDO_STAGE_REPROVADO) {
+      if (!data.motivo) {
+        return {
+          ok: false,
+          reason: "needs_motivo",
+          message: "A reprovação financeira exige motivo.",
+        };
+      }
+      const permitido = await isAdminOuFinanceiro(sb, context.userId);
+      if (!permitido) {
+        return {
+          ok: false,
+          reason: "forbidden",
+          message: "Apenas administradores ou o financeiro podem reprovar um pedido.",
+        };
+      }
+    }
+
+    // Bloqueio de encerramento por ocorrência aberta (doc 7.9 e 22)
+    if (to === "pos_venda") {
       const { count: abertas, error: ocErr } = await sb
         .from("pedido_ocorrencias")
         .select("id", { count: "exact", head: true })
@@ -340,16 +359,15 @@ export const updatePedidoStage = createServerFn({ method: "POST" })
           ok: false,
           reason: "invalid_transition",
           message:
-            "Não é possível concluir: há ocorrência(s) em aberto. Resolva-as antes de concluir.",
+            "Não é possível avançar para pós-venda: há ocorrência(s) em aberto. Resolva-as antes.",
         };
       }
     }
 
     // Atualiza etapa
-    const { error: updErr } = await sb
-      .from("pedidos")
-      .update({ stage: to })
-      .eq("id", data.pedido_id);
+    const patch: Record<string, unknown> = { stage: to };
+    if (to === PEDIDO_STAGE_REPROVADO) patch.reprovacao_motivo = data.motivo ?? null;
+    const { error: updErr } = await sb.from("pedidos").update(patch).eq("id", data.pedido_id);
     if (updErr) throw new Error(`Falha ao atualizar etapa: ${updErr.message}`);
 
     // Registra histórico (imutável)
