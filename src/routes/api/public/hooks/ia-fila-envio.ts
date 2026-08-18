@@ -3,7 +3,7 @@
  * já venceu. Mesmo padrão de auth do watchdog (x-xerife-secret OU apikey).
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { requireXerifeCronAuth } from "@/lib/xerife/cron-auth.server";
+import { requireXerifeCronAuth, cronJsonResponse } from "@/lib/xerife/cron-auth.server";
 
 export const Route = createFileRoute("/api/public/hooks/ia-fila-envio")({
   server: {
@@ -14,11 +14,11 @@ export const Route = createFileRoute("/api/public/hooks/ia-fila-envio")({
         try {
           const { processarRespostasPendentes } = await import("@/lib/ia-fila.server");
           const r = await processarRespostasPendentes();
-          return Response.json({ ok: true, at: new Date().toISOString(), ...r });
+          return cronJsonResponse(r);
         } catch (e) {
           console.error("[ia-fila-envio] error:", e);
           return new Response(
-            JSON.stringify({ error: e instanceof Error ? e.message : String(e) }),
+            JSON.stringify({ ok: false, error: "internal_error" }),
             { status: 500, headers: { "Content-Type": "application/json" } },
           );
         }

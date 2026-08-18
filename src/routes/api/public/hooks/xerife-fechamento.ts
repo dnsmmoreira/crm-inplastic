@@ -5,7 +5,7 @@
  * Idempotente: xerife_log regra='fechamento' + janela 20h.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { requireXerifeCronAuth } from "@/lib/xerife/cron-auth.server";
+import { requireXerifeCronAuth, cronJsonResponse } from "@/lib/xerife/cron-auth.server";
 import { alreadyActed, logAction } from "@/lib/xerife/dedupe.server";
 import { notifyOwner, notifyDiretoria } from "@/lib/xerife/notify.server";
 import {
@@ -215,10 +215,10 @@ export const Route = createFileRoute("/api/public/hooks/xerife-fechamento")({
         if (denied) return denied;
         try {
           const r = await runFechamento(false);
-          return Response.json({ ok: true, at: new Date().toISOString(), ...r });
+          return cronJsonResponse(r);
         } catch (e) {
           console.error("[xerife-fechamento]", e);
-          return new Response(JSON.stringify({ error: e instanceof Error ? e.message : String(e) }),
+          return new Response(JSON.stringify({ ok: false, error: "internal_error" }),
             { status: 500, headers: { "Content-Type": "application/json" } });
         }
       },

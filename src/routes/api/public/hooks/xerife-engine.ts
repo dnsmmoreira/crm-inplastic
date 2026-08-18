@@ -14,7 +14,7 @@
  * A3 pula conversas com ia_ativa=true (Lucas está atendendo).
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { requireXerifeCronAuth } from "@/lib/xerife/cron-auth.server";
+import { requireXerifeCronAuth, cronJsonResponse } from "@/lib/xerife/cron-auth.server";
 import {
   subtractBusinessMinutes,
   subtractBusinessHours,
@@ -669,11 +669,11 @@ export const Route = createFileRoute("/api/public/hooks/xerife-engine")({
         if (denied) return denied;
         try {
           const result = await runEngine({ force: false, dryRun: false });
-          return Response.json({ ok: true, at: new Date().toISOString(), ...result });
+          return cronJsonResponse(result);
         } catch (e) {
           console.error("[xerife-engine] error:", e);
           return new Response(
-            JSON.stringify({ error: e instanceof Error ? e.message : String(e) }),
+            JSON.stringify({ ok: false, error: "internal_error" }),
             { status: 500, headers: { "Content-Type": "application/json" } },
           );
         }

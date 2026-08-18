@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { requireXerifeCronAuth, cronJsonResponse } from "@/lib/xerife/cron-auth.server";
 
 type XerifeConfig = {
   dias_sem_interacao_por_etapa: Record<string, number>;

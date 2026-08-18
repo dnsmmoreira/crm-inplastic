@@ -6,7 +6,7 @@
  * Idempotente: grava em xerife_log com regra='agenda_diaria' + janela 20h.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { requireXerifeCronAuth } from "@/lib/xerife/cron-auth.server";
+import { requireXerifeCronAuth, cronJsonResponse } from "@/lib/xerife/cron-auth.server";
 import { alreadyActed, logAction } from "@/lib/xerife/dedupe.server";
 import { notifyOwner, crmLeadLink } from "@/lib/xerife/notify.server";
 
@@ -159,10 +159,10 @@ export const Route = createFileRoute("/api/public/hooks/xerife-agenda-diaria")({
         if (denied) return denied;
         try {
           const r = await runAgendaDiaria(false);
-          return Response.json({ ok: true, at: new Date().toISOString(), ...r });
+          return cronJsonResponse(r);
         } catch (e) {
           console.error("[xerife-agenda-diaria]", e);
-          return new Response(JSON.stringify({ error: e instanceof Error ? e.message : String(e) }),
+          return new Response(JSON.stringify({ ok: false, error: "internal_error" }),
             { status: 500, headers: { "Content-Type": "application/json" } });
         }
       },

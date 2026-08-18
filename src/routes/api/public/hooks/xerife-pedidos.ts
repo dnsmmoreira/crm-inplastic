@@ -12,7 +12,7 @@
  * Rodar 2x seguidas nunca duplica tarefa.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { requireXerifeCronAuth } from "@/lib/xerife/cron-auth.server";
+import { requireXerifeCronAuth, cronJsonResponse } from "@/lib/xerife/cron-auth.server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { logAction } from "@/lib/xerife/dedupe.server";
 
@@ -430,11 +430,11 @@ export const Route = createFileRoute("/api/public/hooks/xerife-pedidos")({
         if (denied) return denied;
         try {
           const r = await runXerifePedidos({ force: false, dryRun: false });
-          return Response.json({ ok: true, at: new Date().toISOString(), ...r });
+          return cronJsonResponse(r);
         } catch (e) {
           console.error("[xerife-pedidos]", e);
           return new Response(
-            JSON.stringify({ error: e instanceof Error ? e.message : String(e) }),
+            JSON.stringify({ ok: false, error: "internal_error" }),
             { status: 500, headers: { "Content-Type": "application/json" } },
           );
         }

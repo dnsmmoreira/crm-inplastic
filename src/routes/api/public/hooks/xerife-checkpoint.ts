@@ -4,7 +4,7 @@
  * Idempotente: xerife_log regra='checkpoint' + janela 5h.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { requireXerifeCronAuth } from "@/lib/xerife/cron-auth.server";
+import { requireXerifeCronAuth, cronJsonResponse } from "@/lib/xerife/cron-auth.server";
 import { alreadyActed, logAction } from "@/lib/xerife/dedupe.server";
 import { notifyOwner } from "@/lib/xerife/notify.server";
 
@@ -86,10 +86,10 @@ export const Route = createFileRoute("/api/public/hooks/xerife-checkpoint")({
         if (denied) return denied;
         try {
           const r = await runCheckpoint(false);
-          return Response.json({ ok: true, at: new Date().toISOString(), ...r });
+          return cronJsonResponse(r);
         } catch (e) {
           console.error("[xerife-checkpoint]", e);
-          return new Response(JSON.stringify({ error: e instanceof Error ? e.message : String(e) }),
+          return new Response(JSON.stringify({ ok: false, error: "internal_error" }),
             { status: 500, headers: { "Content-Type": "application/json" } });
         }
       },
