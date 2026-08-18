@@ -185,6 +185,12 @@ export function UsuarioEditDialog({
           permissoes: perms,
         },
       });
+      if (perfilId !== perfilInicial) {
+        await savePerfilVinculo({
+          data: { userId: usuario.id, perfilId: perfilId === "" ? null : perfilId },
+        });
+        setPerfilInicial(perfilId);
+      }
       toast.success("Usuário atualizado");
       await onSaved();
       onOpenChange(false);
