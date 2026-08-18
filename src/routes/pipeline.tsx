@@ -171,7 +171,7 @@ function PipelinePage() {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-2">
+      <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-2">
         <span className="text-xs font-medium text-muted-foreground px-2">Agenda:</span>
         {AGENDA_FILTERS.map((f) => {
           const active = agendaFilter.has(f.level);
