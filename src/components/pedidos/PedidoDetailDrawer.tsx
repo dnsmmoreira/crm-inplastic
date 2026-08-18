@@ -248,8 +248,7 @@ function AprovacaoBlock({
   });
 
   const showRequest =
-    pedido.stage === "em_validacao" ||
-    pedido.stage === "aguardando_aprovacao" ||
+    pedido.stage === "analise_financeira" ||
     (pedido.aprovacao_solicitada_em && !pedido.aprovacao_decisao);
   const showDecision = pedido.aprovacao_solicitada_em && !pedido.aprovacao_decisao;
 
