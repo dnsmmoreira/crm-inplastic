@@ -211,6 +211,7 @@ export function UsuarioEditDialog({
           acesso: { role, ativo },
           vendas: {
             metaMensal: Number(meta) || 0,
+            metaMotivo: metaMotivo.trim() || undefined,
             naFila,
             filaAtivo,
             limiteLeads: limite.trim() === "" ? null : Math.max(0, Number(limite) || 0),
@@ -225,6 +226,23 @@ export function UsuarioEditDialog({
         });
         setPerfilInicial(perfilId);
       }
+      if (isAdmin && JSON.stringify(arena) !== JSON.stringify(arenaInicial)) {
+        await saveArena({
+          data: {
+            userId: usuario.id,
+            participaArena: arena.participaArena,
+            tipoComercial: arena.tipoComercial,
+            carenciaInicio: arena.carenciaInicio || null,
+            carenciaMeses: arena.carenciaMeses,
+            faseRampa: arena.faseRampa,
+            observacao: arena.observacao?.trim() ? arena.observacao.trim() : null,
+          },
+        });
+        setArenaInicial(arena);
+      }
+      setMetaInicial(String(Number(meta) || 0));
+      setMetaMotivo("");
+
       toast.success("Usuário atualizado");
       await onSaved();
       onOpenChange(false);
