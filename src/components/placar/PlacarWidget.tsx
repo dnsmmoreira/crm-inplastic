@@ -87,7 +87,10 @@ export function PlacarWidget() {
             return (
               <div className="rounded-md border bg-background/70 p-2.5">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">Sua meta do mês</span>
+                  <span className="text-muted-foreground">
+                    Sua meta do mês <span className="text-primary font-medium">· ARENA Performance</span>
+                  </span>
+
                   <span className={self.meta_batida ? "text-emerald-600 font-semibold" : "font-medium"}>
                     {(self.meta_pct ?? 0).toFixed(0)}%
                   </span>
