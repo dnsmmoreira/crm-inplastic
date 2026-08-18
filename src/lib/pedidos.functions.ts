@@ -172,6 +172,11 @@ export const listPedidos = createServerFn({ method: "GET" })
         lead_id: r.lead_id,
         lead_company: r.leads?.company ?? null,
         proposta_number: r.propostas?.number ?? null,
+        modalidade_entrega: r.modalidade_entrega ?? "coleta",
+        entrega_confirmada: r.entrega_confirmada,
+        encerrado_em: r.encerrado_em,
+        aprovacao_rota: r.aprovacao_rota,
+        reprovacao_motivo: r.reprovacao_motivo,
       }),
     );
   });
