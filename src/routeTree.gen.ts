@@ -23,6 +23,7 @@ import { Route as MinhaAgendaRouteImport } from './routes/minha-agenda'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as EstoqueRouteImport } from './routes/estoque'
 import { Route as EmpresasRouteImport } from './routes/empresas'
+import { Route as DefinirSenhaRouteImport } from './routes/definir-senha'
 import { Route as ConversasRouteImport } from './routes/conversas'
 import { Route as ContatosRouteImport } from './routes/contatos'
 import { Route as CondicoesComerciaisRouteImport } from './routes/condicoes-comerciais'
@@ -123,6 +124,11 @@ const EstoqueRoute = EstoqueRouteImport.update({
 const EmpresasRoute = EmpresasRouteImport.update({
   id: '/empresas',
   path: '/empresas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DefinirSenhaRoute = DefinirSenhaRouteImport.update({
+  id: '/definir-senha',
+  path: '/definir-senha',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ConversasRoute = ConversasRouteImport.update({
@@ -305,6 +311,7 @@ export interface FileRoutesByFullPath {
   '/condicoes-comerciais': typeof CondicoesComerciaisRoute
   '/contatos': typeof ContatosRoute
   '/conversas': typeof ConversasRoute
+  '/definir-senha': typeof DefinirSenhaRoute
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
   '/mcp': typeof McpRoute
@@ -352,6 +359,7 @@ export interface FileRoutesByTo {
   '/condicoes-comerciais': typeof CondicoesComerciaisRoute
   '/contatos': typeof ContatosRoute
   '/conversas': typeof ConversasRoute
+  '/definir-senha': typeof DefinirSenhaRoute
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
   '/mcp': typeof McpRoute
@@ -400,6 +408,7 @@ export interface FileRoutesById {
   '/condicoes-comerciais': typeof CondicoesComerciaisRoute
   '/contatos': typeof ContatosRoute
   '/conversas': typeof ConversasRoute
+  '/definir-senha': typeof DefinirSenhaRoute
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
   '/mcp': typeof McpRoute
@@ -449,6 +458,7 @@ export interface FileRouteTypes {
     | '/condicoes-comerciais'
     | '/contatos'
     | '/conversas'
+    | '/definir-senha'
     | '/empresas'
     | '/estoque'
     | '/mcp'
@@ -496,6 +506,7 @@ export interface FileRouteTypes {
     | '/condicoes-comerciais'
     | '/contatos'
     | '/conversas'
+    | '/definir-senha'
     | '/empresas'
     | '/estoque'
     | '/mcp'
@@ -543,6 +554,7 @@ export interface FileRouteTypes {
     | '/condicoes-comerciais'
     | '/contatos'
     | '/conversas'
+    | '/definir-senha'
     | '/empresas'
     | '/estoque'
     | '/mcp'
@@ -591,6 +603,7 @@ export interface RootRouteChildren {
   CondicoesComerciaisRoute: typeof CondicoesComerciaisRoute
   ContatosRoute: typeof ContatosRoute
   ConversasRoute: typeof ConversasRoute
+  DefinirSenhaRoute: typeof DefinirSenhaRoute
   EmpresasRoute: typeof EmpresasRoute
   EstoqueRoute: typeof EstoqueRoute
   McpRoute: typeof McpRoute
@@ -727,6 +740,13 @@ declare module '@tanstack/react-router' {
       path: '/empresas'
       fullPath: '/empresas'
       preLoaderRoute: typeof EmpresasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/definir-senha': {
+      id: '/definir-senha'
+      path: '/definir-senha'
+      fullPath: '/definir-senha'
+      preLoaderRoute: typeof DefinirSenhaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/conversas': {
@@ -959,6 +979,7 @@ const rootRouteChildren: RootRouteChildren = {
   CondicoesComerciaisRoute: CondicoesComerciaisRoute,
   ContatosRoute: ContatosRoute,
   ConversasRoute: ConversasRoute,
+  DefinirSenhaRoute: DefinirSenhaRoute,
   EmpresasRoute: EmpresasRoute,
   EstoqueRoute: EstoqueRoute,
   McpRoute: McpRoute,
