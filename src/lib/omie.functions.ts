@@ -360,6 +360,17 @@ async function ensurePedidoFromProposta(
     if (itErr) throw new Error(`Falha ao copiar itens do pedido: ${itErr.message}`);
   }
 
+  // 9) Histórico da etapa inicial + notificações/automações de entrada
+  await sb.from("pedido_stage_history").insert({
+    pedido_id: novoPedido.id,
+    from_stage: null,
+    to_stage: decisao.stage,
+    is_backward: false,
+    motivo: `Rota automática de aprovação: ${decisao.rota}`,
+    moved_by: callerId,
+  });
+  await aoEntrarNaEtapa(sb, novoPedido.id, decisao.stage);
+
   return { id: novoPedido.id, number: novoPedido.number, reused: false };
 }
 
