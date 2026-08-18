@@ -8,55 +8,34 @@ import { requireSupabaseAuth } from "@/lib/auth.middleware";
  * Nada altera leads/propostas nem dispara integrações externas.
  */
 
-export const PEDIDO_STAGES = [
-  { id: "pedido_recebido", label: "Pedido Recebido", color: "#94a3b8" },
-  { id: "em_validacao", label: "Em Validação", color: "#64748b" },
-  { id: "aguardando_aprovacao", label: "Aguard. Aprovação", color: "#f59e0b" },
-  { id: "aprovado_programado", label: "Aprovado / Programado", color: "#6366f1" },
-  { id: "em_producao", label: "Em Produção", color: "#8b5cf6" },
-  { id: "separacao_conferencia", label: "Separação / Conferência", color: "#0ea5e9" },
-  { id: "faturado_aguardando_coleta", label: "Faturado / Aguard. Coleta", color: "#06b6d4" },
-  { id: "despachado_transporte", label: "Despachado / Transporte", color: "#14b8a6" },
-  { id: "pedido_entregue", label: "Pedido Entregue", color: "#22c55e" },
-  { id: "concluido", label: "Concluído", color: "#16a34a" },
-] as const;
+import {
+  PEDIDO_STAGES,
+  PEDIDO_STAGE_REPROVADO,
+  PEDIDO_STAGE_IDS,
+  ALLOWED_FORWARD,
+  isBackward,
+  stageLabel,
+  type PedidoStageId,
+} from "@/lib/pedidos-stages";
 
-export type PedidoStageId = (typeof PEDIDO_STAGES)[number]["id"];
-const PEDIDO_STAGE_IDS = PEDIDO_STAGES.map((s) => s.id) as [PedidoStageId, ...PedidoStageId[]];
-const STAGE_ORDER: Record<PedidoStageId, number> = PEDIDO_STAGES.reduce(
-  (acc, s, i) => {
-    acc[s.id] = i;
-    return acc;
-  },
-  {} as Record<PedidoStageId, number>,
-);
+export {
+  PEDIDO_STAGES,
+  PEDIDO_STAGE_REPROVADO,
+  PEDIDO_STAGE_REPROVADO_LABEL,
+  PEDIDO_STAGE_IDS,
+  ALLOWED_FORWARD,
+  isBackward,
+  isTransitionAllowed,
+  stageLabel,
+  stageColor,
+  isPedidoFechado,
+  MODALIDADES_ENTREGA,
+  modalidadeLabel,
+  entregaBadgeLabel,
+  APROVACAO_ROTA_LABEL,
+} from "@/lib/pedidos-stages";
+export type { PedidoStageId, ModalidadeEntrega, AprovacaoRota } from "@/lib/pedidos-stages";
 
-/**
- * Matriz de transições FORWARD permitidas (documento seção 18).
- * Voltar (backward) para qualquer etapa anterior é permitido, mas exige motivo.
- */
-export const ALLOWED_FORWARD: Record<PedidoStageId, PedidoStageId[]> = {
-  pedido_recebido: ["em_validacao"],
-  em_validacao: ["aguardando_aprovacao", "aprovado_programado"],
-  aguardando_aprovacao: ["aprovado_programado"],
-  aprovado_programado: ["em_producao", "separacao_conferencia"],
-  em_producao: ["separacao_conferencia"],
-  separacao_conferencia: ["faturado_aguardando_coleta"],
-  faturado_aguardando_coleta: ["despachado_transporte"],
-  despachado_transporte: ["pedido_entregue"],
-  pedido_entregue: ["concluido"],
-  concluido: [],
-};
-
-export function isBackward(from: PedidoStageId, to: PedidoStageId): boolean {
-  return STAGE_ORDER[to] < STAGE_ORDER[from];
-}
-
-export function isTransitionAllowed(from: PedidoStageId, to: PedidoStageId): boolean {
-  if (from === to) return false;
-  if (isBackward(from, to)) return true; // permitido com motivo
-  return ALLOWED_FORWARD[from].includes(to);
-}
 
 export type PedidoRow = {
   id: string;
@@ -81,6 +60,11 @@ export type PedidoRow = {
   lead_id: string | null;
   lead_company: string | null;
   proposta_number: string | null;
+  modalidade_entrega: string | null;
+  entrega_confirmada: string | null;
+  encerrado_em: string | null;
+  aprovacao_rota: string | null;
+  reprovacao_motivo: string | null;
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -98,6 +82,7 @@ export const listPedidos = createServerFn({ method: "GET" })
           "equipe_responsavel, responsavel_atual_id, fiscal_status, nf_numero",
           "forma_atendimento, prioridade, ocorrencia",
           "vendedor_proprietario_id, proposta_id, lead_id",
+          "modalidade_entrega, entrega_confirmada, encerrado_em, aprovacao_rota, reprovacao_motivo",
           "leads:lead_id(company)",
           "propostas:proposta_id(number)",
         ].join(", "),
@@ -162,6 +147,8 @@ export const listPedidos = createServerFn({ method: "GET" })
         vendedor_proprietario_id: string | null; proposta_id: string | null; lead_id: string | null;
         leads?: { company: string | null } | null;
         propostas?: { number: string | null } | null;
+        modalidade_entrega: string | null; entrega_confirmada: string | null;
+        encerrado_em: string | null; aprovacao_rota: string | null; reprovacao_motivo: string | null;
       }) => ({
         id: r.id,
         number: r.number,
@@ -185,6 +172,11 @@ export const listPedidos = createServerFn({ method: "GET" })
         lead_id: r.lead_id,
         lead_company: r.leads?.company ?? null,
         proposta_number: r.propostas?.number ?? null,
+        modalidade_entrega: r.modalidade_entrega ?? "coleta",
+        entrega_confirmada: r.entrega_confirmada,
+        encerrado_em: r.encerrado_em,
+        aprovacao_rota: r.aprovacao_rota,
+        reprovacao_motivo: r.reprovacao_motivo,
       }),
     );
   });
@@ -208,7 +200,27 @@ export const listLeadsComPedido = createServerFn({ method: "GET" })
 
 export type MoveStageResult =
   | { ok: true; stage: PedidoStageId; backward: boolean }
-  | { ok: false; reason: "invalid_transition" | "needs_motivo"; message: string };
+  | { ok: false; reason: "invalid_transition" | "needs_motivo" | "forbidden"; message: string };
+
+/** Admin ou membro do perfil Financeiro (usado pela reprovação financeira). */
+async function isAdminOuFinanceiro(sb: LooseClient, userId: string): Promise<boolean> {
+  const { data: adm } = await sb
+    .from("user_roles")
+    .select("user_id")
+    .eq("user_id", userId)
+    .eq("role", "admin")
+    .maybeSingle();
+  if (adm) return true;
+  const { data: perfil } = await sb.from("perfis").select("id").eq("nome", "Financeiro").maybeSingle();
+  if (!perfil?.id) return false;
+  const { data: vinculo } = await sb
+    .from("user_perfis")
+    .select("user_id")
+    .eq("user_id", userId)
+    .eq("perfil_id", perfil.id)
+    .maybeSingle();
+  return !!vinculo;
+}
 
 /* ---------------------------------------------------------------------------
  * Fase 5 — Fila interna de notificações de mudança de etapa.
@@ -221,21 +233,14 @@ const NOTIFY_DISPATCH_ENABLED = false; // feature flag off — apenas registra
 type StageClassificacao = "informativa" | "acao_necessaria" | "alerta";
 
 const STAGE_CLASSIFICACAO: Record<PedidoStageId, StageClassificacao> = {
-  pedido_recebido: "informativa",
-  em_validacao: "informativa",
-  aguardando_aprovacao: "acao_necessaria",
-  aprovado_programado: "informativa",
+  analise_financeira: "acao_necessaria",
+  programacao: "acao_necessaria",
   em_producao: "informativa",
-  separacao_conferencia: "informativa",
-  faturado_aguardando_coleta: "informativa",
-  despachado_transporte: "informativa",
-  pedido_entregue: "informativa",
-  concluido: "informativa",
+  pronto: "acao_necessaria",
+  faturado_em_rota: "informativa",
+  pos_venda: "informativa",
+  reprovado_financeiro: "alerta",
 };
-
-function stageLabel(id: PedidoStageId): string {
-  return PEDIDO_STAGES.find((s) => s.id === id)?.label ?? id;
-}
 
 async function enqueueStageChangeNotification(
   sb: LooseClient,
@@ -355,8 +360,27 @@ export const updatePedidoStage = createServerFn({ method: "POST" })
       };
     }
 
-    // Bloqueio de conclusão por ocorrência aberta (doc 7.9 e 22)
-    if (to === "concluido") {
+    // Reprovação financeira: só admin/financeiro e sempre com motivo.
+    if (to === PEDIDO_STAGE_REPROVADO) {
+      if (!data.motivo) {
+        return {
+          ok: false,
+          reason: "needs_motivo",
+          message: "A reprovação financeira exige motivo.",
+        };
+      }
+      const permitido = await isAdminOuFinanceiro(sb, context.userId);
+      if (!permitido) {
+        return {
+          ok: false,
+          reason: "forbidden",
+          message: "Apenas administradores ou o financeiro podem reprovar um pedido.",
+        };
+      }
+    }
+
+    // Bloqueio de encerramento por ocorrência aberta (doc 7.9 e 22)
+    if (to === "pos_venda") {
       const { count: abertas, error: ocErr } = await sb
         .from("pedido_ocorrencias")
         .select("id", { count: "exact", head: true })
@@ -368,16 +392,15 @@ export const updatePedidoStage = createServerFn({ method: "POST" })
           ok: false,
           reason: "invalid_transition",
           message:
-            "Não é possível concluir: há ocorrência(s) em aberto. Resolva-as antes de concluir.",
+            "Não é possível avançar para pós-venda: há ocorrência(s) em aberto. Resolva-as antes.",
         };
       }
     }
 
     // Atualiza etapa
-    const { error: updErr } = await sb
-      .from("pedidos")
-      .update({ stage: to })
-      .eq("id", data.pedido_id);
+    const patch: Record<string, unknown> = { stage: to };
+    if (to === PEDIDO_STAGE_REPROVADO) patch.reprovacao_motivo = data.motivo ?? null;
+    const { error: updErr } = await sb.from("pedidos").update(patch).eq("id", data.pedido_id);
     if (updErr) throw new Error(`Falha ao atualizar etapa: ${updErr.message}`);
 
     // Registra histórico (imutável)
@@ -412,6 +435,12 @@ export const updatePedidoStage = createServerFn({ method: "POST" })
       } catch (e) {
         console.error("[updatePedidoStage] falha ao enfileirar notificação:", e);
       }
+    }
+
+    // Notificações na tela + automações de etapa (nunca lançam).
+    {
+      const { aoEntrarNaEtapa } = await import("@/lib/pedidos-fluxo.server");
+      await aoEntrarNaEtapa(sb, data.pedido_id, to, { motivoReprovacao: data.motivo ?? null });
     }
 
     return { ok: true, stage: to, backward };
@@ -909,4 +938,25 @@ export const listPedidoNotificacoes = createServerFn({ method: "GET" })
       .limit(200);
     if (error) throw new Error(`Falha ao listar notificações: ${error.message}`);
     return (rows ?? []) as PedidoNotificacaoRow[];
+  });
+
+/** Define a modalidade de entrega do pedido (coleta | entrega_propria). */
+export const setModalidadeEntrega = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { pedido_id: string; modalidade: "coleta" | "entrega_propria" }) =>
+    z
+      .object({
+        pedido_id: z.string().uuid(),
+        modalidade: z.enum(["coleta", "entrega_propria"]),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const sb: LooseClient = context.supabase;
+    const { error } = await sb
+      .from("pedidos")
+      .update({ modalidade_entrega: data.modalidade })
+      .eq("id", data.pedido_id);
+    if (error) throw new Error(`Falha ao atualizar modalidade: ${error.message}`);
+    return { ok: true as const };
   });

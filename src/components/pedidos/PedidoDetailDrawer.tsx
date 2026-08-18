@@ -248,8 +248,7 @@ function AprovacaoBlock({
   });
 
   const showRequest =
-    pedido.stage === "em_validacao" ||
-    pedido.stage === "aguardando_aprovacao" ||
+    pedido.stage === "analise_financeira" ||
     (pedido.aprovacao_solicitada_em && !pedido.aprovacao_decisao);
   const showDecision = pedido.aprovacao_solicitada_em && !pedido.aprovacao_decisao;
 
@@ -354,9 +353,7 @@ function ChecklistBlock({
   useEffect(() => setItems(initial), [initial]);
 
   const isConferencia: PedidoStageId[] = [
-    "separacao_conferencia", "aprovado_programado", "em_producao",
-    "faturado_aguardando_coleta", "despachado_transporte",
-    "pedido_entregue", "concluido",
+    "programacao", "em_producao", "pronto", "faturado_em_rota", "pos_venda",
   ];
   const relevant = isConferencia.includes(pedido.stage);
   const done = items.filter((i) => i.done).length;

@@ -114,6 +114,9 @@ export type Database = {
       }
       arena_config: {
         Row: {
+          aprovacao_primeira_compra_valor: number
+          aprovacao_recorrencia_dias: number
+          aprovacao_valor_obrigatorio: number
           arena_cap_temporada: number
           arena_data_inicio: string
           arena_orcamento_mensal: number
@@ -142,6 +145,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          aprovacao_primeira_compra_valor?: number
+          aprovacao_recorrencia_dias?: number
+          aprovacao_valor_obrigatorio?: number
           arena_cap_temporada?: number
           arena_data_inicio?: string
           arena_orcamento_mensal?: number
@@ -170,6 +176,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          aprovacao_primeira_compra_valor?: number
+          aprovacao_recorrencia_dias?: number
+          aprovacao_valor_obrigatorio?: number
           arena_cap_temporada?: number
           arena_data_inicio?: string
           arena_orcamento_mensal?: number
@@ -435,6 +444,7 @@ export type Database = {
           omie_codigo_cliente_inplastic: number | null
           omie_codigo_cliente_taoplast: number | null
           razao_social: string
+          recorrente_manual: boolean
           simples_optante: boolean | null
           suframa_isento: boolean | null
           suframa_numero: string | null
@@ -469,6 +479,7 @@ export type Database = {
           omie_codigo_cliente_inplastic?: number | null
           omie_codigo_cliente_taoplast?: number | null
           razao_social: string
+          recorrente_manual?: boolean
           simples_optante?: boolean | null
           suframa_isento?: boolean | null
           suframa_numero?: string | null
@@ -503,6 +514,7 @@ export type Database = {
           omie_codigo_cliente_inplastic?: number | null
           omie_codigo_cliente_taoplast?: number | null
           razao_social?: string
+          recorrente_manual?: boolean
           simples_optante?: boolean | null
           suframa_isento?: boolean | null
           suframa_numero?: string | null
@@ -1220,6 +1232,7 @@ export type Database = {
           created_at: string
           id: string
           lida_em: string | null
+          pedido_id: string | null
           tipo: string
           titulo: string | null
           user_id: string
@@ -1229,6 +1242,7 @@ export type Database = {
           created_at?: string
           id?: string
           lida_em?: string | null
+          pedido_id?: string | null
           tipo: string
           titulo?: string | null
           user_id: string
@@ -1238,6 +1252,7 @@ export type Database = {
           created_at?: string
           id?: string
           lida_em?: string | null
+          pedido_id?: string | null
           tipo?: string
           titulo?: string | null
           user_id?: string
@@ -1248,6 +1263,13 @@ export type Database = {
             columns: ["conversa_id"]
             isOneToOne: false
             referencedRelation: "whatsapp_conversas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notificacoes_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos"
             referencedColumns: ["id"]
           },
         ]
@@ -1507,6 +1529,7 @@ export type Database = {
           aprovacao_decisao: string | null
           aprovacao_motivo: string | null
           aprovacao_observacao: string | null
+          aprovacao_rota: string | null
           aprovacao_solicitada_em: string | null
           aprovacao_solicitada_por: string | null
           checklist_atualizado_em: string | null
@@ -1514,6 +1537,8 @@ export type Database = {
           checklist_conferencia: Json
           created_at: string
           despachado_em: string | null
+          encerrado_em: string | null
+          entrega_confirmada: string | null
           entrega_recebida_por: string | null
           entregue_em: string | null
           equipe_responsavel: string | null
@@ -1522,6 +1547,7 @@ export type Database = {
           id: string
           lead_id: string | null
           metadata: Json
+          modalidade_entrega: string
           motorista: string | null
           nf_chave: string | null
           nf_emitida_em: string | null
@@ -1539,6 +1565,7 @@ export type Database = {
           prioridade: string | null
           proposta_id: string | null
           proposta_snapshot: Json | null
+          reprovacao_motivo: string | null
           responsavel_atual_id: string | null
           stage: Database["public"]["Enums"]["pedido_stage"]
           status: string
@@ -1553,6 +1580,7 @@ export type Database = {
           aprovacao_decisao?: string | null
           aprovacao_motivo?: string | null
           aprovacao_observacao?: string | null
+          aprovacao_rota?: string | null
           aprovacao_solicitada_em?: string | null
           aprovacao_solicitada_por?: string | null
           checklist_atualizado_em?: string | null
@@ -1560,6 +1588,8 @@ export type Database = {
           checklist_conferencia?: Json
           created_at?: string
           despachado_em?: string | null
+          encerrado_em?: string | null
+          entrega_confirmada?: string | null
           entrega_recebida_por?: string | null
           entregue_em?: string | null
           equipe_responsavel?: string | null
@@ -1568,6 +1598,7 @@ export type Database = {
           id?: string
           lead_id?: string | null
           metadata?: Json
+          modalidade_entrega?: string
           motorista?: string | null
           nf_chave?: string | null
           nf_emitida_em?: string | null
@@ -1585,6 +1616,7 @@ export type Database = {
           prioridade?: string | null
           proposta_id?: string | null
           proposta_snapshot?: Json | null
+          reprovacao_motivo?: string | null
           responsavel_atual_id?: string | null
           stage?: Database["public"]["Enums"]["pedido_stage"]
           status?: string
@@ -1599,6 +1631,7 @@ export type Database = {
           aprovacao_decisao?: string | null
           aprovacao_motivo?: string | null
           aprovacao_observacao?: string | null
+          aprovacao_rota?: string | null
           aprovacao_solicitada_em?: string | null
           aprovacao_solicitada_por?: string | null
           checklist_atualizado_em?: string | null
@@ -1606,6 +1639,8 @@ export type Database = {
           checklist_conferencia?: Json
           created_at?: string
           despachado_em?: string | null
+          encerrado_em?: string | null
+          entrega_confirmada?: string | null
           entrega_recebida_por?: string | null
           entregue_em?: string | null
           equipe_responsavel?: string | null
@@ -1614,6 +1649,7 @@ export type Database = {
           id?: string
           lead_id?: string | null
           metadata?: Json
+          modalidade_entrega?: string
           motorista?: string | null
           nf_chave?: string | null
           nf_emitida_em?: string | null
@@ -1631,6 +1667,7 @@ export type Database = {
           prioridade?: string | null
           proposta_id?: string | null
           proposta_snapshot?: Json | null
+          reprovacao_motivo?: string | null
           responsavel_atual_id?: string | null
           stage?: Database["public"]["Enums"]["pedido_stage"]
           status?: string
@@ -2174,6 +2211,7 @@ export type Database = {
           nota_conclusao: string | null
           origem: string
           owner_id: string | null
+          pedido_id: string | null
           prioridade: number
           status: string
           tipo: string | null
@@ -2196,6 +2234,7 @@ export type Database = {
           nota_conclusao?: string | null
           origem?: string
           owner_id?: string | null
+          pedido_id?: string | null
           prioridade?: number
           status?: string
           tipo?: string | null
@@ -2218,6 +2257,7 @@ export type Database = {
           nota_conclusao?: string | null
           origem?: string
           owner_id?: string | null
+          pedido_id?: string | null
           prioridade?: number
           status?: string
           tipo?: string | null
@@ -2230,6 +2270,13 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tarefas_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos"
             referencedColumns: ["id"]
           },
         ]
@@ -2996,6 +3043,12 @@ export type Database = {
         | "despachado_transporte"
         | "pedido_entregue"
         | "concluido"
+        | "analise_financeira"
+        | "programacao"
+        | "pronto"
+        | "faturado_em_rota"
+        | "pos_venda"
+        | "reprovado_financeiro"
       proposal_status:
         | "rascunho"
         | "enviada"
@@ -3175,6 +3228,12 @@ export const Constants = {
         "despachado_transporte",
         "pedido_entregue",
         "concluido",
+        "analise_financeira",
+        "programacao",
+        "pronto",
+        "faturado_em_rota",
+        "pos_venda",
+        "reprovado_financeiro",
       ],
       proposal_status: [
         "rascunho",

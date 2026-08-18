@@ -79,7 +79,7 @@ function PedidosKanbanPage() {
   const [tAtrasados, setTAtrasados] = useState(false);
   const [tBloqueados, setTBloqueados] = useState(false);
   const [tOcorrencia, setTOcorrencia] = useState(false);
-  const [tConcluidos, setTConcluidos] = useState(false);
+  const [tReprovados, setTReprovados] = useState(false);
 
 
   const pedidosQ = useQuery({
@@ -146,7 +146,7 @@ function PedidosKanbanPage() {
     };
   }, [allRows]);
 
-  const terminalStages: PedidoStageId[] = ["pedido_entregue", "concluido"];
+  const terminalStages: PedidoStageId[] = ["pos_venda", "reprovado_financeiro"];
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
@@ -177,10 +177,11 @@ function PedidosKanbanPage() {
         if ((p.ocorrencias_abertas ?? 0) <= 0 && !fiscalBlock) return false;
       }
       if (tOcorrencia && !(p.ocorrencia && p.ocorrencia.trim().length > 0)) return false;
-      if (tConcluidos && p.stage !== "concluido") return false;
+      if (p.stage === "reprovado_financeiro" && !tReprovados) return false;
+      if (p.stage === "pos_venda" && p.encerrado_em && !tReprovados) return false;
       return true;
     });
-  }, [allRows, search, fVendedor, fResponsavel, fStage, fForma, tAtrasados, tBloqueados, tOcorrencia, tConcluidos]);
+  }, [allRows, search, fVendedor, fResponsavel, fStage, fForma, tAtrasados, tBloqueados, tOcorrencia, tReprovados]);
 
   const activeFilterCount =
     (fVendedor !== "all" ? 1 : 0) +
@@ -190,7 +191,7 @@ function PedidosKanbanPage() {
     (tAtrasados ? 1 : 0) +
     (tBloqueados ? 1 : 0) +
     (tOcorrencia ? 1 : 0) +
-    (tConcluidos ? 1 : 0);
+    (tReprovados ? 1 : 0);
 
   const clearFilters = () => {
     setFVendedor("all");
@@ -200,15 +201,14 @@ function PedidosKanbanPage() {
     setTAtrasados(false);
     setTBloqueados(false);
     setTOcorrencia(false);
-    setTConcluidos(false);
+    setTReprovados(false);
   };
 
 
   const byStage = useMemo(() => {
     const map: Record<PedidoStageId, PedidoRow[]> = {
-      pedido_recebido: [], em_validacao: [], aguardando_aprovacao: [], aprovado_programado: [],
-      em_producao: [], separacao_conferencia: [], faturado_aguardando_coleta: [],
-      despachado_transporte: [], pedido_entregue: [], concluido: [],
+      analise_financeira: [], programacao: [], em_producao: [],
+      pronto: [], faturado_em_rota: [], pos_venda: [], reprovado_financeiro: [],
     };
     filtered.forEach((p) => map[p.stage]?.push(p));
     return map;
@@ -228,7 +228,7 @@ function PedidosKanbanPage() {
     const from = pedido.stage;
     if (from === target) return;
 
-    if (target === "concluido" && (pedido.ocorrencias_abertas ?? 0) > 0) {
+    if (target === "pos_venda" && (pedido.ocorrencias_abertas ?? 0) > 0) {
       toast.error(
         "Não é possível concluir: há ocorrência(s) em aberto. Resolva-as antes de concluir.",
       );
@@ -294,7 +294,7 @@ function PedidosKanbanPage() {
         tAtrasados={tAtrasados} setTAtrasados={setTAtrasados}
         tBloqueados={tBloqueados} setTBloqueados={setTBloqueados}
         tOcorrencia={tOcorrencia} setTOcorrencia={setTOcorrencia}
-        tConcluidos={tConcluidos} setTConcluidos={setTConcluidos}
+        tReprovados={tReprovados} setTReprovados={setTReprovados}
         activeCount={activeFilterCount}
         onClear={clearFilters}
         totalCount={allRows.length}
@@ -316,7 +316,7 @@ function PedidosKanbanPage() {
             {PEDIDO_STAGES.map((stage) => {
               const blockedByOcorrencia =
                 !!activePedido &&
-                stage.id === "concluido" &&
+                stage.id === "pos_venda" &&
                 (activePedido.ocorrencias_abertas ?? 0) > 0;
               const canDrop = activePedido
                 ? isTransitionAllowed(activePedido.stage, stage.id) && !blockedByOcorrencia
@@ -446,7 +446,7 @@ function PedidoCard({
     differenceInCalendarDays(new Date(), new Date(pedido.stage_changed_at)),
   );
 
-  const terminalStages: PedidoStageId[] = ["pedido_entregue", "concluido"];
+  const terminalStages: PedidoStageId[] = ["pos_venda", "reprovado_financeiro"];
   const previsao = pedido.previsao_entrega ? new Date(pedido.previsao_entrega) : null;
   const atrasado =
     previsao !== null &&
@@ -459,7 +459,7 @@ function PedidoCard({
   const forma = pedido.forma_atendimento?.trim() || null;
 
   const pendencias: string[] = [];
-  if (pedido.stage === "aguardando_aprovacao") pendencias.push("Aguardando aprovação");
+  if (pedido.stage === "analise_financeira") pendencias.push("Aguardando aprovação");
   if (
     pedido.fiscal_status &&
     pedido.fiscal_status !== "nao_iniciado" &&
@@ -639,8 +639,8 @@ function BackwardMotiveDialog({
 function KpiBar({ pedidos }: { pedidos: PedidoRow[] }) {
   const kpis = useMemo(() => {
     const now = new Date();
-    const terminal: PedidoStageId[] = ["pedido_entregue", "concluido"];
-    const ativos = pedidos.filter((p) => p.stage !== "concluido");
+    const terminal: PedidoStageId[] = ["pos_venda", "reprovado_financeiro"];
+    const ativos = pedidos.filter((p) => !terminal.includes(p.stage));
     const valorAtivos = ativos.reduce((s, p) => s + p.total, 0);
 
     const atrasados = pedidos.filter((p) => {
@@ -658,11 +658,9 @@ function KpiBar({ pedidos }: { pedidos: PedidoRow[] }) {
     }).length;
 
     const emProducao = pedidos.filter((p) => p.stage === "em_producao").length;
-    const aguardSaida = pedidos.filter(
-      (p) => p.stage === "faturado_aguardando_coleta",
-    ).length;
-    const emTransporte = pedidos.filter((p) => p.stage === "despachado_transporte").length;
-    const entregues = pedidos.filter((p) => p.stage === "pedido_entregue").length;
+    const aguardSaida = pedidos.filter((p) => p.stage === "pronto").length;
+    const emTransporte = pedidos.filter((p) => p.stage === "faturado_em_rota").length;
+    const entregues = pedidos.filter((p) => p.stage === "pos_venda").length;
     const comOcorrencia = pedidos.filter((p) => (p.ocorrencias_abertas ?? 0) > 0).length;
 
     const diasArr = pedidos
@@ -675,7 +673,7 @@ function KpiBar({ pedidos }: { pedidos: PedidoRow[] }) {
         ? diasArr.reduce((s, n) => s + n, 0) / diasArr.length
         : 0;
 
-    const concluidos = pedidos.filter((p) => p.stage === "concluido").length;
+    const concluidos = pedidos.filter((p) => !!p.encerrado_em).length;
     const total = pedidos.length;
     const pctPosVenda = total > 0 ? (concluidos / total) * 100 : 0;
 
@@ -805,7 +803,7 @@ type FilterBarProps = {
   tAtrasados: boolean; setTAtrasados: (v: boolean) => void;
   tBloqueados: boolean; setTBloqueados: (v: boolean) => void;
   tOcorrencia: boolean; setTOcorrencia: (v: boolean) => void;
-  tConcluidos: boolean; setTConcluidos: (v: boolean) => void;
+  tReprovados: boolean; setTReprovados: (v: boolean) => void;
   activeCount: number;
   onClear: () => void;
   totalCount: number;
@@ -817,7 +815,7 @@ function FilterBar(props: FilterBarProps) {
     options, fVendedor, setFVendedor, fResponsavel, setFResponsavel,
     fStage, setFStage, fForma, setFForma,
     tAtrasados, setTAtrasados, tBloqueados, setTBloqueados,
-    tOcorrencia, setTOcorrencia, tConcluidos, setTConcluidos,
+    tOcorrencia, setTOcorrencia, tReprovados, setTReprovados,
     activeCount, onClear, totalCount, filteredCount,
   } = props;
 
@@ -856,8 +854,8 @@ function FilterBar(props: FilterBarProps) {
         <ToggleChip active={tOcorrencia} onClick={() => setTOcorrencia(!tOcorrencia)} tone="warning">
           <Ban className="h-3 w-3 mr-1" /> Com ocorrência
         </ToggleChip>
-        <ToggleChip active={tConcluidos} onClick={() => setTConcluidos(!tConcluidos)} tone="success">
-          <CheckCircle2 className="h-3 w-3 mr-1" /> Concluídos
+        <ToggleChip active={tReprovados} onClick={() => setTReprovados(!tReprovados)} tone="danger">
+          <Ban className="h-3 w-3 mr-1" /> Mostrar reprovados/encerrados
         </ToggleChip>
 
         <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">

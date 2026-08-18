@@ -297,7 +297,11 @@ async function ensurePedidoFromProposta(
     lead: leadRes.data ?? null,
   };
 
-  // 6) Insere pedido
+  // 6) Motor de regras de aprovação financeira (parâmetros em arena_config)
+  const { avaliarAprovacaoPedido, aoEntrarNaEtapa } = await import("@/lib/pedidos-fluxo.server");
+  const decisao = await avaliarAprovacaoPedido(sb, { total, leadId });
+
+  // 7) Insere pedido
   const { data: novoPedido, error: insErr } = await sb
     .from("pedidos")
     .insert({
@@ -309,7 +313,8 @@ async function ensurePedidoFromProposta(
       responsavel_atual_id: null,
       equipe_responsavel: "Julia (Operações)",
       status: "novo",
-      stage: "pedido_recebido",
+      stage: decisao.stage,
+      aprovacao_rota: decisao.rota,
       fiscal_status: "nao_iniciado",
       pos_venda_status: "nao_iniciado",
       total,
@@ -354,6 +359,17 @@ async function ensurePedidoFromProposta(
     const { error: itErr } = await sb.from("pedido_itens").insert(rows);
     if (itErr) throw new Error(`Falha ao copiar itens do pedido: ${itErr.message}`);
   }
+
+  // 9) Histórico da etapa inicial + notificações/automações de entrada
+  await sb.from("pedido_stage_history").insert({
+    pedido_id: novoPedido.id,
+    from_stage: null,
+    to_stage: decisao.stage,
+    is_backward: false,
+    motivo: `Rota automática de aprovação: ${decisao.rota}`,
+    moved_by: callerId,
+  });
+  await aoEntrarNaEtapa(sb, novoPedido.id, decisao.stage);
 
   return { id: novoPedido.id, number: novoPedido.number, reused: false };
 }
