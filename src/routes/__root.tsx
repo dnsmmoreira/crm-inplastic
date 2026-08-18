@@ -42,7 +42,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import { useIsAdmin } from "@/lib/crm-store";
-import { AuthProvider, useAuth } from "@/hooks/use-auth";
+import { AuthProvider, useAuth, hasPerm } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { NotificacoesBell } from "@/components/layout/NotificacoesBell";
 import { NovaConversaAlerta } from "@/components/atendimento/NovaConversaAlerta";
