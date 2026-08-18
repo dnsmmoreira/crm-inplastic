@@ -26,7 +26,16 @@ import {
   type PermissoesUsuario,
 } from "@/lib/usuarios.functions";
 import { getPerfilDoUsuario, setPerfilDoUsuario } from "@/lib/perfis.functions";
+import {
+  ARENA_TIPOS,
+  ARENA_PARTICIPACAO_PADRAO,
+  getArenaParticipacao,
+  saveArenaParticipacao,
+  type ArenaParticipacao,
+  type ArenaTipoComercial,
+} from "@/lib/arena.functions";
 import { DefinirSenhaDialog } from "@/components/usuarios/DefinirSenhaDialog";
+
 
 type PerfilOpcao = { id: string; nome: string; baseRole: "admin" | "vendedor"; ativo: boolean };
 
