@@ -138,31 +138,94 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
-const NAV = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, adminOnly: false },
-  { to: "/pipeline", label: "Funil de Vendas", icon: KanbanSquare, adminOnly: false },
-  { to: "/canais", label: "Canais de Entrada", icon: MessageSquare, adminOnly: false, perm: "configurar_integracoes" },
-  { to: "/atendimento-ia", label: "Atendimento IA", icon: Radio, adminOnly: false },
-  { to: "/conversas", label: "Minhas Conversas", icon: MessageSquare, adminOnly: false },
-  { to: "/agente-ia", label: "Agente IA", icon: Bot, adminOnly: false },
-  { to: "/contatos", label: "Contatos", icon: Users, adminOnly: false },
-  { to: "/clientes", label: "Clientes", icon: Building2, adminOnly: false },
-  { to: "/tarefas", label: "Tarefas", icon: CheckSquare, adminOnly: false },
-  { to: "/minha-agenda", label: "Minha Agenda", icon: ClipboardList, adminOnly: false },
-  { to: "/placar", label: "Placar", icon: Trophy, adminOnly: false },
-  { to: "/propostas", label: "Propostas", icon: FileText, adminOnly: false },
-  { to: "/pedidos", label: "Pedidos", icon: ClipboardList, adminOnly: false },
-  { to: "/relatorios", label: "Relatórios", icon: BarChart3, adminOnly: false, perm: "ver_relatorios" },
-  { to: "/tabela-precos", label: "Tabela de Preços", icon: Tags, adminOnly: false },
-  { to: "/estoque", label: "Estoque", icon: Boxes, adminOnly: false },
+type NavCtx = { isAdmin: boolean; user: ReturnType<typeof useAuth>["user"] };
 
-  { to: "/produtos", label: "Produtos", icon: Package, adminOnly: true },
-  { to: "/condicoes-comerciais", label: "Condições Comerciais", icon: Settings2, adminOnly: true },
-  { to: "/arena", label: "ARENA", icon: Trophy, adminOnly: true },
-  { to: "/empresas", label: "Empresas do Grupo", icon: Building2, adminOnly: true },
-  { to: "/usuarios", label: "Usuários", icon: UserCog, adminOnly: true, perm: "gerenciar_usuarios" },
+type NavItem = {
+  to: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  show: (c: NavCtx) => boolean;
+};
 
-] as const;
+type NavGroup = { id: string; label: string; icon: typeof LayoutDashboard; items: NavItem[] };
+
+/** Vendedor comum = perfil de vendas (chave propostas.editar). Financeiro/Operacional não têm. */
+const isVendedorComum = (c: NavCtx) => !c.isAdmin && hasPerm(c.user, "propostas.editar");
+const key = (chave: string) => (c: NavCtx) => c.isAdmin || hasPerm(c.user, chave);
+const adminOnly = (c: NavCtx) => c.isAdmin;
+const always = () => true;
+const vendas = (c: NavCtx) => c.isAdmin || isVendedorComum(c);
+const vendasOu = (chave: string) => (c: NavCtx) => vendas(c) || hasPerm(c.user, chave);
+
+const NAV_ROOT: NavItem[] = [
+  { to: "/", label: "Início", icon: LayoutDashboard, show: always },
+  { to: "/pipeline", label: "Pipeline", icon: KanbanSquare, show: vendas },
+  { to: "/conversas", label: "Conversas", icon: MessageSquare, show: key("whatsapp.atender") },
+  { to: "/placar", label: "Placar", icon: Trophy, show: vendas },
+];
+
+const NAV_GROUPS: NavGroup[] = [
+  {
+    id: "cadastros",
+    label: "Cadastros",
+    icon: Building2,
+    items: [
+      { to: "/clientes", label: "Clientes", icon: Building2, show: vendasOu("clientes.ver_todos") },
+      { to: "/contatos", label: "Contatos", icon: Users, show: vendasOu("clientes.ver_todos") },
+      { to: "/empresas", label: "Empresas", icon: Building2, show: vendasOu("clientes.ver_todos") },
+      { to: "/produtos", label: "Produtos", icon: Package, show: vendasOu("clientes.ver_todos") },
+    ],
+  },
+  {
+    id: "negocios",
+    label: "Negócios",
+    icon: FileText,
+    items: [
+      { to: "/propostas", label: "Propostas", icon: FileText, show: vendasOu("propostas.ver_todas") },
+      { to: "/pedidos", label: "Pedidos", icon: ClipboardList, show: vendasOu("pedidos.ver_todos") },
+      { to: "/condicoes-comerciais", label: "Condições Comerciais", icon: Settings2, show: adminOnly },
+      { to: "/tabela-precos", label: "Tabela de Preços", icon: Tags, show: vendas },
+    ],
+  },
+  {
+    id: "meu-dia",
+    label: "Meu Dia",
+    icon: ClipboardList,
+    items: [
+      { to: "/minha-agenda", label: "Minha Agenda", icon: ClipboardList, show: always },
+      { to: "/tarefas", label: "Tarefas", icon: CheckSquare, show: always },
+    ],
+  },
+  {
+    id: "empresa",
+    label: "Empresa",
+    icon: BarChart3,
+    items: [
+      { to: "/relatorios", label: "Relatórios", icon: BarChart3, show: key("relatorios.ver") },
+      { to: "/estoque", label: "Estoque", icon: Boxes, show: key("estoque.ver") },
+      { to: "/arena", label: "ARENA", icon: Trophy, show: adminOnly },
+      {
+        to: "/usuarios",
+        label: "Usuários",
+        icon: UserCog,
+        show: (c) => c.isAdmin && hasPerm(c.user, "usuarios.gerenciar"),
+      },
+    ],
+  },
+  {
+    id: "ia-canais",
+    label: "IA & Canais",
+    icon: Bot,
+    items: [
+      { to: "/atendimento-ia", label: "Atendimento IA", icon: Radio, show: adminOnly },
+      { to: "/agente-ia", label: "Agente IA", icon: Bot, show: adminOnly },
+      { to: "/canais", label: "Canais", icon: MessageSquare, show: adminOnly },
+    ],
+  },
+];
+
+const OPEN_STORAGE_KEY = "crm-sidebar-groups";
+
 
 
 function AppShell({ children }: { children: ReactNode }) {
