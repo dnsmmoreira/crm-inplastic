@@ -197,9 +197,23 @@ function PlacarPage() {
         </CardContent>
       </Card>
 
-      <p className="text-xs text-muted-foreground">
-        Meta em R$ é individual (apenas você vê a sua; admin vê todas). Bônus escalonado no score: 50% · 80% · 100% · 120%.
-      </p>
+      <div className="space-y-1 text-xs text-muted-foreground">
+        <p>
+          <span className="font-medium text-amber-700">ARENA Premiação</span> — Score de Atividade:
+          pontos de disciplina comercial (propostas, tarefas, pós-venda no prazo, penalidade de SLA),
+          com bônus escalonado por faixa da meta: 50% · 80% · 100% · 120%.
+        </p>
+        <p>
+          <span className="font-medium text-primary">ARENA Performance</span> — resultado comercial
+          observado: ganhos, % da meta, conversão, perdas, tempo de 1ª resposta, SLAs, carteira e
+          pós-venda.
+        </p>
+        <p>
+          O Score de Atividade não é o Score do lead (oportunidade) e não define distribuição de
+          leads. Meta em R$ é individual: apenas você vê a sua; admin vê todas.
+        </p>
+      </div>
+
     </div>
   );
 }
