@@ -424,6 +424,12 @@ export const updatePedidoStage = createServerFn({ method: "POST" })
       }
     }
 
+    // Notificações na tela + automações de etapa (nunca lançam).
+    {
+      const { aoEntrarNaEtapa } = await import("@/lib/pedidos-fluxo.server");
+      await aoEntrarNaEtapa(sb, data.pedido_id, to, { motivoReprovacao: data.motivo ?? null });
+    }
+
     return { ok: true, stage: to, backward };
   });
 
