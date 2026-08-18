@@ -150,8 +150,9 @@ function PipelinePage() {
 
 
   return (
-    <div className="p-4 md:p-8 space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="flex h-[calc(100dvh-4rem)] flex-col gap-4 overflow-hidden p-4 md:p-8">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
+
         <div>
           <h1 className="text-2xl md:text-3xl font-semibold">Funil de Vendas</h1>
           <p className="text-sm text-muted-foreground">Arraste os cards entre as etapas do processo consultivo</p>
