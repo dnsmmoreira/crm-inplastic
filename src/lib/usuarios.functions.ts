@@ -413,7 +413,12 @@ export const updateUsuario = createServerFn({ method: "POST" })
           anterior: metaAtual?.meta_valor_mensal ?? 0,
           novo: v.metaMensal,
         });
+        const motivo = (v.metaMotivo ?? "").trim();
+        if (motivo) {
+          audit.push({ campo: "meta_mensal_motivo", anterior: null, novo: motivo });
+        }
       }
+
 
       const { data: filaAtual } = await sb
         .from("fila_vendedores")
