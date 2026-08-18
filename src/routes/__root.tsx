@@ -158,6 +158,7 @@ const NAV = [
 
   { to: "/produtos", label: "Produtos", icon: Package, adminOnly: true },
   { to: "/condicoes-comerciais", label: "Condições Comerciais", icon: Settings2, adminOnly: true },
+  { to: "/arena", label: "ARENA", icon: Trophy, adminOnly: true },
   { to: "/empresas", label: "Empresas do Grupo", icon: Building2, adminOnly: true },
   { to: "/usuarios", label: "Usuários", icon: UserCog, adminOnly: true, perm: "gerenciar_usuarios" },
 
