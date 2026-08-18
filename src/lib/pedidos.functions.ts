@@ -187,7 +187,27 @@ export const listLeadsComPedido = createServerFn({ method: "GET" })
 
 export type MoveStageResult =
   | { ok: true; stage: PedidoStageId; backward: boolean }
-  | { ok: false; reason: "invalid_transition" | "needs_motivo"; message: string };
+  | { ok: false; reason: "invalid_transition" | "needs_motivo" | "forbidden"; message: string };
+
+/** Admin ou membro do perfil Financeiro (usado pela reprovação financeira). */
+async function isAdminOuFinanceiro(sb: LooseClient, userId: string): Promise<boolean> {
+  const { data: adm } = await sb
+    .from("user_roles")
+    .select("user_id")
+    .eq("user_id", userId)
+    .eq("role", "admin")
+    .maybeSingle();
+  if (adm) return true;
+  const { data: perfil } = await sb.from("perfis").select("id").eq("nome", "Financeiro").maybeSingle();
+  if (!perfil?.id) return false;
+  const { data: vinculo } = await sb
+    .from("user_perfis")
+    .select("user_id")
+    .eq("user_id", userId)
+    .eq("perfil_id", perfil.id)
+    .maybeSingle();
+  return !!vinculo;
+}
 
 /* ---------------------------------------------------------------------------
  * Fase 5 — Fila interna de notificações de mudança de etapa.
