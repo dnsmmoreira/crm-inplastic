@@ -84,6 +84,13 @@ export const concluirTarefa = createServerFn({ method: "POST" })
       })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
+
+    // Concluir a tarefa de pós-venda do pedido ENCERRA o pedido (sai do quadro).
+    {
+      const { encerrarPedidoPorTarefa } = await import("@/lib/pedidos-fluxo.server");
+      await encerrarPedidoPorTarefa(supabase, data.id);
+    }
+
     return { ok: true };
   });
 
