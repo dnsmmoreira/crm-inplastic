@@ -191,7 +191,7 @@ function PedidosKanbanPage() {
     (tAtrasados ? 1 : 0) +
     (tBloqueados ? 1 : 0) +
     (tOcorrencia ? 1 : 0) +
-    (tConcluidos ? 1 : 0);
+    (tReprovados ? 1 : 0);
 
   const clearFilters = () => {
     setFVendedor("all");
