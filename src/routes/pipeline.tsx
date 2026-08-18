@@ -13,7 +13,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { Plus, Package, Calendar as CalendarIcon, Search, ArrowDownUp, X, PackageCheck } from "lucide-react";
+import { Plus, Package, Calendar as CalendarIcon, Search, ArrowDownUp, X, PackageCheck, ChevronLeft, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useCrm, STAGES, formatBRL, leadTemperature, followupTemperature, type Lead, type StageId, type FollowupLevel, useVisibleLeads, useLeadValueMap } from "@/lib/crm-store";
@@ -31,6 +31,8 @@ import { cn } from "@/lib/utils";
 import { listLeadsComPedido } from "@/lib/pedidos.functions";
 
 type SortMode = "default" | "urgency" | "urgency-desc";
+const CARDS_PER_PAGE = 15;
+
 const AGENDA_FILTERS: { level: FollowupLevel; label: string; emoji: string }[] = [
   { level: "urgent", label: "Urgente", emoji: "🔥" },
   { level: "attention", label: "Atenção", emoji: "⚠️" },
