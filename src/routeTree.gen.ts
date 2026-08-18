@@ -15,7 +15,6 @@ import { Route as TarefasRouteImport } from './routes/tarefas'
 import { Route as TabelaPrecosRouteImport } from './routes/tabela-precos'
 import { Route as RelatoriosRouteImport } from './routes/relatorios'
 import { Route as ProdutosRouteImport } from './routes/produtos'
-import { Route as PrimeiroAcessoRouteImport } from './routes/primeiro-acesso'
 import { Route as PlacarRouteImport } from './routes/placar'
 import { Route as PipelineRouteImport } from './routes/pipeline'
 import { Route as PedidosRouteImport } from './routes/pedidos'
@@ -84,11 +83,6 @@ const RelatoriosRoute = RelatoriosRouteImport.update({
 const ProdutosRoute = ProdutosRouteImport.update({
   id: '/produtos',
   path: '/produtos',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PrimeiroAcessoRoute = PrimeiroAcessoRouteImport.update({
-  id: '/primeiro-acesso',
-  path: '/primeiro-acesso',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PlacarRoute = PlacarRouteImport.update({
@@ -319,7 +313,6 @@ export interface FileRoutesByFullPath {
   '/pedidos': typeof PedidosRoute
   '/pipeline': typeof PipelineRoute
   '/placar': typeof PlacarRoute
-  '/primeiro-acesso': typeof PrimeiroAcessoRoute
   '/produtos': typeof ProdutosRoute
   '/relatorios': typeof RelatoriosRoute
   '/tabela-precos': typeof TabelaPrecosRoute
@@ -367,7 +360,6 @@ export interface FileRoutesByTo {
   '/pedidos': typeof PedidosRoute
   '/pipeline': typeof PipelineRoute
   '/placar': typeof PlacarRoute
-  '/primeiro-acesso': typeof PrimeiroAcessoRoute
   '/produtos': typeof ProdutosRoute
   '/relatorios': typeof RelatoriosRoute
   '/tabela-precos': typeof TabelaPrecosRoute
@@ -416,7 +408,6 @@ export interface FileRoutesById {
   '/pedidos': typeof PedidosRoute
   '/pipeline': typeof PipelineRoute
   '/placar': typeof PlacarRoute
-  '/primeiro-acesso': typeof PrimeiroAcessoRoute
   '/produtos': typeof ProdutosRoute
   '/relatorios': typeof RelatoriosRoute
   '/tabela-precos': typeof TabelaPrecosRoute
@@ -466,7 +457,6 @@ export interface FileRouteTypes {
     | '/pedidos'
     | '/pipeline'
     | '/placar'
-    | '/primeiro-acesso'
     | '/produtos'
     | '/relatorios'
     | '/tabela-precos'
@@ -514,7 +504,6 @@ export interface FileRouteTypes {
     | '/pedidos'
     | '/pipeline'
     | '/placar'
-    | '/primeiro-acesso'
     | '/produtos'
     | '/relatorios'
     | '/tabela-precos'
@@ -562,7 +551,6 @@ export interface FileRouteTypes {
     | '/pedidos'
     | '/pipeline'
     | '/placar'
-    | '/primeiro-acesso'
     | '/produtos'
     | '/relatorios'
     | '/tabela-precos'
@@ -611,7 +599,6 @@ export interface RootRouteChildren {
   PedidosRoute: typeof PedidosRoute
   PipelineRoute: typeof PipelineRoute
   PlacarRoute: typeof PlacarRoute
-  PrimeiroAcessoRoute: typeof PrimeiroAcessoRoute
   ProdutosRoute: typeof ProdutosRoute
   RelatoriosRoute: typeof RelatoriosRoute
   TabelaPrecosRoute: typeof TabelaPrecosRoute
@@ -684,13 +671,6 @@ declare module '@tanstack/react-router' {
       path: '/produtos'
       fullPath: '/produtos'
       preLoaderRoute: typeof ProdutosRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/primeiro-acesso': {
-      id: '/primeiro-acesso'
-      path: '/primeiro-acesso'
-      fullPath: '/primeiro-acesso'
-      preLoaderRoute: typeof PrimeiroAcessoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/placar': {
@@ -987,7 +967,6 @@ const rootRouteChildren: RootRouteChildren = {
   PedidosRoute: PedidosRoute,
   PipelineRoute: PipelineRoute,
   PlacarRoute: PlacarRoute,
-  PrimeiroAcessoRoute: PrimeiroAcessoRoute,
   ProdutosRoute: ProdutosRoute,
   RelatoriosRoute: RelatoriosRoute,
   TabelaPrecosRoute: TabelaPrecosRoute,

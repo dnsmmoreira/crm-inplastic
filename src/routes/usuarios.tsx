@@ -309,11 +309,10 @@ function UsuariosPage() {
 
       <div className="mt-4 rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground space-y-1">
         <p>
-          <strong>Sem senha definida?</strong> Envie ao usuário o link{" "}
-          <Link to="/primeiro-acesso" className="text-primary underline">/primeiro-acesso</Link>
-          {" "}— ele digita o e-mail cadastrado e cria a própria senha (funciona uma única vez).
+          <strong>Como o usuário entra?</strong> Ao cadastrar, o sistema envia um convite oficial por
+          e-mail com um link de uso único e prazo de validade. Ele define a própria senha por lá.
         </p>
-        <p>Se você definir uma senha inicial no formulário acima, o usuário já pode entrar direto pela tela de login com esse e-mail e senha.</p>
+        <p>Para quem já tem conta, use “Definir senha” na linha do usuário ou peça “Esqueci minha senha” na tela de login.</p>
       </div>
         </TabsContent>
       </Tabs>
@@ -338,14 +337,10 @@ function CreateUserCard({ onCreated }: { onCreated: () => Promise<void> | void }
     }
     setBusy(true);
     try {
-      const res = await create({ data: { email, name, password: password || undefined, role } });
-      if (res.requiresFirstAccess) {
-        toast.success(`Usuário ${email} criado`, {
-          description: "Envie o link /primeiro-acesso para ele definir a senha.",
-        });
-      } else {
-        toast.success(`Usuário ${email} criado com senha definida`);
-      }
+      await create({ data: { email, name, role } });
+      toast.success(`Convite enviado para ${email}`, {
+        description: "O usuário define a própria senha pelo link recebido por e-mail.",
+      });
       setEmail("");
       setName("");
       setPassword("");
