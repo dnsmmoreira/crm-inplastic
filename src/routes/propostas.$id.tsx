@@ -577,6 +577,8 @@ function PropostaDetalhe() {
         </div>
       </div>
 
+      <MargemPropostaCard propostaId={proposal.id} />
+
 
 
       {/* Confirm dialog for in-app navigation while dirty */}

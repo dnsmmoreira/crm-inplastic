@@ -29,6 +29,7 @@ import { Route as CondicoesComerciaisRouteImport } from './routes/condicoes-come
 import { Route as CanaisRouteImport } from './routes/canais'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AtendimentoIaRouteImport } from './routes/atendimento-ia'
+import { Route as ArenaRouteImport } from './routes/arena'
 import { Route as AgenteIaRouteImport } from './routes/agente-ia'
 import { Route as AceitarConviteRouteImport } from './routes/aceitar-convite'
 import { Route as IndexRouteImport } from './routes/index'
@@ -153,6 +154,11 @@ const AuthRoute = AuthRouteImport.update({
 const AtendimentoIaRoute = AtendimentoIaRouteImport.update({
   id: '/atendimento-ia',
   path: '/atendimento-ia',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ArenaRoute = ArenaRouteImport.update({
+  id: '/arena',
+  path: '/arena',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AgenteIaRoute = AgenteIaRouteImport.update({
@@ -299,6 +305,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/aceitar-convite': typeof AceitarConviteRoute
   '/agente-ia': typeof AgenteIaRoute
+  '/arena': typeof ArenaRoute
   '/atendimento-ia': typeof AtendimentoIaRoute
   '/auth': typeof AuthRoute
   '/canais': typeof CanaisRoute
@@ -346,6 +353,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/aceitar-convite': typeof AceitarConviteRoute
   '/agente-ia': typeof AgenteIaRoute
+  '/arena': typeof ArenaRoute
   '/atendimento-ia': typeof AtendimentoIaRoute
   '/auth': typeof AuthRoute
   '/canais': typeof CanaisRoute
@@ -394,6 +402,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/aceitar-convite': typeof AceitarConviteRoute
   '/agente-ia': typeof AgenteIaRoute
+  '/arena': typeof ArenaRoute
   '/atendimento-ia': typeof AtendimentoIaRoute
   '/auth': typeof AuthRoute
   '/canais': typeof CanaisRoute
@@ -443,6 +452,7 @@ export interface FileRouteTypes {
     | '/'
     | '/aceitar-convite'
     | '/agente-ia'
+    | '/arena'
     | '/atendimento-ia'
     | '/auth'
     | '/canais'
@@ -490,6 +500,7 @@ export interface FileRouteTypes {
     | '/'
     | '/aceitar-convite'
     | '/agente-ia'
+    | '/arena'
     | '/atendimento-ia'
     | '/auth'
     | '/canais'
@@ -537,6 +548,7 @@ export interface FileRouteTypes {
     | '/'
     | '/aceitar-convite'
     | '/agente-ia'
+    | '/arena'
     | '/atendimento-ia'
     | '/auth'
     | '/canais'
@@ -585,6 +597,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AceitarConviteRoute: typeof AceitarConviteRoute
   AgenteIaRoute: typeof AgenteIaRoute
+  ArenaRoute: typeof ArenaRoute
   AtendimentoIaRoute: typeof AtendimentoIaRoute
   AuthRoute: typeof AuthRoute
   CanaisRoute: typeof CanaisRoute
@@ -771,6 +784,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AtendimentoIaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/arena': {
+      id: '/arena'
+      path: '/arena'
+      fullPath: '/arena'
+      preLoaderRoute: typeof ArenaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/agente-ia': {
       id: '/agente-ia'
       path: '/agente-ia'
@@ -953,6 +973,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AceitarConviteRoute: AceitarConviteRoute,
   AgenteIaRoute: AgenteIaRoute,
+  ArenaRoute: ArenaRoute,
   AtendimentoIaRoute: AtendimentoIaRoute,
   AuthRoute: AuthRoute,
   CanaisRoute: CanaisRoute,

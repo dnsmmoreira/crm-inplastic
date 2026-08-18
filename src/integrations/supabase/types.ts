@@ -14,9 +14,108 @@ export type Database = {
   }
   public: {
     Tables: {
+      arena_aprovacoes_extraordinarias: {
+        Row: {
+          aprovador_id: string | null
+          created_at: string
+          decidido_em: string | null
+          desconto_percent: number | null
+          id: string
+          margem_minima_pct: number | null
+          margem_original_pct: number | null
+          margem_proposta_pct: number | null
+          motivo: string
+          observacao: string | null
+          proposta_id: string
+          solicitante_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          aprovador_id?: string | null
+          created_at?: string
+          decidido_em?: string | null
+          desconto_percent?: number | null
+          id?: string
+          margem_minima_pct?: number | null
+          margem_original_pct?: number | null
+          margem_proposta_pct?: number | null
+          motivo: string
+          observacao?: string | null
+          proposta_id: string
+          solicitante_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          aprovador_id?: string | null
+          created_at?: string
+          decidido_em?: string | null
+          desconto_percent?: number | null
+          id?: string
+          margem_minima_pct?: number | null
+          margem_original_pct?: number | null
+          margem_proposta_pct?: number | null
+          motivo?: string
+          observacao?: string | null
+          proposta_id?: string
+          solicitante_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "arena_aprovacoes_extraordinarias_proposta_id_fkey"
+            columns: ["proposta_id"]
+            isOneToOne: false
+            referencedRelation: "propostas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      arena_audit_log: {
+        Row: {
+          alvo_user_id: string | null
+          ator_user_id: string | null
+          campo: string
+          criado_em: string
+          entidade: string
+          entidade_id: string | null
+          id: string
+          motivo: string | null
+          valor_anterior: string | null
+          valor_novo: string | null
+        }
+        Insert: {
+          alvo_user_id?: string | null
+          ator_user_id?: string | null
+          campo: string
+          criado_em?: string
+          entidade: string
+          entidade_id?: string | null
+          id?: string
+          motivo?: string | null
+          valor_anterior?: string | null
+          valor_novo?: string | null
+        }
+        Update: {
+          alvo_user_id?: string | null
+          ator_user_id?: string | null
+          campo?: string
+          criado_em?: string
+          entidade?: string
+          entidade_id?: string | null
+          id?: string
+          motivo?: string | null
+          valor_anterior?: string | null
+          valor_novo?: string | null
+        }
+        Relationships: []
+      }
       arena_config: {
         Row: {
           arena_cap_temporada: number
+          arena_data_inicio: string
           arena_orcamento_mensal: number
           base_calculo_default: string
           base_calculo_logiscal: string
@@ -25,19 +124,26 @@ export type Database = {
           comissao_logiscal_pct: number
           created_at: string
           custo_interno_teto_pct: number
+          custo_produto_pct_estimado: number
           encargos_fator: number
           id: number
+          interno_custo_fixo_mensal: number
+          interno_custo_variavel_pct: number
           margem_minima_pct: number
+          margem_piso_comercial_pct: number
           meta_canal_representante: number
           piso_preco_pct: number
+          piso_rodada_ativo: boolean
+          piso_rodada_pace_pct: number
           rampa_metas: Json
-          rodada_piso_ativo: boolean
-          rodada_piso_pace_pct: number
-          temporada_inicio: string
+          rep_custo_fixo_incremental_mensal: number
+          rep_custo_variavel_pct: number
+          temporada_meses: number
           updated_at: string
         }
         Insert: {
           arena_cap_temporada?: number
+          arena_data_inicio?: string
           arena_orcamento_mensal?: number
           base_calculo_default?: string
           base_calculo_logiscal?: string
@@ -46,19 +152,26 @@ export type Database = {
           comissao_logiscal_pct?: number
           created_at?: string
           custo_interno_teto_pct?: number
+          custo_produto_pct_estimado?: number
           encargos_fator?: number
           id?: number
+          interno_custo_fixo_mensal?: number
+          interno_custo_variavel_pct?: number
           margem_minima_pct?: number
+          margem_piso_comercial_pct?: number
           meta_canal_representante?: number
           piso_preco_pct?: number
+          piso_rodada_ativo?: boolean
+          piso_rodada_pace_pct?: number
           rampa_metas?: Json
-          rodada_piso_ativo?: boolean
-          rodada_piso_pace_pct?: number
-          temporada_inicio?: string
+          rep_custo_fixo_incremental_mensal?: number
+          rep_custo_variavel_pct?: number
+          temporada_meses?: number
           updated_at?: string
         }
         Update: {
           arena_cap_temporada?: number
+          arena_data_inicio?: string
           arena_orcamento_mensal?: number
           base_calculo_default?: string
           base_calculo_logiscal?: string
@@ -67,16 +180,133 @@ export type Database = {
           comissao_logiscal_pct?: number
           created_at?: string
           custo_interno_teto_pct?: number
+          custo_produto_pct_estimado?: number
           encargos_fator?: number
           id?: number
+          interno_custo_fixo_mensal?: number
+          interno_custo_variavel_pct?: number
           margem_minima_pct?: number
+          margem_piso_comercial_pct?: number
           meta_canal_representante?: number
           piso_preco_pct?: number
+          piso_rodada_ativo?: boolean
+          piso_rodada_pace_pct?: number
           rampa_metas?: Json
-          rodada_piso_ativo?: boolean
-          rodada_piso_pace_pct?: number
-          temporada_inicio?: string
+          rep_custo_fixo_incremental_mensal?: number
+          rep_custo_variavel_pct?: number
+          temporada_meses?: number
           updated_at?: string
+        }
+        Relationships: []
+      }
+      arena_custo_mensal: {
+        Row: {
+          ano: number
+          canal: string
+          categoria: string
+          created_at: string
+          formacao: boolean
+          id: string
+          mes: number
+          observacao: string | null
+          updated_at: string
+          user_id: string | null
+          valor: number
+        }
+        Insert: {
+          ano: number
+          canal?: string
+          categoria: string
+          created_at?: string
+          formacao?: boolean
+          id?: string
+          mes: number
+          observacao?: string | null
+          updated_at?: string
+          user_id?: string | null
+          valor?: number
+        }
+        Update: {
+          ano?: number
+          canal?: string
+          categoria?: string
+          created_at?: string
+          formacao?: boolean
+          id?: string
+          mes?: number
+          observacao?: string | null
+          updated_at?: string
+          user_id?: string | null
+          valor?: number
+        }
+        Relationships: []
+      }
+      arena_licitacoes: {
+        Row: {
+          created_at: string
+          data_empenho: string | null
+          data_habilitacao: string | null
+          data_homologacao: string | null
+          data_identificacao: string | null
+          data_pregao: string | null
+          id: string
+          modalidade: string | null
+          numero: string | null
+          objeto: string
+          observacao: string | null
+          orgao: string
+          situacao: string
+          updated_at: string
+          user_id: string | null
+          valor_empenhado: number
+          valor_estimado: number
+          valor_homologado: number
+          valor_proposto: number
+          valor_recebido: number
+        }
+        Insert: {
+          created_at?: string
+          data_empenho?: string | null
+          data_habilitacao?: string | null
+          data_homologacao?: string | null
+          data_identificacao?: string | null
+          data_pregao?: string | null
+          id?: string
+          modalidade?: string | null
+          numero?: string | null
+          objeto?: string
+          observacao?: string | null
+          orgao: string
+          situacao?: string
+          updated_at?: string
+          user_id?: string | null
+          valor_empenhado?: number
+          valor_estimado?: number
+          valor_homologado?: number
+          valor_proposto?: number
+          valor_recebido?: number
+        }
+        Update: {
+          created_at?: string
+          data_empenho?: string | null
+          data_habilitacao?: string | null
+          data_homologacao?: string | null
+          data_identificacao?: string | null
+          data_pregao?: string | null
+          id?: string
+          modalidade?: string | null
+          numero?: string | null
+          objeto?: string
+          observacao?: string | null
+          orgao?: string
+          situacao?: string
+          updated_at?: string
+          user_id?: string | null
+          valor_empenhado?: number
+          valor_estimado?: number
+          valor_homologado?: number
+          valor_proposto?: number
+          valor_recebido?: number
         }
         Relationships: []
       }
@@ -113,6 +343,45 @@ export type Database = {
           tipo_comercial?: Database["public"]["Enums"]["arena_tipo_comercial"]
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      arena_receita_mensal: {
+        Row: {
+          ano: number
+          canal: string
+          created_at: string
+          id: string
+          mes: number
+          observacao: string | null
+          updated_at: string
+          user_id: string | null
+          valor_faturado: number
+          valor_recebido: number
+        }
+        Insert: {
+          ano: number
+          canal?: string
+          created_at?: string
+          id?: string
+          mes: number
+          observacao?: string | null
+          updated_at?: string
+          user_id?: string | null
+          valor_faturado?: number
+          valor_recebido?: number
+        }
+        Update: {
+          ano?: number
+          canal?: string
+          created_at?: string
+          id?: string
+          mes?: number
+          observacao?: string | null
+          updated_at?: string
+          user_id?: string | null
+          valor_faturado?: number
+          valor_recebido?: number
         }
         Relationships: []
       }
