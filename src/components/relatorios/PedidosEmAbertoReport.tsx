@@ -194,7 +194,20 @@ type Node = {
   path: string;
   /** Produto herdado do nível de agrupamento (quando agrupado por Produto). */
   produtoFiltro: string | null;
+  /** SKU do produto quando o grupo é por Produto (null se não houver). */
+  sku: string | null;
 };
+
+/** SKU do produto do grupo (quando distinto do rótulo exibido). */
+function skuDoProduto(rows: PedidoAbertoRow[], nome: string): string | null {
+  for (const r of rows) {
+    for (const i of r.itens) {
+      if ((i.description || i.sku) === nome && i.sku && i.sku !== nome) return i.sku;
+    }
+  }
+  return null;
+}
+
 
 /** Unidades do pedido; se houver produto no contexto do grupo, só as daquele produto. */
 function qtdeUnidades(r: PedidoAbertoRow, produtoFiltro: string | null) {
