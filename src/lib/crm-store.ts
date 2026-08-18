@@ -1413,11 +1413,14 @@ export const useBestSellerOfMonth = () => {
 export const useVisibleProposals = () => {
   const proposals = useCrm((s) => s.proposals);
   const user = useCurrentUser();
+  const { user: authUser } = useAuth();
+  const verTodas = hasPerm(authUser, "propostas.ver_todas");
   return useMemo(
-    () => (user.role === "admin" ? proposals : proposals.filter((p) => p.ownerId === user.id)),
-    [proposals, user],
+    () => (user.role === "admin" || verTodas ? proposals : proposals.filter((p) => p.ownerId === user.id)),
+    [proposals, user, verTodas],
   );
 };
+
 
 export const proposalTotals = (p: Proposal, surchargePercent = 0) => {
   const items = Array.isArray(p?.items) ? p.items : [];
