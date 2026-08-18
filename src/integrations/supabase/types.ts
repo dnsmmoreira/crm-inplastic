@@ -2996,6 +2996,12 @@ export type Database = {
         | "despachado_transporte"
         | "pedido_entregue"
         | "concluido"
+        | "analise_financeira"
+        | "programacao"
+        | "pronto"
+        | "faturado_em_rota"
+        | "pos_venda"
+        | "reprovado_financeiro"
       proposal_status:
         | "rascunho"
         | "enviada"
@@ -3175,6 +3181,12 @@ export const Constants = {
         "despachado_transporte",
         "pedido_entregue",
         "concluido",
+        "analise_financeira",
+        "programacao",
+        "pronto",
+        "faturado_em_rota",
+        "pos_venda",
+        "reprovado_financeiro",
       ],
       proposal_status: [
         "rascunho",
