@@ -257,7 +257,10 @@ function MinhaMetaCard({ v }: { v: PlacarVendedor }) {
           : "text-primary"
         )} />
         <div className="flex-1 min-w-[240px]">
-          <div className="text-xs uppercase tracking-wider text-muted-foreground">Sua meta do mês</div>
+          <div className="text-xs uppercase tracking-wider text-muted-foreground">
+            Sua meta do mês <span className="text-primary font-semibold">· ARENA Performance</span>
+          </div>
+
           <div className="mt-0.5 font-display text-lg font-semibold">
             {formatBRL(v.ganhos_valor)} <span className="text-muted-foreground text-sm font-normal">de {formatBRL(meta)}</span>
           </div>
