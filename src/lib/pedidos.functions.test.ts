@@ -1,96 +1,170 @@
 import { describe, it, expect } from "vitest";
 import {
   PEDIDO_STAGES,
+  PEDIDO_STAGE_REPROVADO,
   ALLOWED_FORWARD,
   isBackward,
   isTransitionAllowed,
-} from "./pedidos.functions";
+  isPedidoFechado,
+  entregaBadgeLabel,
+  decidirRotaAprovacao,
+  APROVACAO_PARAMS_PADRAO,
+} from "./pedidos-stages";
 
 describe("PEDIDO_STAGES", () => {
-  it("possui as 10 etapas esperadas na ordem correta", () => {
+  it("possui as 6 colunas do fluxo novo na ordem correta", () => {
     expect(PEDIDO_STAGES.map((s) => s.id)).toEqual([
-      "pedido_recebido",
-      "em_validacao",
-      "aguardando_aprovacao",
-      "aprovado_programado",
+      "analise_financeira",
+      "programacao",
       "em_producao",
-      "separacao_conferencia",
-      "faturado_aguardando_coleta",
-      "despachado_transporte",
-      "pedido_entregue",
-      "concluido",
+      "pronto",
+      "faturado_em_rota",
+      "pos_venda",
     ]);
   });
-});
 
-describe("ALLOWED_FORWARD — cenário Estoque", () => {
-  it("aprovado_programado avança direto para separacao_conferencia", () => {
-    expect(ALLOWED_FORWARD.aprovado_programado).toContain("separacao_conferencia");
-    expect(isTransitionAllowed("aprovado_programado", "separacao_conferencia")).toBe(true);
+  it("reprovado_financeiro não é coluna do kanban", () => {
+    expect(PEDIDO_STAGES.some((s) => (s.id as string) === PEDIDO_STAGE_REPROVADO)).toBe(false);
   });
 });
 
-describe("ALLOWED_FORWARD — cenário Produção", () => {
-  it("aprovado_programado → em_producao é válido", () => {
-    expect(isTransitionAllowed("aprovado_programado", "em_producao")).toBe(true);
+describe("ALLOWED_FORWARD — fluxo linear", () => {
+  it("avança etapa a etapa", () => {
+    expect(isTransitionAllowed("analise_financeira", "programacao")).toBe(true);
+    expect(isTransitionAllowed("programacao", "em_producao")).toBe(true);
+    expect(isTransitionAllowed("em_producao", "pronto")).toBe(true);
+    expect(isTransitionAllowed("pronto", "faturado_em_rota")).toBe(true);
+    expect(isTransitionAllowed("faturado_em_rota", "pos_venda")).toBe(true);
   });
-  it("em_producao → separacao_conferencia é válido", () => {
-    expect(isTransitionAllowed("em_producao", "separacao_conferencia")).toBe(true);
+
+  it("pular etapas é recusado", () => {
+    expect(isTransitionAllowed("analise_financeira", "em_producao")).toBe(false);
+    expect(isTransitionAllowed("programacao", "pronto")).toBe(false);
+    expect(isTransitionAllowed("em_producao", "faturado_em_rota")).toBe(false);
+  });
+
+  it("pos_venda é terminal (nenhum avanço)", () => {
+    expect(ALLOWED_FORWARD.pos_venda).toEqual([]);
+  });
+
+  it("isTransitionAllowed(x, x) === false", () => {
+    for (const s of PEDIDO_STAGES) expect(isTransitionAllowed(s.id, s.id)).toBe(false);
   });
 });
 
-describe("ALLOWED_FORWARD — cenário Misto", () => {
-  it("aprovado_programado permite ambos os caminhos (produção e estoque)", () => {
-    expect(ALLOWED_FORWARD.aprovado_programado).toEqual(
-      expect.arrayContaining(["em_producao", "separacao_conferencia"]),
+describe("Retornos", () => {
+  it("retorno para etapa anterior é permitido (exige motivo na server fn)", () => {
+    expect(isBackward("em_producao", "programacao")).toBe(true);
+    expect(isTransitionAllowed("faturado_em_rota", "analise_financeira")).toBe(true);
+  });
+
+  it("isBackward é falso para avanços e mesma etapa", () => {
+    expect(isBackward("programacao", "em_producao")).toBe(false);
+    expect(isBackward("pronto", "pronto")).toBe(false);
+  });
+});
+
+describe("reprovado_financeiro", () => {
+  it("só é alcançável a partir de analise_financeira", () => {
+    expect(isTransitionAllowed("analise_financeira", PEDIDO_STAGE_REPROVADO)).toBe(true);
+    expect(isTransitionAllowed("programacao", PEDIDO_STAGE_REPROVADO)).toBe(false);
+    expect(isTransitionAllowed("pos_venda", PEDIDO_STAGE_REPROVADO)).toBe(false);
+  });
+
+  it("só volta para analise_financeira", () => {
+    expect(isTransitionAllowed(PEDIDO_STAGE_REPROVADO, "analise_financeira")).toBe(true);
+    expect(isTransitionAllowed(PEDIDO_STAGE_REPROVADO, "programacao")).toBe(false);
+    expect(isTransitionAllowed(PEDIDO_STAGE_REPROVADO, "pos_venda")).toBe(false);
+  });
+});
+
+describe("isPedidoFechado", () => {
+  it("reprovado é sempre fechado", () => {
+    expect(isPedidoFechado(PEDIDO_STAGE_REPROVADO, null)).toBe(true);
+  });
+  it("pos_venda só fecha com encerrado_em", () => {
+    expect(isPedidoFechado("pos_venda", null)).toBe(false);
+    expect(isPedidoFechado("pos_venda", "2026-01-01T00:00:00Z")).toBe(true);
+  });
+  it("etapas em andamento seguem abertas", () => {
+    expect(isPedidoFechado("faturado_em_rota", null)).toBe(false);
+    expect(isPedidoFechado("em_producao", null)).toBe(false);
+  });
+});
+
+describe("entregaBadgeLabel", () => {
+  it("usa o registro explícito quando existe", () => {
+    expect(entregaBadgeLabel("entregue", "coleta")).toBe("Entregue");
+    expect(entregaBadgeLabel("coletado", "entrega_propria")).toBe("Coletado");
+  });
+  it("cai na modalidade quando não há registro", () => {
+    expect(entregaBadgeLabel(null, "entrega_propria")).toBe("Entregue");
+    expect(entregaBadgeLabel(null, "coleta")).toBe("Coletado");
+  });
+});
+
+describe("Motor de regras de aprovação financeira", () => {
+  const p = APROVACAO_PARAMS_PADRAO;
+
+  it("(a) valor acima do teto obrigatório sempre vai para análise", () => {
+    expect(
+      decidirRotaAprovacao(
+        { total: 30000, primeiraCompra: false, compraNaJanela: true, recorrenteManual: true },
+        p,
+      ),
+    ).toEqual({ stage: "analise_financeira", rota: "valor_alto" });
+  });
+
+  it("(b) primeira compra acima do limite vai para análise", () => {
+    expect(
+      decidirRotaAprovacao(
+        { total: 8000, primeiraCompra: true, compraNaJanela: false, recorrenteManual: false },
+        p,
+      ),
+    ).toEqual({ stage: "analise_financeira", rota: "primeira_compra" });
+  });
+
+  it("(c) primeira compra dentro do limite é dispensada", () => {
+    expect(
+      decidirRotaAprovacao(
+        { total: 3000, primeiraCompra: true, compraNaJanela: false, recorrenteManual: false },
+        p,
+      ),
+    ).toEqual({ stage: "programacao", rota: "dispensado_valor_baixo" });
+  });
+
+  it("(d) cliente recorrente dentro da janela é dispensado", () => {
+    expect(
+      decidirRotaAprovacao(
+        { total: 20000, primeiraCompra: false, compraNaJanela: true, recorrenteManual: false },
+        p,
+      ),
+    ).toEqual({ stage: "programacao", rota: "dispensado_recorrente" });
+  });
+
+  it("exceção manual dispensa quando não há compra na janela", () => {
+    expect(
+      decidirRotaAprovacao(
+        { total: 20000, primeiraCompra: false, compraNaJanela: false, recorrenteManual: true },
+        p,
+      ),
+    ).toEqual({ stage: "programacao", rota: "excecao_manual" });
+  });
+
+  it("(e) cliente parado além da janela volta para análise", () => {
+    expect(
+      decidirRotaAprovacao(
+        { total: 20000, primeiraCompra: false, compraNaJanela: false, recorrenteManual: false },
+        p,
+      ),
+    ).toEqual({ stage: "analise_financeira", rota: "sem_recorrencia" });
+  });
+
+  it("a regra de valor obrigatório vence a exceção manual", () => {
+    const r = decidirRotaAprovacao(
+      { total: 25000.01, primeiraCompra: false, compraNaJanela: true, recorrenteManual: true },
+      p,
     );
-    expect(ALLOWED_FORWARD.aprovado_programado).toHaveLength(2);
+    expect(r.stage).toBe("analise_financeira");
   });
 });
-
-describe("Cancelado / Bloqueado — regras negativas e de retorno", () => {
-  it("retorno (isBackward) é permitido para etapas anteriores", () => {
-    expect(isBackward("em_producao", "aprovado_programado")).toBe(true);
-    expect(isBackward("separacao_conferencia", "pedido_recebido")).toBe(true);
-    expect(isTransitionAllowed("em_producao", "aprovado_programado")).toBe(true);
-  });
-
-  it("isBackward é falso para avanços e para a mesma etapa", () => {
-    expect(isBackward("em_producao", "separacao_conferencia")).toBe(false);
-    expect(isBackward("em_producao", "em_producao")).toBe(false);
-  });
-
-  it("isTransitionAllowed(x, x) === false para qualquer etapa", () => {
-    for (const s of PEDIDO_STAGES) {
-      expect(isTransitionAllowed(s.id, s.id)).toBe(false);
-    }
-  });
-
-  it("avanço não listado na matriz é recusado", () => {
-    // pular etapas
-    expect(isTransitionAllowed("pedido_recebido", "em_producao")).toBe(false);
-    expect(isTransitionAllowed("em_validacao", "separacao_conferencia")).toBe(false);
-    expect(isTransitionAllowed("aprovado_programado", "faturado_aguardando_coleta")).toBe(false);
-    expect(isTransitionAllowed("separacao_conferencia", "despachado_transporte")).toBe(false);
-  });
-});
-
-describe("Etapas terminais — pedido_entregue e concluido", () => {
-  it("pedido_entregue só permite avançar para concluido", () => {
-    expect(ALLOWED_FORWARD.pedido_entregue).toEqual(["concluido"]);
-    expect(isTransitionAllowed("pedido_entregue", "concluido")).toBe(true);
-  });
-
-  it("concluido é etapa final (nenhum forward permitido)", () => {
-    expect(ALLOWED_FORWARD.concluido).toEqual([]);
-    // qualquer avanço a partir de concluido não existe; só retornos são válidos
-    expect(isTransitionAllowed("concluido", "pedido_entregue")).toBe(true); // backward
-    // e não há forward possível
-    for (const s of PEDIDO_STAGES) {
-      if (s.id === "concluido") continue;
-      // todo destino != concluido é backward a partir de concluido → permitido; forward inexistente
-      expect(isBackward("concluido", s.id)).toBe(true);
-    }
-  });
-});
-
