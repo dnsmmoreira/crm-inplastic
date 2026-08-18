@@ -190,9 +190,16 @@ function AppShell({ children }: { children: ReactNode }) {
   const nav = NAV.filter((n) => {
     if (n.adminOnly && !isAdmin) return false;
     const perm = "perm" in n ? n.perm : null;
-    if (perm && user && !user.permissions[perm]) return false;
+    // Chave granular equivalente (perfis) — só AMPLIA o acesso atual.
+    const chaveGranular: Record<string, string> = {
+      ver_relatorios: "relatorios.ver",
+      configurar_integracoes: "canais.configurar",
+      gerenciar_usuarios: "usuarios.gerenciar",
+    };
+    if (perm && user && !user.permissions[perm] && !hasPerm(user, chaveGranular[perm] ?? "")) return false;
     return true;
   });
+
   return (
     <div className="flex min-h-screen bg-background text-foreground">
       <aside
