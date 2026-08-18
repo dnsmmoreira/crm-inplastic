@@ -939,3 +939,24 @@ export const listPedidoNotificacoes = createServerFn({ method: "GET" })
     if (error) throw new Error(`Falha ao listar notificações: ${error.message}`);
     return (rows ?? []) as PedidoNotificacaoRow[];
   });
+
+/** Define a modalidade de entrega do pedido (coleta | entrega_propria). */
+export const setModalidadeEntrega = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { pedido_id: string; modalidade: "coleta" | "entrega_propria" }) =>
+    z
+      .object({
+        pedido_id: z.string().uuid(),
+        modalidade: z.enum(["coleta", "entrega_propria"]),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const sb: LooseClient = context.supabase;
+    const { error } = await sb
+      .from("pedidos")
+      .update({ modalidade_entrega: data.modalidade })
+      .eq("id", data.pedido_id);
+    if (error) throw new Error(`Falha ao atualizar modalidade: ${error.message}`);
+    return { ok: true as const };
+  });
