@@ -561,10 +561,10 @@ function ChatPanel({
     };
   }, [conversa, loadMensagens]);
 
-  const conversaId = conversa?.id ?? null;
+  const conversaIdAtual = conversa?.id ?? null;
   usePoll(() => {
-    if (conversaId) void loadMensagens(conversaId);
-  }, 12000, conversaId !== null);
+    if (conversaIdAtual) void loadMensagens(conversaIdAtual);
+  }, 12000, conversaIdAtual !== null);
 
   useEffect(() => {
     const leadId = conversa?.lead_id ?? null;
