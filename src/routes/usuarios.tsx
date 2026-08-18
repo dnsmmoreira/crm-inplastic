@@ -136,6 +136,17 @@ function UsuariosPage() {
         </div>
       </div>
 
+      <Tabs defaultValue="equipe">
+        <TabsList>
+          <TabsTrigger value="equipe">Equipe</TabsTrigger>
+          <TabsTrigger value="perfis">Perfis e Permissões</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="perfis" className="pt-4">
+          <PerfisPermissoesPanel />
+        </TabsContent>
+
+        <TabsContent value="equipe" className="pt-4">
       <CreateUserCard onCreated={load} />
 
       <Card className="mt-6">
