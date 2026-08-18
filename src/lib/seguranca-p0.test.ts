@@ -92,9 +92,7 @@ describe("fluxo de senha", () => {
     process.env.APP_PUBLIC_URL = "https://evil.example.com";
     expect(__test__.appBaseUrl()).toBe("https://crm.inplastic.com.br");
     process.env.APP_PUBLIC_URL = "https://crm-inplastic.lovable.app";
-    expect(__test__.redirectDefinirSenha()).toBe(
-      "https://crm-inplastic.lovable.app/definir-senha",
-    );
+    expect(__test__.redirectDefinirSenha()).toBe("https://crm-inplastic.lovable.app/definir-senha");
   });
 
   it("rate limit corta após 3 tentativas na janela", async () => {

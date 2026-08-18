@@ -14,9 +14,15 @@ export const Route = createFileRoute("/definir-senha")({
   head: () => ({
     meta: [
       { title: "Definir senha — INPLASTIC - CRM" },
-      { name: "description", content: "Defina sua senha de acesso ao CRM usando o link do convite." },
+      {
+        name: "description",
+        content: "Defina sua senha de acesso ao CRM usando o link do convite.",
+      },
       { property: "og:title", content: "Definir senha — INPLASTIC - CRM" },
-      { property: "og:description", content: "Defina sua senha de acesso ao CRM usando o link do convite." },
+      {
+        property: "og:description",
+        content: "Defina sua senha de acesso ao CRM usando o link do convite.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -55,8 +61,14 @@ function DefinirSenhaPage() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!forca.ok) { toast.error(`Senha fraca: ${forca.problemas.join(", ")}.`); return; }
-    if (!iguais) { toast.error("As senhas não coincidem."); return; }
+    if (!forca.ok) {
+      toast.error(`Senha fraca: ${forca.problemas.join(", ")}.`);
+      return;
+    }
+    if (!iguais) {
+      toast.error("As senhas não coincidem.");
+      return;
+    }
     setBusy(true);
     try {
       const { error } = await supabase.auth.updateUser({ password: senha });
@@ -103,16 +115,28 @@ function DefinirSenhaPage() {
           <form className="rounded-xl bg-card p-6 shadow-xl space-y-3" onSubmit={submit}>
             <div className="space-y-1">
               <Label htmlFor="ds-nova">Nova senha</Label>
-              <Input id="ds-nova" type="password" value={senha} maxLength={72}
-                autoComplete="new-password" onChange={(e) => setSenha(e.target.value)} />
+              <Input
+                id="ds-nova"
+                type="password"
+                value={senha}
+                maxLength={72}
+                autoComplete="new-password"
+                onChange={(e) => setSenha(e.target.value)}
+              />
               <p className={`text-xs ${forca.ok ? "text-emerald-600" : "text-muted-foreground"}`}>
                 {forca.ok ? "Senha válida." : `Requer ${forca.problemas.join(", ")}.`}
               </p>
             </div>
             <div className="space-y-1">
               <Label htmlFor="ds-conf">Confirmar senha</Label>
-              <Input id="ds-conf" type="password" value={confirm} maxLength={72}
-                autoComplete="new-password" onChange={(e) => setConfirm(e.target.value)} />
+              <Input
+                id="ds-conf"
+                type="password"
+                value={confirm}
+                maxLength={72}
+                autoComplete="new-password"
+                onChange={(e) => setConfirm(e.target.value)}
+              />
               {confirm.length > 0 && !iguais && (
                 <p className="text-xs text-destructive">As senhas não coincidem.</p>
               )}
