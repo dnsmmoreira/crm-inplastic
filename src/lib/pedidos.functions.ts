@@ -200,21 +200,14 @@ const NOTIFY_DISPATCH_ENABLED = false; // feature flag off — apenas registra
 type StageClassificacao = "informativa" | "acao_necessaria" | "alerta";
 
 const STAGE_CLASSIFICACAO: Record<PedidoStageId, StageClassificacao> = {
-  pedido_recebido: "informativa",
-  em_validacao: "informativa",
-  aguardando_aprovacao: "acao_necessaria",
-  aprovado_programado: "informativa",
+  analise_financeira: "acao_necessaria",
+  programacao: "acao_necessaria",
   em_producao: "informativa",
-  separacao_conferencia: "informativa",
-  faturado_aguardando_coleta: "informativa",
-  despachado_transporte: "informativa",
-  pedido_entregue: "informativa",
-  concluido: "informativa",
+  pronto: "acao_necessaria",
+  faturado_em_rota: "informativa",
+  pos_venda: "informativa",
+  reprovado_financeiro: "alerta",
 };
-
-function stageLabel(id: PedidoStageId): string {
-  return PEDIDO_STAGES.find((s) => s.id === id)?.label ?? id;
-}
 
 async function enqueueStageChangeNotification(
   sb: LooseClient,
