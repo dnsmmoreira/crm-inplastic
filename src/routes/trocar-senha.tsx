@@ -45,9 +45,7 @@ function TrocarSenhaPage() {
         const { error } = await supabase.auth.signInWithPassword({ email: user.email, password: atual });
         if (error) throw new Error("Senha atual incorreta.");
       }
-      const { error } = await supabase.auth.updateUser({ password: senha });
-      if (error) throw new Error(error.message);
-      await concluir(undefined as never);
+      await concluir({ data: { password: senha } });
       await refresh();
       toast.success("Senha atualizada!");
     } catch (err) {

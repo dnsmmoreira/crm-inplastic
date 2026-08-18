@@ -309,11 +309,10 @@ function UsuariosPage() {
 
       <div className="mt-4 rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground space-y-1">
         <p>
-          <strong>Sem senha definida?</strong> Envie ao usuário o link{" "}
-          <Link to="/primeiro-acesso" className="text-primary underline">/primeiro-acesso</Link>
-          {" "}— ele digita o e-mail cadastrado e cria a própria senha (funciona uma única vez).
+          <strong>Como o usuário entra?</strong> Ao cadastrar, o sistema envia um convite oficial por
+          e-mail com um link de uso único e prazo de validade. Ele define a própria senha por lá.
         </p>
-        <p>Se você definir uma senha inicial no formulário acima, o usuário já pode entrar direto pela tela de login com esse e-mail e senha.</p>
+        <p>Para quem já tem conta, use “Definir senha” na linha do usuário ou peça “Esqueci minha senha” na tela de login.</p>
       </div>
         </TabsContent>
       </Tabs>
@@ -326,29 +325,19 @@ function CreateUserCard({ onCreated }: { onCreated: () => Promise<void> | void }
   const create = useServerFn(createUser);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
-  const [password, setPassword] = useState("");
   const [role, setRole] = useState<AppRole>("vendedor");
   const [busy, setBusy] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password && password.length < 6) {
-      toast.error("Senha inicial precisa ter pelo menos 6 caracteres (ou deixe em branco).");
-      return;
-    }
     setBusy(true);
     try {
-      const res = await create({ data: { email, name, password: password || undefined, role } });
-      if (res.requiresFirstAccess) {
-        toast.success(`Usuário ${email} criado`, {
-          description: "Envie o link /primeiro-acesso para ele definir a senha.",
-        });
-      } else {
-        toast.success(`Usuário ${email} criado com senha definida`);
-      }
+      await create({ data: { email, name, role } });
+      toast.success(`Convite enviado para ${email}`, {
+        description: "O usuário define a própria senha pelo link recebido por e-mail.",
+      });
       setEmail("");
       setName("");
-      setPassword("");
       setRole("vendedor");
       await onCreated();
     } catch (err) {
@@ -375,17 +364,11 @@ function CreateUserCard({ onCreated }: { onCreated: () => Promise<void> | void }
             <Label htmlFor="cu-email">E-mail</Label>
             <Input id="cu-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="pessoa@empresa.com" />
           </div>
-          <div className="space-y-1">
-            <Label htmlFor="cu-password">
-              Senha inicial <span className="text-muted-foreground font-normal">(opcional)</span>
-            </Label>
-            <Input
-              id="cu-password"
-              type="text"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Deixe vazio → usuário define via /primeiro-acesso"
-            />
+          <div className="space-y-1 md:col-span-2">
+            <p className="text-xs text-muted-foreground">
+              O usuário recebe um convite por e-mail (link de uso único e com validade) para
+              definir a própria senha. Nenhuma senha é definida aqui.
+            </p>
           </div>
           <div className="space-y-1">
             <Label htmlFor="cu-role">Papel</Label>

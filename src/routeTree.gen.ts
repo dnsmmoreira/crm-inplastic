@@ -15,7 +15,6 @@ import { Route as TarefasRouteImport } from './routes/tarefas'
 import { Route as TabelaPrecosRouteImport } from './routes/tabela-precos'
 import { Route as RelatoriosRouteImport } from './routes/relatorios'
 import { Route as ProdutosRouteImport } from './routes/produtos'
-import { Route as PrimeiroAcessoRouteImport } from './routes/primeiro-acesso'
 import { Route as PlacarRouteImport } from './routes/placar'
 import { Route as PipelineRouteImport } from './routes/pipeline'
 import { Route as PedidosRouteImport } from './routes/pedidos'
@@ -23,6 +22,7 @@ import { Route as MinhaAgendaRouteImport } from './routes/minha-agenda'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as EstoqueRouteImport } from './routes/estoque'
 import { Route as EmpresasRouteImport } from './routes/empresas'
+import { Route as DefinirSenhaRouteImport } from './routes/definir-senha'
 import { Route as ConversasRouteImport } from './routes/conversas'
 import { Route as ContatosRouteImport } from './routes/contatos'
 import { Route as CondicoesComerciaisRouteImport } from './routes/condicoes-comerciais'
@@ -85,11 +85,6 @@ const ProdutosRoute = ProdutosRouteImport.update({
   path: '/produtos',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PrimeiroAcessoRoute = PrimeiroAcessoRouteImport.update({
-  id: '/primeiro-acesso',
-  path: '/primeiro-acesso',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const PlacarRoute = PlacarRouteImport.update({
   id: '/placar',
   path: '/placar',
@@ -123,6 +118,11 @@ const EstoqueRoute = EstoqueRouteImport.update({
 const EmpresasRoute = EmpresasRouteImport.update({
   id: '/empresas',
   path: '/empresas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DefinirSenhaRoute = DefinirSenhaRouteImport.update({
+  id: '/definir-senha',
+  path: '/definir-senha',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ConversasRoute = ConversasRouteImport.update({
@@ -305,6 +305,7 @@ export interface FileRoutesByFullPath {
   '/condicoes-comerciais': typeof CondicoesComerciaisRoute
   '/contatos': typeof ContatosRoute
   '/conversas': typeof ConversasRoute
+  '/definir-senha': typeof DefinirSenhaRoute
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
   '/mcp': typeof McpRoute
@@ -312,7 +313,6 @@ export interface FileRoutesByFullPath {
   '/pedidos': typeof PedidosRoute
   '/pipeline': typeof PipelineRoute
   '/placar': typeof PlacarRoute
-  '/primeiro-acesso': typeof PrimeiroAcessoRoute
   '/produtos': typeof ProdutosRoute
   '/relatorios': typeof RelatoriosRoute
   '/tabela-precos': typeof TabelaPrecosRoute
@@ -352,6 +352,7 @@ export interface FileRoutesByTo {
   '/condicoes-comerciais': typeof CondicoesComerciaisRoute
   '/contatos': typeof ContatosRoute
   '/conversas': typeof ConversasRoute
+  '/definir-senha': typeof DefinirSenhaRoute
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
   '/mcp': typeof McpRoute
@@ -359,7 +360,6 @@ export interface FileRoutesByTo {
   '/pedidos': typeof PedidosRoute
   '/pipeline': typeof PipelineRoute
   '/placar': typeof PlacarRoute
-  '/primeiro-acesso': typeof PrimeiroAcessoRoute
   '/produtos': typeof ProdutosRoute
   '/relatorios': typeof RelatoriosRoute
   '/tabela-precos': typeof TabelaPrecosRoute
@@ -400,6 +400,7 @@ export interface FileRoutesById {
   '/condicoes-comerciais': typeof CondicoesComerciaisRoute
   '/contatos': typeof ContatosRoute
   '/conversas': typeof ConversasRoute
+  '/definir-senha': typeof DefinirSenhaRoute
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
   '/mcp': typeof McpRoute
@@ -407,7 +408,6 @@ export interface FileRoutesById {
   '/pedidos': typeof PedidosRoute
   '/pipeline': typeof PipelineRoute
   '/placar': typeof PlacarRoute
-  '/primeiro-acesso': typeof PrimeiroAcessoRoute
   '/produtos': typeof ProdutosRoute
   '/relatorios': typeof RelatoriosRoute
   '/tabela-precos': typeof TabelaPrecosRoute
@@ -449,6 +449,7 @@ export interface FileRouteTypes {
     | '/condicoes-comerciais'
     | '/contatos'
     | '/conversas'
+    | '/definir-senha'
     | '/empresas'
     | '/estoque'
     | '/mcp'
@@ -456,7 +457,6 @@ export interface FileRouteTypes {
     | '/pedidos'
     | '/pipeline'
     | '/placar'
-    | '/primeiro-acesso'
     | '/produtos'
     | '/relatorios'
     | '/tabela-precos'
@@ -496,6 +496,7 @@ export interface FileRouteTypes {
     | '/condicoes-comerciais'
     | '/contatos'
     | '/conversas'
+    | '/definir-senha'
     | '/empresas'
     | '/estoque'
     | '/mcp'
@@ -503,7 +504,6 @@ export interface FileRouteTypes {
     | '/pedidos'
     | '/pipeline'
     | '/placar'
-    | '/primeiro-acesso'
     | '/produtos'
     | '/relatorios'
     | '/tabela-precos'
@@ -543,6 +543,7 @@ export interface FileRouteTypes {
     | '/condicoes-comerciais'
     | '/contatos'
     | '/conversas'
+    | '/definir-senha'
     | '/empresas'
     | '/estoque'
     | '/mcp'
@@ -550,7 +551,6 @@ export interface FileRouteTypes {
     | '/pedidos'
     | '/pipeline'
     | '/placar'
-    | '/primeiro-acesso'
     | '/produtos'
     | '/relatorios'
     | '/tabela-precos'
@@ -591,6 +591,7 @@ export interface RootRouteChildren {
   CondicoesComerciaisRoute: typeof CondicoesComerciaisRoute
   ContatosRoute: typeof ContatosRoute
   ConversasRoute: typeof ConversasRoute
+  DefinirSenhaRoute: typeof DefinirSenhaRoute
   EmpresasRoute: typeof EmpresasRoute
   EstoqueRoute: typeof EstoqueRoute
   McpRoute: typeof McpRoute
@@ -598,7 +599,6 @@ export interface RootRouteChildren {
   PedidosRoute: typeof PedidosRoute
   PipelineRoute: typeof PipelineRoute
   PlacarRoute: typeof PlacarRoute
-  PrimeiroAcessoRoute: typeof PrimeiroAcessoRoute
   ProdutosRoute: typeof ProdutosRoute
   RelatoriosRoute: typeof RelatoriosRoute
   TabelaPrecosRoute: typeof TabelaPrecosRoute
@@ -673,13 +673,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProdutosRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/primeiro-acesso': {
-      id: '/primeiro-acesso'
-      path: '/primeiro-acesso'
-      fullPath: '/primeiro-acesso'
-      preLoaderRoute: typeof PrimeiroAcessoRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/placar': {
       id: '/placar'
       path: '/placar'
@@ -727,6 +720,13 @@ declare module '@tanstack/react-router' {
       path: '/empresas'
       fullPath: '/empresas'
       preLoaderRoute: typeof EmpresasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/definir-senha': {
+      id: '/definir-senha'
+      path: '/definir-senha'
+      fullPath: '/definir-senha'
+      preLoaderRoute: typeof DefinirSenhaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/conversas': {
@@ -959,6 +959,7 @@ const rootRouteChildren: RootRouteChildren = {
   CondicoesComerciaisRoute: CondicoesComerciaisRoute,
   ContatosRoute: ContatosRoute,
   ConversasRoute: ConversasRoute,
+  DefinirSenhaRoute: DefinirSenhaRoute,
   EmpresasRoute: EmpresasRoute,
   EstoqueRoute: EstoqueRoute,
   McpRoute: McpRoute,
@@ -966,7 +967,6 @@ const rootRouteChildren: RootRouteChildren = {
   PedidosRoute: PedidosRoute,
   PipelineRoute: PipelineRoute,
   PlacarRoute: PlacarRoute,
-  PrimeiroAcessoRoute: PrimeiroAcessoRoute,
   ProdutosRoute: ProdutosRoute,
   RelatoriosRoute: RelatoriosRoute,
   TabelaPrecosRoute: TabelaPrecosRoute,

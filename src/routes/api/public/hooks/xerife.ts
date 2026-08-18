@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { requireXerifeCronAuth, cronJsonResponse } from "@/lib/xerife/cron-auth.server";
 
 type XerifeConfig = {
   dias_sem_interacao_por_etapa: Record<string, number>;
@@ -461,33 +462,25 @@ export const Route = createFileRoute("/api/public/hooks/xerife")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const expected = process.env.XERIFE_SECRET;
-        const provided = request.headers.get("x-xerife-secret");
-        if (!expected || !provided || provided !== expected) {
-          return new Response(JSON.stringify({ error: "unauthorized" }), {
-            status: 401,
-            headers: { "Content-Type": "application/json" },
-          });
-        }
+        const denied = await requireXerifeCronAuth(request);
+        if (denied) return denied;
         try {
           const url = new URL(request.url);
-          const dryRun = url.searchParams.get("dry") === "1";
-          const force = url.searchParams.get("force") === "1";
-          const mode = url.searchParams.get("mode") ?? "engine";
+          const mode = url.searchParams.get("mode") === "digest" ? "digest" : "engine";
 
           if (mode === "digest") {
-            const result = await runResumoDiario(force);
-            return Response.json({ ok: true, mode, at: new Date().toISOString(), ...result });
+            const result = await runResumoDiario(false);
+            return cronJsonResponse(result);
           }
 
-          const result = await runXerife(dryRun);
-          return Response.json({ ok: true, mode: "engine", at: new Date().toISOString(), ...result });
+          const result = await runXerife(false);
+          return cronJsonResponse(result);
         } catch (e) {
           console.error("xerife error", e);
-          return new Response(
-            JSON.stringify({ ok: false, error: e instanceof Error ? e.message : String(e) }),
-            { status: 500, headers: { "Content-Type": "application/json" } },
-          );
+          return new Response(JSON.stringify({ ok: false, error: "internal_error" }), {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+          });
         }
       },
     },

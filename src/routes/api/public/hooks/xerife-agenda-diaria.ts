@@ -6,6 +6,7 @@
  * Idempotente: grava em xerife_log com regra='agenda_diaria' + janela 20h.
  */
 import { createFileRoute } from "@tanstack/react-router";
+import { requireXerifeCronAuth, cronJsonResponse } from "@/lib/xerife/cron-auth.server";
 import { alreadyActed, logAction } from "@/lib/xerife/dedupe.server";
 import { notifyOwner, crmLeadLink } from "@/lib/xerife/notify.server";
 
@@ -154,22 +155,14 @@ export const Route = createFileRoute("/api/public/hooks/xerife-agenda-diaria")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const isCron = request.headers.get("apikey") === process.env.SUPABASE_PUBLISHABLE_KEY;
-        const provided = request.headers.get("x-xerife-secret");
-        const expected = process.env.XERIFE_SECRET;
-        if (!isCron && (!expected || provided !== expected)) {
-          return new Response(JSON.stringify({ error: "unauthorized" }), {
-            status: 401, headers: { "Content-Type": "application/json" },
-          });
-        }
+        const denied = await requireXerifeCronAuth(request);
+        if (denied) return denied;
         try {
-          const url = new URL(request.url);
-          const force = url.searchParams.get("force") === "1";
-          const r = await runAgendaDiaria(force);
-          return Response.json({ ok: true, at: new Date().toISOString(), ...r });
+          const r = await runAgendaDiaria(false);
+          return cronJsonResponse(r);
         } catch (e) {
           console.error("[xerife-agenda-diaria]", e);
-          return new Response(JSON.stringify({ error: e instanceof Error ? e.message : String(e) }),
+          return new Response(JSON.stringify({ ok: false, error: "internal_error" }),
             { status: 500, headers: { "Content-Type": "application/json" } });
         }
       },
