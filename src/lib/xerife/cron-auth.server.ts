@@ -79,3 +79,21 @@ export async function requireXerifeCronAuth(request: Request): Promise<Response 
 
   return null;
 }
+
+/**
+ * Resposta de cron: apenas status e contadores. Descarta strings, UUIDs,
+ * planos, mensagens internas e qualquer PII que o motor possa devolver.
+ */
+export function cronJsonResponse(result: unknown): Response {
+  const safe: Record<string, number | boolean> = {};
+  if (result && typeof result === "object") {
+    for (const [k, v] of Object.entries(result as Record<string, unknown>)) {
+      if (typeof v === "number" || typeof v === "boolean") safe[k] = v;
+      else if (Array.isArray(v)) safe[`${k}_count`] = v.length;
+    }
+  }
+  return new Response(JSON.stringify({ ok: true, ...safe }), {
+    status: 200,
+    headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+  });
+}
