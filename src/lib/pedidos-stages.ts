@@ -29,10 +29,15 @@ export const PEDIDO_STAGE_REPROVADO_LABEL = "Reprovado Financeiro";
 export type PedidoStageVisivel = (typeof PEDIDO_STAGES)[number]["id"];
 export type PedidoStageId = PedidoStageVisivel | typeof PEDIDO_STAGE_REPROVADO;
 
-export const PEDIDO_STAGE_IDS = [
-  ...PEDIDO_STAGES.map((s) => s.id),
+export const PEDIDO_STAGE_IDS: [PedidoStageId, ...PedidoStageId[]] = [
+  "analise_financeira",
+  "programacao",
+  "em_producao",
+  "pronto",
+  "faturado_em_rota",
+  "pos_venda",
   PEDIDO_STAGE_REPROVADO,
-] as [PedidoStageId, ...PedidoStageId[]];
+];
 
 const STAGE_ORDER: Record<PedidoStageId, number> = {
   analise_financeira: 0,
