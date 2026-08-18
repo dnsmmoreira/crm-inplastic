@@ -226,16 +226,19 @@ function PipelinePage() {
       </div>
 
       <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
-        <div className="flex gap-4 overflow-x-auto pb-4 -mx-4 md:-mx-8 px-4 md:px-8">
-          {STAGES.map((stage) => (
-            <Column
-              key={stage.id}
-              stage={stage}
-              leads={byStage[stage.id]}
-              onOpen={setOpenLead}
-            />
-          ))}
+        <div className="-mx-4 min-h-0 flex-1 overflow-auto px-4 md:-mx-8 md:px-8">
+          <div className="flex gap-4 pb-4">
+            {STAGES.map((stage) => (
+              <Column
+                key={stage.id}
+                stage={stage}
+                leads={byStage[stage.id]}
+                onOpen={setOpenLead}
+              />
+            ))}
+          </div>
         </div>
+
         <DragOverlay>
           {active && <LeadCard lead={active} onOpen={() => {}} dragging />}
         </DragOverlay>
