@@ -25,7 +25,10 @@ import {
   type UsuarioRow,
   type PermissoesUsuario,
 } from "@/lib/usuarios.functions";
+import { getPerfilDoUsuario, setPerfilDoUsuario } from "@/lib/perfis.functions";
 import { DefinirSenhaDialog } from "@/components/usuarios/DefinirSenhaDialog";
+
+type PerfilOpcao = { id: string; nome: string; baseRole: "admin" | "vendedor"; ativo: boolean };
 
 const FUSOS = [
   "America/Sao_Paulo",
