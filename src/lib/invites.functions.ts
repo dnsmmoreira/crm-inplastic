@@ -102,7 +102,12 @@ export const createUser = createServerFn({ method: "POST" })
       throw new Error(error.message);
     }
 
-    await auditar(created.user?.id ?? null, context.userId, "convite", "convite enviado por e-mail");
+    await auditar(
+      created.user?.id ?? null,
+      context.userId,
+      "convite",
+      "convite enviado por e-mail",
+    );
 
     return { ok: true as const, email: data.email, convidado: true as const };
   });
