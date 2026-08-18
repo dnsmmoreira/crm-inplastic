@@ -177,7 +177,8 @@ function PedidosKanbanPage() {
         if ((p.ocorrencias_abertas ?? 0) <= 0 && !fiscalBlock) return false;
       }
       if (tOcorrencia && !(p.ocorrencia && p.ocorrencia.trim().length > 0)) return false;
-      if (tConcluidos && p.stage !== "concluido") return false;
+      if (p.stage === "reprovado_financeiro" && !tReprovados) return false;
+      if (p.stage === "pos_venda" && p.encerrado_em && !tReprovados) return false;
       return true;
     });
   }, [allRows, search, fVendedor, fResponsavel, fStage, fForma, tAtrasados, tBloqueados, tOcorrencia, tConcluidos]);
