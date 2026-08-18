@@ -82,12 +82,14 @@ type AuditRow = {
 export function UsuarioEditDialog({
   usuario,
   currentUserId,
+  isAdmin = false,
   open,
   onOpenChange,
   onSaved,
 }: {
   usuario: UsuarioRow | null;
   currentUserId: string;
+  isAdmin?: boolean;
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onSaved: () => Promise<void> | void;
@@ -97,6 +99,8 @@ export function UsuarioEditDialog({
   const loadAudit = useServerFn(listAuditoriaUsuario);
   const loadPerfil = useServerFn(getPerfilDoUsuario);
   const savePerfilVinculo = useServerFn(setPerfilDoUsuario);
+  const loadArena = useServerFn(getArenaParticipacao);
+  const saveArena = useServerFn(saveArenaParticipacao);
 
   const isSelf = usuario?.id === currentUserId;
 
@@ -109,6 +113,8 @@ export function UsuarioEditDialog({
   const [role, setRole] = useState<"admin" | "vendedor">("vendedor");
   const [ativo, setAtivo] = useState(true);
   const [meta, setMeta] = useState("0");
+  const [metaInicial, setMetaInicial] = useState("0");
+  const [metaMotivo, setMetaMotivo] = useState("");
   const [naFila, setNaFila] = useState(false);
   const [filaAtivo, setFilaAtivo] = useState(true);
   const [limite, setLimite] = useState("");
@@ -120,6 +126,9 @@ export function UsuarioEditDialog({
   const [perfis, setPerfis] = useState<PerfilOpcao[]>([]);
   const [perfilId, setPerfilId] = useState<string>("");
   const [perfilInicial, setPerfilInicial] = useState<string>("");
+  const [arena, setArena] = useState<ArenaParticipacao>({ ...ARENA_PARTICIPACAO_PADRAO });
+  const [arenaInicial, setArenaInicial] = useState<ArenaParticipacao>({ ...ARENA_PARTICIPACAO_PADRAO });
+
 
   useEffect(() => {
     if (!usuario) return;
