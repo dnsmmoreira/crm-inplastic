@@ -345,8 +345,11 @@ function Row({
           )}
         </div>
       </Td>
-      <Td className="text-right">
-        <div className="inline-flex items-center gap-1 font-display font-semibold text-base">
+      <Td className="text-right border-l">
+        <div
+          className="inline-flex items-center gap-1 font-display font-semibold text-base"
+          title="Score de Atividade — ARENA Premiação"
+        >
           {v.score.toFixed(0)}
           {trend === "up" && <TrendingUp className="h-3.5 w-3.5 text-emerald-600" />}
           {trend === "down" && <TrendingDown className="h-3.5 w-3.5 text-destructive" />}
@@ -361,10 +364,11 @@ function Row({
           />
         </div>
       </Td>
-      <Td className="text-right whitespace-nowrap">
+      <Td className="text-right whitespace-nowrap border-l">
         <div className="font-medium">{v.ganhos_qtd}</div>
         <div className="text-xs text-muted-foreground">{formatBRL(v.ganhos_valor)}</div>
       </Td>
+
       {showMetaCol && (
         <Td className="text-right whitespace-nowrap min-w-[130px]">
           {v.meta_valor == null ? (
