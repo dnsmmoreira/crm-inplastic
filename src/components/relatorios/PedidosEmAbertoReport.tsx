@@ -241,6 +241,8 @@ function buildTree(
       rows: list,
       path,
       produtoFiltro,
+      sku: head === "produto" && nome !== "Sem produto" ? skuDoProduto(list, nome) : null,
+
       children: rest.length ? buildTree(list, rest, path, produtoFiltro) : null,
     };
   }).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
