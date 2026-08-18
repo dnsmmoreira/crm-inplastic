@@ -201,7 +201,7 @@ function PedidosKanbanPage() {
     setTAtrasados(false);
     setTBloqueados(false);
     setTOcorrencia(false);
-    setTConcluidos(false);
+    setTReprovados(false);
   };
 
 
