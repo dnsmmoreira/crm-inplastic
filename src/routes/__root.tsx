@@ -251,18 +251,51 @@ function AppShell({ children }: { children: ReactNode }) {
       return next;
     });
   };
-  const nav = NAV.filter((n) => {
-    if (n.adminOnly && !isAdmin) return false;
-    const perm = "perm" in n ? n.perm : null;
-    // Chave granular equivalente (perfis) — só AMPLIA o acesso atual.
-    const chaveGranular: Record<string, string> = {
-      ver_relatorios: "relatorios.ver",
-      configurar_integracoes: "canais.configurar",
-      gerenciar_usuarios: "usuarios.gerenciar",
-    };
-    if (perm && user && !user.permissions[perm] && !hasPerm(user, chaveGranular[perm] ?? "")) return false;
-    return true;
-  });
+  const ctx: NavCtx = { isAdmin, user };
+  const rootItems = NAV_ROOT.filter((i) => i.show(ctx));
+  const groups = NAV_GROUPS.map((g) => ({ ...g, items: g.items.filter((i) => i.show(ctx)) })).filter(
+    (g) => g.items.length > 0,
+  );
+
+  const activeGroupId = groups.find((g) => g.items.some((i) => i.to === pathname))?.id ?? null;
+  const [openGroups, setOpenGroups] = useState<string[]>([]);
+  const [mobileOpen, setMobileOpen] = useState<string | null>(null);
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(OPEN_STORAGE_KEY);
+      if (raw) setOpenGroups(JSON.parse(raw) as string[]);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  useEffect(() => {
+    if (!activeGroupId) return;
+    setOpenGroups((prev) => (prev.includes(activeGroupId) ? prev : [...prev, activeGroupId]));
+    setMobileOpen(activeGroupId);
+  }, [activeGroupId]);
+  const toggleGroup = (id: string) => {
+    setOpenGroups((prev) => {
+      const next = prev.includes(id) ? prev.filter((g) => g !== id) : [...prev, id];
+      try {
+        window.localStorage.setItem(OPEN_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  };
+  const toggleMobileGroup = (id: string) => setMobileOpen((prev) => (prev === id ? null : id));
+
+  const itemLinkClass = (active: boolean, indent: boolean) =>
+    cn(
+      "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+      collapsed && "justify-center px-2",
+      indent && !collapsed && "pl-9",
+      active
+        ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium"
+        : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+    );
+
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
