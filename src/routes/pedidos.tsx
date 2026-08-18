@@ -673,7 +673,7 @@ function KpiBar({ pedidos }: { pedidos: PedidoRow[] }) {
         ? diasArr.reduce((s, n) => s + n, 0) / diasArr.length
         : 0;
 
-    const concluidos = pedidos.filter((p) => p.stage === "concluido").length;
+    const concluidos = pedidos.filter((p) => !!p.encerrado_em).length;
     const total = pedidos.length;
     const pctPosVenda = total > 0 ? (concluidos / total) * 100 : 0;
 
@@ -803,7 +803,7 @@ type FilterBarProps = {
   tAtrasados: boolean; setTAtrasados: (v: boolean) => void;
   tBloqueados: boolean; setTBloqueados: (v: boolean) => void;
   tOcorrencia: boolean; setTOcorrencia: (v: boolean) => void;
-  tConcluidos: boolean; setTConcluidos: (v: boolean) => void;
+  tReprovados: boolean; setTReprovados: (v: boolean) => void;
   activeCount: number;
   onClear: () => void;
   totalCount: number;
