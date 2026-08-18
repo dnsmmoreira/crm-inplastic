@@ -325,16 +325,11 @@ function CreateUserCard({ onCreated }: { onCreated: () => Promise<void> | void }
   const create = useServerFn(createUser);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
-  const [password, setPassword] = useState("");
   const [role, setRole] = useState<AppRole>("vendedor");
   const [busy, setBusy] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password && password.length < 6) {
-      toast.error("Senha inicial precisa ter pelo menos 6 caracteres (ou deixe em branco).");
-      return;
-    }
     setBusy(true);
     try {
       await create({ data: { email, name, role } });
@@ -343,7 +338,6 @@ function CreateUserCard({ onCreated }: { onCreated: () => Promise<void> | void }
       });
       setEmail("");
       setName("");
-      setPassword("");
       setRole("vendedor");
       await onCreated();
     } catch (err) {
@@ -370,17 +364,11 @@ function CreateUserCard({ onCreated }: { onCreated: () => Promise<void> | void }
             <Label htmlFor="cu-email">E-mail</Label>
             <Input id="cu-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="pessoa@empresa.com" />
           </div>
-          <div className="space-y-1">
-            <Label htmlFor="cu-password">
-              Senha inicial <span className="text-muted-foreground font-normal">(opcional)</span>
-            </Label>
-            <Input
-              id="cu-password"
-              type="text"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Deixe vazio → usuário define via /primeiro-acesso"
-            />
+          <div className="space-y-1 md:col-span-2">
+            <p className="text-xs text-muted-foreground">
+              O usuário recebe um convite por e-mail (link de uso único e com validade) para
+              definir a própria senha. Nenhuma senha é definida aqui.
+            </p>
           </div>
           <div className="space-y-1">
             <Label htmlFor="cu-role">Papel</Label>
