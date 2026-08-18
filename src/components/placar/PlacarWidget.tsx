@@ -30,7 +30,10 @@ export function PlacarWidget() {
                 <Trophy className="h-4 w-4 text-amber-500" />
                 Placar de Vendedores
               </CardTitle>
-              <CardDescription>Ranking do mês · atualizado em tempo real</CardDescription>
+              <CardDescription>
+                ARENA Premiação · Score de Atividade do mês
+              </CardDescription>
+
             </div>
             <span className="text-xs text-primary flex items-center gap-1 group-hover:underline">
               Ver placar <ArrowUpRight className="h-3 w-3" />
