@@ -522,6 +522,95 @@ export function UsuarioEditDialog({
             </div>
           </TabsContent>
 
+          {/* 3b. ARENA (admin) */}
+          {isAdmin && (
+            <TabsContent value="arena" className="space-y-4 pt-4">
+              <div className="flex items-center justify-between rounded-lg border p-3">
+                <div>
+                  <div className="text-sm font-medium">Participa da ARENA</div>
+                  <p className="text-xs text-muted-foreground">
+                    Define se o usuário entra no placar (Premiação e Performance).
+                  </p>
+                </div>
+                <Switch
+                  checked={arena.participaArena}
+                  onCheckedChange={(v) => setArena((a) => ({ ...a, participaArena: v }))}
+                />
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-1">
+                  <Label htmlFor="ue-arena-tipo">Tipo comercial</Label>
+                  <select
+                    id="ue-arena-tipo"
+                    value={arena.tipoComercial}
+                    onChange={(e) =>
+                      setArena((a) => ({ ...a, tipoComercial: e.target.value as ArenaTipoComercial }))
+                    }
+                    className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                  >
+                    {ARENA_TIPOS.map((t) => (
+                      <option key={t.id} value={t.id}>{t.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="ue-arena-inicio">Início da carência</Label>
+                  <Input
+                    id="ue-arena-inicio"
+                    type="date"
+                    value={arena.carenciaInicio ?? ""}
+                    onChange={(e) => setArena((a) => ({ ...a, carenciaInicio: e.target.value || null }))}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="ue-arena-meses">Meses de carência</Label>
+                  <Input
+                    id="ue-arena-meses"
+                    type="number"
+                    min={0}
+                    max={60}
+                    value={String(arena.carenciaMeses)}
+                    onChange={(e) =>
+                      setArena((a) => ({ ...a, carenciaMeses: Math.max(0, Number(e.target.value) || 0) }))
+                    }
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="ue-arena-fase">Fase da rampa</Label>
+                  <Input
+                    id="ue-arena-fase"
+                    type="number"
+                    min={0}
+                    max={10}
+                    value={String(arena.faseRampa)}
+                    onChange={(e) =>
+                      setArena((a) => ({ ...a, faseRampa: Math.max(0, Number(e.target.value) || 0) }))
+                    }
+                  />
+                  <p className="text-xs text-muted-foreground">0 = sem rampa (meta plena).</p>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="ue-arena-obs">Observação</Label>
+                <Input
+                  id="ue-arena-obs"
+                  value={arena.observacao ?? ""}
+                  onChange={(e) => setArena((a) => ({ ...a, observacao: e.target.value || null }))}
+                  maxLength={500}
+                  placeholder="Contexto da participação, acordo de rampa, etc."
+                />
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                Seção restrita a administradores. Alterações ficam registradas na auditoria do usuário.
+              </p>
+            </TabsContent>
+          )}
+
+
+
           {/* 4. Permissões */}
           <TabsContent value="permissoes" className="space-y-2 pt-4">
             {PERMISSAO_KEYS.map((k) => (
