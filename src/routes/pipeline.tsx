@@ -13,7 +13,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { Plus, Package, Calendar as CalendarIcon, Search, ArrowDownUp, X, PackageCheck } from "lucide-react";
+import { Plus, Package, Calendar as CalendarIcon, Search, ArrowDownUp, X, PackageCheck, ChevronLeft, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useCrm, STAGES, formatBRL, leadTemperature, followupTemperature, type Lead, type StageId, type FollowupLevel, useVisibleLeads, useLeadValueMap } from "@/lib/crm-store";
@@ -31,6 +31,8 @@ import { cn } from "@/lib/utils";
 import { listLeadsComPedido } from "@/lib/pedidos.functions";
 
 type SortMode = "default" | "urgency" | "urgency-desc";
+const CARDS_PER_PAGE = 15;
+
 const AGENDA_FILTERS: { level: FollowupLevel; label: string; emoji: string }[] = [
   { level: "urgent", label: "Urgente", emoji: "🔥" },
   { level: "attention", label: "Atenção", emoji: "⚠️" },
@@ -150,8 +152,9 @@ function PipelinePage() {
 
 
   return (
-    <div className="p-4 md:p-8 space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="flex h-[calc(100dvh-4rem)] flex-col gap-4 overflow-hidden p-4 md:p-8">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
+
         <div>
           <h1 className="text-2xl md:text-3xl font-semibold">Funil de Vendas</h1>
           <p className="text-sm text-muted-foreground">Arraste os cards entre as etapas do processo consultivo</p>
@@ -170,7 +173,7 @@ function PipelinePage() {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-2">
+      <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-2">
         <span className="text-xs font-medium text-muted-foreground px-2">Agenda:</span>
         {AGENDA_FILTERS.map((f) => {
           const active = agendaFilter.has(f.level);
@@ -225,16 +228,19 @@ function PipelinePage() {
       </div>
 
       <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
-        <div className="flex gap-4 overflow-x-auto pb-4 -mx-4 md:-mx-8 px-4 md:px-8">
-          {STAGES.map((stage) => (
-            <Column
-              key={stage.id}
-              stage={stage}
-              leads={byStage[stage.id]}
-              onOpen={setOpenLead}
-            />
-          ))}
+        <div className="-mx-4 min-h-0 flex-1 overflow-auto px-4 md:-mx-8 md:px-8">
+          <div className="flex gap-4 pb-4">
+            {STAGES.map((stage) => (
+              <Column
+                key={stage.id}
+                stage={stage}
+                leads={byStage[stage.id]}
+                onOpen={setOpenLead}
+              />
+            ))}
+          </div>
         </div>
+
         <DragOverlay>
           {active && <LeadCard lead={active} onOpen={() => {}} dragging />}
         </DragOverlay>
@@ -268,9 +274,16 @@ function Column({
   const { setNodeRef, isOver } = useDroppable({ id: stage.id });
   const valueMap = useLeadValueMap();
   const total = leads.reduce((s, l) => s + (valueMap.get(l.id) ?? l.estimatedValue), 0);
+
+  const [page, setPage] = useState(0);
+  const pageCount = Math.max(1, Math.ceil(leads.length / CARDS_PER_PAGE));
+  const safePage = Math.min(page, pageCount - 1);
+  const start = safePage * CARDS_PER_PAGE;
+  const visible = leads.slice(start, start + CARDS_PER_PAGE);
+
   return (
     <div className="w-[300px] shrink-0 flex flex-col">
-      <div className="px-1 pb-2 flex items-center justify-between">
+      <div className="sticky top-0 z-20 px-1 pb-2 pt-1 flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/70">
         <div className="flex items-center gap-2">
           <span className="stage-dot" style={{ background: stage.color }} />
           <span className="font-medium text-sm">{stage.label}</span>
@@ -285,11 +298,40 @@ function Column({
           isOver ? "bg-accent/40 border-primary" : "bg-muted/30 border-border",
         )}
       >
-        {leads.map((l) => (
+        {visible.map((l) => (
           <LeadCard key={l.id} lead={l} onOpen={onOpen} />
         ))}
         {leads.length === 0 && (
           <div className="text-xs text-muted-foreground text-center py-8 italic">Solte aqui</div>
+        )}
+        {leads.length > CARDS_PER_PAGE && (
+          <div className="flex items-center justify-between gap-1 border-t pt-2 text-[11px] text-muted-foreground">
+            <span>
+              {start + 1}–{start + visible.length} de {leads.length}
+            </span>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                aria-label="Página anterior"
+                disabled={safePage === 0}
+                onClick={() => setPage(Math.max(0, safePage - 1))}
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                aria-label="Próxima página"
+                disabled={safePage >= pageCount - 1}
+                onClick={() => setPage(Math.min(pageCount - 1, safePage + 1))}
+              >
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
         )}
       </div>
     </div>
@@ -297,6 +339,7 @@ function Column({
 }
 
 function LeadCard({
+
   lead,
   onOpen,
   dragging = false,
