@@ -815,7 +815,7 @@ function FilterBar(props: FilterBarProps) {
     options, fVendedor, setFVendedor, fResponsavel, setFResponsavel,
     fStage, setFStage, fForma, setFForma,
     tAtrasados, setTAtrasados, tBloqueados, setTBloqueados,
-    tOcorrencia, setTOcorrencia, tConcluidos, setTConcluidos,
+    tOcorrencia, setTOcorrencia, tReprovados, setTReprovados,
     activeCount, onClear, totalCount, filteredCount,
   } = props;
 
