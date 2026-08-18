@@ -8,6 +8,16 @@ import { requireSupabaseAuth } from "@/lib/auth.middleware";
  * Nada altera leads/propostas nem dispara integrações externas.
  */
 
+import {
+  PEDIDO_STAGES,
+  PEDIDO_STAGE_REPROVADO,
+  PEDIDO_STAGE_IDS,
+  ALLOWED_FORWARD,
+  isBackward,
+  stageLabel,
+  type PedidoStageId,
+} from "@/lib/pedidos-stages";
+
 export {
   PEDIDO_STAGES,
   PEDIDO_STAGE_REPROVADO,
