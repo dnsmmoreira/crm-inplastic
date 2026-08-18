@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      arena_participacao: {
+        Row: {
+          carencia_inicio: string | null
+          carencia_meses: number
+          created_at: string
+          fase_rampa: number
+          observacao: string | null
+          participa_arena: boolean
+          tipo_comercial: Database["public"]["Enums"]["arena_tipo_comercial"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          carencia_inicio?: string | null
+          carencia_meses?: number
+          created_at?: string
+          fase_rampa?: number
+          observacao?: string | null
+          participa_arena?: boolean
+          tipo_comercial?: Database["public"]["Enums"]["arena_tipo_comercial"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          carencia_inicio?: string | null
+          carencia_meses?: number
+          created_at?: string
+          fase_rampa?: number
+          observacao?: string | null
+          participa_arena?: boolean
+          tipo_comercial?: Database["public"]["Enums"]["arena_tipo_comercial"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       assistente_redacao_uso: {
         Row: {
           conversa_id: string | null
@@ -2592,6 +2628,11 @@ export type Database = {
         | "alerta"
         | "resumo"
       app_role: "admin" | "vendedor"
+      arena_tipo_comercial:
+        | "interno"
+        | "representante"
+        | "licitacoes"
+        | "nao_comercial"
       conversa_status:
         | "ia_atendendo"
         | "humano_atendendo"
@@ -2763,6 +2804,12 @@ export const Constants = {
         "resumo",
       ],
       app_role: ["admin", "vendedor"],
+      arena_tipo_comercial: [
+        "interno",
+        "representante",
+        "licitacoes",
+        "nao_comercial",
+      ],
       conversa_status: [
         "ia_atendendo",
         "humano_atendendo",
