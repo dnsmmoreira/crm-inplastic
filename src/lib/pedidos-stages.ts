@@ -15,7 +15,7 @@
 export const PEDIDO_STAGES = [
   { id: "analise_financeira", label: "Análise Financeira", color: "#f59e0b" },
   { id: "aguardando_pagamento", label: "Aguardando Pagamento", color: "#eab308" },
-  { id: "programacao", label: "Programação", color: "#6366f1" },
+  { id: "programacao", label: "Liberado", color: "#6366f1" },
   { id: "em_producao", label: "Em Produção", color: "#8b5cf6" },
   { id: "pronto", label: "Coleta / Entrega", color: "#0ea5e9" },
   { id: "faturado_em_rota", label: "Faturado / Em Rota", color: "#14b8a6" },
