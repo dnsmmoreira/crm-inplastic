@@ -286,6 +286,15 @@ export async function aoEntrarNaEtapa(
       return;
     }
 
+    if (stage === "aguardando_pagamento") {
+      await notificarUsuarios(sb, p.vendedor_proprietario_id ? [p.vendedor_proprietario_id] : [], {
+        tipo: "pedido_aguardando_pagamento",
+        titulo: `Pedido ${p.number} condicionado a pagamento antecipado — combine com o cliente.`,
+        pedidoId,
+      });
+      return;
+    }
+
     if (stage === "programacao") {
       await notificarUsuarios(sb, await destinatariosOperacional(sb), {
         tipo: "pedido_programacao",

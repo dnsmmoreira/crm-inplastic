@@ -21,6 +21,13 @@ type SB = SupabaseClient<any, any, any>;
 // ────────────── SLA por etapa operacional (dias corridos) ──────────────
 // Defaults sensatos; não vieram da xerife_config nesta fase (aditivo futuro).
 const SLA_STAGE_DIAS: Record<string, number> = {
+  // Fluxo atual
+  analise_financeira: 1,
+  aguardando_pagamento: 5,
+  programacao: 1,
+  pronto: 2,
+  faturado_em_rota: 3,
+  // Etapas legadas
   em_validacao: 1,
   aguardando_aprovacao: 1,
   aprovado_programado: 2,
