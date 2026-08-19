@@ -50,6 +50,15 @@ async function assertPermissao(
   throw new Error(mensagem);
 }
 
+/**
+ * Escopo do relatório: quem não tem `pedidos.ver_todos` (vendedor comum) só
+ * enxerga os próprios pedidos — o filtro é aplicado no servidor, além do RLS.
+ */
+async function escopoProprio(sb: LooseClient, userId: string): Promise<boolean> {
+  const { data } = await sb.rpc("tem_permissao", { _user_id: userId, _chave: "pedidos.ver_todos" });
+  return data !== true;
+}
+
 
 export const assertPodeExportarRelatorio = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
