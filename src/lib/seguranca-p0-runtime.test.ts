@@ -62,10 +62,7 @@ const HOOKS: Array<{ nome: string; carregar: () => Promise<Handler> }> = [
   ["xerife-fechamento", () => import("@/routes/api/public/hooks/xerife-fechamento")],
   ["xerife-agenda-diaria", () => import("@/routes/api/public/hooks/xerife-agenda-diaria")],
   ["xerife-pedidos", () => import("@/routes/api/public/hooks/xerife-pedidos")],
-  [
-    "xerife-watchdog-conversa",
-    () => import("@/routes/api/public/hooks/xerife-watchdog-conversa"),
-  ],
+  ["xerife-watchdog-conversa", () => import("@/routes/api/public/hooks/xerife-watchdog-conversa")],
   ["ia-fila-envio", () => import("@/routes/api/public/hooks/ia-fila-envio")],
 ].map(([nome, imp]) => ({
   nome: nome as string,
