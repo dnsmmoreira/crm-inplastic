@@ -231,13 +231,14 @@ const vendasOu = (chave: string) => (c: NavCtx) => vendas(c) || hasPerm(c.user, 
 const NAV_ROOT: NavItem[] = [
   { to: "/", label: "Início", icon: LayoutDashboard, show: always },
   
-  { to: "/conversas", label: "Conversas", icon: MessageSquare, show: key("whatsapp.atender") },
-  { to: "/placar", label: "Placar", icon: Trophy, show: vendas },
+  { to: "/conversas", label: "Conversas", icon: MessageSquare, show: key("whatsapp.atender"), accent: "emerald" },
+  { to: "/placar", label: "Placar", icon: Trophy, show: vendas, accent: "amber" },
 ];
 
 const NAV_GROUPS: NavGroup[] = [
   {
     id: "pipeline",
+    accent: "blue",
     label: "Pipeline",
     icon: KanbanSquare,
     items: [
@@ -247,6 +248,7 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     id: "cadastros",
+    accent: "sky",
     label: "Cadastros",
     icon: Building2,
     items: [
@@ -258,6 +260,7 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     id: "negocios",
+    accent: "emerald",
     label: "Negócios",
     icon: FileText,
     items: [
@@ -269,6 +272,7 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     id: "meu-dia",
+    accent: "violet",
     label: "Meu Dia",
     icon: ClipboardList,
     items: [
@@ -278,6 +282,7 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     id: "empresa",
+    accent: "slate",
     label: "Empresa",
     icon: BarChart3,
     items: [
@@ -294,6 +299,7 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     id: "ia-canais",
+    accent: "cyan",
     label: "IA & Canais",
     icon: Bot,
     items: [
