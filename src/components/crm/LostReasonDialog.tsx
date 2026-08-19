@@ -133,8 +133,13 @@ export function LostReasonDialog({
             Cancelar
           </Button>
           <Button onClick={handleConfirm} disabled={!motivo || submitting}>
-            {submitting ? "Salvando..." : "Marcar como Perdido"}
+            {submitting
+              ? "Salvando..."
+              : bulk
+                ? `Marcar ${leadLabels!.length} como Perdido`
+                : "Marcar como Perdido"}
           </Button>
+
         </DialogFooter>
       </DialogContent>
     </Dialog>
