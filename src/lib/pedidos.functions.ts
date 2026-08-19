@@ -333,6 +333,18 @@ export const updatePedidoStage = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<MoveStageResult> => {
     const sb: LooseClient = context.supabase;
 
+    // Guard de movimentação: somente quem tem a chave pedidos.movimentar
+    // (admin, Financeiro e Operacional Comercial). Vendedor apenas visualiza.
+    const podeMovimentar = await temPermissao(sb, context.userId, PERM_PEDIDOS_MOVIMENTAR);
+    if (!podeMovimentar) {
+      return {
+        ok: false,
+        reason: "forbidden",
+        message: "Você não tem permissão para movimentar pedidos — acesso somente visualização.",
+      };
+    }
+
+
     // Carrega etapa atual
     const { data: current, error: loadErr } = await sb
       .from("pedidos")
