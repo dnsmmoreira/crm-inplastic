@@ -386,10 +386,21 @@ function Column({
   const start = safePage * CARDS_PER_PAGE;
   const visible = leads.slice(start, start + CARDS_PER_PAGE);
 
+  const visibleIds = visible.map((l) => l.id);
+  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selected.has(id));
+
   return (
     <div className="w-[300px] shrink-0 flex flex-col">
       <div className="sticky top-0 z-20 px-1 pb-2 pt-1 flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/70">
         <div className="flex items-center gap-2">
+          {selectMode && (
+            <Checkbox
+              checked={allVisibleSelected}
+              disabled={visibleIds.length === 0}
+              aria-label={`Selecionar cards visíveis de ${stage.label}`}
+              onCheckedChange={(v) => onSelectMany(visibleIds, v === true)}
+            />
+          )}
           <span className="stage-dot" style={{ background: stage.color }} />
           <span className="font-medium text-sm">{stage.label}</span>
           <Badge variant="secondary" className="text-xs">{leads.length}</Badge>
@@ -404,8 +415,16 @@ function Column({
         )}
       >
         {visible.map((l) => (
-          <LeadCard key={l.id} lead={l} onOpen={onOpen} />
+          <LeadCard
+            key={l.id}
+            lead={l}
+            onOpen={onOpen}
+            selectMode={selectMode}
+            isSelected={selected.has(l.id)}
+            onToggleSelect={onToggleSelect}
+          />
         ))}
+
         {leads.length === 0 && (
           <div className="text-xs text-muted-foreground text-center py-8 italic">Solte aqui</div>
         )}
