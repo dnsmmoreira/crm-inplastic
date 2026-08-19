@@ -55,6 +55,11 @@ function PipelinePage() {
   const [lostTarget, setLostTarget] = useState<{ leadId: string; company: string } | null>(null);
   // Fase 3: por padrão, oculta ganhos que já viraram pedido operacional (não deleta nada).
   const [mostrarGanhosCompletos, setMostrarGanhosCompletos] = useState(false);
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkLostOpen, setBulkLostOpen] = useState(false);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
