@@ -32,6 +32,8 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { useAuth, hasPerm } from "@/hooks/use-auth";
+import { PERM_PEDIDOS_MOVIMENTAR } from "@/lib/permissoes";
 
 import { formatBRL } from "@/lib/crm-store";
 import {
@@ -67,6 +69,10 @@ function PedidosKanbanPage() {
   const listFn = useServerFn(listPedidos);
   const updateFn = useServerFn(updatePedidoStage);
   const qc = useQueryClient();
+  const { user } = useAuth();
+  // Movimentar cards exige a chave pedidos.movimentar (admin, Financeiro,
+  // Operacional). Vendedor comum enxerga o funil em modo leitura.
+  const podeMover = hasPerm(user, PERM_PEDIDOS_MOVIMENTAR);
 
   const [search, setSearch] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -332,6 +338,7 @@ function PedidosKanbanPage() {
                   blockedReason={blockedByOcorrencia ? "Ocorrência aberta" : null}
                   isBackwardTarget={isBack && canDrop}
                   onOpen={setOpenPedidoId}
+                  podeMover={podeMover}
                 />
               );
             })}
@@ -369,6 +376,7 @@ function Column({
   blockedReason,
   isBackwardTarget,
   onOpen,
+  podeMover,
 }: {
   stage: (typeof PEDIDO_STAGES)[number];
   pedidos: PedidoRow[];
@@ -377,6 +385,7 @@ function Column({
   blockedReason?: string | null;
   isBackwardTarget: boolean;
   onOpen: (id: string) => void;
+  podeMover: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage.id, disabled: dragActive && !canDrop });
   const total = pedidos.reduce((s, p) => s + p.total, 0);
@@ -420,10 +429,12 @@ function Column({
           </div>
         )}
         {pedidos.map((p) => (
-          <PedidoCard key={p.id} pedido={p} onOpen={onOpen} />
+          <PedidoCard key={p.id} pedido={p} onOpen={onOpen} podeMover={podeMover} />
         ))}
         {pedidos.length === 0 && !showBlocked && (
-          <div className="text-xs text-muted-foreground text-center py-8 italic">Solte aqui</div>
+          <div className="text-xs text-muted-foreground text-center py-8 italic">
+            {podeMover ? "Solte aqui" : "Sem pedidos"}
+          </div>
         )}
       </div>
     </div>
@@ -434,12 +445,17 @@ function PedidoCard({
   pedido,
   dragging = false,
   onOpen,
+  podeMover = true,
 }: {
   pedido: PedidoRow;
   dragging?: boolean;
   onOpen?: (id: string) => void;
+  podeMover?: boolean;
 }) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: pedido.id });
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: pedido.id,
+    disabled: !podeMover,
+  });
 
   const diasNaEtapa = Math.max(
     0,
@@ -481,8 +497,10 @@ function PedidoCard({
         if (onOpen) onOpen(pedido.id);
         e.stopPropagation();
       }}
+      title={podeMover ? undefined : "Somente visualização"}
       className={cn(
-        "cursor-grab active:cursor-grabbing rounded-lg border bg-card p-3 shadow-sm hover:shadow-md hover:border-primary/50 transition-all",
+        "rounded-lg border bg-card p-3 shadow-sm hover:shadow-md hover:border-primary/50 transition-all",
+        podeMover ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
         atrasado && "border-l-4 border-l-rose-500",
         pedido.prioridade === "alta" && !atrasado && "border-l-4 border-l-amber-500",
         isDragging && "opacity-30",

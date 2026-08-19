@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
+import { podeEscreverConversa } from "@/lib/permissoes";
 
 function onlyDigits(s: string) {
   return s.replace(/\D/g, "");
@@ -130,7 +131,7 @@ export const sendConversaMessage = createServerFn({ method: "POST" })
 
     const { data: conversa, error: cErr } = await supabase
       .from("whatsapp_conversas")
-      .select("id, phone, atribuido_para")
+      .select("id, phone, atribuido_para, status")
       .eq("id", data.conversaId)
       .maybeSingle();
     if (cErr || !conversa) throw new Error("Conversa não encontrada ou sem permissão.");
@@ -173,6 +174,16 @@ export const sendConversaMessage = createServerFn({ method: "POST" })
     } catch {
       isAdmin = false;
     }
+
+    // (A0) Escrita manual só quando a conversa está aguardando humano ou em
+    // atendimento humano. Admin não é limitado por este guard.
+    if (!isAdmin && !podeEscreverConversa(conversa.status)) {
+      bloquear(
+        "status_nao_permite_escrita",
+        "Esta conversa não está em atendimento humano. Assuma o atendimento para poder responder.",
+      );
+    }
+
 
     // Existe mensagem recebida do cliente nesta conversa?
     const { count: inboundCount, error: inErr } = await supabase

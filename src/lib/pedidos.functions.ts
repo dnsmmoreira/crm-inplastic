@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
+import { PERM_PEDIDOS_MOVIMENTAR } from "@/lib/permissoes";
 
 /**
  * Fase 3 — Kanban de Pedidos operacional (coexiste com o Funil de Vendas).
@@ -222,6 +223,16 @@ async function isAdminOuFinanceiro(sb: LooseClient, userId: string): Promise<boo
   return !!vinculo;
 }
 
+/** Chave granular no servidor (tem_permissao já libera admin). */
+async function temPermissao(sb: LooseClient, userId: string, chave: string): Promise<boolean> {
+  try {
+    const { data } = await sb.rpc("tem_permissao", { _user_id: userId, _chave: chave });
+    return data === true;
+  } catch {
+    return false;
+  }
+}
+
 /* ---------------------------------------------------------------------------
  * Fase 5 — Fila interna de notificações de mudança de etapa.
  * Registra o evento com evento_id determinístico (idempotente).
@@ -322,6 +333,18 @@ export const updatePedidoStage = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }): Promise<MoveStageResult> => {
     const sb: LooseClient = context.supabase;
+
+    // Guard de movimentação: somente quem tem a chave pedidos.movimentar
+    // (admin, Financeiro e Operacional Comercial). Vendedor apenas visualiza.
+    const podeMovimentar = await temPermissao(sb, context.userId, PERM_PEDIDOS_MOVIMENTAR);
+    if (!podeMovimentar) {
+      return {
+        ok: false,
+        reason: "forbidden",
+        message: "Você não tem permissão para movimentar pedidos — acesso somente visualização.",
+      };
+    }
+
 
     // Carrega etapa atual
     const { data: current, error: loadErr } = await sb

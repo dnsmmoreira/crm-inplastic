@@ -50,6 +50,15 @@ async function assertPermissao(
   throw new Error(mensagem);
 }
 
+/**
+ * Escopo do relatório: quem não tem `pedidos.ver_todos` (vendedor comum) só
+ * enxerga os próprios pedidos — o filtro é aplicado no servidor, além do RLS.
+ */
+async function escopoProprio(sb: LooseClient, userId: string): Promise<boolean> {
+  const { data } = await sb.rpc("tem_permissao", { _user_id: userId, _chave: "pedidos.ver_todos" });
+  return data !== true;
+}
+
 
 export const assertPodeExportarRelatorio = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -73,16 +82,18 @@ export const listPedidosRelatorio = createServerFn({ method: "GET" })
       "ver_relatorios",
       "Você não tem permissão para ver relatórios.",
     );
-    const { data, error } = await sb
+    let q = sb
       .from("pedidos")
       .select(
         [
           "id, number, stage, total, created_at, previsao_entrega, lead_id",
           "leads:lead_id(company)",
         ].join(", "),
-      )
-      .order("created_at", { ascending: false })
-      .limit(1000);
+      );
+    if (await escopoProprio(sb, context.userId)) {
+      q = q.or(`owner_id.eq.${context.userId},vendedor_proprietario_id.eq.${context.userId}`);
+    }
+    const { data, error } = await q.order("created_at", { ascending: false }).limit(1000);
     if (error) throw new Error(`Falha ao listar pedidos: ${error.message}`);
 
     const rows = (data ?? []) as Array<{
@@ -184,7 +195,7 @@ export const listPedidosEmAberto = createServerFn({ method: "GET" })
       "Você não tem permissão para ver relatórios.",
     );
 
-    const { data, error } = await sb
+    let q = sb
       .from("pedidos")
       .select(
         [
@@ -194,9 +205,11 @@ export const listPedidosEmAberto = createServerFn({ method: "GET" })
         ].join(", "),
       )
       .is("encerrado_em", null)
-      .not("stage", "in", `(${PEDIDO_STAGES_FECHADOS.join(",")})`)
-      .order("created_at", { ascending: false })
-      .limit(1000);
+      .not("stage", "in", `(${PEDIDO_STAGES_FECHADOS.join(",")})`);
+    if (await escopoProprio(sb, context.userId)) {
+      q = q.or(`owner_id.eq.${context.userId},vendedor_proprietario_id.eq.${context.userId}`);
+    }
+    const { data, error } = await q.order("created_at", { ascending: false }).limit(1000);
     if (error) throw new Error(`Falha ao listar pedidos em aberto: ${error.message}`);
 
     const rows = (data ?? []) as Array<{

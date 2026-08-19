@@ -11,6 +11,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PedidosEmAbertoReport } from "@/components/relatorios/PedidosEmAbertoReport";
 import { cn } from "@/lib/utils";
+import { useAuth, hasPerm } from "@/hooks/use-auth";
+import { PERM_PEDIDOS_VER_TODOS } from "@/lib/permissoes";
 import { formatBRL } from "@/lib/crm-store";
 import { PEDIDO_STAGES, type PedidoStageId } from "@/lib/pedidos.functions";
 import { toast } from "sonner";
@@ -47,6 +49,9 @@ function inRange(iso: string | null, from: string, to: string) {
 function RelatoriosPage() {
   const fetchPedidos = useServerFn(listPedidosRelatorio);
   const checkExport = useServerFn(assertPodeExportarRelatorio);
+  const { user } = useAuth();
+  // Vendedor comum só vê o relatório das próprias vendas (o servidor também filtra).
+  const verGlobal = hasPerm(user, PERM_PEDIDOS_VER_TODOS);
   const { data, isLoading, error } = useQuery({
     queryKey: ["relatorio-pedidos"],
     queryFn: () => fetchPedidos(),
@@ -153,12 +158,14 @@ function RelatoriosPage() {
       <Tabs defaultValue="pedidos" className="space-y-6">
         <TabsList className="no-print">
           <TabsTrigger value="pedidos">Pedidos</TabsTrigger>
-          <TabsTrigger value="abertos">Pedidos em Aberto</TabsTrigger>
+          {verGlobal && <TabsTrigger value="abertos">Pedidos em Aberto</TabsTrigger>}
         </TabsList>
 
-        <TabsContent value="abertos" className="space-y-6">
-          <PedidosEmAbertoReport />
-        </TabsContent>
+        {verGlobal && (
+          <TabsContent value="abertos" className="space-y-6">
+            <PedidosEmAbertoReport />
+          </TabsContent>
+        )}
 
         <TabsContent value="pedidos" className="space-y-6">
       <div className="flex items-start justify-between gap-4 no-print">

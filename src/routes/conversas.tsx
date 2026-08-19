@@ -44,6 +44,7 @@ import {
   listarVendedoresAtendimento,
 } from "@/lib/atendimento.functions";
 import { useAuth } from "@/hooks/use-auth";
+import { podeEscreverConversa } from "@/lib/permissoes";
 import { usePoll } from "@/hooks/use-poll";
 import { useAutoScrollMensagens } from "@/hooks/use-auto-scroll-mensagens";
 import { TemplatesButton } from "@/components/atendimento/TemplatesButton";
@@ -615,6 +616,10 @@ function ChatPanel({
   const nome = conversa.name?.trim() || conversa.phone;
   const iaNoControle = conversa.ia_ativa && conversa.status === "ia_atendendo";
   const encerrada = conversa.status === "encerrado";
+  // Escrita manual só em conversas aguardando humano ou em atendimento humano
+  // (admin não é limitado). Mesmo guard existe no servidor.
+  const bloqueadoPorStatus =
+    user?.role !== "admin" && !podeEscreverConversa(conversa.status);
   const temInbound = mensagens.some((m) => m.direcao === "entrada");
   const agoraSP = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
   const dentroDaJanela =
@@ -850,6 +855,11 @@ function ChatPanel({
             Janela de 24h encerrada. Só é possível enviar um modelo aprovado.
           </div>
         )}
+        {bloqueadoPorStatus && (
+          <div className="rounded-md border border-border bg-muted/50 px-3 py-2 text-[11px] text-muted-foreground">
+            Esta conversa não está em atendimento humano. Assuma o atendimento para responder.
+          </div>
+        )}
         {iaPreview && (
           <IAPreview
             texto={iaPreview}
@@ -906,12 +916,14 @@ function ChatPanel({
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder={
-              janela24h?.aberta === false
-                ? "Janela de 24h encerrada — envie um modelo aprovado"
-                : "Escreva uma mensagem…"
+              bloqueadoPorStatus
+                ? "Somente leitura — assuma o atendimento para responder"
+                : janela24h?.aberta === false
+                  ? "Janela de 24h encerrada — envie um modelo aprovado"
+                  : "Escreva uma mensagem…"
             }
             rows={2}
-            disabled={sending || janela24h?.aberta === false}
+            disabled={sending || bloqueadoPorStatus || janela24h?.aberta === false}
             className="resize-none"
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
@@ -922,7 +934,7 @@ function ChatPanel({
           />
           <Button
             onClick={handleSend}
-            disabled={sending || !text.trim() || janela24h?.aberta === false}
+            disabled={sending || bloqueadoPorStatus || !text.trim() || janela24h?.aberta === false}
             className="gap-1"
           >
             <Send className="h-4 w-4" /> Enviar
