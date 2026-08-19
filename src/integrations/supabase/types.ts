@@ -3049,6 +3049,7 @@ export type Database = {
         | "faturado_em_rota"
         | "pos_venda"
         | "reprovado_financeiro"
+        | "aguardando_pagamento"
       proposal_status:
         | "rascunho"
         | "enviada"
@@ -3234,6 +3235,7 @@ export const Constants = {
         "faturado_em_rota",
         "pos_venda",
         "reprovado_financeiro",
+        "aguardando_pagamento",
       ],
       proposal_status: [
         "rascunho",

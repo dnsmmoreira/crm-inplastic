@@ -234,6 +234,7 @@ type StageClassificacao = "informativa" | "acao_necessaria" | "alerta";
 
 const STAGE_CLASSIFICACAO: Record<PedidoStageId, StageClassificacao> = {
   analise_financeira: "acao_necessaria",
+  aguardando_pagamento: "acao_necessaria",
   programacao: "acao_necessaria",
   em_producao: "informativa",
   pronto: "acao_necessaria",

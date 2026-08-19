@@ -207,7 +207,7 @@ function PedidosKanbanPage() {
 
   const byStage = useMemo(() => {
     const map: Record<PedidoStageId, PedidoRow[]> = {
-      analise_financeira: [], programacao: [], em_producao: [],
+      analise_financeira: [], aguardando_pagamento: [], programacao: [], em_producao: [],
       pronto: [], faturado_em_rota: [], pos_venda: [], reprovado_financeiro: [],
     };
     filtered.forEach((p) => map[p.stage]?.push(p));
@@ -460,6 +460,7 @@ function PedidoCard({
 
   const pendencias: string[] = [];
   if (pedido.stage === "analise_financeira") pendencias.push("Aguardando aprovação");
+  if (pedido.stage === "aguardando_pagamento") pendencias.push("Aguardando pagamento antecipado");
   if (
     pedido.fiscal_status &&
     pedido.fiscal_status !== "nao_iniciado" &&

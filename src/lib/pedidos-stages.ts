@@ -14,9 +14,10 @@
 /** Colunas visíveis do kanban, na ordem do fluxo. */
 export const PEDIDO_STAGES = [
   { id: "analise_financeira", label: "Análise Financeira", color: "#f59e0b" },
+  { id: "aguardando_pagamento", label: "Aguardando Pagamento", color: "#eab308" },
   { id: "programacao", label: "Programação", color: "#6366f1" },
   { id: "em_producao", label: "Em Produção", color: "#8b5cf6" },
-  { id: "pronto", label: "Pronto", color: "#0ea5e9" },
+  { id: "pronto", label: "Coleta / Entrega", color: "#0ea5e9" },
   { id: "faturado_em_rota", label: "Faturado / Em Rota", color: "#14b8a6" },
   { id: "pos_venda", label: "Pós-venda", color: "#16a34a" },
 ] as const;
@@ -31,6 +32,7 @@ export type PedidoStageId = PedidoStageVisivel | typeof PEDIDO_STAGE_REPROVADO;
 
 export const PEDIDO_STAGE_IDS: [PedidoStageId, ...PedidoStageId[]] = [
   "analise_financeira",
+  "aguardando_pagamento",
   "programacao",
   "em_producao",
   "pronto",
@@ -41,11 +43,12 @@ export const PEDIDO_STAGE_IDS: [PedidoStageId, ...PedidoStageId[]] = [
 
 const STAGE_ORDER: Record<PedidoStageId, number> = {
   analise_financeira: 0,
-  programacao: 1,
-  em_producao: 2,
-  pronto: 3,
-  faturado_em_rota: 4,
-  pos_venda: 5,
+  aguardando_pagamento: 1,
+  programacao: 2,
+  em_producao: 3,
+  pronto: 4,
+  faturado_em_rota: 5,
+  pos_venda: 6,
   reprovado_financeiro: 99,
 };
 
@@ -61,7 +64,8 @@ export function stageColor(id: string): string {
 
 /** Matriz de avanços permitidos. Retornos são tratados por `isBackward`. */
 export const ALLOWED_FORWARD: Record<PedidoStageId, PedidoStageId[]> = {
-  analise_financeira: ["programacao", "reprovado_financeiro"],
+  analise_financeira: ["aguardando_pagamento", "programacao", "reprovado_financeiro"],
+  aguardando_pagamento: ["programacao", "reprovado_financeiro"],
   programacao: ["em_producao"],
   em_producao: ["pronto"],
   pronto: ["faturado_em_rota"],
@@ -77,7 +81,8 @@ export function isBackward(from: PedidoStageId, to: PedidoStageId): boolean {
 export function isTransitionAllowed(from: PedidoStageId, to: PedidoStageId): boolean {
   if (from === to) return false;
   // Reprovado é alcançável APENAS a partir de análise financeira…
-  if (to === PEDIDO_STAGE_REPROVADO) return from === "analise_financeira";
+  if (to === PEDIDO_STAGE_REPROVADO)
+    return from === "analise_financeira" || from === "aguardando_pagamento";
   // …e o único retorno possível é para a análise financeira.
   if (from === PEDIDO_STAGE_REPROVADO) return to === "analise_financeira";
   if (isBackward(from, to)) return true; // exige motivo
