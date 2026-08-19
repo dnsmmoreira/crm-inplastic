@@ -47,6 +47,9 @@ function inRange(iso: string | null, from: string, to: string) {
 function RelatoriosPage() {
   const fetchPedidos = useServerFn(listPedidosRelatorio);
   const checkExport = useServerFn(assertPodeExportarRelatorio);
+  const { user } = useAuth();
+  // Vendedor comum só vê o relatório das próprias vendas (o servidor também filtra).
+  const verGlobal = hasPerm(user, PERM_PEDIDOS_VER_TODOS);
   const { data, isLoading, error } = useQuery({
     queryKey: ["relatorio-pedidos"],
     queryFn: () => fetchPedidos(),
