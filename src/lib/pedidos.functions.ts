@@ -222,6 +222,16 @@ async function isAdminOuFinanceiro(sb: LooseClient, userId: string): Promise<boo
   return !!vinculo;
 }
 
+/** Chave granular no servidor (tem_permissao já libera admin). */
+async function temPermissao(sb: LooseClient, userId: string, chave: string): Promise<boolean> {
+  try {
+    const { data } = await sb.rpc("tem_permissao", { _user_id: userId, _chave: chave });
+    return data === true;
+  } catch {
+    return false;
+  }
+}
+
 /* ---------------------------------------------------------------------------
  * Fase 5 — Fila interna de notificações de mudança de etapa.
  * Registra o evento com evento_id determinístico (idempotente).
