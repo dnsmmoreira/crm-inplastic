@@ -142,14 +142,83 @@ function RootShell({ children }: { children: ReactNode }) {
 
 type NavCtx = { isAdmin: boolean; user: ReturnType<typeof useAuth>["user"] };
 
+/** Código de cores por área: cor só em ícones/indicadores, nunca no texto do item. */
+type Accent = "neutral" | "blue" | "emerald" | "amber" | "sky" | "violet" | "slate" | "cyan";
+
+const ACCENT: Record<Accent, { icon: string; active: string; hover: string; border: string; label: string }> = {
+  neutral: {
+    icon: "text-sidebar-foreground/70",
+    active: "bg-sidebar-accent",
+    hover: "hover:bg-sidebar-accent",
+    border: "border-sidebar-foreground/40",
+    label: "text-sidebar-foreground/60",
+  },
+  blue: {
+    icon: "text-blue-500 dark:text-blue-400",
+    active: "bg-blue-500/10",
+    hover: "hover:bg-blue-500/5",
+    border: "border-blue-500 dark:border-blue-400",
+    label: "text-blue-400/80",
+  },
+  emerald: {
+    icon: "text-emerald-500 dark:text-emerald-400",
+    active: "bg-emerald-500/10",
+    hover: "hover:bg-emerald-500/5",
+    border: "border-emerald-500 dark:border-emerald-400",
+    label: "text-emerald-400/80",
+  },
+  amber: {
+    icon: "text-amber-500 dark:text-amber-400",
+    active: "bg-amber-500/10",
+    hover: "hover:bg-amber-500/5",
+    border: "border-amber-500 dark:border-amber-400",
+    label: "text-amber-400/80",
+  },
+  sky: {
+    icon: "text-sky-500 dark:text-sky-400",
+    active: "bg-sky-500/10",
+    hover: "hover:bg-sky-500/5",
+    border: "border-sky-500 dark:border-sky-400",
+    label: "text-sky-400/80",
+  },
+  violet: {
+    icon: "text-violet-500 dark:text-violet-400",
+    active: "bg-violet-500/10",
+    hover: "hover:bg-violet-500/5",
+    border: "border-violet-500 dark:border-violet-400",
+    label: "text-violet-400/80",
+  },
+  slate: {
+    icon: "text-slate-400 dark:text-slate-300",
+    active: "bg-slate-400/10",
+    hover: "hover:bg-slate-400/5",
+    border: "border-slate-400 dark:border-slate-300",
+    label: "text-slate-300/80",
+  },
+  cyan: {
+    icon: "text-cyan-500 dark:text-cyan-400",
+    active: "bg-cyan-500/10",
+    hover: "hover:bg-cyan-500/5",
+    border: "border-cyan-500 dark:border-cyan-400",
+    label: "text-cyan-400/80",
+  },
+};
+
 type NavItem = {
   to: string;
   label: string;
   icon: typeof LayoutDashboard;
   show: (c: NavCtx) => boolean;
+  accent?: Accent;
 };
 
-type NavGroup = { id: string; label: string; icon: typeof LayoutDashboard; items: NavItem[] };
+type NavGroup = {
+  id: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  items: NavItem[];
+  accent: Accent;
+};
 
 /** Vendedor comum = perfil de vendas (chave propostas.editar). Financeiro/Operacional não têm. */
 const isVendedorComum = (c: NavCtx) => !c.isAdmin && hasPerm(c.user, "propostas.editar");
