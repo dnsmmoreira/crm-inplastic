@@ -515,16 +515,20 @@ function AppShell({ children }: { children: ReactNode }) {
         <nav className="md:hidden border-b bg-card p-2 space-y-1">
           {rootItems.map((item) => {
             const Icon = item.icon;
+            const a = ACCENT[item.accent ?? "neutral"];
+            const active = pathname === item.to;
             return (
               <Link
                 key={item.to}
                 to={item.to}
                 className={cn(
-                  "flex items-center gap-2 rounded-md px-3 py-2 text-sm",
-                  pathname === item.to ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground",
+                  "flex items-center gap-2 rounded-md border-l-[3px] px-3 py-2 text-sm transition-colors",
+                  active
+                    ? cn("font-medium text-foreground", a.active, a.border)
+                    : cn("border-transparent text-muted-foreground", a.hover),
                 )}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className={cn("h-4 w-4", a.icon)} />
                 {item.label}
               </Link>
             );
@@ -532,33 +536,35 @@ function AppShell({ children }: { children: ReactNode }) {
           {groups.map((group) => {
             const GroupIcon = group.icon;
             const open = mobileOpen === group.id;
+            const ga = ACCENT[group.accent];
             return (
               <div key={group.id}>
                 <button
                   type="button"
                   onClick={() => toggleMobileGroup(group.id)}
                   aria-expanded={open}
-                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+                  className="flex w-full items-center gap-2 rounded-md border-l-[3px] border-transparent px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground"
                 >
-                  <GroupIcon className="h-4 w-4" />
+                  <GroupIcon className={cn("h-4 w-4", ga.icon)} />
                   <span className="flex-1 text-left">{group.label}</span>
                   <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", !open && "-rotate-90")} />
                 </button>
                 {open &&
                   group.items.map((item) => {
                     const Icon = item.icon;
+                    const active = pathname === item.to;
                     return (
                       <Link
                         key={item.to}
                         to={item.to}
                         className={cn(
-                          "flex items-center gap-2 rounded-md py-2 pl-9 pr-3 text-sm",
-                          pathname === item.to
-                            ? "bg-primary/10 text-primary font-medium"
-                            : "text-muted-foreground",
+                          "flex items-center gap-2 rounded-md border-l-[3px] py-2 pl-8 pr-3 text-sm transition-colors",
+                          active
+                            ? cn("font-medium text-foreground", ga.active, ga.border)
+                            : cn("border-transparent text-muted-foreground", ga.hover),
                         )}
                       >
-                        <Icon className="h-4 w-4" />
+                        <Icon className={cn("h-4 w-4", ga.icon)} />
                         {item.label}
                       </Link>
                     );
