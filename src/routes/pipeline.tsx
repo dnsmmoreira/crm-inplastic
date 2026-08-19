@@ -151,6 +151,56 @@ function PipelinePage() {
   };
 
 
+  const bulkLabels = useMemo(
+    () =>
+      Array.from(selected)
+        .map((id) => leads.find((l) => l.id === id)?.company ?? id)
+        .sort((a, b) => a.localeCompare(b, "pt-BR")),
+    [selected, leads],
+  );
+
+  const toggleSelected = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const selectMany = (ids: string[], on: boolean) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      ids.forEach((id) => (on ? next.add(id) : next.delete(id)));
+      return next;
+    });
+
+  const exitSelection = () => {
+    setSelected(new Set());
+    setSelectMode(false);
+  };
+
+  const runBulkLost = async (payload: LostReasonPayload) => {
+    const ids = Array.from(selected);
+    let ok = 0;
+    let fail = 0;
+    for (const id of ids) {
+      const lead = leads.find((l) => l.id === id);
+      try {
+        const r = await moveLeadStage(id, "perdido", {
+          onGanhoLabel: lead?.company,
+          lostReason: payload,
+        });
+        if (r?.ok) ok++;
+        else fail++;
+      } catch {
+        fail++;
+      }
+    }
+    if (fail === 0) toast.success(`${ok} leads marcados como Perdido`);
+    else toast.warning(`${ok} leads marcados como Perdido · ${fail} falharam`);
+    exitSelection();
+  };
+
   return (
     <div className="flex h-[calc(100dvh-4rem)] flex-col gap-4 overflow-hidden p-4 md:p-8">
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
@@ -169,6 +219,16 @@ function PipelinePage() {
               className="pl-9 sm:w-64"
             />
           </div>
+          {isAdmin && (
+            <Button
+              variant={selectMode ? "secondary" : "outline"}
+              className="gap-2"
+              onClick={() => (selectMode ? exitSelection() : setSelectMode(true))}
+            >
+              <CheckSquare className="h-4 w-4" />
+              {selectMode ? "Sair da seleção" : "Selecionar"}
+            </Button>
+          )}
           <NewLeadDialog trigger={<Button className="gap-2"><Plus className="h-4 w-4" />Novo</Button>} />
         </div>
       </div>
@@ -236,6 +296,10 @@ function PipelinePage() {
                 stage={stage}
                 leads={byStage[stage.id]}
                 onOpen={setOpenLead}
+                selectMode={selectMode}
+                selected={selected}
+                onToggleSelect={toggleSelected}
+                onSelectMany={selectMany}
               />
             ))}
           </div>
@@ -245,6 +309,22 @@ function PipelinePage() {
           {active && <LeadCard lead={active} onOpen={() => {}} dragging />}
         </DragOverlay>
       </DndContext>
+
+      {selectMode && selected.size > 0 && (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 p-3 backdrop-blur">
+          <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3">
+            <span className="text-sm font-medium">
+              {selected.size} lead{selected.size > 1 ? "s" : ""} selecionado{selected.size > 1 ? "s" : ""}
+            </span>
+            <div className="flex gap-2">
+              <Button variant="ghost" onClick={exitSelection}>Cancelar</Button>
+              <Button variant="destructive" onClick={() => setBulkLostOpen(true)}>
+                Marcar como Perdido
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <LeadDrawer leadId={openLead} open={!!openLead} onOpenChange={(o) => !o && setOpenLead(null)} />
       <LostReasonDialog
@@ -258,6 +338,15 @@ function PipelinePage() {
           runMove(leadId, "perdido", company, payload);
         }}
       />
+      <LostReasonDialog
+        open={bulkLostOpen}
+        leadLabels={bulkLabels}
+        onCancel={() => setBulkLostOpen(false)}
+        onConfirm={async (payload) => {
+          setBulkLostOpen(false);
+          await runBulkLost(payload);
+        }}
+      />
     </div>
   );
 }
@@ -266,11 +355,20 @@ function Column({
   stage,
   leads,
   onOpen,
+  selectMode,
+  selected,
+  onToggleSelect,
+  onSelectMany,
 }: {
   stage: (typeof STAGES)[number];
   leads: Lead[];
   onOpen: (id: string) => void;
+  selectMode: boolean;
+  selected: Set<string>;
+  onToggleSelect: (id: string) => void;
+  onSelectMany: (ids: string[], on: boolean) => void;
 }) {
+
   const { setNodeRef, isOver } = useDroppable({ id: stage.id });
   const valueMap = useLeadValueMap();
   const total = leads.reduce((s, l) => s + (valueMap.get(l.id) ?? l.estimatedValue), 0);
