@@ -615,6 +615,10 @@ function ChatPanel({
   const nome = conversa.name?.trim() || conversa.phone;
   const iaNoControle = conversa.ia_ativa && conversa.status === "ia_atendendo";
   const encerrada = conversa.status === "encerrado";
+  // Escrita manual só em conversas aguardando humano ou em atendimento humano
+  // (admin não é limitado). Mesmo guard existe no servidor.
+  const bloqueadoPorStatus =
+    user?.role !== "admin" && !podeEscreverConversa(conversa.status);
   const temInbound = mensagens.some((m) => m.direcao === "entrada");
   const agoraSP = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
   const dentroDaJanela =
