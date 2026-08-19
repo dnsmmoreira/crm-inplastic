@@ -497,8 +497,10 @@ function PedidoCard({
         if (onOpen) onOpen(pedido.id);
         e.stopPropagation();
       }}
+      title={podeMover ? undefined : "Somente visualização"}
       className={cn(
-        "cursor-grab active:cursor-grabbing rounded-lg border bg-card p-3 shadow-sm hover:shadow-md hover:border-primary/50 transition-all",
+        "rounded-lg border bg-card p-3 shadow-sm hover:shadow-md hover:border-primary/50 transition-all",
+        podeMover ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
         atrasado && "border-l-4 border-l-rose-500",
         pedido.prioridade === "alta" && !atrasado && "border-l-4 border-l-amber-500",
         isDragging && "opacity-30",
