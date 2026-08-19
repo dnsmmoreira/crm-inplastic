@@ -421,14 +421,15 @@ function AppShell({ children }: { children: ReactNode }) {
         <nav className="flex-1 space-y-1 overflow-y-auto p-3">
           {rootItems.map((item) => {
             const Icon = item.icon;
+            const accent = item.accent ?? "neutral";
             return (
               <Link
                 key={item.to}
                 to={item.to}
                 title={collapsed ? item.label : undefined}
-                className={itemLinkClass(pathname === item.to, false)}
+                className={itemLinkClass(pathname === item.to, false, accent)}
               >
-                <Icon className="h-4 w-4 shrink-0" />
+                <Icon className={cn("h-4 w-4 shrink-0", ACCENT[accent].icon)} />
                 {!collapsed && item.label}
               </Link>
             );
@@ -437,6 +438,7 @@ function AppShell({ children }: { children: ReactNode }) {
           {groups.map((group) => {
             const GroupIcon = group.icon;
             const open = collapsed || openGroups.includes(group.id);
+            const ga = ACCENT[group.accent];
             return (
               <div key={group.id} className="pt-1">
                 {!collapsed && (
@@ -444,9 +446,12 @@ function AppShell({ children }: { children: ReactNode }) {
                     type="button"
                     onClick={() => toggleGroup(group.id)}
                     aria-expanded={open}
-                    className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                    className={cn(
+                      "flex w-full items-center gap-3 rounded-md border-l-[3px] border-transparent px-3 py-2 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/60 transition-colors hover:text-sidebar-foreground",
+                      ga.hover,
+                    )}
                   >
-                    <GroupIcon className="h-4 w-4 shrink-0" />
+                    <GroupIcon className={cn("h-4 w-4 shrink-0", ga.icon)} />
                     <span className="flex-1 text-left">{group.label}</span>
                     <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", !open && "-rotate-90")} />
                   </button>
@@ -459,9 +464,9 @@ function AppShell({ children }: { children: ReactNode }) {
                         key={item.to}
                         to={item.to}
                         title={collapsed ? item.label : undefined}
-                        className={itemLinkClass(pathname === item.to, true)}
+                        className={itemLinkClass(pathname === item.to, true, group.accent)}
                       >
-                        <Icon className="h-4 w-4 shrink-0" />
+                        <Icon className={cn("h-4 w-4 shrink-0", ga.icon)} />
                         {!collapsed && item.label}
                       </Link>
                     );
