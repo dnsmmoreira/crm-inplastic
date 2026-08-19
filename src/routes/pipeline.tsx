@@ -467,12 +467,18 @@ function LeadCard({
   lead,
   onOpen,
   dragging = false,
+  selectMode = false,
+  isSelected = false,
+  onToggleSelect,
 }: {
   lead: Lead;
   onOpen: (id: string) => void;
   dragging?: boolean;
+  selectMode?: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: (id: string) => void;
 }) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: lead.id });
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: lead.id, disabled: selectMode });
   const sc = computeLeadScore(lead);
   const valueMap = useLeadValueMap();
   const effValue = valueMap.get(lead.id) ?? lead.estimatedValue;
@@ -480,24 +486,43 @@ function LeadCard({
     sc.level === "alto" ? "border-l-4 border-l-emerald-500"
     : sc.level === "medio" ? "border-l-4 border-l-amber-500"
     : "border-l-4 border-l-rose-500";
+  const dragProps = selectMode ? {} : { ...attributes, ...listeners };
   return (
     <div
       ref={setNodeRef}
-      {...attributes}
-      {...listeners}
-      onClick={() => !isDragging && onOpen(lead.id)}
+      {...dragProps}
+      onClick={() => {
+        if (selectMode) {
+          onToggleSelect?.(lead.id);
+          return;
+        }
+        if (!isDragging) onOpen(lead.id);
+      }}
       className={cn(
-        "group cursor-grab active:cursor-grabbing rounded-lg border bg-card p-3 shadow-sm hover:shadow-md hover:border-primary/50 transition-all",
+        "group rounded-lg border bg-card p-3 shadow-sm hover:shadow-md hover:border-primary/50 transition-all",
+        selectMode ? "cursor-pointer" : "cursor-grab active:cursor-grabbing",
         stripe,
         isDragging && "opacity-30",
         dragging && "shadow-xl rotate-2",
+        selectMode && isSelected && "ring-2 ring-primary",
       )}
     >
       <div className="flex items-start justify-between gap-2">
-        <div className="font-medium text-sm truncate">{lead.company}</div>
+        <div className="flex min-w-0 items-center gap-2">
+          {selectMode && (
+            <Checkbox
+              checked={isSelected}
+              aria-label={`Selecionar ${lead.company}`}
+              onClick={(e) => e.stopPropagation()}
+              onCheckedChange={() => onToggleSelect?.(lead.id)}
+            />
+          )}
+          <div className="font-medium text-sm truncate">{lead.company}</div>
+        </div>
         <div className="text-primary font-semibold text-sm shrink-0">
           {formatBRL(effValue)}
         </div>
+
       </div>
       <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
         <Package className="h-3 w-3 shrink-0" />
