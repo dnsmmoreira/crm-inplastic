@@ -20,6 +20,8 @@ import { useCrm, STAGES, formatBRL, leadTemperature, followupTemperature, type L
 import { useMoveLeadStage } from "@/hooks/use-move-lead-stage";
 import { LostReasonDialog, type LostReasonPayload } from "@/components/crm/LostReasonDialog";
 import { computeLeadScore } from "@/lib/lead-score";
+import { useAuth } from "@/hooks/use-auth";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
