@@ -82,16 +82,18 @@ export const listPedidosRelatorio = createServerFn({ method: "GET" })
       "ver_relatorios",
       "Você não tem permissão para ver relatórios.",
     );
-    const { data, error } = await sb
+    let q = sb
       .from("pedidos")
       .select(
         [
           "id, number, stage, total, created_at, previsao_entrega, lead_id",
           "leads:lead_id(company)",
         ].join(", "),
-      )
-      .order("created_at", { ascending: false })
-      .limit(1000);
+      );
+    if (await escopoProprio(sb, context.userId)) {
+      q = q.or(`owner_id.eq.${context.userId},vendedor_proprietario_id.eq.${context.userId}`);
+    }
+    const { data, error } = await q.order("created_at", { ascending: false }).limit(1000);
     if (error) throw new Error(`Falha ao listar pedidos: ${error.message}`);
 
     const rows = (data ?? []) as Array<{
