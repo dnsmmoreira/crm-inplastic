@@ -372,15 +372,17 @@ function AppShell({ children }: { children: ReactNode }) {
   };
   const toggleMobileGroup = (id: string) => setMobileOpen((prev) => (prev === id ? null : id));
 
-  const itemLinkClass = (active: boolean, indent: boolean) =>
-    cn(
-      "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+  const itemLinkClass = (active: boolean, indent: boolean, accent: Accent = "neutral") => {
+    const a = ACCENT[accent];
+    return cn(
+      "flex items-center gap-3 rounded-md border-l-[3px] px-3 py-2 text-sm transition-colors",
       collapsed && "justify-center px-2",
-      indent && !collapsed && "pl-9",
+      indent && !collapsed && "pl-8",
       active
-        ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium"
-        : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+        ? cn("font-medium text-sidebar-foreground", a.active, a.border)
+        : cn("border-transparent text-sidebar-foreground/80 hover:text-sidebar-foreground", a.hover),
     );
+  };
 
 
   return (
