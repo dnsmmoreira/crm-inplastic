@@ -161,12 +161,21 @@ const vendasOu = (chave: string) => (c: NavCtx) => vendas(c) || hasPerm(c.user, 
 
 const NAV_ROOT: NavItem[] = [
   { to: "/", label: "Início", icon: LayoutDashboard, show: always },
-  { to: "/pipeline", label: "Pipeline", icon: KanbanSquare, show: vendas },
+  
   { to: "/conversas", label: "Conversas", icon: MessageSquare, show: key("whatsapp.atender") },
   { to: "/placar", label: "Placar", icon: Trophy, show: vendas },
 ];
 
 const NAV_GROUPS: NavGroup[] = [
+  {
+    id: "pipeline",
+    label: "Pipeline",
+    icon: KanbanSquare,
+    items: [
+      { to: "/pipeline", label: "Funil de Vendas", icon: KanbanSquare, show: vendas },
+      { to: "/pedidos", label: "Funil Operacional", icon: ClipboardList, show: vendasOu("pedidos.ver_todos") },
+    ],
+  },
   {
     id: "cadastros",
     label: "Cadastros",
@@ -184,7 +193,7 @@ const NAV_GROUPS: NavGroup[] = [
     icon: FileText,
     items: [
       { to: "/propostas", label: "Propostas", icon: FileText, show: vendasOu("propostas.ver_todas") },
-      { to: "/pedidos", label: "Pedidos", icon: ClipboardList, show: vendasOu("pedidos.ver_todos") },
+      
       { to: "/condicoes-comerciais", label: "Condições Comerciais", icon: Settings2, show: adminOnly },
       { to: "/tabela-precos", label: "Tabela de Preços", icon: Tags, show: vendas },
     ],
