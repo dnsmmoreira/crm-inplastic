@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
+import { PERM_PEDIDOS_MOVIMENTAR } from "@/lib/permissoes";
 
 /**
  * Fase 3 — Kanban de Pedidos operacional (coexiste com o Funil de Vendas).
