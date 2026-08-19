@@ -338,6 +338,7 @@ function PedidosKanbanPage() {
                   blockedReason={blockedByOcorrencia ? "Ocorrência aberta" : null}
                   isBackwardTarget={isBack && canDrop}
                   onOpen={setOpenPedidoId}
+                  podeMover={podeMover}
                 />
               );
             })}
@@ -375,6 +376,7 @@ function Column({
   blockedReason,
   isBackwardTarget,
   onOpen,
+  podeMover,
 }: {
   stage: (typeof PEDIDO_STAGES)[number];
   pedidos: PedidoRow[];
@@ -383,6 +385,7 @@ function Column({
   blockedReason?: string | null;
   isBackwardTarget: boolean;
   onOpen: (id: string) => void;
+  podeMover: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage.id, disabled: dragActive && !canDrop });
   const total = pedidos.reduce((s, p) => s + p.total, 0);
@@ -426,10 +429,12 @@ function Column({
           </div>
         )}
         {pedidos.map((p) => (
-          <PedidoCard key={p.id} pedido={p} onOpen={onOpen} />
+          <PedidoCard key={p.id} pedido={p} onOpen={onOpen} podeMover={podeMover} />
         ))}
         {pedidos.length === 0 && !showBlocked && (
-          <div className="text-xs text-muted-foreground text-center py-8 italic">Solte aqui</div>
+          <div className="text-xs text-muted-foreground text-center py-8 italic">
+            {podeMover ? "Solte aqui" : "Sem pedidos"}
+          </div>
         )}
       </div>
     </div>
