@@ -1,0 +1,32 @@
+-- =====================================================================
+-- P0 — LIMPEZA DE POLICY REDUNDANTE EM public.profiles
+-- **PREPARADA / NÃO APLICADA** — revisar e aprovar antes de executar.
+--
+-- MOTIVO
+-- As policies do Postgres são combinadas por OR. A policy antiga
+-- "Users can update their own profile" (USING auth.uid() = id, SEM
+-- WITH CHECK) anula, na prática, a condição mais estrita da policy nova
+-- `profiles_self_update_campos_pessoais`, que exige
+-- `ativo IS NOT FALSE AND deleted_at IS NULL`.
+--
+-- Hoje o dano é contido: o trigger `tg_profiles_admin_fields_guard`
+-- restaura os campos administrativos (ativo, deleted_at,
+-- senha_reset_exigido) em qualquer UPDATE de não-admin. Ainda assim, a
+-- policy antiga permite que um usuário INATIVO ou EXCLUÍDO atualize os
+-- próprios campos pessoais (nome, telefone etc.), o que a policy nova
+-- pretendia impedir.
+--
+-- EFEITO: remove apenas a policy redundante. Nenhuma outra policy,
+-- trigger, função, coluna ou dado é alterado.
+-- =====================================================================
+
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
+
+-- =====================================================================
+-- ROLLBACK (recria a policy exatamente como está hoje):
+--
+-- CREATE POLICY "Users can update their own profile"
+--   ON public.profiles
+--   FOR UPDATE
+--   USING (auth.uid() = id);
+-- =====================================================================

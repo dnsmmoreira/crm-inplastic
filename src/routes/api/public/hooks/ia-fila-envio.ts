@@ -1,6 +1,7 @@
 /**
  * (E1) Cron de rede de segurança: envia respostas da IA cujo `responder_apos`
- * já venceu. Mesmo padrão de auth do watchdog (x-xerife-secret OU apikey).
+ * já venceu.
+ * Auth: `requireXerifeCronAuth` — aceita EXCLUSIVAMENTE o header x-xerife-secret.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { requireXerifeCronAuth, cronJsonResponse } from "@/lib/xerife/cron-auth.server";
