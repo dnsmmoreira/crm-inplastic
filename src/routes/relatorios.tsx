@@ -11,6 +11,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PedidosEmAbertoReport } from "@/components/relatorios/PedidosEmAbertoReport";
 import { cn } from "@/lib/utils";
+import { useAuth, hasPerm } from "@/hooks/use-auth";
+import { PERM_PEDIDOS_VER_TODOS } from "@/lib/permissoes";
 import { formatBRL } from "@/lib/crm-store";
 import { PEDIDO_STAGES, type PedidoStageId } from "@/lib/pedidos.functions";
 import { toast } from "sonner";
