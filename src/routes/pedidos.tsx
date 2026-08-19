@@ -445,12 +445,17 @@ function PedidoCard({
   pedido,
   dragging = false,
   onOpen,
+  podeMover = true,
 }: {
   pedido: PedidoRow;
   dragging?: boolean;
   onOpen?: (id: string) => void;
+  podeMover?: boolean;
 }) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: pedido.id });
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: pedido.id,
+    disabled: !podeMover,
+  });
 
   const diasNaEtapa = Math.max(
     0,
