@@ -84,13 +84,25 @@ export function LostReasonDialog({
         <DialogHeader>
           <DialogTitle>Motivo da perda</DialogTitle>
           <DialogDescription>
-            {leadLabel
-              ? `Informe o motivo antes de mover "${leadLabel}" para Perdido.`
-              : "Informe o motivo antes de mover o lead para Perdido."}
+            {bulk
+              ? `Informe o motivo para marcar ${leadLabels!.length} lead${leadLabels!.length > 1 ? "s" : ""} como Perdido.`
+              : leadLabel
+                ? `Informe o motivo antes de mover "${leadLabel}" para Perdido.`
+                : "Informe o motivo antes de mover o lead para Perdido."}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3 py-1">
+          {bulk ? (
+            <div className="max-h-40 overflow-auto rounded-md border bg-muted/30 p-2 text-xs">
+              <ul className="space-y-0.5">
+                {leadLabels!.map((n, i) => (
+                  <li key={`${n}-${i}`} className="truncate">• {n}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           <div>
+
             <Label className="text-xs">Motivo *</Label>
             <Select value={motivo} onValueChange={setMotivo}>
               <SelectTrigger className="mt-1">
