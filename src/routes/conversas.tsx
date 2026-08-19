@@ -855,6 +855,11 @@ function ChatPanel({
             Janela de 24h encerrada. Só é possível enviar um modelo aprovado.
           </div>
         )}
+        {bloqueadoPorStatus && (
+          <div className="rounded-md border border-border bg-muted/50 px-3 py-2 text-[11px] text-muted-foreground">
+            Esta conversa não está em atendimento humano. Assuma o atendimento para responder.
+          </div>
+        )}
         {iaPreview && (
           <IAPreview
             texto={iaPreview}
