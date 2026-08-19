@@ -298,7 +298,7 @@ export async function aoEntrarNaEtapa(
     if (stage === "programacao") {
       await notificarUsuarios(sb, await destinatariosOperacional(sb), {
         tipo: "pedido_programacao",
-        titulo: `Novo pedido para programação: ${p.number}`,
+        titulo: `Novo pedido liberado para programação: ${p.number}`,
         pedidoId,
       });
       return;
