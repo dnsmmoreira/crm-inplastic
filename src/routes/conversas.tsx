@@ -44,6 +44,7 @@ import {
   listarVendedoresAtendimento,
 } from "@/lib/atendimento.functions";
 import { useAuth } from "@/hooks/use-auth";
+import { podeEscreverConversa } from "@/lib/permissoes";
 import { usePoll } from "@/hooks/use-poll";
 import { useAutoScrollMensagens } from "@/hooks/use-auto-scroll-mensagens";
 import { TemplatesButton } from "@/components/atendimento/TemplatesButton";
