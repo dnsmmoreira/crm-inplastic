@@ -916,12 +916,14 @@ function ChatPanel({
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder={
-              janela24h?.aberta === false
-                ? "Janela de 24h encerrada — envie um modelo aprovado"
-                : "Escreva uma mensagem…"
+              bloqueadoPorStatus
+                ? "Somente leitura — assuma o atendimento para responder"
+                : janela24h?.aberta === false
+                  ? "Janela de 24h encerrada — envie um modelo aprovado"
+                  : "Escreva uma mensagem…"
             }
             rows={2}
-            disabled={sending || janela24h?.aberta === false}
+            disabled={sending || bloqueadoPorStatus || janela24h?.aberta === false}
             className="resize-none"
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
@@ -932,7 +934,7 @@ function ChatPanel({
           />
           <Button
             onClick={handleSend}
-            disabled={sending || !text.trim() || janela24h?.aberta === false}
+            disabled={sending || bloqueadoPorStatus || !text.trim() || janela24h?.aberta === false}
             className="gap-1"
           >
             <Send className="h-4 w-4" /> Enviar
