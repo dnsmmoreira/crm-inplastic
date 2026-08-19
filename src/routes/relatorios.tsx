@@ -153,12 +153,14 @@ function RelatoriosPage() {
       <Tabs defaultValue="pedidos" className="space-y-6">
         <TabsList className="no-print">
           <TabsTrigger value="pedidos">Pedidos</TabsTrigger>
-          <TabsTrigger value="abertos">Pedidos em Aberto</TabsTrigger>
+          {verGlobal && <TabsTrigger value="abertos">Pedidos em Aberto</TabsTrigger>}
         </TabsList>
 
-        <TabsContent value="abertos" className="space-y-6">
-          <PedidosEmAbertoReport />
-        </TabsContent>
+        {verGlobal && (
+          <TabsContent value="abertos" className="space-y-6">
+            <PedidosEmAbertoReport />
+          </TabsContent>
+        )}
 
         <TabsContent value="pedidos" className="space-y-6">
       <div className="flex items-start justify-between gap-4 no-print">
