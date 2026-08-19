@@ -13,13 +13,15 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { Plus, Package, Calendar as CalendarIcon, Search, ArrowDownUp, X, PackageCheck, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Package, Calendar as CalendarIcon, Search, ArrowDownUp, X, PackageCheck, ChevronLeft, ChevronRight, CheckSquare } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useCrm, STAGES, formatBRL, leadTemperature, followupTemperature, type Lead, type StageId, type FollowupLevel, useVisibleLeads, useLeadValueMap } from "@/lib/crm-store";
 import { useMoveLeadStage } from "@/hooks/use-move-lead-stage";
 import { LostReasonDialog, type LostReasonPayload } from "@/components/crm/LostReasonDialog";
 import { computeLeadScore } from "@/lib/lead-score";
+import { useAuth } from "@/hooks/use-auth";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -55,6 +57,11 @@ function PipelinePage() {
   const [lostTarget, setLostTarget] = useState<{ leadId: string; company: string } | null>(null);
   // Fase 3: por padrão, oculta ganhos que já viraram pedido operacional (não deleta nada).
   const [mostrarGanhosCompletos, setMostrarGanhosCompletos] = useState(false);
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkLostOpen, setBulkLostOpen] = useState(false);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
@@ -151,6 +158,56 @@ function PipelinePage() {
   };
 
 
+  const bulkLabels = useMemo(
+    () =>
+      Array.from(selected)
+        .map((id) => leads.find((l) => l.id === id)?.company ?? id)
+        .sort((a, b) => a.localeCompare(b, "pt-BR")),
+    [selected, leads],
+  );
+
+  const toggleSelected = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const selectMany = (ids: string[], on: boolean) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      ids.forEach((id) => (on ? next.add(id) : next.delete(id)));
+      return next;
+    });
+
+  const exitSelection = () => {
+    setSelected(new Set());
+    setSelectMode(false);
+  };
+
+  const runBulkLost = async (payload: LostReasonPayload) => {
+    const ids = Array.from(selected);
+    let ok = 0;
+    let fail = 0;
+    for (const id of ids) {
+      const lead = leads.find((l) => l.id === id);
+      try {
+        const r = await moveLeadStage(id, "perdido", {
+          onGanhoLabel: lead?.company,
+          lostReason: payload,
+        });
+        if (r?.ok) ok++;
+        else fail++;
+      } catch {
+        fail++;
+      }
+    }
+    if (fail === 0) toast.success(`${ok} leads marcados como Perdido`);
+    else toast.warning(`${ok} leads marcados como Perdido · ${fail} falharam`);
+    exitSelection();
+  };
+
   return (
     <div className="flex h-[calc(100dvh-4rem)] flex-col gap-4 overflow-hidden p-4 md:p-8">
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
@@ -169,6 +226,16 @@ function PipelinePage() {
               className="pl-9 sm:w-64"
             />
           </div>
+          {isAdmin && (
+            <Button
+              variant={selectMode ? "secondary" : "outline"}
+              className="gap-2"
+              onClick={() => (selectMode ? exitSelection() : setSelectMode(true))}
+            >
+              <CheckSquare className="h-4 w-4" />
+              {selectMode ? "Sair da seleção" : "Selecionar"}
+            </Button>
+          )}
           <NewLeadDialog trigger={<Button className="gap-2"><Plus className="h-4 w-4" />Novo</Button>} />
         </div>
       </div>
@@ -236,6 +303,10 @@ function PipelinePage() {
                 stage={stage}
                 leads={byStage[stage.id]}
                 onOpen={setOpenLead}
+                selectMode={selectMode}
+                selected={selected}
+                onToggleSelect={toggleSelected}
+                onSelectMany={selectMany}
               />
             ))}
           </div>
@@ -245,6 +316,22 @@ function PipelinePage() {
           {active && <LeadCard lead={active} onOpen={() => {}} dragging />}
         </DragOverlay>
       </DndContext>
+
+      {selectMode && selected.size > 0 && (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 p-3 backdrop-blur">
+          <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3">
+            <span className="text-sm font-medium">
+              {selected.size} lead{selected.size > 1 ? "s" : ""} selecionado{selected.size > 1 ? "s" : ""}
+            </span>
+            <div className="flex gap-2">
+              <Button variant="ghost" onClick={exitSelection}>Cancelar</Button>
+              <Button variant="destructive" onClick={() => setBulkLostOpen(true)}>
+                Marcar como Perdido
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <LeadDrawer leadId={openLead} open={!!openLead} onOpenChange={(o) => !o && setOpenLead(null)} />
       <LostReasonDialog
@@ -258,6 +345,15 @@ function PipelinePage() {
           runMove(leadId, "perdido", company, payload);
         }}
       />
+      <LostReasonDialog
+        open={bulkLostOpen}
+        leadLabels={bulkLabels}
+        onCancel={() => setBulkLostOpen(false)}
+        onConfirm={async (payload) => {
+          setBulkLostOpen(false);
+          await runBulkLost(payload);
+        }}
+      />
     </div>
   );
 }
@@ -266,11 +362,20 @@ function Column({
   stage,
   leads,
   onOpen,
+  selectMode,
+  selected,
+  onToggleSelect,
+  onSelectMany,
 }: {
   stage: (typeof STAGES)[number];
   leads: Lead[];
   onOpen: (id: string) => void;
+  selectMode: boolean;
+  selected: Set<string>;
+  onToggleSelect: (id: string) => void;
+  onSelectMany: (ids: string[], on: boolean) => void;
 }) {
+
   const { setNodeRef, isOver } = useDroppable({ id: stage.id });
   const valueMap = useLeadValueMap();
   const total = leads.reduce((s, l) => s + (valueMap.get(l.id) ?? l.estimatedValue), 0);
@@ -281,10 +386,21 @@ function Column({
   const start = safePage * CARDS_PER_PAGE;
   const visible = leads.slice(start, start + CARDS_PER_PAGE);
 
+  const visibleIds = visible.map((l) => l.id);
+  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selected.has(id));
+
   return (
     <div className="w-[300px] shrink-0 flex flex-col">
       <div className="sticky top-0 z-20 px-1 pb-2 pt-1 flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/70">
         <div className="flex items-center gap-2">
+          {selectMode && (
+            <Checkbox
+              checked={allVisibleSelected}
+              disabled={visibleIds.length === 0}
+              aria-label={`Selecionar cards visíveis de ${stage.label}`}
+              onCheckedChange={(v) => onSelectMany(visibleIds, v === true)}
+            />
+          )}
           <span className="stage-dot" style={{ background: stage.color }} />
           <span className="font-medium text-sm">{stage.label}</span>
           <Badge variant="secondary" className="text-xs">{leads.length}</Badge>
@@ -299,8 +415,16 @@ function Column({
         )}
       >
         {visible.map((l) => (
-          <LeadCard key={l.id} lead={l} onOpen={onOpen} />
+          <LeadCard
+            key={l.id}
+            lead={l}
+            onOpen={onOpen}
+            selectMode={selectMode}
+            isSelected={selected.has(l.id)}
+            onToggleSelect={onToggleSelect}
+          />
         ))}
+
         {leads.length === 0 && (
           <div className="text-xs text-muted-foreground text-center py-8 italic">Solte aqui</div>
         )}
@@ -343,12 +467,18 @@ function LeadCard({
   lead,
   onOpen,
   dragging = false,
+  selectMode = false,
+  isSelected = false,
+  onToggleSelect,
 }: {
   lead: Lead;
   onOpen: (id: string) => void;
   dragging?: boolean;
+  selectMode?: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: (id: string) => void;
 }) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: lead.id });
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: lead.id, disabled: selectMode });
   const sc = computeLeadScore(lead);
   const valueMap = useLeadValueMap();
   const effValue = valueMap.get(lead.id) ?? lead.estimatedValue;
@@ -356,24 +486,43 @@ function LeadCard({
     sc.level === "alto" ? "border-l-4 border-l-emerald-500"
     : sc.level === "medio" ? "border-l-4 border-l-amber-500"
     : "border-l-4 border-l-rose-500";
+  const dragProps = selectMode ? {} : { ...attributes, ...listeners };
   return (
     <div
       ref={setNodeRef}
-      {...attributes}
-      {...listeners}
-      onClick={() => !isDragging && onOpen(lead.id)}
+      {...dragProps}
+      onClick={() => {
+        if (selectMode) {
+          onToggleSelect?.(lead.id);
+          return;
+        }
+        if (!isDragging) onOpen(lead.id);
+      }}
       className={cn(
-        "group cursor-grab active:cursor-grabbing rounded-lg border bg-card p-3 shadow-sm hover:shadow-md hover:border-primary/50 transition-all",
+        "group rounded-lg border bg-card p-3 shadow-sm hover:shadow-md hover:border-primary/50 transition-all",
+        selectMode ? "cursor-pointer" : "cursor-grab active:cursor-grabbing",
         stripe,
         isDragging && "opacity-30",
         dragging && "shadow-xl rotate-2",
+        selectMode && isSelected && "ring-2 ring-primary",
       )}
     >
       <div className="flex items-start justify-between gap-2">
-        <div className="font-medium text-sm truncate">{lead.company}</div>
+        <div className="flex min-w-0 items-center gap-2">
+          {selectMode && (
+            <Checkbox
+              checked={isSelected}
+              aria-label={`Selecionar ${lead.company}`}
+              onClick={(e) => e.stopPropagation()}
+              onCheckedChange={() => onToggleSelect?.(lead.id)}
+            />
+          )}
+          <div className="font-medium text-sm truncate">{lead.company}</div>
+        </div>
         <div className="text-primary font-semibold text-sm shrink-0">
           {formatBRL(effValue)}
         </div>
+
       </div>
       <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
         <Package className="h-3 w-3 shrink-0" />

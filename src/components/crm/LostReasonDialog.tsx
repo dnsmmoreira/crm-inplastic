@@ -24,6 +24,7 @@ export const LOST_REASONS: { value: string; label: string }[] = [
   { value: "sem_orcamento", label: "Sem orçamento" },
   { value: "sem_resposta", label: "Sem resposta" },
   { value: "prazo", label: "Prazo/entrega" },
+  { value: "lote_importado", label: "Lote importado — sem demanda" },
   { value: "outro", label: "Outro" },
 ];
 
@@ -36,14 +37,19 @@ export type LostReasonPayload = {
 export function LostReasonDialog({
   open,
   leadLabel,
+  leadLabels,
   onCancel,
   onConfirm,
 }: {
   open: boolean;
   leadLabel?: string;
+  /** Modo em lote: lista de nomes dos leads selecionados. */
+  leadLabels?: string[];
   onCancel: () => void;
   onConfirm: (payload: LostReasonPayload) => void | Promise<void>;
 }) {
+  const bulk = !!leadLabels && leadLabels.length > 0;
+
   const [motivo, setMotivo] = useState<string>("");
   const [observacao, setObservacao] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -78,13 +84,25 @@ export function LostReasonDialog({
         <DialogHeader>
           <DialogTitle>Motivo da perda</DialogTitle>
           <DialogDescription>
-            {leadLabel
-              ? `Informe o motivo antes de mover "${leadLabel}" para Perdido.`
-              : "Informe o motivo antes de mover o lead para Perdido."}
+            {bulk
+              ? `Informe o motivo para marcar ${leadLabels!.length} lead${leadLabels!.length > 1 ? "s" : ""} como Perdido.`
+              : leadLabel
+                ? `Informe o motivo antes de mover "${leadLabel}" para Perdido.`
+                : "Informe o motivo antes de mover o lead para Perdido."}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3 py-1">
+          {bulk ? (
+            <div className="max-h-40 overflow-auto rounded-md border bg-muted/30 p-2 text-xs">
+              <ul className="space-y-0.5">
+                {leadLabels!.map((n, i) => (
+                  <li key={`${n}-${i}`} className="truncate">• {n}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           <div>
+
             <Label className="text-xs">Motivo *</Label>
             <Select value={motivo} onValueChange={setMotivo}>
               <SelectTrigger className="mt-1">
@@ -115,8 +133,13 @@ export function LostReasonDialog({
             Cancelar
           </Button>
           <Button onClick={handleConfirm} disabled={!motivo || submitting}>
-            {submitting ? "Salvando..." : "Marcar como Perdido"}
+            {submitting
+              ? "Salvando..."
+              : bulk
+                ? `Marcar ${leadLabels!.length} como Perdido`
+                : "Marcar como Perdido"}
           </Button>
+
         </DialogFooter>
       </DialogContent>
     </Dialog>
