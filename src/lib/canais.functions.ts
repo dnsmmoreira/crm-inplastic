@@ -130,7 +130,7 @@ export const sendConversaMessage = createServerFn({ method: "POST" })
 
     const { data: conversa, error: cErr } = await supabase
       .from("whatsapp_conversas")
-      .select("id, phone, atribuido_para")
+      .select("id, phone, atribuido_para, status")
       .eq("id", data.conversaId)
       .maybeSingle();
     if (cErr || !conversa) throw new Error("Conversa não encontrada ou sem permissão.");
