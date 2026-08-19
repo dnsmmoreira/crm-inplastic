@@ -32,6 +32,8 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { useAuth, hasPerm } from "@/hooks/use-auth";
+import { PERM_PEDIDOS_MOVIMENTAR } from "@/lib/permissoes";
 
 import { formatBRL } from "@/lib/crm-store";
 import {
@@ -67,6 +69,10 @@ function PedidosKanbanPage() {
   const listFn = useServerFn(listPedidos);
   const updateFn = useServerFn(updatePedidoStage);
   const qc = useQueryClient();
+  const { user } = useAuth();
+  // Movimentar cards exige a chave pedidos.movimentar (admin, Financeiro,
+  // Operacional). Vendedor comum enxerga o funil em modo leitura.
+  const podeMover = hasPerm(user, PERM_PEDIDOS_MOVIMENTAR);
 
   const [search, setSearch] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
