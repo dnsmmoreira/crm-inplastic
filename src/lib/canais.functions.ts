@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
+import { podeEscreverConversa } from "@/lib/permissoes";
 
 function onlyDigits(s: string) {
   return s.replace(/\D/g, "");
