@@ -142,14 +142,83 @@ function RootShell({ children }: { children: ReactNode }) {
 
 type NavCtx = { isAdmin: boolean; user: ReturnType<typeof useAuth>["user"] };
 
+/** Código de cores por área: cor só em ícones/indicadores, nunca no texto do item. */
+type Accent = "neutral" | "blue" | "emerald" | "amber" | "sky" | "violet" | "slate" | "cyan";
+
+const ACCENT: Record<Accent, { icon: string; active: string; hover: string; border: string; label: string }> = {
+  neutral: {
+    icon: "text-sidebar-foreground/70",
+    active: "bg-sidebar-accent",
+    hover: "hover:bg-sidebar-accent",
+    border: "border-sidebar-foreground/40",
+    label: "text-sidebar-foreground/60",
+  },
+  blue: {
+    icon: "text-blue-500 dark:text-blue-400",
+    active: "bg-blue-500/10",
+    hover: "hover:bg-blue-500/5",
+    border: "border-blue-500 dark:border-blue-400",
+    label: "text-blue-400/80",
+  },
+  emerald: {
+    icon: "text-emerald-500 dark:text-emerald-400",
+    active: "bg-emerald-500/10",
+    hover: "hover:bg-emerald-500/5",
+    border: "border-emerald-500 dark:border-emerald-400",
+    label: "text-emerald-400/80",
+  },
+  amber: {
+    icon: "text-amber-500 dark:text-amber-400",
+    active: "bg-amber-500/10",
+    hover: "hover:bg-amber-500/5",
+    border: "border-amber-500 dark:border-amber-400",
+    label: "text-amber-400/80",
+  },
+  sky: {
+    icon: "text-sky-500 dark:text-sky-400",
+    active: "bg-sky-500/10",
+    hover: "hover:bg-sky-500/5",
+    border: "border-sky-500 dark:border-sky-400",
+    label: "text-sky-400/80",
+  },
+  violet: {
+    icon: "text-violet-500 dark:text-violet-400",
+    active: "bg-violet-500/10",
+    hover: "hover:bg-violet-500/5",
+    border: "border-violet-500 dark:border-violet-400",
+    label: "text-violet-400/80",
+  },
+  slate: {
+    icon: "text-slate-400 dark:text-slate-300",
+    active: "bg-slate-400/10",
+    hover: "hover:bg-slate-400/5",
+    border: "border-slate-400 dark:border-slate-300",
+    label: "text-slate-300/80",
+  },
+  cyan: {
+    icon: "text-cyan-500 dark:text-cyan-400",
+    active: "bg-cyan-500/10",
+    hover: "hover:bg-cyan-500/5",
+    border: "border-cyan-500 dark:border-cyan-400",
+    label: "text-cyan-400/80",
+  },
+};
+
 type NavItem = {
   to: string;
   label: string;
   icon: typeof LayoutDashboard;
   show: (c: NavCtx) => boolean;
+  accent?: Accent;
 };
 
-type NavGroup = { id: string; label: string; icon: typeof LayoutDashboard; items: NavItem[] };
+type NavGroup = {
+  id: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  items: NavItem[];
+  accent: Accent;
+};
 
 /** Vendedor comum = perfil de vendas (chave propostas.editar). Financeiro/Operacional não têm. */
 const isVendedorComum = (c: NavCtx) => !c.isAdmin && hasPerm(c.user, "propostas.editar");
@@ -162,13 +231,14 @@ const vendasOu = (chave: string) => (c: NavCtx) => vendas(c) || hasPerm(c.user, 
 const NAV_ROOT: NavItem[] = [
   { to: "/", label: "Início", icon: LayoutDashboard, show: always },
   
-  { to: "/conversas", label: "Conversas", icon: MessageSquare, show: key("whatsapp.atender") },
-  { to: "/placar", label: "Placar", icon: Trophy, show: vendas },
+  { to: "/conversas", label: "Conversas", icon: MessageSquare, show: key("whatsapp.atender"), accent: "emerald" },
+  { to: "/placar", label: "Placar", icon: Trophy, show: vendas, accent: "amber" },
 ];
 
 const NAV_GROUPS: NavGroup[] = [
   {
     id: "pipeline",
+    accent: "blue",
     label: "Pipeline",
     icon: KanbanSquare,
     items: [
@@ -178,6 +248,7 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     id: "cadastros",
+    accent: "sky",
     label: "Cadastros",
     icon: Building2,
     items: [
@@ -189,6 +260,7 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     id: "negocios",
+    accent: "emerald",
     label: "Negócios",
     icon: FileText,
     items: [
@@ -200,6 +272,7 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     id: "meu-dia",
+    accent: "violet",
     label: "Meu Dia",
     icon: ClipboardList,
     items: [
@@ -209,6 +282,7 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     id: "empresa",
+    accent: "slate",
     label: "Empresa",
     icon: BarChart3,
     items: [
@@ -225,6 +299,7 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     id: "ia-canais",
+    accent: "cyan",
     label: "IA & Canais",
     icon: Bot,
     items: [
@@ -297,15 +372,17 @@ function AppShell({ children }: { children: ReactNode }) {
   };
   const toggleMobileGroup = (id: string) => setMobileOpen((prev) => (prev === id ? null : id));
 
-  const itemLinkClass = (active: boolean, indent: boolean) =>
-    cn(
-      "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+  const itemLinkClass = (active: boolean, indent: boolean, accent: Accent = "neutral") => {
+    const a = ACCENT[accent];
+    return cn(
+      "flex items-center gap-3 rounded-md border-l-[3px] px-3 py-2 text-sm transition-colors",
       collapsed && "justify-center px-2",
-      indent && !collapsed && "pl-9",
+      indent && !collapsed && "pl-8",
       active
-        ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium"
-        : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+        ? cn("font-medium text-sidebar-foreground", a.active, a.border)
+        : cn("border-transparent text-sidebar-foreground/80 hover:text-sidebar-foreground", a.hover),
     );
+  };
 
 
   return (
@@ -344,14 +421,15 @@ function AppShell({ children }: { children: ReactNode }) {
         <nav className="flex-1 space-y-1 overflow-y-auto p-3">
           {rootItems.map((item) => {
             const Icon = item.icon;
+            const accent = item.accent ?? "neutral";
             return (
               <Link
                 key={item.to}
                 to={item.to}
                 title={collapsed ? item.label : undefined}
-                className={itemLinkClass(pathname === item.to, false)}
+                className={itemLinkClass(pathname === item.to, false, accent)}
               >
-                <Icon className="h-4 w-4 shrink-0" />
+                <Icon className={cn("h-4 w-4 shrink-0", ACCENT[accent].icon)} />
                 {!collapsed && item.label}
               </Link>
             );
@@ -360,6 +438,7 @@ function AppShell({ children }: { children: ReactNode }) {
           {groups.map((group) => {
             const GroupIcon = group.icon;
             const open = collapsed || openGroups.includes(group.id);
+            const ga = ACCENT[group.accent];
             return (
               <div key={group.id} className="pt-1">
                 {!collapsed && (
@@ -367,9 +446,12 @@ function AppShell({ children }: { children: ReactNode }) {
                     type="button"
                     onClick={() => toggleGroup(group.id)}
                     aria-expanded={open}
-                    className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                    className={cn(
+                      "flex w-full items-center gap-3 rounded-md border-l-[3px] border-transparent px-3 py-2 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/60 transition-colors hover:text-sidebar-foreground",
+                      ga.hover,
+                    )}
                   >
-                    <GroupIcon className="h-4 w-4 shrink-0" />
+                    <GroupIcon className={cn("h-4 w-4 shrink-0", ga.icon)} />
                     <span className="flex-1 text-left">{group.label}</span>
                     <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", !open && "-rotate-90")} />
                   </button>
@@ -382,9 +464,9 @@ function AppShell({ children }: { children: ReactNode }) {
                         key={item.to}
                         to={item.to}
                         title={collapsed ? item.label : undefined}
-                        className={itemLinkClass(pathname === item.to, true)}
+                        className={itemLinkClass(pathname === item.to, true, group.accent)}
                       >
-                        <Icon className="h-4 w-4 shrink-0" />
+                        <Icon className={cn("h-4 w-4 shrink-0", ga.icon)} />
                         {!collapsed && item.label}
                       </Link>
                     );
@@ -433,16 +515,20 @@ function AppShell({ children }: { children: ReactNode }) {
         <nav className="md:hidden border-b bg-card p-2 space-y-1">
           {rootItems.map((item) => {
             const Icon = item.icon;
+            const a = ACCENT[item.accent ?? "neutral"];
+            const active = pathname === item.to;
             return (
               <Link
                 key={item.to}
                 to={item.to}
                 className={cn(
-                  "flex items-center gap-2 rounded-md px-3 py-2 text-sm",
-                  pathname === item.to ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground",
+                  "flex items-center gap-2 rounded-md border-l-[3px] px-3 py-2 text-sm transition-colors",
+                  active
+                    ? cn("font-medium text-foreground", a.active, a.border)
+                    : cn("border-transparent text-muted-foreground", a.hover),
                 )}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className={cn("h-4 w-4", a.icon)} />
                 {item.label}
               </Link>
             );
@@ -450,33 +536,35 @@ function AppShell({ children }: { children: ReactNode }) {
           {groups.map((group) => {
             const GroupIcon = group.icon;
             const open = mobileOpen === group.id;
+            const ga = ACCENT[group.accent];
             return (
               <div key={group.id}>
                 <button
                   type="button"
                   onClick={() => toggleMobileGroup(group.id)}
                   aria-expanded={open}
-                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+                  className="flex w-full items-center gap-2 rounded-md border-l-[3px] border-transparent px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground"
                 >
-                  <GroupIcon className="h-4 w-4" />
+                  <GroupIcon className={cn("h-4 w-4", ga.icon)} />
                   <span className="flex-1 text-left">{group.label}</span>
                   <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", !open && "-rotate-90")} />
                 </button>
                 {open &&
                   group.items.map((item) => {
                     const Icon = item.icon;
+                    const active = pathname === item.to;
                     return (
                       <Link
                         key={item.to}
                         to={item.to}
                         className={cn(
-                          "flex items-center gap-2 rounded-md py-2 pl-9 pr-3 text-sm",
-                          pathname === item.to
-                            ? "bg-primary/10 text-primary font-medium"
-                            : "text-muted-foreground",
+                          "flex items-center gap-2 rounded-md border-l-[3px] py-2 pl-8 pr-3 text-sm transition-colors",
+                          active
+                            ? cn("font-medium text-foreground", ga.active, ga.border)
+                            : cn("border-transparent text-muted-foreground", ga.hover),
                         )}
                       >
-                        <Icon className="h-4 w-4" />
+                        <Icon className={cn("h-4 w-4", ga.icon)} />
                         {item.label}
                       </Link>
                     );
