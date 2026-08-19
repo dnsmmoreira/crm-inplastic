@@ -174,6 +174,16 @@ export const sendConversaMessage = createServerFn({ method: "POST" })
       isAdmin = false;
     }
 
+    // (A0) Escrita manual só quando a conversa está aguardando humano ou em
+    // atendimento humano. Admin não é limitado por este guard.
+    if (!isAdmin && !podeEscreverConversa(conversa.status)) {
+      bloquear(
+        "status_nao_permite_escrita",
+        "Esta conversa não está em atendimento humano. Assuma o atendimento para poder responder.",
+      );
+    }
+
+
     // Existe mensagem recebida do cliente nesta conversa?
     const { count: inboundCount, error: inErr } = await supabase
       .from("whatsapp_mensagens")
