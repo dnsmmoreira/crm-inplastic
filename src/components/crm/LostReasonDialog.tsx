@@ -24,6 +24,7 @@ export const LOST_REASONS: { value: string; label: string }[] = [
   { value: "sem_orcamento", label: "Sem orçamento" },
   { value: "sem_resposta", label: "Sem resposta" },
   { value: "prazo", label: "Prazo/entrega" },
+  { value: "lote_importado", label: "Lote importado — sem demanda" },
   { value: "outro", label: "Outro" },
 ];
 
@@ -36,14 +37,19 @@ export type LostReasonPayload = {
 export function LostReasonDialog({
   open,
   leadLabel,
+  leadLabels,
   onCancel,
   onConfirm,
 }: {
   open: boolean;
   leadLabel?: string;
+  /** Modo em lote: lista de nomes dos leads selecionados. */
+  leadLabels?: string[];
   onCancel: () => void;
   onConfirm: (payload: LostReasonPayload) => void | Promise<void>;
 }) {
+  const bulk = !!leadLabels && leadLabels.length > 0;
+
   const [motivo, setMotivo] = useState<string>("");
   const [observacao, setObservacao] = useState("");
   const [submitting, setSubmitting] = useState(false);
