@@ -3,6 +3,8 @@ import type { Session, User as SupaUser } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { hydrateCrmForUser, clearCrmState } from "@/lib/crm-sync";
+import { resolvePermissao } from "@/lib/permissoes";
+
 
 
 export type AppRole = "admin" | "vendedor";
