@@ -380,6 +380,16 @@ export const setPerfilDoUsuario = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertGerenciaUsuarios(context.supabase, context.userId);
+    // Somente admin altera perfil de acesso de alguém.
+    const { data: ehAdmin, error: adminErr } = await context.supabase.rpc("has_role", {
+      _user_id: context.userId,
+      _role: "admin",
+    });
+    if (adminErr) throw new Error(adminErr.message);
+    if (!ehAdmin) throw new Error("Apenas administradores podem alterar o perfil de acesso.");
+    if (data.userId === context.userId) {
+      throw new Error("Você não pode alterar o próprio perfil de acesso.");
+    }
     const sb = await admin();
 
     const { data: atuais } = await sb
@@ -390,10 +400,14 @@ export const setPerfilDoUsuario = createServerFn({ method: "POST" })
     if (anteriorId === data.perfilId) return { ok: true as const };
 
     const nomes = new Map<string, string>();
+    const baseRoles = new Map<string, "admin" | "vendedor">();
     const ids = [anteriorId, data.perfilId].filter((v): v is string => !!v);
     if (ids.length) {
-      const { data: ps } = await sb.from("perfis").select("id, nome").in("id", ids);
-      (ps ?? []).forEach((p) => nomes.set(p.id, p.nome));
+      const { data: ps } = await sb.from("perfis").select("id, nome, base_role").in("id", ids);
+      (ps ?? []).forEach((p) => {
+        nomes.set(p.id, p.nome);
+        baseRoles.set(p.id, p.base_role as "admin" | "vendedor");
+      });
     }
     if (data.perfilId && !nomes.has(data.perfilId)) throw new Error("Perfil não encontrado.");
 
@@ -406,7 +420,31 @@ export const setPerfilDoUsuario = createServerFn({ method: "POST" })
       if (error) throw new Error(error.message);
     }
 
+    // Papel (user_roles) é DERIVADO do base_role do perfil escolhido.
+    const { data: rolesAtuais } = await sb
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", data.userId);
+    const papelAtual: "admin" | "vendedor" = (rolesAtuais ?? []).some((r) => r.role === "admin")
+      ? "admin"
+      : "vendedor";
+    const papelNovo: "admin" | "vendedor" = data.perfilId
+      ? (baseRoles.get(data.perfilId) ?? "vendedor")
+      : "vendedor";
+    if (papelNovo !== papelAtual) {
+      const { error: delRoleErr } = await sb
+        .from("user_roles")
+        .delete()
+        .eq("user_id", data.userId);
+      if (delRoleErr) throw new Error(delRoleErr.message);
+      const { error: insRoleErr } = await sb
+        .from("user_roles")
+        .insert({ user_id: data.userId, role: papelNovo });
+      if (insRoleErr) throw new Error(insRoleErr.message);
+    }
+
     await logAudit(sb, data.userId, context.userId, [
+      { campo: "papel", anterior: papelAtual, novo: papelNovo },
       {
         campo: "perfil",
         anterior: anteriorId ? nomes.get(anteriorId) : "nenhum",
