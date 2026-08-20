@@ -418,6 +418,30 @@ export type Database = {
         }
         Relationships: []
       }
+      cargos: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: string
+          nome: string
+          ordem: number
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome: string
+          ordem?: number
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome?: string
+          ordem?: number
+        }
+        Relationships: []
+      }
       clientes: {
         Row: {
           ativo: boolean
@@ -1734,6 +1758,7 @@ export type Database = {
           descricao: string | null
           id: string
           nome: string
+          papel: string
         }
         Insert: {
           ativo?: boolean
@@ -1742,6 +1767,7 @@ export type Database = {
           descricao?: string | null
           id?: string
           nome: string
+          papel: string
         }
         Update: {
           ativo?: boolean
@@ -1750,6 +1776,7 @@ export type Database = {
           descricao?: string | null
           id?: string
           nome?: string
+          papel?: string
         }
         Relationships: []
       }
