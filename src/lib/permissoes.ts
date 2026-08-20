@@ -37,7 +37,6 @@ function tem(ator: Ator, chave: string): boolean {
   return ator.isAdmin || ator.permKeys.includes(chave);
 }
 
-
 export function podeMovimentarPedido(ator: Ator): boolean {
   return tem(ator, PERM_PEDIDOS_MOVIMENTAR);
 }

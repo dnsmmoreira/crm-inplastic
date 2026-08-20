@@ -1,11 +1,17 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import type { Session, User as SupaUser } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { hydrateCrmForUser, clearCrmState } from "@/lib/crm-sync";
 import { resolvePermissao } from "@/lib/permissoes";
-
-
 
 export type AppRole = "admin" | "vendedor";
 
@@ -68,12 +74,14 @@ export type AuthUser = {
 export function hasPerm(user: AuthUser | null | undefined, chave: string): boolean {
   if (!user) return false;
   return resolvePermissao(
-    { isAdmin: user.role === "admin", temPerfilAtivo: user.temPerfilAtivo, permKeys: user.permKeys },
+    {
+      isAdmin: user.role === "admin",
+      temPerfilAtivo: user.temPerfilAtivo,
+      permKeys: user.permKeys,
+    },
     chave,
   );
 }
-
-
 
 type AuthContextValue = {
   user: AuthUser | null;
@@ -107,7 +115,11 @@ async function loadAuthUser(supaUser: SupaUser): Promise<AuthUser> {
   ]);
   if (profile && (profile.ativo === false || profile.deleted_at)) throw new ContaInativaError();
   const role: AppRole = (roles ?? []).some((r) => r.role === "admin") ? "admin" : "vendedor";
-  const name = profile?.name || (supaUser.user_metadata?.name as string | undefined) || supaUser.email?.split("@")[0] || "Usuário";
+  const name =
+    profile?.name ||
+    (supaUser.user_metadata?.name as string | undefined) ||
+    supaUser.email?.split("@")[0] ||
+    "Usuário";
   const avatarColor = profile?.avatar_color || colorFor(supaUser.id);
   const base = role === "admin" ? ADMIN_PERMISSIONS : VENDEDOR_PERMISSIONS;
   const permissions: UserPermissions = perms
@@ -153,51 +165,58 @@ async function loadAuthUser(supaUser: SupaUser): Promise<AuthUser> {
   };
 }
 
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const hydrate = useCallback(async (nextSession: Session | null, opts?: { clearOnEmpty?: boolean }) => {
-    setSession(nextSession);
-    if (nextSession?.user) {
-      try {
-        const u = await loadAuthUser(nextSession.user);
-        setUser(u);
+  const hydrate = useCallback(
+    async (nextSession: Session | null, opts?: { clearOnEmpty?: boolean }) => {
+      setSession(nextSession);
+      if (nextSession?.user) {
         try {
-          await hydrateCrmForUser(u.id, u.role);
-        } catch (err) {
-          console.error("hydrateCrmForUser failed", err);
+          const u = await loadAuthUser(nextSession.user);
+          setUser(u);
+          try {
+            await hydrateCrmForUser(u.id, u.role);
+          } catch (err) {
+            console.error("hydrateCrmForUser failed", err);
+          }
+        } catch (e) {
+          if (e instanceof ContaInativaError) {
+            // Conta desativada ou excluída: encerra a sessão sem apagar histórico.
+            setUser(null);
+            clearCrmState();
+            setSession(null);
+            try {
+              toast.error(e.message);
+            } catch {
+              /* noop */
+            }
+            void supabase.auth.signOut();
+            setLoading(false);
+            return;
+          }
+          console.error("loadAuthUser failed", e);
+          // Não zera o user aqui — se já tinha um user carregado, mantém.
+          // Uma falha transitória em profiles/user_roles não deve deslogar.
         }
-      } catch (e) {
-        if (e instanceof ContaInativaError) {
-          // Conta desativada ou excluída: encerra a sessão sem apagar histórico.
-          setUser(null);
-          clearCrmState();
-          setSession(null);
-          try { toast.error(e.message); } catch { /* noop */ }
-          void supabase.auth.signOut();
-          setLoading(false);
-          return;
-        }
-        console.error("loadAuthUser failed", e);
-        // Não zera o user aqui — se já tinha um user carregado, mantém.
-        // Uma falha transitória em profiles/user_roles não deve deslogar.
+      } else if (opts?.clearOnEmpty) {
+        setUser(null);
+        clearCrmState();
       }
-    } else if (opts?.clearOnEmpty) {
-      setUser(null);
-      clearCrmState();
-    }
-    setLoading(false);
-  }, []);
-
+      setLoading(false);
+    },
+    [],
+  );
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
       // SIGNED_OUT é o único caso em que limpamos o usuário.
       if (event === "SIGNED_OUT") {
-        setTimeout(() => { void hydrate(null, { clearOnEmpty: true }); }, 0);
+        setTimeout(() => {
+          void hydrate(null, { clearOnEmpty: true });
+        }, 0);
         return;
       }
       // Só (re)hidrata quando temos sessão real. Ignora INITIAL_SESSION vazio,
@@ -207,16 +226,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(s);
         return;
       }
-      setTimeout(() => { void hydrate(s); }, 0);
+      setTimeout(() => {
+        void hydrate(s);
+      }, 0);
     });
     supabase.auth.getSession().then(({ data }) => {
       // Na primeira montagem, se não houver sessão, aí sim limpamos (sem redirect infinito).
       void hydrate(data.session, { clearOnEmpty: true });
     });
-    return () => { sub.subscription.unsubscribe(); };
+    return () => {
+      sub.subscription.unsubscribe();
+    };
   }, [hydrate]);
-
-
 
   const refresh = useCallback(async () => {
     const { data } = await supabase.auth.getSession();
