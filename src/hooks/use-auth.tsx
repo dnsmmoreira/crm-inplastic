@@ -116,11 +116,17 @@ async function loadAuthUser(supaUser: SupaUser): Promise<AuthUser> {
   // Administrador nunca perde o acesso à gestão de usuários.
   if (role === "admin") permissions.gerenciar_usuarios = true;
 
-  // Chaves granulares dos perfis do usuário (somente ampliam o acesso).
+  // Chaves granulares dos perfis ATIVOS do usuário.
   let permKeys: string[] = [];
+  let temPerfilAtivo = false;
   try {
-    const { data: vinculos } = await supabase.from("user_perfis").select("perfil_id").eq("user_id", supaUser.id);
+    const { data: vinculos } = await supabase
+      .from("user_perfis")
+      .select("perfil_id, perfis!inner(ativo)")
+      .eq("user_id", supaUser.id)
+      .eq("perfis.ativo", true);
     const perfilIds = (vinculos ?? []).map((v) => v.perfil_id);
+    temPerfilAtivo = perfilIds.length > 0;
     if (perfilIds.length > 0) {
       const { data: chaves } = await supabase
         .from("perfil_permissoes")
@@ -132,9 +138,19 @@ async function loadAuthUser(supaUser: SupaUser): Promise<AuthUser> {
     console.error("loadPermKeys failed", e);
   }
 
-  return { id: supaUser.id, email: supaUser.email ?? "", name, avatarColor, role, permissions, permKeys, mustChangePassword: !!profile?.senha_reset_exigido };
-
+  return {
+    id: supaUser.id,
+    email: supaUser.email ?? "",
+    name,
+    avatarColor,
+    role,
+    permissions,
+    permKeys,
+    temPerfilAtivo,
+    mustChangePassword: !!profile?.senha_reset_exigido,
+  };
 }
+
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
