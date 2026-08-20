@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ShieldAlert, Trophy } from "lucide-react";
 
-import { useIsAdmin } from "@/lib/crm-store";
+import { useHasPerm } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArenaConfigPanel } from "@/components/arena/ArenaConfigPanel";
@@ -33,9 +33,9 @@ export const Route = createFileRoute("/arena")({
 });
 
 function ArenaPage() {
-  const isAdmin = useIsAdmin();
+  const podeVer = useHasPerm("metas.definir");
 
-  if (!isAdmin) {
+  if (!podeVer) {
     return (
       <div className="p-4 md:p-8">
         <Card className="mx-auto max-w-lg">
@@ -46,8 +46,7 @@ function ArenaPage() {
             </div>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            Os indicadores econômicos da ARENA (custo, margem, comissões e premiação) são visíveis apenas para a
-            administração.
+            Você não tem permissão para acessar esta tela.
           </CardContent>
         </Card>
       </div>

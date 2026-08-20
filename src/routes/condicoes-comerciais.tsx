@@ -95,7 +95,7 @@ function parseSplits(raw: string): number[] {
 }
 
 function CondicoesComerciais() {
-  const isAdmin = useIsAdmin();
+  const podeGerenciar = useHasPerm("empresas.editar");
   const terms = useCrm((s) => s.paymentTerms);
   const addTerm = useCrm((s) => s.addPaymentTerm);
   const updateTerm = useCrm((s) => s.updatePaymentTerm);
@@ -112,7 +112,7 @@ function CondicoesComerciais() {
 
   const activeCount = useMemo(() => terms.filter((t) => t.active).length, [terms]);
 
-  if (!isAdmin) {
+  if (!podeGerenciar) {
     return (
       <div className="p-4 md:p-8">
         <Card className="max-w-lg mx-auto">
@@ -124,8 +124,7 @@ function CondicoesComerciais() {
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-muted-foreground">
             <p>
-              Apenas administradores podem cadastrar e ativar condições comerciais.
-              Fale com o administrador se precisar de uma nova condição de pagamento.
+              Você não tem permissão para acessar esta tela.
             </p>
             <Button asChild variant="outline" size="sm">
               <Link to="/propostas">Voltar para Propostas</Link>
