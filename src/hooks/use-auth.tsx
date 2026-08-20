@@ -51,17 +51,26 @@ export type AuthUser = {
   avatarColor: string;
   role: AppRole;
   permissions: UserPermissions;
-  /** Chaves granulares vindas dos perfis (etapa de perfis). Só AMPLIAM o acesso. */
+  /** Chaves granulares vindas dos perfis ativos vinculados ao usuário. */
   permKeys: string[];
+  /** Se o usuário tem ao menos um perfil de acesso ATIVO vinculado. */
+  temPerfilAtivo: boolean;
   mustChangePassword: boolean;
 };
 
-/** Verifica uma chave granular de permissão. Admin sempre liberado. */
+/**
+ * Verifica uma chave granular de permissão.
+ * Mesma semântica da função SQL `tem_permissao`: com perfil ativo vinculado, só
+ * valem as chaves do perfil; sem perfil, o papel admin libera tudo (bootstrap).
+ */
 export function hasPerm(user: AuthUser | null | undefined, chave: string): boolean {
   if (!user) return false;
-  if (user.role === "admin") return true;
-  return user.permKeys.includes(chave);
+  return resolvePermissao(
+    { isAdmin: user.role === "admin", temPerfilAtivo: user.temPerfilAtivo, permKeys: user.permKeys },
+    chave,
+  );
 }
+
 
 
 type AuthContextValue = {
