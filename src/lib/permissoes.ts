@@ -19,6 +19,20 @@ export function podeEscreverConversa(status: string | null | undefined): boolean
 
 export type Ator = { isAdmin: boolean; permKeys: readonly string[] };
 
+/**
+ * Semântica única de permissão granular, espelhando a função SQL `tem_permissao`:
+ * - com perfil ativo vinculado, a decisão sai EXCLUSIVAMENTE das chaves do perfil
+ *   (o papel admin não concede nada extra);
+ * - sem perfil vinculado, o papel admin libera tudo (rede de bootstrap).
+ */
+export function resolvePermissao(
+  ator: { isAdmin: boolean; temPerfilAtivo: boolean; permKeys: readonly string[] },
+  chave: string,
+): boolean {
+  if (ator.temPerfilAtivo) return ator.permKeys.includes(chave);
+  return ator.isAdmin;
+}
+
 function tem(ator: Ator, chave: string): boolean {
   return ator.isAdmin || ator.permKeys.includes(chave);
 }

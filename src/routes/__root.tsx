@@ -224,7 +224,9 @@ type NavGroup = {
 
 /** Vendedor comum = perfil de vendas (chave propostas.editar). Financeiro/Operacional não têm. */
 const isVendedorComum = (c: NavCtx) => !c.isAdmin && hasPerm(c.user, "propostas.editar");
-const key = (chave: string) => (c: NavCtx) => c.isAdmin || hasPerm(c.user, chave);
+// hasPerm já embute a rede de bootstrap (admin sem perfil vinculado vê tudo).
+const key = (chave: string) => (c: NavCtx) => hasPerm(c.user, chave);
+
 const adminOnly = (c: NavCtx) => c.isAdmin;
 const always = () => true;
 const vendas = (c: NavCtx) => c.isAdmin || isVendedorComum(c);
@@ -297,7 +299,7 @@ const NAV_GROUPS: NavGroup[] = [
         to: "/usuarios",
         label: "Usuários",
         icon: UserCog,
-        show: (c) => c.isAdmin && hasPerm(c.user, "usuarios.gerenciar"),
+        show: (c) => hasPerm(c.user, "usuarios.gerenciar"),
       },
     ],
   },
