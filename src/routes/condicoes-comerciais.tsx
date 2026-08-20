@@ -6,10 +6,10 @@ import { z } from "zod";
 
 import {
   useCrm,
-  useIsAdmin,
   type PaymentTerm,
   type PaymentMethod,
 } from "@/lib/crm-store";
+import { useHasPerm } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
