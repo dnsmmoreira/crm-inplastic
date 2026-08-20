@@ -162,7 +162,7 @@ export const getPerfilDoUsuario = createServerFn({ method: "POST" })
     await assertGerenciaUsuarios(context.supabase, context.userId);
     const sb = await admin();
     const [perfisRes, vincRes] = await Promise.all([
-      sb.from("perfis").select("id, nome, base_role, ativo").order("nome"),
+      sb.from("perfis").select("id, nome, papel, base_role, ativo").order("nome"),
       sb.from("user_perfis").select("perfil_id").eq("user_id", data.userId),
     ]);
     if (perfisRes.error) throw new Error(perfisRes.error.message);
@@ -174,6 +174,7 @@ export const getPerfilDoUsuario = createServerFn({ method: "POST" })
         .map((p) => ({
           id: p.id,
           nome: p.nome,
+          papel: (p.papel ?? "Vendas") as PapelRotulo,
           baseRole: p.base_role as "admin" | "vendedor",
           ativo: p.ativo !== false,
         })),
