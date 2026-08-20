@@ -9,6 +9,7 @@ import {
   PERM_PEDIDOS_EXCLUIR,
   PERM_EMPRESAS_EDITAR,
   PERM_PEDIDOS_VER_TODOS,
+  resolvePermissao,
 } from "./permissoes";
 
 const admin = { isAdmin: true, permKeys: [] as string[] };
@@ -62,5 +63,103 @@ describe("escrita em conversas", () => {
     expect(podeEscreverConversa("ia_atendendo")).toBe(false);
     expect(podeEscreverConversa("encerrado")).toBe(false);
     expect(podeEscreverConversa(null)).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Semântica de perfis (espelho da função SQL `tem_permissao`).
+// Nota: estes testes cobrem a REGRA (resolvePermissao / hasPerm). A função SQL
+// homônima não é testada aqui porque a suíte não tem conexão com o banco —
+// a verificação dela foi feita por consulta direta ao banco.
+// ---------------------------------------------------------------------------
+
+const CHAVES_GESTOR = [
+  "clientes.ver_todos",
+  "pedidos.ver_todos",
+  "pedidos.exportar",
+  "pedidos.movimentar",
+  "propostas.ver_todas",
+  "relatorios.ver",
+  "relatorios.exportar",
+  "estoque.ver",
+  "whatsapp.atender",
+  "whatsapp.assumir_conversa",
+  "whatsapp.devolver_ia",
+  "licitacoes.gerenciar",
+];
+
+const TODAS_AS_CHAVES = [
+  ...CHAVES_GESTOR,
+  "usuarios.gerenciar",
+  "xerife.configurar",
+  "agente_ia.editar_prompt",
+  "canais.configurar",
+  "metas.definir",
+  "leads.excluir",
+  "leads.fila.gerenciar",
+  "propostas.editar",
+  "propostas.excluir",
+  "propostas.alterar_status",
+  "pedidos.excluir",
+  "empresas.editar",
+  "precos.limite_desconto",
+];
+
+const gestorComercial = { isAdmin: true, temPerfilAtivo: true, permKeys: CHAVES_GESTOR };
+const administrador = { isAdmin: true, temPerfilAtivo: true, permKeys: TODAS_AS_CHAVES };
+const adminSemPerfil = { isAdmin: true, temPerfilAtivo: false, permKeys: [] as string[] };
+const perfilVendedor = {
+  isAdmin: false,
+  temPerfilAtivo: true,
+  permKeys: ["propostas.editar", "relatorios.ver"],
+};
+
+describe("resolvePermissao — perfil ativo manda, mesmo com base_role admin", () => {
+  it("Gestor Comercial NÃO recebe chaves fora do perfil", () => {
+    for (const chave of [
+      "usuarios.gerenciar",
+      "xerife.configurar",
+      "agente_ia.editar_prompt",
+      "canais.configurar",
+      "metas.definir",
+      "leads.excluir",
+      "propostas.editar",
+    ]) {
+      expect(resolvePermissao(gestorComercial, chave)).toBe(false);
+    }
+  });
+
+  it("Gestor Comercial recebe as chaves do próprio perfil", () => {
+    for (const chave of [
+      "licitacoes.gerenciar",
+      "pedidos.ver_todos",
+      "relatorios.exportar",
+      "clientes.ver_todos",
+    ]) {
+      expect(resolvePermissao(gestorComercial, chave)).toBe(true);
+    }
+  });
+
+  it("perfil Administrador recebe todas as chaves", () => {
+    for (const chave of TODAS_AS_CHAVES) {
+      expect(resolvePermissao(administrador, chave)).toBe(true);
+    }
+  });
+
+  it("admin SEM perfil vinculado recebe tudo (rede de bootstrap)", () => {
+    for (const chave of TODAS_AS_CHAVES) {
+      expect(resolvePermissao(adminSemPerfil, chave)).toBe(true);
+    }
+  });
+
+  it("perfil Vendedor não recebe gestão de usuários nem licitações", () => {
+    expect(resolvePermissao(perfilVendedor, "usuarios.gerenciar")).toBe(false);
+    expect(resolvePermissao(perfilVendedor, "licitacoes.gerenciar")).toBe(false);
+  });
+
+  it("usuário não-admin sem perfil não recebe nada", () => {
+    expect(
+      resolvePermissao({ isAdmin: false, temPerfilAtivo: false, permKeys: [] }, "relatorios.ver"),
+    ).toBe(false);
   });
 });
