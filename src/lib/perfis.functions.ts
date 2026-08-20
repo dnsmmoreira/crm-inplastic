@@ -40,7 +40,6 @@ export type PerfilPermissaoRow = { chave: string; valorNumerico: number | null }
 /** Perfis seed de compatibilidade: não podem ser editados/desativados/excluídos. */
 export const PERFIS_PROTEGIDOS = ["Administrador", "Vendedor"];
 
-
 /* ------------------------------------------------------------------ */
 /* Helpers                                                             */
 /* ------------------------------------------------------------------ */
@@ -248,7 +247,9 @@ export const savePerfil = createServerFn({ method: "POST" })
       })
       .eq("id", data.id);
     if (error) {
-      throw new Error(error.code === "23505" ? "Já existe um perfil com esse nome." : error.message);
+      throw new Error(
+        error.code === "23505" ? "Já existe um perfil com esse nome." : error.message,
+      );
     }
 
     await logAudit(sb, ator, ator, [
@@ -374,9 +375,7 @@ export const setPerfilPermissoes = createServerFn({ method: "POST" })
 export const setPerfilDoUsuario = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data) =>
-    z
-      .object({ userId: z.string().uuid(), perfilId: z.string().uuid().nullable() })
-      .parse(data),
+    z.object({ userId: z.string().uuid(), perfilId: z.string().uuid().nullable() }).parse(data),
   )
   .handler(async ({ data, context }) => {
     await assertGerenciaUsuarios(context.supabase, context.userId);
@@ -432,10 +431,7 @@ export const setPerfilDoUsuario = createServerFn({ method: "POST" })
       ? (baseRoles.get(data.perfilId) ?? "vendedor")
       : "vendedor";
     if (papelNovo !== papelAtual) {
-      const { error: delRoleErr } = await sb
-        .from("user_roles")
-        .delete()
-        .eq("user_id", data.userId);
+      const { error: delRoleErr } = await sb.from("user_roles").delete().eq("user_id", data.userId);
       if (delRoleErr) throw new Error(delRoleErr.message);
       const { error: insRoleErr } = await sb
         .from("user_roles")
