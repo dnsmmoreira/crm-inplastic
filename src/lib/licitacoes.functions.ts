@@ -95,7 +95,10 @@ export const listLicitacoes = createServerFn({ method: "POST" })
     if (data.situacao) q = q.eq("situacao", data.situacao);
     if (data.de) q = q.gte("data_pregao", data.de);
     if (data.ate) q = q.lte("data_pregao", data.ate);
-    const { data: rows, error } = await q.order("data_pregao", { ascending: false, nullsFirst: false });
+    const { data: rows, error } = await q.order("data_pregao", {
+      ascending: false,
+      nullsFirst: false,
+    });
     if (error) throw new Error(error.message);
     return (rows ?? []) as unknown as LicitacaoRow[];
   });

@@ -54,12 +54,14 @@ export const Route = createFileRoute("/licitacoes")({
       { title: "Licitações — CRM" },
       {
         name: "description",
-        content: "Controle de licitações públicas: identificação, habilitação, pregão, homologação, empenho e recebimento.",
+        content:
+          "Controle de licitações públicas: identificação, habilitação, pregão, homologação, empenho e recebimento.",
       },
       { property: "og:title", content: "Licitações — CRM" },
       {
         property: "og:description",
-        content: "Controle de licitações públicas: identificação, habilitação, pregão, homologação, empenho e recebimento.",
+        content:
+          "Controle de licitações públicas: identificação, habilitação, pregão, homologação, empenho e recebimento.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -71,7 +73,8 @@ export const Route = createFileRoute("/licitacoes")({
 const brl = (n: number) =>
   n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 2 });
 
-const fmtDate = (d: string | null) => (d ? new Date(`${d}T12:00:00`).toLocaleDateString("pt-BR") : "—");
+const fmtDate = (d: string | null) =>
+  d ? new Date(`${d}T12:00:00`).toLocaleDateString("pt-BR") : "—";
 
 type FormState = {
   id: string | null;
@@ -381,7 +384,9 @@ function LicitacoesPage() {
                   </TableCell>
                   <TableCell className="text-right">{brl(Number(r.valor_estimado) || 0)}</TableCell>
                   <TableCell className="text-right">{brl(Number(r.valor_proposto) || 0)}</TableCell>
-                  <TableCell className="text-right">{brl(Number(r.valor_homologado) || 0)}</TableCell>
+                  <TableCell className="text-right">
+                    {brl(Number(r.valor_homologado) || 0)}
+                  </TableCell>
                   <TableCell>{fmtDate(r.data_pregao)}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
@@ -437,15 +442,24 @@ function LicitacoesPage() {
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
                   <Label>Órgão</Label>
-                  <Input value={form.orgao} onChange={(e) => setForm({ ...form, orgao: e.target.value })} />
+                  <Input
+                    value={form.orgao}
+                    onChange={(e) => setForm({ ...form, orgao: e.target.value })}
+                  />
                 </div>
                 <div>
                   <Label>Número</Label>
-                  <Input value={form.numero} onChange={(e) => setForm({ ...form, numero: e.target.value })} />
+                  <Input
+                    value={form.numero}
+                    onChange={(e) => setForm({ ...form, numero: e.target.value })}
+                  />
                 </div>
                 <div className="sm:col-span-2">
                   <Label>Objeto</Label>
-                  <Input value={form.objeto} onChange={(e) => setForm({ ...form, objeto: e.target.value })} />
+                  <Input
+                    value={form.objeto}
+                    onChange={(e) => setForm({ ...form, objeto: e.target.value })}
+                  />
                 </div>
                 <div>
                   <Label>Modalidade</Label>
