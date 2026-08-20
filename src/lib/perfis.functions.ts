@@ -189,7 +189,7 @@ const perfilSchema = z.object({
   id: z.string().uuid().optional(),
   nome: z.string().trim().min(2).max(80),
   descricao: z.string().trim().max(300).nullable(),
-  baseRole: z.enum(["admin", "vendedor"]),
+  papel: z.enum(["Vendas", "Operacional", "Administrador"]),
   ativo: z.boolean(),
 });
 
@@ -200,6 +200,8 @@ export const savePerfil = createServerFn({ method: "POST" })
     await assertGerenciaUsuarios(context.supabase, context.userId);
     const sb = await admin();
     const ator = context.userId;
+    // base_role é DERIVADO do papel — nunca escolhido manualmente.
+    const baseRole = baseRoleDoPapel(data.papel);
 
     if (!data.id) {
       const { data: novo, error } = await sb
@@ -207,7 +209,8 @@ export const savePerfil = createServerFn({ method: "POST" })
         .insert({
           nome: data.nome,
           descricao: data.descricao,
-          base_role: data.baseRole,
+          papel: data.papel,
+          base_role: baseRole,
           ativo: data.ativo,
         })
         .select("id")
@@ -225,7 +228,7 @@ export const savePerfil = createServerFn({ method: "POST" })
 
     const { data: atual, error: aErr } = await sb
       .from("perfis")
-      .select("nome, descricao, base_role, ativo")
+      .select("nome, descricao, papel, base_role, ativo")
       .eq("id", data.id)
       .maybeSingle();
     if (aErr) throw new Error(aErr.message);
@@ -239,7 +242,8 @@ export const savePerfil = createServerFn({ method: "POST" })
       .update({
         nome: data.nome,
         descricao: data.descricao,
-        base_role: data.baseRole,
+        papel: data.papel,
+        base_role: baseRole,
         ativo: data.ativo,
       })
       .eq("id", data.id);
@@ -250,7 +254,8 @@ export const savePerfil = createServerFn({ method: "POST" })
     await logAudit(sb, ator, ator, [
       { campo: `perfil:${atual.nome}:nome`, anterior: atual.nome, novo: data.nome },
       { campo: `perfil:${atual.nome}:descricao`, anterior: atual.descricao, novo: data.descricao },
-      { campo: `perfil:${atual.nome}:base_role`, anterior: atual.base_role, novo: data.baseRole },
+      { campo: `perfil:${atual.nome}:papel`, anterior: atual.papel, novo: data.papel },
+      { campo: `perfil:${atual.nome}:base_role`, anterior: atual.base_role, novo: baseRole },
       {
         campo: `perfil:${atual.nome}:ativo`,
         anterior: atual.ativo ? "sim" : "não",
