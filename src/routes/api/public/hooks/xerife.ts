@@ -314,15 +314,36 @@ async function runResumoDiario(force = false): Promise<{
     return d.toISOString();
   })();
 
-  // Coleta roles + telefones
+  // Coleta usuários + telefones.
+  // Critério do resumo CONSOLIDADO: ter a permissão `usuarios.gerenciar`
+  // (via user_perfis → perfil_permissoes), e NÃO o papel base 'admin'.
+  // Perfis com base_role admin sem essa chave (ex.: Gestor Comercial)
+  // recebem o resumo INDIVIDUAL, com o escopo deles.
   const { data: roles } = await supabaseAdmin.from("user_roles").select("user_id, role");
-  const adminIds = new Set((roles ?? []).filter((r: any) => r.role === "admin").map((r: any) => r.user_id));
-  const vendedorIds = new Set((roles ?? []).filter((r: any) => r.role === "vendedor").map((r: any) => r.user_id));
-
-  const allIds = Array.from(new Set([...adminIds, ...vendedorIds]));
+  const allIds = Array.from(new Set((roles ?? []).map((r: any) => r.user_id)));
   if (!allIds.length) {
     return { ran: false, reason: "sem usuários", vendedoresNotificados: 0, adminsNotificados: 0 };
   }
+
+  const { data: vinculos } = await supabaseAdmin
+    .from("user_perfis")
+    .select("user_id, perfil_id")
+    .in("user_id", allIds);
+  const perfilIds = Array.from(new Set((vinculos ?? []).map((v: any) => v.perfil_id)));
+  let perfisComGestao = new Set<string>();
+  if (perfilIds.length) {
+    const { data: chaves } = await supabaseAdmin
+      .from("perfil_permissoes")
+      .select("perfil_id")
+      .eq("permissao_chave", "usuarios.gerenciar")
+      .in("perfil_id", perfilIds);
+    perfisComGestao = new Set((chaves ?? []).map((c: any) => c.perfil_id));
+  }
+  const adminIds = new Set(
+    (vinculos ?? []).filter((v: any) => perfisComGestao.has(v.perfil_id)).map((v: any) => v.user_id),
+  );
+  const vendedorIds = new Set(allIds.filter((id) => !adminIds.has(id)));
+
 
   const { data: profiles } = await supabaseAdmin
     .from("profiles")

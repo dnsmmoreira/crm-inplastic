@@ -15,6 +15,8 @@ import {
   Users,
   CheckSquare,
   Boxes,
+  Gavel,
+
   MessageSquare,
   Bot,
   Package,
@@ -288,6 +290,8 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: "/relatorios", label: "Relatórios", icon: BarChart3, show: key("relatorios.ver") },
       { to: "/estoque", label: "Estoque", icon: Boxes, show: key("estoque.ver") },
+      { to: "/licitacoes", label: "Licitações", icon: Gavel, show: key("licitacoes.gerenciar") },
+
       { to: "/arena", label: "ARENA", icon: Trophy, show: adminOnly },
       {
         to: "/usuarios",
