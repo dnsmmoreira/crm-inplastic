@@ -299,7 +299,7 @@ const NAV_GROUPS: NavGroup[] = [
         to: "/usuarios",
         label: "Usuários",
         icon: UserCog,
-        show: (c) => c.isAdmin && hasPerm(c.user, "usuarios.gerenciar"),
+        show: (c) => hasPerm(c.user, "usuarios.gerenciar"),
       },
     ],
   },
