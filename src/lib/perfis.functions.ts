@@ -14,10 +14,20 @@ export type PermissaoCatalogo = {
   tipo: "booleana" | "numerica";
 };
 
+/** Rótulo de papel exibido na UI. O base_role (escopo de dados) é derivado dele. */
+export type PapelRotulo = "Vendas" | "Operacional" | "Administrador";
+
+export const PAPEIS: PapelRotulo[] = ["Vendas", "Operacional", "Administrador"];
+
+export function baseRoleDoPapel(papel: PapelRotulo): "admin" | "vendedor" {
+  return papel === "Administrador" ? "admin" : "vendedor";
+}
+
 export type PerfilRow = {
   id: string;
   nome: string;
   descricao: string | null;
+  papel: PapelRotulo;
   baseRole: "admin" | "vendedor";
   ativo: boolean;
   usuarios: number;
@@ -29,6 +39,7 @@ export type PerfilPermissaoRow = { chave: string; valorNumerico: number | null }
 
 /** Perfis seed de compatibilidade: não podem ser editados/desativados/excluídos. */
 export const PERFIS_PROTEGIDOS = ["Administrador", "Vendedor"];
+
 
 /* ------------------------------------------------------------------ */
 /* Helpers                                                             */
