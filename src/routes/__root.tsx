@@ -15,6 +15,8 @@ import {
   Users,
   CheckSquare,
   Boxes,
+  Gavel,
+
   MessageSquare,
   Bot,
   Package,
