@@ -26,6 +26,7 @@ import {
   type PermissoesUsuario,
 } from "@/lib/usuarios.functions";
 import { getPerfilDoUsuario, setPerfilDoUsuario } from "@/lib/perfis.functions";
+import { listCargos, type CargoRow } from "@/lib/cargos.functions";
 import {
   ARENA_TIPOS,
   ARENA_PARTICIPACAO_PADRAO,
@@ -37,7 +38,13 @@ import {
 import { DefinirSenhaDialog } from "@/components/usuarios/DefinirSenhaDialog";
 
 
-type PerfilOpcao = { id: string; nome: string; baseRole: "admin" | "vendedor"; ativo: boolean };
+type PerfilOpcao = {
+  id: string;
+  nome: string;
+  papel: string;
+  baseRole: "admin" | "vendedor";
+  ativo: boolean;
+};
 
 const FUSOS = [
   "America/Sao_Paulo",
@@ -100,6 +107,7 @@ export function UsuarioEditDialog({
   const loadPerfil = useServerFn(getPerfilDoUsuario);
   const savePerfilVinculo = useServerFn(setPerfilDoUsuario);
   const loadArena = useServerFn(getArenaParticipacao);
+  const loadCargos = useServerFn(listCargos);
   const saveArena = useServerFn(saveArenaParticipacao);
 
   const isSelf = usuario?.id === currentUserId;
@@ -128,6 +136,7 @@ export function UsuarioEditDialog({
   const [perfilInicial, setPerfilInicial] = useState<string>("");
   const [arena, setArena] = useState<ArenaParticipacao>({ ...ARENA_PARTICIPACAO_PADRAO });
   const [arenaInicial, setArenaInicial] = useState<ArenaParticipacao>({ ...ARENA_PARTICIPACAO_PADRAO });
+  const [cargos, setCargos] = useState<CargoRow[]>([]);
 
 
   useEffect(() => {
@@ -153,6 +162,14 @@ export function UsuarioEditDialog({
     setArenaInicial({ ...ARENA_PARTICIPACAO_PADRAO });
     void (async () => {
       try {
+        const cs = (await loadCargos({})) as CargoRow[];
+        setCargos(cs);
+      } catch (e) {
+        console.error("listCargos", e);
+      }
+    })();
+    void (async () => {
+      try {
         const res = (await loadPerfil({ data: { userId: usuario.id } })) as {
           perfilId: string | null;
           perfis: PerfilOpcao[];
@@ -175,7 +192,7 @@ export function UsuarioEditDialog({
         }
       })();
     }
-  }, [usuario, loadPerfil, loadArena, isAdmin]);
+  }, [usuario, loadPerfil, loadArena, loadCargos, isAdmin]);
 
 
   const carregarAuditoria = useCallback(async () => {
@@ -314,7 +331,27 @@ export function UsuarioEditDialog({
               </div>
               <div className="space-y-1">
                 <Label htmlFor="ue-cargo">Cargo</Label>
-                <Input id="ue-cargo" value={cargo} onChange={(e) => setCargo(e.target.value)} maxLength={120} placeholder="Consultor de vendas" />
+                {/*
+                  O cargo é APENAS INFORMATIVO: não altera permissão, papel nem
+                  perfil de acesso. Não acoplar autorização a este campo.
+                */}
+                <select
+                  id="ue-cargo"
+                  value={cargo}
+                  onChange={(e) => setCargo(e.target.value)}
+                  className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                >
+                  <option value="">— não definido —</option>
+                  {cargos.map((c) => (
+                    <option key={c.id} value={c.nome}>{c.nome}</option>
+                  ))}
+                  {cargo !== "" && !cargos.some((c) => c.nome === cargo) && (
+                    <option value={cargo}>{cargo} (fora do catálogo)</option>
+                  )}
+                </select>
+                <p className="text-xs text-muted-foreground">
+                  Informativo apenas — não influencia permissões.
+                </p>
               </div>
               <div className="space-y-1">
                 <Label htmlFor="ue-fuso">Fuso horário</Label>
@@ -356,27 +393,13 @@ export function UsuarioEditDialog({
           {/* 2. Acesso e segurança */}
           <TabsContent value="acesso" className="space-y-4 pt-4">
             <div className="space-y-1">
-              <Label htmlFor="ue-role">Papel</Label>
-              <select
-                id="ue-role"
-                value={role}
-                onChange={(e) => setRole(e.target.value as "admin" | "vendedor")}
-                disabled={isSelf}
-                className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm disabled:opacity-60"
-              >
-                <option value="vendedor">Vendedor</option>
-                <option value="admin">Administrador</option>
-              </select>
-              {isSelf && <p className="text-xs text-muted-foreground">Você não pode alterar o próprio papel.</p>}
-            </div>
-
-            <div className="space-y-1">
               <Label htmlFor="ue-perfil">Perfil de permissões</Label>
               <select
                 id="ue-perfil"
                 value={perfilId}
                 onChange={(e) => setPerfilId(e.target.value)}
-                className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                disabled={isSelf}
+                className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm disabled:opacity-60"
               >
                 <option value="">Sem perfil</option>
                 {perfis.map((p) => (
@@ -386,28 +409,22 @@ export function UsuarioEditDialog({
                   </option>
                 ))}
               </select>
-              {(() => {
-                const sel = perfis.find((p) => p.id === perfilId);
-                if (!sel) {
-                  return (
-                    <p className="text-xs text-muted-foreground">
-                      Sem perfil vinculado — o acesso segue apenas o papel acima.
-                    </p>
-                  );
-                }
-                const incoerente = sel.baseRole !== role;
-                return (
-                  <p className={`text-xs ${incoerente ? "text-amber-600" : "text-muted-foreground"}`}>
-                    Papel base do perfil: <strong>{sel.baseRole}</strong>.
-                    {incoerente
-                      ? ` Atenção: o papel do usuário é "${role}". O perfil só amplia permissões — o papel efetivo continua sendo o do campo acima.`
-                      : " O perfil só amplia permissões; o papel efetivo continua sendo o do campo acima."}
-                  </p>
-                );
-              })()}
+              {isSelf && (
+                <p className="text-xs text-muted-foreground">
+                  Você não pode alterar o próprio perfil de acesso.
+                </p>
+              )}
             </div>
 
-
+            <div className="space-y-1">
+              <Label>Papel</Label>
+              <div className="h-9 flex items-center rounded-md border border-input bg-muted/40 px-2 text-sm">
+                {perfis.find((p) => p.id === perfilId)?.papel ?? "—"}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Definido automaticamente pelo perfil de permissões.
+              </p>
+            </div>
 
             <div className="flex items-center justify-between rounded-lg border p-3">
               <div>

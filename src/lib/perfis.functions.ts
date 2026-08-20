@@ -14,10 +14,20 @@ export type PermissaoCatalogo = {
   tipo: "booleana" | "numerica";
 };
 
+/** Rótulo de papel exibido na UI. O base_role (escopo de dados) é derivado dele. */
+export type PapelRotulo = "Vendas" | "Operacional" | "Administrador";
+
+export const PAPEIS: PapelRotulo[] = ["Vendas", "Operacional", "Administrador"];
+
+export function baseRoleDoPapel(papel: PapelRotulo): "admin" | "vendedor" {
+  return papel === "Administrador" ? "admin" : "vendedor";
+}
+
 export type PerfilRow = {
   id: string;
   nome: string;
   descricao: string | null;
+  papel: PapelRotulo;
   baseRole: "admin" | "vendedor";
   ativo: boolean;
   usuarios: number;
@@ -100,7 +110,7 @@ export const listPerfis = createServerFn({ method: "POST" })
     await assertGerenciaUsuarios(context.supabase, context.userId);
     const sb = await admin();
     const [perfisRes, vincRes, permsRes] = await Promise.all([
-      sb.from("perfis").select("id, nome, descricao, base_role, ativo").order("nome"),
+      sb.from("perfis").select("id, nome, descricao, papel, base_role, ativo").order("nome"),
       sb.from("user_perfis").select("perfil_id"),
       sb.from("perfil_permissoes").select("perfil_id"),
     ]);
@@ -117,6 +127,7 @@ export const listPerfis = createServerFn({ method: "POST" })
       id: p.id,
       nome: p.nome,
       descricao: p.descricao,
+      papel: (p.papel ?? "Vendas") as PapelRotulo,
       baseRole: p.base_role as "admin" | "vendedor",
       ativo: p.ativo !== false,
       usuarios: usuariosPorPerfil.get(p.id) ?? 0,
@@ -150,7 +161,7 @@ export const getPerfilDoUsuario = createServerFn({ method: "POST" })
     await assertGerenciaUsuarios(context.supabase, context.userId);
     const sb = await admin();
     const [perfisRes, vincRes] = await Promise.all([
-      sb.from("perfis").select("id, nome, base_role, ativo").order("nome"),
+      sb.from("perfis").select("id, nome, papel, base_role, ativo").order("nome"),
       sb.from("user_perfis").select("perfil_id").eq("user_id", data.userId),
     ]);
     if (perfisRes.error) throw new Error(perfisRes.error.message);
@@ -162,6 +173,7 @@ export const getPerfilDoUsuario = createServerFn({ method: "POST" })
         .map((p) => ({
           id: p.id,
           nome: p.nome,
+          papel: (p.papel ?? "Vendas") as PapelRotulo,
           baseRole: p.base_role as "admin" | "vendedor",
           ativo: p.ativo !== false,
         })),
@@ -176,7 +188,7 @@ const perfilSchema = z.object({
   id: z.string().uuid().optional(),
   nome: z.string().trim().min(2).max(80),
   descricao: z.string().trim().max(300).nullable(),
-  baseRole: z.enum(["admin", "vendedor"]),
+  papel: z.enum(["Vendas", "Operacional", "Administrador"]),
   ativo: z.boolean(),
 });
 
@@ -187,6 +199,8 @@ export const savePerfil = createServerFn({ method: "POST" })
     await assertGerenciaUsuarios(context.supabase, context.userId);
     const sb = await admin();
     const ator = context.userId;
+    // base_role é DERIVADO do papel — nunca escolhido manualmente.
+    const baseRole = baseRoleDoPapel(data.papel);
 
     if (!data.id) {
       const { data: novo, error } = await sb
@@ -194,7 +208,8 @@ export const savePerfil = createServerFn({ method: "POST" })
         .insert({
           nome: data.nome,
           descricao: data.descricao,
-          base_role: data.baseRole,
+          papel: data.papel,
+          base_role: baseRole,
           ativo: data.ativo,
         })
         .select("id")
@@ -212,7 +227,7 @@ export const savePerfil = createServerFn({ method: "POST" })
 
     const { data: atual, error: aErr } = await sb
       .from("perfis")
-      .select("nome, descricao, base_role, ativo")
+      .select("nome, descricao, papel, base_role, ativo")
       .eq("id", data.id)
       .maybeSingle();
     if (aErr) throw new Error(aErr.message);
@@ -226,18 +241,22 @@ export const savePerfil = createServerFn({ method: "POST" })
       .update({
         nome: data.nome,
         descricao: data.descricao,
-        base_role: data.baseRole,
+        papel: data.papel,
+        base_role: baseRole,
         ativo: data.ativo,
       })
       .eq("id", data.id);
     if (error) {
-      throw new Error(error.code === "23505" ? "Já existe um perfil com esse nome." : error.message);
+      throw new Error(
+        error.code === "23505" ? "Já existe um perfil com esse nome." : error.message,
+      );
     }
 
     await logAudit(sb, ator, ator, [
       { campo: `perfil:${atual.nome}:nome`, anterior: atual.nome, novo: data.nome },
       { campo: `perfil:${atual.nome}:descricao`, anterior: atual.descricao, novo: data.descricao },
-      { campo: `perfil:${atual.nome}:base_role`, anterior: atual.base_role, novo: data.baseRole },
+      { campo: `perfil:${atual.nome}:papel`, anterior: atual.papel, novo: data.papel },
+      { campo: `perfil:${atual.nome}:base_role`, anterior: atual.base_role, novo: baseRole },
       {
         campo: `perfil:${atual.nome}:ativo`,
         anterior: atual.ativo ? "sim" : "não",
@@ -356,12 +375,20 @@ export const setPerfilPermissoes = createServerFn({ method: "POST" })
 export const setPerfilDoUsuario = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data) =>
-    z
-      .object({ userId: z.string().uuid(), perfilId: z.string().uuid().nullable() })
-      .parse(data),
+    z.object({ userId: z.string().uuid(), perfilId: z.string().uuid().nullable() }).parse(data),
   )
   .handler(async ({ data, context }) => {
     await assertGerenciaUsuarios(context.supabase, context.userId);
+    // Somente admin altera perfil de acesso de alguém.
+    const { data: ehAdmin, error: adminErr } = await context.supabase.rpc("has_role", {
+      _user_id: context.userId,
+      _role: "admin",
+    });
+    if (adminErr) throw new Error(adminErr.message);
+    if (!ehAdmin) throw new Error("Apenas administradores podem alterar o perfil de acesso.");
+    if (data.userId === context.userId) {
+      throw new Error("Você não pode alterar o próprio perfil de acesso.");
+    }
     const sb = await admin();
 
     const { data: atuais } = await sb
@@ -372,10 +399,14 @@ export const setPerfilDoUsuario = createServerFn({ method: "POST" })
     if (anteriorId === data.perfilId) return { ok: true as const };
 
     const nomes = new Map<string, string>();
+    const baseRoles = new Map<string, "admin" | "vendedor">();
     const ids = [anteriorId, data.perfilId].filter((v): v is string => !!v);
     if (ids.length) {
-      const { data: ps } = await sb.from("perfis").select("id, nome").in("id", ids);
-      (ps ?? []).forEach((p) => nomes.set(p.id, p.nome));
+      const { data: ps } = await sb.from("perfis").select("id, nome, base_role").in("id", ids);
+      (ps ?? []).forEach((p) => {
+        nomes.set(p.id, p.nome);
+        baseRoles.set(p.id, p.base_role as "admin" | "vendedor");
+      });
     }
     if (data.perfilId && !nomes.has(data.perfilId)) throw new Error("Perfil não encontrado.");
 
@@ -388,7 +419,28 @@ export const setPerfilDoUsuario = createServerFn({ method: "POST" })
       if (error) throw new Error(error.message);
     }
 
+    // Papel (user_roles) é DERIVADO do base_role do perfil escolhido.
+    const { data: rolesAtuais } = await sb
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", data.userId);
+    const papelAtual: "admin" | "vendedor" = (rolesAtuais ?? []).some((r) => r.role === "admin")
+      ? "admin"
+      : "vendedor";
+    const papelNovo: "admin" | "vendedor" = data.perfilId
+      ? (baseRoles.get(data.perfilId) ?? "vendedor")
+      : "vendedor";
+    if (papelNovo !== papelAtual) {
+      const { error: delRoleErr } = await sb.from("user_roles").delete().eq("user_id", data.userId);
+      if (delRoleErr) throw new Error(delRoleErr.message);
+      const { error: insRoleErr } = await sb
+        .from("user_roles")
+        .insert({ user_id: data.userId, role: papelNovo });
+      if (insRoleErr) throw new Error(insRoleErr.message);
+    }
+
     await logAudit(sb, data.userId, context.userId, [
+      { campo: "papel", anterior: papelAtual, novo: papelNovo },
       {
         campo: "perfil",
         anterior: anteriorId ? nomes.get(anteriorId) : "nenhum",

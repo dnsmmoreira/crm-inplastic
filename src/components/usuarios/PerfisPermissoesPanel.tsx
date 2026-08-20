@@ -65,7 +65,7 @@ export function PerfisPermissoesPanel() {
     id?: string;
     nome: string;
     descricao: string;
-    baseRole: "admin" | "vendedor";
+    papel: "Vendas" | "Operacional" | "Administrador";
     ativo: boolean;
   }>(null);
 
@@ -161,7 +161,7 @@ export function PerfisPermissoesPanel() {
           id: form.id,
           nome: form.nome.trim(),
           descricao: form.descricao.trim() || null,
-          baseRole: form.baseRole,
+          papel: form.papel,
           ativo: form.ativo,
         },
       });
@@ -195,7 +195,7 @@ export function PerfisPermissoesPanel() {
     setBusy(p.id);
     try {
       await gravarPerfil({
-        data: { id: p.id, nome: p.nome, descricao: p.descricao, baseRole: p.baseRole, ativo },
+        data: { id: p.id, nome: p.nome, descricao: p.descricao, papel: p.papel, ativo },
       });
       toast.success(ativo ? "Perfil ativado" : "Perfil desativado");
       await load();
@@ -214,7 +214,7 @@ export function PerfisPermissoesPanel() {
           <Button
             size="sm"
             variant="outline"
-            onClick={() => setForm({ nome: "", descricao: "", baseRole: "vendedor", ativo: true })}
+            onClick={() => setForm({ nome: "", descricao: "", papel: "Vendas", ativo: true })}
           >
             <Plus className="h-4 w-4 mr-1" /> Novo
           </Button>
@@ -239,7 +239,7 @@ export function PerfisPermissoesPanel() {
                     <Shield className="h-4 w-4 text-muted-foreground shrink-0" />
                     <span className="font-medium truncate">{p.nome}</span>
                     <Badge variant={p.baseRole === "admin" ? "default" : "secondary"} className="text-[10px]">
-                      {p.baseRole}
+                      {p.papel}
                     </Badge>
                     {!p.ativo && <Badge variant="outline" className="text-[10px]">inativo</Badge>}
                   </div>
@@ -282,7 +282,7 @@ export function PerfisPermissoesPanel() {
                           id: perfilAtual.id,
                           nome: perfilAtual.nome,
                           descricao: perfilAtual.descricao ?? "",
-                          baseRole: perfilAtual.baseRole,
+                          papel: perfilAtual.papel,
                           ativo: perfilAtual.ativo,
                         })
                       }
@@ -371,7 +371,7 @@ export function PerfisPermissoesPanel() {
           <DialogHeader>
             <DialogTitle>{form?.id ? "Editar perfil" : "Novo perfil"}</DialogTitle>
             <DialogDescription>
-              O papel base é informativo — o papel efetivo continua no cadastro do usuário.
+              O papel define o escopo de dados do usuário e é aplicado a quem tiver este perfil.
             </DialogDescription>
           </DialogHeader>
           {form && (
@@ -395,16 +395,26 @@ export function PerfisPermissoesPanel() {
                 />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="pf-base">Papel base</Label>
+                <Label htmlFor="pf-papel">Papel</Label>
                 <select
-                  id="pf-base"
-                  value={form.baseRole}
-                  onChange={(e) => setForm({ ...form, baseRole: e.target.value as "admin" | "vendedor" })}
+                  id="pf-papel"
+                  value={form.papel}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      papel: e.target.value as "Vendas" | "Operacional" | "Administrador",
+                    })
+                  }
                   className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
                 >
-                  <option value="vendedor">Vendedor</option>
-                  <option value="admin">Administrador</option>
+                  <option value="Vendas">Vendas</option>
+                  <option value="Operacional">Operacional</option>
+                  <option value="Administrador">Administrador</option>
                 </select>
+                <p className="text-xs text-muted-foreground">
+                  O escopo de dados é derivado do papel: Administrador → admin; Vendas e
+                  Operacional → vendedor.
+                </p>
               </div>
               <div className="flex items-center justify-between rounded-lg border p-3">
                 <div className="text-sm font-medium">Perfil ativo</div>
