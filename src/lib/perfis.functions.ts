@@ -111,7 +111,7 @@ export const listPerfis = createServerFn({ method: "POST" })
     await assertGerenciaUsuarios(context.supabase, context.userId);
     const sb = await admin();
     const [perfisRes, vincRes, permsRes] = await Promise.all([
-      sb.from("perfis").select("id, nome, descricao, base_role, ativo").order("nome"),
+      sb.from("perfis").select("id, nome, descricao, papel, base_role, ativo").order("nome"),
       sb.from("user_perfis").select("perfil_id"),
       sb.from("perfil_permissoes").select("perfil_id"),
     ]);
