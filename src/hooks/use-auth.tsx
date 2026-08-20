@@ -275,6 +275,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+/** Hook de conveniência: verifica uma chave granular para o usuário logado. */
+export function useHasPerm(chave: string): boolean {
+  const { user } = useAuth();
+  return hasPerm(user, chave);
+}
+
 export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth must be used inside <AuthProvider>");

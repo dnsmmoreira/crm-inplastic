@@ -26,7 +26,7 @@ import {
 } from "@/lib/atendimento.functions";
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth, hasPerm } from "@/hooks/use-auth";
 import { useAutoScrollMensagens } from "@/hooks/use-auto-scroll-mensagens";
 import { DistribuirConversasDialog } from "@/components/atendimento/DistribuirConversasDialog";
 import type { Database } from "@/integrations/supabase/types";
@@ -444,7 +444,7 @@ function MessageBubble({ m }: { m: Mensagem }) {
 
 function AtribuirSelect({ conversa, onChanged }: { conversa: Conversa; onChanged: () => void }) {
   const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
+  const isAdmin = hasPerm(user, "agente_ia.editar_prompt");
   const [vendedores, setVendedores] = useState<Array<{ id: string; name: string }>>([]);
   const [saving, setSaving] = useState(false);
   const listar = useServerFn(listarVendedoresAtendimento);
@@ -466,7 +466,13 @@ function AtribuirSelect({ conversa, onChanged }: { conversa: Conversa; onChanged
     };
   }, [isAdmin, listar]);
 
-  if (!isAdmin) return null;
+  if (!isAdmin) {
+    return (
+      <div className="p-8 text-sm text-muted-foreground">
+        Você não tem permissão para acessar esta tela.
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center gap-2">

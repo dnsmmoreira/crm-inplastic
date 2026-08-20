@@ -20,6 +20,7 @@ import {
   Activity,
 
 } from "lucide-react";
+import { useHasPerm } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
@@ -52,11 +53,23 @@ type Conversa = Database["public"]["Tables"]["whatsapp_conversas"]["Row"];
 type Mensagem = Database["public"]["Tables"]["whatsapp_mensagens"]["Row"];
 
 export const Route = createFileRoute("/canais")({
-  component: CanaisPage,
+  component: CanaisRoute,
   head: () => ({
     meta: [{ title: "Canais de Entrada — INPLASTIC - CRM" }],
   }),
 });
+
+function CanaisRoute() {
+  const podeVer = useHasPerm("canais.configurar");
+  if (!podeVer) {
+    return (
+      <div className="p-8 text-sm text-muted-foreground">
+        Você não tem permissão para acessar esta tela.
+      </div>
+    );
+  }
+  return <CanaisPage />;
+}
 
 function CanaisPage() {
   const [conversas, setConversas] = useState<Conversa[]>([]);

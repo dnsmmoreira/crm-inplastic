@@ -227,7 +227,6 @@ const isVendedorComum = (c: NavCtx) => !c.isAdmin && hasPerm(c.user, "propostas.
 // hasPerm já embute a rede de bootstrap (admin sem perfil vinculado vê tudo).
 const key = (chave: string) => (c: NavCtx) => hasPerm(c.user, chave);
 
-const adminOnly = (c: NavCtx) => c.isAdmin;
 const always = () => true;
 const vendas = (c: NavCtx) => c.isAdmin || isVendedorComum(c);
 const vendasOu = (chave: string) => (c: NavCtx) => vendas(c) || hasPerm(c.user, chave);
@@ -270,7 +269,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: "/propostas", label: "Propostas", icon: FileText, show: vendasOu("propostas.ver_todas") },
       
-      { to: "/condicoes-comerciais", label: "Condições Comerciais", icon: Settings2, show: adminOnly },
+      { to: "/condicoes-comerciais", label: "Condições Comerciais", icon: Settings2, show: key("empresas.editar") },
       { to: "/tabela-precos", label: "Tabela de Preços", icon: Tags, show: vendas },
     ],
   },
@@ -294,7 +293,7 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/estoque", label: "Estoque", icon: Boxes, show: key("estoque.ver") },
       { to: "/licitacoes", label: "Licitações", icon: Gavel, show: key("licitacoes.gerenciar") },
 
-      { to: "/arena", label: "ARENA", icon: Trophy, show: adminOnly },
+      { to: "/arena", label: "ARENA", icon: Trophy, show: key("metas.definir") },
       {
         to: "/usuarios",
         label: "Usuários",
@@ -309,9 +308,9 @@ const NAV_GROUPS: NavGroup[] = [
     label: "IA & Canais",
     icon: Bot,
     items: [
-      { to: "/atendimento-ia", label: "Atendimento IA", icon: Radio, show: adminOnly },
-      { to: "/agente-ia", label: "Agente IA", icon: Bot, show: adminOnly },
-      { to: "/canais", label: "Canais", icon: MessageSquare, show: adminOnly },
+      { to: "/atendimento-ia", label: "Atendimento IA", icon: Radio, show: key("agente_ia.editar_prompt") },
+      { to: "/agente-ia", label: "Agente IA", icon: Bot, show: key("agente_ia.editar_prompt") },
+      { to: "/canais", label: "Canais", icon: MessageSquare, show: key("canais.configurar") },
     ],
   },
 ];

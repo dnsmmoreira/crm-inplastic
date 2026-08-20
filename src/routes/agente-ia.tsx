@@ -27,7 +27,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { LeadDrawer } from "@/components/crm/LeadDrawer";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth, hasPerm } from "@/hooks/use-auth";
 import { useServerFn } from "@tanstack/react-start";
 import {
   listAiActions,
@@ -57,7 +57,7 @@ type Action = {
 
 function AgenteIaPage() {
   const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
+  const isAdmin = hasPerm(user, "agente_ia.editar_prompt");
 
   const listFn = useServerFn(listAiActions);
   const [openLead, setOpenLead] = useState<string | null>(null);
