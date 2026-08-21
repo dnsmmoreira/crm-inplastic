@@ -611,13 +611,16 @@ async function loadAll(userId: string) {
   });
   const parcByProp = new Map<string, PaymentInstallment[]>();
   (pParcRows ?? []).forEach((r: PParcelaRow) => {
+    const loose = r as unknown as { due_date?: string | null; percentual?: number | null };
     const p: PaymentInstallment = {
       id: r.id,
       days: r.days,
       amount: Number(r.amount ?? 0),
       notes: r.notes ?? "",
-      dueDate: (r as unknown as { due_date?: string | null }).due_date ?? undefined,
+      percentual: loose.percentual == null ? undefined : Number(loose.percentual),
+      dueDate: loose.due_date ?? undefined,
     };
+
     const arr = parcByProp.get(r.proposta_id) ?? [];
     arr.push(p);
     parcByProp.set(r.proposta_id, arr);
