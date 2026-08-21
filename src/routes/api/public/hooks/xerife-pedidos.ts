@@ -224,7 +224,7 @@ async function runXerifePedidos(
       .select(
         "id, number, aprovacao_solicitada_em, aprovacao_decidida_em, responsavel_atual_id, vendedor_proprietario_id, lead_id, stage",
       )
-      .eq("stage", "aguardando_aprovacao" as any)
+      .in("stage", ["analise_financeira", "aguardando_pagamento"] as any)
       .not("aprovacao_solicitada_em", "is", null)
       .is("aprovacao_decidida_em", null)
       .limit(500);

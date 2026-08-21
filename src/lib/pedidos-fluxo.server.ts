@@ -17,6 +17,14 @@ type SB = any;
 
 export const TAREFA_TIPO_ACOMPANHAR_PRODUCAO = "acompanhar_producao";
 export const TAREFA_TIPO_POS_VENDA_PEDIDO = "pos_venda_pedido";
+export const TAREFA_TIPO_APROVACAO_PENDENTE = "aprovacao_pendente";
+export const TAREFA_TIPO_AGUARDANDO_PAGAMENTO = "aguardando_pagamento";
+
+/** Tarefas de etapa financeira — concluídas automaticamente ao sair da etapa. */
+export const TAREFAS_ETAPA_FINANCEIRA = [
+  TAREFA_TIPO_APROVACAO_PENDENTE,
+  TAREFA_TIPO_AGUARDANDO_PAGAMENTO,
+];
 
 /* ------------------------------------------------------------------ */
 /* Destinatários                                                       */
@@ -100,16 +108,18 @@ export async function criarTarefaPedido(
     descricao: string;
     dueDate: Date;
     prioridade?: number;
+    /** Idempotência por (pedido_id, tipo, owner_id) em vez de (pedido_id, tipo). */
+    porOwner?: boolean;
   },
 ): Promise<{ criada: boolean; id?: string }> {
   if (!args.ownerId) return { criada: false };
-  const { data: existente } = await sb
+  let q = sb
     .from("tarefas")
     .select("id")
     .eq("pedido_id", args.pedidoId)
-    .eq("tipo", args.tipo)
-    .limit(1)
-    .maybeSingle();
+    .eq("tipo", args.tipo);
+  if (args.porOwner) q = q.eq("owner_id", args.ownerId);
+  const { data: existente } = await q.limit(1).maybeSingle();
   if (existente?.id) return { criada: false, id: existente.id as string };
 
   const { data, error } = await sb
@@ -277,12 +287,31 @@ export async function aoEntrarNaEtapa(
     const p = await carregarPedidoCtx(sb, pedidoId);
     if (!p) return;
 
+    // Ao SAIR das etapas financeiras, conclui as tarefas pendentes correspondentes
+    // para não deixar tarefa fantasma na agenda de ninguém.
+    await concluirTarefasEtapaFinanceira(sb, pedidoId, stage);
+
     if (stage === "analise_financeira") {
       await notificarUsuarios(sb, await destinatariosFinanceiro(sb), {
         tipo: "pedido_aprovacao",
         titulo: `Novo pedido para aprovação: ${p.number} — ${p.cliente} — ${brl(p.total)}`,
         pedidoId,
       });
+      // Tarefa na agenda de CADA destinatário do financeiro (idempotente por owner).
+      const financeiro = await destinatariosFinanceiro(sb);
+      for (const ownerId of financeiro) {
+        await criarTarefaPedido(sb, {
+          pedidoId,
+          leadId: p.lead_id,
+          ownerId,
+          tipo: TAREFA_TIPO_APROVACAO_PENDENTE,
+          titulo: `Liberar pedido ${p.number} — ${p.cliente} — ${brl(p.total)}`,
+          descricao: `Pedido ${p.number} aguardando liberação financeira.`,
+          dueDate: new Date(),
+          prioridade: 1,
+          porOwner: true,
+        });
+      }
       return;
     }
 
@@ -292,6 +321,20 @@ export async function aoEntrarNaEtapa(
         titulo: `Pedido ${p.number} condicionado a pagamento antecipado — combine com o cliente.`,
         pedidoId,
       });
+      const alvos = await destinatariosFinanceiro(sb);
+      for (const ownerId of alvos) {
+        await criarTarefaPedido(sb, {
+          pedidoId,
+          leadId: p.lead_id,
+          ownerId,
+          tipo: TAREFA_TIPO_AGUARDANDO_PAGAMENTO,
+          titulo: `Confirmar pagamento antecipado — Pedido ${p.number} — ${p.cliente}`,
+          descricao: `Pedido ${p.number} aguardando confirmação de pagamento antecipado.`,
+          dueDate: new Date(),
+          prioridade: 1,
+          porOwner: true,
+        });
+      }
       return;
     }
 
@@ -370,6 +413,31 @@ export async function aoEntrarNaEtapa(
   } catch (e) {
     console.error("[pedidos-fluxo] aoEntrarNaEtapa falhou:", e instanceof Error ? e.message : e);
   }
+}
+
+/**
+ * Conclui tarefas pendentes das etapas financeiras que não correspondem
+ * mais à etapa atual do pedido.
+ */
+export async function concluirTarefasEtapaFinanceira(
+  sb: SB,
+  pedidoId: string,
+  stageAtual: string,
+): Promise<void> {
+  const tipoDaEtapa: Record<string, string> = {
+    analise_financeira: TAREFA_TIPO_APROVACAO_PENDENTE,
+    aguardando_pagamento: TAREFA_TIPO_AGUARDANDO_PAGAMENTO,
+  };
+  const manter = tipoDaEtapa[stageAtual];
+  const alvos = TAREFAS_ETAPA_FINANCEIRA.filter((t) => t !== manter);
+  if (alvos.length === 0) return;
+  const { error } = await sb
+    .from("tarefas")
+    .update({ status: "concluida", concluida_at: new Date().toISOString() })
+    .eq("pedido_id", pedidoId)
+    .in("tipo", alvos)
+    .in("status", ["pendente", "adiada"]);
+  if (error) console.error("[pedidos-fluxo] falha ao concluir tarefas de etapa:", error.message);
 }
 
 /** Concluir a tarefa de pós-venda encerra o pedido. */

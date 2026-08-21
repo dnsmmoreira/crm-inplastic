@@ -579,6 +579,32 @@ export type PromocaoClienteResult =
   | { ok: true; clienteId: string; criado: boolean; jaVinculado?: boolean }
   | { ok: false; erros: string[] };
 
+/** Mensagem de erro rica: diz de QUEM é o cliente que trava a promoção. */
+async function mensagemClienteDeOutroVendedor(
+  supabase: LooseDb,
+  clienteId: string | null | undefined,
+): Promise<string> {
+  const generico =
+    "Já existe um cliente com este CNPJ vinculado a outro vendedor. Transfira o cliente antes de gerar o pedido.";
+  if (!clienteId) return generico;
+  const { data: cli } = await supabase
+    .from("clientes")
+    .select("razao_social, vendedor_id")
+    .eq("id", clienteId)
+    .maybeSingle();
+  if (!cli) return generico;
+  let vendedor = "outro vendedor";
+  if (cli.vendedor_id) {
+    const { data: prof } = await supabase
+      .from("profiles")
+      .select("name")
+      .eq("id", cli.vendedor_id)
+      .maybeSingle();
+    if (prof?.name) vendedor = String(prof.name);
+  }
+  return `Este CNPJ já pertence ao cliente "${cli.razao_social ?? "sem razão social"}", vinculado ao vendedor ${vendedor}. Transfira o cliente antes de gerar o pedido.`;
+}
+
 /**
  * Garante que o lead tenha um cliente vinculado (`leads.cliente_id`).
  * - Idempotente: se já houver `cliente_id`, apenas mantém o vínculo.
@@ -625,17 +651,19 @@ export async function garantirClienteDoLead(
   let existenteId: string | null = null;
 
   if (tipo === "PJ") {
-    // Checagem cross-vendor via RPC SECURITY DEFINER já existente.
-    const { data: statusRows } = await supabase.rpc("cnpj_status", { _cnpj: digits });
+    // Checagem cross-vendor via RPC SECURITY DEFINER (sobrecarga de 2 args):
+    // a pergunta correta é "o cliente é do DONO DO LEAD?" — não "é meu?".
+    const donoLead = (lead.owner_id as string | null) ?? userId;
+    const { data: statusRows } = await supabase.rpc("cnpj_status", {
+      _cnpj: digits,
+      _vendedor_id: donoLead,
+    });
     const st = (statusRows ?? [])[0] as
       | { existe: boolean; ativo: boolean; mesmo_vendedor: boolean; cliente_id: string | null }
       | undefined;
     if (st?.existe) {
       if (!st.mesmo_vendedor) {
-        return {
-          ok: false,
-          erros: ["Já existe um cliente com este CNPJ com outro vendedor. Peça a transferência ao admin."],
-        };
+        return { ok: false, erros: [await mensagemClienteDeOutroVendedor(supabase, st.cliente_id)] };
       }
       existenteId = st.cliente_id ?? null;
     }
