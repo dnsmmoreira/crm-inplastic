@@ -416,14 +416,17 @@ export async function backfillTarefasEtapaFinanceira(
  * Nunca lança — falhas são apenas logadas.
  */
 export async function aoEntrarNaEtapa(
-  sb: SB,
+  sbIn: SB,
   pedidoId: string,
   stage: string,
   opts?: { motivoReprovacao?: string | null },
 ): Promise<void> {
   try {
+    // Efeitos gravam para terceiros: precisa do client de serviço (RLS barra).
+    const sb: SB = await clienteDeEfeitos(sbIn);
     const p = await carregarPedidoCtx(sb, pedidoId);
     if (!p) return;
+
 
     // Ao SAIR das etapas financeiras, conclui as tarefas pendentes correspondentes
     // para não deixar tarefa fantasma na agenda de ninguém.
