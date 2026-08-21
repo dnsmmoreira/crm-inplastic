@@ -228,7 +228,10 @@ function rowToPayTerm(r: PayTermRow): PaymentTerm {
   };
 }
 function payTermToInsert(t: PaymentTerm): PayTermInsert {
-  const parcelas = normalizarParcelas(t.parcelas, t.splits ?? []);
+  // `parcelas` é NOT NULL no banco: nunca gravar nulo/vazio. Sem parcelas
+  // informadas, cai no legado `splits` e, em último caso, em "à vista 100%".
+  const derivadas = normalizarParcelas(t.parcelas, t.splits ?? []);
+  const parcelas = derivadas.length > 0 ? derivadas : [{ dias: 0, percentual: 100 }];
   return {
     id: t.id,
     label: t.label,
@@ -242,6 +245,7 @@ function payTermToInsert(t: PaymentTerm): PayTermInsert {
     acrescimo_percent: Number(t.acrescimoPercent ?? 0),
   } as PayTermInsert;
 }
+
 
 
 function rowToLead(
