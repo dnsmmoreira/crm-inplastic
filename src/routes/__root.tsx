@@ -246,7 +246,6 @@ const NAV_GROUPS: NavGroup[] = [
     icon: KanbanSquare,
     items: [
       { to: "/pipeline", label: "Funil de Vendas", icon: KanbanSquare, show: vendas },
-      { to: "/pedidos", label: "Funil Operacional", icon: ClipboardList, show: vendasOu("pedidos.ver_todos") },
     ],
   },
   {
@@ -268,7 +267,7 @@ const NAV_GROUPS: NavGroup[] = [
     icon: FileText,
     items: [
       { to: "/propostas", label: "Propostas", icon: FileText, show: vendasOu("propostas.ver_todas") },
-      
+      { to: "/pedidos", label: "Pedidos", icon: ClipboardList, show: vendasOu("pedidos.ver_todos") },
       { to: "/condicoes-comerciais", label: "Condições Comerciais", icon: Settings2, show: key("empresas.editar") },
       { to: "/tabela-precos", label: "Tabela de Preços", icon: Tags, show: vendas },
     ],
