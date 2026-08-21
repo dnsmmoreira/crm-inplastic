@@ -349,11 +349,10 @@ function CondicoesComerciais() {
                     <Badge variant="secondary">{t.method}</Badge>
                   </TableCell>
                   <TableCell className="text-sm">
-                    {t.splits.length}x —{" "}
-                    <span className="text-muted-foreground">
-                      {t.splits.map((d) => (d === 0 ? "à vista" : `${d}d`)).join(" / ")}
-                    </span>
+                    {termParcelas(t).length}x
+                    <span className="text-muted-foreground"> — {descreverParcelas(termParcelas(t))}</span>
                   </TableCell>
+
                   <TableCell className="text-xs text-muted-foreground max-w-xs truncate">
                     {t.notes ?? "—"}
                   </TableCell>
