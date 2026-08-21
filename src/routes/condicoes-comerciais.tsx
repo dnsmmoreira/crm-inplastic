@@ -210,6 +210,9 @@ function CondicoesComerciais() {
     const payload = {
       label: parsed.data.label,
       ordem: Number(parsed.data.ordemRaw) || 0,
+      // `method` é legado (NOT NULL no banco) e ignorado pelo app: o prazo não
+      // tem mais forma de pagamento — ela é escolhida na proposta.
+      method: (editing?.method ?? "Boleto") as PaymentMethod,
       splits: parcelas.map((p) => p.dias),
       parcelas,
       notes: parsed.data.notes?.trim() || undefined,
