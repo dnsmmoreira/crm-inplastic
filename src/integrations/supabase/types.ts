@@ -559,6 +559,7 @@ export type Database = {
           label: string
           method: string
           notes: string | null
+          parcelas: Json | null
           permite_pf: boolean
           splits: Json
           updated_at: string
@@ -571,6 +572,7 @@ export type Database = {
           label: string
           method: string
           notes?: string | null
+          parcelas?: Json | null
           permite_pf?: boolean
           splits?: Json
           updated_at?: string
@@ -583,6 +585,7 @@ export type Database = {
           label?: string
           method?: string
           notes?: string | null
+          parcelas?: Json | null
           permite_pf?: boolean
           splits?: Json
           updated_at?: string
@@ -2036,6 +2039,7 @@ export type Database = {
           due_date: string | null
           id: string
           notes: string
+          percentual: number | null
           position: number
           proposta_id: string
         }
@@ -2045,6 +2049,7 @@ export type Database = {
           due_date?: string | null
           id?: string
           notes?: string
+          percentual?: number | null
           position?: number
           proposta_id: string
         }
@@ -2054,6 +2059,7 @@ export type Database = {
           due_date?: string | null
           id?: string
           notes?: string
+          percentual?: number | null
           position?: number
           proposta_id?: string
         }
