@@ -1310,12 +1310,43 @@ function PropostaDetalhe() {
                       </p>
                     </div>
 
+                    {term && parcelasCond.length > 1 && (
+                      <div>
+                        <Label>Intervalo entre parcelas (dias)</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          disabled={readOnly}
+                          placeholder={irregular ? "Espaçamento irregular da condição" : String(intervaloEfetivo)}
+                          value={intervaloParcelas === null ? "" : String(intervaloParcelas)}
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            const v = raw === "" ? null : Math.max(0, Number(raw) || 0);
+                            setIntervaloParcelas(v);
+                            if (previsao) gerarParcelas(previsao, term, v);
+                          }}
+                        />
+                        <p className="text-[11px] text-muted-foreground mt-1">
+                          {irregular
+                            ? "A condição tem espaçamento irregular. Informe um valor para uniformizar os prazos."
+                            : `Vazio = usa o intervalo da condição (${intervaloCond} dias). Só altera os prazos, não os percentuais.`}
+                        </p>
+                      </div>
+                    )}
+
                     <div className="rounded-md border-l-4 border-amber-500 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-800">
                       <span className="font-semibold">Válido após aprovação financeira.</span>
                     </div>
 
                     {!term ? (
                       <p className="text-xs text-muted-foreground italic">Nenhuma condição selecionada.</p>
+                    ) : !previsao && parcelas.length === 0 ? (
+                      <div className="rounded-md border bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground">
+                        <span className="font-medium text-foreground">{term.label}</span> ·{" "}
+                        {descreverParcelas(parcelasCond)}
+                        <br />
+                        Informe a previsão de faturamento para gerar as parcelas com datas reais.
+                      </div>
                     ) : (
                       <div className="rounded-md border bg-muted/30">
                         <div className="px-3 py-2 border-b flex items-center justify-between gap-2 text-xs">
@@ -1329,19 +1360,23 @@ function PropostaDetalhe() {
                               disabled={readOnly || !previsao}
                               onClick={() => {
                                 gerarParcelas();
-                                toast.success("Parcelas refeitas");
+                                toast.success("Percentuais reaplicados");
                               }}
                             >
                               <RefreshCw className="h-3.5 w-3.5 mr-1" />
-                              Refazer parcelas
+                              Ajustar percentuais
                             </Button>
                           </div>
+                        </div>
+                        <div className="px-3 py-1.5 border-b text-[11px] text-muted-foreground">
+                          {descreverParcelas(parcelasCond)}
                         </div>
                         <Table>
                           <TableHeader>
                             <TableRow>
                               <TableHead className="h-8 w-16">Parcela</TableHead>
                               <TableHead className="h-8">Prazo</TableHead>
+                              <TableHead className="h-8 w-16 text-right">%</TableHead>
                               <TableHead className="h-8">Vencimento</TableHead>
                               <TableHead className="h-8 text-right">Valor (R$)</TableHead>
                             </TableRow>
@@ -1352,6 +1387,9 @@ function PropostaDetalhe() {
                                 <TableRow key={`prev-${i}`} className="text-xs">
                                   <TableCell className="py-1.5">{i + 1}/{preview.length}</TableCell>
                                   <TableCell className="py-1.5">{r.days === 0 ? "à vista" : `${r.days} dias`}</TableCell>
+                                  <TableCell className="py-1.5 text-right text-muted-foreground">
+                                    {String(+r.percentual.toFixed(2)).replace(".", ",")}%
+                                  </TableCell>
                                   <TableCell className="py-1.5 text-muted-foreground">
                                     {previsao ? formatDateBr(addDaysToDateInput(previsao, r.days)) : "—"}
                                   </TableCell>
@@ -1362,6 +1400,11 @@ function PropostaDetalhe() {
                               <TableRow key={p.id} className="text-xs">
                                 <TableCell className="py-1.5">{i + 1}/{parcelas.length}</TableCell>
                                 <TableCell className="py-1.5">{p.days === 0 ? "à vista" : `${p.days} dias`}</TableCell>
+                                <TableCell className="py-1.5 text-right text-muted-foreground">
+                                  {p.percentual == null
+                                    ? "—"
+                                    : `${String(+Number(p.percentual).toFixed(2)).replace(".", ",")}%`}
+                                </TableCell>
                                 <TableCell className="py-1.5">
                                   <Input
                                     type="date"
@@ -1386,11 +1429,7 @@ function PropostaDetalhe() {
                             ))}
                           </TableBody>
                         </Table>
-                        {parcelas.length === 0 && (
-                          <div className="px-3 py-2 border-t text-[11px] text-muted-foreground">
-                            Informe a previsão de faturamento para gerar as parcelas com datas reais.
-                          </div>
-                        )}
+
                         {parcelas.length > 0 && (
                           <div className="flex items-center justify-between px-3 py-2 border-t text-[11px]">
                             <span className="text-muted-foreground">Soma das parcelas</span>
