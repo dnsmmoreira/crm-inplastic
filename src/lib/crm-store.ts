@@ -634,16 +634,23 @@ export type PaymentTerm = {
   id: string;
   label: string;             // ex: "Boleto 30/60/90 dias"
   method: PaymentMethod;
-  splits: number[];          // days per installment; [0] = à vista
+  splits: number[];          // days per installment; [0] = à vista (legado, sincronizado com `parcelas`)
+  /** Fonte da verdade: dias + percentual de cada parcela. */
+  parcelas?: ParcelaCondicao[];
   notes?: string;
   active: boolean;           // ADM toggle — only active terms show in seller dropdown
   permitePf?: boolean;       // liberada para cliente Pessoa Física (à vista ou cartão)
   acrescimoPercent?: number; // % de acréscimo aplicado ao subtotal
 };
 
+/** Parcelas efetivas da condição — cai no legado `splits` quando `parcelas` está vazio. */
+export const termParcelas = (t: PaymentTerm): ParcelaCondicao[] =>
+  normalizarParcelas(t.parcelas, t.splits ?? []);
+
 /** À vista (splits [0]) ou cartão → elegível para Pessoa Física. */
 export const isTermPf = (t: PaymentTerm): boolean =>
   t.permitePf ?? (t.method === "Cartão" || (t.splits.length === 1 && t.splits[0] === 0));
+
 
 /** Seed de 20 condições comerciais mais usadas — o administrador pode editar. */
 export const DEFAULT_PAYMENT_TERMS: PaymentTerm[] = [
