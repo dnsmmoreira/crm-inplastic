@@ -335,6 +335,38 @@ function PropostaDetalhe() {
   const updateProposal: typeof _updateProposal = (...a) => { if (guard()) return; markDirty(); return _updateProposal(...a); };
   const setStatus: typeof _setStatus = (...a) => { if (guard()) return; markDirty(); return _setStatus(...a); };
 
+  /**
+   * Troca a condição de pagamento: descarta as parcelas anteriores (marcando-as
+   * como exclusão intencional para o sync apagar no banco) e recria a partir dos
+   * percentuais da nova condição, quando já houver previsão de faturamento.
+   */
+  const trocarCondicao = (termId: string) => {
+    if (!proposal) return;
+    const antigas = proposal.installments ?? [];
+    if (antigas.length > 0) markDeleted("proposalParcelas", antigas.map((p) => p.id));
+    const novo = paymentTerms.find((t: PaymentTerm) => t.id === termId) ?? null;
+    const base = proposal.billingForecastDate;
+    const parcelasCond = novo ? termParcelas(novo) : [];
+    const totalAtual = proposalTotals(proposal, novo?.acrescimoPercent ?? 0).total;
+    const valores = valoresPorPercentual(totalAtual, parcelasCond.map((p) => p.percentual));
+    updateProposal(proposal.id, {
+      paymentTermId: termId,
+      installments:
+        base && parcelasCond.length > 0
+          ? parcelasCond.map((p, i) => ({
+              id: crypto.randomUUID(),
+              days: p.dias,
+              amount: valores[i],
+              percentual: p.percentual,
+              notes: "",
+              dueDate: addDaysToDateInput(base, p.dias),
+            }))
+          : [],
+    });
+  };
+
+
+
 
   const validateAndUpdateItem = (
     itemId: string,
