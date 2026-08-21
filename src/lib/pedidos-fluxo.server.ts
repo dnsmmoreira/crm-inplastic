@@ -74,7 +74,6 @@ export async function destinatariosFinanceiro(sb: SB): Promise<string[]> {
   return usuariosComPermissao(sb, "pedidos.movimentar");
 }
 
-
 export async function destinatariosOperacional(sb: SB): Promise<string[]> {
   return Array.from(new Set(await usuariosDoPerfil(sb, "Operacional Comercial")));
 }
@@ -365,7 +364,6 @@ export async function backfillTarefasEtapaFinanceira(
   return out;
 }
 
-
 /**
  * Dispara notificações e automações ao ENTRAR em uma etapa.
  * Nunca lança — falhas são apenas logadas.
@@ -403,7 +401,6 @@ export async function aoEntrarNaEtapa(
       await criarTarefasEtapaFinanceira(sb, p, stage);
       return;
     }
-
 
     if (stage === "programacao") {
       await notificarUsuarios(sb, await destinatariosOperacional(sb), {
