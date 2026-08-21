@@ -29,7 +29,9 @@ import {
   useCurrentUser,
   USERS,
   type ProposalStatus,
+  termParcelas,
   type PaymentTerm,
+
   type PaymentInstallment,
 } from "@/lib/crm-store";
 import { calculateFreightDistance } from "@/lib/freight.functions";
