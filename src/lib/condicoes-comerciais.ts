@@ -126,7 +126,8 @@ export function descreverParcelas(parcelas: ParcelaCondicao[]): string {
   const iguais = parcelas.every(
     (p) => Math.abs(p.percentual - parcelas[0].percentual) < 0.02,
   );
-  if (iguais) {
+  // Com 3+ parcelas iguais a forma "4x de 25%" é mais legível; com 2, a soma explícita.
+  if (iguais && parcelas.length > 2) {
     return `${parcelas.length}x de ${pct(parcelas[0].percentual)} (${parcelas
       .map((p) => p.dias)
       .join("/")} dias)`;
