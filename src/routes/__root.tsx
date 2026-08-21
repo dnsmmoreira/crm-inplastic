@@ -16,7 +16,6 @@ import {
   CheckSquare,
   Boxes,
   Gavel,
-
   MessageSquare,
   Bot,
   Package,
@@ -34,12 +33,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   ChevronDown,
-
-
-
 } from "lucide-react";
-
-
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -50,7 +44,7 @@ import { AuthProvider, useAuth, hasPerm } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { NotificacoesBell } from "@/components/layout/NotificacoesBell";
 import { NovaConversaAlerta } from "@/components/atendimento/NovaConversaAlerta";
-
+import { AlertasPendentesProvider } from "@/components/alertas/AlertaPendente";
 
 function NotFoundComponent() {
   return (
@@ -83,7 +77,10 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
         <p className="mt-2 text-sm text-muted-foreground">Tente novamente ou volte ao início.</p>
         <div className="mt-6 flex justify-center gap-2">
           <button
-            onClick={() => { router.invalidate(); reset(); }}
+            onClick={() => {
+              router.invalidate();
+              reset();
+            }}
             className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
             Tentar novamente
@@ -100,16 +97,33 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "CRM — TAOPLAST" },
-      { name: "description", content: "CRM interno para gestão de leads e propostas do site palletdeplastico.com.br" },
+      {
+        name: "description",
+        content: "CRM interno para gestão de leads e propostas do site palletdeplastico.com.br",
+      },
       { name: "robots", content: "noindex, nofollow" },
       { property: "og:title", content: "CRM — TAOPLAST" },
-      { property: "og:description", content: "CRM interno para gestão de leads e propostas do site palletdeplastico.com.br" },
+      {
+        property: "og:description",
+        content: "CRM interno para gestão de leads e propostas do site palletdeplastico.com.br",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:title", content: "CRM — TAOPLAST" },
-      { name: "twitter:description", content: "CRM interno para gestão de leads e propostas do site palletdeplastico.com.br" },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c38f4e5c-b54a-4421-b64d-b224942f93a7/id-preview-15311775--485ac5c1-f718-452a-bd55-8c46d65a25ea.lovable.app-1783120021664.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c38f4e5c-b54a-4421-b64d-b224942f93a7/id-preview-15311775--485ac5c1-f718-452a-bd55-8c46d65a25ea.lovable.app-1783120021664.png" },
+      {
+        name: "twitter:description",
+        content: "CRM interno para gestão de leads e propostas do site palletdeplastico.com.br",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c38f4e5c-b54a-4421-b64d-b224942f93a7/id-preview-15311775--485ac5c1-f718-452a-bd55-8c46d65a25ea.lovable.app-1783120021664.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c38f4e5c-b54a-4421-b64d-b224942f93a7/id-preview-15311775--485ac5c1-f718-452a-bd55-8c46d65a25ea.lovable.app-1783120021664.png",
+      },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -147,7 +161,10 @@ type NavCtx = { isAdmin: boolean; user: ReturnType<typeof useAuth>["user"] };
 /** Código de cores por área: cor só em ícones/indicadores, nunca no texto do item. */
 type Accent = "neutral" | "blue" | "emerald" | "amber" | "sky" | "violet" | "slate" | "cyan";
 
-const ACCENT: Record<Accent, { icon: string; active: string; hover: string; border: string; label: string }> = {
+const ACCENT: Record<
+  Accent,
+  { icon: string; active: string; hover: string; border: string; label: string }
+> = {
   neutral: {
     icon: "text-sidebar-foreground/70",
     active: "bg-sidebar-accent",
@@ -233,8 +250,14 @@ const vendasOu = (chave: string) => (c: NavCtx) => vendas(c) || hasPerm(c.user, 
 
 const NAV_ROOT: NavItem[] = [
   { to: "/", label: "Início", icon: LayoutDashboard, show: always },
-  
-  { to: "/conversas", label: "Conversas", icon: MessageSquare, show: key("whatsapp.atender"), accent: "emerald" },
+
+  {
+    to: "/conversas",
+    label: "Conversas",
+    icon: MessageSquare,
+    show: key("whatsapp.atender"),
+    accent: "emerald",
+  },
   { to: "/placar", label: "Placar", icon: Trophy, show: vendas, accent: "amber" },
 ];
 
@@ -244,9 +267,7 @@ const NAV_GROUPS: NavGroup[] = [
     accent: "blue",
     label: "Pipeline",
     icon: KanbanSquare,
-    items: [
-      { to: "/pipeline", label: "Funil de Vendas", icon: KanbanSquare, show: vendas },
-    ],
+    items: [{ to: "/pipeline", label: "Funil de Vendas", icon: KanbanSquare, show: vendas }],
   },
   {
     id: "cadastros",
@@ -266,9 +287,24 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Negócios",
     icon: FileText,
     items: [
-      { to: "/propostas", label: "Propostas", icon: FileText, show: vendasOu("propostas.ver_todas") },
-      { to: "/pedidos", label: "Pedidos", icon: ClipboardList, show: vendasOu("pedidos.ver_todos") },
-      { to: "/condicoes-comerciais", label: "Condições Comerciais", icon: Settings2, show: key("empresas.editar") },
+      {
+        to: "/propostas",
+        label: "Propostas",
+        icon: FileText,
+        show: vendasOu("propostas.ver_todas"),
+      },
+      {
+        to: "/pedidos",
+        label: "Pedidos",
+        icon: ClipboardList,
+        show: vendasOu("pedidos.ver_todos"),
+      },
+      {
+        to: "/condicoes-comerciais",
+        label: "Condições Comerciais",
+        icon: Settings2,
+        show: key("empresas.editar"),
+      },
       { to: "/tabela-precos", label: "Tabela de Preços", icon: Tags, show: vendas },
     ],
   },
@@ -307,7 +343,12 @@ const NAV_GROUPS: NavGroup[] = [
     label: "IA & Canais",
     icon: Bot,
     items: [
-      { to: "/atendimento-ia", label: "Atendimento IA", icon: Radio, show: key("agente_ia.editar_prompt") },
+      {
+        to: "/atendimento-ia",
+        label: "Atendimento IA",
+        icon: Radio,
+        show: key("agente_ia.editar_prompt"),
+      },
       { to: "/agente-ia", label: "Agente IA", icon: Bot, show: key("agente_ia.editar_prompt") },
       { to: "/canais", label: "Canais", icon: MessageSquare, show: key("canais.configurar") },
     ],
@@ -315,8 +356,6 @@ const NAV_GROUPS: NavGroup[] = [
 ];
 
 const OPEN_STORAGE_KEY = "crm-sidebar-groups";
-
-
 
 function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -343,9 +382,10 @@ function AppShell({ children }: { children: ReactNode }) {
   };
   const ctx: NavCtx = { isAdmin, user };
   const rootItems = NAV_ROOT.filter((i) => i.show(ctx));
-  const groups = NAV_GROUPS.map((g) => ({ ...g, items: g.items.filter((i) => i.show(ctx)) })).filter(
-    (g) => g.items.length > 0,
-  );
+  const groups = NAV_GROUPS.map((g) => ({
+    ...g,
+    items: g.items.filter((i) => i.show(ctx)),
+  })).filter((g) => g.items.length > 0);
 
   const activeGroupId = groups.find((g) => g.items.some((i) => i.to === pathname))?.id ?? null;
   const [openGroups, setOpenGroups] = useState<string[]>([]);
@@ -384,10 +424,12 @@ function AppShell({ children }: { children: ReactNode }) {
       indent && !collapsed && "pl-8",
       active
         ? cn("font-medium text-sidebar-foreground", a.active, a.border)
-        : cn("border-transparent text-sidebar-foreground/80 hover:text-sidebar-foreground", a.hover),
+        : cn(
+            "border-transparent text-sidebar-foreground/80 hover:text-sidebar-foreground",
+            a.hover,
+          ),
     );
   };
-
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
@@ -409,7 +451,9 @@ function AppShell({ children }: { children: ReactNode }) {
           {!collapsed && (
             <div className="min-w-0 flex-1 leading-tight">
               <div className="font-display text-sm font-semibold truncate">INPLASTIC - CRM</div>
-              <div className="text-[11px] uppercase tracking-wider text-sidebar-foreground/60">CRM Interno</div>
+              <div className="text-[11px] uppercase tracking-wider text-sidebar-foreground/60">
+                CRM Interno
+              </div>
             </div>
           )}
           <button
@@ -419,7 +463,11 @@ function AppShell({ children }: { children: ReactNode }) {
             title={collapsed ? "Expandir menu" : "Recolher menu"}
             className="shrink-0 rounded-md p-1.5 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           >
-            {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+            {collapsed ? (
+              <PanelLeftOpen className="h-4 w-4" />
+            ) : (
+              <PanelLeftClose className="h-4 w-4" />
+            )}
           </button>
         </div>
         <nav className="flex-1 space-y-1 overflow-y-auto p-3">
@@ -457,7 +505,9 @@ function AppShell({ children }: { children: ReactNode }) {
                   >
                     <GroupIcon className={cn("h-4 w-4 shrink-0", ga.icon)} />
                     <span className="flex-1 text-left">{group.label}</span>
-                    <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", !open && "-rotate-90")} />
+                    <ChevronDown
+                      className={cn("h-3.5 w-3.5 transition-transform", !open && "-rotate-90")}
+                    />
                   </button>
                 )}
                 {open &&
@@ -502,7 +552,6 @@ function AppShell({ children }: { children: ReactNode }) {
           </div>
         )}
       </aside>
-
 
       {/* Mobile top nav */}
       <div className="flex flex-1 flex-col min-w-0">
@@ -551,7 +600,9 @@ function AppShell({ children }: { children: ReactNode }) {
                 >
                   <GroupIcon className={cn("h-4 w-4", ga.icon)} />
                   <span className="flex-1 text-left">{group.label}</span>
-                  <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", !open && "-rotate-90")} />
+                  <ChevronDown
+                    className={cn("h-3.5 w-3.5 transition-transform", !open && "-rotate-90")}
+                  />
                 </button>
                 {open &&
                   group.items.map((item) => {
@@ -639,8 +690,12 @@ function AuthGate() {
 
   return (
     <>
-      <AppShell><Outlet /></AppShell>
-      <NovaConversaAlerta />
+      <AppShell>
+        <Outlet />
+      </AppShell>
+      <AlertasPendentesProvider>
+        <NovaConversaAlerta />
+      </AlertasPendentesProvider>
     </>
   );
 }
@@ -661,11 +716,15 @@ function RedirectTo({ to }: { to: string }) {
   );
 }
 
-
 function UserBadge({ collapsed = false }: { collapsed?: boolean }) {
   const { user, signOut } = useAuth();
   if (!user) return null;
-  const initials = user.name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase();
+  const initials = user.name
+    .split(" ")
+    .map((p) => p[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
   if (collapsed) {
     return (
       <div className="flex flex-col items-center gap-2 border-t border-sidebar-border p-3">
@@ -679,7 +738,9 @@ function UserBadge({ collapsed = false }: { collapsed?: boolean }) {
         <NotificacoesBell />
         <button
           type="button"
-          onClick={() => { void signOut(); }}
+          onClick={() => {
+            void signOut();
+          }}
           title="Sair"
           aria-label="Sair"
           className="rounded-md p-1.5 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
@@ -710,7 +771,9 @@ function UserBadge({ collapsed = false }: { collapsed?: boolean }) {
         variant="outline"
         size="sm"
         className="w-full h-8 bg-sidebar-accent/40 border-sidebar-border text-xs text-sidebar-foreground hover:bg-sidebar-accent"
-        onClick={() => { void signOut(); }}
+        onClick={() => {
+          void signOut();
+        }}
       >
         <LogOut className="h-3 w-3 mr-2" />
         Sair
@@ -718,5 +781,3 @@ function UserBadge({ collapsed = false }: { collapsed?: boolean }) {
     </div>
   );
 }
-
-

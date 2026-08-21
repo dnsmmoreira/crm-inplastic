@@ -112,7 +112,7 @@ async function clienteDeEfeitos(sb: SB): Promise<SB> {
 export async function notificarUsuarios(
   sb: SB,
   userIds: string[],
-  args: { tipo: string; titulo: string; pedidoId: string },
+  args: { tipo: string; titulo: string; pedidoId: string; exigeAceite?: boolean },
 ): Promise<number> {
   const alvos = Array.from(new Set(userIds.filter(Boolean)));
   if (alvos.length === 0) return 0;
@@ -135,6 +135,8 @@ export async function notificarUsuarios(
       tipo: args.tipo,
       titulo: args.titulo.slice(0, 300),
       pedido_id: args.pedidoId,
+      // Alertas de pedido exigem aceite explícito do destinatário (default true).
+      exige_aceite: args.exigeAceite ?? args.tipo.startsWith("pedido_"),
     })),
   );
   if (error) {
