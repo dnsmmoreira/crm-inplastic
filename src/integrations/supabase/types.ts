@@ -559,6 +559,7 @@ export type Database = {
           label: string
           method: string
           notes: string | null
+          ordem: number
           parcelas: Json
           permite_pf: boolean
           splits: Json
@@ -572,6 +573,7 @@ export type Database = {
           label: string
           method: string
           notes?: string | null
+          ordem?: number
           parcelas?: Json
           permite_pf?: boolean
           splits?: Json
@@ -585,6 +587,7 @@ export type Database = {
           label?: string
           method?: string
           notes?: string | null
+          ordem?: number
           parcelas?: Json
           permite_pf?: boolean
           splits?: Json
@@ -2088,6 +2091,7 @@ export type Database = {
           edit_unlocked_by_user_id: string | null
           emitter_id: string
           expected_delivery_date: string | null
+          forma_pagamento: string | null
           id: string
           lead_id: string
           number: string
@@ -2124,6 +2128,7 @@ export type Database = {
           edit_unlocked_by_user_id?: string | null
           emitter_id: string
           expected_delivery_date?: string | null
+          forma_pagamento?: string | null
           id?: string
           lead_id: string
           number: string
@@ -2160,6 +2165,7 @@ export type Database = {
           edit_unlocked_by_user_id?: string | null
           emitter_id?: string
           expected_delivery_date?: string | null
+          forma_pagamento?: string | null
           id?: string
           lead_id?: string
           number?: string
