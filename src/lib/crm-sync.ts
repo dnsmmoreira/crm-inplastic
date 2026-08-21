@@ -14,7 +14,7 @@
  * `useCrm(...)` mantém a mesma assinatura.
  */
 
-import { isIntentionalDelete, clearDeleteIntent } from "@/lib/delete-intents";
+import { isIntentionalDelete, clearDeleteIntent, markDeleted } from "@/lib/delete-intents";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database, Json } from "@/integrations/supabase/types";
 import { normalizarParcelas } from "@/lib/condicoes-comerciais";
