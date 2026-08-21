@@ -72,11 +72,9 @@ export const Route = createFileRoute("/condicoes-comerciais")({
   component: CondicoesComerciais,
 });
 
-const METHODS: PaymentMethod[] = ["Boleto", "PIX", "Depósito em Conta", "Cartão", "Dinheiro"];
-
 const formSchema = z.object({
   label: z.string().trim().min(3, "Nome muito curto").max(80, "Nome muito longo"),
-  method: z.enum(["Boleto", "PIX", "Depósito em Conta", "Cartão", "Dinheiro"]),
+  ordemRaw: z.string().trim().regex(/^\d{1,4}$/, "Use um número inteiro (ex: 12)"),
   notes: z.string().max(200, "Máx. 200 caracteres").optional().or(z.literal("")),
   active: z.boolean(),
   permitePf: z.boolean(),
@@ -90,7 +88,7 @@ type FormValues = z.infer<typeof formSchema> & { parcelas: ParcelaCondicao[] };
 
 const emptyForm: FormValues = {
   label: "",
-  method: "Boleto",
+  ordemRaw: "0",
   notes: "",
   active: true,
   permitePf: false,
@@ -153,7 +151,7 @@ function CondicoesComerciais() {
     setEditing(t);
     setForm({
       label: t.label,
-      method: t.method,
+      ordemRaw: String(t.ordem ?? 0),
       notes: t.notes ?? "",
       active: t.active,
       permitePf: !!t.permitePf,
@@ -211,7 +209,7 @@ function CondicoesComerciais() {
     }
     const payload = {
       label: parsed.data.label,
-      method: parsed.data.method,
+      ordem: Number(parsed.data.ordemRaw) || 0,
       splits: parcelas.map((p) => p.dias),
       parcelas,
       notes: parsed.data.notes?.trim() || undefined,
@@ -325,7 +323,7 @@ function CondicoesComerciais() {
             <TableHeader>
               <TableRow>
                 <TableHead>Nome</TableHead>
-                <TableHead>Meio</TableHead>
+                <TableHead className="w-16">Ordem</TableHead>
                 <TableHead>Parcelas</TableHead>
                 <TableHead>Observações</TableHead>
                 <TableHead className="text-center">Acréscimo</TableHead>
@@ -346,7 +344,7 @@ function CondicoesComerciais() {
                 <TableRow key={t.id}>
                   <TableCell className="font-medium">{t.label}</TableCell>
                   <TableCell>
-                    <Badge variant="secondary">{t.method}</Badge>
+                    <Badge variant="secondary">{t.ordem ?? 0}</Badge>
                   </TableCell>
                   <TableCell className="text-sm">
                     {termParcelas(t).length}x
@@ -443,18 +441,15 @@ function CondicoesComerciais() {
               {errors.label && <p className="text-xs text-destructive mt-1">{errors.label}</p>}
             </div>
             <div>
-              <Label>Meio de pagamento</Label>
-              <Select
-                value={form.method}
-                onValueChange={(v) => setForm((f) => ({ ...f, method: v as PaymentMethod }))}
-              >
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {METHODS.map((m) => (
-                    <SelectItem key={m} value={m}>{m}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Ordem</Label>
+              <Input
+                type="number"
+                min={0}
+                value={form.ordemRaw}
+                onChange={(e) => setForm((f) => ({ ...f, ordemRaw: e.target.value }))}
+                placeholder="Posição na lista (menor primeiro)"
+              />
+              {errors.ordemRaw && <p className="text-xs text-destructive mt-1">{errors.ordemRaw}</p>}
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-2">
