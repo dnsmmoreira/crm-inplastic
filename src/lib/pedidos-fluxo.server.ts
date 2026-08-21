@@ -37,14 +37,45 @@ async function usuariosDoPerfil(sb: SB, nome: string): Promise<string[]> {
   return ((data ?? []) as Array<{ user_id: string }>).map((r) => r.user_id);
 }
 
-async function usuariosAdmin(sb: SB): Promise<string[]> {
-  const { data } = await sb.from("user_roles").select("user_id").eq("role", "admin");
-  return ((data ?? []) as Array<{ user_id: string }>).map((r) => r.user_id);
+/** Usuários ativos cujo perfil ativo concede a permissão informada. */
+async function usuariosComPermissao(sb: SB, chave: string): Promise<string[]> {
+  const { data: vinculos } = await sb
+    .from("perfil_permissoes")
+    .select("perfil_id")
+    .eq("permissao_chave", chave);
+  const perfilIds = Array.from(
+    new Set(((vinculos ?? []) as Array<{ perfil_id: string }>).map((r) => r.perfil_id)),
+  );
+  if (perfilIds.length === 0) return [];
+  const { data: perfis } = await sb
+    .from("perfis")
+    .select("id")
+    .in("id", perfilIds)
+    .eq("ativo", true);
+  const ativos = ((perfis ?? []) as Array<{ id: string }>).map((r) => r.id);
+  if (ativos.length === 0) return [];
+  const { data: users } = await sb.from("user_perfis").select("user_id").in("perfil_id", ativos);
+  const userIds = Array.from(
+    new Set(((users ?? []) as Array<{ user_id: string }>).map((r) => r.user_id)),
+  );
+  if (userIds.length === 0) return [];
+  const { data: profs } = await sb
+    .from("profiles")
+    .select("id")
+    .in("id", userIds)
+    .eq("ativo", true)
+    .is("deleted_at", null);
+  return ((profs ?? []) as Array<{ id: string }>).map((r) => r.id);
 }
 
+/**
+ * Quem opera pedido = quem tem a permissão `pedidos.movimentar`.
+ * Não usa `user_roles.role = 'admin'`: perfis com base_role admin criados por
+ * outras razões (ex.: Gestor Comercial, que enxerga representantes) não devem
+ * receber tarefa de liberação financeira.
+ */
 export async function destinatariosFinanceiro(sb: SB): Promise<string[]> {
-  const [fin, adm] = await Promise.all([usuariosDoPerfil(sb, "Financeiro"), usuariosAdmin(sb)]);
-  return Array.from(new Set([...fin, ...adm]));
+  return usuariosComPermissao(sb, "pedidos.movimentar");
 }
 
 export async function destinatariosOperacional(sb: SB): Promise<string[]> {
@@ -113,11 +144,7 @@ export async function criarTarefaPedido(
   },
 ): Promise<{ criada: boolean; id?: string }> {
   if (!args.ownerId) return { criada: false };
-  let q = sb
-    .from("tarefas")
-    .select("id")
-    .eq("pedido_id", args.pedidoId)
-    .eq("tipo", args.tipo);
+  let q = sb.from("tarefas").select("id").eq("pedido_id", args.pedidoId).eq("tipo", args.tipo);
   if (args.porOwner) q = q.eq("owner_id", args.ownerId);
   const { data: existente } = await q.limit(1).maybeSingle();
   if (existente?.id) return { criada: false, id: existente.id as string };
@@ -153,16 +180,22 @@ export async function criarTarefaPedido(
 export async function carregarParamsAprovacao(sb: SB): Promise<AprovacaoParams> {
   const { data } = await sb
     .from("arena_config")
-    .select("aprovacao_valor_obrigatorio, aprovacao_primeira_compra_valor, aprovacao_recorrencia_dias")
+    .select(
+      "aprovacao_valor_obrigatorio, aprovacao_primeira_compra_valor, aprovacao_recorrencia_dias",
+    )
     .eq("id", 1)
     .maybeSingle();
   if (!data) return { ...APROVACAO_PARAMS_PADRAO };
   return {
-    valorObrigatorio: Number(data.aprovacao_valor_obrigatorio ?? APROVACAO_PARAMS_PADRAO.valorObrigatorio),
+    valorObrigatorio: Number(
+      data.aprovacao_valor_obrigatorio ?? APROVACAO_PARAMS_PADRAO.valorObrigatorio,
+    ),
     primeiraCompraValor: Number(
       data.aprovacao_primeira_compra_valor ?? APROVACAO_PARAMS_PADRAO.primeiraCompraValor,
     ),
-    recorrenciaDias: Number(data.aprovacao_recorrencia_dias ?? APROVACAO_PARAMS_PADRAO.recorrenciaDias),
+    recorrenciaDias: Number(
+      data.aprovacao_recorrencia_dias ?? APROVACAO_PARAMS_PADRAO.recorrenciaDias,
+    ),
   };
 }
 
@@ -199,7 +232,11 @@ export async function avaliarAprovacaoPedido(
       .limit(200);
     if (args.pedidoIdAtual) q = q.neq("id", args.pedidoIdAtual);
     const { data: anteriores } = await q;
-    const rows = (anteriores ?? []) as Array<{ stage: string; updated_at: string | null; created_at: string }>;
+    const rows = (anteriores ?? []) as Array<{
+      stage: string;
+      updated_at: string | null;
+      created_at: string;
+    }>;
     primeiraCompra = rows.length === 0;
 
     const limite = Date.now() - params.recorrenciaDias * 86400_000;
@@ -274,6 +311,70 @@ function brl(v: number): string {
 }
 
 /**
+ * Cria a tarefa da etapa financeira na agenda de cada destinatário
+ * (idempotente por pedido + tipo + owner). Usada tanto pelo fluxo normal
+ * quanto pelo backfill de pedidos que já estavam parados na etapa.
+ */
+export async function criarTarefasEtapaFinanceira(
+  sb: SB,
+  p: PedidoCtx,
+  stage: "analise_financeira" | "aguardando_pagamento",
+): Promise<{ ownerId: string; criada: boolean }[]> {
+  const alvos = await destinatariosFinanceiro(sb);
+  const out: { ownerId: string; criada: boolean }[] = [];
+  for (const ownerId of alvos) {
+    const args =
+      stage === "analise_financeira"
+        ? {
+            tipo: TAREFA_TIPO_APROVACAO_PENDENTE,
+            titulo: `Liberar pedido ${p.number} — ${p.cliente} — ${brl(p.total)}`,
+            descricao: `Pedido ${p.number} aguardando liberação financeira.`,
+          }
+        : {
+            tipo: TAREFA_TIPO_AGUARDANDO_PAGAMENTO,
+            titulo: `Confirmar pagamento antecipado — Pedido ${p.number} — ${p.cliente}`,
+            descricao: `Pedido ${p.number} aguardando confirmação de pagamento antecipado.`,
+          };
+    const r = await criarTarefaPedido(sb, {
+      pedidoId: p.id,
+      leadId: p.lead_id,
+      ownerId,
+      ...args,
+      dueDate: new Date(),
+      prioridade: 1,
+      porOwner: true,
+    });
+    out.push({ ownerId, criada: r.criada });
+  }
+  return out;
+}
+
+/**
+ * Backfill: cria as tarefas de etapa financeira para pedidos que já estão
+ * parados em `analise_financeira` / `aguardando_pagamento`. Idempotente.
+ */
+export async function backfillTarefasEtapaFinanceira(
+  sb: SB,
+): Promise<{ pedido: string; ownerId: string; criada: boolean }[]> {
+  const { data } = await sb
+    .from("pedidos")
+    .select("id, stage")
+    .in("stage", ["analise_financeira", "aguardando_pagamento"]);
+  const out: { pedido: string; ownerId: string; criada: boolean }[] = [];
+  for (const row of (data ?? []) as Array<{ id: string; stage: string }>) {
+    const p = await carregarPedidoCtx(sb, row.id);
+    if (!p) continue;
+    const res = await criarTarefasEtapaFinanceira(
+      sb,
+      p,
+      row.stage as "analise_financeira" | "aguardando_pagamento",
+    );
+    for (const r of res) out.push({ pedido: p.number, ...r });
+  }
+  return out;
+}
+
+/**
  * Dispara notificações e automações ao ENTRAR em uma etapa.
  * Nunca lança — falhas são apenas logadas.
  */
@@ -297,21 +398,7 @@ export async function aoEntrarNaEtapa(
         titulo: `Novo pedido para aprovação: ${p.number} — ${p.cliente} — ${brl(p.total)}`,
         pedidoId,
       });
-      // Tarefa na agenda de CADA destinatário do financeiro (idempotente por owner).
-      const financeiro = await destinatariosFinanceiro(sb);
-      for (const ownerId of financeiro) {
-        await criarTarefaPedido(sb, {
-          pedidoId,
-          leadId: p.lead_id,
-          ownerId,
-          tipo: TAREFA_TIPO_APROVACAO_PENDENTE,
-          titulo: `Liberar pedido ${p.number} — ${p.cliente} — ${brl(p.total)}`,
-          descricao: `Pedido ${p.number} aguardando liberação financeira.`,
-          dueDate: new Date(),
-          prioridade: 1,
-          porOwner: true,
-        });
-      }
+      await criarTarefasEtapaFinanceira(sb, p, stage);
       return;
     }
 
@@ -321,20 +408,7 @@ export async function aoEntrarNaEtapa(
         titulo: `Pedido ${p.number} condicionado a pagamento antecipado — combine com o cliente.`,
         pedidoId,
       });
-      const alvos = await destinatariosFinanceiro(sb);
-      for (const ownerId of alvos) {
-        await criarTarefaPedido(sb, {
-          pedidoId,
-          leadId: p.lead_id,
-          ownerId,
-          tipo: TAREFA_TIPO_AGUARDANDO_PAGAMENTO,
-          titulo: `Confirmar pagamento antecipado — Pedido ${p.number} — ${p.cliente}`,
-          descricao: `Pedido ${p.number} aguardando confirmação de pagamento antecipado.`,
-          dueDate: new Date(),
-          prioridade: 1,
-          porOwner: true,
-        });
-      }
+      await criarTarefasEtapaFinanceira(sb, p, stage);
       return;
     }
 
@@ -392,7 +466,8 @@ export async function aoEntrarNaEtapa(
         await sb
           .from("pedidos")
           .update({
-            entrega_confirmada: p.modalidade_entrega === "entrega_propria" ? "entregue" : "coletado",
+            entrega_confirmada:
+              p.modalidade_entrega === "entrega_propria" ? "entregue" : "coletado",
             entregue_em: new Date().toISOString(),
           })
           .eq("id", pedidoId);
