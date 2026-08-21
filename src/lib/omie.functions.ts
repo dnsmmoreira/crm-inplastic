@@ -3,7 +3,6 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
 import { garantirClienteDoLead } from "@/lib/clientes.functions";
 
-
 /**
  * Fluxo interno de fechamento de pedido — SEM integração externa (nenhum ERP).
  * O nome do arquivo é mantido apenas por compatibilidade com imports existentes;
@@ -96,7 +95,9 @@ export const gerarPedidoInterno = createServerFn({ method: "POST" })
       if (cli?.tipo_pessoa === "PF") {
         const termId = proposta.payment_term_id as string | null;
         if (!termId) {
-          erros.push("Cliente Pessoa Física: selecione uma condição de pagamento à vista ou cartão.");
+          erros.push(
+            "Cliente Pessoa Física: selecione uma condição de pagamento à vista ou cartão.",
+          );
         } else {
           const { data: term } = await loose
             .from("condicoes_pagamento")
@@ -121,8 +122,6 @@ export const gerarPedidoInterno = createServerFn({ method: "POST" })
     if (!promo.ok) {
       return { ok: false, validacao_erros: promo.erros, proposta_id: propostaId };
     }
-
-
 
     // Fluxo de aprovação (mantém o gate existente).
     if (proposta.status !== "pedido") {
@@ -192,9 +191,7 @@ export const moverParaGanho = createServerFn({ method: "POST" })
     if (!prop) {
       return {
         ok: false,
-        validacao_erros: [
-          "Gere o pedido em uma proposta antes de mover para Ganho.",
-        ],
+        validacao_erros: ["Gere o pedido em uma proposta antes de mover para Ganho."],
       };
     }
 
@@ -205,7 +202,6 @@ export const moverParaGanho = createServerFn({ method: "POST" })
     }
 
     await loose.from("leads").update({ stage: "ganho" }).eq("id", data.lead_id);
-
 
     // Fase 2 — cria pedido operacional interno de forma idempotente.
     // Não bloqueia o Ganho se algo falhar aqui (idempotência protege reexecução).
@@ -254,8 +250,16 @@ async function ensurePedidoFromProposta(
   // 2) Carrega proposta + itens + parcelas + emitter + lead
   const [propRes, itensRes, parcelasRes] = await Promise.all([
     sb.from("propostas").select("*").eq("id", propostaId).maybeSingle(),
-    sb.from("proposta_itens").select("*").eq("proposta_id", propostaId).order("position", { ascending: true }),
-    sb.from("proposta_parcelas").select("*").eq("proposta_id", propostaId).order("position", { ascending: true }),
+    sb
+      .from("proposta_itens")
+      .select("*")
+      .eq("proposta_id", propostaId)
+      .order("position", { ascending: true }),
+    sb
+      .from("proposta_parcelas")
+      .select("*")
+      .eq("proposta_id", propostaId)
+      .order("position", { ascending: true }),
   ]);
   if (propRes.error) throw new Error(`Falha ao carregar proposta: ${propRes.error.message}`);
   const proposta = propRes.data;
@@ -343,19 +347,26 @@ async function ensurePedidoFromProposta(
 
   // 7) Copia itens
   if (itens.length > 0) {
-    const rows = itens.map((i: {
-      product_id: string | null; sku: string; description: string;
-      unit: string; quantity: number; unit_price: number; position: number;
-    }) => ({
-      pedido_id: novoPedido.id,
-      product_id: i.product_id,
-      sku: i.sku,
-      description: i.description,
-      unit: i.unit,
-      quantity: i.quantity,
-      unit_price: i.unit_price,
-      position: i.position,
-    }));
+    const rows = itens.map(
+      (i: {
+        product_id: string | null;
+        sku: string;
+        description: string;
+        unit: string;
+        quantity: number;
+        unit_price: number;
+        position: number;
+      }) => ({
+        pedido_id: novoPedido.id,
+        product_id: i.product_id,
+        sku: i.sku,
+        description: i.description,
+        unit: i.unit,
+        quantity: i.quantity,
+        unit_price: i.unit_price,
+        position: i.position,
+      }),
+    );
     const { error: itErr } = await sb.from("pedido_itens").insert(rows);
     if (itErr) throw new Error(`Falha ao copiar itens do pedido: ${itErr.message}`);
   }
@@ -380,7 +391,6 @@ async function ensurePedidoFromProposta(
       e instanceof Error ? e.message : e,
     );
   }
-
 
   return { id: novoPedido.id, number: novoPedido.number, reused: false };
 }

@@ -144,7 +144,6 @@ export async function notificarUsuarios(
   return novos.length;
 }
 
-
 /* ------------------------------------------------------------------ */
 /* Tarefas automáticas                                                 */
 /* ------------------------------------------------------------------ */
@@ -423,12 +422,10 @@ export async function aoEntrarNaEtapa(
 ): Promise<void> {
   try {
     // Efeitos gravam para terceiros: precisa do client de serviço (RLS barra).
-    const sb: SB =
-      opts?.usarClienteDeServico === false ? sbIn : await clienteDeEfeitos(sbIn);
+    const sb: SB = opts?.usarClienteDeServico === false ? sbIn : await clienteDeEfeitos(sbIn);
 
     const p = await carregarPedidoCtx(sb, pedidoId);
     if (!p) return;
-
 
     // Ao SAIR das etapas financeiras, conclui as tarefas pendentes correspondentes
     // para não deixar tarefa fantasma na agenda de ninguém.
@@ -533,7 +530,6 @@ export async function aoEntrarNaEtapa(
       e instanceof Error ? e.message : e,
     );
   }
-
 }
 
 /**
