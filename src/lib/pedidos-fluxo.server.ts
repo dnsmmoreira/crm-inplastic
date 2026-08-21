@@ -86,6 +86,29 @@ export async function destinatariosOperacional(sb: SB): Promise<string[]> {
 /* Notificações na tela                                                */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Cliente usado para GRAVAR os efeitos de entrada de etapa.
+ *
+ * Os efeitos criam linhas para OUTRAS pessoas (financeiro, operacional,
+ * vendedor). Com o client do usuário isso é barrado por RLS —
+ * `notificacoes` não tem policy de INSERT — e o erro era apenas logado.
+ * Portanto os efeitos usam o client de serviço; se ele não estiver
+ * disponível, cai de volta no client recebido.
+ */
+async function clienteDeEfeitos(sb: SB): Promise<SB> {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    return supabaseAdmin as SB;
+  } catch (e) {
+    console.error(
+      "[pedidos-fluxo] client de serviço indisponível, usando client do usuário:",
+      e instanceof Error ? e.message : e,
+    );
+    return sb;
+  }
+}
+
+/** Notifica de forma idempotente por (pedido_id, tipo, user_id). */
 export async function notificarUsuarios(
   sb: SB,
   userIds: string[],
@@ -93,8 +116,21 @@ export async function notificarUsuarios(
 ): Promise<number> {
   const alvos = Array.from(new Set(userIds.filter(Boolean)));
   if (alvos.length === 0) return 0;
+
+  const { data: jaExistem } = await sb
+    .from("notificacoes")
+    .select("user_id")
+    .eq("pedido_id", args.pedidoId)
+    .eq("tipo", args.tipo)
+    .in("user_id", alvos);
+  const existentes = new Set(
+    ((jaExistem ?? []) as Array<{ user_id: string }>).map((r) => r.user_id),
+  );
+  const novos = alvos.filter((u) => !existentes.has(u));
+  if (novos.length === 0) return 0;
+
   const { error } = await sb.from("notificacoes").insert(
-    alvos.map((user_id) => ({
+    novos.map((user_id) => ({
       user_id,
       tipo: args.tipo,
       titulo: args.titulo.slice(0, 300),
@@ -105,7 +141,7 @@ export async function notificarUsuarios(
     console.error("[pedidos-fluxo] falha ao notificar:", error.message);
     return 0;
   }
-  return alvos.length;
+  return novos.length;
 }
 
 /* ------------------------------------------------------------------ */
@@ -379,12 +415,15 @@ export async function backfillTarefasEtapaFinanceira(
  * Nunca lança — falhas são apenas logadas.
  */
 export async function aoEntrarNaEtapa(
-  sb: SB,
+  sbIn: SB,
   pedidoId: string,
   stage: string,
-  opts?: { motivoReprovacao?: string | null },
+  opts?: { motivoReprovacao?: string | null; usarClienteDeServico?: boolean },
 ): Promise<void> {
   try {
+    // Efeitos gravam para terceiros: precisa do client de serviço (RLS barra).
+    const sb: SB = opts?.usarClienteDeServico === false ? sbIn : await clienteDeEfeitos(sbIn);
+
     const p = await carregarPedidoCtx(sb, pedidoId);
     if (!p) return;
 
@@ -486,7 +525,10 @@ export async function aoEntrarNaEtapa(
       });
     }
   } catch (e) {
-    console.error("[pedidos-fluxo] aoEntrarNaEtapa falhou:", e instanceof Error ? e.message : e);
+    console.error(
+      `[pedidos-fluxo] aoEntrarNaEtapa falhou (pedido=${pedidoId}, etapa=${stage}):`,
+      e instanceof Error ? e.message : e,
+    );
   }
 }
 
