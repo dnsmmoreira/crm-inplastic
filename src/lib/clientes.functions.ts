@@ -579,6 +579,32 @@ export type PromocaoClienteResult =
   | { ok: true; clienteId: string; criado: boolean; jaVinculado?: boolean }
   | { ok: false; erros: string[] };
 
+/** Mensagem de erro rica: diz de QUEM é o cliente que trava a promoção. */
+async function mensagemClienteDeOutroVendedor(
+  supabase: LooseDb,
+  clienteId: string | null | undefined,
+): Promise<string> {
+  const generico =
+    "Já existe um cliente com este CNPJ vinculado a outro vendedor. Transfira o cliente antes de gerar o pedido.";
+  if (!clienteId) return generico;
+  const { data: cli } = await supabase
+    .from("clientes")
+    .select("razao_social, vendedor_id")
+    .eq("id", clienteId)
+    .maybeSingle();
+  if (!cli) return generico;
+  let vendedor = "outro vendedor";
+  if (cli.vendedor_id) {
+    const { data: prof } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", cli.vendedor_id)
+      .maybeSingle();
+    if (prof?.full_name) vendedor = String(prof.full_name);
+  }
+  return `Este CNPJ já pertence ao cliente "${cli.razao_social ?? "sem razão social"}", vinculado ao vendedor ${vendedor}. Transfira o cliente antes de gerar o pedido.`;
+}
+
 /**
  * Garante que o lead tenha um cliente vinculado (`leads.cliente_id`).
  * - Idempotente: se já houver `cliente_id`, apenas mantém o vínculo.
