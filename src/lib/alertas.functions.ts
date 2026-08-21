@@ -33,7 +33,12 @@ export const adiarAlerta = createServerFn({ method: "POST" })
     z
       .object({
         notificacao_id: z.string().uuid(),
-        minutos: z.number().int().min(1).max(24 * 60).optional(),
+        minutos: z
+          .number()
+          .int()
+          .min(1)
+          .max(24 * 60)
+          .optional(),
       })
       .parse(input),
   )

@@ -106,30 +106,23 @@ export function useAlertasPendentes(userId: string | null) {
 
   const atual = pendentes[0] ?? null;
 
-  const aceitar = useCallback(
-    async (id: string) => {
-      setProcessando(true);
-      try {
-        await aceitarAlerta({ data: { notificacao_id: id } });
-        setTodos((prev) =>
-          prev.map((r) =>
-            r.id === id ? { ...r, aceito_em: new Date().toISOString() } : r,
-          ),
-        );
-      } finally {
-        setProcessando(false);
-      }
-    },
-    [],
-  );
+  const aceitar = useCallback(async (id: string) => {
+    setProcessando(true);
+    try {
+      await aceitarAlerta({ data: { notificacao_id: id } });
+      setTodos((prev) =>
+        prev.map((r) => (r.id === id ? { ...r, aceito_em: new Date().toISOString() } : r)),
+      );
+    } finally {
+      setProcessando(false);
+    }
+  }, []);
 
   const adiar = useCallback(async (id: string) => {
     setProcessando(true);
     try {
       const r = await adiarAlerta({ data: { notificacao_id: id, minutos: 10 } });
-      setTodos((prev) =>
-        prev.map((x) => (x.id === id ? { ...x, adiado_ate: r.adiado_ate } : x)),
-      );
+      setTodos((prev) => prev.map((x) => (x.id === id ? { ...x, adiado_ate: r.adiado_ate } : x)));
     } finally {
       setProcessando(false);
     }

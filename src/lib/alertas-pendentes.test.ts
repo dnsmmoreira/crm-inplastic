@@ -68,10 +68,7 @@ describe("escritas de aceite/adiamento", () => {
 });
 
 describe("diálogo sem saída sem decisão", () => {
-  const ui = readFileSync(
-    resolve(__dirname, "../components/alertas/AlertaPendente.tsx"),
-    "utf8",
-  );
+  const ui = readFileSync(resolve(__dirname, "../components/alertas/AlertaPendente.tsx"), "utf8");
   it("bloqueia Esc, overlay e esconde o X", () => {
     expect(ui).toContain("onEscapeKeyDown={(e) => e.preventDefault()}");
     expect(ui).toContain("onPointerDownOutside={(e) => e.preventDefault()}");
