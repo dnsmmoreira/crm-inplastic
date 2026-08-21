@@ -346,7 +346,7 @@ function PropostaDetalhe() {
   const trocarCondicao = (termId: string) => {
     if (!proposal) return;
     const antigas = proposal.installments ?? [];
-    if (antigas.length > 0) markDeleted("proposalParcelas", antigas.map((p) => p.id));
+    if (antigas.length > 0) markDeleted("proposalParcelas", ...antigas.map((p) => p.id));
     const novo = paymentTerms.find((t: PaymentTerm) => t.id === termId) ?? null;
     const base = proposal.billingForecastDate;
     const parcelasCond = novo ? termParcelas(novo) : [];
@@ -1268,7 +1268,7 @@ function PropostaDetalhe() {
                       : aplicarIntervalo(cond.map((p) => p.dias), iv);
                   const valores = valoresPorPercentual(total, cond.map((p) => p.percentual));
                   const antigas = proposal.installments ?? [];
-                  if (antigas.length > 0) markDeleted("proposalParcelas", antigas.map((p) => p.id));
+                  if (antigas.length > 0) markDeleted("proposalParcelas", ...antigas.map((p) => p.id));
                   updateProposal(proposal.id, {
                     installments: cond.map((p, i) => ({
                       id: crypto.randomUUID(),
