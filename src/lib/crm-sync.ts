@@ -39,6 +39,7 @@ import {
   type EmitterProfile,
   type PaymentTerm,
   type PaymentMethod,
+  type PaymentForm,
   type AgentSettings,
   type FreightConfig,
   type LeadAddress,
