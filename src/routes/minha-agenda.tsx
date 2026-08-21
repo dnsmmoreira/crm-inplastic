@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -39,6 +39,14 @@ const TIPO_LABEL: Record<string, string> = {
   resgate_carteira: "Resgate carteira",
   reativacao_lead: "Reativação",
   prospeccao: "Prospecção",
+  aprovacao_pendente: "Liberar pedido",
+  aguardando_pagamento: "Confirmar pagamento",
+  pedido_travado: "Pedido parado",
+  nf_atrasada: "NF atrasada",
+  previsao_atrasada: "Entrega atrasada",
+  ocorrencia_aberta: "Ocorrência aberta",
+  acompanhar_producao: "Acompanhar produção",
+  pos_venda_pedido: "Pós-venda",
 };
 
 const TIPO_COLOR: Record<string, string> = {
@@ -193,7 +201,14 @@ function AgendaGroup({
   onConcluir: (t: Tarefa) => void;
   onAdiar: (t: Tarefa) => void;
 }) {
+  const navigate = useNavigate();
   if (items.length === 0) return null;
+  /** Tarefa de pedido leva ao Funil Operacional; tarefa de lead mantém o funil de vendas. */
+  const abrir = (t: Tarefa) => {
+    const pedidoId = (t as { pedido_id?: string | null }).pedido_id;
+    if (pedidoId) void navigate({ to: "/pedidos" });
+    else if (t.lead_id) void navigate({ to: "/pipeline" });
+  };
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -206,7 +221,13 @@ function AgendaGroup({
         {items.map((t) => (
           <div key={t.id} className="rounded-md border p-3 hover:bg-accent/30 transition">
             <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0 flex-1">
+              <div
+                className="min-w-0 flex-1 cursor-pointer"
+                role="button"
+                tabIndex={0}
+                onClick={() => abrir(t)}
+                onKeyDown={(e) => { if (e.key === "Enter") abrir(t); }}
+              >
                 <div className="flex items-center gap-2 flex-wrap mb-1">
                   <Badge variant="outline" className={cn("text-[10px]", TIPO_COLOR[t.tipo ?? ""] ?? "")}>
                     {TIPO_LABEL[t.tipo ?? ""] ?? t.tipo ?? "tarefa"}
