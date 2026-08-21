@@ -17,6 +17,14 @@ type SB = any;
 
 export const TAREFA_TIPO_ACOMPANHAR_PRODUCAO = "acompanhar_producao";
 export const TAREFA_TIPO_POS_VENDA_PEDIDO = "pos_venda_pedido";
+export const TAREFA_TIPO_APROVACAO_PENDENTE = "aprovacao_pendente";
+export const TAREFA_TIPO_AGUARDANDO_PAGAMENTO = "aguardando_pagamento";
+
+/** Tarefas de etapa financeira — concluídas automaticamente ao sair da etapa. */
+export const TAREFAS_ETAPA_FINANCEIRA = [
+  TAREFA_TIPO_APROVACAO_PENDENTE,
+  TAREFA_TIPO_AGUARDANDO_PAGAMENTO,
+];
 
 /* ------------------------------------------------------------------ */
 /* Destinatários                                                       */
