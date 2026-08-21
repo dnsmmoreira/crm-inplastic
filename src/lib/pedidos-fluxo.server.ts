@@ -47,7 +47,11 @@ async function usuariosComPermissao(sb: SB, chave: string): Promise<string[]> {
     new Set(((vinculos ?? []) as Array<{ perfil_id: string }>).map((r) => r.perfil_id)),
   );
   if (perfilIds.length === 0) return [];
-  const { data: perfis } = await sb.from("perfis").select("id").in("id", perfilIds).eq("ativo", true);
+  const { data: perfis } = await sb
+    .from("perfis")
+    .select("id")
+    .in("id", perfilIds)
+    .eq("ativo", true);
   const ativos = ((perfis ?? []) as Array<{ id: string }>).map((r) => r.id);
   if (ativos.length === 0) return [];
   const { data: users } = await sb.from("user_perfis").select("user_id").in("perfil_id", ativos);
@@ -140,11 +144,7 @@ export async function criarTarefaPedido(
   },
 ): Promise<{ criada: boolean; id?: string }> {
   if (!args.ownerId) return { criada: false };
-  let q = sb
-    .from("tarefas")
-    .select("id")
-    .eq("pedido_id", args.pedidoId)
-    .eq("tipo", args.tipo);
+  let q = sb.from("tarefas").select("id").eq("pedido_id", args.pedidoId).eq("tipo", args.tipo);
   if (args.porOwner) q = q.eq("owner_id", args.ownerId);
   const { data: existente } = await q.limit(1).maybeSingle();
   if (existente?.id) return { criada: false, id: existente.id as string };
@@ -180,16 +180,22 @@ export async function criarTarefaPedido(
 export async function carregarParamsAprovacao(sb: SB): Promise<AprovacaoParams> {
   const { data } = await sb
     .from("arena_config")
-    .select("aprovacao_valor_obrigatorio, aprovacao_primeira_compra_valor, aprovacao_recorrencia_dias")
+    .select(
+      "aprovacao_valor_obrigatorio, aprovacao_primeira_compra_valor, aprovacao_recorrencia_dias",
+    )
     .eq("id", 1)
     .maybeSingle();
   if (!data) return { ...APROVACAO_PARAMS_PADRAO };
   return {
-    valorObrigatorio: Number(data.aprovacao_valor_obrigatorio ?? APROVACAO_PARAMS_PADRAO.valorObrigatorio),
+    valorObrigatorio: Number(
+      data.aprovacao_valor_obrigatorio ?? APROVACAO_PARAMS_PADRAO.valorObrigatorio,
+    ),
     primeiraCompraValor: Number(
       data.aprovacao_primeira_compra_valor ?? APROVACAO_PARAMS_PADRAO.primeiraCompraValor,
     ),
-    recorrenciaDias: Number(data.aprovacao_recorrencia_dias ?? APROVACAO_PARAMS_PADRAO.recorrenciaDias),
+    recorrenciaDias: Number(
+      data.aprovacao_recorrencia_dias ?? APROVACAO_PARAMS_PADRAO.recorrenciaDias,
+    ),
   };
 }
 
@@ -226,7 +232,11 @@ export async function avaliarAprovacaoPedido(
       .limit(200);
     if (args.pedidoIdAtual) q = q.neq("id", args.pedidoIdAtual);
     const { data: anteriores } = await q;
-    const rows = (anteriores ?? []) as Array<{ stage: string; updated_at: string | null; created_at: string }>;
+    const rows = (anteriores ?? []) as Array<{
+      stage: string;
+      updated_at: string | null;
+      created_at: string;
+    }>;
     primeiraCompra = rows.length === 0;
 
     const limite = Date.now() - params.recorrenciaDias * 86400_000;
@@ -456,7 +466,8 @@ export async function aoEntrarNaEtapa(
         await sb
           .from("pedidos")
           .update({
-            entrega_confirmada: p.modalidade_entrega === "entrega_propria" ? "entregue" : "coletado",
+            entrega_confirmada:
+              p.modalidade_entrega === "entrega_propria" ? "entregue" : "coletado",
             entregue_em: new Date().toISOString(),
           })
           .eq("id", pedidoId);
