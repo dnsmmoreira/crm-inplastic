@@ -456,18 +456,77 @@ function CondicoesComerciais() {
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label>Parcelas (dias de vencimento)</Label>
-              <Input
-                value={form.splitsRaw}
-                onChange={(e) => setForm((f) => ({ ...f, splitsRaw: e.target.value }))}
-                placeholder="Ex: 30, 60, 90  ·  use 0 para à vista"
-              />
-              {errors.splitsRaw && <p className="text-xs text-destructive mt-1">{errors.splitsRaw}</p>}
-              <p className="text-[11px] text-muted-foreground mt-1">
-                Separe os dias com vírgula ou barra. O total da proposta será dividido igualmente entre as parcelas.
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <Label>Parcelas</Label>
+                <div className="flex gap-2">
+                  <Button type="button" size="sm" variant="ghost" onClick={distribuirIgualmente}>
+                    Distribuir igualmente
+                  </Button>
+                  <Button type="button" size="sm" variant="outline" onClick={addParcela}>
+                    <Plus className="h-3.5 w-3.5 mr-1" /> Parcela
+                  </Button>
+                </div>
+              </div>
+
+              <div className="rounded-md border divide-y">
+                <div className="grid grid-cols-[2.2rem_1fr_1fr_2.2rem] gap-2 px-2 py-1.5 text-[11px] uppercase tracking-wide text-muted-foreground">
+                  <span>#</span>
+                  <span>Dias</span>
+                  <span>% do total</span>
+                  <span />
+                </div>
+                {form.parcelas.map((p, i) => (
+                  <div key={i} className="grid grid-cols-[2.2rem_1fr_1fr_2.2rem] gap-2 items-center px-2 py-1.5">
+                    <span className="text-xs text-muted-foreground">{i + 1}</span>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={String(p.dias)}
+                      onChange={(e) => setParcela(i, { dias: Math.max(0, Number(e.target.value) || 0) })}
+                      className="h-8"
+                    />
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      step="0.01"
+                      value={String(p.percentual)}
+                      onChange={(e) => setParcela(i, { percentual: Number(e.target.value) || 0 })}
+                      className="h-8"
+                    />
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      disabled={form.parcelas.length <= 1}
+                      onClick={() => removeParcela(i)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                <span
+                  className={
+                    mensagemPercentuais(form.parcelas) ? "text-destructive font-medium" : "text-muted-foreground"
+                  }
+                >
+                  Soma: {String(somaPercentuais(form.parcelas)).replace(".", ",")}%
+                  {mensagemPercentuais(form.parcelas) ? " (precisa ser 100%)" : " ✓"}
+                </span>
+                <span className="text-muted-foreground">
+                  Descrição: <strong className="text-foreground">{descreverParcelas(form.parcelas)}</strong>
+                </span>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Dias = prazo do vencimento contado da previsão de faturamento (0 = à vista).
               </p>
             </div>
+
             <div>
               <Label>Observações (opcional)</Label>
               <Textarea
