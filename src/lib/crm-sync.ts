@@ -39,6 +39,7 @@ import {
   type EmitterProfile,
   type PaymentTerm,
   type PaymentMethod,
+  type PaymentForm,
   type AgentSettings,
   type FreightConfig,
   type LeadAddress,
@@ -213,6 +214,7 @@ function rowToPayTerm(r: PayTermRow): PaymentTerm {
     permite_pf?: boolean | null;
     acrescimo_percent?: number | null;
     parcelas?: unknown;
+    ordem?: number | null;
   };
   const splits = Array.isArray(r.splits) ? (r.splits as number[]) : [];
   return {
@@ -225,6 +227,7 @@ function rowToPayTerm(r: PayTermRow): PaymentTerm {
     active: !!r.active,
     permitePf: !!loose.permite_pf,
     acrescimoPercent: Number(loose.acrescimo_percent ?? 0),
+    ordem: Number(loose.ordem ?? 0),
   };
 }
 function payTermToInsert(t: PaymentTerm): PayTermInsert {
@@ -243,6 +246,7 @@ function payTermToInsert(t: PaymentTerm): PayTermInsert {
     active: t.active,
     permite_pf: !!t.permitePf,
     acrescimo_percent: Number(t.acrescimoPercent ?? 0),
+    ordem: Number(t.ordem ?? 0),
   } as PayTermInsert;
 }
 
@@ -409,6 +413,8 @@ function rowToProposal(
     customerOrderNumber: (r as unknown as { numero_pedido_cliente?: string | null }).numero_pedido_cliente ?? undefined,
     orderNotes: (r as unknown as { observacoes_pedido?: string | null }).observacoes_pedido ?? undefined,
     paymentTermId: r.payment_term_id ?? undefined,
+    formaPagamento:
+      ((r as unknown as { forma_pagamento?: string | null }).forma_pagamento as PaymentForm | null) ?? undefined,
     billingForecastDate: (r as unknown as { previsao_faturamento?: string | null }).previsao_faturamento ?? undefined,
     emitterId: r.emitter_id,
     discountPercent: Number(r.discount_percent ?? 0),
@@ -443,6 +449,7 @@ function proposalToInsert(p: Proposal): ProposalInsert {
     emitter_id: p.emitterId,
     observations: p.observations ?? "",
     payment_term_id: p.paymentTermId ?? null,
+    forma_pagamento: p.formaPagamento ?? null,
     previsao_faturamento: p.billingForecastDate ?? null,
     discount_percent: p.discountPercent ?? 0,
     transport: p.transport as unknown as Json,
@@ -512,7 +519,7 @@ async function loadAll(userId: string) {
     supabase.from("user_workspaces").select("data").eq("user_id", userId).maybeSingle(),
     supabase.from("produtos").select("*").order("created_at", { ascending: false }),
     supabase.from("emitters").select("*").order("brand"),
-    supabase.from("condicoes_pagamento").select("*").order("label"),
+    supabase.from("condicoes_pagamento").select("*").order("ordem").order("label"),
     supabase.from("leads").select("*").order("created_at", { ascending: false }),
     supabase.from("tarefas").select("*").order("due_date"),
     supabase.from("lead_interactions").select("*").order("occurred_at", { ascending: false }),

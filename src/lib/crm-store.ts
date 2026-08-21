@@ -601,6 +601,7 @@ export type Proposal = {
   customerOrderNumber?: string; // Número do pedido do cliente (PO/OC)
   orderNotes?: string;          // Observações do pedido (separado de observations)
   paymentTermId?: string;   // ADM-managed payment term chosen by seller
+  formaPagamento?: PaymentForm;   // Boleto / Depósito em Conta / PIX
   billingForecastDate?: string;   // previsão de faturamento (yyyy-MM-dd)
 
   emitterId: string;        // qual CNPJ do grupo emite esta proposta
@@ -630,6 +631,10 @@ export type Proposal = {
 
 export type PaymentMethod = "Boleto" | "PIX" | "Depósito em Conta" | "Cartão" | "Dinheiro";
 
+/** Forma de pagamento escolhida NA PROPOSTA (separada do prazo do catálogo). */
+export type PaymentForm = "Boleto" | "Depósito em Conta" | "PIX";
+export const PAYMENT_FORMS: PaymentForm[] = ["Boleto", "Depósito em Conta", "PIX"];
+
 export type PaymentTerm = {
   id: string;
   label: string;             // ex: "Boleto 30/60/90 dias"
@@ -641,6 +646,7 @@ export type PaymentTerm = {
   active: boolean;           // ADM toggle — only active terms show in seller dropdown
   permitePf?: boolean;       // liberada para cliente Pessoa Física (à vista ou cartão)
   acrescimoPercent?: number; // % de acréscimo aplicado ao subtotal
+  ordem?: number;            // posição na lista de prazos (menor primeiro)
 };
 
 /** Parcelas efetivas da condição — cai no legado `splits` quando `parcelas` está vazio. */

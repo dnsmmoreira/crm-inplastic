@@ -30,6 +30,8 @@ import {
   USERS,
   type ProposalStatus,
   termParcelas,
+  PAYMENT_FORMS,
+  type PaymentForm,
   type PaymentTerm,
 
   type PaymentInstallment,
@@ -252,10 +254,21 @@ function PropostaDetalhe() {
 
   // Pessoa Física: só condições à vista ou cartão (permite_pf).
   const isClientePf = clienteRow?.tipo_pessoa === "PF";
-  const visiblePaymentTerms = useMemo(
-    () => (isClientePf ? activePaymentTerms.filter((t: PaymentTerm) => !!t.permitePf) : activePaymentTerms),
-    [activePaymentTerms, isClientePf],
-  );
+  const visiblePaymentTerms = useMemo(() => {
+    const base = isClientePf
+      ? activePaymentTerms.filter((t: PaymentTerm) => !!t.permitePf)
+      : activePaymentTerms;
+    const lista = [...base].sort(
+      (a, b) => (a.ordem ?? 0) - (b.ordem ?? 0) || a.label.localeCompare(b.label, "pt-BR"),
+    );
+    // O prazo em uso pela proposta continua na lista mesmo quando inativo,
+    // senão propostas antigas perdem a condição ao serem abertas.
+    const atual = proposal?.paymentTermId
+      ? paymentTerms.find((t: PaymentTerm) => t.id === proposal.paymentTermId)
+      : undefined;
+    if (atual && !lista.some((t) => t.id === atual.id)) lista.push(atual);
+    return lista;
+  }, [activePaymentTerms, isClientePf, paymentTerms, proposal?.paymentTermId]);
   useEffect(() => {
     if (!proposal || !isClientePf || !proposal.paymentTermId) return;
     const term = paymentTerms.find((t: PaymentTerm) => t.id === proposal.paymentTermId);
@@ -1202,18 +1215,39 @@ function PropostaDetalhe() {
 
             <CardContent className="space-y-3">
               <div>
-                <Label>Condição de pagamento</Label>
+                <Label>Forma de pagamento</Label>
+                <Select
+                  value={proposal.formaPagamento ?? ""}
+                  disabled={readOnly}
+                  onValueChange={(v) =>
+                    updateProposal(proposal.id, { formaPagamento: v as PaymentForm })
+                  }
+                >
+                  <SelectTrigger><SelectValue placeholder="Boleto, Depósito em Conta ou PIX" /></SelectTrigger>
+                  <SelectContent>
+                    {PAYMENT_FORMS.map((f) => (
+                      <SelectItem key={f} value={f}>{f}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Como o cliente vai pagar. O prazo é escolhido abaixo.
+                </p>
+              </div>
+
+              <div>
+                <Label>Prazo de pagamento</Label>
                 <Select
                   value={proposal.paymentTermId ?? ""}
                   onValueChange={(v) => trocarCondicao(v)}
                 >
-                  <SelectTrigger><SelectValue placeholder="Escolha uma condição cadastrada" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Escolha um prazo cadastrado" /></SelectTrigger>
                   <SelectContent className="max-h-80">
                     {visiblePaymentTerms.map((t: PaymentTerm) => (
                       <SelectItem key={t.id} value={t.id}>
                         <span className="font-medium">{t.label}</span>
                         <span className="text-muted-foreground text-xs ml-2">
-                          · {t.method}
+                          {t.active ? "" : "· (inativa)"}
                           {(t.acrescimoPercent ?? 0) > 0
                             ? ` · +${String(t.acrescimoPercent).replace(".", ",")}%`
                             : ""}
@@ -1742,7 +1776,8 @@ function PropostaDetalhe() {
               return (
                 <>
                   <div className="text-[11px] mb-1">
-                    <span className="font-semibold">{term.label}</span> · {term.method}
+                    <span className="font-semibold">{term.label}</span>
+                    {proposal.formaPagamento ? <> · Forma: {proposal.formaPagamento}</> : null}
                   </div>
                   <div className="text-[10px] text-muted-foreground mb-1">{descreverParcelas(termParcelas(term))}</div>
                   <table className="w-full text-[11px] border-collapse">
