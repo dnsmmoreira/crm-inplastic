@@ -6,10 +6,20 @@ import { z } from "zod";
 
 import {
   useCrm,
+  termParcelas,
   type PaymentTerm,
   type PaymentMethod,
 } from "@/lib/crm-store";
+import {
+  descreverParcelas,
+  intervaloPredominante,
+  mensagemPercentuais,
+  percentuaisIguais,
+  somaPercentuais,
+  type ParcelaCondicao,
+} from "@/lib/condicoes-comerciais";
 import { useHasPerm } from "@/hooks/use-auth";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
