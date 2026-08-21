@@ -526,8 +526,12 @@ export async function aoEntrarNaEtapa(
       });
     }
   } catch (e) {
-    console.error("[pedidos-fluxo] aoEntrarNaEtapa falhou:", e instanceof Error ? e.message : e);
+    console.error(
+      `[pedidos-fluxo] aoEntrarNaEtapa falhou (pedido=${pedidoId}, etapa=${stage}):`,
+      e instanceof Error ? e.message : e,
+    );
   }
+
 }
 
 /**
