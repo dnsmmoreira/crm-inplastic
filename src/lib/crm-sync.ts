@@ -964,10 +964,20 @@ async function doSave() {
   });
 
   // ---- proposta_parcelas ----
+  // Regra: sem previsão de faturamento não existe vencimento calculável, então
+  // NENHUMA linha é gravada. Linhas que já existam nesse estado são apagadas
+  // (exclusão intencional) em vez de ficarem como parcela fantasma zerada.
   const allParc: Array<{ propId: string; index: number; parc: PaymentInstallment }> = [];
-  state.proposals.forEach((p) =>
-    p.installments.forEach((pa, idx) => allParc.push({ propId: p.id, index: idx, parc: pa })),
-  );
+  state.proposals.forEach((p) => {
+    if (!p.billingForecastDate) {
+      if (p.installments.length > 0) {
+        markDeleted("proposalParcelas", ...p.installments.map((pa) => pa.id));
+      }
+      return;
+    }
+    p.installments.forEach((pa, idx) => allParc.push({ propId: p.id, index: idx, parc: pa }));
+  });
+
   await syncCollection({
     current: allParc,
     snapshot: snapshot.proposalParcelas,
