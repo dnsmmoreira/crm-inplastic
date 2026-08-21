@@ -1340,13 +1340,14 @@ function PropostaDetalhe() {
 
                     {!term ? (
                       <p className="text-xs text-muted-foreground italic">Nenhuma condição selecionada.</p>
-                    ) : !previsao && parcelas.length === 0 ? (
+                    ) : !previsao ? (
                       <div className="rounded-md border bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground">
                         <span className="font-medium text-foreground">{term.label}</span> ·{" "}
                         {descreverParcelas(parcelasCond)}
                         <br />
-                        Informe a previsão de faturamento para gerar as parcelas com datas reais.
+                        Informe a previsão de faturamento para calcular os vencimentos.
                       </div>
+
                     ) : (
                       <div className="rounded-md border bg-muted/30">
                         <div className="px-3 py-2 border-b flex items-center justify-between gap-2 text-xs">

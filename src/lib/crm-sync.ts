@@ -14,7 +14,7 @@
  * `useCrm(...)` mantém a mesma assinatura.
  */
 
-import { isIntentionalDelete, clearDeleteIntent } from "@/lib/delete-intents";
+import { isIntentionalDelete, clearDeleteIntent, markDeleted } from "@/lib/delete-intents";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database, Json } from "@/integrations/supabase/types";
 import { normalizarParcelas } from "@/lib/condicoes-comerciais";
@@ -228,7 +228,10 @@ function rowToPayTerm(r: PayTermRow): PaymentTerm {
   };
 }
 function payTermToInsert(t: PaymentTerm): PayTermInsert {
-  const parcelas = normalizarParcelas(t.parcelas, t.splits ?? []);
+  // `parcelas` é NOT NULL no banco: nunca gravar nulo/vazio. Sem parcelas
+  // informadas, cai no legado `splits` e, em último caso, em "à vista 100%".
+  const derivadas = normalizarParcelas(t.parcelas, t.splits ?? []);
+  const parcelas = derivadas.length > 0 ? derivadas : [{ dias: 0, percentual: 100 }];
   return {
     id: t.id,
     label: t.label,
@@ -242,6 +245,7 @@ function payTermToInsert(t: PaymentTerm): PayTermInsert {
     acrescimo_percent: Number(t.acrescimoPercent ?? 0),
   } as PayTermInsert;
 }
+
 
 
 function rowToLead(
@@ -960,10 +964,20 @@ async function doSave() {
   });
 
   // ---- proposta_parcelas ----
+  // Regra: sem previsão de faturamento não existe vencimento calculável, então
+  // NENHUMA linha é gravada. Linhas que já existam nesse estado são apagadas
+  // (exclusão intencional) em vez de ficarem como parcela fantasma zerada.
   const allParc: Array<{ propId: string; index: number; parc: PaymentInstallment }> = [];
-  state.proposals.forEach((p) =>
-    p.installments.forEach((pa, idx) => allParc.push({ propId: p.id, index: idx, parc: pa })),
-  );
+  state.proposals.forEach((p) => {
+    if (!p.billingForecastDate) {
+      if (p.installments.length > 0) {
+        markDeleted("proposalParcelas", ...p.installments.map((pa) => pa.id));
+      }
+      return;
+    }
+    p.installments.forEach((pa, idx) => allParc.push({ propId: p.id, index: idx, parc: pa }));
+  });
+
   await syncCollection({
     current: allParc,
     snapshot: snapshot.proposalParcelas,

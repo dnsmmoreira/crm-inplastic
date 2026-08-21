@@ -559,7 +559,7 @@ export type Database = {
           label: string
           method: string
           notes: string | null
-          parcelas: Json | null
+          parcelas: Json
           permite_pf: boolean
           splits: Json
           updated_at: string
@@ -572,7 +572,7 @@ export type Database = {
           label: string
           method: string
           notes?: string | null
-          parcelas?: Json | null
+          parcelas?: Json
           permite_pf?: boolean
           splits?: Json
           updated_at?: string
@@ -585,7 +585,7 @@ export type Database = {
           label?: string
           method?: string
           notes?: string | null
-          parcelas?: Json | null
+          parcelas?: Json
           permite_pf?: boolean
           splits?: Json
           updated_at?: string
