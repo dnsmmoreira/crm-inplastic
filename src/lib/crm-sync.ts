@@ -207,12 +207,18 @@ function emitterToInsert(e: EmitterProfile, isDefault: boolean): EmitterInsert {
 }
 
 function rowToPayTerm(r: PayTermRow): PaymentTerm {
-  const loose = r as unknown as { permite_pf?: boolean | null; acrescimo_percent?: number | null };
+  const loose = r as unknown as {
+    permite_pf?: boolean | null;
+    acrescimo_percent?: number | null;
+    parcelas?: unknown;
+  };
+  const splits = Array.isArray(r.splits) ? (r.splits as number[]) : [];
   return {
     id: r.id,
     label: r.label,
     method: r.method as PaymentMethod,
-    splits: Array.isArray(r.splits) ? (r.splits as number[]) : [],
+    splits,
+    parcelas: normalizarParcelas(loose.parcelas, splits),
     notes: r.notes ?? undefined,
     active: !!r.active,
     permitePf: !!loose.permite_pf,
@@ -220,17 +226,21 @@ function rowToPayTerm(r: PayTermRow): PaymentTerm {
   };
 }
 function payTermToInsert(t: PaymentTerm): PayTermInsert {
+  const parcelas = normalizarParcelas(t.parcelas, t.splits ?? []);
   return {
     id: t.id,
     label: t.label,
     method: t.method,
-    splits: t.splits as unknown as Json,
+    // `splits` é mantida em sincronia com os dias das parcelas (leitores legados).
+    splits: parcelas.map((p) => p.dias) as unknown as Json,
+    parcelas: parcelas as unknown as Json,
     notes: t.notes ?? null,
     active: t.active,
     permite_pf: !!t.permitePf,
     acrescimo_percent: Number(t.acrescimoPercent ?? 0),
   } as PayTermInsert;
 }
+
 
 function rowToLead(
   r: LeadRow,
