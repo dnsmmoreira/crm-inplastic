@@ -302,6 +302,71 @@ function brl(v: number): string {
 }
 
 /**
+ * Cria a tarefa da etapa financeira na agenda de cada destinatário
+ * (idempotente por pedido + tipo + owner). Usada tanto pelo fluxo normal
+ * quanto pelo backfill de pedidos que já estavam parados na etapa.
+ */
+export async function criarTarefasEtapaFinanceira(
+  sb: SB,
+  p: PedidoCtx,
+  stage: "analise_financeira" | "aguardando_pagamento",
+): Promise<{ ownerId: string; criada: boolean }[]> {
+  const alvos = await destinatariosFinanceiro(sb);
+  const out: { ownerId: string; criada: boolean }[] = [];
+  for (const ownerId of alvos) {
+    const args =
+      stage === "analise_financeira"
+        ? {
+            tipo: TAREFA_TIPO_APROVACAO_PENDENTE,
+            titulo: `Liberar pedido ${p.number} — ${p.cliente} — ${brl(p.total)}`,
+            descricao: `Pedido ${p.number} aguardando liberação financeira.`,
+          }
+        : {
+            tipo: TAREFA_TIPO_AGUARDANDO_PAGAMENTO,
+            titulo: `Confirmar pagamento antecipado — Pedido ${p.number} — ${p.cliente}`,
+            descricao: `Pedido ${p.number} aguardando confirmação de pagamento antecipado.`,
+          };
+    const r = await criarTarefaPedido(sb, {
+      pedidoId: p.id,
+      leadId: p.lead_id,
+      ownerId,
+      ...args,
+      dueDate: new Date(),
+      prioridade: 1,
+      porOwner: true,
+    });
+    out.push({ ownerId, criada: r.criada });
+  }
+  return out;
+}
+
+/**
+ * Backfill: cria as tarefas de etapa financeira para pedidos que já estão
+ * parados em `analise_financeira` / `aguardando_pagamento`. Idempotente.
+ */
+export async function backfillTarefasEtapaFinanceira(
+  sb: SB,
+): Promise<{ pedido: string; ownerId: string; criada: boolean }[]> {
+  const { data } = await sb
+    .from("pedidos")
+    .select("id, stage")
+    .in("stage", ["analise_financeira", "aguardando_pagamento"]);
+  const out: { pedido: string; ownerId: string; criada: boolean }[] = [];
+  for (const row of (data ?? []) as Array<{ id: string; stage: string }>) {
+    const p = await carregarPedidoCtx(sb, row.id);
+    if (!p) continue;
+    const res = await criarTarefasEtapaFinanceira(
+      sb,
+      p,
+      row.stage as "analise_financeira" | "aguardando_pagamento",
+    );
+    for (const r of res) out.push({ pedido: p.number, ...r });
+  }
+  return out;
+}
+
+
+/**
  * Dispara notificações e automações ao ENTRAR em uma etapa.
  * Nunca lança — falhas são apenas logadas.
  */
