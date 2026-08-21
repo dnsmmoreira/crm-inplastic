@@ -246,7 +246,6 @@ const NAV_GROUPS: NavGroup[] = [
     icon: KanbanSquare,
     items: [
       { to: "/pipeline", label: "Funil de Vendas", icon: KanbanSquare, show: vendas },
-      { to: "/pedidos", label: "Funil Operacional", icon: ClipboardList, show: vendasOu("pedidos.ver_todos") },
     ],
   },
   {
