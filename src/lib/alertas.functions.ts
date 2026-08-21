@@ -45,7 +45,7 @@ export const adiarAlerta = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<{ ok: boolean; adiado_ate: string }> => {
     const minutos = data.minutos ?? 10;
     const ate = new Date(Date.now() + minutos * 60_000).toISOString();
-    // NÃO grava aceito_em nem lida_em: adiar não é aceitar.
+    // Adiar não é aceitar: nenhum campo de aceite/leitura é tocado aqui.
     const { error } = await context.supabase
       .from("notificacoes")
       .update({ adiado_ate: ate })
