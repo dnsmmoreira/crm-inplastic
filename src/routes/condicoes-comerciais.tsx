@@ -67,11 +67,6 @@ const METHODS: PaymentMethod[] = ["Boleto", "PIX", "Depósito em Conta", "Cartã
 const formSchema = z.object({
   label: z.string().trim().min(3, "Nome muito curto").max(80, "Nome muito longo"),
   method: z.enum(["Boleto", "PIX", "Depósito em Conta", "Cartão", "Dinheiro"]),
-  splitsRaw: z
-    .string()
-    .trim()
-    .min(1, "Informe ao menos uma parcela (ex: 0 para à vista)")
-    .regex(/^\s*\d+(\s*[,/]\s*\d+)*\s*$/, "Use números separados por vírgula ou barra (ex: 30, 60, 90)"),
   notes: z.string().max(200, "Máx. 200 caracteres").optional().or(z.literal("")),
   active: z.boolean(),
   permitePf: z.boolean(),
@@ -81,18 +76,20 @@ const formSchema = z.object({
     .regex(/^\d{1,3}([.,]\d{1,2})?$/, "Use um percentual válido (ex: 3 ou 3,5)"),
 });
 
-type FormValues = z.infer<typeof formSchema>;
+type FormValues = z.infer<typeof formSchema> & { parcelas: ParcelaCondicao[] };
 
-const emptyForm: FormValues = { label: "", method: "Boleto", splitsRaw: "", notes: "", active: true, permitePf: false, acrescimoRaw: "0" };
+const emptyForm: FormValues = {
+  label: "",
+  method: "Boleto",
+  notes: "",
+  active: true,
+  permitePf: false,
+  acrescimoRaw: "0",
+  parcelas: [{ dias: 0, percentual: 100 }],
+};
 
 const parsePercent = (v: string) => Math.max(0, Math.min(100, Number(String(v).replace(",", ".")) || 0));
 
-function parseSplits(raw: string): number[] {
-  return raw
-    .split(/[,/]/)
-    .map((s) => Number(s.trim()))
-    .filter((n) => Number.isFinite(n) && n >= 0);
-}
 
 function CondicoesComerciais() {
   const podeGerenciar = useHasPerm("empresas.editar");
