@@ -424,7 +424,12 @@ export async function concluirTarefasEtapaFinanceira(
   pedidoId: string,
   stageAtual: string,
 ): Promise<void> {
-  const alvos = TAREFAS_ETAPA_FINANCEIRA.filter((t) => t !== stageAtual);
+  const tipoDaEtapa: Record<string, string> = {
+    analise_financeira: TAREFA_TIPO_APROVACAO_PENDENTE,
+    aguardando_pagamento: TAREFA_TIPO_AGUARDANDO_PAGAMENTO,
+  };
+  const manter = tipoDaEtapa[stageAtual];
+  const alvos = TAREFAS_ETAPA_FINANCEIRA.filter((t) => t !== manter);
   if (alvos.length === 0) return;
   const { error } = await sb
     .from("tarefas")

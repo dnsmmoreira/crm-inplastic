@@ -20,7 +20,7 @@ export const listMinhaAgenda = createServerFn({ method: "GET" })
 
     const { data: tarefas, error } = await supabase
       .from("tarefas")
-      .select("id, lead_id, tipo, title, descricao, prioridade, escalonamentos, hora_sugerida, due_date, status, origem, created_at")
+      .select("id, lead_id, pedido_id, tipo, title, descricao, prioridade, escalonamentos, hora_sugerida, due_date, status, origem, created_at")
       .eq("owner_id", userId)
       .in("status", ["pendente", "adiada"])
       .lte("due_date", endOfDay)
