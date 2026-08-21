@@ -369,7 +369,18 @@ async function ensurePedidoFromProposta(
     motivo: `Rota automática de aprovação: ${decisao.rota}`,
     moved_by: callerId,
   });
-  await aoEntrarNaEtapa(sb, novoPedido.id, decisao.stage);
+  // Efeitos de entrada de etapa — mesmos de uma movimentação manual.
+  // Nunca podem derrubar a criação do pedido, mas também não podem ser
+  // engolidos em silêncio.
+  try {
+    await aoEntrarNaEtapa(sb, novoPedido.id, decisao.stage);
+  } catch (e) {
+    console.error(
+      `[ensurePedidoFromProposta] efeitos de entrada falharam (pedido=${novoPedido.number}, etapa=${decisao.stage}):`,
+      e instanceof Error ? e.message : e,
+    );
+  }
+
 
   return { id: novoPedido.id, number: novoPedido.number, reused: false };
 }
