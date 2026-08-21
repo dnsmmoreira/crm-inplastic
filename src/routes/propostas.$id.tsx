@@ -30,6 +30,8 @@ import {
   USERS,
   type ProposalStatus,
   termParcelas,
+  PAYMENT_FORMS,
+  type PaymentForm,
   type PaymentTerm,
 
   type PaymentInstallment,
@@ -1774,7 +1776,8 @@ function PropostaDetalhe() {
               return (
                 <>
                   <div className="text-[11px] mb-1">
-                    <span className="font-semibold">{term.label}</span> · {term.method}
+                    <span className="font-semibold">{term.label}</span>
+                    {proposal.formaPagamento ? <> · Forma: {proposal.formaPagamento}</> : null}
                   </div>
                   <div className="text-[10px] text-muted-foreground mb-1">{descreverParcelas(termParcelas(term))}</div>
                   <table className="w-full text-[11px] border-collapse">
