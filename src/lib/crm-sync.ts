@@ -213,6 +213,7 @@ function rowToPayTerm(r: PayTermRow): PaymentTerm {
     permite_pf?: boolean | null;
     acrescimo_percent?: number | null;
     parcelas?: unknown;
+    ordem?: number | null;
   };
   const splits = Array.isArray(r.splits) ? (r.splits as number[]) : [];
   return {
@@ -225,6 +226,7 @@ function rowToPayTerm(r: PayTermRow): PaymentTerm {
     active: !!r.active,
     permitePf: !!loose.permite_pf,
     acrescimoPercent: Number(loose.acrescimo_percent ?? 0),
+    ordem: Number(loose.ordem ?? 0),
   };
 }
 function payTermToInsert(t: PaymentTerm): PayTermInsert {
