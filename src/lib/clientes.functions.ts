@@ -597,10 +597,10 @@ async function mensagemClienteDeOutroVendedor(
   if (cli.vendedor_id) {
     const { data: prof } = await supabase
       .from("profiles")
-      .select("full_name")
+      .select("name")
       .eq("id", cli.vendedor_id)
       .maybeSingle();
-    if (prof?.full_name) vendedor = String(prof.full_name);
+    if (prof?.name) vendedor = String(prof.name);
   }
   return `Este CNPJ já pertence ao cliente "${cli.razao_social ?? "sem razão social"}", vinculado ao vendedor ${vendedor}. Transfira o cliente antes de gerar o pedido.`;
 }
