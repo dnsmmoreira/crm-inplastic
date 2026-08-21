@@ -325,21 +325,7 @@ export async function aoEntrarNaEtapa(
         titulo: `Novo pedido para aprovação: ${p.number} — ${p.cliente} — ${brl(p.total)}`,
         pedidoId,
       });
-      // Tarefa na agenda de CADA destinatário do financeiro (idempotente por owner).
-      const financeiro = await destinatariosFinanceiro(sb);
-      for (const ownerId of financeiro) {
-        await criarTarefaPedido(sb, {
-          pedidoId,
-          leadId: p.lead_id,
-          ownerId,
-          tipo: TAREFA_TIPO_APROVACAO_PENDENTE,
-          titulo: `Liberar pedido ${p.number} — ${p.cliente} — ${brl(p.total)}`,
-          descricao: `Pedido ${p.number} aguardando liberação financeira.`,
-          dueDate: new Date(),
-          prioridade: 1,
-          porOwner: true,
-        });
-      }
+      await criarTarefasEtapaFinanceira(sb, p, stage);
       return;
     }
 
@@ -349,22 +335,10 @@ export async function aoEntrarNaEtapa(
         titulo: `Pedido ${p.number} condicionado a pagamento antecipado — combine com o cliente.`,
         pedidoId,
       });
-      const alvos = await destinatariosFinanceiro(sb);
-      for (const ownerId of alvos) {
-        await criarTarefaPedido(sb, {
-          pedidoId,
-          leadId: p.lead_id,
-          ownerId,
-          tipo: TAREFA_TIPO_AGUARDANDO_PAGAMENTO,
-          titulo: `Confirmar pagamento antecipado — Pedido ${p.number} — ${p.cliente}`,
-          descricao: `Pedido ${p.number} aguardando confirmação de pagamento antecipado.`,
-          dueDate: new Date(),
-          prioridade: 1,
-          porOwner: true,
-        });
-      }
+      await criarTarefasEtapaFinanceira(sb, p, stage);
       return;
     }
+
 
     if (stage === "programacao") {
       await notificarUsuarios(sb, await destinatariosOperacional(sb), {
