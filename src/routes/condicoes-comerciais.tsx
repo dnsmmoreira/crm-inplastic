@@ -144,15 +144,44 @@ function CondicoesComerciais() {
     setForm({
       label: t.label,
       method: t.method,
-      splitsRaw: t.splits.join(", "),
       notes: t.notes ?? "",
       active: t.active,
       permitePf: !!t.permitePf,
       acrescimoRaw: String(t.acrescimoPercent ?? 0).replace(".", ","),
+      parcelas: termParcelas(t),
     });
     setErrors({});
     setDialogOpen(true);
   };
+
+  const setParcela = (idx: number, patch: Partial<ParcelaCondicao>) =>
+    setForm((f) => ({
+      ...f,
+      parcelas: f.parcelas.map((p, i) => (i === idx ? { ...p, ...patch } : p)),
+    }));
+
+  const addParcela = () =>
+    setForm((f) => {
+      const ultimo = f.parcelas[f.parcelas.length - 1];
+      const dias = ultimo ? ultimo.dias + (intervaloPredominante(f.parcelas.map((p) => p.dias)) || 30) : 0;
+      const n = f.parcelas.length + 1;
+      const pcts = percentuaisIguais(n);
+      return { ...f, parcelas: [...f.parcelas, { dias, percentual: 0 }].map((p, i) => ({ ...p, percentual: pcts[i] })) };
+    });
+
+  const removeParcela = (idx: number) =>
+    setForm((f) => {
+      const restantes = f.parcelas.filter((_, i) => i !== idx);
+      if (restantes.length === 0) return f;
+      const pcts = percentuaisIguais(restantes.length);
+      return { ...f, parcelas: restantes.map((p, i) => ({ ...p, percentual: pcts[i] })) };
+    });
+
+  const distribuirIgualmente = () =>
+    setForm((f) => {
+      const pcts = percentuaisIguais(f.parcelas.length);
+      return { ...f, parcelas: f.parcelas.map((p, i) => ({ ...p, percentual: pcts[i] })) };
+    });
 
   const submit = () => {
     const parsed = formSchema.safeParse(form);
@@ -164,15 +193,17 @@ function CondicoesComerciais() {
       setErrors(map);
       return;
     }
-    const splits = parseSplits(parsed.data.splitsRaw);
-    if (splits.length === 0) {
-      setErrors({ splitsRaw: "Informe ao menos uma parcela válida" });
+    const parcelas = [...form.parcelas].sort((a, b) => a.dias - b.dias);
+    const erroPct = mensagemPercentuais(parcelas);
+    if (erroPct) {
+      toast.error(erroPct);
       return;
     }
     const payload = {
       label: parsed.data.label,
       method: parsed.data.method,
-      splits,
+      splits: parcelas.map((p) => p.dias),
+      parcelas,
       notes: parsed.data.notes?.trim() || undefined,
       active: parsed.data.active,
       permitePf: parsed.data.permitePf,
@@ -187,6 +218,7 @@ function CondicoesComerciais() {
     }
     setDialogOpen(false);
   };
+
 
   return (
     <div className="p-4 md:p-8 space-y-6">
