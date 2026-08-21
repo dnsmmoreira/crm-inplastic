@@ -974,6 +974,7 @@ async function doSave() {
         days: x.parc.days,
         amount: x.parc.amount,
         notes: x.parc.notes ?? "",
+        percentual: x.parc.percentual ?? null,
         due_date: x.parc.dueDate ?? null,
       }),
     upsert: (rows) =>
@@ -985,10 +986,12 @@ async function doSave() {
           days: x.parc.days,
           amount: x.parc.amount,
           notes: x.parc.notes ?? "",
+          percentual: x.parc.percentual ?? null,
           due_date: x.parc.dueDate ?? null,
         })),
         { onConflict: "id" },
       ),
+
     del: (ids) => supabase.from("proposta_parcelas").delete().in("id", ids),
     isIntentionalDelete: isIntentionalDelete("proposalParcelas"),
     collectionName: "proposalParcelas",
