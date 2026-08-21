@@ -1716,17 +1716,39 @@ function PropostaDetalhe() {
             <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Condições comerciais</div>
             {(() => {
               const term = paymentTerms.find((t: PaymentTerm) => t.id === proposal.paymentTermId);
-              const rows = buildTermInstallments(term, totals?.total ?? 0);
               if (!term) {
                 return <div className="text-[11px] italic text-muted-foreground">A combinar.</div>;
               }
+              // Parcelas reais (já vêm ordenadas por `position` do banco); sem elas,
+              // cai na previsão a partir dos percentuais da condição.
+              const reais = proposal.installments ?? [];
+              const rows =
+                reais.length > 0
+                  ? reais.map((p) => ({
+                      days: p.days,
+                      amount: p.amount,
+                      percentual: p.percentual ?? null,
+                      dueDate: p.dueDate ?? null,
+                    }))
+                  : buildTermInstallments(term, totals?.total ?? 0).map((r) => ({
+                      days: r.days,
+                      amount: r.amount,
+                      percentual: r.percentual,
+                      dueDate: proposal.billingForecastDate
+                        ? addDaysToDateInput(proposal.billingForecastDate, r.days)
+                        : null,
+                    }));
               return (
                 <>
-                  <div className="text-[11px] mb-1"><span className="font-semibold">{term.label}</span> · {term.method}</div>
+                  <div className="text-[11px] mb-1">
+                    <span className="font-semibold">{term.label}</span> · {term.method}
+                  </div>
+                  <div className="text-[10px] text-muted-foreground mb-1">{descreverParcelas(termParcelas(term))}</div>
                   <table className="w-full text-[11px] border-collapse">
                     <thead>
                       <tr className="bg-muted/60">
                         <th className="border p-1.5 text-left w-12">Nº</th>
+                        <th className="border p-1.5 text-left">Prazo</th>
                         <th className="border p-1.5 text-left">Vencimento</th>
                         <th className="border p-1.5 text-right">Valor</th>
                       </tr>
@@ -1736,6 +1758,7 @@ function PropostaDetalhe() {
                         <tr key={i}>
                           <td className="border p-1.5">{i + 1}/{rows.length}</td>
                           <td className="border p-1.5">{r.days === 0 ? "à vista" : `${r.days} dias`}</td>
+                          <td className="border p-1.5">{r.dueDate ? formatDateBr(r.dueDate) : "—"}</td>
                           <td className="border p-1.5 text-right">{formatBRL(r.amount)}</td>
                         </tr>
                       ))}
@@ -1745,6 +1768,7 @@ function PropostaDetalhe() {
                 </>
               );
             })()}
+
             <div className="mt-2 text-[11px] font-semibold text-amber-800 border-l-4 border-amber-500 bg-amber-500/10 px-2 py-1">
               Válido após aprovação financeira.
             </div>
