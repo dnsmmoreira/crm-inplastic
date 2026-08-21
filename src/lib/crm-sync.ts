@@ -17,6 +17,8 @@
 import { isIntentionalDelete, clearDeleteIntent } from "@/lib/delete-intents";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database, Json } from "@/integrations/supabase/types";
+import { normalizarParcelas } from "@/lib/condicoes-comerciais";
+
 import {
   useCrm,
   DEFAULT_EMITTERS,
