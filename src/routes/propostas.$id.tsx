@@ -1249,17 +1249,34 @@ function PropostaDetalhe() {
                 const previsao = proposal.billingForecastDate;
                 const parcelas = proposal.installments ?? [];
 
-                const gerarParcelas = (base?: string, t: PaymentTerm | null = term) => {
+                const parcelasCond = term ? termParcelas(term) : [];
+                const diasCond = parcelasCond.map((p) => p.dias);
+                const intervaloCond = intervaloPredominante(diasCond);
+                const intervaloEfetivo = intervaloParcelas ?? intervaloCond;
+                const irregular = espacamentoIrregular(diasCond) && intervaloParcelas === null;
+
+                /** Recria as parcelas a partir dos percentuais da condição. */
+                const gerarParcelas = (base?: string, t: PaymentTerm | null = term, intervalo?: number | null) => {
                   const dataBase = base ?? previsao;
                   if (!t || !dataBase) return;
-                  const valores = dividirValor(total, t.splits.length);
+                  const cond = termParcelas(t);
+                  if (cond.length === 0) return;
+                  const iv = intervalo === undefined ? intervaloParcelas : intervalo;
+                  const dias =
+                    iv === null || iv === undefined
+                      ? cond.map((p) => p.dias)
+                      : aplicarIntervalo(cond.map((p) => p.dias), iv);
+                  const valores = valoresPorPercentual(total, cond.map((p) => p.percentual));
+                  const antigas = proposal.installments ?? [];
+                  if (antigas.length > 0) markDeleted("proposalParcelas", antigas.map((p) => p.id));
                   updateProposal(proposal.id, {
-                    installments: t.splits.map((d, i) => ({
+                    installments: cond.map((p, i) => ({
                       id: crypto.randomUUID(),
-                      days: d,
+                      days: dias[i],
                       amount: valores[i],
+                      percentual: p.percentual,
                       notes: "",
-                      dueDate: addDaysToDateInput(dataBase, d),
+                      dueDate: addDaysToDateInput(dataBase, dias[i]),
                     })),
                   });
                 };
@@ -1271,7 +1288,8 @@ function PropostaDetalhe() {
 
                 const soma = parcelas.reduce((acc, p) => acc + (p.amount || 0), 0);
                 const divergente = parcelas.length > 0 && Math.abs(soma - total) > 0.009;
-                const preview = term ? buildTermInstallments(term, total) : [];
+                const preview = term && previsao ? buildTermInstallments(term, total) : [];
+
 
                 return (
                   <>
