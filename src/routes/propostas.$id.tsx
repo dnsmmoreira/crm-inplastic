@@ -1202,18 +1202,39 @@ function PropostaDetalhe() {
 
             <CardContent className="space-y-3">
               <div>
-                <Label>Condição de pagamento</Label>
+                <Label>Forma de pagamento</Label>
+                <Select
+                  value={proposal.formaPagamento ?? ""}
+                  disabled={readOnly}
+                  onValueChange={(v) =>
+                    updateProposal(proposal.id, { formaPagamento: v as PaymentForm })
+                  }
+                >
+                  <SelectTrigger><SelectValue placeholder="Boleto, Depósito em Conta ou PIX" /></SelectTrigger>
+                  <SelectContent>
+                    {PAYMENT_FORMS.map((f) => (
+                      <SelectItem key={f} value={f}>{f}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Como o cliente vai pagar. O prazo é escolhido abaixo.
+                </p>
+              </div>
+
+              <div>
+                <Label>Prazo de pagamento</Label>
                 <Select
                   value={proposal.paymentTermId ?? ""}
                   onValueChange={(v) => trocarCondicao(v)}
                 >
-                  <SelectTrigger><SelectValue placeholder="Escolha uma condição cadastrada" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Escolha um prazo cadastrado" /></SelectTrigger>
                   <SelectContent className="max-h-80">
                     {visiblePaymentTerms.map((t: PaymentTerm) => (
                       <SelectItem key={t.id} value={t.id}>
                         <span className="font-medium">{t.label}</span>
                         <span className="text-muted-foreground text-xs ml-2">
-                          · {t.method}
+                          {t.active ? "" : "· (inativa)"}
                           {(t.acrescimoPercent ?? 0) > 0
                             ? ` · +${String(t.acrescimoPercent).replace(".", ",")}%`
                             : ""}
