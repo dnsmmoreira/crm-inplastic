@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { useNovaConversaAlerta } from "@/hooks/useNovaConversaAlerta";
-import { useConversasComAlertaPendente } from "@/components/alertas/AlertaPendente";
+import { useConversasComAlertaPendente } from "@/hooks/useConversasComAlertaPendente";
 
 /**
  * Overlay global de "novo lead atribuído a você".

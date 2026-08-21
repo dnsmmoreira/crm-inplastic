@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, type ReactNode } from "react";
 import { useRouter } from "@tanstack/react-router";
 import { AlertTriangle, BellRing, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { tocarBeep } from "@/hooks/useNovaConversaAlerta";
 import { useAlertasPendentes, type AlertaPendenteRow } from "@/hooks/useAlertasPendentes";
+import { ConversasComAlertaCtx } from "@/hooks/useConversasComAlertaPendente";
 
 const KICKERS: Record<string, string> = {
   pedido_aprovacao: "Pedido aguardando liberação",
@@ -18,15 +19,6 @@ const KICKERS: Record<string, string> = {
 
 function kickerDe(tipo: string): string {
   return KICKERS[tipo] ?? "Aviso pendente";
-}
-
-/**
- * Conversas que já têm alerta pendente aqui — o `NovaConversaAlerta` consulta
- * este contexto e se cala, para não existirem dois diálogos do mesmo evento.
- */
-const ConversasComAlertaCtx = createContext<ReadonlySet<string>>(new Set());
-export function useConversasComAlertaPendente(): ReadonlySet<string> {
-  return useContext(ConversasComAlertaCtx);
 }
 
 /**
