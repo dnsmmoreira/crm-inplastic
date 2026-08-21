@@ -1202,7 +1202,7 @@ function PropostaDetalhe() {
                 <Label>Condição de pagamento</Label>
                 <Select
                   value={proposal.paymentTermId ?? ""}
-                  onValueChange={(v) => updateProposal(proposal.id, { paymentTermId: v })}
+                  onValueChange={(v) => trocarCondicao(v)}
                 >
                   <SelectTrigger><SelectValue placeholder="Escolha uma condição cadastrada" /></SelectTrigger>
                   <SelectContent className="max-h-80">
