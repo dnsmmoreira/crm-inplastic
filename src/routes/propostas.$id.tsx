@@ -252,10 +252,21 @@ function PropostaDetalhe() {
 
   // Pessoa Física: só condições à vista ou cartão (permite_pf).
   const isClientePf = clienteRow?.tipo_pessoa === "PF";
-  const visiblePaymentTerms = useMemo(
-    () => (isClientePf ? activePaymentTerms.filter((t: PaymentTerm) => !!t.permitePf) : activePaymentTerms),
-    [activePaymentTerms, isClientePf],
-  );
+  const visiblePaymentTerms = useMemo(() => {
+    const base = isClientePf
+      ? activePaymentTerms.filter((t: PaymentTerm) => !!t.permitePf)
+      : activePaymentTerms;
+    const lista = [...base].sort(
+      (a, b) => (a.ordem ?? 0) - (b.ordem ?? 0) || a.label.localeCompare(b.label, "pt-BR"),
+    );
+    // O prazo em uso pela proposta continua na lista mesmo quando inativo,
+    // senão propostas antigas perdem a condição ao serem abertas.
+    const atual = proposal?.paymentTermId
+      ? paymentTerms.find((t: PaymentTerm) => t.id === proposal.paymentTermId)
+      : undefined;
+    if (atual && !lista.some((t) => t.id === atual.id)) lista.push(atual);
+    return lista;
+  }, [activePaymentTerms, isClientePf, paymentTerms, proposal?.paymentTermId]);
   useEffect(() => {
     if (!proposal || !isClientePf || !proposal.paymentTermId) return;
     const term = paymentTerms.find((t: PaymentTerm) => t.id === proposal.paymentTermId);
