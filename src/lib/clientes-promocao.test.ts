@@ -12,6 +12,7 @@ function makeSupabase(opts: {
   clientes?: Array<Record<string, unknown>>;
   cnpjStatus?: { existe: boolean; ativo: boolean; mesmo_vendedor: boolean; cliente_id: string | null };
   novoClienteId?: string;
+  clienteDeVendedor?: { vendedorId: string; clienteId: string };
 }) {
   const state = {
     lead: { ...opts.lead },
@@ -152,6 +153,30 @@ describe("garantirClienteDoLead", () => {
       expect(r.criado).toBe(false);
       expect(r.clienteId).toBe("cliente-existente");
     }
+  });
+
+  it("(e) admin aprovando lead de outro vendedor passa quando o cliente é do dono do lead", async () => {
+    const VENDEDOR_A = "00000000-0000-0000-0000-0000000000aa";
+    const ADMIN_B = "00000000-0000-0000-0000-0000000000bb";
+    const sb = makeSupabase({
+      lead: { id: "lead-5", cliente_id: null, cnpj: CNPJ_VALIDO, company: "TIBURCIO", owner_id: VENDEDOR_A },
+      clienteDeVendedor: { vendedorId: VENDEDOR_A, clienteId: "cliente-tiburcio" },
+    });
+    const r = await garantirClienteDoLead(sb, ADMIN_B, "lead-5");
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.clienteId).toBe("cliente-tiburcio");
+  });
+
+  it("(f) bloqueia quando o cliente pertence a vendedor diferente do dono do lead", async () => {
+    const VENDEDOR_A = "00000000-0000-0000-0000-0000000000aa";
+    const VENDEDOR_C = "00000000-0000-0000-0000-0000000000cc";
+    const sb = makeSupabase({
+      lead: { id: "lead-6", cliente_id: null, cnpj: CNPJ_VALIDO, company: "OUTRA", owner_id: VENDEDOR_A },
+      clienteDeVendedor: { vendedorId: VENDEDOR_C, clienteId: "cliente-outro" },
+    });
+    const r = await garantirClienteDoLead(sb, VENDEDOR_A, "lead-6");
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.erros[0]).toMatch(/Transfira o cliente antes de gerar o pedido/);
   });
 
   it("(d) é idempotente: lead já vinculado não cria outro cliente", async () => {
