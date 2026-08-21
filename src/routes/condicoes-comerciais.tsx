@@ -6,10 +6,20 @@ import { z } from "zod";
 
 import {
   useCrm,
+  termParcelas,
   type PaymentTerm,
   type PaymentMethod,
 } from "@/lib/crm-store";
+import {
+  descreverParcelas,
+  intervaloPredominante,
+  mensagemPercentuais,
+  percentuaisIguais,
+  somaPercentuais,
+  type ParcelaCondicao,
+} from "@/lib/condicoes-comerciais";
 import { useHasPerm } from "@/hooks/use-auth";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -67,11 +77,6 @@ const METHODS: PaymentMethod[] = ["Boleto", "PIX", "Depósito em Conta", "Cartã
 const formSchema = z.object({
   label: z.string().trim().min(3, "Nome muito curto").max(80, "Nome muito longo"),
   method: z.enum(["Boleto", "PIX", "Depósito em Conta", "Cartão", "Dinheiro"]),
-  splitsRaw: z
-    .string()
-    .trim()
-    .min(1, "Informe ao menos uma parcela (ex: 0 para à vista)")
-    .regex(/^\s*\d+(\s*[,/]\s*\d+)*\s*$/, "Use números separados por vírgula ou barra (ex: 30, 60, 90)"),
   notes: z.string().max(200, "Máx. 200 caracteres").optional().or(z.literal("")),
   active: z.boolean(),
   permitePf: z.boolean(),
@@ -81,18 +86,20 @@ const formSchema = z.object({
     .regex(/^\d{1,3}([.,]\d{1,2})?$/, "Use um percentual válido (ex: 3 ou 3,5)"),
 });
 
-type FormValues = z.infer<typeof formSchema>;
+type FormValues = z.infer<typeof formSchema> & { parcelas: ParcelaCondicao[] };
 
-const emptyForm: FormValues = { label: "", method: "Boleto", splitsRaw: "", notes: "", active: true, permitePf: false, acrescimoRaw: "0" };
+const emptyForm: FormValues = {
+  label: "",
+  method: "Boleto",
+  notes: "",
+  active: true,
+  permitePf: false,
+  acrescimoRaw: "0",
+  parcelas: [{ dias: 0, percentual: 100 }],
+};
 
 const parsePercent = (v: string) => Math.max(0, Math.min(100, Number(String(v).replace(",", ".")) || 0));
 
-function parseSplits(raw: string): number[] {
-  return raw
-    .split(/[,/]/)
-    .map((s) => Number(s.trim()))
-    .filter((n) => Number.isFinite(n) && n >= 0);
-}
 
 function CondicoesComerciais() {
   const podeGerenciar = useHasPerm("empresas.editar");
@@ -147,15 +154,44 @@ function CondicoesComerciais() {
     setForm({
       label: t.label,
       method: t.method,
-      splitsRaw: t.splits.join(", "),
       notes: t.notes ?? "",
       active: t.active,
       permitePf: !!t.permitePf,
       acrescimoRaw: String(t.acrescimoPercent ?? 0).replace(".", ","),
+      parcelas: termParcelas(t),
     });
     setErrors({});
     setDialogOpen(true);
   };
+
+  const setParcela = (idx: number, patch: Partial<ParcelaCondicao>) =>
+    setForm((f) => ({
+      ...f,
+      parcelas: f.parcelas.map((p, i) => (i === idx ? { ...p, ...patch } : p)),
+    }));
+
+  const addParcela = () =>
+    setForm((f) => {
+      const ultimo = f.parcelas[f.parcelas.length - 1];
+      const dias = ultimo ? ultimo.dias + (intervaloPredominante(f.parcelas.map((p) => p.dias)) || 30) : 0;
+      const n = f.parcelas.length + 1;
+      const pcts = percentuaisIguais(n);
+      return { ...f, parcelas: [...f.parcelas, { dias, percentual: 0 }].map((p, i) => ({ ...p, percentual: pcts[i] })) };
+    });
+
+  const removeParcela = (idx: number) =>
+    setForm((f) => {
+      const restantes = f.parcelas.filter((_, i) => i !== idx);
+      if (restantes.length === 0) return f;
+      const pcts = percentuaisIguais(restantes.length);
+      return { ...f, parcelas: restantes.map((p, i) => ({ ...p, percentual: pcts[i] })) };
+    });
+
+  const distribuirIgualmente = () =>
+    setForm((f) => {
+      const pcts = percentuaisIguais(f.parcelas.length);
+      return { ...f, parcelas: f.parcelas.map((p, i) => ({ ...p, percentual: pcts[i] })) };
+    });
 
   const submit = () => {
     const parsed = formSchema.safeParse(form);
@@ -167,15 +203,17 @@ function CondicoesComerciais() {
       setErrors(map);
       return;
     }
-    const splits = parseSplits(parsed.data.splitsRaw);
-    if (splits.length === 0) {
-      setErrors({ splitsRaw: "Informe ao menos uma parcela válida" });
+    const parcelas = [...form.parcelas].sort((a, b) => a.dias - b.dias);
+    const erroPct = mensagemPercentuais(parcelas);
+    if (erroPct) {
+      toast.error(erroPct);
       return;
     }
     const payload = {
       label: parsed.data.label,
       method: parsed.data.method,
-      splits,
+      splits: parcelas.map((p) => p.dias),
+      parcelas,
       notes: parsed.data.notes?.trim() || undefined,
       active: parsed.data.active,
       permitePf: parsed.data.permitePf,
@@ -190,6 +228,7 @@ function CondicoesComerciais() {
     }
     setDialogOpen(false);
   };
+
 
   return (
     <div className="p-4 md:p-8 space-y-6">
@@ -310,11 +349,10 @@ function CondicoesComerciais() {
                     <Badge variant="secondary">{t.method}</Badge>
                   </TableCell>
                   <TableCell className="text-sm">
-                    {t.splits.length}x —{" "}
-                    <span className="text-muted-foreground">
-                      {t.splits.map((d) => (d === 0 ? "à vista" : `${d}d`)).join(" / ")}
-                    </span>
+                    {termParcelas(t).length}x
+                    <span className="text-muted-foreground"> — {descreverParcelas(termParcelas(t))}</span>
                   </TableCell>
+
                   <TableCell className="text-xs text-muted-foreground max-w-xs truncate">
                     {t.notes ?? "—"}
                   </TableCell>
@@ -418,18 +456,77 @@ function CondicoesComerciais() {
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label>Parcelas (dias de vencimento)</Label>
-              <Input
-                value={form.splitsRaw}
-                onChange={(e) => setForm((f) => ({ ...f, splitsRaw: e.target.value }))}
-                placeholder="Ex: 30, 60, 90  ·  use 0 para à vista"
-              />
-              {errors.splitsRaw && <p className="text-xs text-destructive mt-1">{errors.splitsRaw}</p>}
-              <p className="text-[11px] text-muted-foreground mt-1">
-                Separe os dias com vírgula ou barra. O total da proposta será dividido igualmente entre as parcelas.
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <Label>Parcelas</Label>
+                <div className="flex gap-2">
+                  <Button type="button" size="sm" variant="ghost" onClick={distribuirIgualmente}>
+                    Distribuir igualmente
+                  </Button>
+                  <Button type="button" size="sm" variant="outline" onClick={addParcela}>
+                    <Plus className="h-3.5 w-3.5 mr-1" /> Parcela
+                  </Button>
+                </div>
+              </div>
+
+              <div className="rounded-md border divide-y">
+                <div className="grid grid-cols-[2.2rem_1fr_1fr_2.2rem] gap-2 px-2 py-1.5 text-[11px] uppercase tracking-wide text-muted-foreground">
+                  <span>#</span>
+                  <span>Dias</span>
+                  <span>% do total</span>
+                  <span />
+                </div>
+                {form.parcelas.map((p, i) => (
+                  <div key={i} className="grid grid-cols-[2.2rem_1fr_1fr_2.2rem] gap-2 items-center px-2 py-1.5">
+                    <span className="text-xs text-muted-foreground">{i + 1}</span>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={String(p.dias)}
+                      onChange={(e) => setParcela(i, { dias: Math.max(0, Number(e.target.value) || 0) })}
+                      className="h-8"
+                    />
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      step="0.01"
+                      value={String(p.percentual)}
+                      onChange={(e) => setParcela(i, { percentual: Number(e.target.value) || 0 })}
+                      className="h-8"
+                    />
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      disabled={form.parcelas.length <= 1}
+                      onClick={() => removeParcela(i)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                <span
+                  className={
+                    mensagemPercentuais(form.parcelas) ? "text-destructive font-medium" : "text-muted-foreground"
+                  }
+                >
+                  Soma: {String(somaPercentuais(form.parcelas)).replace(".", ",")}%
+                  {mensagemPercentuais(form.parcelas) ? " (precisa ser 100%)" : " ✓"}
+                </span>
+                <span className="text-muted-foreground">
+                  Descrição: <strong className="text-foreground">{descreverParcelas(form.parcelas)}</strong>
+                </span>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Dias = prazo do vencimento contado da previsão de faturamento (0 = à vista).
               </p>
             </div>
+
             <div>
               <Label>Observações (opcional)</Label>
               <Textarea

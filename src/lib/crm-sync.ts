@@ -17,6 +17,8 @@
 import { isIntentionalDelete, clearDeleteIntent } from "@/lib/delete-intents";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database, Json } from "@/integrations/supabase/types";
+import { normalizarParcelas } from "@/lib/condicoes-comerciais";
+
 import {
   useCrm,
   DEFAULT_EMITTERS,
@@ -207,12 +209,18 @@ function emitterToInsert(e: EmitterProfile, isDefault: boolean): EmitterInsert {
 }
 
 function rowToPayTerm(r: PayTermRow): PaymentTerm {
-  const loose = r as unknown as { permite_pf?: boolean | null; acrescimo_percent?: number | null };
+  const loose = r as unknown as {
+    permite_pf?: boolean | null;
+    acrescimo_percent?: number | null;
+    parcelas?: unknown;
+  };
+  const splits = Array.isArray(r.splits) ? (r.splits as number[]) : [];
   return {
     id: r.id,
     label: r.label,
     method: r.method as PaymentMethod,
-    splits: Array.isArray(r.splits) ? (r.splits as number[]) : [],
+    splits,
+    parcelas: normalizarParcelas(loose.parcelas, splits),
     notes: r.notes ?? undefined,
     active: !!r.active,
     permitePf: !!loose.permite_pf,
@@ -220,17 +228,21 @@ function rowToPayTerm(r: PayTermRow): PaymentTerm {
   };
 }
 function payTermToInsert(t: PaymentTerm): PayTermInsert {
+  const parcelas = normalizarParcelas(t.parcelas, t.splits ?? []);
   return {
     id: t.id,
     label: t.label,
     method: t.method,
-    splits: t.splits as unknown as Json,
+    // `splits` é mantida em sincronia com os dias das parcelas (leitores legados).
+    splits: parcelas.map((p) => p.dias) as unknown as Json,
+    parcelas: parcelas as unknown as Json,
     notes: t.notes ?? null,
     active: t.active,
     permite_pf: !!t.permitePf,
     acrescimo_percent: Number(t.acrescimoPercent ?? 0),
   } as PayTermInsert;
 }
+
 
 function rowToLead(
   r: LeadRow,
@@ -601,13 +613,16 @@ async function loadAll(userId: string) {
   });
   const parcByProp = new Map<string, PaymentInstallment[]>();
   (pParcRows ?? []).forEach((r: PParcelaRow) => {
+    const loose = r as unknown as { due_date?: string | null; percentual?: number | null };
     const p: PaymentInstallment = {
       id: r.id,
       days: r.days,
       amount: Number(r.amount ?? 0),
       notes: r.notes ?? "",
-      dueDate: (r as unknown as { due_date?: string | null }).due_date ?? undefined,
+      percentual: loose.percentual == null ? undefined : Number(loose.percentual),
+      dueDate: loose.due_date ?? undefined,
     };
+
     const arr = parcByProp.get(r.proposta_id) ?? [];
     arr.push(p);
     parcByProp.set(r.proposta_id, arr);
@@ -961,6 +976,7 @@ async function doSave() {
         days: x.parc.days,
         amount: x.parc.amount,
         notes: x.parc.notes ?? "",
+        percentual: x.parc.percentual ?? null,
         due_date: x.parc.dueDate ?? null,
       }),
     upsert: (rows) =>
@@ -972,10 +988,12 @@ async function doSave() {
           days: x.parc.days,
           amount: x.parc.amount,
           notes: x.parc.notes ?? "",
+          percentual: x.parc.percentual ?? null,
           due_date: x.parc.dueDate ?? null,
         })),
         { onConflict: "id" },
       ),
+
     del: (ids) => supabase.from("proposta_parcelas").delete().in("id", ids),
     isIntentionalDelete: isIntentionalDelete("proposalParcelas"),
     collectionName: "proposalParcelas",

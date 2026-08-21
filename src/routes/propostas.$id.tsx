@@ -29,7 +29,9 @@ import {
   useCurrentUser,
   USERS,
   type ProposalStatus,
+  termParcelas,
   type PaymentTerm,
+
   type PaymentInstallment,
 } from "@/lib/crm-store";
 import { calculateFreightDistance } from "@/lib/freight.functions";
@@ -39,20 +41,27 @@ import { getVendedorDaProposta, type VendedorContato, type ClienteRow } from "@/
 import { useQuery } from "@tanstack/react-query";
 import { formatCep } from "@/lib/format";
 import { useServerFn } from "@tanstack/react-start";
-import { addDaysToDateInput, dividirValor, formatDateBr } from "@/lib/condicoes-comerciais";
+import {
+  addDaysToDateInput,
+  aplicarIntervalo,
+  descreverParcelas,
+  espacamentoIrregular,
+  formatDateBr,
+  intervaloPredominante,
+  valoresPorPercentual,
+} from "@/lib/condicoes-comerciais";
+import { markDeleted } from "@/lib/delete-intents";
 
 
-/** Build display installments (equal split) from an ADM payment term and the proposal total. */
+/** Parcelas de exibição (dias + percentual da condição) a partir do total da proposta. */
 function buildTermInstallments(term: PaymentTerm | undefined, total: number) {
   if (!term) return [];
-  const n = term.splits.length;
-  const base = Math.floor((total / n) * 100) / 100;
-  const remainder = Math.round((total - base * n) * 100) / 100;
-  return term.splits.map((days, i) => ({
-    days,
-    amount: i === n - 1 ? +(base + remainder).toFixed(2) : base,
-  }));
+  const parcelas = termParcelas(term);
+  if (parcelas.length === 0) return [];
+  const valores = valoresPorPercentual(total, parcelas.map((p) => p.percentual));
+  return parcelas.map((p, i) => ({ days: p.dias, percentual: p.percentual, amount: valores[i] }));
 }
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -198,6 +207,9 @@ function PropostaDetalhe() {
   const calcFreight = useServerFn(calculateFreightDistance);
   const gerarPedido = useServerFn(gerarPedidoOmie);
   const [omieBusy, setOmieBusy] = useState(false);
+  /** Intervalo (dias) entre parcelas escolhido pelo vendedor; null = usa o da condição. */
+  const [intervaloParcelas, setIntervaloParcelas] = useState<number | null>(null);
+
 
   const selectedTerm = useMemo(
     () => paymentTerms.find((t: PaymentTerm) => t.id === proposal?.paymentTermId) ?? null,
@@ -325,6 +337,38 @@ function PropostaDetalhe() {
   const removeItem: typeof _removeItem = (...a) => { if (guard()) return; markDirty(); return _removeItem(...a); };
   const updateProposal: typeof _updateProposal = (...a) => { if (guard()) return; markDirty(); return _updateProposal(...a); };
   const setStatus: typeof _setStatus = (...a) => { if (guard()) return; markDirty(); return _setStatus(...a); };
+
+  /**
+   * Troca a condição de pagamento: descarta as parcelas anteriores (marcando-as
+   * como exclusão intencional para o sync apagar no banco) e recria a partir dos
+   * percentuais da nova condição, quando já houver previsão de faturamento.
+   */
+  const trocarCondicao = (termId: string) => {
+    if (!proposal) return;
+    const antigas = proposal.installments ?? [];
+    if (antigas.length > 0) markDeleted("proposalParcelas", ...antigas.map((p) => p.id));
+    const novo = paymentTerms.find((t: PaymentTerm) => t.id === termId) ?? null;
+    const base = proposal.billingForecastDate;
+    const parcelasCond = novo ? termParcelas(novo) : [];
+    const totalAtual = proposalTotals(proposal, novo?.acrescimoPercent ?? 0).total;
+    const valores = valoresPorPercentual(totalAtual, parcelasCond.map((p) => p.percentual));
+    updateProposal(proposal.id, {
+      paymentTermId: termId,
+      installments:
+        base && parcelasCond.length > 0
+          ? parcelasCond.map((p, i) => ({
+              id: crypto.randomUUID(),
+              days: p.dias,
+              amount: valores[i],
+              percentual: p.percentual,
+              notes: "",
+              dueDate: addDaysToDateInput(base, p.dias),
+            }))
+          : [],
+    });
+  };
+
+
 
 
   const validateAndUpdateItem = (
@@ -1161,7 +1205,7 @@ function PropostaDetalhe() {
                 <Label>Condição de pagamento</Label>
                 <Select
                   value={proposal.paymentTermId ?? ""}
-                  onValueChange={(v) => updateProposal(proposal.id, { paymentTermId: v })}
+                  onValueChange={(v) => trocarCondicao(v)}
                 >
                   <SelectTrigger><SelectValue placeholder="Escolha uma condição cadastrada" /></SelectTrigger>
                   <SelectContent className="max-h-80">
@@ -1205,17 +1249,34 @@ function PropostaDetalhe() {
                 const previsao = proposal.billingForecastDate;
                 const parcelas = proposal.installments ?? [];
 
-                const gerarParcelas = (base?: string, t: PaymentTerm | null = term) => {
+                const parcelasCond = term ? termParcelas(term) : [];
+                const diasCond = parcelasCond.map((p) => p.dias);
+                const intervaloCond = intervaloPredominante(diasCond);
+                const intervaloEfetivo = intervaloParcelas ?? intervaloCond;
+                const irregular = espacamentoIrregular(diasCond) && intervaloParcelas === null;
+
+                /** Recria as parcelas a partir dos percentuais da condição. */
+                const gerarParcelas = (base?: string, t: PaymentTerm | null = term, intervalo?: number | null) => {
                   const dataBase = base ?? previsao;
                   if (!t || !dataBase) return;
-                  const valores = dividirValor(total, t.splits.length);
+                  const cond = termParcelas(t);
+                  if (cond.length === 0) return;
+                  const iv = intervalo === undefined ? intervaloParcelas : intervalo;
+                  const dias =
+                    iv === null || iv === undefined
+                      ? cond.map((p) => p.dias)
+                      : aplicarIntervalo(cond.map((p) => p.dias), iv);
+                  const valores = valoresPorPercentual(total, cond.map((p) => p.percentual));
+                  const antigas = proposal.installments ?? [];
+                  if (antigas.length > 0) markDeleted("proposalParcelas", ...antigas.map((p) => p.id));
                   updateProposal(proposal.id, {
-                    installments: t.splits.map((d, i) => ({
+                    installments: cond.map((p, i) => ({
                       id: crypto.randomUUID(),
-                      days: d,
+                      days: dias[i],
                       amount: valores[i],
+                      percentual: p.percentual,
                       notes: "",
-                      dueDate: addDaysToDateInput(dataBase, d),
+                      dueDate: addDaysToDateInput(dataBase, dias[i]),
                     })),
                   });
                 };
@@ -1227,7 +1288,8 @@ function PropostaDetalhe() {
 
                 const soma = parcelas.reduce((acc, p) => acc + (p.amount || 0), 0);
                 const divergente = parcelas.length > 0 && Math.abs(soma - total) > 0.009;
-                const preview = term ? buildTermInstallments(term, total) : [];
+                const preview = term && previsao ? buildTermInstallments(term, total) : [];
+
 
                 return (
                   <>
@@ -1248,12 +1310,43 @@ function PropostaDetalhe() {
                       </p>
                     </div>
 
+                    {term && parcelasCond.length > 1 && (
+                      <div>
+                        <Label>Intervalo entre parcelas (dias)</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          disabled={readOnly}
+                          placeholder={irregular ? "Espaçamento irregular da condição" : String(intervaloEfetivo)}
+                          value={intervaloParcelas === null ? "" : String(intervaloParcelas)}
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            const v = raw === "" ? null : Math.max(0, Number(raw) || 0);
+                            setIntervaloParcelas(v);
+                            if (previsao) gerarParcelas(previsao, term, v);
+                          }}
+                        />
+                        <p className="text-[11px] text-muted-foreground mt-1">
+                          {irregular
+                            ? "A condição tem espaçamento irregular. Informe um valor para uniformizar os prazos."
+                            : `Vazio = usa o intervalo da condição (${intervaloCond} dias). Só altera os prazos, não os percentuais.`}
+                        </p>
+                      </div>
+                    )}
+
                     <div className="rounded-md border-l-4 border-amber-500 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-800">
                       <span className="font-semibold">Válido após aprovação financeira.</span>
                     </div>
 
                     {!term ? (
                       <p className="text-xs text-muted-foreground italic">Nenhuma condição selecionada.</p>
+                    ) : !previsao && parcelas.length === 0 ? (
+                      <div className="rounded-md border bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground">
+                        <span className="font-medium text-foreground">{term.label}</span> ·{" "}
+                        {descreverParcelas(parcelasCond)}
+                        <br />
+                        Informe a previsão de faturamento para gerar as parcelas com datas reais.
+                      </div>
                     ) : (
                       <div className="rounded-md border bg-muted/30">
                         <div className="px-3 py-2 border-b flex items-center justify-between gap-2 text-xs">
@@ -1267,19 +1360,23 @@ function PropostaDetalhe() {
                               disabled={readOnly || !previsao}
                               onClick={() => {
                                 gerarParcelas();
-                                toast.success("Parcelas refeitas");
+                                toast.success("Percentuais reaplicados");
                               }}
                             >
                               <RefreshCw className="h-3.5 w-3.5 mr-1" />
-                              Refazer parcelas
+                              Ajustar percentuais
                             </Button>
                           </div>
+                        </div>
+                        <div className="px-3 py-1.5 border-b text-[11px] text-muted-foreground">
+                          {descreverParcelas(parcelasCond)}
                         </div>
                         <Table>
                           <TableHeader>
                             <TableRow>
                               <TableHead className="h-8 w-16">Parcela</TableHead>
                               <TableHead className="h-8">Prazo</TableHead>
+                              <TableHead className="h-8 w-16 text-right">%</TableHead>
                               <TableHead className="h-8">Vencimento</TableHead>
                               <TableHead className="h-8 text-right">Valor (R$)</TableHead>
                             </TableRow>
@@ -1290,6 +1387,9 @@ function PropostaDetalhe() {
                                 <TableRow key={`prev-${i}`} className="text-xs">
                                   <TableCell className="py-1.5">{i + 1}/{preview.length}</TableCell>
                                   <TableCell className="py-1.5">{r.days === 0 ? "à vista" : `${r.days} dias`}</TableCell>
+                                  <TableCell className="py-1.5 text-right text-muted-foreground">
+                                    {String(+r.percentual.toFixed(2)).replace(".", ",")}%
+                                  </TableCell>
                                   <TableCell className="py-1.5 text-muted-foreground">
                                     {previsao ? formatDateBr(addDaysToDateInput(previsao, r.days)) : "—"}
                                   </TableCell>
@@ -1300,6 +1400,11 @@ function PropostaDetalhe() {
                               <TableRow key={p.id} className="text-xs">
                                 <TableCell className="py-1.5">{i + 1}/{parcelas.length}</TableCell>
                                 <TableCell className="py-1.5">{p.days === 0 ? "à vista" : `${p.days} dias`}</TableCell>
+                                <TableCell className="py-1.5 text-right text-muted-foreground">
+                                  {p.percentual == null
+                                    ? "—"
+                                    : `${String(+Number(p.percentual).toFixed(2)).replace(".", ",")}%`}
+                                </TableCell>
                                 <TableCell className="py-1.5">
                                   <Input
                                     type="date"
@@ -1324,11 +1429,7 @@ function PropostaDetalhe() {
                             ))}
                           </TableBody>
                         </Table>
-                        {parcelas.length === 0 && (
-                          <div className="px-3 py-2 border-t text-[11px] text-muted-foreground">
-                            Informe a previsão de faturamento para gerar as parcelas com datas reais.
-                          </div>
-                        )}
+
                         {parcelas.length > 0 && (
                           <div className="flex items-center justify-between px-3 py-2 border-t text-[11px]">
                             <span className="text-muted-foreground">Soma das parcelas</span>
@@ -1615,17 +1716,39 @@ function PropostaDetalhe() {
             <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Condições comerciais</div>
             {(() => {
               const term = paymentTerms.find((t: PaymentTerm) => t.id === proposal.paymentTermId);
-              const rows = buildTermInstallments(term, totals?.total ?? 0);
               if (!term) {
                 return <div className="text-[11px] italic text-muted-foreground">A combinar.</div>;
               }
+              // Parcelas reais (já vêm ordenadas por `position` do banco); sem elas,
+              // cai na previsão a partir dos percentuais da condição.
+              const reais = proposal.installments ?? [];
+              const rows =
+                reais.length > 0
+                  ? reais.map((p) => ({
+                      days: p.days,
+                      amount: p.amount,
+                      percentual: p.percentual ?? null,
+                      dueDate: p.dueDate ?? null,
+                    }))
+                  : buildTermInstallments(term, totals?.total ?? 0).map((r) => ({
+                      days: r.days,
+                      amount: r.amount,
+                      percentual: r.percentual,
+                      dueDate: proposal.billingForecastDate
+                        ? addDaysToDateInput(proposal.billingForecastDate, r.days)
+                        : null,
+                    }));
               return (
                 <>
-                  <div className="text-[11px] mb-1"><span className="font-semibold">{term.label}</span> · {term.method}</div>
+                  <div className="text-[11px] mb-1">
+                    <span className="font-semibold">{term.label}</span> · {term.method}
+                  </div>
+                  <div className="text-[10px] text-muted-foreground mb-1">{descreverParcelas(termParcelas(term))}</div>
                   <table className="w-full text-[11px] border-collapse">
                     <thead>
                       <tr className="bg-muted/60">
                         <th className="border p-1.5 text-left w-12">Nº</th>
+                        <th className="border p-1.5 text-left">Prazo</th>
                         <th className="border p-1.5 text-left">Vencimento</th>
                         <th className="border p-1.5 text-right">Valor</th>
                       </tr>
@@ -1635,6 +1758,7 @@ function PropostaDetalhe() {
                         <tr key={i}>
                           <td className="border p-1.5">{i + 1}/{rows.length}</td>
                           <td className="border p-1.5">{r.days === 0 ? "à vista" : `${r.days} dias`}</td>
+                          <td className="border p-1.5">{r.dueDate ? formatDateBr(r.dueDate) : "—"}</td>
                           <td className="border p-1.5 text-right">{formatBRL(r.amount)}</td>
                         </tr>
                       ))}
@@ -1644,6 +1768,7 @@ function PropostaDetalhe() {
                 </>
               );
             })()}
+
             <div className="mt-2 text-[11px] font-semibold text-amber-800 border-l-4 border-amber-500 bg-amber-500/10 px-2 py-1">
               Válido após aprovação financeira.
             </div>

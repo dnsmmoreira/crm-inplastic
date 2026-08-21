@@ -3,6 +3,8 @@ import { useMemo } from "react";
 import { useAuth, hasPerm } from "@/hooks/use-auth";
 import { markDeleted } from "@/lib/delete-intents";
 import { DEFAULT_FLEET, type FleetVehicle } from "@/lib/logistica";
+import { normalizarParcelas, type ParcelaCondicao } from "@/lib/condicoes-comerciais";
+
 
 
 export type UserRole = "admin" | "vendedor";
@@ -541,9 +543,12 @@ export type PaymentInstallment = {
   days: number;
   amount: number;
   notes: string;
+  /** % do total desta parcela (soma das parcelas = 100). */
+  percentual?: number;
   /** Vencimento absoluto (yyyy-MM-dd) calculado a partir da previsão de faturamento. */
   dueDate?: string;
 };
+
 
 
 export type TransportInfo = {
@@ -629,16 +634,23 @@ export type PaymentTerm = {
   id: string;
   label: string;             // ex: "Boleto 30/60/90 dias"
   method: PaymentMethod;
-  splits: number[];          // days per installment; [0] = à vista
+  splits: number[];          // days per installment; [0] = à vista (legado, sincronizado com `parcelas`)
+  /** Fonte da verdade: dias + percentual de cada parcela. */
+  parcelas?: ParcelaCondicao[];
   notes?: string;
   active: boolean;           // ADM toggle — only active terms show in seller dropdown
   permitePf?: boolean;       // liberada para cliente Pessoa Física (à vista ou cartão)
   acrescimoPercent?: number; // % de acréscimo aplicado ao subtotal
 };
 
+/** Parcelas efetivas da condição — cai no legado `splits` quando `parcelas` está vazio. */
+export const termParcelas = (t: PaymentTerm): ParcelaCondicao[] =>
+  normalizarParcelas(t.parcelas, t.splits ?? []);
+
 /** À vista (splits [0]) ou cartão → elegível para Pessoa Física. */
 export const isTermPf = (t: PaymentTerm): boolean =>
   t.permitePf ?? (t.method === "Cartão" || (t.splits.length === 1 && t.splits[0] === 0));
+
 
 /** Seed de 20 condições comerciais mais usadas — o administrador pode editar. */
 export const DEFAULT_PAYMENT_TERMS: PaymentTerm[] = [
@@ -1128,12 +1140,12 @@ export const useCrm = create<CrmState>()(
           ownerId: finalOwnerId,
           createdAt: new Date().toISOString(),
           status: "rascunho",
-          validityDays: 15,
+          validityDays: 10,
           emitterId,
           items: [],
-          installments: [
-            { id: uid(), days: 28, amount: 0, notes: "Boleto — 28 dias" },
-          ],
+          // Sem parcela placeholder: elas são geradas ao escolher a condição
+          // de pagamento e informar a previsão de faturamento.
+          installments: [],
           transport: {
             carrier: "A definir",
             freightPayer: "FOB",
@@ -1144,7 +1156,8 @@ export const useCrm = create<CrmState>()(
             approxFreightValue: 0,
           },
           observations:
-            "Proposta comercial válida por 15 dias. Preços em reais, impostos inclusos conforme legislação vigente. Prazo de entrega a combinar após aprovação.",
+            "Proposta comercial válida por 10 dias. Preços em reais, impostos inclusos conforme legislação vigente. Prazo de entrega a combinar após aprovação.",
+
           discountPercent: 0,
         };
 
