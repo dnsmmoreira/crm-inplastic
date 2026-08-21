@@ -39,20 +39,27 @@ import { getVendedorDaProposta, type VendedorContato, type ClienteRow } from "@/
 import { useQuery } from "@tanstack/react-query";
 import { formatCep } from "@/lib/format";
 import { useServerFn } from "@tanstack/react-start";
-import { addDaysToDateInput, dividirValor, formatDateBr } from "@/lib/condicoes-comerciais";
+import {
+  addDaysToDateInput,
+  aplicarIntervalo,
+  descreverParcelas,
+  espacamentoIrregular,
+  formatDateBr,
+  intervaloPredominante,
+  valoresPorPercentual,
+} from "@/lib/condicoes-comerciais";
+import { markDeleted } from "@/lib/delete-intents";
 
 
-/** Build display installments (equal split) from an ADM payment term and the proposal total. */
+/** Parcelas de exibição (dias + percentual da condição) a partir do total da proposta. */
 function buildTermInstallments(term: PaymentTerm | undefined, total: number) {
   if (!term) return [];
-  const n = term.splits.length;
-  const base = Math.floor((total / n) * 100) / 100;
-  const remainder = Math.round((total - base * n) * 100) / 100;
-  return term.splits.map((days, i) => ({
-    days,
-    amount: i === n - 1 ? +(base + remainder).toFixed(2) : base,
-  }));
+  const parcelas = termParcelas(term);
+  if (parcelas.length === 0) return [];
+  const valores = valoresPorPercentual(total, parcelas.map((p) => p.percentual));
+  return parcelas.map((p, i) => ({ days: p.dias, percentual: p.percentual, amount: valores[i] }));
 }
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
