@@ -37,15 +37,43 @@ async function usuariosDoPerfil(sb: SB, nome: string): Promise<string[]> {
   return ((data ?? []) as Array<{ user_id: string }>).map((r) => r.user_id);
 }
 
-async function usuariosAdmin(sb: SB): Promise<string[]> {
-  const { data } = await sb.from("user_roles").select("user_id").eq("role", "admin");
-  return ((data ?? []) as Array<{ user_id: string }>).map((r) => r.user_id);
+/** Usuários ativos cujo perfil ativo concede a permissão informada. */
+async function usuariosComPermissao(sb: SB, chave: string): Promise<string[]> {
+  const { data: vinculos } = await sb
+    .from("perfil_permissoes")
+    .select("perfil_id")
+    .eq("permissao_chave", chave);
+  const perfilIds = Array.from(
+    new Set(((vinculos ?? []) as Array<{ perfil_id: string }>).map((r) => r.perfil_id)),
+  );
+  if (perfilIds.length === 0) return [];
+  const { data: perfis } = await sb.from("perfis").select("id").in("id", perfilIds).eq("ativo", true);
+  const ativos = ((perfis ?? []) as Array<{ id: string }>).map((r) => r.id);
+  if (ativos.length === 0) return [];
+  const { data: users } = await sb.from("user_perfis").select("user_id").in("perfil_id", ativos);
+  const userIds = Array.from(
+    new Set(((users ?? []) as Array<{ user_id: string }>).map((r) => r.user_id)),
+  );
+  if (userIds.length === 0) return [];
+  const { data: profs } = await sb
+    .from("profiles")
+    .select("id")
+    .in("id", userIds)
+    .eq("ativo", true)
+    .is("deleted_at", null);
+  return ((profs ?? []) as Array<{ id: string }>).map((r) => r.id);
 }
 
+/**
+ * Quem opera pedido = quem tem a permissão `pedidos.movimentar`.
+ * Não usa `user_roles.role = 'admin'`: perfis com base_role admin criados por
+ * outras razões (ex.: Gestor Comercial, que enxerga representantes) não devem
+ * receber tarefa de liberação financeira.
+ */
 export async function destinatariosFinanceiro(sb: SB): Promise<string[]> {
-  const [fin, adm] = await Promise.all([usuariosDoPerfil(sb, "Financeiro"), usuariosAdmin(sb)]);
-  return Array.from(new Set([...fin, ...adm]));
+  return usuariosComPermissao(sb, "pedidos.movimentar");
 }
+
 
 export async function destinatariosOperacional(sb: SB): Promise<string[]> {
   return Array.from(new Set(await usuariosDoPerfil(sb, "Operacional Comercial")));
