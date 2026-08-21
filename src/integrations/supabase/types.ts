@@ -1258,8 +1258,11 @@ export type Database = {
       }
       notificacoes: {
         Row: {
+          aceito_em: string | null
+          adiado_ate: string | null
           conversa_id: string | null
           created_at: string
+          exige_aceite: boolean
           id: string
           lida_em: string | null
           pedido_id: string | null
@@ -1268,8 +1271,11 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          aceito_em?: string | null
+          adiado_ate?: string | null
           conversa_id?: string | null
           created_at?: string
+          exige_aceite?: boolean
           id?: string
           lida_em?: string | null
           pedido_id?: string | null
@@ -1278,8 +1284,11 @@ export type Database = {
           user_id: string
         }
         Update: {
+          aceito_em?: string | null
+          adiado_ate?: string | null
           conversa_id?: string | null
           created_at?: string
+          exige_aceite?: boolean
           id?: string
           lida_em?: string | null
           pedido_id?: string | null
