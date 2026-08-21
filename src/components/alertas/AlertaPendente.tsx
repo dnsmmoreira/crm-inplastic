@@ -72,7 +72,6 @@ export function AlertasPendentesProvider({ children }: { children?: ReactNode })
         <Dialog open>
           <DialogContent
             className="sm:max-w-md border-primary/40 shadow-2xl [&>button]:hidden"
-            showCloseButton={false}
             onEscapeKeyDown={(e) => e.preventDefault()}
             onPointerDownOutside={(e) => e.preventDefault()}
             onInteractOutside={(e) => e.preventDefault()}

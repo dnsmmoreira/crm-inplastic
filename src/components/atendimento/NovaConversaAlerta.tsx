@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { useNovaConversaAlerta } from "@/hooks/useNovaConversaAlerta";
+import { useConversasComAlertaPendente } from "@/components/alertas/AlertaPendente";
 
 /**
  * Overlay global de "novo lead atribuído a você".
@@ -13,8 +14,12 @@ export function NovaConversaAlerta() {
   const { user } = useAuth();
   const router = useRouter();
   const { conversa, dispensar } = useNovaConversaAlerta(user?.id ?? null);
+  // Anti-duplicação: se o alerta com aceite obrigatório já está cuidando desta
+  // conversa, este overlay (sem persistência) se cala.
+  const comAlertaPendente = useConversasComAlertaPendente();
 
   if (!conversa) return null;
+  if (comAlertaPendente.has(conversa.id)) return null;
   const nome = conversa.name?.trim() || "Novo contato";
 
   return (

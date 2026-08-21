@@ -50,6 +50,7 @@ import { AuthProvider, useAuth, hasPerm } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { NotificacoesBell } from "@/components/layout/NotificacoesBell";
 import { NovaConversaAlerta } from "@/components/atendimento/NovaConversaAlerta";
+import { AlertasPendentesProvider } from "@/components/alertas/AlertaPendente";
 
 
 function NotFoundComponent() {
@@ -640,7 +641,9 @@ function AuthGate() {
   return (
     <>
       <AppShell><Outlet /></AppShell>
-      <NovaConversaAlerta />
+      <AlertasPendentesProvider>
+        <NovaConversaAlerta />
+      </AlertasPendentesProvider>
     </>
   );
 }
