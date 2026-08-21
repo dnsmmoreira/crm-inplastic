@@ -88,8 +88,21 @@ function makeSupabase(opts: {
   return {
     state,
     from: (table: string) => builder(table),
-    rpc: async (name: string) => {
+    rpc: async (name: string, args?: Record<string, unknown>) => {
       if (name === "cnpj_status") {
+        // Simula a sobrecarga de 2 args: mesmo_vendedor compara o dono do CLIENTE
+        // com o `_vendedor_id` recebido (dono do lead), não com quem chama.
+        if (opts.clienteDeVendedor) {
+          return {
+            data: [{
+              existe: true,
+              ativo: true,
+              mesmo_vendedor: opts.clienteDeVendedor.vendedorId === (args?.["_vendedor_id"] as string),
+              cliente_id: opts.clienteDeVendedor.clienteId,
+            }],
+            error: null,
+          };
+        }
         return {
           data: opts.cnpjStatus ? [opts.cnpjStatus] : [{ existe: false, ativo: false, mesmo_vendedor: false, cliente_id: null }],
           error: null,
