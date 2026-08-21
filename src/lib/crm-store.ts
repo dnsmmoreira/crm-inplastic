@@ -1140,12 +1140,12 @@ export const useCrm = create<CrmState>()(
           ownerId: finalOwnerId,
           createdAt: new Date().toISOString(),
           status: "rascunho",
-          validityDays: 15,
+          validityDays: 10,
           emitterId,
           items: [],
-          installments: [
-            { id: uid(), days: 28, amount: 0, notes: "Boleto — 28 dias" },
-          ],
+          // Sem parcela placeholder: elas são geradas ao escolher a condição
+          // de pagamento e informar a previsão de faturamento.
+          installments: [],
           transport: {
             carrier: "A definir",
             freightPayer: "FOB",
@@ -1156,7 +1156,8 @@ export const useCrm = create<CrmState>()(
             approxFreightValue: 0,
           },
           observations:
-            "Proposta comercial válida por 15 dias. Preços em reais, impostos inclusos conforme legislação vigente. Prazo de entrega a combinar após aprovação.",
+            "Proposta comercial válida por 10 dias. Preços em reais, impostos inclusos conforme legislação vigente. Prazo de entrega a combinar após aprovação.",
+
           discountPercent: 0,
         };
 
