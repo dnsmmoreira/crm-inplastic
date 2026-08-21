@@ -245,6 +245,7 @@ function payTermToInsert(t: PaymentTerm): PayTermInsert {
     active: t.active,
     permite_pf: !!t.permitePf,
     acrescimo_percent: Number(t.acrescimoPercent ?? 0),
+    ordem: Number(t.ordem ?? 0),
   } as PayTermInsert;
 }
 
