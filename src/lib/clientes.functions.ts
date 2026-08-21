@@ -625,17 +625,19 @@ export async function garantirClienteDoLead(
   let existenteId: string | null = null;
 
   if (tipo === "PJ") {
-    // Checagem cross-vendor via RPC SECURITY DEFINER já existente.
-    const { data: statusRows } = await supabase.rpc("cnpj_status", { _cnpj: digits });
+    // Checagem cross-vendor via RPC SECURITY DEFINER (sobrecarga de 2 args):
+    // a pergunta correta é "o cliente é do DONO DO LEAD?" — não "é meu?".
+    const donoLead = (lead.owner_id as string | null) ?? userId;
+    const { data: statusRows } = await supabase.rpc("cnpj_status", {
+      _cnpj: digits,
+      _vendedor_id: donoLead,
+    });
     const st = (statusRows ?? [])[0] as
       | { existe: boolean; ativo: boolean; mesmo_vendedor: boolean; cliente_id: string | null }
       | undefined;
     if (st?.existe) {
       if (!st.mesmo_vendedor) {
-        return {
-          ok: false,
-          erros: ["Já existe um cliente com este CNPJ com outro vendedor. Peça a transferência ao admin."],
-        };
+        return { ok: false, erros: [await mensagemClienteDeOutroVendedor(supabase, st.cliente_id)] };
       }
       existenteId = st.cliente_id ?? null;
     }
