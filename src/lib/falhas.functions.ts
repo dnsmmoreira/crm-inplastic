@@ -122,9 +122,9 @@ export const listarPainelFalhas = createServerFn({ method: "GET" })
     const ids = Array.from(porUser.keys());
     const nomes = new Map<string, string>();
     if (ids.length) {
-      const { data: profs } = await sb.from("profiles").select("id, nome").in("id", ids);
-      for (const p of (profs ?? []) as Array<{ id: string; nome: string | null }>) {
-        nomes.set(p.id, p.nome ?? "—");
+      const { data: profs } = await sb.from("profiles").select("id, name").in("id", ids);
+      for (const p of (profs ?? []) as Array<{ id: string; name: string | null }>) {
+        nomes.set(p.id, p.name ?? "—");
       }
     }
     const avisos: AvisoSemAceite[] = ids
