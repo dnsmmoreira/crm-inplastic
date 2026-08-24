@@ -69,14 +69,16 @@ async function usuariosComPermissao(sb: SB, chave: string): Promise<string[]> {
 }
 
 /**
- * Quem opera pedido = quem tem a permissão `pedidos.movimentar`.
- * Não usa `user_roles.role = 'admin'`: perfis com base_role admin criados por
- * outras razões (ex.: Gestor Comercial, que enxerga representantes) não devem
- * receber tarefa de liberação financeira.
+ * Quem responde pela APROVAÇÃO FINANCEIRA = chave `pedidos.aprovar_financeiro`.
+ * Não usa `pedidos.movimentar`: essa chave é de quem OPERA o pedido (produção,
+ * coleta, entrega) e inclui gente que não responde pela liberação financeira.
+ * Notificação != capacidade: quem pode aprovar/reprovar continua definido em
+ * `isAdminOuFinanceiro` (pedidos.functions.ts).
  */
 export async function destinatariosFinanceiro(sb: SB): Promise<string[]> {
-  return usuariosComPermissao(sb, "pedidos.movimentar");
+  return usuariosComPermissao(sb, "pedidos.aprovar_financeiro");
 }
+
 
 export async function destinatariosOperacional(sb: SB): Promise<string[]> {
   return Array.from(new Set(await usuariosDoPerfil(sb, "Operacional Comercial")));

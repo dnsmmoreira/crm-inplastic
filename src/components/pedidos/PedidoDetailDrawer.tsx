@@ -28,6 +28,8 @@ import {
   getPedidoDetalhes,
   solicitarAprovacao,
   decidirAprovacao,
+  updatePedidoStage,
+
   salvarChecklistConferencia,
   atualizarStatusFiscal,
   registrarOcorrencia,
@@ -229,6 +231,7 @@ function AprovacaoBlock({
 }: { pedido: PedidoDetalhes; onChanged: () => void }) {
   const solicitarFn = useServerFn(solicitarAprovacao);
   const decidirFn = useServerFn(decidirAprovacao);
+  const moverFn = useServerFn(updatePedidoStage);
   const [motivo, setMotivo] = useState("");
   const [observacao, setObservacao] = useState("");
 
@@ -246,6 +249,34 @@ function AprovacaoBlock({
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  /**
+   * Aprovar = decidir + liberar na mesma ação (nunca só metade).
+   * A movimentação vai primeiro: se `updatePedidoStage` recusar a transição,
+   * a decisão NÃO é gravada e a mensagem dela é exibida.
+   */
+  const aprovarEMover = useMutation({
+    mutationFn: async (destino: "programacao" | "aguardando_pagamento") => {
+      if (pedido.stage !== destino) {
+        const r = await moverFn({ data: { pedido_id: pedido.id, stage: destino } });
+        if (!r.ok) throw new Error(r.message);
+      }
+      await decidirFn({
+        data: { pedido_id: pedido.id, decisao: "aprovado", observacao: observacao || undefined },
+      });
+      return destino;
+    },
+    onSuccess: (destino) => {
+      toast.success(
+        destino === "programacao"
+          ? "Pedido aprovado e liberado"
+          : "Pedido aprovado — aguardando pagamento antecipado",
+      );
+      setObservacao(""); onChanged();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
 
   const showRequest =
     pedido.stage === "analise_financeira" ||
@@ -314,24 +345,40 @@ function AprovacaoBlock({
         <div className="space-y-2 rounded-lg border p-3">
           <Label className="text-xs">Observação da decisão (opcional)</Label>
           <Textarea rows={2} value={observacao} onChange={(e) => setObservacao(e.target.value)} />
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               size="sm"
               className="bg-emerald-600 hover:bg-emerald-700"
-              disabled={decidir.isPending}
-              onClick={() => decidir.mutate("aprovado")}
+              disabled={aprovarEMover.isPending || decidir.isPending}
+              onClick={() => aprovarEMover.mutate("programacao")}
+              title="Aprova e libera o pedido (etapa Liberado)"
             >
-              <CheckCircle2 className="h-4 w-4 mr-1" /> Aprovar
+              {aprovarEMover.isPending ? (
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              ) : (
+                <CheckCircle2 className="h-4 w-4 mr-1" />
+              )}
+              Aprovar
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={aprovarEMover.isPending || decidir.isPending}
+              onClick={() => aprovarEMover.mutate("aguardando_pagamento")}
+              title="Aprova condicionado a pagamento antecipado"
+            >
+              <CheckCircle2 className="h-4 w-4 mr-1" /> Aprovar com pagamento antecipado
             </Button>
             <Button
               size="sm"
               variant="destructive"
-              disabled={decidir.isPending}
+              disabled={decidir.isPending || aprovarEMover.isPending}
               onClick={() => decidir.mutate("rejeitado")}
             >
               <XCircle className="h-4 w-4 mr-1" /> Rejeitar
             </Button>
           </div>
+
         </div>
       )}
     </section>

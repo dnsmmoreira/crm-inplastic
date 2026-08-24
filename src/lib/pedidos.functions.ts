@@ -66,7 +66,15 @@ export type PedidoRow = {
   encerrado_em: string | null;
   aprovacao_rota: string | null;
   reprovacao_motivo: string | null;
+  itens: Array<{
+    sku: string | null;
+    description: string | null;
+    quantity: number;
+    unit: string | null;
+  }>;
+  itens_total_qtde: number;
 };
+
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type LooseClient = any;
@@ -101,6 +109,7 @@ export const listPedidos = createServerFn({ method: "GET" })
     const ids = rows.map((r) => r.id);
     const lastChangeByPedido = new Map<string, string>();
     const openOcorrByPedido = new Map<string, number>();
+    const itensByPedido = new Map<string, PedidoRow["itens"]>();
     if (ids.length > 0) {
       const { data: hist } = await sb
         .from("pedido_stage_history")
@@ -118,7 +127,30 @@ export const listPedidos = createServerFn({ method: "GET" })
       for (const o of (openOc ?? []) as Array<{ pedido_id: string }>) {
         openOcorrByPedido.set(o.pedido_id, (openOcorrByPedido.get(o.pedido_id) ?? 0) + 1);
       }
+      // Itens de todos os pedidos numa consulta só (nunca N+1).
+      const { data: itens } = await sb
+        .from("pedido_itens")
+        .select("pedido_id, sku, description, quantity, unit, position")
+        .in("pedido_id", ids)
+        .order("position", { ascending: true });
+      for (const it of (itens ?? []) as Array<{
+        pedido_id: string;
+        sku: string | null;
+        description: string | null;
+        quantity: number | string | null;
+        unit: string | null;
+      }>) {
+        const arr = itensByPedido.get(it.pedido_id) ?? [];
+        arr.push({
+          sku: it.sku ?? null,
+          description: it.description ?? null,
+          quantity: Number(it.quantity ?? 0),
+          unit: it.unit ?? null,
+        });
+        itensByPedido.set(it.pedido_id, arr);
+      }
     }
+
 
     // Resolver nomes de profiles (vendedor + responsável) via lookup separado —
     // não há FK declarada entre pedidos e profiles, então evitamos embed do PostgREST.
@@ -178,6 +210,9 @@ export const listPedidos = createServerFn({ method: "GET" })
         encerrado_em: r.encerrado_em,
         aprovacao_rota: r.aprovacao_rota,
         reprovacao_motivo: r.reprovacao_motivo,
+        itens: itensByPedido.get(r.id) ?? [],
+        itens_total_qtde: (itensByPedido.get(r.id) ?? []).reduce((s, i) => s + (i.quantity || 0), 0),
+
       }),
     );
   });
