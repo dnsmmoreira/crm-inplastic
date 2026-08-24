@@ -183,7 +183,7 @@ function PainelFalhas() {
                   )}
                   {expandido === f.id && (
                     <pre className="mt-2 max-h-64 overflow-auto rounded bg-muted p-2 text-xs">
-                      {JSON.stringify(f.contexto, null, 2)}
+                      {f.contexto}
                     </pre>
                   )}
                 </div>

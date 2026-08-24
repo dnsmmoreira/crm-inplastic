@@ -13,7 +13,8 @@ export type FalhaRow = {
   id: string;
   origem: string;
   mensagem: string;
-  contexto: Record<string, unknown> | null;
+  /** JSON já serializado — a tela apenas exibe. */
+  contexto: string | null;
   ocorrido_em: string;
   ocorrencias: number;
 };
@@ -136,7 +137,18 @@ export const listarPainelFalhas = createServerFn({ method: "GET" })
       }))
       .sort((a, b) => b.total - a.total);
 
-    return { falhas: (falhasData ?? []) as FalhaRow[], filas, avisos };
+    const falhas: FalhaRow[] = (
+      (falhasData ?? []) as Array<Omit<FalhaRow, "contexto"> & { contexto: unknown }>
+    ).map((f) => ({
+      id: f.id,
+      origem: f.origem,
+      mensagem: f.mensagem,
+      ocorrido_em: f.ocorrido_em,
+      ocorrencias: Number(f.ocorrencias ?? 1),
+      contexto: f.contexto == null ? null : JSON.stringify(f.contexto, null, 2),
+    }));
+
+    return { falhas, filas, avisos };
   });
 
 export const resolverFalha = createServerFn({ method: "POST" })
