@@ -143,6 +143,12 @@ export async function notificarUsuarios(
   );
   if (error) {
     console.error("[pedidos-fluxo] falha ao notificar:", error.message);
+    const { registrarFalhaAdmin } = await import("@/lib/falhas.server");
+    await registrarFalhaAdmin("pedido.notificacao", error.message, {
+      pedido_id: args.pedidoId,
+      tipo: args.tipo,
+      destinatarios: novos,
+    });
     return 0;
   }
   return novos.length;
