@@ -2,6 +2,13 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
 import { PERM_PEDIDOS_MOVIMENTAR } from "@/lib/permissoes";
+import { descreverParcelas } from "@/lib/condicoes-comerciais";
+import {
+  resumoHistoricoCliente,
+  soDigitos,
+  type HistoricoCliente,
+} from "@/lib/pedidos-historico";
+export type { HistoricoCliente, PedidoHistoricoRow } from "@/lib/pedidos-historico";
 
 /**
  * Fase 3 — Kanban de Pedidos operacional (coexiste com o Funil de Vendas).
@@ -842,7 +849,13 @@ async function carregarHistoricoCliente(
   let parcial = true;
 
   if (digitos.length >= 11) {
-    const { data: leadsMesmoCnpj } = await sb.from("leads").select("id, cnpj").not("cnpj", "is", null);
+    // Compara pelas grafias possíveis do mesmo CNPJ (com e sem máscara),
+    // em UMA consulta — sem varrer a tabela inteira de leads.
+    const mascarado = digitos.length === 14
+      ? `${digitos.slice(0, 2)}.${digitos.slice(2, 5)}.${digitos.slice(5, 8)}/${digitos.slice(8, 12)}-${digitos.slice(12)}`
+      : digitos;
+    const grafias = Array.from(new Set([args.cnpj ?? "", digitos, mascarado].filter(Boolean)));
+    const { data: leadsMesmoCnpj } = await sb.from("leads").select("id, cnpj").in("cnpj", grafias);
     const ids = ((leadsMesmoCnpj ?? []) as Array<{ id: string; cnpj: string | null }>)
       .filter((l) => soDigitos(l.cnpj) === digitos)
       .map((l) => l.id);
@@ -851,6 +864,7 @@ async function carregarHistoricoCliente(
       parcial = false;
     }
   }
+
 
   const { data: rows } = await sb
     .from("pedidos")
