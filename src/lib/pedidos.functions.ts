@@ -113,10 +113,10 @@ export const listPedidos = createServerFn({ method: "GET" })
           "forma_atendimento, prioridade, ocorrencia",
           "vendedor_proprietario_id, proposta_id, lead_id",
           "modalidade_entrega, entrega_confirmada, encerrado_em, aprovacao_rota, reprovacao_motivo",
-          "leads:lead_id(company)",
           "propostas:proposta_id(number)",
         ].join(", "),
       )
+
       .order("created_at", { ascending: false })
       .limit(500);
     if (error) throw new Error(`Falha ao listar pedidos: ${error.message}`);
