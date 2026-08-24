@@ -418,6 +418,59 @@ export type Database = {
         }
         Relationships: []
       }
+      cadencia_excecoes: {
+        Row: {
+          ativo: boolean
+          cliente_id: string | null
+          created_at: string
+          created_by: string | null
+          dias: Json | null
+          escalar_diretoria: boolean
+          escopo: string
+          familia: string | null
+          id: string
+          observacao: string | null
+          stage: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          cliente_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          dias?: Json | null
+          escalar_diretoria?: boolean
+          escopo: string
+          familia?: string | null
+          id?: string
+          observacao?: string | null
+          stage: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          cliente_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          dias?: Json | null
+          escalar_diretoria?: boolean
+          escopo?: string
+          familia?: string | null
+          id?: string
+          observacao?: string | null
+          stage?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cadencia_excecoes_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cargos: {
         Row: {
           ativo: boolean
