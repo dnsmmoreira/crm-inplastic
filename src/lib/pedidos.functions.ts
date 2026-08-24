@@ -99,7 +99,6 @@ async function clienteDeExibicao(sb: LooseClient): Promise<LooseClient> {
   }
 }
 
-
 export const listPedidos = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<PedidoRow[]> => {
@@ -126,7 +125,6 @@ export const listPedidos = createServerFn({ method: "GET" })
       vendedor_proprietario_id: string | null;
       responsavel_atual_id: string | null;
     }>;
-
 
     // Buscar última transição por pedido para calcular "dias na etapa"
     const ids = rows.map((r) => r.id);
@@ -205,8 +203,6 @@ export const listPedidos = createServerFn({ method: "GET" })
         if (l.company) companyByLead.set(l.id, l.company);
       }
     }
-
-
 
     return (data ?? []).map(
       (r: {
