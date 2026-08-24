@@ -51,6 +51,7 @@ import { Route as ApiPublicHooksXerifeCheckpointRouteImport } from './routes/api
 import { Route as ApiPublicHooksXerifeAgendaDiariaRouteImport } from './routes/api/public/hooks/xerife-agenda-diaria'
 import { Route as ApiPublicHooksXerifeRouteImport } from './routes/api/public/hooks/xerife'
 import { Route as ApiPublicHooksWhatsappCloudRouteImport } from './routes/api/public/hooks/whatsapp-cloud'
+import { Route as ApiPublicHooksLeadExternoRouteImport } from './routes/api/public/hooks/lead-externo'
 import { Route as ApiPublicHooksIaUrgenteRouteImport } from './routes/api/public/hooks/ia-urgente'
 import { Route as ApiPublicHooksIaResponderRouteImport } from './routes/api/public/hooks/ia-responder'
 import { Route as ApiPublicHooksIaQualificarRouteImport } from './routes/api/public/hooks/ia-qualificar'
@@ -278,6 +279,12 @@ const ApiPublicHooksWhatsappCloudRoute =
     path: '/api/public/hooks/whatsapp-cloud',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksLeadExternoRoute =
+  ApiPublicHooksLeadExternoRouteImport.update({
+    id: '/api/public/hooks/lead-externo',
+    path: '/api/public/hooks/lead-externo',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksIaUrgenteRoute = ApiPublicHooksIaUrgenteRouteImport.update({
   id: '/api/public/hooks/ia-urgente',
   path: '/api/public/hooks/ia-urgente',
@@ -346,6 +353,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/ia-qualificar': typeof ApiPublicHooksIaQualificarRoute
   '/api/public/hooks/ia-responder': typeof ApiPublicHooksIaResponderRoute
   '/api/public/hooks/ia-urgente': typeof ApiPublicHooksIaUrgenteRoute
+  '/api/public/hooks/lead-externo': typeof ApiPublicHooksLeadExternoRoute
   '/api/public/hooks/whatsapp-cloud': typeof ApiPublicHooksWhatsappCloudRoute
   '/api/public/hooks/xerife': typeof ApiPublicHooksXerifeRoute
   '/api/public/hooks/xerife-agenda-diaria': typeof ApiPublicHooksXerifeAgendaDiariaRoute
@@ -395,6 +403,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/ia-qualificar': typeof ApiPublicHooksIaQualificarRoute
   '/api/public/hooks/ia-responder': typeof ApiPublicHooksIaResponderRoute
   '/api/public/hooks/ia-urgente': typeof ApiPublicHooksIaUrgenteRoute
+  '/api/public/hooks/lead-externo': typeof ApiPublicHooksLeadExternoRoute
   '/api/public/hooks/whatsapp-cloud': typeof ApiPublicHooksWhatsappCloudRoute
   '/api/public/hooks/xerife': typeof ApiPublicHooksXerifeRoute
   '/api/public/hooks/xerife-agenda-diaria': typeof ApiPublicHooksXerifeAgendaDiariaRoute
@@ -445,6 +454,7 @@ export interface FileRoutesById {
   '/api/public/hooks/ia-qualificar': typeof ApiPublicHooksIaQualificarRoute
   '/api/public/hooks/ia-responder': typeof ApiPublicHooksIaResponderRoute
   '/api/public/hooks/ia-urgente': typeof ApiPublicHooksIaUrgenteRoute
+  '/api/public/hooks/lead-externo': typeof ApiPublicHooksLeadExternoRoute
   '/api/public/hooks/whatsapp-cloud': typeof ApiPublicHooksWhatsappCloudRoute
   '/api/public/hooks/xerife': typeof ApiPublicHooksXerifeRoute
   '/api/public/hooks/xerife-agenda-diaria': typeof ApiPublicHooksXerifeAgendaDiariaRoute
@@ -496,6 +506,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/ia-qualificar'
     | '/api/public/hooks/ia-responder'
     | '/api/public/hooks/ia-urgente'
+    | '/api/public/hooks/lead-externo'
     | '/api/public/hooks/whatsapp-cloud'
     | '/api/public/hooks/xerife'
     | '/api/public/hooks/xerife-agenda-diaria'
@@ -545,6 +556,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/ia-qualificar'
     | '/api/public/hooks/ia-responder'
     | '/api/public/hooks/ia-urgente'
+    | '/api/public/hooks/lead-externo'
     | '/api/public/hooks/whatsapp-cloud'
     | '/api/public/hooks/xerife'
     | '/api/public/hooks/xerife-agenda-diaria'
@@ -594,6 +606,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/ia-qualificar'
     | '/api/public/hooks/ia-responder'
     | '/api/public/hooks/ia-urgente'
+    | '/api/public/hooks/lead-externo'
     | '/api/public/hooks/whatsapp-cloud'
     | '/api/public/hooks/xerife'
     | '/api/public/hooks/xerife-agenda-diaria'
@@ -644,6 +657,7 @@ export interface RootRouteChildren {
   ApiPublicHooksIaQualificarRoute: typeof ApiPublicHooksIaQualificarRoute
   ApiPublicHooksIaResponderRoute: typeof ApiPublicHooksIaResponderRoute
   ApiPublicHooksIaUrgenteRoute: typeof ApiPublicHooksIaUrgenteRoute
+  ApiPublicHooksLeadExternoRoute: typeof ApiPublicHooksLeadExternoRoute
   ApiPublicHooksWhatsappCloudRoute: typeof ApiPublicHooksWhatsappCloudRoute
   ApiPublicHooksXerifeRoute: typeof ApiPublicHooksXerifeRoute
   ApiPublicHooksXerifeAgendaDiariaRoute: typeof ApiPublicHooksXerifeAgendaDiariaRoute
@@ -951,6 +965,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksWhatsappCloudRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/lead-externo': {
+      id: '/api/public/hooks/lead-externo'
+      path: '/api/public/hooks/lead-externo'
+      fullPath: '/api/public/hooks/lead-externo'
+      preLoaderRoute: typeof ApiPublicHooksLeadExternoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/ia-urgente': {
       id: '/api/public/hooks/ia-urgente'
       path: '/api/public/hooks/ia-urgente'
@@ -1029,6 +1050,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksIaQualificarRoute: ApiPublicHooksIaQualificarRoute,
   ApiPublicHooksIaResponderRoute: ApiPublicHooksIaResponderRoute,
   ApiPublicHooksIaUrgenteRoute: ApiPublicHooksIaUrgenteRoute,
+  ApiPublicHooksLeadExternoRoute: ApiPublicHooksLeadExternoRoute,
   ApiPublicHooksWhatsappCloudRoute: ApiPublicHooksWhatsappCloudRoute,
   ApiPublicHooksXerifeRoute: ApiPublicHooksXerifeRoute,
   ApiPublicHooksXerifeAgendaDiariaRoute: ApiPublicHooksXerifeAgendaDiariaRoute,
