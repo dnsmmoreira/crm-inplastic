@@ -92,7 +92,7 @@ function LeadsPage() {
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
-    return leads
+    const base = leads
       .filter((l) => (stage === "all" ? true : l.stage === stage))
       .filter((l) =>
         !term
@@ -100,9 +100,21 @@ function LeadsPage() {
           : l.company.toLowerCase().includes(term) ||
             l.contactName.toLowerCase().includes(term) ||
             l.product.toLowerCase().includes(term),
-      )
-      .sort((a, b) => (a.lastContact < b.lastContact ? 1 : -1));
-  }, [leads, stage, q]);
+      );
+    if (!sortMotivo) {
+      return base.sort((a, b) => (a.lastContact < b.lastContact ? 1 : -1));
+    }
+    const dir = sortMotivo === "asc" ? 1 : -1;
+    return base.sort((a, b) => {
+      const ma = motivoPerda(a)?.motivo ?? "";
+      const mb = motivoPerda(b)?.motivo ?? "";
+      if (!ma && !mb) return a.lastContact < b.lastContact ? 1 : -1;
+      if (!ma) return 1;
+      if (!mb) return -1;
+      return ma.localeCompare(mb, "pt-BR") * dir;
+    });
+  }, [leads, stage, q, sortMotivo]);
+
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount);
