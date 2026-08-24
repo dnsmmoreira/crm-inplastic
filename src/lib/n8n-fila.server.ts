@@ -56,7 +56,15 @@ export async function enfileirarAvisoN8n(
     ultimo_erro: params.erro,
     proxima_tentativa_em: proximaTentativa(0),
   });
-  if (error) console.error("[n8n-fila] falha ao enfileirar:", error.message);
+  if (error) {
+    console.error("[n8n-fila] falha ao enfileirar:", error.message);
+    const { registrarFalhaAdmin } = await import("./falhas.server");
+    await registrarFalhaAdmin("n8n.reenvio", error.message, {
+      conversa_id: params.conversaId,
+      acao: "enfileirar",
+      erro_origem: params.erro,
+    });
+  }
 }
 
 export type ResultadoFilaN8n = {
