@@ -66,7 +66,15 @@ export type PedidoRow = {
   encerrado_em: string | null;
   aprovacao_rota: string | null;
   reprovacao_motivo: string | null;
+  itens: Array<{
+    sku: string | null;
+    description: string | null;
+    quantity: number;
+    unit: string | null;
+  }>;
+  itens_total_qtde: number;
 };
+
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type LooseClient = any;
