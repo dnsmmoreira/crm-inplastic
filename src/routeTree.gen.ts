@@ -21,6 +21,7 @@ import { Route as PedidosRouteImport } from './routes/pedidos'
 import { Route as MinhaAgendaRouteImport } from './routes/minha-agenda'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as LicitacoesRouteImport } from './routes/licitacoes'
+import { Route as FalhasRouteImport } from './routes/falhas'
 import { Route as EstoqueRouteImport } from './routes/estoque'
 import { Route as EmpresasRouteImport } from './routes/empresas'
 import { Route as DefinirSenhaRouteImport } from './routes/definir-senha'
@@ -116,6 +117,11 @@ const McpRoute = McpRouteImport.update({
 const LicitacoesRoute = LicitacoesRouteImport.update({
   id: '/licitacoes',
   path: '/licitacoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FalhasRoute = FalhasRouteImport.update({
+  id: '/falhas',
+  path: '/falhas',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EstoqueRoute = EstoqueRouteImport.update({
@@ -328,6 +334,7 @@ export interface FileRoutesByFullPath {
   '/definir-senha': typeof DefinirSenhaRoute
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
+  '/falhas': typeof FalhasRoute
   '/licitacoes': typeof LicitacoesRoute
   '/mcp': typeof McpRoute
   '/minha-agenda': typeof MinhaAgendaRoute
@@ -378,6 +385,7 @@ export interface FileRoutesByTo {
   '/definir-senha': typeof DefinirSenhaRoute
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
+  '/falhas': typeof FalhasRoute
   '/licitacoes': typeof LicitacoesRoute
   '/mcp': typeof McpRoute
   '/minha-agenda': typeof MinhaAgendaRoute
@@ -429,6 +437,7 @@ export interface FileRoutesById {
   '/definir-senha': typeof DefinirSenhaRoute
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
+  '/falhas': typeof FalhasRoute
   '/licitacoes': typeof LicitacoesRoute
   '/mcp': typeof McpRoute
   '/minha-agenda': typeof MinhaAgendaRoute
@@ -481,6 +490,7 @@ export interface FileRouteTypes {
     | '/definir-senha'
     | '/empresas'
     | '/estoque'
+    | '/falhas'
     | '/licitacoes'
     | '/mcp'
     | '/minha-agenda'
@@ -531,6 +541,7 @@ export interface FileRouteTypes {
     | '/definir-senha'
     | '/empresas'
     | '/estoque'
+    | '/falhas'
     | '/licitacoes'
     | '/mcp'
     | '/minha-agenda'
@@ -581,6 +592,7 @@ export interface FileRouteTypes {
     | '/definir-senha'
     | '/empresas'
     | '/estoque'
+    | '/falhas'
     | '/licitacoes'
     | '/mcp'
     | '/minha-agenda'
@@ -632,6 +644,7 @@ export interface RootRouteChildren {
   DefinirSenhaRoute: typeof DefinirSenhaRoute
   EmpresasRoute: typeof EmpresasRoute
   EstoqueRoute: typeof EstoqueRoute
+  FalhasRoute: typeof FalhasRoute
   LicitacoesRoute: typeof LicitacoesRoute
   McpRoute: typeof McpRoute
   MinhaAgendaRoute: typeof MinhaAgendaRoute
@@ -753,6 +766,13 @@ declare module '@tanstack/react-router' {
       path: '/licitacoes'
       fullPath: '/licitacoes'
       preLoaderRoute: typeof LicitacoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/falhas': {
+      id: '/falhas'
+      path: '/falhas'
+      fullPath: '/falhas'
+      preLoaderRoute: typeof FalhasRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/estoque': {
@@ -1024,6 +1044,7 @@ const rootRouteChildren: RootRouteChildren = {
   DefinirSenhaRoute: DefinirSenhaRoute,
   EmpresasRoute: EmpresasRoute,
   EstoqueRoute: EstoqueRoute,
+  FalhasRoute: FalhasRoute,
   LicitacoesRoute: LicitacoesRoute,
   McpRoute: McpRoute,
   MinhaAgendaRoute: MinhaAgendaRoute,
