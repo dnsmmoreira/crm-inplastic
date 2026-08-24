@@ -122,9 +122,11 @@ export const listPedidos = createServerFn({ method: "GET" })
     if (error) throw new Error(`Falha ao listar pedidos: ${error.message}`);
     const rows = (data ?? []) as Array<{
       id: string;
+      lead_id: string | null;
       vendedor_proprietario_id: string | null;
       responsavel_atual_id: string | null;
     }>;
+
 
     // Buscar última transição por pedido para calcular "dias na etapa"
     const ids = rows.map((r) => r.id);
