@@ -76,9 +76,7 @@ export function ResumoDoDia() {
       const ts = new Date(t.dueDate).getTime();
       return ts < startTomorrow; // hoje ou atrasada
     }).length;
-    const atrasadas = abertas.filter(
-      (t) => new Date(t.dueDate).getTime() < startToday,
-    ).length;
+    const atrasadas = abertas.filter((t) => new Date(t.dueDate).getTime() < startToday).length;
     return { tarefasHoje: hoje, tarefasAtrasadas: atrasadas };
   }, [tasks]);
 
@@ -123,11 +121,7 @@ export function ResumoDoDia() {
   }, [placar, isAdmin]);
 
   const metaCor =
-    meta.pct >= 80
-      ? "bg-emerald-500"
-      : meta.pct >= 40
-        ? "bg-amber-500"
-        : "bg-destructive";
+    meta.pct >= 80 ? "bg-emerald-500" : meta.pct >= 40 ? "bg-amber-500" : "bg-destructive";
 
   const tudoZerado =
     tarefasHoje === 0 &&
@@ -143,9 +137,7 @@ export function ResumoDoDia() {
           <h2 className="text-xl md:text-2xl font-semibold">
             👋 {saudacao(spHour)}, {primeiro}.
           </h2>
-          <p className="text-xs md:text-sm text-muted-foreground capitalize">
-            {dataExtenso}
-          </p>
+          <p className="text-xs md:text-sm text-muted-foreground capitalize">{dataExtenso}</p>
         </div>
 
         {tudoZerado ? (
@@ -162,9 +154,7 @@ export function ResumoDoDia() {
               tone="brand"
             >
               <div className="flex items-baseline gap-2">
-                <span className="font-display text-2xl font-semibold">
-                  {tarefasHoje}
-                </span>
+                <span className="font-display text-2xl font-semibold">{tarefasHoje}</span>
                 <span className="text-xs text-muted-foreground">
                   {tarefasHoje === 1 ? "tarefa" : "tarefas"}
                 </span>
@@ -184,16 +174,12 @@ export function ResumoDoDia() {
               tone={semResposta24h > 0 ? "danger" : "muted"}
             >
               <div className="flex items-baseline gap-2">
-                <span className="font-display text-2xl font-semibold">
-                  {semResposta24h}
-                </span>
+                <span className="font-display text-2xl font-semibold">{semResposta24h}</span>
                 <span className="text-xs text-muted-foreground">
                   {semResposta24h === 1 ? "cliente" : "clientes"}
                 </span>
               </div>
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                há +24h sem resposta
-              </p>
+              <p className="mt-1 text-[11px] text-muted-foreground">há +24h sem resposta</p>
             </MetricCard>
 
             {/* Propostas em aberto */}
@@ -222,9 +208,7 @@ export function ResumoDoDia() {
                 <div className="h-6 w-16 rounded bg-muted animate-pulse" />
               ) : meta.meta > 0 ? (
                 <>
-                  <div className="font-display text-2xl font-semibold">
-                    {meta.pct.toFixed(0)}%
-                  </div>
+                  <div className="font-display text-2xl font-semibold">{meta.pct.toFixed(0)}%</div>
                   <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
                     <div
                       className={`h-full ${metaCor}`}
@@ -236,9 +220,7 @@ export function ResumoDoDia() {
                   </p>
                 </>
               ) : (
-                <p className="text-xs text-muted-foreground italic">
-                  Sem meta cadastrada
-                </p>
+                <p className="text-xs text-muted-foreground italic">Sem meta cadastrada</p>
               )}
             </MetricCard>
           </div>
