@@ -74,6 +74,8 @@ import { computeLeadScore, faturamentoTetoPorPorte } from "@/lib/lead-score";
 import { useMoveLeadStage } from "@/hooks/use-move-lead-stage";
 import { LostReasonDialog, type LostReasonPayload } from "@/components/crm/LostReasonDialog";
 import { TabErrorBoundary } from "@/components/crm/TabErrorBoundary";
+import { ContatosSection } from "@/components/contatos/ContatosSection";
+
 
 
 const TYPE_META: Record<Interaction["type"], { label: string; icon: typeof Mail }> = {
