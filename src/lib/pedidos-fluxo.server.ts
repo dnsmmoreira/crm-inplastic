@@ -214,6 +214,13 @@ export async function criarTarefaPedido(
     .maybeSingle();
   if (error) {
     console.error("[pedidos-fluxo] falha ao criar tarefa:", error.message);
+    const { registrarFalhaAdmin } = await import("@/lib/falhas.server");
+    await registrarFalhaAdmin("pedido.tarefa", error.message, {
+      pedido_id: args.pedidoId,
+      lead_id: args.leadId,
+      owner_id: args.ownerId,
+      tipo: args.tipo,
+    });
     return { criada: false };
   }
   return { criada: true, id: data?.id as string | undefined };
