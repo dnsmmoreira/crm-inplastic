@@ -28,6 +28,8 @@ import {
   getPedidoDetalhes,
   solicitarAprovacao,
   decidirAprovacao,
+  updatePedidoStage,
+
   salvarChecklistConferencia,
   atualizarStatusFiscal,
   registrarOcorrencia,
