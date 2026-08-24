@@ -343,24 +343,40 @@ function AprovacaoBlock({
         <div className="space-y-2 rounded-lg border p-3">
           <Label className="text-xs">Observação da decisão (opcional)</Label>
           <Textarea rows={2} value={observacao} onChange={(e) => setObservacao(e.target.value)} />
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               size="sm"
               className="bg-emerald-600 hover:bg-emerald-700"
-              disabled={decidir.isPending}
-              onClick={() => decidir.mutate("aprovado")}
+              disabled={aprovarEMover.isPending || decidir.isPending}
+              onClick={() => aprovarEMover.mutate("programacao")}
+              title="Aprova e libera o pedido (etapa Liberado)"
             >
-              <CheckCircle2 className="h-4 w-4 mr-1" /> Aprovar
+              {aprovarEMover.isPending ? (
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              ) : (
+                <CheckCircle2 className="h-4 w-4 mr-1" />
+              )}
+              Aprovar
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={aprovarEMover.isPending || decidir.isPending}
+              onClick={() => aprovarEMover.mutate("aguardando_pagamento")}
+              title="Aprova condicionado a pagamento antecipado"
+            >
+              <CheckCircle2 className="h-4 w-4 mr-1" /> Aprovar com pagamento antecipado
             </Button>
             <Button
               size="sm"
               variant="destructive"
-              disabled={decidir.isPending}
+              disabled={decidir.isPending || aprovarEMover.isPending}
               onClick={() => decidir.mutate("rejeitado")}
             >
               <XCircle className="h-4 w-4 mr-1" /> Rejeitar
             </Button>
           </div>
+
         </div>
       )}
     </section>
