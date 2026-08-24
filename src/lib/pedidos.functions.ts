@@ -258,7 +258,7 @@ export const listPedidos = createServerFn({ method: "GET" })
           : null,
         proposta_id: r.proposta_id,
         lead_id: r.lead_id,
-        lead_company: r.leads?.company ?? null,
+        lead_company: r.lead_id ? (companyByLead.get(r.lead_id) ?? null) : null,
         proposta_number: r.propostas?.number ?? null,
         modalidade_entrega: r.modalidade_entrega ?? "coleta",
         entrega_confirmada: r.entrega_confirmada,
