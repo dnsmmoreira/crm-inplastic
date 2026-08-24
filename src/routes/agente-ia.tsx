@@ -36,6 +36,7 @@ import {
 } from "@/lib/xerife.functions";
 import { CadenciaPanel } from "@/components/xerife/CadenciaPanel";
 import { XerifeConfigForm } from "@/components/xerife/XerifeConfigForm";
+import { CadenciaExcecoesPanel } from "@/components/xerife/CadenciaExcecoesPanel";
 
 export const Route = createFileRoute("/agente-ia")({
   component: AgenteIaPage,
@@ -212,6 +213,7 @@ function AgenteIaPage() {
           {isAdmin ? (
             <>
               <XerifeConfigForm />
+              <CadenciaExcecoesPanel />
               <div className="rounded-xl border bg-card p-5">
                 <h3 className="font-medium mb-2">Testar envio</h3>
                 <TestResumoButton />
