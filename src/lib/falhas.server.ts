@@ -106,3 +106,25 @@ export async function registrarFalha(
     return false;
   }
 }
+
+/**
+ * Atalho para os pontos que não têm um client à mão. Usa o client de serviço
+ * (o INSERT em `falhas_sistema` é liberado apenas para `service_role`).
+ * Também nunca lança.
+ */
+export async function registrarFalhaAdmin(
+  origem: string,
+  erro: unknown,
+  contexto?: Record<string, unknown>,
+): Promise<boolean> {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    return await registrarFalha(supabaseAdmin as SB, origem, erro, contexto);
+  } catch (e) {
+    console.error(
+      `[falhas] client de serviço indisponível (origem=${origem}):`,
+      e instanceof Error ? e.message : String(e),
+    );
+    return false;
+  }
+}
