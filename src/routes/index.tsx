@@ -41,13 +41,30 @@ import { PlacarWidget } from "@/components/placar/PlacarWidget";
 import { NewLeadDialog, LeadDrawer } from "@/components/crm/LeadDrawer";
 import { ResumoDoDia } from "@/components/dashboard/ResumoDoDia";
 import { Link } from "@tanstack/react-router";
+import { useAuth, hasPerm } from "@/hooks/use-auth";
+import { FinanceiroDashboard } from "@/components/dashboard/FinanceiroDashboard";
+import { OperacionalDashboard } from "@/components/dashboard/OperacionalDashboard";
 
 
 export const Route = createFileRoute("/")({
-  component: DashboardPage,
+  component: HomePage,
 });
 
+/**
+ * Tela inicial por papel. Admin e vendedor continuam na visão genérica de
+ * vendas; perfis de retaguarda ganham um painel focado em pedidos.
+ * A checagem usa o MESMO mecanismo do menu lateral (`hasPerm`).
+ */
+function HomePage() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  if (!isAdmin && hasPerm(user, "pedidos.aprovar_financeiro")) return <FinanceiroDashboard />;
+  if (!isAdmin && hasPerm(user, "pedidos.operar_producao")) return <OperacionalDashboard />;
+  return <DashboardPage />;
+}
+
 function DashboardPage() {
+
   const leads = useVisibleLeads();
   const tasks = useVisibleTasks();
   const user = useCurrentUser();
