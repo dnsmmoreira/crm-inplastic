@@ -276,6 +276,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Cadastros",
     icon: Building2,
     items: [
+      { to: "/leads", label: "Leads", icon: Users, show: vendas },
       { to: "/clientes", label: "Clientes", icon: Building2, show: vendasOu("clientes.ver_todos") },
       { to: "/contatos", label: "Contatos", icon: Users, show: vendasOu("clientes.ver_todos") },
       { to: "/empresas", label: "Empresas", icon: Building2, show: vendasOu("clientes.ver_todos") },
