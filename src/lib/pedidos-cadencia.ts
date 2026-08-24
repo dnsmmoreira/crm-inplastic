@@ -82,6 +82,8 @@ export type PassoCadencia = {
   acao: string;
   /** Régua completa, para exibir no texto da tarefa. */
   regua: number[];
+  /** Origem da exceção aplicada, quando houver. */
+  excecao?: "cliente" | "familia" | null;
 };
 
 /** Etapas que possuem cadência configurada. */
@@ -234,7 +236,8 @@ export function textoCadencia(
     titulo: `${p.nivel}ª cobrança · ${args.label}: Pedido ${args.numero} há ${args.dias}d${sufixo}`,
     descricao:
       `${p.acao}. Pedido ${args.numero} está em "${args.label}" há ${args.dias} dias ` +
-      `(régua ${p.regua.join("/")} dias, toque ${p.nivel}/${p.regua.length}).`,
+      `(régua ${p.regua.join("/")} dias, toque ${p.nivel}/${p.regua.length})` +
+      (p.excecao ? ` — régua de exceção por ${p.excecao}.` : "."),
     prioridade: p.escalarDiretoria ? 0 : p.escalarGestao ? 1 : 2,
   };
 }
