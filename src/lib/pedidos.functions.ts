@@ -281,7 +281,12 @@ async function temPermissao(sb: LooseClient, userId: string, chave: string): Pro
  * NÃO envia nada por WhatsApp — feature flag desligada.
  * -------------------------------------------------------------------------*/
 
+/** Erro explícito quando o UPDATE não atinge nenhuma linha (tipicamente RLS). */
+const NENHUMA_LINHA =
+  "Nenhuma linha foi atualizada — verifique se você tem permissão para operar este pedido.";
+
 const NOTIFY_DISPATCH_ENABLED = false; // feature flag off — apenas registra
+
 
 type StageClassificacao = "informativa" | "acao_necessaria" | "alerta";
 
