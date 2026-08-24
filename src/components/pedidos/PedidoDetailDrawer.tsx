@@ -6,7 +6,7 @@ import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import {
   ClipboardCheck, ShieldCheck, ShieldAlert, FileCheck2, AlertTriangle,
-  CheckCircle2, XCircle, Plus, Loader2, Bell, Package, Wallet, History,
+  CheckCircle2, XCircle, Plus, Loader2, Bell, Package, Wallet, History as HistoryIcon,
   MessageSquareText,
 } from "lucide-react";
 import {
@@ -306,7 +306,7 @@ function HistoricoClienteBlock({ pedido }: { pedido: PedidoDetalhes }) {
   return (
     <section className="space-y-3">
       <SectionTitle
-        icon={<History className="h-4 w-4" />}
+        icon={<HistoryIcon className="h-4 w-4" />}
         label="Histórico do cliente"
         right={
           h.parcial ? (
