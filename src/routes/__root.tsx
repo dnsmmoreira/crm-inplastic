@@ -34,6 +34,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   ChevronDown,
+  FlaskConical,
 } from "lucide-react";
 
 import appCss from "../styles.css?url";
@@ -358,6 +359,12 @@ const NAV_GROUPS: NavGroup[] = [
         show: key("agente_ia.editar_prompt"),
       },
       { to: "/agente-ia", label: "Agente IA", icon: Bot, show: key("agente_ia.editar_prompt") },
+      {
+        to: "/cadencia-simulador",
+        label: "Simulador de cadência",
+        icon: FlaskConical,
+        show: key("agente_ia.editar_prompt"),
+      },
       { to: "/canais", label: "Canais", icon: MessageSquare, show: key("canais.configurar") },
     ],
   },
