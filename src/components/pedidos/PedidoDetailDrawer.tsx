@@ -28,7 +28,6 @@ import { formatBRL } from "@/lib/crm-store";
 import { formatDateBr } from "@/lib/condicoes-comerciais";
 import {
   getPedidoDetalhes,
-  solicitarAprovacao,
   decidirAprovacao,
   updatePedidoStage,
 
@@ -519,17 +518,10 @@ function NotificacoesBlock({ pedidoId }: { pedidoId: string }) {
 function AprovacaoBlock({
   pedido, onChanged,
 }: { pedido: PedidoDetalhes; onChanged: () => void }) {
-  const solicitarFn = useServerFn(solicitarAprovacao);
   const decidirFn = useServerFn(decidirAprovacao);
   const moverFn = useServerFn(updatePedidoStage);
-  const [motivo, setMotivo] = useState("");
   const [observacao, setObservacao] = useState("");
 
-  const solicitar = useMutation({
-    mutationFn: (m: string) => solicitarFn({ data: { pedido_id: pedido.id, motivo: m } }),
-    onSuccess: () => { toast.success("Aprovação solicitada"); setMotivo(""); onChanged(); },
-    onError: (e: Error) => toast.error(e.message),
-  });
   const decidir = useMutation({
     mutationFn: (decisao: "aprovado" | "rejeitado") =>
       decidirFn({ data: { pedido_id: pedido.id, decisao, observacao: observacao || undefined } }),
@@ -568,10 +560,8 @@ function AprovacaoBlock({
   });
 
 
-  const showRequest =
-    pedido.stage === "analise_financeira" ||
-    (pedido.aprovacao_solicitada_em && !pedido.aprovacao_decisao);
-  const showDecision = pedido.aprovacao_solicitada_em && !pedido.aprovacao_decisao;
+  // Quem aprova decide direto: os botões não dependem de uma solicitação prévia.
+  const showDecision = !pedido.aprovacao_decisao;
 
   return (
     <section className="space-y-3">
@@ -609,25 +599,6 @@ function AprovacaoBlock({
           {pedido.aprovacao_observacao && (
             <div className="whitespace-pre-wrap">{pedido.aprovacao_observacao}</div>
           )}
-        </div>
-      )}
-
-      {showRequest && !showDecision && (
-        <div className="space-y-2">
-          <Label className="text-xs">Motivo para pedir aprovação</Label>
-          <Textarea
-            rows={3}
-            value={motivo}
-            onChange={(e) => setMotivo(e.target.value)}
-            placeholder="Ex.: desconto acima do teto; prazo excepcional; condição não padrão…"
-          />
-          <Button
-            size="sm"
-            disabled={motivo.trim().length < 3 || solicitar.isPending}
-            onClick={() => solicitar.mutate(motivo.trim())}
-          >
-            {pedido.aprovacao_solicitada_em ? "Re-solicitar aprovação" : "Solicitar aprovação"}
-          </Button>
         </div>
       )}
 
