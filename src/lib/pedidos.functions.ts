@@ -226,7 +226,7 @@ export const listPedidos = createServerFn({ method: "GET" })
         vendedor_proprietario_id: string | null;
         proposta_id: string | null;
         lead_id: string | null;
-        leads?: { company: string | null } | null;
+        propostas?: { number: string | null } | null;
         propostas?: { number: string | null } | null;
         modalidade_entrega: string | null;
         entrega_confirmada: string | null;
