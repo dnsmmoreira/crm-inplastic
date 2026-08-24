@@ -30,12 +30,8 @@ export const TAREFAS_ETAPA_FINANCEIRA = [
 /* Destinatários                                                       */
 /* ------------------------------------------------------------------ */
 
-async function usuariosDoPerfil(sb: SB, nome: string): Promise<string[]> {
-  const { data: perfil } = await sb.from("perfis").select("id").eq("nome", nome).maybeSingle();
-  if (!perfil?.id) return [];
-  const { data } = await sb.from("user_perfis").select("user_id").eq("perfil_id", perfil.id);
-  return ((data ?? []) as Array<{ user_id: string }>).map((r) => r.user_id);
-}
+/** Usuários ativos cujo perfil ativo concede a permissão informada. */
+
 
 /** Usuários ativos cujo perfil ativo concede a permissão informada. */
 async function usuariosComPermissao(sb: SB, chave: string): Promise<string[]> {
