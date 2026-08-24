@@ -950,7 +950,7 @@ export const decidirAprovacao = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const sb: LooseClient = context.supabase;
-    const { error } = await sb
+    const { data: row, error } = await sb
       .from("pedidos")
       .update({
         aprovacao_decisao: data.decisao,
@@ -958,8 +958,11 @@ export const decidirAprovacao = createServerFn({ method: "POST" })
         aprovacao_decidida_em: new Date().toISOString(),
         aprovacao_observacao: data.observacao ?? null,
       })
-      .eq("id", data.pedido_id);
+      .eq("id", data.pedido_id)
+      .select("id")
+      .maybeSingle();
     if (error) throw new Error(`Falha ao registrar decisão: ${error.message}`);
+    if (!row) throw new Error(NENHUMA_LINHA);
     return { ok: true as const };
   });
 
@@ -1002,15 +1005,18 @@ export const salvarChecklistConferencia = createServerFn({ method: "POST" })
       }
     }
 
-    const { error } = await sb
+    const { data: row, error } = await sb
       .from("pedidos")
       .update({
         checklist_conferencia: data.items,
         checklist_atualizado_em: new Date().toISOString(),
         checklist_atualizado_por: context.userId,
       })
-      .eq("id", data.pedido_id);
+      .eq("id", data.pedido_id)
+      .select("id")
+      .maybeSingle();
     if (error) throw new Error(`Falha ao salvar checklist: ${error.message}`);
+    if (!row) throw new Error(NENHUMA_LINHA);
     return { ok: true as const };
   });
 
@@ -1051,8 +1057,14 @@ export const atualizarStatusFiscal = createServerFn({ method: "POST" })
     if (data.nf_chave !== undefined) patch.nf_chave = data.nf_chave || null;
     if (data.nf_valor !== undefined) patch.nf_valor = data.nf_valor;
     if (data.fiscal_status === "emitida") patch.nf_emitida_em = new Date().toISOString();
-    const { error } = await sb.from("pedidos").update(patch).eq("id", data.pedido_id);
+    const { data: row, error } = await sb
+      .from("pedidos")
+      .update(patch)
+      .eq("id", data.pedido_id)
+      .select("id")
+      .maybeSingle();
     if (error) throw new Error(`Falha ao atualizar status fiscal: ${error.message}`);
+    if (!row) throw new Error(NENHUMA_LINHA);
 
     // Auditoria fiscal imutável: uma linha por campo alterado
     const toStr = (v: unknown): string | null =>
@@ -1153,8 +1165,9 @@ export const resolverOcorrencia = createServerFn({ method: "POST" })
       })
       .eq("id", data.ocorrencia_id)
       .select("pedido_id")
-      .single();
+      .maybeSingle();
     if (error) throw new Error(`Falha ao resolver ocorrência: ${error.message}`);
+    if (!updated) throw new Error(NENHUMA_LINHA);
     const { count } = await sb
       .from("pedido_ocorrencias")
       .select("id", { count: "exact", head: true })
@@ -1215,10 +1228,13 @@ export const setModalidadeEntrega = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const sb: LooseClient = context.supabase;
-    const { error } = await sb
+    const { data: row, error } = await sb
       .from("pedidos")
       .update({ modalidade_entrega: data.modalidade })
-      .eq("id", data.pedido_id);
+      .eq("id", data.pedido_id)
+      .select("id")
+      .maybeSingle();
     if (error) throw new Error(`Falha ao atualizar modalidade: ${error.message}`);
+    if (!row) throw new Error(NENHUMA_LINHA);
     return { ok: true as const };
   });
