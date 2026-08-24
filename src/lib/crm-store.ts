@@ -600,6 +600,7 @@ export type Proposal = {
   observations: string;
   customerOrderNumber?: string; // Número do pedido do cliente (PO/OC)
   orderNotes?: string;          // Observações do pedido (separado de observations)
+  tratativaComercial?: string;  // INTERNO — nunca impresso na proposta
   paymentTermId?: string;   // ADM-managed payment term chosen by seller
   formaPagamento?: PaymentForm;   // Boleto / Depósito em Conta / PIX
   billingForecastDate?: string;   // previsão de faturamento (yyyy-MM-dd)

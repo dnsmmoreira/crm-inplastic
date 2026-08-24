@@ -2,6 +2,13 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
 import { PERM_PEDIDOS_MOVIMENTAR } from "@/lib/permissoes";
+import { descreverParcelas } from "@/lib/condicoes-comerciais";
+import {
+  resumoHistoricoCliente,
+  soDigitos,
+  type HistoricoCliente,
+} from "@/lib/pedidos-historico";
+export type { HistoricoCliente, PedidoHistoricoRow } from "@/lib/pedidos-historico";
 
 /**
  * Fase 3 — Kanban de Pedidos operacional (coexiste com o Funil de Vendas).
@@ -585,11 +592,41 @@ export type PedidoOcorrencia = {
   created_at: string;
 };
 
+export type PedidoItemDetalhe = {
+  sku: string | null;
+  description: string | null;
+  quantity: number;
+  unit: string | null;
+  unit_price: number;
+  position: number;
+};
+
+export type PedidoParcelaDetalhe = {
+  days: number;
+  due_date: string | null;
+  amount: number;
+  percentual: number | null;
+  position: number;
+};
+
 export type PedidoDetalhes = {
   id: string;
   number: string;
   stage: PedidoStageId;
   total: number;
+  /* Comercial (quem aprova precisa ver o que está comprando) */
+  cliente_nome: string | null;
+  cliente_cnpj: string | null;
+  vendedor_nome: string | null;
+  itens: PedidoItemDetalhe[];
+  subtotal: number;
+  desconto_percent: number;
+  forma_pagamento: string | null;
+  condicao_label: string | null;
+  previsao_faturamento: string | null;
+  parcelas: PedidoParcelaDetalhe[];
+  tratativa_comercial: string | null;
+  historico_cliente: HistoricoCliente;
   aprovacao_solicitada_em: string | null;
   aprovacao_solicitada_por: string | null;
   aprovacao_solicitada_por_nome: string | null;
@@ -609,6 +646,7 @@ export type PedidoDetalhes = {
   nf_emitida_em: string | null;
   ocorrencias: PedidoOcorrencia[];
 };
+
 
 const APPROVAL_FIELDS = [
   "aprovacao_solicitada_em",
@@ -646,23 +684,97 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
     const sb: LooseClient = context.supabase;
     const { data: p, error } = await sb
       .from("pedidos")
-      .select(`id, number, stage, total, fiscal_status, nf_numero, ${APPROVAL_FIELDS}`)
+      .select(
+        `id, number, stage, total, fiscal_status, nf_numero, lead_id, proposta_id,
+         vendedor_proprietario_id, owner_id, proposta_snapshot, ${APPROVAL_FIELDS}`,
+      )
       .eq("id", data.pedido_id)
       .maybeSingle();
     if (error) throw new Error(`Falha ao carregar pedido: ${error.message}`);
     if (!p) throw new Error("Pedido não encontrado");
 
-    const { data: ocorrs, error: ocErr } = await sb
-      .from("pedido_ocorrencias")
-      .select("*")
-      .eq("pedido_id", data.pedido_id)
-      .order("created_at", { ascending: false });
-    if (ocErr) throw new Error(`Falha ao carregar ocorrências: ${ocErr.message}`);
+    const snapProposta = (p.proposta_snapshot?.proposta ?? {}) as Record<string, unknown>;
+    const paymentTermId = (snapProposta.payment_term_id as string | null) ?? null;
 
-    const oc = (ocorrs ?? []) as PedidoOcorrencia[];
+    const [ocRes, itensRes, leadRes, condRes, propRes] = await Promise.all([
+      sb
+        .from("pedido_ocorrencias")
+        .select("*")
+        .eq("pedido_id", data.pedido_id)
+        .order("created_at", { ascending: false }),
+      sb
+        .from("pedido_itens")
+        .select("sku, description, quantity, unit, unit_price, position")
+        .eq("pedido_id", data.pedido_id)
+        .order("position", { ascending: true }),
+      p.lead_id
+        ? sb.from("leads").select("id, company, cnpj").eq("id", p.lead_id).maybeSingle()
+        : Promise.resolve({ data: null }),
+      paymentTermId
+        ? sb.from("condicoes_pagamento").select("id, label").eq("id", paymentTermId).maybeSingle()
+        : Promise.resolve({ data: null }),
+      p.proposta_id
+        ? sb
+            .from("propostas")
+            .select("id, tratativa_comercial")
+            .eq("id", p.proposta_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
+    if (ocRes.error) throw new Error(`Falha ao carregar ocorrências: ${ocRes.error.message}`);
+
+    const oc = (ocRes.data ?? []) as PedidoOcorrencia[];
+    const itens: PedidoItemDetalhe[] = ((itensRes.data ?? []) as PedidoItemDetalhe[]).map((i) => ({
+      sku: i.sku,
+      description: i.description,
+      quantity: Number(i.quantity ?? 0),
+      unit: i.unit,
+      unit_price: Number(i.unit_price ?? 0),
+      position: Number(i.position ?? 0),
+    }));
+    const subtotal = +itens.reduce((s, i) => s + i.quantity * i.unit_price, 0).toFixed(2);
+
+    // Parcelas do snapshot; linhas fantasma (amount 0 sem vencimento) são descartadas.
+    const parcelasRaw = Array.isArray(p.proposta_snapshot?.parcelas)
+      ? (p.proposta_snapshot.parcelas as Array<Record<string, unknown>>)
+      : [];
+    const parcelas: PedidoParcelaDetalhe[] = parcelasRaw
+      .map((r) => ({
+        days: Number(r.days ?? 0),
+        due_date: (r.due_date as string | null) ?? null,
+        amount: Number(r.amount ?? 0),
+        percentual: r.percentual != null ? Number(r.percentual) : null,
+        position: Number(r.position ?? 0),
+      }))
+      .filter((r) => r.amount > 0 || r.due_date)
+      .sort((a, b) => a.position - b.position);
+
+    const condicaoLabel =
+      (condRes.data as { label?: string } | null)?.label ??
+      (parcelas.length > 0
+        ? descreverParcelas(
+            parcelas.map((r) => ({
+              dias: r.days,
+              percentual: r.percentual ?? 0,
+            })),
+          )
+        : null);
+
+    const tratativa =
+      (propRes.data as { tratativa_comercial?: string | null } | null)?.tratativa_comercial ??
+      ((snapProposta.tratativa_comercial as string | null) ?? null);
+
+    const lead = leadRes.data as { id: string; company: string | null; cnpj: string | null } | null;
+    const historico = await carregarHistoricoCliente(sb, {
+      pedidoId: p.id,
+      leadId: p.lead_id ?? null,
+      cnpj: lead?.cnpj ?? null,
+    });
+
     const nameById = await resolveNames(sb, [
       p.aprovacao_solicitada_por,
       p.aprovacao_decidida_por,
+      p.vendedor_proprietario_id ?? p.owner_id,
       ...oc.map((o) => o.criada_por),
       ...oc.map((o) => o.resolvida_por),
     ]);
@@ -672,11 +784,25 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
       ? (rawChecklist as ChecklistItem[])
       : [];
 
+    const vendedorId = p.vendedor_proprietario_id ?? p.owner_id ?? null;
+
     return {
       id: p.id,
       number: p.number,
       stage: p.stage,
       total: Number(p.total ?? 0),
+      cliente_nome: lead?.company ?? null,
+      cliente_cnpj: lead?.cnpj ?? null,
+      vendedor_nome: vendedorId ? nameById.get(vendedorId) ?? null : null,
+      itens,
+      subtotal,
+      desconto_percent: Number(snapProposta.discount_percent ?? 0),
+      forma_pagamento: (snapProposta.forma_pagamento as string | null) ?? null,
+      condicao_label: condicaoLabel,
+      previsao_faturamento: (snapProposta.previsao_faturamento as string | null) ?? null,
+      parcelas,
+      tratativa_comercial: tratativa,
+      historico_cliente: historico,
       aprovacao_solicitada_em: p.aprovacao_solicitada_em,
       aprovacao_solicitada_por: p.aprovacao_solicitada_por,
       aprovacao_solicitada_por_nome: p.aprovacao_solicitada_por
@@ -705,6 +831,71 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
       })),
     };
   });
+
+/**
+ * Histórico de compras do cliente — agrupado por CNPJ (todos os leads do mesmo
+ * CNPJ), caindo para o lead_id quando não há CNPJ (resultado PARCIAL).
+ * Sempre consultas por conjunto de ids: nunca N+1.
+ */
+async function carregarHistoricoCliente(
+  sb: LooseClient,
+  args: { pedidoId: string; leadId: string | null; cnpj: string | null },
+): Promise<HistoricoCliente> {
+  const vazio = resumoHistoricoCliente([], args.pedidoId, false);
+  if (!args.leadId) return vazio;
+
+  const digitos = soDigitos(args.cnpj);
+  let leadIds = [args.leadId];
+  let parcial = true;
+
+  if (digitos.length >= 11) {
+    // Compara pelas grafias possíveis do mesmo CNPJ (com e sem máscara),
+    // em UMA consulta — sem varrer a tabela inteira de leads.
+    const mascarado = digitos.length === 14
+      ? `${digitos.slice(0, 2)}.${digitos.slice(2, 5)}.${digitos.slice(5, 8)}/${digitos.slice(8, 12)}-${digitos.slice(12)}`
+      : digitos;
+    const grafias = Array.from(new Set([args.cnpj ?? "", digitos, mascarado].filter(Boolean)));
+    const { data: leadsMesmoCnpj } = await sb.from("leads").select("id, cnpj").in("cnpj", grafias);
+    const ids = ((leadsMesmoCnpj ?? []) as Array<{ id: string; cnpj: string | null }>)
+      .filter((l) => soDigitos(l.cnpj) === digitos)
+      .map((l) => l.id);
+    if (ids.length > 0) {
+      leadIds = Array.from(new Set([...ids, args.leadId]));
+      parcial = false;
+    }
+  }
+
+
+  const { data: rows } = await sb
+    .from("pedidos")
+    .select("id, number, created_at, total, stage")
+    .in("lead_id", leadIds);
+
+  const lista = ((rows ?? []) as Array<{
+    id: string;
+    number: string;
+    created_at: string;
+    total: number | null;
+    stage: string;
+  }>).map((r) => ({ ...r, total: Number(r.total ?? 0), ocorrencias_abertas: 0 }));
+
+  const outrosIds = lista.filter((r) => r.id !== args.pedidoId).map((r) => r.id);
+  if (outrosIds.length > 0) {
+    const { data: ocs } = await sb
+      .from("pedido_ocorrencias")
+      .select("pedido_id")
+      .in("pedido_id", outrosIds)
+      .eq("resolvida", false);
+    const abertas = new Map<string, number>();
+    for (const o of (ocs ?? []) as Array<{ pedido_id: string }>) {
+      abertas.set(o.pedido_id, (abertas.get(o.pedido_id) ?? 0) + 1);
+    }
+    for (const r of lista) r.ocorrencias_abertas = abertas.get(r.id) ?? 0;
+  }
+
+  return resumoHistoricoCliente(lista, args.pedidoId, parcial);
+}
+
 
 export const solicitarAprovacao = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

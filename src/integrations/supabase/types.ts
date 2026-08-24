@@ -2153,6 +2153,7 @@ export type Database = {
           sent_at: string | null
           status: Database["public"]["Enums"]["proposal_status"]
           transport: Json
+          tratativa_comercial: string | null
           updated_at: string
           validity_days: number
         }
@@ -2190,6 +2191,7 @@ export type Database = {
           sent_at?: string | null
           status?: Database["public"]["Enums"]["proposal_status"]
           transport?: Json
+          tratativa_comercial?: string | null
           updated_at?: string
           validity_days?: number
         }
@@ -2227,6 +2229,7 @@ export type Database = {
           sent_at?: string | null
           status?: Database["public"]["Enums"]["proposal_status"]
           transport?: Json
+          tratativa_comercial?: string | null
           updated_at?: string
           validity_days?: number
         }

@@ -6,7 +6,8 @@ import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import {
   ClipboardCheck, ShieldCheck, ShieldAlert, FileCheck2, AlertTriangle,
-  CheckCircle2, XCircle, Plus, Loader2, Bell,
+  CheckCircle2, XCircle, Plus, Loader2, Bell, Package, Wallet, History,
+  MessageSquareText,
 } from "lucide-react";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
@@ -24,6 +25,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { formatBRL } from "@/lib/crm-store";
+import { formatDateBr } from "@/lib/condicoes-comerciais";
 import {
   getPedidoDetalhes,
   solicitarAprovacao,
@@ -103,32 +105,320 @@ function PedidoDetailBody({
   onChanged: () => void;
 }) {
   const stageLabel = PEDIDO_STAGES.find((s) => s.id === pedido.stage)?.label ?? pedido.stage;
+  // Quem aprova e quem opera precisam de coisas diferentes: a etapa decide a visão.
+  const visaoFinanceira =
+    pedido.stage === "analise_financeira" || pedido.stage === "aguardando_pagamento";
+
   return (
     <div className="flex flex-col h-full">
       <SheetHeader className="p-6 pb-4 border-b">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <SheetTitle className="font-mono text-base">{pedido.number}</SheetTitle>
-            <SheetDescription className="mt-1">
-              <Badge variant="secondary">{stageLabel}</Badge>
-              <span className="ml-2 text-primary font-semibold">{formatBRL(pedido.total)}</span>
-            </SheetDescription>
-          </div>
+        <div className="min-w-0 space-y-1">
+          <SheetTitle className="font-mono text-base">{pedido.number}</SheetTitle>
+          <SheetDescription asChild>
+            <div className="space-y-1">
+              <div>
+                <Badge variant="secondary">{stageLabel}</Badge>
+                <span className="ml-2 text-primary font-semibold">{formatBRL(pedido.total)}</span>
+              </div>
+              <div className="text-sm font-medium text-foreground truncate">
+                {pedido.cliente_nome ?? "Cliente não identificado"}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {pedido.cliente_cnpj ?? "CNPJ não informado"} · Vendedor:{" "}
+                {pedido.vendedor_nome ?? "—"}
+              </div>
+            </div>
+          </SheetDescription>
         </div>
       </SheetHeader>
 
       <ScrollArea className="flex-1">
         <div className="p-6 space-y-6">
-          <AprovacaoBlock pedido={pedido} onChanged={onChanged} />
-          <ChecklistBlock pedido={pedido} onChanged={onChanged} />
-          <FiscalBlock pedido={pedido} onChanged={onChanged} />
-          <OcorrenciasBlock pedido={pedido} onChanged={onChanged} />
-          <NotificacoesBlock pedidoId={pedido.id} />
+          {visaoFinanceira ? (
+            <>
+              <ItensBlock pedido={pedido} comValores />
+              <PagamentoBlock pedido={pedido} completo />
+              <HistoricoClienteBlock pedido={pedido} />
+              <TratativaBlock pedido={pedido} />
+              <AprovacaoBlock pedido={pedido} onChanged={onChanged} />
+              <OcorrenciasBlock pedido={pedido} onChanged={onChanged} />
+            </>
+          ) : (
+            <>
+              <ItensBlock pedido={pedido} comValores={false} />
+              <ChecklistBlock pedido={pedido} onChanged={onChanged} />
+              <FiscalBlock pedido={pedido} onChanged={onChanged} />
+              <OcorrenciasBlock pedido={pedido} onChanged={onChanged} />
+              <NotificacoesBlock pedidoId={pedido.id} />
+              <PagamentoBlock pedido={pedido} completo={false} />
+              {pedido.aprovacao_decisao && <DecisaoLeitura pedido={pedido} />}
+            </>
+          )}
         </div>
       </ScrollArea>
     </div>
   );
 }
+
+/* ----------------------------------- Itens ---------------------------------- */
+
+function ItensBlock({ pedido, comValores }: { pedido: PedidoDetalhes; comValores: boolean }) {
+  const desconto = pedido.desconto_percent > 0
+    ? +(pedido.subtotal * (pedido.desconto_percent / 100)).toFixed(2)
+    : 0;
+
+  return (
+    <section className="space-y-3">
+      <SectionTitle
+        icon={<Package className="h-4 w-4" />}
+        label="Itens"
+        right={<span className="text-xs text-muted-foreground">{pedido.itens.length} item(ns)</span>}
+      />
+      <div className="rounded-lg border overflow-hidden">
+        {pedido.itens.length === 0 ? (
+          <div className="p-3 text-xs text-muted-foreground italic">
+            Nenhum item registrado neste pedido.
+          </div>
+        ) : (
+          <table className="w-full text-xs">
+            <thead className="bg-muted/50">
+              <tr>
+                <th className="text-left p-2">Produto</th>
+                <th className="text-right p-2 w-16">Qtd</th>
+                <th className="text-left p-2 w-14">Un.</th>
+                {comValores && <th className="text-right p-2 w-24">Unitário</th>}
+                {comValores && <th className="text-right p-2 w-24">Total</th>}
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {pedido.itens.map((i, idx) => (
+                <tr key={`${i.sku ?? "s"}-${idx}`}>
+                  <td className="p-2">
+                    <div className="font-medium">{i.description ?? "—"}</div>
+                    {i.sku && <div className="text-[10px] font-mono text-muted-foreground">{i.sku}</div>}
+                  </td>
+                  <td className="p-2 text-right tabular-nums">{i.quantity}</td>
+                  <td className="p-2">{i.unit ?? "—"}</td>
+                  {comValores && (
+                    <td className="p-2 text-right tabular-nums">{formatBRL(i.unit_price)}</td>
+                  )}
+                  {comValores && (
+                    <td className="p-2 text-right tabular-nums">
+                      {formatBRL(i.quantity * i.unit_price)}
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+            {comValores && (
+              <tfoot className="bg-muted/30">
+                <tr>
+                  <td className="p-2 text-right" colSpan={4}>Subtotal</td>
+                  <td className="p-2 text-right tabular-nums">{formatBRL(pedido.subtotal)}</td>
+                </tr>
+                {desconto > 0 && (
+                  <tr>
+                    <td className="p-2 text-right" colSpan={4}>
+                      Desconto ({pedido.desconto_percent}%)
+                    </td>
+                    <td className="p-2 text-right tabular-nums">− {formatBRL(desconto)}</td>
+                  </tr>
+                )}
+                <tr className="font-semibold">
+                  <td className="p-2 text-right" colSpan={4}>Total</td>
+                  <td className="p-2 text-right tabular-nums text-primary">
+                    {formatBRL(pedido.total)}
+                  </td>
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        )}
+      </div>
+    </section>
+  );
+}
+
+/* --------------------------------- Pagamento -------------------------------- */
+
+function PagamentoBlock({ pedido, completo }: { pedido: PedidoDetalhes; completo: boolean }) {
+  return (
+    <section className="space-y-3">
+      <SectionTitle icon={<Wallet className="h-4 w-4" />} label="Pagamento" />
+      <div className="rounded-lg border p-3 space-y-3 text-sm">
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <div>
+            <div className="text-muted-foreground">Forma de pagamento</div>
+            <div className="font-medium">{pedido.forma_pagamento ?? "—"}</div>
+          </div>
+          <div>
+            <div className="text-muted-foreground">Condição</div>
+            <div className="font-medium">{pedido.condicao_label ?? "—"}</div>
+          </div>
+        </div>
+
+        {completo && (
+          <>
+            {pedido.previsao_faturamento ? (
+              <div className="text-xs">
+                <span className="text-muted-foreground">Previsão de faturamento: </span>
+                <b>{formatDateBr(pedido.previsao_faturamento)}</b>
+              </div>
+            ) : (
+              <div className="text-xs font-medium rounded border border-amber-500/40 bg-amber-500/10 text-amber-700 px-2 py-1.5">
+                Previsão de faturamento não informada
+              </div>
+            )}
+
+            {pedido.parcelas.length > 0 && (
+              <table className="w-full text-xs">
+                <thead className="bg-muted/50">
+                  <tr>
+                    <th className="text-left p-2 w-12">Nº</th>
+                    <th className="text-left p-2">Prazo</th>
+                    <th className="text-left p-2">Vencimento</th>
+                    <th className="text-right p-2">Valor</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {pedido.parcelas.map((p, i) => (
+                    <tr key={i}>
+                      <td className="p-2">{i + 1}/{pedido.parcelas.length}</td>
+                      <td className="p-2">{p.days === 0 ? "à vista" : `${p.days} dias`}</td>
+                      <td className="p-2">{formatDateBr(p.due_date)}</td>
+                      <td className="p-2 text-right tabular-nums">{formatBRL(p.amount)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </>
+        )}
+      </div>
+    </section>
+  );
+}
+
+/* --------------------------- Histórico do cliente --------------------------- */
+
+function HistoricoClienteBlock({ pedido }: { pedido: PedidoDetalhes }) {
+  const h = pedido.historico_cliente;
+  return (
+    <section className="space-y-3">
+      <SectionTitle
+        icon={<History className="h-4 w-4" />}
+        label="Histórico do cliente"
+        right={
+          h.parcial ? (
+            <span className="text-[11px] text-muted-foreground">parcial · sem CNPJ no lead</span>
+          ) : null
+        }
+      />
+      <div className="rounded-lg border p-3 space-y-3">
+        {h.primeira_compra ? (
+          <div className="text-sm font-medium rounded border border-sky-500/40 bg-sky-500/10 text-sky-700 px-2 py-1.5">
+            Primeira compra deste cliente
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <Metric label="Pedidos" value={String(h.quantidade)} />
+            <Metric label="Valor acumulado" value={formatBRL(h.valor_total)} />
+            <Metric
+              label="Última compra"
+              value={h.ultimo_em ? format(new Date(h.ultimo_em), "dd/MM/yyyy") : "—"}
+            />
+          </div>
+        )}
+
+        {h.tem_ocorrencia_aberta && (
+          <div className="text-xs font-medium rounded border border-rose-500/40 bg-rose-500/10 text-rose-700 px-2 py-1.5 flex items-center gap-1.5">
+            <AlertTriangle className="h-3.5 w-3.5" />
+            Existe ocorrência em aberto em pedido anterior deste cliente.
+          </div>
+        )}
+
+        {h.recentes.length > 0 && (
+          <ul className="divide-y text-xs">
+            {h.recentes.map((r) => (
+              <li key={r.id} className="py-1.5 flex items-center gap-2">
+                <span className="font-mono">{r.number}</span>
+                <span className="text-muted-foreground">
+                  {format(new Date(r.created_at), "dd/MM/yyyy")}
+                </span>
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                  {stageLabelFor(r.stage as PedidoStageId)}
+                </Badge>
+                <span className="ml-auto tabular-nums">{formatBRL(r.total)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded border p-2">
+      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="text-sm font-semibold">{value}</div>
+    </div>
+  );
+}
+
+/* ---------------------------- Tratativa comercial --------------------------- */
+
+function TratativaBlock({ pedido }: { pedido: PedidoDetalhes }) {
+  const texto = (pedido.tratativa_comercial ?? "").trim();
+  return (
+    <section className="space-y-3">
+      <SectionTitle icon={<MessageSquareText className="h-4 w-4" />} label="Tratativa comercial" />
+      <div className="rounded-lg border p-3 text-sm whitespace-pre-wrap bg-muted/20">
+        {texto || (
+          <span className="italic text-muted-foreground">
+            O vendedor não registrou a tratativa desta proposta.
+          </span>
+        )}
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------- Decisão de aprovação (RO) ------------------------ */
+
+function DecisaoLeitura({ pedido }: { pedido: PedidoDetalhes }) {
+  return (
+    <section className="space-y-3">
+      <SectionTitle icon={<ShieldCheck className="h-4 w-4" />} label="Aprovação" />
+      <div
+        className={cn(
+          "rounded-lg border p-3 text-sm space-y-1",
+          pedido.aprovacao_decisao === "aprovado"
+            ? "bg-emerald-500/10 border-emerald-500/30"
+            : "bg-rose-500/10 border-rose-500/30",
+        )}
+      >
+        <div className="flex items-center gap-1.5 font-medium">
+          {pedido.aprovacao_decisao === "aprovado" ? (
+            <><CheckCircle2 className="h-4 w-4 text-emerald-600" /> Aprovado</>
+          ) : (
+            <><XCircle className="h-4 w-4 text-rose-600" /> Rejeitado</>
+          )}
+        </div>
+        <div className="text-xs text-muted-foreground">
+          {pedido.aprovacao_decidida_por_nome ?? "—"}
+          {pedido.aprovacao_decidida_em &&
+            ` em ${format(new Date(pedido.aprovacao_decidida_em), "dd/MM/yyyy HH:mm", { locale: ptBR })}`}
+        </div>
+        {pedido.aprovacao_observacao && (
+          <div className="whitespace-pre-wrap">{pedido.aprovacao_observacao}</div>
+        )}
+      </div>
+    </section>
+  );
+}
+
 
 /* ------------------------------ Notificações (RO) --------------------------- */
 
