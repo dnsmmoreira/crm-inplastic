@@ -102,7 +102,12 @@ export function ContatosSection({ leadId, clienteId, readOnly }: Props) {
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-sm font-medium">Contatos</h3>
         {!readOnly && (
-          <Button size="sm" variant="outline" onClick={() => setShowForm((s) => !s)} className="gap-1">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setShowForm((s) => !s)}
+            className="gap-1"
+          >
             <Plus className="h-3.5 w-3.5" />
             Adicionar contato
           </Button>
@@ -122,11 +127,18 @@ export function ContatosSection({ leadId, clienteId, readOnly }: Props) {
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Papel</Label>
-              <Select value={form.papel} onValueChange={(v) => setForm((f) => ({ ...f, papel: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select
+                value={form.papel}
+                onValueChange={(v) => setForm((f) => ({ ...f, papel: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   {PAPEIS_CONTATO.map((p) => (
-                    <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                    <SelectItem key={p.value} value={p.value}>
+                      {p.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -168,7 +180,8 @@ export function ContatosSection({ leadId, clienteId, readOnly }: Props) {
 
       {q.isLoading ? (
         <div className="text-sm text-muted-foreground py-4">
-          <Loader2 className="inline h-4 w-4 animate-spin mr-2" />Carregando contatos...
+          <Loader2 className="inline h-4 w-4 animate-spin mr-2" />
+          Carregando contatos...
         </div>
       ) : contatos.length === 0 ? (
         <div className="text-sm text-muted-foreground py-4">Nenhum contato cadastrado.</div>
@@ -182,16 +195,28 @@ export function ContatosSection({ leadId, clienteId, readOnly }: Props) {
               <div className="min-w-0 space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium text-sm">{c.nome}</span>
-                  <Badge variant="outline" className="text-[10px]">{papelLabel(c.papel)}</Badge>
+                  <Badge variant="outline" className="text-[10px]">
+                    {papelLabel(c.papel)}
+                  </Badge>
                   {c.cargo && <span className="text-xs text-muted-foreground">{c.cargo}</span>}
-                  {!c.ativo && <Badge variant="secondary" className="text-[10px]">Inativo</Badge>}
+                  {!c.ativo && (
+                    <Badge variant="secondary" className="text-[10px]">
+                      Inativo
+                    </Badge>
+                  )}
                 </div>
                 <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
                   {c.telefone && (
-                    <span className="inline-flex items-center gap-1"><Phone className="h-3 w-3" />{c.telefone}</span>
+                    <span className="inline-flex items-center gap-1">
+                      <Phone className="h-3 w-3" />
+                      {c.telefone}
+                    </span>
                   )}
                   {c.email && (
-                    <span className="inline-flex items-center gap-1 break-all"><Mail className="h-3 w-3" />{c.email}</span>
+                    <span className="inline-flex items-center gap-1 break-all">
+                      <Mail className="h-3 w-3" />
+                      {c.email}
+                    </span>
                   )}
                 </div>
               </div>

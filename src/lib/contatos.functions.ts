@@ -68,26 +68,29 @@ export const listContatos = createServerFn({ method: "GET" })
 
 export const criarContato = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: {
-    leadId?: string | null;
-    clienteId?: string | null;
-    nome: string;
-    papel: string;
-    cargo?: string | null;
-    telefone?: string | null;
-    email?: string | null;
-  }) => ({
-    leadId: data?.leadId ? String(data.leadId) : null,
-    clienteId: data?.clienteId ? String(data.clienteId) : null,
-    nome: String(data?.nome ?? "").trim(),
-    papel: String(data?.papel ?? "outro"),
-    cargo: data?.cargo?.trim() || null,
-    telefone: data?.telefone?.trim() || null,
-    email: data?.email?.trim() || null,
-  }))
+  .inputValidator(
+    (data: {
+      leadId?: string | null;
+      clienteId?: string | null;
+      nome: string;
+      papel: string;
+      cargo?: string | null;
+      telefone?: string | null;
+      email?: string | null;
+    }) => ({
+      leadId: data?.leadId ? String(data.leadId) : null,
+      clienteId: data?.clienteId ? String(data.clienteId) : null,
+      nome: String(data?.nome ?? "").trim(),
+      papel: String(data?.papel ?? "outro"),
+      cargo: data?.cargo?.trim() || null,
+      telefone: data?.telefone?.trim() || null,
+      email: data?.email?.trim() || null,
+    }),
+  )
   .handler(async ({ data, context }) => {
     if (!data.nome) throw new Error("Informe o nome do contato");
-    if (!data.leadId && !data.clienteId) throw new Error("Contato precisa estar vinculado a um lead ou cliente");
+    if (!data.leadId && !data.clienteId)
+      throw new Error("Contato precisa estar vinculado a um lead ou cliente");
     if (!PAPEIS_CONTATO.some((p) => p.value === data.papel)) throw new Error("Papel inválido");
 
     const { data: row, error } = await context.supabase
@@ -105,7 +108,8 @@ export const criarContato = createServerFn({ method: "POST" })
       .select(SELECT_COLS)
       .maybeSingle();
     if (error) throw new Error(error.message);
-    if (!row) throw new Error("Não foi possível criar o contato (sem permissão para este registro).");
+    if (!row)
+      throw new Error("Não foi possível criar o contato (sem permissão para este registro).");
     return row as ContatoRow;
   });
 
