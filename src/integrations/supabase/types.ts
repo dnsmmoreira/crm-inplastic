@@ -1070,6 +1070,8 @@ export type Database = {
           last_contact_at: string | null
           last_interaction_at: string | null
           modalidade_frete: string | null
+          motivo_perda: string | null
+          motivo_perda_detalhe: string | null
           next_followup: string | null
           nome_fantasia: string | null
           notes: string
@@ -1085,6 +1087,7 @@ export type Database = {
           omie_status: string | null
           origem: string | null
           owner_id: string | null
+          perdido_em: string | null
           phone: string | null
           porte: string | null
           product: string | null
@@ -1092,6 +1095,8 @@ export type Database = {
           proposta_enviada_at: string | null
           quantity: number
           razao_social: string | null
+          reatribuido_abandono_em: string | null
+          recontatar_em: string | null
           segment: string | null
           simples_optante: boolean | null
           site: string | null
@@ -1143,6 +1148,8 @@ export type Database = {
           last_contact_at?: string | null
           last_interaction_at?: string | null
           modalidade_frete?: string | null
+          motivo_perda?: string | null
+          motivo_perda_detalhe?: string | null
           next_followup?: string | null
           nome_fantasia?: string | null
           notes?: string
@@ -1158,6 +1165,7 @@ export type Database = {
           omie_status?: string | null
           origem?: string | null
           owner_id?: string | null
+          perdido_em?: string | null
           phone?: string | null
           porte?: string | null
           product?: string | null
@@ -1165,6 +1173,8 @@ export type Database = {
           proposta_enviada_at?: string | null
           quantity?: number
           razao_social?: string | null
+          reatribuido_abandono_em?: string | null
+          recontatar_em?: string | null
           segment?: string | null
           simples_optante?: boolean | null
           site?: string | null
@@ -1216,6 +1226,8 @@ export type Database = {
           last_contact_at?: string | null
           last_interaction_at?: string | null
           modalidade_frete?: string | null
+          motivo_perda?: string | null
+          motivo_perda_detalhe?: string | null
           next_followup?: string | null
           nome_fantasia?: string | null
           notes?: string
@@ -1231,6 +1243,7 @@ export type Database = {
           omie_status?: string | null
           origem?: string | null
           owner_id?: string | null
+          perdido_em?: string | null
           phone?: string | null
           porte?: string | null
           product?: string | null
@@ -1238,6 +1251,8 @@ export type Database = {
           proposta_enviada_at?: string | null
           quantity?: number
           razao_social?: string | null
+          reatribuido_abandono_em?: string | null
+          recontatar_em?: string | null
           segment?: string | null
           simples_optante?: boolean | null
           site?: string | null
@@ -2795,6 +2810,7 @@ export type Database = {
         Row: {
           ativo: boolean
           auto_atribuir_lead_orfao: boolean
+          cadencia_abandono_dias: number[]
           cadencia_proposta_dias: number[]
           carteira_alerta_dias: number
           carteira_critico_dias: number
@@ -2817,6 +2833,7 @@ export type Database = {
           placar_peso_tarefa: number
           pos_venda_dias: number[]
           proposta_enviada_dias: number
+          reatribuir_lead_abandonado: boolean
           reciclagem_perdidos_dias: number
           resumo_diario_ativo: boolean
           resumo_hora: string
@@ -2836,6 +2853,7 @@ export type Database = {
         Insert: {
           ativo?: boolean
           auto_atribuir_lead_orfao?: boolean
+          cadencia_abandono_dias?: number[]
           cadencia_proposta_dias?: number[]
           carteira_alerta_dias?: number
           carteira_critico_dias?: number
@@ -2858,6 +2876,7 @@ export type Database = {
           placar_peso_tarefa?: number
           pos_venda_dias?: number[]
           proposta_enviada_dias?: number
+          reatribuir_lead_abandonado?: boolean
           reciclagem_perdidos_dias?: number
           resumo_diario_ativo?: boolean
           resumo_hora?: string
@@ -2877,6 +2896,7 @@ export type Database = {
         Update: {
           ativo?: boolean
           auto_atribuir_lead_orfao?: boolean
+          cadencia_abandono_dias?: number[]
           cadencia_proposta_dias?: number[]
           carteira_alerta_dias?: number
           carteira_critico_dias?: number
@@ -2899,6 +2919,7 @@ export type Database = {
           placar_peso_tarefa?: number
           pos_venda_dias?: number[]
           proposta_enviada_dias?: number
+          reatribuir_lead_abandonado?: boolean
           reciclagem_perdidos_dias?: number
           resumo_diario_ativo?: boolean
           resumo_hora?: string
