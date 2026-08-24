@@ -210,6 +210,9 @@ export const listPedidos = createServerFn({ method: "GET" })
         encerrado_em: r.encerrado_em,
         aprovacao_rota: r.aprovacao_rota,
         reprovacao_motivo: r.reprovacao_motivo,
+        itens: itensByPedido.get(r.id) ?? [],
+        itens_total_qtde: (itensByPedido.get(r.id) ?? []).reduce((s, i) => s + (i.quantity || 0), 0),
+
       }),
     );
   });
