@@ -6,7 +6,8 @@ import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import {
   ClipboardCheck, ShieldCheck, ShieldAlert, FileCheck2, AlertTriangle,
-  CheckCircle2, XCircle, Plus, Loader2, Bell,
+  CheckCircle2, XCircle, Plus, Loader2, Bell, Package, Wallet, History,
+  MessageSquareText,
 } from "lucide-react";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
@@ -24,6 +25,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { formatBRL } from "@/lib/crm-store";
+import { formatDateBr } from "@/lib/condicoes-comerciais";
 import {
   getPedidoDetalhes,
   solicitarAprovacao,
