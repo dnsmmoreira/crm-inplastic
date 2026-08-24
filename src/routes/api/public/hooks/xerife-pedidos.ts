@@ -15,6 +15,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import { requireXerifeCronAuth, cronJsonResponse } from "@/lib/xerife/cron-auth.server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { logAction } from "@/lib/xerife/dedupe.server";
+import { notifyDiretoria } from "@/lib/xerife/notify.server";
+import { etapasComCadencia, passoCadencia, textoCadencia } from "@/lib/pedidos-cadencia";
+import {
+  destinatariosFinanceiro,
+  destinatariosOperacional,
+  notificarUsuarios,
+} from "@/lib/pedidos-fluxo.server";
+import { stageLabel } from "@/lib/pedidos-stages";
 
 type SB = SupabaseClient<any, any, any>;
 
@@ -104,10 +112,16 @@ type CriarTarefaArgs = {
   prioridade: number;
   janelaHoras?: number;
   dueDate?: Date;
+  /** Desliga o guard genérico por (pedido, tipo) — usado pela cadência,
+   *  que já deduplica por (regra, pedido, dono) e é multi-destinatário. */
+  checarTarefaAberta?: boolean;
 };
 
 type Stats = {
   stage_travado: number;
+  cadencia_toques: number;
+  cadencia_escalado_gestao: number;
+  cadencia_escalado_diretoria: number;
   aprovacao_pendente: number;
   nf_atrasada: number;
   previsao_atrasada: number;
@@ -125,6 +139,9 @@ async function runXerifePedidos(
 
   const stats: Stats = {
     stage_travado: 0,
+    cadencia_toques: 0,
+    cadencia_escalado_gestao: 0,
+    cadencia_escalado_diretoria: 0,
     aprovacao_pendente: 0,
     nf_atrasada: 0,
     previsao_atrasada: 0,
@@ -141,7 +158,7 @@ async function runXerifePedidos(
       stats.skipped_dedupe++;
       return false;
     }
-    if (await hasOpenTaskForPedido(sb, t.pedidoId, t.tipo)) {
+    if ((t.checarTarefaAberta ?? true) && (await hasOpenTaskForPedido(sb, t.pedidoId, t.tipo))) {
       stats.skipped_dedupe++;
       return false;
     }
@@ -175,9 +192,13 @@ async function runXerifePedidos(
     return true;
   }
 
-  // ─────────────── R1: Pedido travado em etapa ───────────────
+  // ─────────────── R1: Cadência automática por etapa (com escalonamento) ───────────────
+  // Régua por etapa (ver src/lib/pedidos-cadencia.ts):
+  //   1º toque → tarefa para o grupo responsável;
+  //   2º toque → tarefa + notificação na tela (gestão enxerga);
+  //   3º toque → tudo acima + alerta na diretoria.
   {
-    const stages = Object.keys(SLA_STAGE_DIAS);
+    const stages = etapasComCadencia();
     const { data: pedidos } = await sb
       .from("pedidos")
       .select(
@@ -186,7 +207,21 @@ async function runXerifePedidos(
       .in("stage", stages as any)
       .limit(500);
 
-    // stage_changed_at não existe em pedidos; usamos etapa mais recente do histórico
+    // Grupos resolvidos uma vez por execução (evita N+1 de permissões)
+    let financeiro: string[] | null = null;
+    let operacional: string[] | null = null;
+    const grupoDe = async (grupo: string, fallbackOwner: string | null): Promise<string[]> => {
+      if (grupo === "financeiro") {
+        financeiro ??= await destinatariosFinanceiro(sb);
+        return financeiro;
+      }
+      if (grupo === "operacional") {
+        operacional ??= await destinatariosOperacional(sb);
+        return operacional;
+      }
+      return fallbackOwner ? [fallbackOwner] : [];
+    };
+
     for (const p of pedidos ?? []) {
       const { data: hist } = await sb
         .from("pedido_stage_history")
@@ -197,23 +232,70 @@ async function runXerifePedidos(
         .limit(1);
       const desde = hist?.[0]?.created_at ?? p.updated_at;
       const dias = diasDesde(desde, now) ?? 0;
-      const sla = SLA_STAGE_DIAS[p.stage] ?? 999;
-      if (dias < sla) continue;
 
-      const owner = p.responsavel_atual_id ?? p.vendedor_proprietario_id;
-      const ok = await criarTarefa({
-        regra: `pedido_stage_travado:${p.stage}`,
-        pedidoId: p.id,
-        pedidoNumber: p.number,
-        leadId: p.lead_id ?? null,
-        ownerId: owner,
-        tipo: "pedido_travado",
-        titulo: `Pedido ${p.number} parado em "${p.stage}" há ${dias}d`,
-        descricao: `Pedido ${p.number} está em ${p.stage} há ${dias} dias (SLA ${sla}d). Verifique e mova adiante.`,
-        motivo: `SLA de etapa ${p.stage} = ${sla}d, real ${dias}d`,
-        prioridade: 2,
-      });
-      if (ok) stats.stage_travado++;
+      const passo = passoCadencia(p.stage as string, dias);
+      if (!passo) continue;
+
+      const label = stageLabel(p.stage as string);
+      const texto = textoCadencia(passo, { numero: p.number, label, dias });
+      const vendedor = p.vendedor_proprietario_id ?? p.responsavel_atual_id ?? null;
+      const responsaveis = await grupoDe(
+        passo.grupo,
+        p.responsavel_atual_id ?? p.vendedor_proprietario_id ?? null,
+      );
+      const alvos = responsaveis.length
+        ? responsaveis
+        : [p.responsavel_atual_id ?? p.vendedor_proprietario_id].filter(Boolean) as string[];
+
+      // Uma tarefa por responsável do grupo; dedupe por (regra, pedido, dono).
+      let criou = false;
+      for (const ownerId of alvos) {
+        const ok = await criarTarefa({
+          regra: `pedido_cadencia:${p.stage}:D${passo.passo}:${ownerId}`,
+          pedidoId: p.id,
+          pedidoNumber: p.number,
+          leadId: p.lead_id ?? null,
+          ownerId,
+          tipo: passo.tipo,
+          titulo: texto.titulo,
+          descricao: texto.descricao,
+          motivo: `Cadência ${passo.regua.join("/")}d na etapa ${p.stage} — toque ${passo.nivel}`,
+          prioridade: texto.prioridade,
+          janelaHoras: 22,
+          checarTarefaAberta: false,
+        });
+        criou = criou || ok;
+      }
+      if (!criou) continue;
+
+      stats.cadencia_toques++;
+      stats.stage_travado++;
+
+      if (passo.escalarGestao && !dryRun) {
+        const notificar = Array.from(new Set([...alvos, vendedor].filter(Boolean) as string[]));
+        await notificarUsuarios(sb, notificar, {
+          tipo: `cadencia_${p.stage}_n${passo.nivel}`,
+          titulo: texto.titulo,
+          pedidoId: p.id,
+        });
+        stats.cadencia_escalado_gestao++;
+      }
+
+      if (passo.escalarDiretoria) {
+        stats.cadencia_escalado_diretoria++;
+        if (!dryRun) {
+          await notifyDiretoria(
+            `🚨 Pedido travado — cadência esgotada\n\nPedido: ${p.number}\nEtapa: ${label}\nParado há: ${dias} dias\nAção pendente: ${passo.acao}`,
+          );
+          await logAction(sb, {
+            regra: `pedido_cadencia_diretoria:${p.stage}`,
+            leadId: p.lead_id ?? null,
+            vendedorId: vendedor,
+            acao: "diretoria notificada",
+            payload: { pedido_id: p.id, pedido_number: p.number, dias, regua: passo.regua },
+          });
+        }
+      }
     }
   }
 
