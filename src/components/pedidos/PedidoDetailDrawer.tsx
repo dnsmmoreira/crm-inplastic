@@ -73,7 +73,9 @@ const DEFAULT_CHECKLIST: ChecklistItem[] = [
 const OCORRENCIA_TIPOS = [
   "Bloqueio comercial",
   "Bloqueio fiscal",
+  "Bloqueio financeiro",
   "Divergência de estoque",
+
   "Atraso de produção",
   "Avaria",
   "Cliente solicitou alteração",
