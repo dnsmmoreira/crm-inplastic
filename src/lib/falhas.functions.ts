@@ -13,7 +13,7 @@ export type FalhaRow = {
   id: string;
   origem: string;
   mensagem: string;
-  contexto: unknown;
+  contexto: Record<string, unknown> | null;
   ocorrido_em: string;
   ocorrencias: number;
 };
