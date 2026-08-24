@@ -8,10 +8,10 @@ import { PedidoDetailDrawer } from "@/components/pedidos/PedidoDetailDrawer";
 import {
   AlertasPendentesCard,
   ContadorCard,
-  DIAS_PARADO_ALERTA,
   ListaPedidosCard,
   Saudacao,
 } from "@/components/dashboard/operacao-shared";
+import { DIAS_PARADO_ALERTA } from "@/lib/dashboard-operacao";
 import { useAuth } from "@/hooks/use-auth";
 
 /** Tela inicial do perfil Operacional (chave `pedidos.operar_producao`). */

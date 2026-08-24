@@ -6,15 +6,7 @@ import { formatBRL } from "@/lib/crm-store";
 import { useAuth } from "@/hooks/use-auth";
 import { useAlertasPendentes } from "@/hooks/useAlertasPendentes";
 import type { PedidoRow } from "@/lib/pedidos.functions";
-
-/** Limiar de "parado" usado nos dashboards operacionais (dias corridos na etapa). */
-export const DIAS_PARADO_ALERTA = 3;
-
-export function diasNaEtapa(p: Pick<PedidoRow, "stage_changed_at">, agora = Date.now()): number {
-  const t = new Date(p.stage_changed_at).getTime();
-  if (!Number.isFinite(t)) return 0;
-  return Math.max(0, Math.floor((agora - t) / 86_400_000));
-}
+import { DIAS_PARADO_ALERTA, diasNaEtapa } from "@/lib/dashboard-operacao";
 
 export function Saudacao({ nome, papel }: { nome: string; papel: string }) {
   const h = Number(
