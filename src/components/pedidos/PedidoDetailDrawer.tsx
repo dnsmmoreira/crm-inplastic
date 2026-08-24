@@ -5,12 +5,27 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import {
-  ClipboardCheck, ShieldCheck, ShieldAlert, FileCheck2, AlertTriangle,
-  CheckCircle2, XCircle, Plus, Loader2, Bell, Package, Wallet, History as HistoryIcon,
+  ClipboardCheck,
+  ShieldCheck,
+  ShieldAlert,
+  FileCheck2,
+  AlertTriangle,
+  CheckCircle2,
+  XCircle,
+  Plus,
+  Loader2,
+  Bell,
+  Package,
+  Wallet,
+  History as HistoryIcon,
   MessageSquareText,
 } from "lucide-react";
 import {
-  Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
 } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -21,17 +36,19 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { formatBRL } from "@/lib/crm-store";
 import { formatDateBr } from "@/lib/condicoes-comerciais";
 import {
   getPedidoDetalhes,
-  solicitarAprovacao,
   decidirAprovacao,
   updatePedidoStage,
-
   salvarChecklistConferencia,
   atualizarStatusFiscal,
   registrarOcorrencia,
@@ -54,9 +71,14 @@ const DEFAULT_CHECKLIST: ChecklistItem[] = [
 ];
 
 const OCORRENCIA_TIPOS = [
-  "Bloqueio comercial", "Bloqueio fiscal", "Divergência de estoque",
-  "Atraso de produção", "Avaria", "Cliente solicitou alteração",
-  "Documentação faltando", "Outro",
+  "Bloqueio comercial",
+  "Bloqueio fiscal",
+  "Divergência de estoque",
+  "Atraso de produção",
+  "Avaria",
+  "Cliente solicitou alteração",
+  "Documentação faltando",
+  "Outro",
 ];
 
 type Props = {
@@ -163,16 +185,19 @@ function PedidoDetailBody({
 /* ----------------------------------- Itens ---------------------------------- */
 
 function ItensBlock({ pedido, comValores }: { pedido: PedidoDetalhes; comValores: boolean }) {
-  const desconto = pedido.desconto_percent > 0
-    ? +(pedido.subtotal * (pedido.desconto_percent / 100)).toFixed(2)
-    : 0;
+  const desconto =
+    pedido.desconto_percent > 0
+      ? +(pedido.subtotal * (pedido.desconto_percent / 100)).toFixed(2)
+      : 0;
 
   return (
     <section className="space-y-3">
       <SectionTitle
         icon={<Package className="h-4 w-4" />}
         label="Itens"
-        right={<span className="text-xs text-muted-foreground">{pedido.itens.length} item(ns)</span>}
+        right={
+          <span className="text-xs text-muted-foreground">{pedido.itens.length} item(ns)</span>
+        }
       />
       <div className="rounded-lg border overflow-hidden">
         {pedido.itens.length === 0 ? (
@@ -195,7 +220,9 @@ function ItensBlock({ pedido, comValores }: { pedido: PedidoDetalhes; comValores
                 <tr key={`${i.sku ?? "s"}-${idx}`}>
                   <td className="p-2">
                     <div className="font-medium">{i.description ?? "—"}</div>
-                    {i.sku && <div className="text-[10px] font-mono text-muted-foreground">{i.sku}</div>}
+                    {i.sku && (
+                      <div className="text-[10px] font-mono text-muted-foreground">{i.sku}</div>
+                    )}
                   </td>
                   <td className="p-2 text-right tabular-nums">{i.quantity}</td>
                   <td className="p-2">{i.unit ?? "—"}</td>
@@ -213,7 +240,9 @@ function ItensBlock({ pedido, comValores }: { pedido: PedidoDetalhes; comValores
             {comValores && (
               <tfoot className="bg-muted/30">
                 <tr>
-                  <td className="p-2 text-right" colSpan={4}>Subtotal</td>
+                  <td className="p-2 text-right" colSpan={4}>
+                    Subtotal
+                  </td>
                   <td className="p-2 text-right tabular-nums">{formatBRL(pedido.subtotal)}</td>
                 </tr>
                 {desconto > 0 && (
@@ -225,7 +254,9 @@ function ItensBlock({ pedido, comValores }: { pedido: PedidoDetalhes; comValores
                   </tr>
                 )}
                 <tr className="font-semibold">
-                  <td className="p-2 text-right" colSpan={4}>Total</td>
+                  <td className="p-2 text-right" colSpan={4}>
+                    Total
+                  </td>
                   <td className="p-2 text-right tabular-nums text-primary">
                     {formatBRL(pedido.total)}
                   </td>
@@ -283,7 +314,9 @@ function PagamentoBlock({ pedido, completo }: { pedido: PedidoDetalhes; completo
                 <tbody className="divide-y">
                   {pedido.parcelas.map((p, i) => (
                     <tr key={i}>
-                      <td className="p-2">{i + 1}/{pedido.parcelas.length}</td>
+                      <td className="p-2">
+                        {i + 1}/{pedido.parcelas.length}
+                      </td>
                       <td className="p-2">{p.days === 0 ? "à vista" : `${p.days} dias`}</td>
                       <td className="p-2">{formatDateBr(p.due_date)}</td>
                       <td className="p-2 text-right tabular-nums">{formatBRL(p.amount)}</td>
@@ -401,9 +434,13 @@ function DecisaoLeitura({ pedido }: { pedido: PedidoDetalhes }) {
       >
         <div className="flex items-center gap-1.5 font-medium">
           {pedido.aprovacao_decisao === "aprovado" ? (
-            <><CheckCircle2 className="h-4 w-4 text-emerald-600" /> Aprovado</>
+            <>
+              <CheckCircle2 className="h-4 w-4 text-emerald-600" /> Aprovado
+            </>
           ) : (
-            <><XCircle className="h-4 w-4 text-rose-600" /> Rejeitado</>
+            <>
+              <XCircle className="h-4 w-4 text-rose-600" /> Rejeitado
+            </>
           )}
         </div>
         <div className="text-xs text-muted-foreground">
@@ -418,7 +455,6 @@ function DecisaoLeitura({ pedido }: { pedido: PedidoDetalhes }) {
     </section>
   );
 }
-
 
 /* ------------------------------ Notificações (RO) --------------------------- */
 
@@ -456,9 +492,7 @@ function NotificacoesBlock({ pedidoId }: { pedidoId: string }) {
         icon={<Bell className="h-4 w-4" />}
         label="Notificações"
         right={
-          <span className="text-xs text-muted-foreground">
-            somente leitura · envio desativado
-          </span>
+          <span className="text-xs text-muted-foreground">somente leitura · envio desativado</span>
         }
       />
       <div className="rounded-lg border">
@@ -475,9 +509,7 @@ function NotificacoesBlock({ pedidoId }: { pedidoId: string }) {
             {rows.map((n) => (
               <li key={n.id} className="p-3 space-y-1">
                 <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                  <span>
-                    {format(new Date(n.criado_em), "dd/MM/yyyy HH:mm", { locale: ptBR })}
-                  </span>
+                  <span>{format(new Date(n.criado_em), "dd/MM/yyyy HH:mm", { locale: ptBR })}</span>
                   <div className="flex items-center gap-1">
                     <Badge
                       variant="outline"
@@ -516,26 +548,18 @@ function NotificacoesBlock({ pedidoId }: { pedidoId: string }) {
 
 /* --------------------------------- Aprovação -------------------------------- */
 
-function AprovacaoBlock({
-  pedido, onChanged,
-}: { pedido: PedidoDetalhes; onChanged: () => void }) {
-  const solicitarFn = useServerFn(solicitarAprovacao);
+function AprovacaoBlock({ pedido, onChanged }: { pedido: PedidoDetalhes; onChanged: () => void }) {
   const decidirFn = useServerFn(decidirAprovacao);
   const moverFn = useServerFn(updatePedidoStage);
-  const [motivo, setMotivo] = useState("");
   const [observacao, setObservacao] = useState("");
 
-  const solicitar = useMutation({
-    mutationFn: (m: string) => solicitarFn({ data: { pedido_id: pedido.id, motivo: m } }),
-    onSuccess: () => { toast.success("Aprovação solicitada"); setMotivo(""); onChanged(); },
-    onError: (e: Error) => toast.error(e.message),
-  });
   const decidir = useMutation({
     mutationFn: (decisao: "aprovado" | "rejeitado") =>
       decidirFn({ data: { pedido_id: pedido.id, decisao, observacao: observacao || undefined } }),
     onSuccess: (_r, decisao) => {
       toast.success(decisao === "aprovado" ? "Pedido aprovado" : "Pedido rejeitado");
-      setObservacao(""); onChanged();
+      setObservacao("");
+      onChanged();
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -562,16 +586,14 @@ function AprovacaoBlock({
           ? "Pedido aprovado e liberado"
           : "Pedido aprovado — aguardando pagamento antecipado",
       );
-      setObservacao(""); onChanged();
+      setObservacao("");
+      onChanged();
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
-
-  const showRequest =
-    pedido.stage === "analise_financeira" ||
-    (pedido.aprovacao_solicitada_em && !pedido.aprovacao_decisao);
-  const showDecision = pedido.aprovacao_solicitada_em && !pedido.aprovacao_decisao;
+  // Quem aprova decide direto: os botões não dependem de uma solicitação prévia.
+  const showDecision = !pedido.aprovacao_decisao;
 
   return (
     <section className="space-y-3">
@@ -582,7 +604,9 @@ function AprovacaoBlock({
             Solicitada por <b>{pedido.aprovacao_solicitada_por_nome ?? "—"}</b> em{" "}
             {format(new Date(pedido.aprovacao_solicitada_em), "dd/MM/yyyy HH:mm", { locale: ptBR })}
           </div>
-          {pedido.aprovacao_motivo && <div className="whitespace-pre-wrap">{pedido.aprovacao_motivo}</div>}
+          {pedido.aprovacao_motivo && (
+            <div className="whitespace-pre-wrap">{pedido.aprovacao_motivo}</div>
+          )}
         </div>
       )}
       {pedido.aprovacao_decisao && (
@@ -596,9 +620,13 @@ function AprovacaoBlock({
         >
           <div className="flex items-center gap-1.5 font-medium">
             {pedido.aprovacao_decisao === "aprovado" ? (
-              <><CheckCircle2 className="h-4 w-4 text-emerald-600" /> Aprovado</>
+              <>
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" /> Aprovado
+              </>
             ) : (
-              <><XCircle className="h-4 w-4 text-rose-600" /> Rejeitado</>
+              <>
+                <XCircle className="h-4 w-4 text-rose-600" /> Rejeitado
+              </>
             )}
           </div>
           <div className="text-xs text-muted-foreground">
@@ -609,25 +637,6 @@ function AprovacaoBlock({
           {pedido.aprovacao_observacao && (
             <div className="whitespace-pre-wrap">{pedido.aprovacao_observacao}</div>
           )}
-        </div>
-      )}
-
-      {showRequest && !showDecision && (
-        <div className="space-y-2">
-          <Label className="text-xs">Motivo para pedir aprovação</Label>
-          <Textarea
-            rows={3}
-            value={motivo}
-            onChange={(e) => setMotivo(e.target.value)}
-            placeholder="Ex.: desconto acima do teto; prazo excepcional; condição não padrão…"
-          />
-          <Button
-            size="sm"
-            disabled={motivo.trim().length < 3 || solicitar.isPending}
-            onClick={() => solicitar.mutate(motivo.trim())}
-          >
-            {pedido.aprovacao_solicitada_em ? "Re-solicitar aprovação" : "Solicitar aprovação"}
-          </Button>
         </div>
       )}
 
@@ -668,7 +677,6 @@ function AprovacaoBlock({
               <XCircle className="h-4 w-4 mr-1" /> Rejeitar
             </Button>
           </div>
-
         </div>
       )}
     </section>
@@ -677,12 +685,11 @@ function AprovacaoBlock({
 
 /* --------------------------------- Checklist -------------------------------- */
 
-function ChecklistBlock({
-  pedido, onChanged,
-}: { pedido: PedidoDetalhes; onChanged: () => void }) {
+function ChecklistBlock({ pedido, onChanged }: { pedido: PedidoDetalhes; onChanged: () => void }) {
   const salvarFn = useServerFn(salvarChecklistConferencia);
   const initial = useMemo<ChecklistItem[]>(
-    () => (pedido.checklist_conferencia.length > 0 ? pedido.checklist_conferencia : DEFAULT_CHECKLIST),
+    () =>
+      pedido.checklist_conferencia.length > 0 ? pedido.checklist_conferencia : DEFAULT_CHECKLIST,
     [pedido.checklist_conferencia],
   );
   const [items, setItems] = useState<ChecklistItem[]>(initial);
@@ -690,7 +697,12 @@ function ChecklistBlock({
   useEffect(() => setItems(initial), [initial]);
 
   const isConferencia: PedidoStageId[] = [
-    "aguardando_pagamento", "programacao", "em_producao", "pronto", "faturado_em_rota", "pos_venda",
+    "aguardando_pagamento",
+    "programacao",
+    "em_producao",
+    "pronto",
+    "faturado_em_rota",
+    "pos_venda",
   ];
   const relevant = isConferencia.includes(pedido.stage);
   const done = items.filter((i) => i.done).length;
@@ -702,7 +714,10 @@ function ChecklistBlock({
 
   const salvar = useMutation({
     mutationFn: () => salvarFn({ data: { pedido_id: pedido.id, items } }),
-    onSuccess: () => { toast.success("Checklist salvo"); onChanged(); },
+    onSuccess: () => {
+      toast.success("Checklist salvo");
+      onChanged();
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -781,7 +796,8 @@ function ChecklistBlock({
         </Button>
         {pedido.checklist_atualizado_em && (
           <div className="text-[11px] text-muted-foreground">
-            Atualizado em {format(new Date(pedido.checklist_atualizado_em), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+            Atualizado em{" "}
+            {format(new Date(pedido.checklist_atualizado_em), "dd/MM/yyyy HH:mm", { locale: ptBR })}
           </div>
         )}
       </div>
@@ -798,15 +814,15 @@ const FISCAL_LABELS: Record<string, string> = {
   erro: "Erro",
 };
 
-function FiscalBlock({
-  pedido, onChanged,
-}: { pedido: PedidoDetalhes; onChanged: () => void }) {
+function FiscalBlock({ pedido, onChanged }: { pedido: PedidoDetalhes; onChanged: () => void }) {
   const atualizarFn = useServerFn(atualizarStatusFiscal);
   const [status, setStatus] = useState(pedido.fiscal_status ?? "nao_iniciado");
   const [nfNumero, setNfNumero] = useState(pedido.nf_numero ?? "");
   const [nfSerie, setNfSerie] = useState(pedido.nf_serie ?? "");
   const [nfChave, setNfChave] = useState(pedido.nf_chave ?? "");
-  const [nfValor, setNfValor] = useState<string>(pedido.nf_valor != null ? String(pedido.nf_valor) : "");
+  const [nfValor, setNfValor] = useState<string>(
+    pedido.nf_valor != null ? String(pedido.nf_valor) : "",
+  );
 
   useEffect(() => {
     setStatus(pedido.fiscal_status ?? "nao_iniciado");
@@ -814,7 +830,14 @@ function FiscalBlock({
     setNfSerie(pedido.nf_serie ?? "");
     setNfChave(pedido.nf_chave ?? "");
     setNfValor(pedido.nf_valor != null ? String(pedido.nf_valor) : "");
-  }, [pedido.id, pedido.fiscal_status, pedido.nf_numero, pedido.nf_serie, pedido.nf_chave, pedido.nf_valor]);
+  }, [
+    pedido.id,
+    pedido.fiscal_status,
+    pedido.nf_numero,
+    pedido.nf_serie,
+    pedido.nf_chave,
+    pedido.nf_valor,
+  ]);
 
   const salvar = useMutation({
     mutationFn: () => {
@@ -830,7 +853,10 @@ function FiscalBlock({
         },
       });
     },
-    onSuccess: () => { toast.success("Status fiscal atualizado"); onChanged(); },
+    onSuccess: () => {
+      toast.success("Status fiscal atualizado");
+      onChanged();
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -841,10 +867,14 @@ function FiscalBlock({
         <div>
           <Label className="text-xs">Status</Label>
           <Select value={status} onValueChange={setStatus}>
-            <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-9">
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
               {Object.entries(FISCAL_LABELS).map(([k, v]) => (
-                <SelectItem key={k} value={k}>{v}</SelectItem>
+                <SelectItem key={k} value={k}>
+                  {v}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -877,7 +907,8 @@ function FiscalBlock({
         </Button>
         {pedido.nf_emitida_em && (
           <div className="text-[11px] text-muted-foreground">
-            NF emitida em {format(new Date(pedido.nf_emitida_em), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+            NF emitida em{" "}
+            {format(new Date(pedido.nf_emitida_em), "dd/MM/yyyy HH:mm", { locale: ptBR })}
           </div>
         )}
       </div>
@@ -888,8 +919,12 @@ function FiscalBlock({
 /* -------------------------------- Ocorrências ------------------------------- */
 
 function OcorrenciasBlock({
-  pedido, onChanged,
-}: { pedido: PedidoDetalhes; onChanged: () => void }) {
+  pedido,
+  onChanged,
+}: {
+  pedido: PedidoDetalhes;
+  onChanged: () => void;
+}) {
   const registrarFn = useServerFn(registrarOcorrencia);
   const resolverFn = useServerFn(resolverOcorrencia);
   const [tipo, setTipo] = useState(OCORRENCIA_TIPOS[0]);
@@ -898,15 +933,23 @@ function OcorrenciasBlock({
   const [notaResolucao, setNotaResolucao] = useState<Record<string, string>>({});
 
   const registrar = useMutation({
-    mutationFn: () =>
-      registrarFn({ data: { pedido_id: pedido.id, tipo, severidade, descricao } }),
-    onSuccess: () => { toast.success("Ocorrência registrada"); setDescricao(""); onChanged(); },
+    mutationFn: () => registrarFn({ data: { pedido_id: pedido.id, tipo, severidade, descricao } }),
+    onSuccess: () => {
+      toast.success("Ocorrência registrada");
+      setDescricao("");
+      onChanged();
+    },
     onError: (e: Error) => toast.error(e.message),
   });
   const resolver = useMutation({
     mutationFn: (ocorrencia_id: string) =>
-      resolverFn({ data: { ocorrencia_id, resolucao_nota: notaResolucao[ocorrencia_id] || undefined } }),
-    onSuccess: () => { toast.success("Ocorrência resolvida"); onChanged(); },
+      resolverFn({
+        data: { ocorrencia_id, resolucao_nota: notaResolucao[ocorrencia_id] || undefined },
+      }),
+    onSuccess: () => {
+      toast.success("Ocorrência resolvida");
+      onChanged();
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -932,16 +975,24 @@ function OcorrenciasBlock({
           <div>
             <Label className="text-xs">Tipo</Label>
             <Select value={tipo} onValueChange={setTipo}>
-              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="h-9">
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
-                {OCORRENCIA_TIPOS.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                {OCORRENCIA_TIPOS.map((t) => (
+                  <SelectItem key={t} value={t}>
+                    {t}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
           <div>
             <Label className="text-xs">Severidade</Label>
             <Select value={severidade} onValueChange={(v) => setSeveridade(v as typeof severidade)}>
-              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="h-9">
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="baixa">Baixa</SelectItem>
                 <SelectItem value="media">Média</SelectItem>
@@ -979,7 +1030,9 @@ function OcorrenciasBlock({
                 </span>
               </div>
               <div className="whitespace-pre-wrap text-muted-foreground">{o.descricao}</div>
-              <div className="text-[11px] text-muted-foreground">Por {o.criada_por_nome ?? "—"}</div>
+              <div className="text-[11px] text-muted-foreground">
+                Por {o.criada_por_nome ?? "—"}
+              </div>
               <div className="flex gap-2 items-start pt-1 border-t">
                 <Input
                   className="h-8"
@@ -1006,16 +1059,22 @@ function OcorrenciasBlock({
           <Separator />
           <div className="text-xs font-medium text-muted-foreground">Resolvidas</div>
           {resolvidas.map((o) => (
-            <div key={o.id} className="rounded-lg border p-3 text-xs space-y-1 opacity-80 bg-muted/30">
+            <div
+              key={o.id}
+              className="rounded-lg border p-3 text-xs space-y-1 opacity-80 bg-muted/30"
+            >
               <div className="flex items-center gap-2">
-                <Badge variant="outline" className={severidadeClass(o.severidade)}>{o.severidade}</Badge>
+                <Badge variant="outline" className={severidadeClass(o.severidade)}>
+                  {o.severidade}
+                </Badge>
                 <span className="font-medium">{o.tipo}</span>
                 <CheckCircle2 className="h-3 w-3 text-emerald-600 ml-auto" />
               </div>
               <div className="whitespace-pre-wrap">{o.descricao}</div>
               <div className="text-muted-foreground">
                 Resolvida por {o.resolvida_por_nome ?? "—"} em{" "}
-                {o.resolvida_em && format(new Date(o.resolvida_em), "dd/MM HH:mm", { locale: ptBR })}
+                {o.resolvida_em &&
+                  format(new Date(o.resolvida_em), "dd/MM HH:mm", { locale: ptBR })}
                 {o.resolucao_nota && ` · ${o.resolucao_nota}`}
               </div>
             </div>
@@ -1029,11 +1088,20 @@ function OcorrenciasBlock({
 /* ---------------------------------- utils ----------------------------------- */
 
 function SectionTitle({
-  icon, label, right,
-}: { icon: React.ReactNode; label: string; right?: React.ReactNode }) {
+  icon,
+  label,
+  right,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  right?: React.ReactNode;
+}) {
   return (
     <div className="flex items-center gap-2">
-      <div className="flex items-center gap-1.5 text-sm font-medium">{icon}{label}</div>
+      <div className="flex items-center gap-1.5 text-sm font-medium">
+        {icon}
+        {label}
+      </div>
       <div className="ml-auto">{right}</div>
     </div>
   );
@@ -1041,10 +1109,15 @@ function SectionTitle({
 
 function severidadeClass(s: string) {
   switch (s) {
-    case "baixa": return "bg-slate-500/10 text-slate-700 border-slate-500/30";
-    case "media": return "bg-amber-500/10 text-amber-700 border-amber-500/30";
-    case "alta": return "bg-orange-500/10 text-orange-700 border-orange-500/30";
-    case "critica": return "bg-rose-500/15 text-rose-700 border-rose-500/30";
-    default: return "";
+    case "baixa":
+      return "bg-slate-500/10 text-slate-700 border-slate-500/30";
+    case "media":
+      return "bg-amber-500/10 text-amber-700 border-amber-500/30";
+    case "alta":
+      return "bg-orange-500/10 text-orange-700 border-orange-500/30";
+    case "critica":
+      return "bg-rose-500/15 text-rose-700 border-rose-500/30";
+    default:
+      return "";
   }
 }
