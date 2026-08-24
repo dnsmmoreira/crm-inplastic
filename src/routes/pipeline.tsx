@@ -34,6 +34,8 @@ import { listLeadsComPedido } from "@/lib/pedidos.functions";
 
 type SortMode = "default" | "urgency" | "urgency-desc";
 const CARDS_PER_PAGE = 15;
+/** Perdido saiu do quadro: a base de recontato vive na tela /leads. */
+const BOARD_STAGES = STAGES.filter((s) => s.id !== "perdido");
 
 const AGENDA_FILTERS: { level: FollowupLevel; label: string; emoji: string }[] = [
   { level: "urgent", label: "Urgente", emoji: "🔥" },
