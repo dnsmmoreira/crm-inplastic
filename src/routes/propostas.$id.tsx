@@ -1546,6 +1546,18 @@ function PropostaDetalhe() {
                   Opcional. Exibida em seção própria na proposta impressa.
                 </p>
               </div>
+              <div>
+                <Label>Tratativa comercial (interno)</Label>
+                <Textarea
+                  rows={4}
+                  placeholder="O que foi combinado com o cliente: condições, concessões, contexto, promessas…"
+                  value={proposal.tratativaComercial ?? ""}
+                  onChange={(e) => updateProposal(proposal.id, { tratativaComercial: e.target.value })}
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Não aparece na proposta enviada ao cliente. É o que o financeiro vai ler ao aprovar.
+                </p>
+              </div>
             </CardContent>
           </Card>
 
