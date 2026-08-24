@@ -474,6 +474,24 @@ function PedidoCard({
 
   const forma = pedido.forma_atendimento?.trim() || null;
 
+  // Resumo do conteúdo do pedido: primeiro item + "+N itens"
+  const itens = pedido.itens ?? [];
+  const primeiro = itens[0];
+  const nomeItem = primeiro
+    ? (primeiro.description?.trim() || primeiro.sku?.trim() || "Item sem descrição")
+    : null;
+  const qtdItem = primeiro
+    ? `${primeiro.quantity.toLocaleString("pt-BR")}${primeiro.unit ? ` ${primeiro.unit}` : ""}`
+    : null;
+  const itensTooltip = itens
+    .map((i) => {
+      const nome = i.description?.trim() || i.sku?.trim() || "Item sem descrição";
+      const sku = i.sku?.trim() && i.description?.trim() ? ` (${i.sku.trim()})` : "";
+      return `${nome}${sku} — ${i.quantity.toLocaleString("pt-BR")}${i.unit ? ` ${i.unit}` : ""}`;
+    })
+    .join("\n");
+
+
   const pendencias: string[] = [];
   if (pedido.stage === "analise_financeira") pendencias.push("Aguardando aprovação");
   if (pedido.stage === "aguardando_pagamento") pendencias.push("Aguardando pagamento antecipado");
