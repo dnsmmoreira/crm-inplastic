@@ -466,8 +466,15 @@ export const updatePedidoStage = createServerFn({ method: "POST" })
     // Atualiza etapa
     const patch: Record<string, unknown> = { stage: to };
     if (to === PEDIDO_STAGE_REPROVADO) patch.reprovacao_motivo = data.motivo ?? null;
-    const { error: updErr } = await sb.from("pedidos").update(patch).eq("id", data.pedido_id);
+    const { data: updRow, error: updErr } = await sb
+      .from("pedidos")
+      .update(patch)
+      .eq("id", data.pedido_id)
+      .select("id")
+      .maybeSingle();
     if (updErr) throw new Error(`Falha ao atualizar etapa: ${updErr.message}`);
+    if (!updRow) throw new Error(NENHUMA_LINHA);
+
 
     // Registra histórico (imutável)
     const { data: histRow, error: histErr } = await sb
