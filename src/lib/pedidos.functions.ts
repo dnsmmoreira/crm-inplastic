@@ -614,7 +614,9 @@ export const listPedidoStageHistory = createServerFn({ method: "GET" })
     );
     const nameById = new Map<string, string>();
     if (userIds.length > 0) {
-      const { data: profs } = await sb.from("profiles").select("id, name").in("id", userIds);
+      const sbView: LooseClient = await clienteDeExibicao(sb);
+      const { data: profs } = await sbView.from("profiles").select("id, name").in("id", userIds);
+
       for (const p of (profs ?? []) as Array<{ id: string; name: string | null }>) {
         if (p.name) nameById.set(p.id, p.name);
       }
