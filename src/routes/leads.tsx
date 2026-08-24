@@ -227,10 +227,28 @@ function LeadsPage() {
                       </Badge>
                     </TableCell>
                     {mostrandoPerdidos && (
-                      <TableCell className="max-w-[260px] truncate text-sm text-muted-foreground">
-                        {motivo ?? "—"}
+                      <TableCell className="max-w-[260px] text-sm text-muted-foreground">
+                        {motivo ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="block truncate">
+                                {motivo.motivo}
+                                {motivo.observacao ? ` · ${motivo.observacao}` : ""}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs space-y-1">
+                              <p className="font-medium">{motivo.motivo}</p>
+                              {motivo.observacao && (
+                                <p className="text-xs opacity-90">{motivo.observacao}</p>
+                              )}
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          "—"
+                        )}
                       </TableCell>
                     )}
+
                     <TableCell className="text-sm">{nomePorId.get(l.ownerId) ?? "—"}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {l.lastContact
