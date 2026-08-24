@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { moverParaGanhoOmie } from "@/lib/omie.functions";
+import { registrarPerdaLead } from "@/lib/leads-perda.functions";
 import { useCrm, type StageId } from "@/lib/crm-store";
 
 /**
@@ -27,6 +28,7 @@ export function useMoveLeadStage() {
   const updateLead = useCrm((s) => s.updateLead);
   const addInteraction = useCrm((s) => s.addInteraction);
   const mover = useServerFn(moverParaGanhoOmie);
+  const registrarPerda = useServerFn(registrarPerdaLead);
 
   return useCallback(
     async (
@@ -71,6 +73,18 @@ export function useMoveLeadStage() {
           }`,
         });
         moveLead(leadId, "perdido");
+        // Dado estruturado: alimenta o relatório de motivos e a fila de recontato.
+        try {
+          await registrarPerda({
+            data: {
+              leadId,
+              motivo: motivoLabel,
+              observacao: observacao ?? null,
+            },
+          });
+        } catch (e) {
+          console.error("Falha ao registrar motivo da perda estruturado", e);
+        }
         return { ok: true as const };
       }
 
