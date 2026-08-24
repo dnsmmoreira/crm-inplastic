@@ -74,8 +74,14 @@ export async function destinatariosFinanceiro(sb: SB): Promise<string[]> {
 }
 
 export async function destinatariosOperacional(sb: SB): Promise<string[]> {
-  return Array.from(new Set(await usuariosDoPerfil(sb, "Operacional Comercial")));
+  // Selecionar por NOME de perfil é frágil: o perfil "Operacional Comercial" foi
+  // renomeado para "Operacional" e a seleção passou a devolver [] em silêncio
+  // (etapa `programacao` sem aviso, tarefa de produção sem dono). A seleção agora
+  // é por PERMISSÃO — `pedidos.movimentar` é exatamente quem OPERA o pedido
+  // (produção, coleta, entrega) e não quebra com renomeação de perfil.
+  return usuariosComPermissao(sb, "pedidos.movimentar");
 }
+
 
 /* ------------------------------------------------------------------ */
 /* Notificações na tela                                                */
