@@ -88,7 +88,6 @@ export async function destinatariosOperacional(sb: SB): Promise<string[]> {
   return usuariosComPermissao(sb, "pedidos.operar_producao");
 }
 
-
 /* ------------------------------------------------------------------ */
 /* Notificações na tela                                                */
 /* ------------------------------------------------------------------ */
