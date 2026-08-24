@@ -32,6 +32,8 @@ import {
   fromRow,
   type ClienteFormState,
 } from "@/components/clientes/ClienteFormFields";
+import { ContatosSection } from "@/components/contatos/ContatosSection";
+
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
