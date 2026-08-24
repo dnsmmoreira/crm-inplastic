@@ -4,6 +4,7 @@ import {
   etapasComCadencia,
   passoCadencia,
   textoCadencia,
+  resolverExcecao,
 } from "./pedidos-cadencia";
 
 describe("cadência de pedidos", () => {
@@ -62,5 +63,42 @@ describe("cadência de pedidos", () => {
       expect(cfg.dias, stage).toEqual(ordenada);
       expect(new Set(cfg.dias).size, stage).toBe(cfg.dias.length);
     }
+  });
+});
+
+describe("exceções de cadência", () => {
+  const exc = [
+    { escopo: "cliente" as const, cliente_id: "c1", stage: "em_producao", dias: [1, 2], escalar_diretoria: false },
+    { escopo: "familia" as const, familia: "Caixas", stage: "em_producao", dias: [5, 10], escalar_diretoria: true },
+  ];
+
+  it("cliente vence família", () => {
+    const o = resolverExcecao(exc, { stage: "em_producao", clienteId: "c1", familias: ["Caixas"] })!;
+    expect(o.fonte).toBe("cliente");
+    expect(o.dias).toEqual([1, 2]);
+  });
+
+  it("cai na família quando o cliente não tem exceção", () => {
+    const o = resolverExcecao(exc, { stage: "em_producao", clienteId: "c9", familias: ["caixas"] })!;
+    expect(o.fonte).toBe("familia");
+  });
+
+  it("sem exceção para a etapa retorna null", () => {
+    expect(resolverExcecao(exc, { stage: "pronto", clienteId: "c1" })).toBeNull();
+  });
+
+  it("override troca a régua e pode desligar a diretoria", () => {
+    const p = passoCadencia("em_producao", 2, { dias: [1, 2], escalarDiretoria: false, fonte: "cliente" })!;
+    expect(p.regua).toEqual([1, 2]);
+    expect(p.nivel).toBe(2);
+    expect(p.ultimo).toBe(true);
+    expect(p.escalarDiretoria).toBe(false);
+    expect(p.excecao).toBe("cliente");
+  });
+
+  it("override só de diretoria mantém a régua padrão", () => {
+    const p = passoCadencia("em_producao", 12, { dias: null, escalarDiretoria: false })!;
+    expect(p.regua).toEqual([3, 7, 12]);
+    expect(p.escalarDiretoria).toBe(false);
   });
 });
