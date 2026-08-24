@@ -80,6 +80,26 @@ export type PedidoRow = {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type LooseClient = any;
 
+/**
+ * Client de leitura para ENRIQUECIMENTO de exibição (nomes de lead/profile).
+ * A autorização real ("posso ver este pedido?") já aconteceu via RLS no client
+ * do usuário; aqui só resolvemos rótulos de um pedido já autorizado. Mesmo
+ * padrão defensivo de `clienteDeEfeitos` em pedidos-fluxo.server.ts.
+ */
+async function clienteDeExibicao(sb: LooseClient): Promise<LooseClient> {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    return supabaseAdmin as LooseClient;
+  } catch (e) {
+    console.error(
+      "[pedidos] client de serviço indisponível, usando client do usuário:",
+      e instanceof Error ? e.message : e,
+    );
+    return sb;
+  }
+}
+
+
 export const listPedidos = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<PedidoRow[]> => {
