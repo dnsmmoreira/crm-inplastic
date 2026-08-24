@@ -14,9 +14,23 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import {
-  Search, Calendar as CalendarIcon, FileText, Truck, User, Clock,
-  AlertTriangle, Flame, Headphones, Ban, Package, Factory, PackageCheck,
-  CheckCircle2, ShieldAlert, Timer, TrendingUp,
+  Search,
+  Calendar as CalendarIcon,
+  FileText,
+  Truck,
+  User,
+  Clock,
+  AlertTriangle,
+  Flame,
+  Headphones,
+  Ban,
+  Package,
+  Factory,
+  PackageCheck,
+  CheckCircle2,
+  ShieldAlert,
+  Timer,
+  TrendingUp,
 } from "lucide-react";
 import { format, differenceInCalendarDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -26,10 +40,19 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { useAuth, hasPerm } from "@/hooks/use-auth";
@@ -87,7 +110,6 @@ function PedidosKanbanPage() {
   const [tOcorrencia, setTOcorrencia] = useState(false);
   const [tReprovados, setTReprovados] = useState(false);
 
-
   const pedidosQ = useQuery({
     queryKey: ["pedidos", "kanban"],
     queryFn: () => listFn(),
@@ -127,8 +149,7 @@ function PedidosKanbanPage() {
 
   const allRows = pedidosQ.data ?? [];
 
-  const responsavelOf = (p: PedidoRow) =>
-    p.responsavel_nome ?? p.equipe_responsavel ?? null;
+  const responsavelOf = (p: PedidoRow) => p.responsavel_nome ?? p.equipe_responsavel ?? null;
 
   const options = useMemo(() => {
     const vendedores = new Set<string>();
@@ -159,8 +180,12 @@ function PedidosKanbanPage() {
     const now = new Date();
     return allRows.filter((p) => {
       if (q) {
-        const hit = [p.number, p.lead_company ?? "", p.proposta_number ?? "", p.nf_numero ?? ""]
-          .some((s) => s.toLowerCase().includes(q));
+        const hit = [
+          p.number,
+          p.lead_company ?? "",
+          p.proposta_number ?? "",
+          p.nf_numero ?? "",
+        ].some((s) => s.toLowerCase().includes(q));
         if (!hit) return false;
       }
       if (fVendedor !== "all" && p.vendedor_nome !== fVendedor) return false;
@@ -178,8 +203,7 @@ function PedidosKanbanPage() {
       }
       if (tBloqueados) {
         const fiscalBlock =
-          p.fiscal_status === "aguardando_correcao" ||
-          p.fiscal_status === "nota_fiscal_cancelada";
+          p.fiscal_status === "aguardando_correcao" || p.fiscal_status === "nota_fiscal_cancelada";
         if ((p.ocorrencias_abertas ?? 0) <= 0 && !fiscalBlock) return false;
       }
       if (tOcorrencia && !(p.ocorrencia && p.ocorrencia.trim().length > 0)) return false;
@@ -187,7 +211,18 @@ function PedidosKanbanPage() {
       if (p.stage === "pos_venda" && p.encerrado_em && !tReprovados) return false;
       return true;
     });
-  }, [allRows, search, fVendedor, fResponsavel, fStage, fForma, tAtrasados, tBloqueados, tOcorrencia, tReprovados]);
+  }, [
+    allRows,
+    search,
+    fVendedor,
+    fResponsavel,
+    fStage,
+    fForma,
+    tAtrasados,
+    tBloqueados,
+    tOcorrencia,
+    tReprovados,
+  ]);
 
   const activeFilterCount =
     (fVendedor !== "all" ? 1 : 0) +
@@ -210,17 +245,22 @@ function PedidosKanbanPage() {
     setTReprovados(false);
   };
 
-
   const byStage = useMemo(() => {
     const map: Record<PedidoStageId, PedidoRow[]> = {
-      analise_financeira: [], aguardando_pagamento: [], programacao: [], em_producao: [],
-      pronto: [], faturado_em_rota: [], pos_venda: [], reprovado_financeiro: [],
+      analise_financeira: [],
+      aguardando_pagamento: [],
+      programacao: [],
+      em_producao: [],
+      pronto: [],
+      faturado_em_rota: [],
+      pos_venda: [],
+      reprovado_financeiro: [],
     };
     filtered.forEach((p) => map[p.stage]?.push(p));
     return map;
   }, [filtered]);
 
-  const activePedido = activeId ? filtered.find((p) => p.id === activeId) ?? null : null;
+  const activePedido = activeId ? (filtered.find((p) => p.id === activeId) ?? null) : null;
 
   const onDragStart = (e: DragStartEvent) => setActiveId(String(e.active.id));
 
@@ -293,14 +333,22 @@ function PedidosKanbanPage() {
 
       <FilterBar
         options={options}
-        fVendedor={fVendedor} setFVendedor={setFVendedor}
-        fResponsavel={fResponsavel} setFResponsavel={setFResponsavel}
-        fStage={fStage} setFStage={setFStage}
-        fForma={fForma} setFForma={setFForma}
-        tAtrasados={tAtrasados} setTAtrasados={setTAtrasados}
-        tBloqueados={tBloqueados} setTBloqueados={setTBloqueados}
-        tOcorrencia={tOcorrencia} setTOcorrencia={setTOcorrencia}
-        tReprovados={tReprovados} setTReprovados={setTReprovados}
+        fVendedor={fVendedor}
+        setFVendedor={setFVendedor}
+        fResponsavel={fResponsavel}
+        setFResponsavel={setFResponsavel}
+        fStage={fStage}
+        setFStage={setFStage}
+        fForma={fForma}
+        setFForma={setFForma}
+        tAtrasados={tAtrasados}
+        setTAtrasados={setTAtrasados}
+        tBloqueados={tBloqueados}
+        setTBloqueados={setTBloqueados}
+        tOcorrencia={tOcorrencia}
+        setTOcorrencia={setTOcorrencia}
+        tReprovados={tReprovados}
+        setTReprovados={setTReprovados}
         activeCount={activeFilterCount}
         onClear={clearFilters}
         totalCount={allRows.length}
@@ -394,10 +442,7 @@ function Column({
     <div className="w-[300px] shrink-0 flex flex-col">
       <div className="px-1 pb-2 flex items-center justify-between">
         <div className="flex items-center gap-2 min-w-0">
-          <span
-            className="h-2.5 w-2.5 rounded-full shrink-0"
-            style={{ background: stage.color }}
-          />
+          <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: stage.color }} />
           <span className="font-medium text-sm truncate">{stage.label}</span>
           <Badge variant="secondary" className="text-xs">
             {pedidos.length}
@@ -478,7 +523,7 @@ function PedidoCard({
   const itens = pedido.itens ?? [];
   const primeiro = itens[0];
   const nomeItem = primeiro
-    ? (primeiro.description?.trim() || primeiro.sku?.trim() || "Item sem descrição")
+    ? primeiro.description?.trim() || primeiro.sku?.trim() || "Item sem descrição"
     : null;
   const qtdItem = primeiro
     ? `${primeiro.quantity.toLocaleString("pt-BR")}${primeiro.unit ? ` ${primeiro.unit}` : ""}`
@@ -490,7 +535,6 @@ function PedidoCard({
       return `${nome}${sku} — ${i.quantity.toLocaleString("pt-BR")}${i.unit ? ` ${i.unit}` : ""}`;
     })
     .join("\n");
-
 
   const pendencias: string[] = [];
   if (pedido.stage === "analise_financeira") pendencias.push("Aguardando aprovação");
@@ -703,8 +747,7 @@ function KpiBar({ pedidos }: { pedidos: PedidoRow[] }) {
     const bloqueados = pedidos.filter((p) => {
       const ocor = (p.ocorrencias_abertas ?? 0) > 0;
       const fiscal =
-        p.fiscal_status === "aguardando_correcao" ||
-        p.fiscal_status === "nota_fiscal_cancelada";
+        p.fiscal_status === "aguardando_correcao" || p.fiscal_status === "nota_fiscal_cancelada";
       return ocor || fiscal;
     }).length;
 
@@ -716,13 +759,8 @@ function KpiBar({ pedidos }: { pedidos: PedidoRow[] }) {
 
     const diasArr = pedidos
       .filter((p) => !terminal.includes(p.stage))
-      .map((p) =>
-        Math.max(0, differenceInCalendarDays(now, new Date(p.stage_changed_at))),
-      );
-    const tempoMedio =
-      diasArr.length > 0
-        ? diasArr.reduce((s, n) => s + n, 0) / diasArr.length
-        : 0;
+      .map((p) => Math.max(0, differenceInCalendarDays(now, new Date(p.stage_changed_at))));
+    const tempoMedio = diasArr.length > 0 ? diasArr.reduce((s, n) => s + n, 0) / diasArr.length : 0;
 
     const concluidos = pedidos.filter((p) => !!p.encerrado_em).length;
     const total = pedidos.length;
@@ -827,12 +865,12 @@ function KpiBar({ pedidos }: { pedidos: PedidoRow[] }) {
               <Icon className={cn("h-3 w-3 shrink-0", toneClass[c.tone ?? "default"])} />
               <span className="truncate">{c.label}</span>
             </div>
-            <div className={cn("text-lg font-semibold leading-tight", toneClass[c.tone ?? "default"])}>
+            <div
+              className={cn("text-lg font-semibold leading-tight", toneClass[c.tone ?? "default"])}
+            >
               {c.value}
             </div>
-            {c.hint && (
-              <div className="text-[10px] text-muted-foreground truncate">{c.hint}</div>
-            )}
+            {c.hint && <div className="text-[10px] text-muted-foreground truncate">{c.hint}</div>}
           </div>
         );
       })}
@@ -847,14 +885,22 @@ type FilterBarProps = {
     formas: string[];
     stages: { id: PedidoStageId; label: string; color: string }[];
   };
-  fVendedor: string; setFVendedor: (v: string) => void;
-  fResponsavel: string; setFResponsavel: (v: string) => void;
-  fStage: string; setFStage: (v: string) => void;
-  fForma: string; setFForma: (v: string) => void;
-  tAtrasados: boolean; setTAtrasados: (v: boolean) => void;
-  tBloqueados: boolean; setTBloqueados: (v: boolean) => void;
-  tOcorrencia: boolean; setTOcorrencia: (v: boolean) => void;
-  tReprovados: boolean; setTReprovados: (v: boolean) => void;
+  fVendedor: string;
+  setFVendedor: (v: string) => void;
+  fResponsavel: string;
+  setFResponsavel: (v: string) => void;
+  fStage: string;
+  setFStage: (v: string) => void;
+  fForma: string;
+  setFForma: (v: string) => void;
+  tAtrasados: boolean;
+  setTAtrasados: (v: boolean) => void;
+  tBloqueados: boolean;
+  setTBloqueados: (v: boolean) => void;
+  tOcorrencia: boolean;
+  setTOcorrencia: (v: boolean) => void;
+  tReprovados: boolean;
+  setTReprovados: (v: boolean) => void;
   activeCount: number;
   onClear: () => void;
   totalCount: number;
@@ -863,34 +909,58 @@ type FilterBarProps = {
 
 function FilterBar(props: FilterBarProps) {
   const {
-    options, fVendedor, setFVendedor, fResponsavel, setFResponsavel,
-    fStage, setFStage, fForma, setFForma,
-    tAtrasados, setTAtrasados, tBloqueados, setTBloqueados,
-    tOcorrencia, setTOcorrencia, tReprovados, setTReprovados,
-    activeCount, onClear, totalCount, filteredCount,
+    options,
+    fVendedor,
+    setFVendedor,
+    fResponsavel,
+    setFResponsavel,
+    fStage,
+    setFStage,
+    fForma,
+    setFForma,
+    tAtrasados,
+    setTAtrasados,
+    tBloqueados,
+    setTBloqueados,
+    tOcorrencia,
+    setTOcorrencia,
+    tReprovados,
+    setTReprovados,
+    activeCount,
+    onClear,
+    totalCount,
+    filteredCount,
   } = props;
 
   return (
     <div className="rounded-xl border bg-card p-3 space-y-3">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         <FilterSelect
-          value={fVendedor} onChange={setFVendedor}
-          placeholder="Vendedor" allLabel="Todos os vendedores"
+          value={fVendedor}
+          onChange={setFVendedor}
+          placeholder="Vendedor"
+          allLabel="Todos os vendedores"
           items={options.vendedores.map((v) => ({ value: v, label: v }))}
         />
         <FilterSelect
-          value={fResponsavel} onChange={setFResponsavel}
-          placeholder="Responsável" allLabel="Todos os responsáveis"
+          value={fResponsavel}
+          onChange={setFResponsavel}
+          placeholder="Responsável"
+          allLabel="Todos os responsáveis"
           items={options.responsaveis.map((v) => ({ value: v, label: v }))}
         />
         <FilterSelect
-          value={fStage} onChange={setFStage}
-          placeholder="Etapa" allLabel="Todas as etapas"
+          value={fStage}
+          onChange={setFStage}
+          placeholder="Etapa"
+          allLabel="Todas as etapas"
           items={options.stages.map((s) => ({ value: s.id, label: s.label }))}
         />
         <FilterSelect
-          value={fForma} onChange={setFForma}
-          placeholder="Forma de atendimento" allLabel="Todas as formas"
+          value={fForma}
+          onChange={setFForma}
+          placeholder="Forma de atendimento"
+          allLabel="Todas as formas"
           items={options.formas.map((v) => ({ value: v, label: v }))}
         />
       </div>
@@ -899,10 +969,18 @@ function FilterBar(props: FilterBarProps) {
         <ToggleChip active={tAtrasados} onClick={() => setTAtrasados(!tAtrasados)} tone="danger">
           <AlertTriangle className="h-3 w-3 mr-1" /> Atrasados
         </ToggleChip>
-        <ToggleChip active={tBloqueados} onClick={() => setTBloqueados(!tBloqueados)} tone="warning">
+        <ToggleChip
+          active={tBloqueados}
+          onClick={() => setTBloqueados(!tBloqueados)}
+          tone="warning"
+        >
           <ShieldAlert className="h-3 w-3 mr-1" /> Bloqueados
         </ToggleChip>
-        <ToggleChip active={tOcorrencia} onClick={() => setTOcorrencia(!tOcorrencia)} tone="warning">
+        <ToggleChip
+          active={tOcorrencia}
+          onClick={() => setTOcorrencia(!tOcorrencia)}
+          tone="warning"
+        >
           <Ban className="h-3 w-3 mr-1" /> Com ocorrência
         </ToggleChip>
         <ToggleChip active={tReprovados} onClick={() => setTReprovados(!tReprovados)} tone="danger">
@@ -925,7 +1003,11 @@ function FilterBar(props: FilterBarProps) {
 }
 
 function FilterSelect({
-  value, onChange, placeholder, allLabel, items,
+  value,
+  onChange,
+  placeholder,
+  allLabel,
+  items,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -951,7 +1033,10 @@ function FilterSelect({
 }
 
 function ToggleChip({
-  active, onClick, tone, children,
+  active,
+  onClick,
+  tone,
+  children,
 }: {
   active: boolean;
   onClick: () => void;
@@ -979,4 +1064,3 @@ function ToggleChip({
     </button>
   );
 }
-
