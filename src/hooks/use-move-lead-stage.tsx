@@ -127,6 +127,6 @@ export function useMoveLeadStage() {
         return { ok: false as const };
       }
     },
-    [mover, moveLead, updateLead, addInteraction],
+    [mover, moveLead, updateLead, addInteraction, registrarPerda],
   );
 }
