@@ -77,6 +77,8 @@ function LeadsPage() {
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
   const [openLead, setOpenLead] = useState<string | null>(null);
+  const [sortMotivo, setSortMotivo] = useState<"asc" | "desc" | null>(null);
+
 
   const listVendedoresFn = useServerFn(listVendedores);
   const vendedoresQ = useQuery({
