@@ -529,7 +529,21 @@ function PedidoCard({
         <div className="min-w-0">
           <div className="font-mono text-xs text-muted-foreground">{pedido.number}</div>
           <div className="font-medium text-sm truncate">{pedido.lead_company ?? "—"}</div>
+          {nomeItem && (
+            <div className="mt-0.5 flex items-baseline gap-1 min-w-0" title={itensTooltip}>
+              <span className="text-xs text-foreground/80 truncate">
+                {nomeItem}
+                {qtdItem ? ` · ${qtdItem}` : ""}
+              </span>
+              {itens.length > 1 && (
+                <span className="text-[10px] text-muted-foreground shrink-0">
+                  +{itens.length - 1} {itens.length - 1 === 1 ? "item" : "itens"}
+                </span>
+              )}
+            </div>
+          )}
         </div>
+
         <div className="text-primary font-semibold text-sm shrink-0">{formatBRL(pedido.total)}</div>
       </div>
 
