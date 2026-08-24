@@ -51,7 +51,9 @@ export async function enfileirarRespostaIA(conversaId: string, mensagem: string)
  * Despacha UMA resposta pendente (marca em processamento antes de enviar).
  * Retorna o motivo quando não envia.
  */
-export async function despacharResposta(id: string): Promise<{ enviado: boolean; motivo?: string }> {
+export async function despacharResposta(
+  id: string,
+): Promise<{ enviado: boolean; motivo?: string }> {
   const sb = await admin();
 
   const { data: linha } = await sb
@@ -163,7 +165,6 @@ export async function despacharResposta(id: string): Promise<{ enviado: boolean;
     });
     return { enviado: false, motivo: "erro_envio" };
   }
-
 
   await sb.from("whatsapp_mensagens").insert({
     conversa_id: linha.conversa_id,

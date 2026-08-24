@@ -79,7 +79,6 @@ export async function destinatariosFinanceiro(sb: SB): Promise<string[]> {
   return usuariosComPermissao(sb, "pedidos.aprovar_financeiro");
 }
 
-
 export async function destinatariosOperacional(sb: SB): Promise<string[]> {
   return Array.from(new Set(await usuariosDoPerfil(sb, "Operacional Comercial")));
 }
