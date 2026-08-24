@@ -99,6 +99,7 @@ function PipelinePage() {
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     return leads.filter((l) => {
+      if (l.stage === "perdido") return false;
       if (!mostrarGanhosCompletos && l.stage === "ganho" && leadsComPedidoSet.has(l.id)) return false;
       if (q && !(l.company.toLowerCase().includes(q) ||
         l.contactName.toLowerCase().includes(q) ||
@@ -299,7 +300,7 @@ function PipelinePage() {
       <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
         <div className="-mx-4 min-h-0 flex-1 overflow-auto px-4 md:-mx-8 md:px-8">
           <div className="flex gap-4 pb-4">
-            {STAGES.map((stage) => (
+            {BOARD_STAGES.map((stage) => (
               <Column
                 key={stage.id}
                 stage={stage}
