@@ -595,6 +595,72 @@ export type Database = {
         }
         Relationships: []
       }
+      contatos: {
+        Row: {
+          ativo: boolean
+          atualizado_em: string
+          cargo: string | null
+          cliente_id: string | null
+          criado_em: string
+          criado_por: string | null
+          email: string | null
+          id: string
+          lead_id: string | null
+          nome: string
+          observacao: string | null
+          papel: string
+          telefone: string | null
+          telefone2: string | null
+        }
+        Insert: {
+          ativo?: boolean
+          atualizado_em?: string
+          cargo?: string | null
+          cliente_id?: string | null
+          criado_em?: string
+          criado_por?: string | null
+          email?: string | null
+          id?: string
+          lead_id?: string | null
+          nome: string
+          observacao?: string | null
+          papel: string
+          telefone?: string | null
+          telefone2?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          atualizado_em?: string
+          cargo?: string | null
+          cliente_id?: string | null
+          criado_em?: string
+          criado_por?: string | null
+          email?: string | null
+          id?: string
+          lead_id?: string | null
+          nome?: string
+          observacao?: string | null
+          papel?: string
+          telefone?: string | null
+          telefone2?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contatos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contatos_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       emitters: {
         Row: {
           address: string | null
