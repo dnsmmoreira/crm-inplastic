@@ -90,14 +90,106 @@ export function etapasComCadencia(): string[] {
 }
 
 /**
+ * Exceção de cadência: sobrescreve a régua e/ou o escalonamento à diretoria
+ * para um cliente específico ou para uma família (tipo) de produto.
+ * Precedência: cliente > família > padrão.
+ */
+export type CadenciaExcecao = {
+  escopo: "cliente" | "familia";
+  cliente_id?: string | null;
+  familia?: string | null;
+  stage: string;
+  /** Régua alternativa em dias. `null`/vazio mantém a régua padrão da etapa. */
+  dias?: number[] | null;
+  escalar_diretoria?: boolean | null;
+  ativo?: boolean;
+};
+
+export type CadenciaOverride = {
+  dias?: number[] | null;
+  escalarDiretoria?: boolean | null;
+  fonte?: "cliente" | "familia" | null;
+};
+
+/** Normaliza uma régua vinda do banco: inteiros positivos, únicos e crescentes. */
+export function normalizarRegua(dias: unknown): number[] | null {
+  if (!Array.isArray(dias)) return null;
+  const limpos = Array.from(
+    new Set(
+      dias
+        .map((d) => Math.trunc(Number(d)))
+        .filter((d) => Number.isFinite(d) && d > 0),
+    ),
+  ).sort((a, b) => a - b);
+  return limpos.length ? limpos : null;
+}
+
+/**
+ * Escolhe a exceção aplicável a um pedido, dado o cliente e as famílias dos
+ * itens. Cliente vence família; família só entra se houver exatamente uma
+ * exceção de família aplicável (evita ambiguidade em pedido misto — nesse caso
+ * vale a de menor régua, a mais rígida).
+ */
+export function resolverExcecao(
+  excecoes: CadenciaExcecao[],
+  args: { stage: string; clienteId?: string | null; familias?: (string | null | undefined)[] },
+): CadenciaOverride | null {
+  const ativas = excecoes.filter((e) => e.ativo !== false && e.stage === args.stage);
+
+  if (args.clienteId) {
+    const porCliente = ativas.find(
+      (e) => e.escopo === "cliente" && e.cliente_id === args.clienteId,
+    );
+    if (porCliente) {
+      return {
+        dias: normalizarRegua(porCliente.dias),
+        escalarDiretoria: porCliente.escalar_diretoria ?? null,
+        fonte: "cliente",
+      };
+    }
+  }
+
+  const familias = (args.familias ?? [])
+    .filter((f): f is string => !!f && f.trim() !== "")
+    .map((f) => f.trim().toLowerCase());
+  if (familias.length) {
+    const candidatas = ativas.filter(
+      (e) => e.escopo === "familia" && familias.includes((e.familia ?? "").trim().toLowerCase()),
+    );
+    if (candidatas.length) {
+      const escolhida = candidatas
+        .slice()
+        .sort((a, b) => {
+          const ra = normalizarRegua(a.dias);
+          const rb = normalizarRegua(b.dias);
+          return (ra?.[0] ?? Infinity) - (rb?.[0] ?? Infinity);
+        })[0]!;
+      return {
+        dias: normalizarRegua(escolhida.dias),
+        escalarDiretoria: escolhida.escalar_diretoria ?? null,
+        fonte: "familia",
+      };
+    }
+  }
+
+  return null;
+}
+
+/**
  * Qual passo da cadência se aplica a um pedido parado há `dias` na etapa.
  * Retorna `null` quando a etapa não tem cadência ou ainda está dentro do prazo.
+ * `override` permite aplicar exceção por cliente/família sem alterar o padrão.
  */
-export function passoCadencia(stage: string, dias: number): PassoCadencia | null {
+export function passoCadencia(
+  stage: string,
+  dias: number,
+  override?: CadenciaOverride | null,
+): PassoCadencia | null {
   const cfg = CADENCIA_PEDIDO[stage];
   if (!cfg || !Number.isFinite(dias)) return null;
 
-  const regua = [...cfg.dias].sort((a, b) => a - b);
+  const reguaOverride = normalizarRegua(override?.dias);
+  const regua = reguaOverride ?? [...cfg.dias].sort((a, b) => a - b);
   let indice = -1;
   for (let i = 0; i < regua.length; i++) {
     if (dias >= regua[i]!) indice = i;
@@ -106,17 +198,25 @@ export function passoCadencia(stage: string, dias: number): PassoCadencia | null
 
   const nivel = indice + 1;
   const ultimo = indice === regua.length - 1;
+  const diretoriaPadrao = ultimo && regua.length > 1;
+  const escalarDiretoria =
+    override?.escalarDiretoria === false
+      ? false
+      : override?.escalarDiretoria === true
+        ? ultimo
+        : diretoriaPadrao;
   return {
     stage,
     passo: regua[indice]!,
     nivel,
     ultimo,
     escalarGestao: nivel >= 2,
-    escalarDiretoria: ultimo && regua.length > 1,
+    escalarDiretoria,
     grupo: cfg.grupo,
     tipo: cfg.tipo,
     acao: cfg.acao,
     regua,
+    excecao: override?.fonte ?? null,
   };
 }
 
