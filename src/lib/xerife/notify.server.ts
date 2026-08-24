@@ -70,8 +70,6 @@ function faltantesTelegram(chatId: string | null | undefined): string[] {
   return f;
 }
 
-
-
 export async function getOwnerPhone(sb: SB, ownerId: string): Promise<string | null> {
   if (phoneCache.has(ownerId)) return phoneCache.get(ownerId)!;
   const { data } = await sb
@@ -131,12 +129,8 @@ export async function enviarNotificacaoInterna(
     );
     await registrarAlertaNaoEntregue(ctx, faltantesTelegram(opts?.telegramChatId));
     return { enviado: false, motivo: "canal_interno_desligado" };
-
   } catch (e) {
-    console.error(
-      "[notificacao-interna] erro:",
-      e instanceof Error ? e.message : String(e),
-    );
+    console.error("[notificacao-interna] erro:", e instanceof Error ? e.message : String(e));
     const { registrarFalhaAdmin } = await import("@/lib/falhas.server");
     await registrarFalhaAdmin("xerife.notificacao", e, { canal: ctx, acao: "envio_interno" });
     return { enviado: false, motivo: "erro_envio" };

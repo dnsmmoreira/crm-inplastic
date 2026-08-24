@@ -224,7 +224,9 @@ function PainelFalhas() {
                 >
                   {f.total}
                 </div>
-                <div className={`text-xs ${critico ? "text-destructive" : "text-muted-foreground"}`}>
+                <div
+                  className={`text-xs ${critico ? "text-destructive" : "text-muted-foreground"}`}
+                >
                   {f.total === 0
                     ? "sem itens parados"
                     : `mais antigo há ${formatarIdade(f.mais_antigo_em)}`}
