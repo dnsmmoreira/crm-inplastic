@@ -6,6 +6,7 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SB = SupabaseClient<any, any, any>;
 
 const phoneCache = new Map<string, string | null>();
@@ -54,6 +55,12 @@ async function registrarAlertaNaoEntregue(canal: string, faltantes: string[]) {
       "[notificacao-interna] falha ao registrar alerta_nao_entregue:",
       e instanceof Error ? e.message : String(e),
     );
+    const { registrarFalhaAdmin } = await import("@/lib/falhas.server");
+    await registrarFalhaAdmin("xerife.notificacao", e, {
+      canal,
+      acao: "registrar_alerta_nao_entregue",
+      variaveis_ausentes: faltantes,
+    });
   }
 }
 
@@ -63,8 +70,6 @@ function faltantesTelegram(chatId: string | null | undefined): string[] {
   if (!(chatId ?? "").trim()) f.push("TELEGRAM_CHAT_DIRETORIA");
   return f;
 }
-
-
 
 export async function getOwnerPhone(sb: SB, ownerId: string): Promise<string | null> {
   if (phoneCache.has(ownerId)) return phoneCache.get(ownerId)!;
@@ -125,12 +130,10 @@ export async function enviarNotificacaoInterna(
     );
     await registrarAlertaNaoEntregue(ctx, faltantesTelegram(opts?.telegramChatId));
     return { enviado: false, motivo: "canal_interno_desligado" };
-
   } catch (e) {
-    console.error(
-      "[notificacao-interna] erro:",
-      e instanceof Error ? e.message : String(e),
-    );
+    console.error("[notificacao-interna] erro:", e instanceof Error ? e.message : String(e));
+    const { registrarFalhaAdmin } = await import("@/lib/falhas.server");
+    await registrarFalhaAdmin("xerife.notificacao", e, { canal: ctx, acao: "envio_interno" });
     return { enviado: false, motivo: "erro_envio" };
   }
 }
@@ -146,6 +149,8 @@ export async function notifyOwner(ownerId: string | null, msg: string): Promise<
     return r.enviado;
   } catch (e) {
     console.error("[xerife/notify] erro:", e instanceof Error ? e.message : String(e));
+    const { registrarFalhaAdmin } = await import("@/lib/falhas.server");
+    await registrarFalhaAdmin("xerife.notificacao", e, { user_id: ownerId, acao: "notify_owner" });
     return false;
   }
 }

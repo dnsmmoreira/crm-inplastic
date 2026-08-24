@@ -79,7 +79,6 @@ export async function destinatariosFinanceiro(sb: SB): Promise<string[]> {
   return usuariosComPermissao(sb, "pedidos.aprovar_financeiro");
 }
 
-
 export async function destinatariosOperacional(sb: SB): Promise<string[]> {
   return Array.from(new Set(await usuariosDoPerfil(sb, "Operacional Comercial")));
 }
@@ -143,6 +142,12 @@ export async function notificarUsuarios(
   );
   if (error) {
     console.error("[pedidos-fluxo] falha ao notificar:", error.message);
+    const { registrarFalhaAdmin } = await import("@/lib/falhas.server");
+    await registrarFalhaAdmin("pedido.notificacao", error.message, {
+      pedido_id: args.pedidoId,
+      tipo: args.tipo,
+      destinatarios: novos,
+    });
     return 0;
   }
   return novos.length;
@@ -208,6 +213,13 @@ export async function criarTarefaPedido(
     .maybeSingle();
   if (error) {
     console.error("[pedidos-fluxo] falha ao criar tarefa:", error.message);
+    const { registrarFalhaAdmin } = await import("@/lib/falhas.server");
+    await registrarFalhaAdmin("pedido.tarefa", error.message, {
+      pedido_id: args.pedidoId,
+      lead_id: args.leadId,
+      owner_id: args.ownerId,
+      tipo: args.tipo,
+    });
     return { criada: false };
   }
   return { criada: true, id: data?.id as string | undefined };
@@ -533,6 +545,8 @@ export async function aoEntrarNaEtapa(
       `[pedidos-fluxo] aoEntrarNaEtapa falhou (pedido=${pedidoId}, etapa=${stage}):`,
       e instanceof Error ? e.message : e,
     );
+    const { registrarFalhaAdmin } = await import("@/lib/falhas.server");
+    await registrarFalhaAdmin("pedido.etapa", e, { pedido_id: pedidoId, etapa: stage });
   }
 }
 
@@ -558,7 +572,15 @@ export async function concluirTarefasEtapaFinanceira(
     .eq("pedido_id", pedidoId)
     .in("tipo", alvos)
     .in("status", ["pendente", "adiada"]);
-  if (error) console.error("[pedidos-fluxo] falha ao concluir tarefas de etapa:", error.message);
+  if (error) {
+    console.error("[pedidos-fluxo] falha ao concluir tarefas de etapa:", error.message);
+    const { registrarFalhaAdmin } = await import("@/lib/falhas.server");
+    await registrarFalhaAdmin("pedido.tarefa", error.message, {
+      pedido_id: pedidoId,
+      etapa: stageAtual,
+      acao: "concluir_tarefas_etapa_financeira",
+    });
+  }
 }
 
 /** Concluir a tarefa de pós-venda encerra o pedido. */
@@ -577,5 +599,10 @@ export async function encerrarPedidoPorTarefa(sb: SB, tarefaId: string): Promise
       .is("encerrado_em", null);
   } catch (e) {
     console.error("[pedidos-fluxo] encerrarPedidoPorTarefa falhou:", e);
+    const { registrarFalhaAdmin } = await import("@/lib/falhas.server");
+    await registrarFalhaAdmin("pedido.tarefa", e, {
+      tarefa_id: tarefaId,
+      acao: "encerrar_pedido_por_tarefa",
+    });
   }
 }

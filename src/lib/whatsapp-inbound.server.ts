@@ -175,7 +175,8 @@ export async function processarEntradaWhatsapp(
     const link = `https://crm.inplastic.com.br/conversas?c=${conversaId}`;
     const titulo = `Mídia (${tipo}) aguardando atendimento — ${quem}`;
     const corpo =
-      `📎 Conversa aguardando especialista\n\n` + `Cliente: ${quem}\nMotivo: midia_${tipo}\n${link}`;
+      `📎 Conversa aguardando especialista\n\n` +
+      `Cliente: ${quem}\nMotivo: midia_${tipo}\n${link}`;
     const { notificarUsuario, alertarAdmins } = await import("@/lib/xerife/handoff.server");
     if (convHo?.atribuido_para) {
       await notificarUsuario(supabaseAdmin, {
@@ -267,9 +268,8 @@ export async function processarEntradaWhatsapp(
         agente: "Gabriel",
         system_prompt: systemPrompt,
       };
-      const { enviarAvisoN8n, enfileirarAvisoN8n, N8N_TIMEOUT_MS } = await import(
-        "@/lib/n8n-fila.server"
-      );
+      const { enviarAvisoN8n, enfileirarAvisoN8n, N8N_TIMEOUT_MS } =
+        await import("@/lib/n8n-fila.server");
       try {
         await enviarAvisoN8n(n8nUrl, n8nSecret, payloadOut, N8N_TIMEOUT_MS);
         console.log("[n8n-notify] sent", { conversaId });
@@ -277,6 +277,12 @@ export async function processarEntradaWhatsapp(
         const msg = e instanceof Error ? e.message : String(e);
         console.error("[n8n-notify] failed, enfileirando reenvio:", msg);
         await enfileirarAvisoN8n(supabaseAdmin, { conversaId, payload: payloadOut, erro: msg });
+        const { registrarFalha } = await import("@/lib/falhas.server");
+        await registrarFalha(supabaseAdmin, "whatsapp.inbound", msg, {
+          conversa_id: conv.id,
+          lead_id: conv.lead_id,
+          acao: "aviso_n8n",
+        });
       }
     }
   }

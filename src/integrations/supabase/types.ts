@@ -661,6 +661,39 @@ export type Database = {
         }
         Relationships: []
       }
+      falhas_sistema: {
+        Row: {
+          contexto: Json | null
+          id: string
+          mensagem: string
+          ocorrencias: number
+          ocorrido_em: string
+          origem: string
+          resolvido_em: string | null
+          resolvido_por: string | null
+        }
+        Insert: {
+          contexto?: Json | null
+          id?: string
+          mensagem: string
+          ocorrencias?: number
+          ocorrido_em?: string
+          origem: string
+          resolvido_em?: string | null
+          resolvido_por?: string | null
+        }
+        Update: {
+          contexto?: Json | null
+          id?: string
+          mensagem?: string
+          ocorrencias?: number
+          ocorrido_em?: string
+          origem?: string
+          resolvido_em?: string | null
+          resolvido_por?: string | null
+        }
+        Relationships: []
+      }
       fila_estado: {
         Row: {
           id: number

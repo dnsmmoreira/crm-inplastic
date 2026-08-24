@@ -10,6 +10,7 @@ import {
 } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import {
+  AlertTriangle,
   LayoutDashboard,
   KanbanSquare,
   Users,
@@ -329,6 +330,12 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/licitacoes", label: "Licitações", icon: Gavel, show: key("licitacoes.gerenciar") },
 
       { to: "/arena", label: "ARENA", icon: Trophy, show: key("metas.definir") },
+      {
+        to: "/falhas",
+        label: "Falhas do sistema",
+        icon: AlertTriangle,
+        show: key("sistema.ver_falhas"),
+      },
       {
         to: "/usuarios",
         label: "Usuários",
