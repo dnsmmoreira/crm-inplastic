@@ -934,7 +934,12 @@ async function carregarHistoricoCliente(
         ? `${digitos.slice(0, 2)}.${digitos.slice(2, 5)}.${digitos.slice(5, 8)}/${digitos.slice(8, 12)}-${digitos.slice(12)}`
         : digitos;
     const grafias = Array.from(new Set([args.cnpj ?? "", digitos, mascarado].filter(Boolean)));
-    const { data: leadsMesmoCnpj } = await sb.from("leads").select("id, cnpj").in("cnpj", grafias);
+    const sbView: LooseClient = await clienteDeExibicao(sb);
+    const { data: leadsMesmoCnpj } = await sbView
+      .from("leads")
+      .select("id, cnpj")
+      .in("cnpj", grafias);
+
     const ids = ((leadsMesmoCnpj ?? []) as Array<{ id: string; cnpj: string | null }>)
       .filter((l) => soDigitos(l.cnpj) === digitos)
       .map((l) => l.id);
