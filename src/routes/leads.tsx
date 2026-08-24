@@ -52,14 +52,24 @@ const PAGE_SIZE = 25;
  * O motivo da perda é gravado por `useMoveLeadStage` como primeira linha das
  * notas do lead, no formato `[data] Perda — Motivo: X · observação`.
  */
-function motivoPerda(lead: Lead): string | null {
+function motivoPerda(lead: Lead): { motivo: string; observacao: string | null } | null {
   if (lead.stage !== "perdido") return null;
   const line = (lead.notes ?? "")
     .split("\n")
     .find((l) => l.includes("Perda — Motivo:"));
   if (!line) return null;
-  return line.slice(line.indexOf("Perda — Motivo:") + "Perda — Motivo:".length).trim() || null;
+  const texto = line
+    .slice(line.indexOf("Perda — Motivo:") + "Perda — Motivo:".length)
+    .trim();
+  if (!texto) return null;
+  const sep = texto.indexOf("·");
+  if (sep === -1) return { motivo: texto, observacao: null };
+  return {
+    motivo: texto.slice(0, sep).trim(),
+    observacao: texto.slice(sep + 1).trim() || null,
+  };
 }
+
 
 function LeadsPage() {
   const leads = useVisibleLeads();
