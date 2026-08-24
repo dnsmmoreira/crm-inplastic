@@ -155,6 +155,12 @@ export async function despacharResposta(id: string): Promise<{ enviado: boolean;
       telefone_mascarado: mascararTelefoneLog(phone),
     });
     await registrarFalhaEntrega(msg);
+    const { registrarFalhaAdmin } = await import("./falhas.server");
+    await registrarFalhaAdmin("ia.envio", msg, {
+      conversa_id: linha.conversa_id,
+      resposta_id: id,
+      telefone_mascarado: mascararTelefoneLog(phone),
+    });
     return { enviado: false, motivo: "erro_envio" };
   }
 
