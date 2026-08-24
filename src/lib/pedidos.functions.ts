@@ -585,11 +585,41 @@ export type PedidoOcorrencia = {
   created_at: string;
 };
 
+export type PedidoItemDetalhe = {
+  sku: string | null;
+  description: string | null;
+  quantity: number;
+  unit: string | null;
+  unit_price: number;
+  position: number;
+};
+
+export type PedidoParcelaDetalhe = {
+  days: number;
+  due_date: string | null;
+  amount: number;
+  percentual: number | null;
+  position: number;
+};
+
 export type PedidoDetalhes = {
   id: string;
   number: string;
   stage: PedidoStageId;
   total: number;
+  /* Comercial (quem aprova precisa ver o que está comprando) */
+  cliente_nome: string | null;
+  cliente_cnpj: string | null;
+  vendedor_nome: string | null;
+  itens: PedidoItemDetalhe[];
+  subtotal: number;
+  desconto_percent: number;
+  forma_pagamento: string | null;
+  condicao_label: string | null;
+  previsao_faturamento: string | null;
+  parcelas: PedidoParcelaDetalhe[];
+  tratativa_comercial: string | null;
+  historico_cliente: HistoricoCliente;
   aprovacao_solicitada_em: string | null;
   aprovacao_solicitada_por: string | null;
   aprovacao_solicitada_por_nome: string | null;
@@ -609,6 +639,7 @@ export type PedidoDetalhes = {
   nf_emitida_em: string | null;
   ocorrencias: PedidoOcorrencia[];
 };
+
 
 const APPROVAL_FIELDS = [
   "aprovacao_solicitada_em",
