@@ -80,6 +80,25 @@ export type PedidoRow = {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type LooseClient = any;
 
+/**
+ * Client de leitura para ENRIQUECIMENTO de exibição (nomes de lead/profile).
+ * A autorização real ("posso ver este pedido?") já aconteceu via RLS no client
+ * do usuário; aqui só resolvemos rótulos de um pedido já autorizado. Mesmo
+ * padrão defensivo de `clienteDeEfeitos` em pedidos-fluxo.server.ts.
+ */
+async function clienteDeExibicao(sb: LooseClient): Promise<LooseClient> {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    return supabaseAdmin as LooseClient;
+  } catch (e) {
+    console.error(
+      "[pedidos] client de serviço indisponível, usando client do usuário:",
+      e instanceof Error ? e.message : e,
+    );
+    return sb;
+  }
+}
+
 export const listPedidos = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<PedidoRow[]> => {
@@ -93,15 +112,16 @@ export const listPedidos = createServerFn({ method: "GET" })
           "forma_atendimento, prioridade, ocorrencia",
           "vendedor_proprietario_id, proposta_id, lead_id",
           "modalidade_entrega, entrega_confirmada, encerrado_em, aprovacao_rota, reprovacao_motivo",
-          "leads:lead_id(company)",
           "propostas:proposta_id(number)",
         ].join(", "),
       )
+
       .order("created_at", { ascending: false })
       .limit(500);
     if (error) throw new Error(`Falha ao listar pedidos: ${error.message}`);
     const rows = (data ?? []) as Array<{
       id: string;
+      lead_id: string | null;
       vendedor_proprietario_id: string | null;
       responsavel_atual_id: string | null;
     }>;
@@ -152,21 +172,35 @@ export const listPedidos = createServerFn({ method: "GET" })
       }
     }
 
-    // Resolver nomes de profiles (vendedor + responsável) via lookup separado —
-    // não há FK declarada entre pedidos e profiles, então evitamos embed do PostgREST.
+    // Resolver nomes de profiles (vendedor + responsável) e da empresa do lead via
+    // lookup separado no client de exibição — a RLS de leads/profiles é restrita ao
+    // dono/admin e esconderia os rótulos de um pedido já autorizado pela RLS de pedidos.
+    const sbView: LooseClient = await clienteDeExibicao(sb);
     const profileIds = new Set<string>();
+    const leadIds = new Set<string>();
     for (const r of rows) {
       if (r.vendedor_proprietario_id) profileIds.add(r.vendedor_proprietario_id);
       if (r.responsavel_atual_id) profileIds.add(r.responsavel_atual_id);
+      if (r.lead_id) leadIds.add(r.lead_id);
     }
     const nameById = new Map<string, string>();
     if (profileIds.size > 0) {
-      const { data: profs } = await sb
+      const { data: profs } = await sbView
         .from("profiles")
         .select("id, name")
         .in("id", Array.from(profileIds));
       for (const p of (profs ?? []) as Array<{ id: string; name: string | null }>) {
         if (p.name) nameById.set(p.id, p.name);
+      }
+    }
+    const companyByLead = new Map<string, string>();
+    if (leadIds.size > 0) {
+      const { data: leadsRows } = await sbView
+        .from("leads")
+        .select("id, company")
+        .in("id", Array.from(leadIds));
+      for (const l of (leadsRows ?? []) as Array<{ id: string; company: string | null }>) {
+        if (l.company) companyByLead.set(l.id, l.company);
       }
     }
 
@@ -188,8 +222,8 @@ export const listPedidos = createServerFn({ method: "GET" })
         vendedor_proprietario_id: string | null;
         proposta_id: string | null;
         lead_id: string | null;
-        leads?: { company: string | null } | null;
         propostas?: { number: string | null } | null;
+
         modalidade_entrega: string | null;
         entrega_confirmada: string | null;
         encerrado_em: string | null;
@@ -220,7 +254,7 @@ export const listPedidos = createServerFn({ method: "GET" })
           : null,
         proposta_id: r.proposta_id,
         lead_id: r.lead_id,
-        lead_company: r.leads?.company ?? null,
+        lead_company: r.lead_id ? (companyByLead.get(r.lead_id) ?? null) : null,
         proposta_number: r.propostas?.number ?? null,
         modalidade_entrega: r.modalidade_entrega ?? "coleta",
         entrega_confirmada: r.entrega_confirmada,
@@ -576,7 +610,9 @@ export const listPedidoStageHistory = createServerFn({ method: "GET" })
     );
     const nameById = new Map<string, string>();
     if (userIds.length > 0) {
-      const { data: profs } = await sb.from("profiles").select("id, name").in("id", userIds);
+      const sbView: LooseClient = await clienteDeExibicao(sb);
+      const { data: profs } = await sbView.from("profiles").select("id, name").in("id", userIds);
+
       for (const p of (profs ?? []) as Array<{ id: string; name: string | null }>) {
         if (p.name) nameById.set(p.id, p.name);
       }
@@ -698,7 +734,9 @@ async function resolveNames(sb: LooseClient, ids: (string | null)[]): Promise<Ma
   const uniq = Array.from(new Set(ids.filter((x): x is string => !!x)));
   const map = new Map<string, string>();
   if (uniq.length === 0) return map;
-  const { data } = await sb.from("profiles").select("id, name").in("id", uniq);
+  const sbView: LooseClient = await clienteDeExibicao(sb);
+  const { data } = await sbView.from("profiles").select("id, name").in("id", uniq);
+
   for (const p of (data ?? []) as Array<{ id: string; name: string | null }>) {
     if (p.name) map.set(p.id, p.name);
   }
@@ -726,6 +764,10 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
     const snapProposta = (p.proposta_snapshot?.proposta ?? {}) as Record<string, unknown>;
     const paymentTermId = (snapProposta.payment_term_id as string | null) ?? null;
 
+    // Rótulos (empresa/CNPJ do lead) vêm do client de exibição: o pedido já foi
+    // autorizado pela RLS de `pedidos` acima.
+    const sbView: LooseClient = await clienteDeExibicao(sb);
+
     const [ocRes, itensRes, leadRes, condRes, propRes] = await Promise.all([
       sb
         .from("pedido_ocorrencias")
@@ -738,8 +780,9 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
         .eq("pedido_id", data.pedido_id)
         .order("position", { ascending: true }),
       p.lead_id
-        ? sb.from("leads").select("id, company, cnpj").eq("id", p.lead_id).maybeSingle()
+        ? sbView.from("leads").select("id, company, cnpj").eq("id", p.lead_id).maybeSingle()
         : Promise.resolve({ data: null }),
+
       paymentTermId
         ? sb.from("condicoes_pagamento").select("id, label").eq("id", paymentTermId).maybeSingle()
         : Promise.resolve({ data: null }),
@@ -887,7 +930,12 @@ async function carregarHistoricoCliente(
         ? `${digitos.slice(0, 2)}.${digitos.slice(2, 5)}.${digitos.slice(5, 8)}/${digitos.slice(8, 12)}-${digitos.slice(12)}`
         : digitos;
     const grafias = Array.from(new Set([args.cnpj ?? "", digitos, mascarado].filter(Boolean)));
-    const { data: leadsMesmoCnpj } = await sb.from("leads").select("id, cnpj").in("cnpj", grafias);
+    const sbView: LooseClient = await clienteDeExibicao(sb);
+    const { data: leadsMesmoCnpj } = await sbView
+      .from("leads")
+      .select("id, cnpj")
+      .in("cnpj", grafias);
+
     const ids = ((leadsMesmoCnpj ?? []) as Array<{ id: string; cnpj: string | null }>)
       .filter((l) => soDigitos(l.cnpj) === digitos)
       .map((l) => l.id);
