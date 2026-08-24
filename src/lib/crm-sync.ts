@@ -412,6 +412,8 @@ function rowToProposal(
     observations: r.observations ?? "",
     customerOrderNumber: (r as unknown as { numero_pedido_cliente?: string | null }).numero_pedido_cliente ?? undefined,
     orderNotes: (r as unknown as { observacoes_pedido?: string | null }).observacoes_pedido ?? undefined,
+    tratativaComercial:
+      (r as unknown as { tratativa_comercial?: string | null }).tratativa_comercial ?? undefined,
     paymentTermId: r.payment_term_id ?? undefined,
     formaPagamento:
       ((r as unknown as { forma_pagamento?: string | null }).forma_pagamento as PaymentForm | null) ?? undefined,
@@ -469,6 +471,7 @@ function proposalToInsert(p: Proposal): ProposalInsert {
       : {}),
     numero_pedido_cliente: p.customerOrderNumber ?? null,
     observacoes_pedido: p.orderNotes ?? null,
+    tratativa_comercial: p.tratativaComercial ?? null,
   } as ProposalInsert;
 }
 
