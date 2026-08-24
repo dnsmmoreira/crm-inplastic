@@ -73,14 +73,21 @@ export async function destinatariosFinanceiro(sb: SB): Promise<string[]> {
   return usuariosComPermissao(sb, "pedidos.aprovar_financeiro");
 }
 
+/**
+ * Quem deve ser AVISADO quando um pedido é liberado, e quem vira dono da
+ * tarefa de acompanhar produção = chave `pedidos.operar_producao`.
+ *
+ * Não usa `pedidos.movimentar`: essa chave é sobre QUEM PODE mover o pedido de
+ * etapa (RLS das tabelas de pedido + guard de `updatePedidoStage`) e é ampla
+ * de propósito — inclui Administrador, Financeiro, Gestor Comercial. Usá-la
+ * para notificar enchia a caixa de todo mundo com alertas de produção.
+ * `pedidos.operar_producao` é o grupo estreito que de fato toca
+ * produção/coleta/entrega (perfil Operacional).
+ */
 export async function destinatariosOperacional(sb: SB): Promise<string[]> {
-  // Selecionar por NOME de perfil é frágil: o perfil "Operacional Comercial" foi
-  // renomeado para "Operacional" e a seleção passou a devolver [] em silêncio
-  // (etapa `programacao` sem aviso, tarefa de produção sem dono). A seleção agora
-  // é por PERMISSÃO — `pedidos.movimentar` é exatamente quem OPERA o pedido
-  // (produção, coleta, entrega) e não quebra com renomeação de perfil.
-  return usuariosComPermissao(sb, "pedidos.movimentar");
+  return usuariosComPermissao(sb, "pedidos.operar_producao");
 }
+
 
 /* ------------------------------------------------------------------ */
 /* Notificações na tela                                                */
