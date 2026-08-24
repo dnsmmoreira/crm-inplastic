@@ -30,6 +30,7 @@ import { Route as ConversasRouteImport } from './routes/conversas'
 import { Route as ContatosRouteImport } from './routes/contatos'
 import { Route as CondicoesComerciaisRouteImport } from './routes/condicoes-comerciais'
 import { Route as CanaisRouteImport } from './routes/canais'
+import { Route as CadenciaSimuladorRouteImport } from './routes/cadencia-simulador'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AtendimentoIaRouteImport } from './routes/atendimento-ia'
 import { Route as ArenaRouteImport } from './routes/arena'
@@ -163,6 +164,11 @@ const CondicoesComerciaisRoute = CondicoesComerciaisRouteImport.update({
 const CanaisRoute = CanaisRouteImport.update({
   id: '/canais',
   path: '/canais',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CadenciaSimuladorRoute = CadenciaSimuladorRouteImport.update({
+  id: '/cadencia-simulador',
+  path: '/cadencia-simulador',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -333,6 +339,7 @@ export interface FileRoutesByFullPath {
   '/arena': typeof ArenaRoute
   '/atendimento-ia': typeof AtendimentoIaRoute
   '/auth': typeof AuthRoute
+  '/cadencia-simulador': typeof CadenciaSimuladorRoute
   '/canais': typeof CanaisRoute
   '/condicoes-comerciais': typeof CondicoesComerciaisRoute
   '/contatos': typeof ContatosRoute
@@ -385,6 +392,7 @@ export interface FileRoutesByTo {
   '/arena': typeof ArenaRoute
   '/atendimento-ia': typeof AtendimentoIaRoute
   '/auth': typeof AuthRoute
+  '/cadencia-simulador': typeof CadenciaSimuladorRoute
   '/canais': typeof CanaisRoute
   '/condicoes-comerciais': typeof CondicoesComerciaisRoute
   '/contatos': typeof ContatosRoute
@@ -438,6 +446,7 @@ export interface FileRoutesById {
   '/arena': typeof ArenaRoute
   '/atendimento-ia': typeof AtendimentoIaRoute
   '/auth': typeof AuthRoute
+  '/cadencia-simulador': typeof CadenciaSimuladorRoute
   '/canais': typeof CanaisRoute
   '/condicoes-comerciais': typeof CondicoesComerciaisRoute
   '/contatos': typeof ContatosRoute
@@ -492,6 +501,7 @@ export interface FileRouteTypes {
     | '/arena'
     | '/atendimento-ia'
     | '/auth'
+    | '/cadencia-simulador'
     | '/canais'
     | '/condicoes-comerciais'
     | '/contatos'
@@ -544,6 +554,7 @@ export interface FileRouteTypes {
     | '/arena'
     | '/atendimento-ia'
     | '/auth'
+    | '/cadencia-simulador'
     | '/canais'
     | '/condicoes-comerciais'
     | '/contatos'
@@ -596,6 +607,7 @@ export interface FileRouteTypes {
     | '/arena'
     | '/atendimento-ia'
     | '/auth'
+    | '/cadencia-simulador'
     | '/canais'
     | '/condicoes-comerciais'
     | '/contatos'
@@ -649,6 +661,7 @@ export interface RootRouteChildren {
   ArenaRoute: typeof ArenaRoute
   AtendimentoIaRoute: typeof AtendimentoIaRoute
   AuthRoute: typeof AuthRoute
+  CadenciaSimuladorRoute: typeof CadenciaSimuladorRoute
   CanaisRoute: typeof CanaisRoute
   CondicoesComerciaisRoute: typeof CondicoesComerciaisRoute
   ContatosRoute: typeof ContatosRoute
@@ -842,6 +855,13 @@ declare module '@tanstack/react-router' {
       path: '/canais'
       fullPath: '/canais'
       preLoaderRoute: typeof CanaisRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cadencia-simulador': {
+      id: '/cadencia-simulador'
+      path: '/cadencia-simulador'
+      fullPath: '/cadencia-simulador'
+      preLoaderRoute: typeof CadenciaSimuladorRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -1057,6 +1077,7 @@ const rootRouteChildren: RootRouteChildren = {
   ArenaRoute: ArenaRoute,
   AtendimentoIaRoute: AtendimentoIaRoute,
   AuthRoute: AuthRoute,
+  CadenciaSimuladorRoute: CadenciaSimuladorRoute,
   CanaisRoute: CanaisRoute,
   CondicoesComerciaisRoute: CondicoesComerciaisRoute,
   ContatosRoute: ContatosRoute,
