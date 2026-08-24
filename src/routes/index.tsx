@@ -1,11 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -36,7 +30,17 @@ import {
 import { useMemo, useState } from "react";
 import { format, isToday, isBefore, startOfMonth, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useCrm, STAGES, formatBRL, useVisibleLeads, useVisibleTasks, useCurrentUser, followupTemperature, useLeadValueMap, useProposalAggregates } from "@/lib/crm-store";
+import {
+  useCrm,
+  STAGES,
+  formatBRL,
+  useVisibleLeads,
+  useVisibleTasks,
+  useCurrentUser,
+  followupTemperature,
+  useLeadValueMap,
+  useProposalAggregates,
+} from "@/lib/crm-store";
 import { PlacarWidget } from "@/components/placar/PlacarWidget";
 import { NewLeadDialog, LeadDrawer } from "@/components/crm/LeadDrawer";
 import { ResumoDoDia } from "@/components/dashboard/ResumoDoDia";
@@ -44,7 +48,6 @@ import { Link } from "@tanstack/react-router";
 import { useAuth, hasPerm } from "@/hooks/use-auth";
 import { FinanceiroDashboard } from "@/components/dashboard/FinanceiroDashboard";
 import { OperacionalDashboard } from "@/components/dashboard/OperacionalDashboard";
-
 
 export const Route = createFileRoute("/")({
   component: HomePage,
@@ -64,7 +67,6 @@ function HomePage() {
 }
 
 function DashboardPage() {
-
   const leads = useVisibleLeads();
   const tasks = useVisibleTasks();
   const user = useCurrentUser();
@@ -120,30 +122,34 @@ function DashboardPage() {
 
   const productMix = useMemo(() => {
     const map = new Map<string, number>();
-    leads.forEach((l) => map.set(l.product, (map.get(l.product) || 0) + leadValue(l.id, l.estimatedValue)));
+    leads.forEach((l) =>
+      map.set(l.product, (map.get(l.product) || 0) + leadValue(l.id, l.estimatedValue)),
+    );
     return Array.from(map, ([name, value]) => ({ name, value }));
   }, [leads, leadValueMap]);
 
-  const PIE_COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)"];
+  const PIE_COLORS = [
+    "var(--chart-1)",
+    "var(--chart-2)",
+    "var(--chart-3)",
+    "var(--chart-4)",
+    "var(--chart-5)",
+  ];
 
   const todayTasks = tasks
     .filter((t) => !t.done && isToday(new Date(t.dueDate)))
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
-  const overdueTasks = tasks.filter((t) => !t.done && isBefore(new Date(t.dueDate), new Date()) && !isToday(new Date(t.dueDate)));
-
-
-
+  const overdueTasks = tasks.filter(
+    (t) => !t.done && isBefore(new Date(t.dueDate), new Date()) && !isToday(new Date(t.dueDate)),
+  );
 
   return (
     <div className="p-4 md:p-8 space-y-6">
       <ResumoDoDia />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-
         <div>
-          <h1 className="text-2xl md:text-3xl font-semibold">
-            Olá, {user.name.split(" ")[0]}
-          </h1>
+          <h1 className="text-2xl md:text-3xl font-semibold">Olá, {user.name.split(" ")[0]}</h1>
           <p className="text-sm text-muted-foreground">
             {isAdmin
               ? "Visão de administrador — todos os leads e propostas"
@@ -160,7 +166,6 @@ function DashboardPage() {
       </div>
 
       <PlacarWidget />
-
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Kpi
@@ -210,7 +215,11 @@ function DashboardPage() {
                 />
                 <Tooltip
                   formatter={(v: number) => formatBRL(v)}
-                  contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8 }}
+                  contentStyle={{
+                    background: "var(--popover)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 8,
+                  }}
                 />
                 <Bar dataKey="valor" fill="var(--chart-1)" radius={[6, 6, 0, 0]} />
               </BarChart>
@@ -226,12 +235,26 @@ function DashboardPage() {
           <CardContent>
             <ResponsiveContainer width="100%" height={280}>
               <PieChart>
-                <Pie data={productMix} dataKey="value" nameKey="name" innerRadius={45} outerRadius={80} paddingAngle={2}>
+                <Pie
+                  data={productMix}
+                  dataKey="value"
+                  nameKey="name"
+                  innerRadius={45}
+                  outerRadius={80}
+                  paddingAngle={2}
+                >
                   {productMix.map((_, i) => (
                     <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(v: number) => formatBRL(v)} contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8 }} />
+                <Tooltip
+                  formatter={(v: number) => formatBRL(v)}
+                  contentStyle={{
+                    background: "var(--popover)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 8,
+                  }}
+                />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
               </PieChart>
             </ResponsiveContainer>
@@ -250,10 +273,30 @@ function DashboardPage() {
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
               <XAxis dataKey="name" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} />
               <YAxis tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} />
-              <Tooltip contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8 }} />
+              <Tooltip
+                contentStyle={{
+                  background: "var(--popover)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 8,
+                }}
+              />
               <Legend wrapperStyle={{ fontSize: 12 }} />
-              <Line type="monotone" dataKey="leads" name="Leads recebidos" stroke="var(--chart-1)" strokeWidth={2.5} dot={{ r: 3 }} />
-              <Line type="monotone" dataKey="ganho" name="Ganhos" stroke="var(--chart-2)" strokeWidth={2.5} dot={{ r: 3 }} />
+              <Line
+                type="monotone"
+                dataKey="leads"
+                name="Leads recebidos"
+                stroke="var(--chart-1)"
+                strokeWidth={2.5}
+                dot={{ r: 3 }}
+              />
+              <Line
+                type="monotone"
+                dataKey="ganho"
+                name="Ganhos"
+                stroke="var(--chart-2)"
+                strokeWidth={2.5}
+                dot={{ r: 3 }}
+              />
             </LineChart>
           </ResponsiveContainer>
         </CardContent>
@@ -270,7 +313,10 @@ function DashboardPage() {
                 {todayTasks.length} para hoje · {overdueTasks.length} atrasadas
               </CardDescription>
             </div>
-            <Link to="/tarefas" className="text-xs text-primary hover:underline flex items-center gap-1">
+            <Link
+              to="/tarefas"
+              className="text-xs text-primary hover:underline flex items-center gap-1"
+            >
               Ver todas <ArrowUpRight className="h-3 w-3" />
             </Link>
           </CardHeader>
@@ -282,7 +328,9 @@ function DashboardPage() {
               </div>
             )}
             {todayTasks.length === 0 && overdueTasks.length === 0 && (
-              <p className="text-sm text-muted-foreground italic">Nenhuma tarefa para hoje. Aproveite!</p>
+              <p className="text-sm text-muted-foreground italic">
+                Nenhuma tarefa para hoje. Aproveite!
+              </p>
             )}
             {[...overdueTasks, ...todayTasks].slice(0, 6).map((t) => {
               const lead = leads.find((l) => l.id === t.leadId);
@@ -294,11 +342,15 @@ function DashboardPage() {
                 >
                   <div className="min-w-0">
                     <div className="text-sm font-medium truncate">{t.title}</div>
-                    <div className="text-xs text-muted-foreground truncate">
-                      {lead?.company}
-                    </div>
+                    <div className="text-xs text-muted-foreground truncate">{lead?.company}</div>
                   </div>
-                  <Badge variant={isBefore(new Date(t.dueDate), new Date()) && !isToday(new Date(t.dueDate)) ? "destructive" : "secondary"}>
+                  <Badge
+                    variant={
+                      isBefore(new Date(t.dueDate), new Date()) && !isToday(new Date(t.dueDate))
+                        ? "destructive"
+                        : "secondary"
+                    }
+                  >
                     {format(new Date(t.dueDate), "dd/MM")}
                   </Badge>
                 </button>
@@ -345,7 +397,8 @@ function DashboardPage() {
                       </div>
                     </div>
                     <Badge variant="outline" className={`shrink-0 ${f.className}`} title={f.hint}>
-                      <span className="mr-1">{f.emoji}</span>{f.label}
+                      <span className="mr-1">{f.emoji}</span>
+                      {f.label}
                     </Badge>
                   </button>
                 ))}
@@ -355,7 +408,11 @@ function DashboardPage() {
         })()}
       </div>
 
-      <LeadDrawer leadId={openLead} open={!!openLead} onOpenChange={(o) => !o && setOpenLead(null)} />
+      <LeadDrawer
+        leadId={openLead}
+        open={!!openLead}
+        onOpenChange={(o) => !o && setOpenLead(null)}
+      />
     </div>
   );
 }
@@ -388,7 +445,9 @@ function Kpi({
             <div className="mt-1 font-display text-2xl font-semibold truncate">{value}</div>
             <div className="mt-1 text-xs text-muted-foreground">{hint}</div>
           </div>
-          <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${toneClass} shrink-0`}>
+          <div
+            className={`flex h-10 w-10 items-center justify-center rounded-lg ${toneClass} shrink-0`}
+          >
             <Icon className="h-5 w-5" />
           </div>
         </div>
@@ -396,4 +455,3 @@ function Kpi({
     </Card>
   );
 }
-

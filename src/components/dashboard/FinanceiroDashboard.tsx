@@ -38,7 +38,10 @@ export function FinanceiroDashboard() {
 
   return (
     <div className="space-y-6 p-4 md:p-8">
-      <Saudacao nome={user?.name ?? ""} papel="Painel financeiro — aprovação e liberação de pedidos" />
+      <Saudacao
+        nome={user?.name ?? ""}
+        papel="Painel financeiro — aprovação e liberação de pedidos"
+      />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <ContadorCard
@@ -69,7 +72,9 @@ export function FinanceiroDashboard() {
         <ListaPedidosCard
           titulo="Aguardando aprovação financeira"
           descricao="Pedidos em análise financeira, do mais antigo na etapa para o mais recente."
-          pedidos={[...analise].sort((a, b) => a.stage_changed_at.localeCompare(b.stage_changed_at))}
+          pedidos={[...analise].sort((a, b) =>
+            a.stage_changed_at.localeCompare(b.stage_changed_at),
+          )}
           onOpen={setOpenPedidoId}
           destacarParado
           vazio="Nenhum pedido aguardando aprovação."
