@@ -738,7 +738,9 @@ async function resolveNames(sb: LooseClient, ids: (string | null)[]): Promise<Ma
   const uniq = Array.from(new Set(ids.filter((x): x is string => !!x)));
   const map = new Map<string, string>();
   if (uniq.length === 0) return map;
-  const { data } = await sb.from("profiles").select("id, name").in("id", uniq);
+  const sbView: LooseClient = await clienteDeExibicao(sb);
+  const { data } = await sbView.from("profiles").select("id, name").in("id", uniq);
+
   for (const p of (data ?? []) as Array<{ id: string; name: string | null }>) {
     if (p.name) map.set(p.id, p.name);
   }
