@@ -32,6 +32,8 @@ import {
   fromRow,
   type ClienteFormState,
 } from "@/components/clientes/ClienteFormFields";
+import { ContatosSection } from "@/components/contatos/ContatosSection";
+
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -214,9 +216,19 @@ function ClienteDetailPage() {
       <Tabs defaultValue="dados">
         <TabsList>
           <TabsTrigger value="dados">Dados fiscais</TabsTrigger>
+          <TabsTrigger value="contatos">Contatos</TabsTrigger>
           <TabsTrigger value="propostas">Propostas</TabsTrigger>
           <TabsTrigger value="historico">Histórico</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="contatos">
+          <Card>
+            <CardContent className="pt-4">
+              <ContatosSection clienteId={id} readOnly={!canEdit} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
 
         <TabsContent value="dados" className="space-y-4">
           {form && (

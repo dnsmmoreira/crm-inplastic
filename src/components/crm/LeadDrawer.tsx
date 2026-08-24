@@ -74,6 +74,8 @@ import { computeLeadScore, faturamentoTetoPorPorte } from "@/lib/lead-score";
 import { useMoveLeadStage } from "@/hooks/use-move-lead-stage";
 import { LostReasonDialog, type LostReasonPayload } from "@/components/crm/LostReasonDialog";
 import { TabErrorBoundary } from "@/components/crm/TabErrorBoundary";
+import { ContatosSection } from "@/components/contatos/ContatosSection";
+
 
 
 const TYPE_META: Record<Interaction["type"], { label: string; icon: typeof Mail }> = {
@@ -361,13 +363,21 @@ export function LeadDrawer({
 
 
           <Tabs defaultValue="hist">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="hist">Histórico</TabsTrigger>
+              <TabsTrigger value="contatos">Contatos</TabsTrigger>
               <TabsTrigger value="propostas">Propostas</TabsTrigger>
               <TabsTrigger value="ia" className="gap-1"><Sparkles className="h-3 w-3" />IA</TabsTrigger>
               <TabsTrigger value="tarefas">Tarefas</TabsTrigger>
               <TabsTrigger value="notas">Notas</TabsTrigger>
             </TabsList>
+
+            <TabsContent value="contatos" className="mt-4">
+              <TabErrorBoundary>
+                <ContatosSection leadId={lead.id} />
+              </TabErrorBoundary>
+            </TabsContent>
+
 
             <TabsContent value="hist" className="mt-4 space-y-4">
               <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
