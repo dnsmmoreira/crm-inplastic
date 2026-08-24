@@ -117,15 +117,11 @@ function ContatosPage() {
                         </Badge>
                       )}
                     </div>
-                    {c.cargo && (
-                      <div className="text-xs text-muted-foreground">{c.cargo}</div>
-                    )}
+                    {c.cargo && <div className="text-xs text-muted-foreground">{c.cargo}</div>}
                   </TableCell>
                   <TableCell className="text-sm">{papelLabel(c.papel)}</TableCell>
                   <TableCell className="text-sm">{c.telefone || c.telefone2 || "—"}</TableCell>
-                  <TableCell className="max-w-[220px] truncate text-sm">
-                    {c.email || "—"}
-                  </TableCell>
+                  <TableCell className="max-w-[220px] truncate text-sm">{c.email || "—"}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <span className="max-w-[240px] truncate text-sm">{c.empresa || "—"}</span>
@@ -140,7 +136,10 @@ function ContatosPage() {
               ))}
               {rows.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="py-10 text-center text-sm text-muted-foreground">
+                  <TableCell
+                    colSpan={5}
+                    className="py-10 text-center text-sm text-muted-foreground"
+                  >
                     {isLoading ? "Carregando contatos..." : "Nenhum contato encontrado."}
                   </TableCell>
                 </TableRow>

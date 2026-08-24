@@ -131,10 +131,12 @@ export const listTodosContatos = createServerFn({ method: "GET" })
     const { data: rows, count, error } = await query;
     if (error) throw new Error(error.message);
 
-    const lista: ContatoListaRow[] = ((rows ?? []) as unknown as (ContatoRow & {
-      lead: { company: string | null } | null;
-      cliente: { razao_social: string | null; nome_fantasia: string | null } | null;
-    })[]).map((r) => {
+    const lista: ContatoListaRow[] = (
+      (rows ?? []) as unknown as (ContatoRow & {
+        lead: { company: string | null } | null;
+        cliente: { razao_social: string | null; nome_fantasia: string | null } | null;
+      })[]
+    ).map((r) => {
       const { lead, cliente, ...rest } = r;
       const empresa = lead
         ? lead.company
@@ -150,8 +152,6 @@ export const listTodosContatos = createServerFn({ method: "GET" })
 
     return { rows: lista, count: count ?? 0 };
   });
-
-
 
 export const criarContato = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
