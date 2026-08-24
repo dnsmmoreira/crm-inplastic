@@ -16,7 +16,13 @@ import { requireXerifeCronAuth, cronJsonResponse } from "@/lib/xerife/cron-auth.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { logAction } from "@/lib/xerife/dedupe.server";
 import { notifyDiretoria } from "@/lib/xerife/notify.server";
-import { etapasComCadencia, passoCadencia, textoCadencia } from "@/lib/pedidos-cadencia";
+import {
+  etapasComCadencia,
+  passoCadencia,
+  resolverExcecao,
+  textoCadencia,
+  type CadenciaExcecao,
+} from "@/lib/pedidos-cadencia";
 import {
   destinatariosFinanceiro,
   destinatariosOperacional,
@@ -207,6 +213,42 @@ async function runXerifePedidos(
       .in("stage", stages as any)
       .limit(500);
 
+    // Exceções de cadência (por cliente / por família de produto) — carregadas
+    // uma vez por execução. Sem exceção aplicável, vale a régua padrão.
+    const { data: excData } = await sb
+      .from("cadencia_excecoes")
+      .select("escopo, cliente_id, familia, stage, dias, escalar_diretoria, ativo")
+      .eq("ativo", true);
+    const excecoes = (excData ?? []) as unknown as CadenciaExcecao[];
+    const temExcCliente = excecoes.some((e) => e.escopo === "cliente");
+    const temExcFamilia = excecoes.some((e) => e.escopo === "familia");
+
+    // cliente do pedido (via lead) e famílias dos itens, só se houver exceções
+    const clienteDoLead = new Map<string, string | null>();
+    async function clienteDoPedido(leadId: string | null): Promise<string | null> {
+      if (!temExcCliente || !leadId) return null;
+      if (clienteDoLead.has(leadId)) return clienteDoLead.get(leadId) ?? null;
+      const { data } = await sb.from("leads").select("cliente_id").eq("id", leadId).maybeSingle();
+      const cid = (data?.cliente_id as string | null) ?? null;
+      clienteDoLead.set(leadId, cid);
+      return cid;
+    }
+    async function familiasDoPedido(pedidoId: string): Promise<string[]> {
+      if (!temExcFamilia) return [];
+      const { data: itens } = await sb
+        .from("pedido_itens")
+        .select("product_id")
+        .eq("pedido_id", pedidoId);
+      const ids = Array.from(
+        new Set((itens ?? []).map((i) => i.product_id).filter((x): x is string => !!x)),
+      );
+      if (!ids.length) return [];
+      const { data: prods } = await sb.from("produtos").select("family").in("id", ids);
+      return (prods ?? [])
+        .map((p) => (p.family ?? "").trim())
+        .filter((f) => f !== "");
+    }
+
     // Grupos resolvidos uma vez por execução (evita N+1 de permissões)
     let financeiro: string[] | null = null;
     let operacional: string[] | null = null;
@@ -233,7 +275,15 @@ async function runXerifePedidos(
       const desde = hist?.[0]?.created_at ?? p.updated_at;
       const dias = diasDesde(desde, now) ?? 0;
 
-      const passo = passoCadencia(p.stage as string, dias);
+      const override = excecoes.length
+        ? resolverExcecao(excecoes, {
+            stage: p.stage as string,
+            clienteId: await clienteDoPedido(p.lead_id ?? null),
+            familias: await familiasDoPedido(p.id),
+          })
+        : null;
+
+      const passo = passoCadencia(p.stage as string, dias, override);
       if (!passo) continue;
 
       const label = stageLabel(p.stage as string);
