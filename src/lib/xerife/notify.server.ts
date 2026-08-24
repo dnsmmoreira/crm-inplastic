@@ -54,6 +54,12 @@ async function registrarAlertaNaoEntregue(canal: string, faltantes: string[]) {
       "[notificacao-interna] falha ao registrar alerta_nao_entregue:",
       e instanceof Error ? e.message : String(e),
     );
+    const { registrarFalhaAdmin } = await import("@/lib/falhas.server");
+    await registrarFalhaAdmin("xerife.notificacao", e, {
+      canal,
+      acao: "registrar_alerta_nao_entregue",
+      variaveis_ausentes: faltantes,
+    });
   }
 }
 
