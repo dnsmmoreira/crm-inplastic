@@ -768,6 +768,10 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
     const snapProposta = (p.proposta_snapshot?.proposta ?? {}) as Record<string, unknown>;
     const paymentTermId = (snapProposta.payment_term_id as string | null) ?? null;
 
+    // Rótulos (empresa/CNPJ do lead) vêm do client de exibição: o pedido já foi
+    // autorizado pela RLS de `pedidos` acima.
+    const sbView: LooseClient = await clienteDeExibicao(sb);
+
     const [ocRes, itensRes, leadRes, condRes, propRes] = await Promise.all([
       sb
         .from("pedido_ocorrencias")
@@ -780,8 +784,9 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
         .eq("pedido_id", data.pedido_id)
         .order("position", { ascending: true }),
       p.lead_id
-        ? sb.from("leads").select("id, company, cnpj").eq("id", p.lead_id).maybeSingle()
+        ? sbView.from("leads").select("id, company, cnpj").eq("id", p.lead_id).maybeSingle()
         : Promise.resolve({ data: null }),
+
       paymentTermId
         ? sb.from("condicoes_pagamento").select("id, label").eq("id", paymentTermId).maybeSingle()
         : Promise.resolve({ data: null }),
