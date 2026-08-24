@@ -180,7 +180,28 @@ function LeadsPage() {
                 <TableHead>Produto</TableHead>
                 <TableHead className="text-right">Valor estimado</TableHead>
                 <TableHead>Etapa</TableHead>
-                {mostrandoPerdidos && <TableHead>Motivo da perda</TableHead>}
+                {mostrandoPerdidos && (
+                  <TableHead>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1 hover:text-foreground"
+                      onClick={() => {
+                        setSortMotivo((s) => (s === "asc" ? "desc" : s === "desc" ? null : "asc"));
+                        setPage(1);
+                      }}
+                    >
+                      Motivo da perda
+                      {sortMotivo === "asc" ? (
+                        <ArrowUp className="h-3.5 w-3.5" />
+                      ) : sortMotivo === "desc" ? (
+                        <ArrowDown className="h-3.5 w-3.5" />
+                      ) : (
+                        <ArrowUpDown className="h-3.5 w-3.5 opacity-50" />
+                      )}
+                    </button>
+                  </TableHead>
+                )}
+
                 <TableHead>Vendedor</TableHead>
                 <TableHead>Último contato</TableHead>
               </TableRow>
