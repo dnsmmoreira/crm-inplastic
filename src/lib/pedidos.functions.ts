@@ -3,11 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
 import { PERM_PEDIDOS_MOVIMENTAR } from "@/lib/permissoes";
 import { descreverParcelas } from "@/lib/condicoes-comerciais";
-import {
-  resumoHistoricoCliente,
-  soDigitos,
-  type HistoricoCliente,
-} from "@/lib/pedidos-historico";
+import { resumoHistoricoCliente, soDigitos, type HistoricoCliente } from "@/lib/pedidos-historico";
 export type { HistoricoCliente, PedidoHistoricoRow } from "@/lib/pedidos-historico";
 
 /**
@@ -43,7 +39,6 @@ export {
   APROVACAO_ROTA_LABEL,
 } from "@/lib/pedidos-stages";
 export type { PedidoStageId, ModalidadeEntrega, AprovacaoRota } from "@/lib/pedidos-stages";
-
 
 export type PedidoRow = {
   id: string;
@@ -81,7 +76,6 @@ export type PedidoRow = {
   }>;
   itens_total_qtde: number;
 };
-
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type LooseClient = any;
@@ -158,7 +152,6 @@ export const listPedidos = createServerFn({ method: "GET" })
       }
     }
 
-
     // Resolver nomes de profiles (vendedor + responsável) via lookup separado —
     // não há FK declarada entre pedidos e profiles, então evitamos embed do PostgREST.
     const profileIds = new Set<string>();
@@ -179,16 +172,29 @@ export const listPedidos = createServerFn({ method: "GET" })
 
     return (data ?? []).map(
       (r: {
-        id: string; number: string; stage: PedidoStageId; total: number; created_at: string;
-        previsao_entrega: string | null; equipe_responsavel: string | null;
+        id: string;
+        number: string;
+        stage: PedidoStageId;
+        total: number;
+        created_at: string;
+        previsao_entrega: string | null;
+        equipe_responsavel: string | null;
         responsavel_atual_id: string | null;
-        fiscal_status: string | null; nf_numero: string | null;
-        forma_atendimento: string | null; prioridade: string | null; ocorrencia: string | null;
-        vendedor_proprietario_id: string | null; proposta_id: string | null; lead_id: string | null;
+        fiscal_status: string | null;
+        nf_numero: string | null;
+        forma_atendimento: string | null;
+        prioridade: string | null;
+        ocorrencia: string | null;
+        vendedor_proprietario_id: string | null;
+        proposta_id: string | null;
+        lead_id: string | null;
         leads?: { company: string | null } | null;
         propostas?: { number: string | null } | null;
-        modalidade_entrega: string | null; entrega_confirmada: string | null;
-        encerrado_em: string | null; aprovacao_rota: string | null; reprovacao_motivo: string | null;
+        modalidade_entrega: string | null;
+        entrega_confirmada: string | null;
+        encerrado_em: string | null;
+        aprovacao_rota: string | null;
+        reprovacao_motivo: string | null;
       }) => ({
         id: r.id,
         number: r.number,
@@ -199,7 +205,9 @@ export const listPedidos = createServerFn({ method: "GET" })
         previsao_entrega: r.previsao_entrega,
         equipe_responsavel: r.equipe_responsavel,
         responsavel_atual_id: r.responsavel_atual_id,
-        responsavel_nome: r.responsavel_atual_id ? nameById.get(r.responsavel_atual_id) ?? null : null,
+        responsavel_nome: r.responsavel_atual_id
+          ? (nameById.get(r.responsavel_atual_id) ?? null)
+          : null,
         fiscal_status: r.fiscal_status,
         nf_numero: r.nf_numero,
         forma_atendimento: r.forma_atendimento,
@@ -207,7 +215,9 @@ export const listPedidos = createServerFn({ method: "GET" })
         ocorrencia: r.ocorrencia,
         ocorrencias_abertas: openOcorrByPedido.get(r.id) ?? 0,
         vendedor_proprietario_id: r.vendedor_proprietario_id,
-        vendedor_nome: r.vendedor_proprietario_id ? nameById.get(r.vendedor_proprietario_id) ?? null : null,
+        vendedor_nome: r.vendedor_proprietario_id
+          ? (nameById.get(r.vendedor_proprietario_id) ?? null)
+          : null,
         proposta_id: r.proposta_id,
         lead_id: r.lead_id,
         lead_company: r.leads?.company ?? null,
@@ -218,8 +228,10 @@ export const listPedidos = createServerFn({ method: "GET" })
         aprovacao_rota: r.aprovacao_rota,
         reprovacao_motivo: r.reprovacao_motivo,
         itens: itensByPedido.get(r.id) ?? [],
-        itens_total_qtde: (itensByPedido.get(r.id) ?? []).reduce((s, i) => s + (i.quantity || 0), 0),
-
+        itens_total_qtde: (itensByPedido.get(r.id) ?? []).reduce(
+          (s, i) => s + (i.quantity || 0),
+          0,
+        ),
       }),
     );
   });
@@ -254,7 +266,11 @@ async function isAdminOuFinanceiro(sb: LooseClient, userId: string): Promise<boo
     .eq("role", "admin")
     .maybeSingle();
   if (adm) return true;
-  const { data: perfil } = await sb.from("perfis").select("id").eq("nome", "Financeiro").maybeSingle();
+  const { data: perfil } = await sb
+    .from("perfis")
+    .select("id")
+    .eq("nome", "Financeiro")
+    .maybeSingle();
   if (!perfil?.id) return false;
   const { data: vinculo } = await sb
     .from("user_perfis")
@@ -286,7 +302,6 @@ const NENHUMA_LINHA =
   "Nenhuma linha foi atualizada — verifique se você tem permissão para operar este pedido.";
 
 const NOTIFY_DISPATCH_ENABLED = false; // feature flag off — apenas registra
-
 
 type StageClassificacao = "informativa" | "acao_necessaria" | "alerta";
 
@@ -366,7 +381,6 @@ async function enqueueStageChangeNotification(
   }
 }
 
-
 export const updatePedidoStage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { pedido_id: string; stage: PedidoStageId; motivo?: string }) =>
@@ -391,7 +405,6 @@ export const updatePedidoStage = createServerFn({ method: "POST" })
         message: "Você não tem permissão para movimentar pedidos — acesso somente visualização.",
       };
     }
-
 
     // Carrega etapa atual
     const { data: current, error: loadErr } = await sb
@@ -480,7 +493,6 @@ export const updatePedidoStage = createServerFn({ method: "POST" })
     if (updErr) throw new Error(`Falha ao atualizar etapa: ${updErr.message}`);
     if (!updRow) throw new Error(NENHUMA_LINHA);
 
-
     // Registra histórico (imutável)
     const { data: histRow, error: histErr } = await sb
       .from("pedido_stage_history")
@@ -550,11 +562,18 @@ export const listPedidoStageHistory = createServerFn({ method: "GET" })
     if (error) throw new Error(`Falha ao carregar histórico: ${error.message}`);
 
     const rowsTyped = (rows ?? []) as Array<{
-      id: string; from_stage: PedidoStageId | null; to_stage: PedidoStageId;
-      is_backward: boolean; motivo: string | null; moved_by: string | null; created_at: string;
+      id: string;
+      from_stage: PedidoStageId | null;
+      to_stage: PedidoStageId;
+      is_backward: boolean;
+      motivo: string | null;
+      moved_by: string | null;
+      created_at: string;
     }>;
 
-    const userIds = Array.from(new Set(rowsTyped.map((r) => r.moved_by).filter((x): x is string => !!x)));
+    const userIds = Array.from(
+      new Set(rowsTyped.map((r) => r.moved_by).filter((x): x is string => !!x)),
+    );
     const nameById = new Map<string, string>();
     if (userIds.length > 0) {
       const { data: profs } = await sb.from("profiles").select("id, name").in("id", userIds);
@@ -570,7 +589,7 @@ export const listPedidoStageHistory = createServerFn({ method: "GET" })
       is_backward: r.is_backward,
       motivo: r.motivo,
       moved_by: r.moved_by,
-      moved_by_name: r.moved_by ? nameById.get(r.moved_by) ?? null : null,
+      moved_by_name: r.moved_by ? (nameById.get(r.moved_by) ?? null) : null,
       created_at: r.created_at,
     }));
   });
@@ -658,7 +677,6 @@ export type PedidoDetalhes = {
   nf_emitida_em: string | null;
   ocorrencias: PedidoOcorrencia[];
 };
-
 
 const APPROVAL_FIELDS = [
   "aprovacao_solicitada_em",
@@ -774,7 +792,8 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
 
     const tratativa =
       (propRes.data as { tratativa_comercial?: string | null } | null)?.tratativa_comercial ??
-      ((snapProposta.tratativa_comercial as string | null) ?? null);
+      (snapProposta.tratativa_comercial as string | null) ??
+      null;
 
     const lead = leadRes.data as { id: string; company: string | null; cnpj: string | null } | null;
     const historico = await carregarHistoricoCliente(sb, {
@@ -805,7 +824,7 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
       total: Number(p.total ?? 0),
       cliente_nome: lead?.company ?? null,
       cliente_cnpj: lead?.cnpj ?? null,
-      vendedor_nome: vendedorId ? nameById.get(vendedorId) ?? null : null,
+      vendedor_nome: vendedorId ? (nameById.get(vendedorId) ?? null) : null,
       itens,
       subtotal,
       desconto_percent: Number(snapProposta.discount_percent ?? 0),
@@ -818,13 +837,13 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
       aprovacao_solicitada_em: p.aprovacao_solicitada_em,
       aprovacao_solicitada_por: p.aprovacao_solicitada_por,
       aprovacao_solicitada_por_nome: p.aprovacao_solicitada_por
-        ? nameById.get(p.aprovacao_solicitada_por) ?? null
+        ? (nameById.get(p.aprovacao_solicitada_por) ?? null)
         : null,
       aprovacao_motivo: p.aprovacao_motivo,
       aprovacao_decisao: p.aprovacao_decisao,
       aprovacao_decidida_por: p.aprovacao_decidida_por,
       aprovacao_decidida_por_nome: p.aprovacao_decidida_por
-        ? nameById.get(p.aprovacao_decidida_por) ?? null
+        ? (nameById.get(p.aprovacao_decidida_por) ?? null)
         : null,
       aprovacao_decidida_em: p.aprovacao_decidida_em,
       aprovacao_observacao: p.aprovacao_observacao,
@@ -838,8 +857,8 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
       nf_emitida_em: p.nf_emitida_em,
       ocorrencias: oc.map((o) => ({
         ...o,
-        criada_por_nome: o.criada_por ? nameById.get(o.criada_por) ?? null : null,
-        resolvida_por_nome: o.resolvida_por ? nameById.get(o.resolvida_por) ?? null : null,
+        criada_por_nome: o.criada_por ? (nameById.get(o.criada_por) ?? null) : null,
+        resolvida_por_nome: o.resolvida_por ? (nameById.get(o.resolvida_por) ?? null) : null,
       })),
     };
   });
@@ -863,9 +882,10 @@ async function carregarHistoricoCliente(
   if (digitos.length >= 11) {
     // Compara pelas grafias possíveis do mesmo CNPJ (com e sem máscara),
     // em UMA consulta — sem varrer a tabela inteira de leads.
-    const mascarado = digitos.length === 14
-      ? `${digitos.slice(0, 2)}.${digitos.slice(2, 5)}.${digitos.slice(5, 8)}/${digitos.slice(8, 12)}-${digitos.slice(12)}`
-      : digitos;
+    const mascarado =
+      digitos.length === 14
+        ? `${digitos.slice(0, 2)}.${digitos.slice(2, 5)}.${digitos.slice(5, 8)}/${digitos.slice(8, 12)}-${digitos.slice(12)}`
+        : digitos;
     const grafias = Array.from(new Set([args.cnpj ?? "", digitos, mascarado].filter(Boolean)));
     const { data: leadsMesmoCnpj } = await sb.from("leads").select("id, cnpj").in("cnpj", grafias);
     const ids = ((leadsMesmoCnpj ?? []) as Array<{ id: string; cnpj: string | null }>)
@@ -877,19 +897,20 @@ async function carregarHistoricoCliente(
     }
   }
 
-
   const { data: rows } = await sb
     .from("pedidos")
     .select("id, number, created_at, total, stage")
     .in("lead_id", leadIds);
 
-  const lista = ((rows ?? []) as Array<{
-    id: string;
-    number: string;
-    created_at: string;
-    total: number | null;
-    stage: string;
-  }>).map((r) => ({ ...r, total: Number(r.total ?? 0), ocorrencias_abertas: 0 }));
+  const lista = (
+    (rows ?? []) as Array<{
+      id: string;
+      number: string;
+      created_at: string;
+      total: number | null;
+      stage: string;
+    }>
+  ).map((r) => ({ ...r, total: Number(r.total ?? 0), ocorrencias_abertas: 0 }));
 
   const outrosIds = lista.filter((r) => r.id !== args.pedidoId).map((r) => r.id);
   if (outrosIds.length > 0) {
@@ -907,7 +928,6 @@ async function carregarHistoricoCliente(
 
   return resumoHistoricoCliente(lista, args.pedidoId, parcial);
 }
-
 
 export const solicitarAprovacao = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -939,14 +959,15 @@ export const solicitarAprovacao = createServerFn({ method: "POST" })
 
 export const decidirAprovacao = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { pedido_id: string; decisao: "aprovado" | "rejeitado"; observacao?: string }) =>
-    z
-      .object({
-        pedido_id: z.string().uuid(),
-        decisao: z.enum(["aprovado", "rejeitado"]),
-        observacao: z.string().trim().max(1000).optional(),
-      })
-      .parse(input),
+  .inputValidator(
+    (input: { pedido_id: string; decisao: "aprovado" | "rejeitado"; observacao?: string }) =>
+      z
+        .object({
+          pedido_id: z.string().uuid(),
+          decisao: z.enum(["aprovado", "rejeitado"]),
+          observacao: z.string().trim().max(1000).optional(),
+        })
+        .parse(input),
   )
   .handler(async ({ data, context }) => {
     const sb: LooseClient = context.supabase;
@@ -991,8 +1012,7 @@ export const salvarChecklistConferencia = createServerFn({ method: "POST" })
     // Trava do checklist (doc 7.6): "pronto para faturamento/expedição" só pode
     // ficar marcado quando todos os outros itens estiverem confirmados.
     const isProntoItem = (it: ChecklistItem) =>
-      it.id === "pronto" ||
-      /pronto\s+para\s+(faturamento|expedi)/i.test(it.label);
+      it.id === "pronto" || /pronto\s+para\s+(faturamento|expedi)/i.test(it.label);
     const pronto = data.items.find(isProntoItem);
     if (pronto?.done) {
       const outrosPendentes = data.items.filter((i) => !isProntoItem(i) && !i.done);
@@ -1022,24 +1042,25 @@ export const salvarChecklistConferencia = createServerFn({ method: "POST" })
 
 export const atualizarStatusFiscal = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: {
-    pedido_id: string;
-    fiscal_status: string;
-    nf_numero?: string;
-    nf_serie?: string;
-    nf_chave?: string;
-    nf_valor?: number;
-  }) =>
-    z
-      .object({
-        pedido_id: z.string().uuid(),
-        fiscal_status: z.enum(["nao_iniciado", "em_processamento", "emitida", "erro"]),
-        nf_numero: z.string().trim().max(50).optional(),
-        nf_serie: z.string().trim().max(20).optional(),
-        nf_chave: z.string().trim().max(64).optional(),
-        nf_valor: z.number().nonnegative().optional(),
-      })
-      .parse(input),
+  .inputValidator(
+    (input: {
+      pedido_id: string;
+      fiscal_status: string;
+      nf_numero?: string;
+      nf_serie?: string;
+      nf_chave?: string;
+      nf_valor?: number;
+    }) =>
+      z
+        .object({
+          pedido_id: z.string().uuid(),
+          fiscal_status: z.enum(["nao_iniciado", "em_processamento", "emitida", "erro"]),
+          nf_numero: z.string().trim().max(50).optional(),
+          nf_serie: z.string().trim().max(20).optional(),
+          nf_chave: z.string().trim().max(64).optional(),
+          nf_valor: z.number().nonnegative().optional(),
+        })
+        .parse(input),
   )
   .handler(async ({ data, context }) => {
     const sb: LooseClient = context.supabase;
@@ -1069,8 +1090,15 @@ export const atualizarStatusFiscal = createServerFn({ method: "POST" })
     // Auditoria fiscal imutável: uma linha por campo alterado
     const toStr = (v: unknown): string | null =>
       v === null || v === undefined || v === "" ? null : String(v);
-    const diffs: Array<{ campo: string; valor_anterior: string | null; valor_novo: string | null }> = [];
-    const check = (campo: "nf_numero" | "nf_serie" | "nf_chave" | "nf_valor", incoming: unknown) => {
+    const diffs: Array<{
+      campo: string;
+      valor_anterior: string | null;
+      valor_novo: string | null;
+    }> = [];
+    const check = (
+      campo: "nf_numero" | "nf_serie" | "nf_chave" | "nf_valor",
+      incoming: unknown,
+    ) => {
       if (incoming === undefined) return;
       const antes = toStr(before ? (before as Record<string, unknown>)[campo] : null);
       const depois = toStr(incoming);
@@ -1101,20 +1129,21 @@ export const atualizarStatusFiscal = createServerFn({ method: "POST" })
 
 export const registrarOcorrencia = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: {
-    pedido_id: string;
-    tipo: string;
-    severidade: "baixa" | "media" | "alta" | "critica";
-    descricao: string;
-  }) =>
-    z
-      .object({
-        pedido_id: z.string().uuid(),
-        tipo: z.string().trim().min(1).max(60),
-        severidade: z.enum(["baixa", "media", "alta", "critica"]),
-        descricao: z.string().trim().min(3).max(2000),
-      })
-      .parse(input),
+  .inputValidator(
+    (input: {
+      pedido_id: string;
+      tipo: string;
+      severidade: "baixa" | "media" | "alta" | "critica";
+      descricao: string;
+    }) =>
+      z
+        .object({
+          pedido_id: z.string().uuid(),
+          tipo: z.string().trim().min(1).max(60),
+          severidade: z.enum(["baixa", "media", "alta", "critica"]),
+          descricao: z.string().trim().min(3).max(2000),
+        })
+        .parse(input),
   )
   .handler(async ({ data, context }) => {
     const sb: LooseClient = context.supabase;
@@ -1178,7 +1207,6 @@ export const resolverOcorrencia = createServerFn({ method: "POST" })
     }
     return { ok: true as const };
   });
-
 
 /* ============================================================================
  * Fase 5 (complemento) — Listagem read-only de notificações do pedido
