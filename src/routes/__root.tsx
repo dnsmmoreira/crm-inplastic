@@ -34,6 +34,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   ChevronDown,
+  FlaskConical,
 } from "lucide-react";
 
 import appCss from "../styles.css?url";
