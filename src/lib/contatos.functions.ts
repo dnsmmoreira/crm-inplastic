@@ -66,6 +66,93 @@ export const listContatos = createServerFn({ method: "GET" })
     return ordenar((rows ?? []) as ContatoRow[]);
   });
 
+/**
+ * Listagem global de pessoas (tela /contatos).
+ * Reaproveita os mesmos tipos/colunas usados pelo ContatosSection e traz o nome
+ * da empresa vinculada (lead ou cliente) por embed do PostgREST.
+ * Visibilidade: RLS de `contatos` (e dos embeds) — sem client de serviço.
+ */
+export type ContatoListaRow = ContatoRow & {
+  vinculo: "lead" | "cliente" | null;
+  empresa: string | null;
+};
+
+export const listTodosContatos = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data?: { q?: string; page?: number; pageSize?: number }) => ({
+    q: (data?.q ?? "").trim(),
+    page: Math.max(1, Number(data?.page ?? 1)),
+    pageSize: Math.min(100, Math.max(1, Number(data?.pageSize ?? 25))),
+  }))
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const from = (data.page - 1) * data.pageSize;
+    const to = from + data.pageSize - 1;
+
+    let query = supabase
+      .from("contatos")
+      .select(
+        `${SELECT_COLS}, lead:leads(company), cliente:clientes(razao_social, nome_fantasia)`,
+        { count: "exact" },
+      );
+
+    const term = data.q;
+    if (term) {
+      const like = `%${term}%`;
+      const partes = [
+        `nome.ilike.${like}`,
+        `telefone.ilike.${like}`,
+        `telefone2.ilike.${like}`,
+        `email.ilike.${like}`,
+      ];
+
+      // Busca por empresa: resolve ids de leads/clientes que batem com o termo.
+      const [leadsRes, clientesRes] = await Promise.all([
+        supabase.from("leads").select("id").ilike("company", like).limit(300),
+        supabase
+          .from("clientes")
+          .select("id")
+          .or(`razao_social.ilike.${like},nome_fantasia.ilike.${like}`)
+          .limit(300),
+      ]);
+      const leadIds = (leadsRes.data ?? []).map((r) => r.id);
+      const clienteIds = (clientesRes.data ?? []).map((r) => r.id);
+      if (leadIds.length) partes.push(`lead_id.in.(${leadIds.join(",")})`);
+      if (clienteIds.length) partes.push(`cliente_id.in.(${clienteIds.join(",")})`);
+
+      query = query.or(partes.join(","));
+    }
+
+    query = query
+      .order("ativo", { ascending: false })
+      .order("nome", { ascending: true })
+      .range(from, to);
+
+    const { data: rows, count, error } = await query;
+    if (error) throw new Error(error.message);
+
+    const lista: ContatoListaRow[] = (
+      (rows ?? []) as unknown as (ContatoRow & {
+        lead: { company: string | null } | null;
+        cliente: { razao_social: string | null; nome_fantasia: string | null } | null;
+      })[]
+    ).map((r) => {
+      const { lead, cliente, ...rest } = r;
+      const empresa = lead
+        ? lead.company
+        : cliente
+          ? cliente.razao_social || cliente.nome_fantasia
+          : null;
+      return {
+        ...rest,
+        vinculo: r.lead_id ? "lead" : r.cliente_id ? "cliente" : null,
+        empresa: empresa || null,
+      };
+    });
+
+    return { rows: lista, count: count ?? 0 };
+  });
+
 export const criarContato = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
