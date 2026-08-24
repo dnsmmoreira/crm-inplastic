@@ -174,16 +174,20 @@ export const listPedidos = createServerFn({ method: "GET" })
       }
     }
 
-    // Resolver nomes de profiles (vendedor + responsável) via lookup separado —
-    // não há FK declarada entre pedidos e profiles, então evitamos embed do PostgREST.
+    // Resolver nomes de profiles (vendedor + responsável) e da empresa do lead via
+    // lookup separado no client de exibição — a RLS de leads/profiles é restrita ao
+    // dono/admin e esconderia os rótulos de um pedido já autorizado pela RLS de pedidos.
+    const sbView: LooseClient = await clienteDeExibicao(sb);
     const profileIds = new Set<string>();
+    const leadIds = new Set<string>();
     for (const r of rows) {
       if (r.vendedor_proprietario_id) profileIds.add(r.vendedor_proprietario_id);
       if (r.responsavel_atual_id) profileIds.add(r.responsavel_atual_id);
+      if (r.lead_id) leadIds.add(r.lead_id);
     }
     const nameById = new Map<string, string>();
     if (profileIds.size > 0) {
-      const { data: profs } = await sb
+      const { data: profs } = await sbView
         .from("profiles")
         .select("id, name")
         .in("id", Array.from(profileIds));
@@ -191,6 +195,18 @@ export const listPedidos = createServerFn({ method: "GET" })
         if (p.name) nameById.set(p.id, p.name);
       }
     }
+    const companyByLead = new Map<string, string>();
+    if (leadIds.size > 0) {
+      const { data: leadsRows } = await sbView
+        .from("leads")
+        .select("id, company")
+        .in("id", Array.from(leadIds));
+      for (const l of (leadsRows ?? []) as Array<{ id: string; company: string | null }>) {
+        if (l.company) companyByLead.set(l.id, l.company);
+      }
+    }
+
+
 
     return (data ?? []).map(
       (r: {
