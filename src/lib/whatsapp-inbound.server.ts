@@ -277,6 +277,12 @@ export async function processarEntradaWhatsapp(
         const msg = e instanceof Error ? e.message : String(e);
         console.error("[n8n-notify] failed, enfileirando reenvio:", msg);
         await enfileirarAvisoN8n(supabaseAdmin, { conversaId, payload: payloadOut, erro: msg });
+        const { registrarFalha } = await import("@/lib/falhas.server");
+        await registrarFalha(supabaseAdmin, "whatsapp.inbound", msg, {
+          conversa_id: conv.id,
+          lead_id: conv.lead_id,
+          acao: "aviso_n8n",
+        });
       }
     }
   }
