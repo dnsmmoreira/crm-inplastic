@@ -30,14 +30,8 @@ export const TAREFAS_ETAPA_FINANCEIRA = [
 /* Destinatários                                                       */
 /* ------------------------------------------------------------------ */
 
-async function usuariosDoPerfil(sb: SB, nome: string): Promise<string[]> {
-  const { data: perfil } = await sb.from("perfis").select("id").eq("nome", nome).maybeSingle();
-  if (!perfil?.id) return [];
-  const { data } = await sb.from("user_perfis").select("user_id").eq("perfil_id", perfil.id);
-  return ((data ?? []) as Array<{ user_id: string }>).map((r) => r.user_id);
-}
-
 /** Usuários ativos cujo perfil ativo concede a permissão informada. */
+
 async function usuariosComPermissao(sb: SB, chave: string): Promise<string[]> {
   const { data: vinculos } = await sb
     .from("perfil_permissoes")
@@ -80,7 +74,12 @@ export async function destinatariosFinanceiro(sb: SB): Promise<string[]> {
 }
 
 export async function destinatariosOperacional(sb: SB): Promise<string[]> {
-  return Array.from(new Set(await usuariosDoPerfil(sb, "Operacional Comercial")));
+  // Selecionar por NOME de perfil é frágil: o perfil "Operacional Comercial" foi
+  // renomeado para "Operacional" e a seleção passou a devolver [] em silêncio
+  // (etapa `programacao` sem aviso, tarefa de produção sem dono). A seleção agora
+  // é por PERMISSÃO — `pedidos.movimentar` é exatamente quem OPERA o pedido
+  // (produção, coleta, entrega) e não quebra com renomeação de perfil.
+  return usuariosComPermissao(sb, "pedidos.movimentar");
 }
 
 /* ------------------------------------------------------------------ */
