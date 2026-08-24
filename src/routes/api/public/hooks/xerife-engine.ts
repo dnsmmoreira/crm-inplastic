@@ -113,6 +113,8 @@ type Cfg = {
   dias_uteis_fim: string;
   auto_atribuir_lead_orfao: boolean;
   sla_lead_orfao_min: number;
+  cadencia_abandono_dias: number[];
+  reatribuir_lead_abandonado: boolean;
 };
 
 async function loadCfg(): Promise<Cfg> {
@@ -135,6 +137,8 @@ async function loadCfg(): Promise<Cfg> {
     dias_uteis_fim: (d.dias_uteis_fim ?? "18:00:00").slice(0, 5),
     auto_atribuir_lead_orfao: d.auto_atribuir_lead_orfao ?? true,
     sla_lead_orfao_min: d.sla_lead_orfao_min ?? 15,
+    cadencia_abandono_dias: d.cadencia_abandono_dias ?? [2, 5, 10],
+    reatribuir_lead_abandonado: d.reatribuir_lead_abandonado ?? true,
   };
 }
 
@@ -170,6 +174,7 @@ async function runEngine(
     b2_carteira_60: 0,
     b3_reciclagem: 0,
     c_pos_venda: 0,
+    d1_abandono: 0, d1_escalado: 0, d1_reatribuido: 0,
   };
 
   const plan: XerifePlanItem[] = [];
@@ -497,6 +502,94 @@ async function runEngine(
         payload: { dias_corridos: diasCorridos, cadencia: cfg.cadencia_proposta_dias },
       });
       stats.a4_cadencia_proposta++;
+    }
+  }
+
+
+  // ─────────────── D1: lead ativo sem contato (régua 2/5/10 dias) ───────────────
+  // Passo 1 e 2: tarefa para o vendedor. Passo 3: diretoria + devolução à fila.
+  {
+    const reguaOrd = [...cfg.cadencia_abandono_dias].sort((a, b) => a - b);
+    const maiorPasso = reguaOrd[reguaOrd.length - 1];
+    const limiteIso = new Date(now.getTime() - (reguaOrd[0] ?? 2) * 86400_000).toISOString();
+
+    const { data: leads } = await sb
+      .from("leads")
+      .select("id, company, owner_id, stage, last_contact_at, created_at, reatribuido_abandono_em")
+      .in("stage", ["novo", "atendimento", "qualificacao", "proposta", "negociacao"] as any)
+      .not("owner_id", "is", null)
+      .or(`last_contact_at.lt.${limiteIso},last_contact_at.is.null`)
+      .limit(500);
+
+    for (const l of leads ?? []) {
+      const ref = l.last_contact_at ?? l.created_at;
+      const dias = diasDesde(ref, now);
+      if (dias == null) continue;
+
+      // último passo da régua já atingido pelo lead
+      const passo = [...reguaOrd].reverse().find((d) => dias >= d);
+      if (passo == null) continue;
+
+      const ultimo = passo === maiorPasso;
+      const regra = `D1_abandono_D${passo}`;
+      if (await alreadyActed(sb, regra, l.id, 22 * 60)) continue;
+
+      if (!ultimo) {
+        if (await hasOpenTask(sb, l.id, "retomar_contato")) continue;
+        await criarTarefa({
+          regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id,
+          tipo: "retomar_contato",
+          titulo: withCtx(`Retomar contato: ${l.company}`, `${dias} dias sem contato`),
+          descricao: `Lead em ${STAGE_LABEL[l.stage as string] ?? l.stage} há ${dias} dias sem nenhum contato registrado. Régua ${reguaOrd.join("/")} dias.`,
+          motivo: `Lead sem contato há ${dias} dias (régua ${reguaOrd.join("/")}).`,
+          prioridade: 1,
+        });
+        await log(sb, {
+          regra, leadId: l.id, vendedorId: l.owner_id,
+          acao: "tarefa criada",
+          payload: { dias, regua: reguaOrd },
+        });
+        stats.d1_abandono++;
+        continue;
+      }
+
+      // Passo final: diretoria sempre; devolução à fila se habilitada
+      await alertDiretoria(
+        `🚨 Lead abandonado há ${dias} dias\n\nCliente: ${l.company}\nEtapa: ${STAGE_LABEL[l.stage as string] ?? l.stage}\n${crmLeadLink(l.id)}`,
+        { regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id },
+      );
+      stats.d1_escalado++;
+
+      if (cfg.reatribuir_lead_abandonado && !l.reatribuido_abandono_em) {
+        plan.push({
+          regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id,
+          tipo: "reatribuicao", titulo: "Devolver lead para a fila",
+          descricao: `Lead abandonado há ${dias} dias — round-robin`,
+          motivo: `3º alerta ignorado`, prioridade: 0, acao: "criar_tarefa",
+        });
+        if (!dryRun) {
+          const anterior = l.owner_id;
+          await sb.from("leads").update({ owner_id: null }).eq("id", l.id);
+          const { data: novoDono, error: rpcErr } = await sb.rpc("atribuir_proximo_vendedor", { _lead_id: l.id });
+          if (rpcErr) {
+            await sb.from("leads").update({ owner_id: anterior }).eq("id", l.id);
+          } else {
+            await sb.from("leads").update({ reatribuido_abandono_em: now.toISOString() }).eq("id", l.id);
+            stats.d1_reatribuido++;
+          }
+          await log(sb, {
+            regra, leadId: l.id, vendedorId: anterior,
+            acao: rpcErr ? "reatribuição falhou" : "lead devolvido à fila",
+            payload: { dias, novo_owner: novoDono ?? null, erro: rpcErr?.message ?? null },
+          });
+        }
+      } else {
+        await log(sb, {
+          regra, leadId: l.id, vendedorId: l.owner_id,
+          acao: "diretoria notificada",
+          payload: { dias, reatribuicao: false },
+        });
+      }
     }
   }
 

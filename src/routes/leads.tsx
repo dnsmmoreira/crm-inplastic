@@ -28,6 +28,7 @@ import { STAGES, formatBRL, useVisibleLeads, type StageId, type Lead } from "@/l
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { LeadDrawer } from "@/components/crm/LeadDrawer";
 import { listVendedores } from "@/lib/clientes.functions";
+import { listPerdasEstruturadas } from "@/lib/leads-perda.functions";
 
 export const Route = createFileRoute("/leads")({
   head: () => ({
@@ -81,6 +82,20 @@ function LeadsPage() {
     queryFn: () => listVendedoresFn(),
     staleTime: 300_000,
   });
+  const listPerdasFn = useServerFn(listPerdasEstruturadas);
+  const perdasQ = useQuery({
+    queryKey: ["leads", "perdas-estruturadas"],
+    queryFn: () => listPerdasFn(),
+    staleTime: 60_000,
+  });
+  const perdaPorLead = useMemo(() => {
+    const m = new Map<string, { motivo: string; observacao: string | null }>();
+    (perdasQ.data ?? []).forEach((p) => {
+      if (p.motivo) m.set(p.lead_id, { motivo: p.motivo, observacao: p.detalhe });
+    });
+    return m;
+  }, [perdasQ.data]);
+
   const nomePorId = useMemo(() => {
     const m = new Map<string, string>();
     (vendedoresQ.data ?? []).forEach((v) => m.set(v.id, v.name));
@@ -103,14 +118,14 @@ function LeadsPage() {
     }
     const dir = sortMotivo === "asc" ? 1 : -1;
     return base.sort((a, b) => {
-      const ma = motivoPerda(a)?.motivo ?? "";
-      const mb = motivoPerda(b)?.motivo ?? "";
+      const ma = perdaPorLead.get(a.id)?.motivo ?? motivoPerda(a)?.motivo ?? "";
+      const mb = perdaPorLead.get(b.id)?.motivo ?? motivoPerda(b)?.motivo ?? "";
       if (!ma && !mb) return a.lastContact < b.lastContact ? 1 : -1;
       if (!ma) return 1;
       if (!mb) return -1;
       return ma.localeCompare(mb, "pt-BR") * dir;
     });
-  }, [leads, stage, q, sortMotivo]);
+  }, [leads, stage, q, sortMotivo, perdaPorLead]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount);
@@ -206,7 +221,7 @@ function LeadsPage() {
               <TableBody>
                 {rows.map((l) => {
                   const st = STAGES.find((s) => s.id === l.stage);
-                  const motivo = motivoPerda(l);
+                  const motivo = perdaPorLead.get(l.id) ?? motivoPerda(l);
                   return (
                     <TableRow
                       key={l.id}
