@@ -137,6 +137,8 @@ export async function enviarNotificacaoInterna(
       "[notificacao-interna] erro:",
       e instanceof Error ? e.message : String(e),
     );
+    const { registrarFalhaAdmin } = await import("@/lib/falhas.server");
+    await registrarFalhaAdmin("xerife.notificacao", e, { canal: ctx, acao: "envio_interno" });
     return { enviado: false, motivo: "erro_envio" };
   }
 }
@@ -152,6 +154,8 @@ export async function notifyOwner(ownerId: string | null, msg: string): Promise<
     return r.enviado;
   } catch (e) {
     console.error("[xerife/notify] erro:", e instanceof Error ? e.message : String(e));
+    const { registrarFalhaAdmin } = await import("@/lib/falhas.server");
+    await registrarFalhaAdmin("xerife.notificacao", e, { user_id: ownerId, acao: "notify_owner" });
     return false;
   }
 }
