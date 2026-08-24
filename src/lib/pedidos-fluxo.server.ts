@@ -32,8 +32,6 @@ export const TAREFAS_ETAPA_FINANCEIRA = [
 
 /** Usuários ativos cujo perfil ativo concede a permissão informada. */
 
-
-/** Usuários ativos cujo perfil ativo concede a permissão informada. */
 async function usuariosComPermissao(sb: SB, chave: string): Promise<string[]> {
   const { data: vinculos } = await sb
     .from("perfil_permissoes")
