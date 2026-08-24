@@ -229,6 +229,7 @@ function AprovacaoBlock({
 }: { pedido: PedidoDetalhes; onChanged: () => void }) {
   const solicitarFn = useServerFn(solicitarAprovacao);
   const decidirFn = useServerFn(decidirAprovacao);
+  const moverFn = useServerFn(updatePedidoStage);
   const [motivo, setMotivo] = useState("");
   const [observacao, setObservacao] = useState("");
 
@@ -246,6 +247,34 @@ function AprovacaoBlock({
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  /**
+   * Aprovar = decidir + liberar na mesma ação (nunca só metade).
+   * A movimentação vai primeiro: se `updatePedidoStage` recusar a transição,
+   * a decisão NÃO é gravada e a mensagem dela é exibida.
+   */
+  const aprovarEMover = useMutation({
+    mutationFn: async (destino: "programacao" | "aguardando_pagamento") => {
+      if (pedido.stage !== destino) {
+        const r = await moverFn({ data: { pedido_id: pedido.id, stage: destino } });
+        if (!r.ok) throw new Error(r.message);
+      }
+      await decidirFn({
+        data: { pedido_id: pedido.id, decisao: "aprovado", observacao: observacao || undefined },
+      });
+      return destino;
+    },
+    onSuccess: (destino) => {
+      toast.success(
+        destino === "programacao"
+          ? "Pedido aprovado e liberado"
+          : "Pedido aprovado — aguardando pagamento antecipado",
+      );
+      setObservacao(""); onChanged();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
 
   const showRequest =
     pedido.stage === "analise_financeira" ||
