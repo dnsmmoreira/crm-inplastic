@@ -838,8 +838,14 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
           )
         : null);
 
+    const propostaRow = propRes.data as {
+      tratativa_comercial?: string | null;
+      observations?: string | null;
+      numero_pedido_cliente?: string | null;
+      observacoes_pedido?: string | null;
+    } | null;
     const tratativa =
-      (propRes.data as { tratativa_comercial?: string | null } | null)?.tratativa_comercial ??
+      propostaRow?.tratativa_comercial ??
       (snapProposta.tratativa_comercial as string | null) ??
       null;
 
