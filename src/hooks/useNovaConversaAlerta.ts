@@ -42,6 +42,8 @@ export function tocarBeep(): void {
 export function useNovaConversaAlerta(userId: string | null) {
   const [conversa, setConversa] = useState<ConversaAlerta | null>(null);
   const vistas = useRef<Set<string>>(new Set());
+  /** Dedupe por ID DA MENSAGEM — permite realertar a mesma conversa. */
+  const mensagensVistas = useRef<Set<string>>(new Set());
 
   const dispensar = useCallback(() => setConversa(null), []);
 
@@ -51,6 +53,7 @@ export function useNovaConversaAlerta(userId: string | null) {
       return;
     }
     vistas.current = new Set();
+    mensagensVistas.current = new Set();
 
     const handle = (row: ConversaAlerta | null) => {
       if (!row || row.atribuido_para !== userId) return;
@@ -59,6 +62,25 @@ export function useNovaConversaAlerta(userId: string | null) {
       setConversa(row);
       tocarBeep();
     };
+
+    /** Mensagem nova do cliente: dedupe por mensagem, não por conversa. */
+    const handleMensagem = async (msg: { id?: string; conversa_id?: string } | null) => {
+      const msgId = msg?.id;
+      const conversaId = msg?.conversa_id;
+      if (!msgId || !conversaId) return;
+      if (mensagensVistas.current.has(msgId)) return;
+      mensagensVistas.current.add(msgId);
+      const { data } = await supabase
+        .from("whatsapp_conversas")
+        .select("*")
+        .eq("id", conversaId)
+        .maybeSingle();
+      const row = data as ConversaAlerta | null;
+      if (!row || row.atribuido_para !== userId) return;
+      setConversa(row);
+      tocarBeep();
+    };
+
 
     const channel = supabase
       .channel(`nova-conversa-${userId}-${Math.random().toString(36).slice(2)}`)
