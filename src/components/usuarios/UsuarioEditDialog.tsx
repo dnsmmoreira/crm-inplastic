@@ -225,7 +225,7 @@ export function UsuarioEditDialog({
             fusoHorario: fuso,
             avatarColor,
           },
-          acesso: { role, ativo },
+          acesso: { ativo },
           vendas: {
             metaMensal: Number(meta) || 0,
             metaMotivo: metaMotivo.trim() || undefined,
