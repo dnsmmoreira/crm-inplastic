@@ -39,6 +39,13 @@ function json(data: unknown, status = 200) {
  * vendedor e dispara re-engajamento para abrir a janela de 24h neste número.
  * Header obrigatório: x-n8n-secret.
  */
+/** Nome plausível: tem ao menos 2 caracteres e contém alguma letra. */
+function nomePlausivel(v: string | null | undefined): string | null {
+  const t = (v ?? "").trim();
+  if (t.length < 2 || !/[a-zA-ZÀ-ÿ]/.test(t)) return null;
+  return t;
+}
+
 export const Route = createFileRoute("/api/public/hooks/lead-externo")({
   server: {
     handlers: {
@@ -121,8 +128,8 @@ export const Route = createFileRoute("/api/public/hooks/lead-externo")({
             .from("leads")
             .insert({
               owner_id: null,
-              company: body.empresa?.trim() || nome || `WhatsApp ${telefone}`,
-              contact_name: nome || "A identificar",
+              company: body.empresa?.trim() || nomePlausivel(nome) || "A identificar",
+              contact_name: nomePlausivel(nome) || "A identificar",
               phone: telefone,
               telefone_whatsapp: telefone,
               product: body.produto ?? null,
