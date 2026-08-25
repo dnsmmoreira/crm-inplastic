@@ -27,8 +27,28 @@ export const PEDIDO_STAGE_REPROVADO = "reprovado_financeiro" as const;
 
 export const PEDIDO_STAGE_REPROVADO_LABEL = "Reprovado Financeiro";
 
+/** Status terminal oculto para devolução/cancelamento nas etapas operacionais. */
+export const PEDIDO_STAGE_CANCELADO = "cancelado" as const;
+
+export const PEDIDO_STAGE_CANCELADO_LABEL = "Cancelado / Devolvido";
+
+/** Etapas operacionais de onde o pedido pode ser devolvido/cancelado. */
+export const PEDIDO_STAGES_DEVOLVIVEIS = [
+  "programacao",
+  "em_producao",
+  "pronto",
+  "faturado_em_rota",
+] as const;
+
+export function podeDevolverPedido(stage: string): boolean {
+  return (PEDIDO_STAGES_DEVOLVIVEIS as readonly string[]).includes(stage);
+}
+
 export type PedidoStageVisivel = (typeof PEDIDO_STAGES)[number]["id"];
-export type PedidoStageId = PedidoStageVisivel | typeof PEDIDO_STAGE_REPROVADO;
+export type PedidoStageId =
+  | PedidoStageVisivel
+  | typeof PEDIDO_STAGE_REPROVADO
+  | typeof PEDIDO_STAGE_CANCELADO;
 
 export const PEDIDO_STAGE_IDS: [PedidoStageId, ...PedidoStageId[]] = [
   "analise_financeira",
@@ -39,6 +59,7 @@ export const PEDIDO_STAGE_IDS: [PedidoStageId, ...PedidoStageId[]] = [
   "faturado_em_rota",
   "pos_venda",
   PEDIDO_STAGE_REPROVADO,
+  PEDIDO_STAGE_CANCELADO,
 ];
 
 const STAGE_ORDER: Record<PedidoStageId, number> = {
@@ -50,15 +71,18 @@ const STAGE_ORDER: Record<PedidoStageId, number> = {
   faturado_em_rota: 5,
   pos_venda: 6,
   reprovado_financeiro: 99,
+  cancelado: 99,
 };
 
 export function stageLabel(id: string): string {
   if (id === PEDIDO_STAGE_REPROVADO) return PEDIDO_STAGE_REPROVADO_LABEL;
+  if (id === PEDIDO_STAGE_CANCELADO) return PEDIDO_STAGE_CANCELADO_LABEL;
   return PEDIDO_STAGES.find((s) => s.id === id)?.label ?? id;
 }
 
 export function stageColor(id: string): string {
   if (id === PEDIDO_STAGE_REPROVADO) return "#ef4444";
+  if (id === PEDIDO_STAGE_CANCELADO) return "#ef4444";
   return PEDIDO_STAGES.find((s) => s.id === id)?.color ?? "#94a3b8";
 }
 
@@ -72,6 +96,7 @@ export const ALLOWED_FORWARD: Record<PedidoStageId, PedidoStageId[]> = {
   faturado_em_rota: ["pos_venda"],
   pos_venda: [],
   reprovado_financeiro: [],
+  cancelado: [],
 };
 
 export function isBackward(from: PedidoStageId, to: PedidoStageId): boolean {
@@ -85,6 +110,9 @@ export function isTransitionAllowed(from: PedidoStageId, to: PedidoStageId): boo
     return from === "analise_financeira" || from === "aguardando_pagamento";
   // …e o único retorno possível é para a análise financeira.
   if (from === PEDIDO_STAGE_REPROVADO) return to === "analise_financeira";
+  // Cancelamento/devolução operacional: destino terminal, sem retorno.
+  if (to === PEDIDO_STAGE_CANCELADO) return podeDevolverPedido(from);
+  if (from === PEDIDO_STAGE_CANCELADO) return false;
   if (isBackward(from, to)) return true; // exige motivo
   return ALLOWED_FORWARD[from].includes(to);
 }
@@ -92,6 +120,7 @@ export function isTransitionAllowed(from: PedidoStageId, to: PedidoStageId): boo
 /** Etapas que contam como pedido FECHADO (fora do relatório de abertos). */
 export function isPedidoFechado(stage: string, encerradoEm: string | null | undefined): boolean {
   if (stage === PEDIDO_STAGE_REPROVADO) return true;
+  if (stage === PEDIDO_STAGE_CANCELADO) return true;
   if (stage === "pos_venda" && encerradoEm) return true;
   // etapas legadas terminais
   if (stage === "concluido") return true;
