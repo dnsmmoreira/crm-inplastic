@@ -525,6 +525,9 @@ export const iniciarConversaCliente = createServerFn({ method: "POST" })
     // whatsapp_conversas não aceita INSERT via RLS; usamos o client privilegiado
     // apenas depois de validar o usuário e o acesso dele ao cliente.
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // O trigger `tg_conversa_atribuida_notifica` roda BEFORE INSERT e quebra por FK
+    // quando `atribuido_para` já vem preenchido no INSERT: inserimos sem o campo e
+    // atribuímos logo em seguida via UPDATE (mesmo padrão de enviarPropostaWhatsapp).
     const { data: criada, error: iErr } = await supabaseAdmin
       .from("whatsapp_conversas")
       .insert({
@@ -532,14 +535,20 @@ export const iniciarConversaCliente = createServerFn({ method: "POST" })
         name: nome,
         status: "humano_atendendo",
         ia_ativa: false,
-        atribuido_para: userId,
         lead_id: lead?.id ?? null,
       })
       .select("id")
       .single();
     if (iErr || !criada) throw new Error(iErr?.message ?? "Falha ao iniciar conversa.");
 
+    const { error: uErr } = await supabaseAdmin
+      .from("whatsapp_conversas")
+      .update({ atribuido_para: userId })
+      .eq("id", criada.id);
+    if (uErr) throw new Error(uErr.message);
+
     return { conversaId: criada.id };
+
   });
 
 /* ------------------------------------------------------------------ *
