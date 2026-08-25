@@ -693,6 +693,9 @@ export type PedidoDetalhes = {
   previsao_faturamento: string | null;
   parcelas: PedidoParcelaDetalhe[];
   tratativa_comercial: string | null;
+  proposta_observacoes: string | null;
+  proposta_numero_pedido_cliente: string | null;
+  proposta_observacoes_pedido: string | null;
   historico_cliente: HistoricoCliente;
   aprovacao_solicitada_em: string | null;
   aprovacao_solicitada_por: string | null;
@@ -789,7 +792,9 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
       p.proposta_id
         ? sb
             .from("propostas")
-            .select("id, tratativa_comercial")
+            .select(
+              "id, tratativa_comercial, observations, numero_pedido_cliente, observacoes_pedido",
+            )
             .eq("id", p.proposta_id)
             .maybeSingle()
         : Promise.resolve({ data: null }),
@@ -833,8 +838,14 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
           )
         : null);
 
+    const propostaRow = propRes.data as {
+      tratativa_comercial?: string | null;
+      observations?: string | null;
+      numero_pedido_cliente?: string | null;
+      observacoes_pedido?: string | null;
+    } | null;
     const tratativa =
-      (propRes.data as { tratativa_comercial?: string | null } | null)?.tratativa_comercial ??
+      propostaRow?.tratativa_comercial ??
       (snapProposta.tratativa_comercial as string | null) ??
       null;
 
@@ -876,6 +887,16 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
       previsao_faturamento: (snapProposta.previsao_faturamento as string | null) ?? null,
       parcelas,
       tratativa_comercial: tratativa,
+      proposta_observacoes:
+        propostaRow?.observations ?? (snapProposta.observations as string | null) ?? null,
+      proposta_numero_pedido_cliente:
+        propostaRow?.numero_pedido_cliente ??
+        (snapProposta.numero_pedido_cliente as string | null) ??
+        null,
+      proposta_observacoes_pedido:
+        propostaRow?.observacoes_pedido ??
+        (snapProposta.observacoes_pedido as string | null) ??
+        null,
       historico_cliente: historico,
       aprovacao_solicitada_em: p.aprovacao_solicitada_em,
       aprovacao_solicitada_por: p.aprovacao_solicitada_por,
