@@ -40,6 +40,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as PropostasIndexRouteImport } from './routes/propostas.index'
 import { Route as ClientesIndexRouteImport } from './routes/clientes.index'
 import { Route as PropostasIdRouteImport } from './routes/propostas.$id'
+import { Route as PropostaPublicaIdRouteImport } from './routes/proposta-publica.$id'
 import { Route as ClientesIdRouteImport } from './routes/clientes.$id'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
@@ -216,6 +217,11 @@ const PropostasIdRoute = PropostasIdRouteImport.update({
   path: '/propostas/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PropostaPublicaIdRoute = PropostaPublicaIdRouteImport.update({
+  id: '/proposta-publica/$id',
+  path: '/proposta-publica/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ClientesIdRoute = ClientesIdRouteImport.update({
   id: '/clientes/$id',
   path: '/clientes/$id',
@@ -364,6 +370,7 @@ export interface FileRoutesByFullPath {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/clientes/$id': typeof ClientesIdRoute
+  '/proposta-publica/$id': typeof PropostaPublicaIdRoute
   '/propostas/$id': typeof PropostasIdRoute
   '/clientes/': typeof ClientesIndexRoute
   '/propostas/': typeof PropostasIndexRoute
@@ -417,6 +424,7 @@ export interface FileRoutesByTo {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/clientes/$id': typeof ClientesIdRoute
+  '/proposta-publica/$id': typeof PropostaPublicaIdRoute
   '/propostas/$id': typeof PropostasIdRoute
   '/clientes': typeof ClientesIndexRoute
   '/propostas': typeof PropostasIndexRoute
@@ -471,6 +479,7 @@ export interface FileRoutesById {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/clientes/$id': typeof ClientesIdRoute
+  '/proposta-publica/$id': typeof PropostaPublicaIdRoute
   '/propostas/$id': typeof PropostasIdRoute
   '/clientes/': typeof ClientesIndexRoute
   '/propostas/': typeof PropostasIndexRoute
@@ -526,6 +535,7 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/clientes/$id'
+    | '/proposta-publica/$id'
     | '/propostas/$id'
     | '/clientes/'
     | '/propostas/'
@@ -579,6 +589,7 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/clientes/$id'
+    | '/proposta-publica/$id'
     | '/propostas/$id'
     | '/clientes'
     | '/propostas'
@@ -632,6 +643,7 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/clientes/$id'
+    | '/proposta-publica/$id'
     | '/propostas/$id'
     | '/clientes/'
     | '/propostas/'
@@ -686,6 +698,7 @@ export interface RootRouteChildren {
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   ClientesIdRoute: typeof ClientesIdRoute
+  PropostaPublicaIdRoute: typeof PropostaPublicaIdRoute
   PropostasIdRoute: typeof PropostasIdRoute
   ClientesIndexRoute: typeof ClientesIndexRoute
   PropostasIndexRoute: typeof PropostasIndexRoute
@@ -927,6 +940,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PropostasIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/proposta-publica/$id': {
+      id: '/proposta-publica/$id'
+      path: '/proposta-publica/$id'
+      fullPath: '/proposta-publica/$id'
+      preLoaderRoute: typeof PropostaPublicaIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/clientes/$id': {
       id: '/clientes/$id'
       path: '/clientes/$id'
@@ -1103,6 +1123,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   ClientesIdRoute: ClientesIdRoute,
+  PropostaPublicaIdRoute: PropostaPublicaIdRoute,
   PropostasIdRoute: PropostasIdRoute,
   ClientesIndexRoute: ClientesIndexRoute,
   PropostasIndexRoute: PropostasIndexRoute,

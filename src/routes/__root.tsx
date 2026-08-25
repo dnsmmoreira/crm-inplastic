@@ -681,6 +681,8 @@ function AuthGate() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   if (pathname === "/auth") return <Outlet />;
+  if (pathname.startsWith("/proposta-publica/")) return <Outlet />;
+
 
   // Enquanto o Supabase não terminou a restauração inicial da sessão, mostramos loading.
   // Isso evita redirecionar pra /auth num flash logo depois do login, quando o cliente

@@ -40,7 +40,9 @@ import { calculateFreightDistance } from "@/lib/freight.functions";
 import { gerarPedidoOmie } from "@/lib/omie.functions";
 import { formatDocumentoCliente } from "@/lib/clientes";
 import { getVendedorDaProposta, type VendedorContato, type ClienteRow } from "@/lib/clientes.functions";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { enviarPropostaWhatsapp } from "@/lib/propostas.functions";
+
 import { formatCep } from "@/lib/format";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -351,6 +353,19 @@ function PropostaDetalhe() {
   const updateProposal: typeof _updateProposal = (...a) => { if (guard()) return; markDirty(); return _updateProposal(...a); };
   const setStatus: typeof _setStatus = (...a) => { if (guard()) return; markDirty(); return _setStatus(...a); };
 
+  // Envio real da proposta por WhatsApp (link da página pública).
+  const enviarPropostaFn = useServerFn(enviarPropostaWhatsapp);
+  const enviarWhatsMut = useMutation({
+    mutationFn: (propostaId: string) => enviarPropostaFn({ data: { propostaId } }),
+    onSuccess: (_r: unknown, propostaId: string) => {
+      setStatus(propostaId, "enviada");
+      toast.success("Proposta enviada por WhatsApp!");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+
+
   /**
    * Troca a condição de pagamento: descarta as parcelas anteriores (marcando-as
    * como exclusão intencional para o sync apagar no banco) e recria a partir dos
@@ -510,9 +525,20 @@ function PropostaDetalhe() {
         </div>
         <div className="flex flex-wrap gap-2">
           {!isPedido && (
-            <Button variant="outline" className="gap-2" onClick={() => { setStatus(proposal.id, "enviada"); toast.success("Marcada como enviada"); }}>
-              <Send className="h-4 w-4" /> Enviar
+            <Button
+              variant="outline"
+              className="gap-2"
+              disabled={enviarWhatsMut.isPending}
+              onClick={() => enviarWhatsMut.mutate(proposal.id)}
+            >
+              {enviarWhatsMut.isPending ? (
+                <RefreshCw className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+              {enviarWhatsMut.isPending ? "Enviando..." : "Enviar"}
             </Button>
+
           )}
 
           {/* Fechar pedido: admin gera direto; vendedor solicita aprovação. */}
