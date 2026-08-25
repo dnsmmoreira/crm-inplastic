@@ -48,6 +48,8 @@ import { formatDateBr } from "@/lib/condicoes-comerciais";
 import {
   getPedidoDetalhes,
   decidirAprovacao,
+  reprovarPedidoFinanceiro,
+
   updatePedidoStage,
   salvarChecklistConferencia,
   atualizarStatusFiscal,
@@ -132,6 +134,8 @@ function PedidoDetailBody({
   // Quem aprova e quem opera precisam de coisas diferentes: a etapa decide a visão.
   const visaoFinanceira =
     pedido.stage === "analise_financeira" || pedido.stage === "aguardando_pagamento";
+  const visaoReprovado = pedido.stage === "reprovado_financeiro";
+
 
   return (
     <div className="flex flex-col h-full">
@@ -158,7 +162,13 @@ function PedidoDetailBody({
 
       <ScrollArea className="flex-1">
         <div className="p-6 space-y-6">
-          {visaoFinanceira ? (
+          {visaoReprovado ? (
+            <>
+              <ItensBlock pedido={pedido} comValores={false} />
+              <TratativaBlock pedido={pedido} />
+              <DecisaoLeitura pedido={pedido} />
+            </>
+          ) : visaoFinanceira ? (
             <>
               <ItensBlock pedido={pedido} comValores />
               <PagamentoBlock pedido={pedido} completo />
@@ -168,6 +178,7 @@ function PedidoDetailBody({
               <OcorrenciasBlock pedido={pedido} onChanged={onChanged} />
             </>
           ) : (
+
             <>
               <ItensBlock pedido={pedido} comValores={false} />
               <ChecklistBlock pedido={pedido} onChanged={onChanged} />
@@ -553,18 +564,24 @@ function NotificacoesBlock({ pedidoId }: { pedidoId: string }) {
 function AprovacaoBlock({ pedido, onChanged }: { pedido: PedidoDetalhes; onChanged: () => void }) {
   const decidirFn = useServerFn(decidirAprovacao);
   const moverFn = useServerFn(updatePedidoStage);
+  const reprovarFn = useServerFn(reprovarPedidoFinanceiro);
   const [observacao, setObservacao] = useState("");
+  const [erroMotivo, setErroMotivo] = useState<string | null>(null);
 
-  const decidir = useMutation({
-    mutationFn: (decisao: "aprovado" | "rejeitado") =>
-      decidirFn({ data: { pedido_id: pedido.id, decisao, observacao: observacao || undefined } }),
-    onSuccess: (_r, decisao) => {
-      toast.success(decisao === "aprovado" ? "Pedido aprovado" : "Pedido rejeitado");
+  const reprovar = useMutation({
+    mutationFn: async (motivo: string) => {
+      const r = await reprovarFn({ data: { pedido_id: pedido.id, motivo } });
+      if (!r.ok) throw new Error(r.message);
+      return r;
+    },
+    onSuccess: () => {
+      toast.success("Pedido reprovado — proposta reaberta no funil");
       setObservacao("");
       onChanged();
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
 
   /**
    * Aprovar = decidir + liberar na mesma ação (nunca só metade).
@@ -644,13 +661,21 @@ function AprovacaoBlock({ pedido, onChanged }: { pedido: PedidoDetalhes; onChang
 
       {showDecision && (
         <div className="space-y-2 rounded-lg border p-3">
-          <Label className="text-xs">Observação da decisão (opcional)</Label>
-          <Textarea rows={2} value={observacao} onChange={(e) => setObservacao(e.target.value)} />
+          <Label className="text-xs">Motivo da reprovação (obrigatório para rejeitar)</Label>
+          <Textarea
+            rows={2}
+            value={observacao}
+            onChange={(e) => {
+              setObservacao(e.target.value);
+              if (erroMotivo) setErroMotivo(null);
+            }}
+          />
+          {erroMotivo && <p className="text-xs text-destructive">{erroMotivo}</p>}
           <div className="flex flex-wrap gap-2">
             <Button
               size="sm"
               className="bg-emerald-600 hover:bg-emerald-700"
-              disabled={aprovarEMover.isPending || decidir.isPending}
+              disabled={aprovarEMover.isPending || reprovar.isPending}
               onClick={() => aprovarEMover.mutate("programacao")}
               title="Aprova e libera o pedido (etapa Liberado)"
             >
@@ -664,7 +689,7 @@ function AprovacaoBlock({ pedido, onChanged }: { pedido: PedidoDetalhes; onChang
             <Button
               size="sm"
               variant="outline"
-              disabled={aprovarEMover.isPending || decidir.isPending}
+              disabled={aprovarEMover.isPending || reprovar.isPending}
               onClick={() => aprovarEMover.mutate("aguardando_pagamento")}
               title="Aprova condicionado a pagamento antecipado"
             >
@@ -673,14 +698,28 @@ function AprovacaoBlock({ pedido, onChanged }: { pedido: PedidoDetalhes; onChang
             <Button
               size="sm"
               variant="destructive"
-              disabled={decidir.isPending || aprovarEMover.isPending}
-              onClick={() => decidir.mutate("rejeitado")}
+              disabled={reprovar.isPending || aprovarEMover.isPending}
+              onClick={() => {
+                const motivo = observacao.trim();
+                if (motivo.length < 3) {
+                  setErroMotivo("Informe o motivo da reprovação (mínimo 3 caracteres).");
+                  return;
+                }
+                setErroMotivo(null);
+                reprovar.mutate(motivo);
+              }}
             >
-              <XCircle className="h-4 w-4 mr-1" /> Rejeitar
+              {reprovar.isPending ? (
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              ) : (
+                <XCircle className="h-4 w-4 mr-1" />
+              )}
+              Rejeitar
             </Button>
           </div>
         </div>
       )}
+
     </section>
   );
 }
