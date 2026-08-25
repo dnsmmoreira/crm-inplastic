@@ -434,6 +434,50 @@ function TratativaBlock({ pedido }: { pedido: PedidoDetalhes }) {
   );
 }
 
+/* --------------------- Observações vindas da proposta --------------------- */
+
+function ObservacoesPropostaBlock({ pedido }: { pedido: PedidoDetalhes }) {
+  const numeroPedidoCliente = (pedido.proposta_numero_pedido_cliente ?? "").trim();
+  const obsPedido = (pedido.proposta_observacoes_pedido ?? "").trim();
+  const obsGerais = (pedido.proposta_observacoes ?? "").trim();
+  if (!numeroPedidoCliente && !obsPedido && !obsGerais) return null;
+
+  return (
+    <section className="space-y-3">
+      <SectionTitle
+        icon={<MessageSquareText className="h-4 w-4" />}
+        label="Observações da proposta"
+      />
+      <div className="space-y-2">
+        {numeroPedidoCliente && (
+          <div className="rounded-lg border border-primary/40 bg-primary/5 p-3 text-sm whitespace-pre-wrap">
+            <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Nº do pedido do cliente
+            </div>
+            <div className="mt-1 font-semibold">{numeroPedidoCliente}</div>
+          </div>
+        )}
+        {obsPedido && (
+          <div className="rounded-lg border p-3 text-sm whitespace-pre-wrap bg-muted/20">
+            <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Observações do pedido
+            </div>
+            <div className="mt-1">{obsPedido}</div>
+          </div>
+        )}
+        {obsGerais && (
+          <div className="rounded-lg border p-3 text-sm whitespace-pre-wrap bg-muted/20">
+            <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Observações gerais da proposta
+            </div>
+            <div className="mt-1">{obsGerais}</div>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
 /* ------------------------- Decisão de aprovação (RO) ------------------------ */
 
 function DecisaoLeitura({ pedido }: { pedido: PedidoDetalhes }) {
