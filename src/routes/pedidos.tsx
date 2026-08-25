@@ -255,6 +255,7 @@ function PedidosKanbanPage() {
       faturado_em_rota: [],
       pos_venda: [],
       reprovado_financeiro: [],
+      cancelado: [],
     };
     filtered.forEach((p) => map[p.stage]?.push(p));
     return map;

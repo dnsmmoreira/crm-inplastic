@@ -492,6 +492,21 @@ export async function aoEntrarNaEtapa(
       return;
     }
 
+    if (stage === "cancelado") {
+      const destinatarios = new Set<string>(
+        p.vendedor_proprietario_id ? [p.vendedor_proprietario_id] : [],
+      );
+      for (const id of await destinatariosOperacional(sb)) destinatarios.add(id);
+      await notificarUsuarios(sb, Array.from(destinatarios), {
+        tipo: "pedido_cancelado",
+        titulo: `Pedido ${p.number} devolvido/cancelado. Motivo: ${
+          opts?.motivoReprovacao ?? "não informado"
+        }`,
+        pedidoId,
+      });
+      return;
+    }
+
     if (stage === "em_producao") {
       const operacional = await destinatariosOperacional(sb);
       await criarTarefaPedido(sb, {

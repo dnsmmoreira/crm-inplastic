@@ -15,9 +15,11 @@ export type { HistoricoCliente, PedidoHistoricoRow } from "@/lib/pedidos-histori
 import {
   PEDIDO_STAGES,
   PEDIDO_STAGE_REPROVADO,
+  PEDIDO_STAGE_CANCELADO,
   PEDIDO_STAGE_IDS,
   ALLOWED_FORWARD,
   isBackward,
+  podeDevolverPedido,
   stageLabel,
   type PedidoStageId,
 } from "@/lib/pedidos-stages";
@@ -25,6 +27,9 @@ import {
 export {
   PEDIDO_STAGES,
   PEDIDO_STAGE_REPROVADO,
+  PEDIDO_STAGE_CANCELADO,
+  PEDIDO_STAGE_CANCELADO_LABEL,
+  podeDevolverPedido,
   PEDIDO_STAGE_REPROVADO_LABEL,
   PEDIDO_STAGE_IDS,
   ALLOWED_FORWARD,
@@ -348,6 +353,7 @@ const STAGE_CLASSIFICACAO: Record<PedidoStageId, StageClassificacao> = {
   faturado_em_rota: "informativa",
   pos_venda: "informativa",
   reprovado_financeiro: "alerta",
+  cancelado: "alerta",
 };
 
 async function enqueueStageChangeNotification(
@@ -1148,6 +1154,93 @@ export const reprovarPedidoFinanceiro = createServerFn({ method: "POST" })
   });
 
 
+
+/**
+ * Devolução/cancelamento de pedido nas etapas operacionais (Liberado, Em Produção,
+ * Coleta/Entrega, Faturado/Em Rota). Mesmo padrão da reprovação financeira:
+ * motivo obrigatório, etapa terminal, desvinculo de `proposta_id` (libera o
+ * índice único parcial `pedidos_proposta_id_unique`) preservando o snapshot,
+ * reabertura da proposta/lead no funil e notificação do vendedor.
+ */
+export const devolverPedidoOperacional = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { pedido_id: string; motivo: string }) =>
+    z
+      .object({
+        pedido_id: z.string().uuid(),
+        motivo: z.string().trim().min(3).max(1000),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const sb: LooseClient = context.supabase;
+
+    const podeMovimentar = await temPermissao(sb, context.userId, PERM_PEDIDOS_MOVIMENTAR);
+    if (!podeMovimentar) {
+      return {
+        ok: false as const,
+        reason: "forbidden" as const,
+        message: "Você não tem permissão para devolver pedidos.",
+      };
+    }
+
+    const { data: current, error: loadErr } = await sb
+      .from("pedidos")
+      .select("id, stage, proposta_id, lead_id")
+      .eq("id", data.pedido_id)
+      .maybeSingle();
+    if (loadErr) throw new Error(`Falha ao carregar pedido: ${loadErr.message}`);
+    if (!current) throw new Error("Pedido não encontrado");
+    if (!podeDevolverPedido(current.stage as string)) {
+      return {
+        ok: false as const,
+        reason: "invalid_transition" as const,
+        message:
+          "A devolução só é possível nas etapas Liberado, Em Produção, Coleta / Entrega ou Faturado / Em Rota.",
+      };
+    }
+
+    const fromStage = current.stage as PedidoStageId;
+    const propostaId = current.proposta_id as string | null;
+    const leadId = current.lead_id as string | null;
+
+    const { error: updErr } = await sb
+      .from("pedidos")
+      .update({
+        stage: PEDIDO_STAGE_CANCELADO,
+        reprovacao_motivo: data.motivo,
+        proposta_id: null,
+      })
+      .eq("id", data.pedido_id);
+    if (updErr) throw new Error(`Falha ao devolver pedido: ${updErr.message}`);
+
+    await sb.from("pedido_stage_history").insert({
+      pedido_id: data.pedido_id,
+      from_stage: fromStage,
+      to_stage: PEDIDO_STAGE_CANCELADO,
+      is_backward: false,
+      motivo: data.motivo,
+      moved_by: context.userId,
+    });
+
+    if (propostaId) {
+      await sb
+        .from("propostas")
+        .update({ status: "enviada" })
+        .eq("id", propostaId)
+        .eq("status", "pedido");
+    }
+    if (leadId) {
+      await sb.from("leads").update({ stage: "proposta" }).eq("id", leadId).eq("stage", "ganho");
+    }
+
+    const { aoEntrarNaEtapa } = await import("@/lib/pedidos-fluxo.server");
+    await aoEntrarNaEtapa(sb, data.pedido_id, PEDIDO_STAGE_CANCELADO, {
+      motivoReprovacao: data.motivo,
+    });
+
+    return { ok: true as const };
+  });
 
 export const salvarChecklistConferencia = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

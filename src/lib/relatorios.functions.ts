@@ -153,7 +153,7 @@ export const listPedidosRelatorio = createServerFn({ method: "GET" })
  * Visibilidade segue o RLS de `pedidos` (admin vê todos; vendedor, os seus).
  * =========================================================================*/
 
-export const PEDIDO_STAGES_FECHADOS: PedidoStageId[] = ["reprovado_financeiro"];
+export const PEDIDO_STAGES_FECHADOS: PedidoStageId[] = ["reprovado_financeiro", "cancelado"];
 
 export type PedidoAbertoRow = {
   id: string;
