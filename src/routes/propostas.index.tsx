@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Plus, FileText, Search, Trash2, UserPlus, Loader2, Building2, Check, ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { lookupCnpj } from "@/lib/cnpj.functions";
-import { vincularClienteAoLead } from "@/lib/clientes.functions";
+import { listClientes, vincularClienteAoLead } from "@/lib/clientes.functions";
 import { NovoClienteDialog } from "@/components/clientes/NovoClienteDialog";
 import type { ClienteRow } from "@/lib/clientes.functions";
 import { isValidCnpj, formatCnpj } from "@/lib/cnpj";
@@ -464,9 +464,13 @@ function NovaPropostaDialog({ open, onOpenChange }: { open: boolean; onOpenChang
   const addLead = useCrm((s) => s.addLead);
   const createProposal = useCrm((s) => s.createProposal);
   const vincularFn = useServerFn(vincularClienteAoLead);
+  const listClientesFn = useServerFn(listClientes);
 
   const [query, setQuery] = useState("");
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  const [selectedClienteId, setSelectedClienteId] = useState<string | null>(null);
+  const [clientes, setClientes] = useState<ClienteRow[]>([]);
+  const [buscandoClientes, setBuscandoClientes] = useState(false);
   const [openNovo, setOpenNovo] = useState(false);
   const [criando, setCriando] = useState(false);
 
@@ -474,11 +478,38 @@ function NovaPropostaDialog({ open, onOpenChange }: { open: boolean; onOpenChang
     if (!open) {
       setQuery("");
       setSelectedLeadId(null);
+      setSelectedClienteId(null);
+      setClientes([]);
+      setBuscandoClientes(false);
       setCriando(false);
     }
   }, [open]);
 
-  const results = useMemo(() => {
+  useEffect(() => {
+    if (!open) return;
+    let ativo = true;
+    const timer = window.setTimeout(() => {
+      setBuscandoClientes(true);
+      void listClientesFn({
+        data: { q: query, somenteAtivos: true, pageSize: 100 },
+      })
+        .then(({ rows }) => {
+          if (ativo) setClientes(rows);
+        })
+        .catch(() => {
+          if (ativo) setClientes([]);
+        })
+        .finally(() => {
+          if (ativo) setBuscandoClientes(false);
+        });
+    }, 300);
+    return () => {
+      ativo = false;
+      window.clearTimeout(timer);
+    };
+  }, [listClientesFn, open, query]);
+
+  const leadResults = useMemo(() => {
     const t = query.toLowerCase().trim();
     const digits = query.replace(/\D/g, "");
     const sorted = [...leads].sort((a, b) => a.company.localeCompare(b.company, "pt-BR"));
@@ -491,9 +522,18 @@ function NovaPropostaDialog({ open, onOpenChange }: { open: boolean; onOpenChang
     }).slice(0, 100);
   }, [leads, query]);
 
+  const clienteResults = useMemo(
+    () => clientes.filter((cliente) => !leads.some((lead) => lead.clienteId === cliente.id)),
+    [clientes, leads],
+  );
+
   const selectedLead = useMemo(
     () => (selectedLeadId ? leads.find((l) => l.id === selectedLeadId) ?? null : null),
     [leads, selectedLeadId],
+  );
+  const selectedCliente = useMemo(
+    () => (selectedClienteId ? clientes.find((c) => c.id === selectedClienteId) ?? null : null),
+    [clientes, selectedClienteId],
   );
 
   const criarProposta = async (leadId: string) => {
@@ -560,11 +600,11 @@ function NovaPropostaDialog({ open, onOpenChange }: { open: boolean; onOpenChang
               <CommandList className="max-h-60 sm:max-h-72">
                 <CommandEmpty>
                   <div className="py-4 text-sm text-muted-foreground">
-                    Nenhum lead encontrado.
+                    {buscandoClientes ? "Buscando clientes..." : "Nenhum lead ou cliente encontrado."}
                   </div>
                 </CommandEmpty>
                 <CommandGroup>
-                  {results.map((l) => {
+                  {leadResults.map((l) => {
                     const isSel = l.id === selectedLeadId;
                     const subtitle = [
                       l.razaoSocial && l.razaoSocial !== l.company ? l.razaoSocial : null,
@@ -575,12 +615,48 @@ function NovaPropostaDialog({ open, onOpenChange }: { open: boolean; onOpenChang
                       <CommandItem
                         key={l.id}
                         value={l.id}
-                        onSelect={() => setSelectedLeadId(l.id)}
+                        onSelect={() => {
+                          setSelectedLeadId(l.id);
+                          setSelectedClienteId(null);
+                        }}
                         className="flex items-start gap-2"
                       >
                         <Check className={cn("h-4 w-4 mt-1 shrink-0", isSel ? "opacity-100" : "opacity-0")} />
                         <div className="flex-1 min-w-0">
                           <div className="font-medium truncate">{l.company}</div>
+                          {subtitle && (
+                            <div className="text-xs text-muted-foreground truncate">{subtitle}</div>
+                          )}
+                        </div>
+                      </CommandItem>
+                    );
+                  })}
+                  {clienteResults.map((cliente) => {
+                    const isSel = cliente.id === selectedClienteId;
+                    const titulo = cliente.nome_fantasia || cliente.razao_social;
+                    const subtitle = [
+                      cliente.nome_fantasia && cliente.nome_fantasia !== cliente.razao_social
+                        ? cliente.razao_social
+                        : null,
+                      cliente.cnpj ? formatCnpj(cliente.cnpj.replace(/\D/g, "")) : null,
+                      cliente.contato || null,
+                    ].filter(Boolean).join(" • ");
+                    return (
+                      <CommandItem
+                        key={`cliente-${cliente.id}`}
+                        value={`cliente-${cliente.id}`}
+                        onSelect={() => {
+                          setSelectedClienteId(cliente.id);
+                          setSelectedLeadId(null);
+                        }}
+                        className="flex items-start gap-2"
+                      >
+                        <Check className={cn("h-4 w-4 mt-1 shrink-0", isSel ? "opacity-100" : "opacity-0")} />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium truncate">{titulo}</span>
+                            <Badge variant="outline" className="shrink-0 text-[10px]">Cliente</Badge>
+                          </div>
                           {subtitle && (
                             <div className="text-xs text-muted-foreground truncate">{subtitle}</div>
                           )}
@@ -603,6 +679,20 @@ function NovaPropostaDialog({ open, onOpenChange }: { open: boolean; onOpenChang
                 </div>
               </div>
             )}
+            {selectedCliente && (
+              <div className="border rounded-md p-3 bg-accent/30 text-sm min-w-0">
+                <div className="flex items-center gap-2">
+                  <div className="font-semibold truncate">{selectedCliente.nome_fantasia || selectedCliente.razao_social}</div>
+                  <Badge variant="outline" className="shrink-0 text-[10px]">Cliente</Badge>
+                </div>
+                <div className="text-xs text-muted-foreground truncate">
+                  {selectedCliente.cnpj
+                    ? formatCnpj(selectedCliente.cnpj.replace(/\D/g, ""))
+                    : "Sem CNPJ cadastrado"}
+                  {selectedCliente.contato ? ` • ${selectedCliente.contato}` : ""}
+                </div>
+              </div>
+            )}
 
             <div className="pt-1">
               <Button variant="outline" className="gap-2 w-full" onClick={() => setOpenNovo(true)}>
@@ -614,8 +704,14 @@ function NovaPropostaDialog({ open, onOpenChange }: { open: boolean; onOpenChang
             <Button variant="ghost" className="w-full sm:w-auto" onClick={() => onOpenChange(false)}>Cancelar</Button>
             <Button
               className="w-full sm:w-auto"
-              disabled={!selectedLeadId || criando}
-              onClick={() => selectedLeadId && criarProposta(selectedLeadId)}
+              disabled={(!selectedLeadId && !selectedCliente) || criando}
+              onClick={() => {
+                if (selectedCliente) {
+                  void criarPropostaComClienteNovo(selectedCliente);
+                } else if (selectedLeadId) {
+                  void criarProposta(selectedLeadId);
+                }
+              }}
             >
               {criando ? <Loader2 className="h-4 w-4 animate-spin" /> : "Criar proposta"}
             </Button>
