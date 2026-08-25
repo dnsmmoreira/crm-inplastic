@@ -693,6 +693,9 @@ export type PedidoDetalhes = {
   previsao_faturamento: string | null;
   parcelas: PedidoParcelaDetalhe[];
   tratativa_comercial: string | null;
+  proposta_observacoes: string | null;
+  proposta_numero_pedido_cliente: string | null;
+  proposta_observacoes_pedido: string | null;
   historico_cliente: HistoricoCliente;
   aprovacao_solicitada_em: string | null;
   aprovacao_solicitada_por: string | null;
@@ -789,7 +792,9 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
       p.proposta_id
         ? sb
             .from("propostas")
-            .select("id, tratativa_comercial")
+            .select(
+              "id, tratativa_comercial, observations, numero_pedido_cliente, observacoes_pedido",
+            )
             .eq("id", p.proposta_id)
             .maybeSingle()
         : Promise.resolve({ data: null }),
