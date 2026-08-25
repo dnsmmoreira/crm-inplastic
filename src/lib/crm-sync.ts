@@ -429,6 +429,7 @@ function rowToProposal(
     formaPagamento:
       ((r as unknown as { forma_pagamento?: string | null }).forma_pagamento as PaymentForm | null) ?? undefined,
     billingForecastDate: (r as unknown as { previsao_faturamento?: string | null }).previsao_faturamento ?? undefined,
+    emNegociacao: Boolean((r as unknown as { em_negociacao?: boolean | null }).em_negociacao ?? false),
     emitterId: r.emitter_id,
     discountPercent: Number(r.discount_percent ?? 0),
     approvalRequestedAt: r.approval_requested_at ?? undefined,
@@ -460,6 +461,7 @@ function proposalToInsert(p: Proposal): ProposalInsert {
     status: p.status,
     validity_days: p.validityDays,
     emitter_id: p.emitterId,
+    em_negociacao: p.emNegociacao ?? false,
     observations: p.observations ?? "",
     payment_term_id: p.paymentTermId ?? null,
     forma_pagamento: p.formaPagamento ?? null,

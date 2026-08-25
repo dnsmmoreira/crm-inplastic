@@ -605,6 +605,7 @@ export type Proposal = {
   formaPagamento?: PaymentForm;   // Boleto / Depósito em Conta / PIX
   billingForecastDate?: string;   // previsão de faturamento (yyyy-MM-dd)
 
+  emNegociacao: boolean;    // toggle "em negociação" exibido no funil
   emitterId: string;        // qual CNPJ do grupo emite esta proposta
   discountPercent: number;  // % de desconto aplicado sobre o subtotal (limite gerido pelo ADM)
   approvalRequestedAt?: string;
