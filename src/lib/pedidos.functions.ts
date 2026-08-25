@@ -686,7 +686,14 @@ export type PedidoDetalhes = {
   id: string;
   number: string;
   stage: PedidoStageId;
+  /**
+   * Visão por PAPEL: quando falso, TODOS os campos monetários chegam zerados/
+   * nulos do servidor (não é filtro de CSS) — total, itens, parcelas, NF e
+   * histórico do cliente.
+   */
+  pode_ver_valores: boolean;
   total: number;
+
   /* Comercial (quem aprova precisa ver o que está comprando) */
   cliente_nome: string | null;
   cliente_cnpj: string | null;
