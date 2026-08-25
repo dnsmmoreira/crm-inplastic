@@ -1148,6 +1148,7 @@ export const useCrm = create<CrmState>()(
           ownerId: finalOwnerId,
           createdAt: new Date().toISOString(),
           status: "rascunho",
+          emNegociacao: false,
           validityDays: 10,
           emitterId,
           items: [],
