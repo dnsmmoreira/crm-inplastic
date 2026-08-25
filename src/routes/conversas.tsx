@@ -66,6 +66,19 @@ type Mensagem = Database["public"]["Tables"]["whatsapp_mensagens"]["Row"];
 
 type ConversasSearch = { c?: string };
 
+/** Tipos de documento aceitos pela API da Meta (limite de 100 MB). */
+const DOCUMENTOS_ACEITOS = new Set([
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "text/plain",
+]);
+
+
 export const Route = createFileRoute("/conversas")({
   validateSearch: (search: Record<string, unknown>): ConversasSearch => ({
     c: typeof search.c === "string" ? search.c : undefined,
