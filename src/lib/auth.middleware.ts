@@ -16,7 +16,7 @@ export const requireSupabaseAuth = createMiddleware({ type: "function" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: profile, error } = await supabaseAdmin
       .from("profiles")
-      .select("ativo, deleted_at")
+      .select("ativo, deleted_at, senha_reset_exigido")
       .eq("id", context.userId)
       .maybeSingle();
 
@@ -25,6 +25,13 @@ export const requireSupabaseAuth = createMiddleware({ type: "function" })
     if (profile.ativo === false || profile.deleted_at) {
       throw new Error("Unauthorized: conta inativa");
     }
+    // Reforço de SERVIDOR do fluxo de troca obrigatória: enquanto a flag
+    // estiver ligada, nenhuma server function protegida responde. A única
+    // exceção é `concluirTrocaSenha`, que usa o middleware base de propósito.
+    if (profile.senha_reset_exigido) {
+      throw new Error("Unauthorized: troca de senha obrigatória pendente");
+    }
+
 
     return next();
   });

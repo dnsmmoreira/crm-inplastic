@@ -7,7 +7,6 @@ import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { concluirTrocaSenha } from "@/lib/usuarios.functions";
 import { avaliarSenha } from "@/components/usuarios/DefinirSenhaDialog";
@@ -25,7 +24,7 @@ export const Route = createFileRoute("/trocar-senha")({
 });
 
 function TrocarSenhaPage() {
-  const { user, refresh, signOut } = useAuth();
+  const { refresh, signOut } = useAuth();
   const concluir = useServerFn(concluirTrocaSenha);
   const [atual, setAtual] = useState("");
   const [senha, setSenha] = useState("");
@@ -37,15 +36,12 @@ function TrocarSenhaPage() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!atual.trim()) { toast.error("Informe a senha atual."); return; }
     if (!forca.ok) { toast.error(`Senha fraca: ${forca.problemas.join(", ")}.`); return; }
     if (!iguais) { toast.error("As senhas não coincidem."); return; }
     setBusy(true);
     try {
-      if (atual.trim() && user?.email) {
-        const { error } = await supabase.auth.signInWithPassword({ email: user.email, password: atual });
-        if (error) throw new Error("Senha atual incorreta.");
-      }
-      await concluir({ data: { password: senha } });
+      await concluir({ data: { senhaAtual: atual, password: senha } });
       await refresh();
       toast.success("Senha atualizada!");
     } catch (err) {
@@ -54,6 +50,7 @@ function TrocarSenhaPage() {
       setBusy(false);
     }
   };
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-4">
@@ -72,7 +69,8 @@ function TrocarSenhaPage() {
 
         <form className="rounded-xl bg-card p-6 shadow-xl space-y-3" onSubmit={submit}>
           <div className="space-y-1">
-            <Label htmlFor="ts-atual">Senha atual (opcional)</Label>
+            <Label htmlFor="ts-atual">Senha atual</Label>
+
             <Input id="ts-atual" type="password" value={atual} onChange={(e) => setAtual(e.target.value)} autoComplete="current-password" />
           </div>
           <div className="space-y-1">
@@ -87,7 +85,7 @@ function TrocarSenhaPage() {
             <Input id="ts-conf" type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" maxLength={72} />
             {confirm.length > 0 && !iguais && <p className="text-xs text-destructive">As senhas não coincidem.</p>}
           </div>
-          <Button type="submit" className="w-full" disabled={busy || !forca.ok || !iguais}>
+          <Button type="submit" className="w-full" disabled={busy || !atual.trim() || !forca.ok || !iguais}>
             {busy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             Salvar nova senha
           </Button>
