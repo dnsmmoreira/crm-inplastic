@@ -1035,6 +1035,99 @@ export const decidirAprovacao = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+/**
+ * Reprovação financeira completa: grava a decisão, move o pedido para
+ * `reprovado_financeiro`, desvincula a proposta (libera o índice único parcial
+ * `pedidos_proposta_id_unique` para uma futura geração de pedido), reabre a
+ * proposta/lead no funil e dispara as notificações de entrada de etapa.
+ */
+export const reprovarPedidoFinanceiro = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { pedido_id: string; motivo: string }) =>
+    z
+      .object({
+        pedido_id: z.string().uuid(),
+        motivo: z.string().trim().min(3).max(1000),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const sb: LooseClient = context.supabase;
+
+    const permitido = await isAdminOuFinanceiro(sb, context.userId);
+    if (!permitido) {
+      return {
+        ok: false as const,
+        reason: "forbidden" as const,
+        message: "Apenas administradores ou o financeiro podem reprovar um pedido.",
+      };
+    }
+
+    const { data: current, error: loadErr } = await sb
+      .from("pedidos")
+      .select("id, stage, proposta_id, lead_id")
+      .eq("id", data.pedido_id)
+      .maybeSingle();
+    if (loadErr) throw new Error(`Falha ao carregar pedido: ${loadErr.message}`);
+    if (!current) throw new Error("Pedido não encontrado");
+    if (current.stage !== "analise_financeira" && current.stage !== "aguardando_pagamento") {
+      return {
+        ok: false as const,
+        reason: "invalid_transition" as const,
+        message:
+          "Só é possível reprovar um pedido que está em análise financeira ou aguardando pagamento.",
+      };
+    }
+
+    const fromStage = current.stage as PedidoStageId;
+    const propostaId = current.proposta_id as string | null;
+    const leadId = current.lead_id as string | null;
+
+    const { error: updErr } = await sb
+      .from("pedidos")
+      .update({
+        aprovacao_decisao: "rejeitado",
+        aprovacao_decidida_por: context.userId,
+        aprovacao_decidida_em: new Date().toISOString(),
+        aprovacao_observacao: data.motivo,
+        stage: "reprovado_financeiro",
+        reprovacao_motivo: data.motivo,
+        proposta_id: null,
+      })
+      .eq("id", data.pedido_id);
+    if (updErr) throw new Error(`Falha ao reprovar pedido: ${updErr.message}`);
+
+    await sb.from("pedido_stage_history").insert({
+      pedido_id: data.pedido_id,
+      from_stage: fromStage,
+      to_stage: "reprovado_financeiro",
+      is_backward: false,
+      motivo: data.motivo,
+      moved_by: context.userId,
+    });
+
+    // Reabre a proposta e o lead no Funil de Vendas — a reprovação desfaz o "ganho".
+    if (propostaId) {
+      await sb
+        .from("propostas")
+        .update({ status: "enviada" })
+        .eq("id", propostaId)
+        .eq("status", "pedido");
+    }
+    if (leadId) {
+      await sb.from("leads").update({ stage: "proposta" }).eq("id", leadId).eq("stage", "ganho");
+    }
+
+    const { aoEntrarNaEtapa } = await import("@/lib/pedidos-fluxo.server");
+    await aoEntrarNaEtapa(sb, data.pedido_id, "reprovado_financeiro", {
+      motivoReprovacao: data.motivo,
+    });
+
+    return { ok: true as const };
+  });
+
+
+
 export const salvarChecklistConferencia = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { pedido_id: string; items: ChecklistItem[] }) =>
