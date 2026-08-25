@@ -37,7 +37,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
-import { sendConversaMessage, statusJanelaConversa, posseConversa } from "@/lib/canais.functions";
+import {
+  sendConversaMessage,
+  sendConversaAnexo,
+  statusJanelaConversa,
+  posseConversa,
+} from "@/lib/canais.functions";
 import {
   assumirConversa,
   devolverParaIA,
