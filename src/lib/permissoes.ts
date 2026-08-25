@@ -10,7 +10,7 @@ export const PERM_EMPRESAS_EDITAR = "empresas.editar";
 export const PERM_PEDIDOS_VER_TODOS = "pedidos.ver_todos";
 
 /** Status de conversa em que a escrita manual é permitida. */
-export const STATUS_CONVERSA_ESCRITA = ["aguardando_humano", "humano_atendendo"] as const;
+export const STATUS_CONVERSA_ESCRITA = ["aguardando_humano", "humano_atendendo", "qualificado"] as const;
 
 export function podeEscreverConversa(status: string | null | undefined): boolean {
   if (!status) return false;
