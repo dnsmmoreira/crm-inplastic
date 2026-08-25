@@ -49,6 +49,8 @@ import {
   getPedidoDetalhes,
   decidirAprovacao,
   reprovarPedidoFinanceiro,
+  devolverPedidoOperacional,
+  podeDevolverPedido,
 
   updatePedidoStage,
   salvarChecklistConferencia,
@@ -134,7 +136,8 @@ function PedidoDetailBody({
   // Quem aprova e quem opera precisam de coisas diferentes: a etapa decide a visão.
   const visaoFinanceira =
     pedido.stage === "analise_financeira" || pedido.stage === "aguardando_pagamento";
-  const visaoReprovado = pedido.stage === "reprovado_financeiro";
+  const visaoReprovado =
+    pedido.stage === "reprovado_financeiro" || pedido.stage === "cancelado";
 
 
   return (
@@ -190,6 +193,9 @@ function PedidoDetailBody({
               <NotificacoesBlock pedidoId={pedido.id} />
               <PagamentoBlock pedido={pedido} completo={false} />
               {pedido.aprovacao_decisao && <DecisaoLeitura pedido={pedido} />}
+              {podeDevolverPedido(pedido.stage) && (
+                <DevolucaoBlock pedido={pedido} onChanged={onChanged} />
+              )}
             </>
           )}
         </div>
@@ -601,6 +607,77 @@ function NotificacoesBlock({ pedidoId }: { pedidoId: string }) {
             ))}
           </ul>
         )}
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------ Devolução ---------------------------------- */
+
+/** Devolve/cancela o pedido a partir das etapas operacionais (motivo obrigatório). */
+function DevolucaoBlock({ pedido, onChanged }: { pedido: PedidoDetalhes; onChanged: () => void }) {
+  const devolverFn = useServerFn(devolverPedidoOperacional);
+  const [motivo, setMotivo] = useState("");
+  const [erro, setErro] = useState<string | null>(null);
+  const [confirmando, setConfirmando] = useState(false);
+
+  const devolver = useMutation({
+    mutationFn: async () => {
+      const r = await devolverFn({ data: { pedido_id: pedido.id, motivo: motivo.trim() } });
+      if (!r.ok) throw new Error(r.message);
+      return r;
+    },
+    onSuccess: () => {
+      toast.success("Pedido devolvido — proposta reaberta no funil");
+      setMotivo("");
+      setConfirmando(false);
+      onChanged();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <section className="space-y-3">
+      <SectionTitle icon={<XCircle className="h-4 w-4" />} label="Devolver pedido" />
+      <div className="space-y-2 rounded-lg border p-3">
+        <p className="text-xs text-muted-foreground">
+          Cancela o pedido nesta etapa, reabre a proposta no funil de vendas e avisa o vendedor.
+          Ação irreversível.
+        </p>
+        <Label className="text-xs">Motivo da devolução (obrigatório)</Label>
+        <Textarea
+          rows={2}
+          value={motivo}
+          onChange={(e) => {
+            setMotivo(e.target.value);
+            if (erro) setErro(null);
+            setConfirmando(false);
+          }}
+        />
+        {erro && <p className="text-xs text-destructive">{erro}</p>}
+        <Button
+          size="sm"
+          variant="destructive"
+          disabled={devolver.isPending}
+          onClick={() => {
+            if (motivo.trim().length < 3) {
+              setErro("Informe o motivo da devolução (mínimo 3 caracteres).");
+              return;
+            }
+            if (!confirmando) {
+              setConfirmando(true);
+              return;
+            }
+            devolver.mutate();
+          }}
+        >
+          {devolver.isPending ? (
+            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+          ) : (
+            <XCircle className="h-4 w-4 mr-1" />
+          )}
+          {confirmando ? "Confirmar devolução" : "Devolver / cancelar pedido"}
+        </Button>
       </div>
     </section>
   );
