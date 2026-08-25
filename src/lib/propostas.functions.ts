@@ -248,14 +248,20 @@ export const enviarPropostaWhatsapp = createServerFn({ method: "POST" })
           name: lead.contact_name?.trim() || lead.company?.trim() || null,
           status: "humano_atendendo",
           ia_ativa: false,
-          atribuido_para: userId,
           lead_id: lead.id,
         })
         .select("id")
         .single();
       if (iErr || !criada) throw new Error(iErr?.message ?? "Falha ao iniciar conversa.");
       conversaId = criada.id;
+      // A atribuição vem em UPDATE: no INSERT o trigger de notificação referencia
+      // uma conversa que ainda não existe e a FK falha.
+      await supabaseAdmin
+        .from("whatsapp_conversas")
+        .update({ atribuido_para: userId })
+        .eq("id", conversaId);
     }
+
 
     const { janelaAtendimentoAberta, sendWhatsappText } = await import("./whatsapp-send.server");
     const aberta = await janelaAtendimentoAberta(phone);
