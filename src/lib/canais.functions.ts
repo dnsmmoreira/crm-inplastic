@@ -267,6 +267,148 @@ export const sendConversaMessage = createServerFn({ method: "POST" })
   });
 
 /**
+ * Envia ANEXO (mídia por link público) na conversa e registra em
+ * whatsapp_mensagens (autor='vendedor'). Espelha as mesmas guardas de
+ * `sendConversaMessage`, como função separada.
+ */
+export const sendConversaAnexo = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) =>
+    z
+      .object({
+        conversaId: z.string().uuid(),
+        fileUrl: z.string().url(),
+        mimeType: z.string().min(1).max(200),
+        fileName: z.string().min(1).max(255),
+        caption: z.string().max(1024).optional(),
+        tipoEnvio: z.enum(["image", "document", "audio", "video"]),
+        assumirPosse: z.boolean().optional(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+
+    const { data: conversa, error: cErr } = await supabase
+      .from("whatsapp_conversas")
+      .select("id, phone, atribuido_para, status")
+      .eq("id", data.conversaId)
+      .maybeSingle();
+    if (cErr || !conversa) throw new Error("Conversa não encontrada ou sem permissão.");
+
+    const { mascararTelefoneLog } = await import("./whatsapp-send.server");
+    const phoneLog = mascararTelefoneLog(conversa.phone);
+    const bloquear = (motivo: string, msg: string) => {
+      console.warn(`[chat-anexo] BLOQUEADO motivo=${motivo} phone=${phoneLog}`);
+      throw new Error(msg);
+    };
+
+    let isAdmin = false;
+    try {
+      const { data: adminFlag } = await supabase.rpc("has_role", {
+        _user_id: userId,
+        _role: "admin",
+      });
+      isAdmin = adminFlag === true;
+    } catch {
+      isAdmin = false;
+    }
+
+    if (!isAdmin && !podeEscreverConversa(conversa.status)) {
+      bloquear(
+        "status_nao_permite_escrita",
+        "Esta conversa não está em atendimento humano. Assuma o atendimento para poder responder.",
+      );
+    }
+
+    const { count: inboundCount, error: inErr } = await supabase
+      .from("whatsapp_mensagens")
+      .select("id", { count: "exact", head: true })
+      .eq("conversa_id", data.conversaId)
+      .eq("direcao", "entrada");
+    const temInbound = !inErr && (inboundCount ?? 0) > 0;
+
+    if (!temInbound) {
+      const { hora, domingo } = agoraSaoPaulo();
+      if (domingo || hora < 7 || hora >= 20) {
+        bloquear(
+          domingo ? "sem_inbound_domingo" : "sem_inbound_fora_da_janela",
+          "Esta conversa ainda não tem mensagem do cliente. Envios só são permitidos de segunda a sábado, das 07:00 às 20:00.",
+        );
+      }
+    }
+
+    const desde10min = new Date(Date.now() - 10 * 60_000).toISOString();
+    const { count: recentes } = await supabase
+      .from("whatsapp_mensagens")
+      .select("id", { count: "exact", head: true })
+      .eq("conversa_id", data.conversaId)
+      .eq("usuario_id", userId)
+      .eq("autor", "vendedor")
+      .gte("created_at", desde10min);
+    if ((recentes ?? 0) >= 8) {
+      bloquear(
+        "limite_8_por_conversa_10min",
+        "Você já enviou 8 mensagens para esta conversa nos últimos 10 minutos. Aguarde antes de enviar outra.",
+      );
+    }
+
+    const { data: ultimas } = await supabase
+      .from("whatsapp_mensagens")
+      .select("autor, created_at")
+      .eq("conversa_id", data.conversaId)
+      .order("created_at", { ascending: false })
+      .limit(2);
+    const seqVendedor = (ultimas ?? []).filter((m) => m.autor === "vendedor").length;
+    if ((ultimas ?? []).length >= 2 && seqVendedor >= 2) {
+      bloquear(
+        "duas_mensagens_sem_resposta",
+        "Já existem 2 mensagens suas sem resposta do cliente. Aguarde o retorno antes de enviar outra.",
+      );
+    }
+
+    const origem = isAdmin && temInbound ? "manual_admin" : "iniciado_sistema";
+
+    const { sendWhatsappMedia } = await import("./whatsapp-send.server");
+    await sendWhatsappMedia(conversa.phone, data.tipoEnvio, data.fileUrl, {
+      ...(data.caption ? { caption: data.caption } : {}),
+      filename: data.fileName,
+      ctx: "sendConversaAnexo",
+      canal: "comercial",
+      origem,
+    });
+
+    const tipoMensagem =
+      data.tipoEnvio === "image" ? "imagem" : data.tipoEnvio === "audio" ? "audio" : "documento";
+
+    const { error: mErr } = await supabase.from("whatsapp_mensagens").insert({
+      conversa_id: data.conversaId,
+      direcao: "saida",
+      autor: "vendedor",
+      conteudo: data.caption?.trim() || data.fileName,
+      tipo: tipoMensagem,
+      midia: {
+        url: data.fileUrl,
+        mimeType: data.mimeType,
+        caption: data.caption ?? null,
+        fileName: data.fileName,
+      },
+      usuario_id: userId,
+    });
+    if (mErr) throw new Error(mErr.message);
+
+    const posse = await aplicarPosseConversa(
+      data.conversaId,
+      userId,
+      conversa.atribuido_para ?? null,
+      data.assumirPosse === true,
+    );
+
+    return { ok: true, posse: posse.posse };
+  });
+
+
+/**
  * Cria lead a partir de uma conversa sem lead vinculado.
  * Vincula o telefone (telefone_whatsapp), define owner = current user
  * e atualiza a conversa (lead_id + status='humano_atendendo').
