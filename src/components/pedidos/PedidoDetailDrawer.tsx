@@ -166,6 +166,7 @@ function PedidoDetailBody({
             <>
               <ItensBlock pedido={pedido} comValores={false} />
               <TratativaBlock pedido={pedido} />
+              <ObservacoesPropostaBlock pedido={pedido} />
               <DecisaoLeitura pedido={pedido} />
             </>
           ) : visaoFinanceira ? (
@@ -174,6 +175,7 @@ function PedidoDetailBody({
               <PagamentoBlock pedido={pedido} completo />
               <HistoricoClienteBlock pedido={pedido} />
               <TratativaBlock pedido={pedido} />
+              <ObservacoesPropostaBlock pedido={pedido} />
               <AprovacaoBlock pedido={pedido} onChanged={onChanged} />
               <OcorrenciasBlock pedido={pedido} onChanged={onChanged} />
             </>
@@ -181,6 +183,7 @@ function PedidoDetailBody({
 
             <>
               <ItensBlock pedido={pedido} comValores={false} />
+              <ObservacoesPropostaBlock pedido={pedido} />
               <ChecklistBlock pedido={pedido} onChanged={onChanged} />
               <FiscalBlock pedido={pedido} onChanged={onChanged} />
               <OcorrenciasBlock pedido={pedido} onChanged={onChanged} />
