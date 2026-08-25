@@ -308,12 +308,21 @@ function rowToLead(
     decisorCargo: r.decisor_cargo ?? undefined,
   };
 }
+function normalizarEnderecoLead(e: Lead["endereco"]): Lead["endereco"] | null {
+  if (!e) return null;
+  const out = { ...e } as Record<string, unknown>;
+  for (const k of ["logradouro", "bairro", "cidade", "complemento", "uf"]) {
+    if (typeof out[k] === "string") out[k] = normalizarTexto(out[k] as string);
+  }
+  return out as Lead["endereco"];
+}
+
 function leadToInsert(l: Lead): LeadInsert {
   return {
     id: l.id,
-    company: l.company,
-    contact_name: l.contactName ?? "",
-    email: l.email || null,
+    company: normalizarTexto(l.company),
+    contact_name: normalizarTexto(l.contactName),
+    email: normalizarEmail(l.email) || null,
     phone: l.phone || null,
     product: l.product || null,
     product_id: l.productId ?? null,
@@ -330,13 +339,13 @@ function leadToInsert(l: Lead): LeadInsert {
     owner_id: l.ownerId || null,
     cliente_id: l.clienteId ?? null,
     cnpj: l.cnpj ?? null,
-    razao_social: l.razaoSocial ?? null,
-    nome_fantasia: l.nomeFantasia ?? null,
+    razao_social: l.razaoSocial ? normalizarTexto(l.razaoSocial) : null,
+    nome_fantasia: l.nomeFantasia ? normalizarTexto(l.nomeFantasia) : null,
     inscricao_estadual: l.inscricaoEstadual ?? null,
     inscricao_municipal: l.inscricaoMunicipal ?? null,
-    endereco: (l.endereco ?? null) as unknown as Json,
-    email_financeiro: l.emailFinanceiro ?? null,
-    email_nf_xml: l.emailNfXml ?? null,
+    endereco: (normalizarEnderecoLead(l.endereco) ?? null) as unknown as Json,
+    email_financeiro: l.emailFinanceiro ? normalizarEmail(l.emailFinanceiro) : null,
+    email_nf_xml: l.emailNfXml ? normalizarEmail(l.emailNfXml) : null,
     telefone_fixo: l.telefoneFixo ?? null,
     whatsapp: l.whatsapp ?? null,
     site: l.site ?? null,
@@ -344,10 +353,11 @@ function leadToInsert(l: Lead): LeadInsert {
     cnae_principal: l.cnaePrincipal ?? null,
     faturamento_estimado: l.faturamentoEstimado ?? null,
     num_funcionarios: l.numFuncionarios ?? null,
-    decisor_nome: l.decisorNome ?? null,
-    decisor_cargo: l.decisorCargo ?? null,
+    decisor_nome: l.decisorNome ? normalizarTexto(l.decisorNome) : null,
+    decisor_cargo: l.decisorCargo ? normalizarTexto(l.decisorCargo) : null,
   };
 }
+
 
 function rowToTask(r: TaskRow): Task {
   return {
