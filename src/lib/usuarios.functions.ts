@@ -758,16 +758,66 @@ export const definirSenhaUsuario = createServerFn({ method: "POST" })
   });
 
 /**
- * O próprio usuário conclui a troca obrigatória.
+ * O próprio usuário conclui a troca de senha.
  *
- * A senha É TROCADA AQUI (server-side, para o usuário do token) e só então a
- * flag é limpa — não existe caminho para "concluir" sem realmente trocar.
+ * Exige SEMPRE a senha atual: o servidor reautentica o usuário com
+ * `signInWithPassword` antes de aceitar a nova senha, para que uma sessão
+ * sequestrada não consiga trocar a senha sem conhecer a original.
+ *
+ * Usa o middleware BASE de propósito — o middleware da aplicação bloqueia
+ * qualquer chamada com `senha_reset_exigido = true`, e esta é justamente a
+ * função que precisa rodar nesse estado.
  */
 export const concluirTrocaSenha = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((data) => z.object({ password: senhaForte }).parse(data))
+  .middleware([requireSupabaseAuthBase])
+  .inputValidator((data) =>
+    z.object({ senhaAtual: z.string().min(1).max(72), password: senhaForte }).parse(data),
+  )
   .handler(async ({ data, context }) => {
     const sb = await admin();
+
+    const { data: perfil, error: perfErr } = await sb
+      .from("profiles")
+      .select("ativo, deleted_at")
+      .eq("id", context.userId)
+      .maybeSingle();
+    if (perfErr) throw new Error(perfErr.message);
+    if (!perfil || perfil.ativo === false || perfil.deleted_at) {
+      throw new Error("Conta inativa.");
+    }
+
+    const { data: authUser, error: aErr } = await sb.auth.admin.getUserById(context.userId);
+    const email = authUser?.user?.email;
+    if (aErr || !email) throw new Error("Não foi possível validar a senha atual.");
+
+    // Cliente efêmero (publishable) só para verificar a senha atual — nunca o
+    // cliente administrativo, que não deve receber sessão de usuário.
+    const { createClient } = await import("@supabase/supabase-js");
+    const url = process.env.SUPABASE_URL!;
+    const key = process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY!;
+    const verificador = createClient(url, key, {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: {
+        fetch: (input: RequestInfo | URL, init?: RequestInit) => {
+          const h = new Headers(init?.headers);
+          if (key.startsWith("sb_") && h.get("Authorization") === `Bearer ${key}`) {
+            h.delete("Authorization");
+          }
+          h.set("apikey", key);
+          return fetch(input, { ...init, headers: h });
+        },
+      },
+    });
+    const { error: sErr } = await verificador.auth.signInWithPassword({
+      email,
+      password: data.senhaAtual,
+    });
+    if (sErr) throw new Error("Senha atual incorreta.");
+    await verificador.auth.signOut();
+
+    if (data.senhaAtual === data.password) {
+      throw new Error("A nova senha deve ser diferente da atual.");
+    }
 
     const { error: pErr } = await sb.auth.admin.updateUserById(context.userId, {
       password: data.password,
@@ -779,6 +829,7 @@ export const concluirTrocaSenha = createServerFn({ method: "POST" })
       .update({ senha_reset_exigido: false })
       .eq("id", context.userId);
     if (error) throw new Error(error.message);
+
     await logAudit(sb, context.userId, context.userId, [
       { campo: "senha", anterior: "troca exigida", novo: "senha atualizada pelo usuário" },
     ]);
