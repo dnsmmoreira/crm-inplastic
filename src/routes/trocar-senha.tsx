@@ -7,7 +7,6 @@ import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { concluirTrocaSenha } from "@/lib/usuarios.functions";
 import { avaliarSenha } from "@/components/usuarios/DefinirSenhaDialog";
@@ -25,7 +24,7 @@ export const Route = createFileRoute("/trocar-senha")({
 });
 
 function TrocarSenhaPage() {
-  const { user, refresh, signOut } = useAuth();
+  const { refresh, signOut } = useAuth();
   const concluir = useServerFn(concluirTrocaSenha);
   const [atual, setAtual] = useState("");
   const [senha, setSenha] = useState("");
@@ -86,7 +85,7 @@ function TrocarSenhaPage() {
             <Input id="ts-conf" type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" maxLength={72} />
             {confirm.length > 0 && !iguais && <p className="text-xs text-destructive">As senhas não coincidem.</p>}
           </div>
-          <Button type="submit" className="w-full" disabled={busy || !forca.ok || !iguais}>
+          <Button type="submit" className="w-full" disabled={busy || !atual.trim() || !forca.ok || !iguais}>
             {busy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             Salvar nova senha
           </Button>
