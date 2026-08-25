@@ -493,8 +493,11 @@ function ChatPanel({
 
   const [acaoEmCurso, setAcaoEmCurso] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [enviandoAnexo, setEnviandoAnexo] = useState(false);
 
   const send = useServerFn(sendConversaMessage);
+  const enviarAnexo = useServerFn(sendConversaAnexo);
   const pedirIA = useServerFn(assistenteRedacao);
   const assumir = useServerFn(assumirConversa);
   const devolver = useServerFn(devolverParaIA);
