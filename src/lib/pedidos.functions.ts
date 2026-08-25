@@ -887,6 +887,16 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
       previsao_faturamento: (snapProposta.previsao_faturamento as string | null) ?? null,
       parcelas,
       tratativa_comercial: tratativa,
+      proposta_observacoes:
+        propostaRow?.observations ?? (snapProposta.observations as string | null) ?? null,
+      proposta_numero_pedido_cliente:
+        propostaRow?.numero_pedido_cliente ??
+        (snapProposta.numero_pedido_cliente as string | null) ??
+        null,
+      proposta_observacoes_pedido:
+        propostaRow?.observacoes_pedido ??
+        (snapProposta.observacoes_pedido as string | null) ??
+        null,
       historico_cliente: historico,
       aprovacao_solicitada_em: p.aprovacao_solicitada_em,
       aprovacao_solicitada_por: p.aprovacao_solicitada_por,
