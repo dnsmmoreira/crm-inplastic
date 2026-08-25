@@ -1,6 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useCallback, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import {
   DndContext,
@@ -16,7 +15,7 @@ import {
 import { Plus, Package, Calendar as CalendarIcon, Search, ArrowDownUp, X, PackageCheck, ChevronLeft, ChevronRight, CheckSquare } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useCrm, STAGES, formatBRL, leadTemperature, followupTemperature, type Lead, type StageId, type FollowupLevel, useVisibleLeads, useLeadValueMap } from "@/lib/crm-store";
+import { useCrm, STAGES, formatBRL, leadTemperature, followupTemperature, proposalTotals, type Lead, type Proposal, type StageId, type FollowupLevel, useVisibleLeads, useVisibleProposals, useLeadValueMap } from "@/lib/crm-store";
 import { useMoveLeadStage } from "@/hooks/use-move-lead-stage";
 import { LostReasonDialog, type LostReasonPayload } from "@/components/crm/LostReasonDialog";
 import { computeLeadScore } from "@/lib/lead-score";
@@ -30,12 +29,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { NewLeadDialog, LeadDrawer } from "@/components/crm/LeadDrawer";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { listLeadsComPedido } from "@/lib/pedidos.functions";
+import { gerarPedidoInterno } from "@/lib/omie.functions";
 
 type SortMode = "default" | "urgency" | "urgency-desc";
 const CARDS_PER_PAGE = 15;
-/** Perdido saiu do quadro: a base de recontato vive na tela /leads. */
-const BOARD_STAGES = STAGES.filter((s) => s.id !== "perdido");
+/**
+ * Perdido saiu do quadro (a base de recontato vive na tela /leads).
+ * Qualificação e Negociação também saíram: Negociação virou uma tag no card da
+ * proposta e Qualificação deixou de existir no funil.
+ */
+const HIDDEN_STAGES: StageId[] = ["perdido", "qualificacao", "negociacao"];
+const BOARD_STAGES = STAGES.filter((s) => !HIDDEN_STAGES.includes(s.id));
+/** Colunas cujos cards são PROPOSTAS (não leads). */
+const PROPOSAL_STAGES: StageId[] = ["proposta", "ganho"];
+const PROPOSTA_COLUMN_STATUSES = ["enviada", "aguardando_aprovacao", "aprovada"] as const;
 
 const AGENDA_FILTERS: { level: FollowupLevel; label: string; emoji: string }[] = [
   { level: "urgent", label: "Urgente", emoji: "🔥" },
@@ -78,29 +85,53 @@ function PipelinePage() {
       return next;
     });
 
-  const leadsComPedidoFn = useServerFn(listLeadsComPedido);
-  const leadsComPedidoQ = useQuery({
-    queryKey: ["pipeline", "leads-com-pedido"],
-    queryFn: () => leadsComPedidoFn(),
-    staleTime: 60_000,
-  });
-  const leadsComPedidoSet = useMemo(
-    () => new Set(leadsComPedidoQ.data ?? []),
-    [leadsComPedidoQ.data],
+  const proposals = useVisibleProposals();
+  const updateProposal = useCrm((s) => s.updateProposal);
+  const navigate = useNavigate();
+  const gerarPedidoFn = useServerFn(gerarPedidoInterno);
+
+  const leadById = useMemo(() => new Map(leads.map((l) => [l.id, l])), [leads]);
+
+  /** Leads que já têm ao menos uma proposta fora de rascunho saem das colunas de lead. */
+  const leadsComProposta = useMemo(
+    () => new Set(proposals.filter((p) => p.status !== "rascunho").map((p) => p.leadId)),
+    [proposals],
   );
-  const ganhosOcultos = useMemo(
-    () =>
-      mostrarGanhosCompletos
-        ? 0
-        : leads.filter((l) => l.stage === "ganho" && leadsComPedidoSet.has(l.id)).length,
-    [leads, leadsComPedidoSet, mostrarGanhosCompletos],
+
+  const matchProposal = useCallback(
+    (p: Proposal, q: string) => {
+      if (!q) return true;
+      const lead = leadById.get(p.leadId);
+      return (
+        p.number.toLowerCase().includes(q) ||
+        (lead?.company.toLowerCase().includes(q) ?? false) ||
+        (lead?.product.toLowerCase().includes(q) ?? false)
+      );
+    },
+    [leadById],
   );
+
+  const propostasEnviadas = useMemo(() => {
+    const q = search.toLowerCase();
+    return proposals.filter(
+      (p) =>
+        (PROPOSTA_COLUMN_STATUSES as readonly string[]).includes(p.status) && matchProposal(p, q),
+    );
+  }, [proposals, search, matchProposal]);
+
+  const propostasGanhas = useMemo(() => {
+    const q = search.toLowerCase();
+    return proposals.filter((p) => p.status === "pedido" && matchProposal(p, q));
+  }, [proposals, search, matchProposal]);
+
+  /** Ganhos = propostas que já viraram pedido; ocultos por padrão. */
+  const ganhosOcultos = mostrarGanhosCompletos ? 0 : propostasGanhas.length;
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     return leads.filter((l) => {
-      if (l.stage === "perdido") return false;
-      if (!mostrarGanhosCompletos && l.stage === "ganho" && leadsComPedidoSet.has(l.id)) return false;
+      if (HIDDEN_STAGES.includes(l.stage)) return false;
+      if (leadsComProposta.has(l.id)) return false;
       if (q && !(l.company.toLowerCase().includes(q) ||
         l.contactName.toLowerCase().includes(q) ||
         l.product.toLowerCase().includes(q))) return false;
@@ -110,7 +141,7 @@ function PipelinePage() {
       }
       return true;
     });
-  }, [leads, search, agendaFilter, leadsComPedidoSet, mostrarGanhosCompletos]);
+  }, [leads, search, agendaFilter, leadsComProposta]);
 
   const byStage = useMemo(() => {
     const rank: Record<FollowupLevel, number> = { urgent: 0, attention: 1, scheduled: 2, ok: 3 };
@@ -133,7 +164,11 @@ function PipelinePage() {
     return map;
   }, [filtered, sortMode]);
 
-  const active = activeId ? leads.find((l) => l.id === activeId) : null;
+  const active = activeId && !activeId.startsWith("prop:") ? leads.find((l) => l.id === activeId) : null;
+  const activeProposal =
+    activeId && activeId.startsWith("prop:")
+      ? (proposals.find((p) => p.id === activeId.slice(5)) ?? null)
+      : null;
 
   const onDragStart = (e: DragStartEvent) => setActiveId(String(e.active.id));
   const runMove = (leadId: string, stage: StageId, company: string, lostReason?: LostReasonPayload) => {
@@ -149,13 +184,72 @@ function PipelinePage() {
     });
   };
 
+  const fecharProposta = async (proposal: Proposal) => {
+    const lead = leadById.get(proposal.leadId);
+    const label = lead?.company ?? proposal.number;
+    // Mesma regra do botão "Gerar pedido" da tela da proposta: admin gera direto,
+    // vendedor solicita aprovação.
+    const requerAprovacao = !isAdmin;
+    const t = toast.loading(requerAprovacao ? "Solicitando aprovação..." : "Gerando pedido...");
+    try {
+      const r = await gerarPedidoFn({
+        data: { proposta_id: proposal.id, requer_aprovacao: requerAprovacao },
+      });
+      toast.dismiss(t);
+      if (!r.ok) {
+        const erros = r.validacao_erros ?? ["Erro desconhecido"];
+        const docMsg = erros.find((m) => /CNPJ ou CPF/i.test(m));
+        if (docMsg) {
+          toast.error(docMsg, {
+            description: "A proposta só fecha com o documento do contato preenchido.",
+            duration: 8000,
+          });
+        } else {
+          toast.error("Pendências antes de gerar o pedido", {
+            description: erros.join("\n"),
+            duration: 8000,
+          });
+        }
+        return;
+      }
+      if (requerAprovacao) {
+        toast.success(`${label} — enviado ao supervisor ADM`);
+      } else {
+        updateProposal(proposal.id, {
+          status: "pedido",
+          orderCreatedAt: new Date().toISOString(),
+        });
+        toast.success(r.pedido_number ? `Pedido ${r.pedido_number} gerado` : `${label} → Ganho`);
+      }
+    } catch (err) {
+      toast.dismiss(t);
+      toast.error("Erro ao gerar pedido", {
+        description: err instanceof Error ? err.message : String(err),
+      });
+    }
+  };
+
   const onDragEnd = (e: DragEndEvent) => {
     setActiveId(null);
     if (!e.over) return;
-    const leadId = String(e.active.id);
+    const rawId = String(e.active.id);
     const stage = String(e.over.id) as StageId;
+
+    if (rawId.startsWith("prop:")) {
+      const proposal = proposals.find((p) => p.id === rawId.slice(5));
+      if (proposal && stage === "ganho" && proposal.status !== "pedido") {
+        void fecharProposta(proposal);
+      }
+      return;
+    }
+
+    const leadId = rawId;
     const lead = leads.find((l) => l.id === leadId);
     if (lead && lead.stage !== stage) {
+      if (PROPOSAL_STAGES.includes(stage)) {
+        toast.info("Crie e envie uma proposta para o lead avançar no funil.");
+        return;
+      }
       runMove(leadId, stage, lead.company);
     }
   };
@@ -300,23 +394,49 @@ function PipelinePage() {
       <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
         <div className="-mx-4 min-h-0 flex-1 overflow-auto px-4 md:-mx-8 md:px-8">
           <div className="flex gap-4 pb-4">
-            {BOARD_STAGES.map((stage) => (
-              <Column
-                key={stage.id}
-                stage={stage}
-                leads={byStage[stage.id]}
-                onOpen={setOpenLead}
-                selectMode={selectMode}
-                selected={selected}
-                onToggleSelect={toggleSelected}
-                onSelectMany={selectMany}
-              />
-            ))}
+            {BOARD_STAGES.map((stage) =>
+              PROPOSAL_STAGES.includes(stage.id) ? (
+                <ProposalColumn
+                  key={stage.id}
+                  stage={stage}
+                  proposals={
+                    stage.id === "ganho"
+                      ? mostrarGanhosCompletos
+                        ? propostasGanhas
+                        : []
+                      : propostasEnviadas
+                  }
+                  leadById={leadById}
+                  onOpen={(id) => navigate({ to: "/propostas/$id", params: { id } })}
+                  onToggleNegociacao={(p) => updateProposal(p.id, { emNegociacao: !p.emNegociacao })}
+                />
+              ) : (
+                <Column
+                  key={stage.id}
+                  stage={stage}
+                  leads={byStage[stage.id]}
+                  onOpen={setOpenLead}
+                  selectMode={selectMode}
+                  selected={selected}
+                  onToggleSelect={toggleSelected}
+                  onSelectMany={selectMany}
+                />
+              ),
+            )}
           </div>
         </div>
 
         <DragOverlay>
           {active && <LeadCard lead={active} onOpen={() => {}} dragging />}
+          {activeProposal && (
+            <ProposalCard
+              proposal={activeProposal}
+              lead={leadById.get(activeProposal.leadId)}
+              onOpen={() => {}}
+              onToggleNegociacao={() => {}}
+              dragging
+            />
+          )}
         </DragOverlay>
       </DndContext>
 
