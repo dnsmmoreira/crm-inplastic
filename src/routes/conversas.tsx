@@ -892,16 +892,35 @@ function ChatPanel({
               loading={iaLoading}
               onAcao={(modo) => void handleIA(modo)}
             />
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                e.target.value = "";
+                if (f) void handleAnexo(f);
+              }}
+            />
             <Button
-
               size="icon"
               variant="ghost"
-              disabled
-              title="Anexos — em breve"
-              aria-label="Anexos (em breve)"
+              disabled={sending || enviandoAnexo || bloqueadoPorStatus || janela24h?.aberta === false}
+              title={
+                janela24h?.aberta === false
+                  ? "Janela de 24h encerrada — anexos indisponíveis"
+                  : "Anexar arquivo"
+              }
+              aria-label="Anexar arquivo"
+              onClick={() => fileInputRef.current?.click()}
             >
-              <Paperclip className="h-4 w-4" />
+              {enviandoAnexo ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Paperclip className="h-4 w-4" />
+              )}
             </Button>
+
             <Button
               size="icon"
               variant="ghost"
