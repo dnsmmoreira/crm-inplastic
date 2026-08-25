@@ -6,6 +6,8 @@ import {
 
   Phone,
   Send,
+  Loader2,
+
   Bot,
   User as UserIcon,
   Search,
