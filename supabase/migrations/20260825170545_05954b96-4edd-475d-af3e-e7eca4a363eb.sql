@@ -1,0 +1,1 @@
+ALTER TABLE public.propostas ADD COLUMN em_negociacao boolean NOT NULL DEFAULT false;
