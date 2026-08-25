@@ -110,7 +110,20 @@ export function useNovaConversaAlerta(userId: string | null) {
           handle(next);
         },
       )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "whatsapp_mensagens",
+          filter: "autor=eq.cliente",
+        },
+        (payload) => {
+          void handleMensagem(payload.new as { id?: string; conversa_id?: string });
+        },
+      )
       .subscribe();
+
 
     return () => {
       void supabase.removeChannel(channel);
