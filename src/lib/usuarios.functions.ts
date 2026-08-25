@@ -331,7 +331,7 @@ export const updateUsuario = createServerFn({ method: "POST" })
       }
     }
 
-    }
+
 
     /* ---- Dados cadastrais ---- */
     if (data.dados) {
