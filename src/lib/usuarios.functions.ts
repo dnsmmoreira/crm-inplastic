@@ -318,22 +318,18 @@ export const updateUsuario = createServerFn({ method: "POST" })
 
     /* ---- Regras de proteção ---- */
     if (data.acesso) {
-      if (isSelf && data.acesso.role !== "admin" && roleAtual === "admin") {
-        throw new Error("Você não pode remover o próprio papel de administrador.");
-      }
       if (isSelf && !data.acesso.ativo) {
         throw new Error("Você não pode desativar a própria conta.");
       }
-      const perdeAdmin =
-        (roleAtual === "admin" && data.acesso.role !== "admin") ||
-        (roleAtual === "admin" && !data.acesso.ativo);
-      if (perdeAdmin) {
+      if (roleAtual === "admin" && !data.acesso.ativo) {
         const { data: count, error: cErr } = await sb.rpc("admins_ativos_count");
         if (cErr) throw new Error(cErr.message);
         if ((count ?? 0) <= 1) {
           throw new Error("É necessário manter pelo menos um administrador ativo.");
         }
       }
+    }
+
     }
 
     /* ---- Dados cadastrais ---- */
