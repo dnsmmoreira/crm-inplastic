@@ -40,9 +40,8 @@ export const Route = createFileRoute("/api/public/hooks/ia-qualificar")({
     handlers: {
       OPTIONS: async () => new Response(null, { status: 204, headers: CORS }),
       POST: async ({ request }) => {
-        const expected = process.env.N8N_SECRET;
-        const provided = request.headers.get("x-n8n-secret");
-        if (!expected || !provided || provided !== expected) {
+        const { n8nSecretValido } = await import("@/lib/n8n-auth.server");
+        if (!(await n8nSecretValido(request))) {
           return new Response(JSON.stringify({ error: "unauthorized" }), {
             status: 401,
             headers: { "Content-Type": "application/json", ...CORS },
