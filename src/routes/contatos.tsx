@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { formatarTelefoneBR } from "@/lib/normalizacao";
 import { useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -120,7 +121,9 @@ function ContatosPage() {
                     {c.cargo && <div className="text-xs text-muted-foreground">{c.cargo}</div>}
                   </TableCell>
                   <TableCell className="text-sm">{papelLabel(c.papel)}</TableCell>
-                  <TableCell className="text-sm">{c.telefone || c.telefone2 || "—"}</TableCell>
+                  <TableCell className="text-sm">
+                    {c.telefone || c.telefone2 ? formatarTelefoneBR(c.telefone || c.telefone2) : "—"}
+                  </TableCell>
                   <TableCell className="max-w-[220px] truncate text-sm">{c.email || "—"}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
