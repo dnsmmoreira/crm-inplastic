@@ -686,7 +686,14 @@ export type PedidoDetalhes = {
   id: string;
   number: string;
   stage: PedidoStageId;
+  /**
+   * Visão por PAPEL: quando falso, TODOS os campos monetários chegam zerados/
+   * nulos do servidor (não é filtro de CSS) — total, itens, parcelas, NF e
+   * histórico do cliente.
+   */
+  pode_ver_valores: boolean;
   total: number;
+
   /* Comercial (quem aprova precisa ver o que está comprando) */
   cliente_nome: string | null;
   cliente_cnpj: string | null;
@@ -877,10 +884,19 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
 
     const vendedorId = p.vendedor_proprietario_id ?? p.owner_id ?? null;
 
-    return {
+    // Visão por PAPEL (não por etapa): valores só para admin/financeiro e para o
+    // vendedor dono do pedido. Operacional recebe a tela sem dinheiro nenhum.
+    const podeVerValores =
+      vendedorId === context.userId ||
+      (await isAdminOuFinanceiro(sb, context.userId)) ||
+      (await temPermissao(sb, context.userId, "pedidos.aprovar_financeiro"));
+
+    const detalhe: PedidoDetalhes = {
       id: p.id,
       number: p.number,
       stage: p.stage,
+      pode_ver_valores: podeVerValores,
+
       total: Number(p.total ?? 0),
       cliente_nome: lead?.company ?? null,
       cliente_cnpj: lead?.cnpj ?? null,
@@ -931,7 +947,30 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
         resolvida_por_nome: o.resolvida_por ? (nameById.get(o.resolvida_por) ?? null) : null,
       })),
     };
+
+    if (!podeVerValores) return redigirValores(detalhe);
+    return detalhe;
   });
+
+/** Remove, no SERVIDOR, todo campo monetário do detalhe do pedido. */
+function redigirValores(d: PedidoDetalhes): PedidoDetalhes {
+  const h = d.historico_cliente;
+  return {
+    ...d,
+    total: 0,
+    subtotal: 0,
+    desconto_percent: 0,
+    nf_valor: null,
+    itens: d.itens.map((i) => ({ ...i, unit_price: 0 })),
+    parcelas: d.parcelas.map((p) => ({ ...p, amount: 0 })),
+    historico_cliente: {
+      ...h,
+      valor_total: 0,
+      recentes: h.recentes.map((r) => ({ ...r, total: 0 })),
+    },
+  };
+}
+
 
 /**
  * Histórico de compras do cliente — agrupado por CNPJ (todos os leads do mesmo

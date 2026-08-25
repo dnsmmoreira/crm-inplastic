@@ -139,6 +139,9 @@ function PedidoDetailBody({
     pedido.stage === "analise_financeira" || pedido.stage === "aguardando_pagamento";
   const visaoReprovado =
     pedido.stage === "reprovado_financeiro" || pedido.stage === "cancelado";
+  // Visão por PAPEL (independente da etapa): o servidor já zera os valores para
+  // quem não é admin/financeiro/dono, aqui só escondemos as seções monetárias.
+  const podeVerValores = pedido.pode_ver_valores;
 
 
   return (
@@ -150,7 +153,11 @@ function PedidoDetailBody({
             <div className="space-y-1">
               <div>
                 <Badge variant="secondary">{stageLabel}</Badge>
-                <span className="ml-2 text-primary font-semibold">{formatBRL(pedido.total)}</span>
+                {podeVerValores && (
+                  <span className="ml-2 text-primary font-semibold">
+                    {formatBRL(pedido.total)}
+                  </span>
+                )}
               </div>
               <div className="text-sm font-medium text-foreground truncate">
                 {pedido.cliente_nome ?? "Cliente não identificado"}
@@ -169,16 +176,16 @@ function PedidoDetailBody({
           {visaoReprovado ? (
             <>
               <ItensBlock pedido={pedido} comValores={false} />
-              <TratativaBlock pedido={pedido} />
+              {podeVerValores && <TratativaBlock pedido={pedido} />}
               <ObservacoesPropostaBlock pedido={pedido} />
               <DecisaoLeitura pedido={pedido} />
             </>
           ) : visaoFinanceira ? (
             <>
-              <ItensBlock pedido={pedido} comValores />
-              <PagamentoBlock pedido={pedido} completo />
-              <HistoricoClienteBlock pedido={pedido} />
-              <TratativaBlock pedido={pedido} />
+              <ItensBlock pedido={pedido} comValores={podeVerValores} />
+              <PagamentoBlock pedido={pedido} completo={podeVerValores} />
+              {podeVerValores && <HistoricoClienteBlock pedido={pedido} />}
+              {podeVerValores && <TratativaBlock pedido={pedido} />}
               <ObservacoesPropostaBlock pedido={pedido} />
               <AprovacaoBlock pedido={pedido} onChanged={onChanged} />
               <OcorrenciasBlock pedido={pedido} onChanged={onChanged} />
@@ -186,13 +193,15 @@ function PedidoDetailBody({
           ) : (
 
             <>
-              <ItensBlock pedido={pedido} comValores={false} />
+              <ItensBlock pedido={pedido} comValores={podeVerValores} />
+              {podeVerValores && <HistoricoClienteBlock pedido={pedido} />}
+              {podeVerValores && <TratativaBlock pedido={pedido} />}
               <ObservacoesPropostaBlock pedido={pedido} />
               <ChecklistBlock pedido={pedido} onChanged={onChanged} />
               <FiscalBlock pedido={pedido} onChanged={onChanged} />
               <OcorrenciasBlock pedido={pedido} onChanged={onChanged} />
               <NotificacoesBlock pedidoId={pedido.id} />
-              <PagamentoBlock pedido={pedido} completo={false} />
+              <PagamentoBlock pedido={pedido} completo={podeVerValores} />
               {pedido.aprovacao_decisao && <DecisaoLeitura pedido={pedido} />}
               {podeDevolverPedido(pedido.stage) && (
                 <DevolucaoBlock pedido={pedido} onChanged={onChanged} />
@@ -204,6 +213,7 @@ function PedidoDetailBody({
     </div>
   );
 }
+
 
 /* ----------------------------------- Itens ---------------------------------- */
 
@@ -1059,15 +1069,18 @@ function FiscalBlock({ pedido, onChanged }: { pedido: PedidoDetalhes; onChanged:
           <Label className="text-xs">Chave (44)</Label>
           <Input value={nfChave} onChange={(e) => setNfChave(e.target.value)} maxLength={44} />
         </div>
-        <div>
-          <Label className="text-xs">Valor NF (R$)</Label>
-          <Input
-            inputMode="decimal"
-            value={nfValor}
-            onChange={(e) => setNfValor(e.target.value)}
-            placeholder="0,00"
-          />
-        </div>
+        {pedido.pode_ver_valores && (
+          <div>
+            <Label className="text-xs">Valor NF (R$)</Label>
+            <Input
+              inputMode="decimal"
+              value={nfValor}
+              onChange={(e) => setNfValor(e.target.value)}
+              placeholder="0,00"
+            />
+          </div>
+        )}
+
         <Button size="sm" disabled={salvar.isPending} onClick={() => salvar.mutate()}>
           Salvar status fiscal
         </Button>
