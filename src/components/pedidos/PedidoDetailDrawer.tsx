@@ -59,6 +59,7 @@ import {
   resolverOcorrencia,
   listPedidoNotificacoes,
   PEDIDO_STAGES,
+  stageLabel as stageLabelDe,
   type ChecklistItem,
   type PedidoDetalhes,
   type PedidoStageId,
@@ -132,7 +133,7 @@ function PedidoDetailBody({
   pedido: PedidoDetalhes;
   onChanged: () => void;
 }) {
-  const stageLabel = PEDIDO_STAGES.find((s) => s.id === pedido.stage)?.label ?? pedido.stage;
+  const stageLabel = stageLabelDe(pedido.stage);
   // Quem aprova e quem opera precisam de coisas diferentes: a etapa decide a visão.
   const visaoFinanceira =
     pedido.stage === "analise_financeira" || pedido.stage === "aguardando_pagamento";
