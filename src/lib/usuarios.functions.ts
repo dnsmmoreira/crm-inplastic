@@ -259,12 +259,15 @@ const updateSchema = z.object({
       avatarColor: z.string().trim().max(20),
     })
     .optional(),
+  // `role` NÃO é aceito aqui: o papel (user_roles) é DERIVADO do base_role do
+  // perfil escolhido em `setPerfilUsuario`. Aceitá-lo neste endpoint abriria
+  // caminho para escalação de privilégio via payload.
   acesso: z
     .object({
-      role: z.enum(["admin", "vendedor"]),
       ativo: z.boolean(),
     })
     .optional(),
+
   vendas: z
     .object({
       metaMensal: z.number().min(0).max(1_000_000_000),
