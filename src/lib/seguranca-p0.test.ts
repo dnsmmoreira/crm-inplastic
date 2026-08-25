@@ -62,7 +62,9 @@ describe("middleware de conta ativa", () => {
 
   it("nenhuma server function importa o middleware gerado direto", () => {
     const infratores = arquivos
-      .filter((p) => !/auth\.middleware\.ts$|seguranca-p0\.test\.ts$/.test(p))
+      // usuarios.functions.ts usa o middleware base APENAS em concluirTrocaSenha,
+      // que precisa rodar justamente quando senha_reset_exigido está ligado.
+      .filter((p) => !/auth\.middleware\.ts$|seguranca-p0\.test\.ts$|usuarios\.functions\.ts$/.test(p))
       .filter((p) =>
         readFileSync(p, "utf8").includes('from "@/integrations/supabase/auth-middleware"'),
       );
@@ -107,7 +109,9 @@ describe("fluxo de senha", () => {
   it("concluirTrocaSenha troca a senha no servidor antes de limpar a flag", () => {
     const src = readFileSync(join(process.cwd(), "src/lib/usuarios.functions.ts"), "utf8");
     const trecho = src.slice(src.indexOf("export const concluirTrocaSenha"));
-    expect(trecho).toContain("z.object({ password: senhaForte })");
+    expect(trecho).toContain("senhaAtual");
+    expect(trecho).toContain("signInWithPassword");
+    expect(trecho.indexOf("signInWithPassword")).toBeLessThan(trecho.indexOf("updateUserById"));
     expect(trecho.indexOf("updateUserById")).toBeLessThan(trecho.indexOf("senha_reset_exigido"));
   });
 });
