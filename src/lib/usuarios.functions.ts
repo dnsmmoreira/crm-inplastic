@@ -368,17 +368,10 @@ export const updateUsuario = createServerFn({ method: "POST" })
       if (error) throw new Error(error.message);
     }
 
-    /* ---- Acesso e segurança ---- */
+    /* ---- Acesso e segurança (papel NÃO é alterado aqui) ---- */
     if (data.acesso) {
-      if (data.acesso.role !== roleAtual) {
-        await sb.from("user_roles").delete().eq("user_id", data.userId);
-        const { error } = await sb
-          .from("user_roles")
-          .insert({ user_id: data.userId, role: data.acesso.role });
-        if (error) throw new Error(error.message);
-        audit.push({ campo: "papel", anterior: roleAtual, novo: data.acesso.role });
-      }
       if (data.acesso.ativo !== (profile.ativo !== false)) {
+
         const { error } = await sb
           .from("profiles")
           .update({ ativo: data.acesso.ativo })
