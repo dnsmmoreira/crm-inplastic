@@ -1,5 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 
+/** Nome plausível: tem ao menos 2 caracteres e contém alguma letra. */
+function nomePlausivel(v: string | null | undefined): string | null {
+  const t = (v ?? "").trim();
+  if (t.length < 2 || !/[a-zA-ZÀ-ÿ]/.test(t)) return null;
+  return t;
+}
+
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -79,11 +86,9 @@ export const Route = createFileRoute("/api/public/hooks/ia-qualificar")({
 
         // 1) Cria o lead se ainda não existir
         if (!leadId) {
-          const company =
-            dados.empresa?.trim() ||
-            conv.name?.trim() ||
-            `WhatsApp ${conv.phone}`;
-          const contactName = dados.contato?.trim() || conv.name?.trim() || "A identificar";
+          const nomePerfil = nomePlausivel(conv.name);
+          const company = dados.empresa?.trim() || nomePerfil || "A identificar";
+          const contactName = dados.contato?.trim() || nomePerfil || "A identificar";
           const quantidade =
             typeof dados.quantidade === "string"
               ? Number(dados.quantidade.replace(/[^\d]/g, "")) || undefined

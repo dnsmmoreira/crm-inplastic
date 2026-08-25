@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
+import { normalizarTexto, normalizarEmail } from "@/lib/normalizacao";
 
 export const PAPEIS_CONTATO = [
   { value: "comprador", label: "Comprador" },
@@ -167,11 +168,11 @@ export const criarContato = createServerFn({ method: "POST" })
     }) => ({
       leadId: data?.leadId ? String(data.leadId) : null,
       clienteId: data?.clienteId ? String(data.clienteId) : null,
-      nome: String(data?.nome ?? "").trim(),
+      nome: normalizarTexto(data?.nome),
       papel: String(data?.papel ?? "outro"),
-      cargo: data?.cargo?.trim() || null,
+      cargo: normalizarTexto(data?.cargo) || null,
       telefone: data?.telefone?.trim() || null,
-      email: data?.email?.trim() || null,
+      email: normalizarEmail(data?.email) || null,
     }),
   )
   .handler(async ({ data, context }) => {

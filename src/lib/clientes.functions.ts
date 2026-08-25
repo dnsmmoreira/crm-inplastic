@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
 import { isValidCnpj, onlyDigitsCnpj, isValidCpf, onlyDigitsCpf } from "@/lib/cnpj";
+import { normalizarTexto, normalizarEmail } from "@/lib/normalizacao";
 
 export type TipoPessoa = "PJ" | "PF";
 
@@ -108,7 +109,14 @@ function validateInput(d: ClienteInput): { errors: string[]; clean: ClienteInput
       simples_optante: tipo === "PF" ? null : d.simples_optante ?? null,
       suframa_isento: tipo === "PF" ? null : d.suframa_isento ?? null,
       suframa_numero: tipo === "PF" ? null : d.suframa_numero ?? null,
-      razao_social: razao,
+      razao_social: normalizarTexto(razao),
+      nome_fantasia: d.nome_fantasia ? normalizarTexto(d.nome_fantasia) : d.nome_fantasia ?? null,
+      endereco: d.endereco ? normalizarTexto(d.endereco) : d.endereco ?? null,
+      complemento: d.complemento ? normalizarTexto(d.complemento) : d.complemento ?? null,
+      bairro: d.bairro ? normalizarTexto(d.bairro) : d.bairro ?? null,
+      cidade: d.cidade ? normalizarTexto(d.cidade) : d.cidade ?? null,
+      contato: d.contato ? normalizarTexto(d.contato) : d.contato ?? null,
+      email: d.email ? normalizarEmail(d.email) : d.email ?? null,
       empresa_padrao: empresa,
       estado: uf || null,
     },

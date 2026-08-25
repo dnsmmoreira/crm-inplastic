@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { formatarTelefoneBR } from "@/lib/normalizacao";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -209,7 +210,7 @@ export function ContatosSection({ leadId, clienteId, readOnly }: Props) {
                   {c.telefone && (
                     <span className="inline-flex items-center gap-1">
                       <Phone className="h-3 w-3" />
-                      {c.telefone}
+                      {formatarTelefoneBR(c.telefone)}
                     </span>
                   )}
                   {c.email && (
