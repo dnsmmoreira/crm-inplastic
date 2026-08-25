@@ -674,6 +674,91 @@ function ChatPanel({
     }
   }
 
+  async function handleAnexo(file: File) {
+    if (!conversa) return;
+
+    const mime = file.type || "application/octet-stream";
+    const MB = 1024 * 1024;
+    let tipoEnvio: "image" | "document" | "audio" | "video";
+    let limite: number;
+
+    if (mime === "image/jpeg" || mime === "image/png") {
+      tipoEnvio = "image";
+      limite = 5 * MB;
+    } else if (mime.startsWith("audio/")) {
+      tipoEnvio = "audio";
+      limite = 16 * MB;
+    } else if (mime.startsWith("video/")) {
+      tipoEnvio = "video";
+      limite = 16 * MB;
+    } else if (DOCUMENTOS_ACEITOS.has(mime)) {
+      tipoEnvio = "document";
+      limite = 100 * MB;
+    } else {
+      toast.error("Tipo de arquivo não suportado", {
+        description:
+          "Aceitos: imagem JPEG/PNG, áudio, vídeo, PDF, Word, Excel, PowerPoint e texto.",
+      });
+      return;
+    }
+
+    if (file.size > limite) {
+      toast.error("Arquivo muito grande", {
+        description: `Limite para este tipo: ${Math.round(limite / MB)} MB.`,
+      });
+      return;
+    }
+
+    const legenda = window.prompt("Legenda (opcional):", "")?.trim() ?? "";
+
+    setEnviandoAnexo(true);
+    try {
+      const nomeSeguro = file.name.normalize("NFD").replace(/[^\w.\-]+/g, "_").slice(-120);
+      const caminho = `${conversa.id}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${nomeSeguro}`;
+
+      const { error: upErr } = await supabase.storage
+        .from("whatsapp-anexos")
+        .upload(caminho, file, { contentType: mime, upsert: false });
+      if (upErr) throw new Error(upErr.message);
+
+      const { data: pub } = supabase.storage.from("whatsapp-anexos").getPublicUrl(caminho);
+      const fileUrl = pub.publicUrl;
+
+      let assumirPosse = false;
+      const posse = await verificarPosse({ data: { conversaId: conversa.id } });
+      if (!posse.souDono && !posse.semDono) {
+        assumirPosse = window.confirm(
+          `Esta conversa está com ${posse.nomeDono ?? "outro atendente"}. Assumir o atendimento?`,
+        );
+      }
+      if (iaNoControle) await assumir({ data: { conversaId: conversa.id } });
+
+      await enviarAnexo({
+        data: {
+          conversaId: conversa.id,
+          fileUrl,
+          mimeType: mime,
+          fileName: file.name.slice(-120),
+          ...(legenda ? { caption: legenda } : {}),
+          tipoEnvio,
+          assumirPosse,
+        },
+      });
+
+      void loadMensagens(conversa.id);
+      onChanged();
+      toast.success("Anexo enviado");
+    } catch (e) {
+      toast.error("Falha ao enviar anexo", {
+        description: e instanceof Error ? e.message : String(e),
+      });
+    } finally {
+      setEnviandoAnexo(false);
+    }
+  }
+
+
+
   async function handleIA(modo: ModoIA) {
     if (!conversa) return;
     setIaLoading(true);
