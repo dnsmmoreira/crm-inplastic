@@ -884,10 +884,19 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
 
     const vendedorId = p.vendedor_proprietario_id ?? p.owner_id ?? null;
 
-    return {
+    // Visão por PAPEL (não por etapa): valores só para admin/financeiro e para o
+    // vendedor dono do pedido. Operacional recebe a tela sem dinheiro nenhum.
+    const podeVerValores =
+      vendedorId === context.userId ||
+      (await isAdminOuFinanceiro(sb, context.userId)) ||
+      (await temPermissao(sb, context.userId, "pedidos.aprovar_financeiro"));
+
+    const detalhe: PedidoDetalhes = {
       id: p.id,
       number: p.number,
       stage: p.stage,
+      pode_ver_valores: podeVerValores,
+
       total: Number(p.total ?? 0),
       cliente_nome: lead?.company ?? null,
       cliente_cnpj: lead?.cnpj ?? null,
