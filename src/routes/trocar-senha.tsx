@@ -37,15 +37,12 @@ function TrocarSenhaPage() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!atual.trim()) { toast.error("Informe a senha atual."); return; }
     if (!forca.ok) { toast.error(`Senha fraca: ${forca.problemas.join(", ")}.`); return; }
     if (!iguais) { toast.error("As senhas não coincidem."); return; }
     setBusy(true);
     try {
-      if (atual.trim() && user?.email) {
-        const { error } = await supabase.auth.signInWithPassword({ email: user.email, password: atual });
-        if (error) throw new Error("Senha atual incorreta.");
-      }
-      await concluir({ data: { password: senha } });
+      await concluir({ data: { senhaAtual: atual, password: senha } });
       await refresh();
       toast.success("Senha atualizada!");
     } catch (err) {
@@ -54,6 +51,7 @@ function TrocarSenhaPage() {
       setBusy(false);
     }
   };
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-4">
@@ -72,7 +70,8 @@ function TrocarSenhaPage() {
 
         <form className="rounded-xl bg-card p-6 shadow-xl space-y-3" onSubmit={submit}>
           <div className="space-y-1">
-            <Label htmlFor="ts-atual">Senha atual (opcional)</Label>
+            <Label htmlFor="ts-atual">Senha atual</Label>
+
             <Input id="ts-atual" type="password" value={atual} onChange={(e) => setAtual(e.target.value)} autoComplete="current-password" />
           </div>
           <div className="space-y-1">
