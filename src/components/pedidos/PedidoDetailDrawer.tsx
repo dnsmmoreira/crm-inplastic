@@ -1069,15 +1069,18 @@ function FiscalBlock({ pedido, onChanged }: { pedido: PedidoDetalhes; onChanged:
           <Label className="text-xs">Chave (44)</Label>
           <Input value={nfChave} onChange={(e) => setNfChave(e.target.value)} maxLength={44} />
         </div>
-        <div>
-          <Label className="text-xs">Valor NF (R$)</Label>
-          <Input
-            inputMode="decimal"
-            value={nfValor}
-            onChange={(e) => setNfValor(e.target.value)}
-            placeholder="0,00"
-          />
-        </div>
+        {pedido.pode_ver_valores && (
+          <div>
+            <Label className="text-xs">Valor NF (R$)</Label>
+            <Input
+              inputMode="decimal"
+              value={nfValor}
+              onChange={(e) => setNfValor(e.target.value)}
+              placeholder="0,00"
+            />
+          </div>
+        )}
+
         <Button size="sm" disabled={salvar.isPending} onClick={() => salvar.mutate()}>
           Salvar status fiscal
         </Button>
