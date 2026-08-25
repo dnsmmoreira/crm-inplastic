@@ -92,6 +92,45 @@ export async function cloudSendText(to: string, body: string): Promise<CloudResu
   );
 }
 
+/**
+ * Envia mídia por LINK público (sem upload prévio de media id na Meta).
+ * A mesma URL usada aqui é a gravada em `midia.url` para o renderizador do chat.
+ * Áudio não aceita caption na API da Meta.
+ */
+export async function cloudSendMedia(
+  to: string,
+  tipo: "image" | "document" | "audio" | "video",
+  url: string,
+  opts?: { caption?: string; filename?: string },
+): Promise<CloudResult> {
+  const caption = opts?.caption?.trim() || undefined;
+  let payload: Record<string, unknown>;
+  if (tipo === "audio") {
+    payload = { link: url };
+  } else if (tipo === "document") {
+    payload = {
+      link: url,
+      ...(caption ? { caption } : {}),
+      ...(opts?.filename ? { filename: opts.filename } : {}),
+    };
+  } else {
+    payload = { link: url, ...(caption ? { caption } : {}) };
+  }
+
+  return postMessages(
+    {
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to: normalizePhoneE164(to),
+      type: tipo,
+      [tipo]: payload,
+    },
+    `send-${tipo}`,
+  );
+}
+
+
+
 /** Envia template aprovado (necessário fora da janela de 24h). */
 export async function cloudSendTemplate(
   to: string,
