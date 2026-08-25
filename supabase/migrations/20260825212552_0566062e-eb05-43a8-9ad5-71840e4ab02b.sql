@@ -1,0 +1,1 @@
+ALTER TYPE public.pedido_stage ADD VALUE IF NOT EXISTS 'cancelado';
