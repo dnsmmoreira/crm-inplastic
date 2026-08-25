@@ -734,8 +734,12 @@ function ChatPanel({
         .upload(caminho, file, { contentType: mime, upsert: false });
       if (upErr) throw new Error(upErr.message);
 
-      const { data: pub } = supabase.storage.from("whatsapp-anexos").getPublicUrl(caminho);
-      const fileUrl = pub.publicUrl;
+      const dezAnosEmSegundos = 10 * 365 * 24 * 60 * 60;
+      const { data: signed, error: signedErr } = await supabase.storage
+        .from("whatsapp-anexos")
+        .createSignedUrl(caminho, dezAnosEmSegundos);
+      if (signedErr) throw new Error(signedErr.message);
+      const fileUrl = signed.signedUrl;
 
       let assumirPosse = false;
       const posse = await verificarPosse({ data: { conversaId: conversa.id } });
