@@ -475,4 +475,188 @@ export async function sendWhatsappText(
   throw ultimoErro;
 }
 
+/**
+ * Envio de MÍDIA por link público — irmã de `sendWhatsappText`, mesmo motor de
+ * guardas: disjuntor, opt-out, janela 07:00-20:00 (mesmas regras de bypass por
+ * origem), rate limits (20s/telefone, 20/min, 200/24h), guarda de configuração,
+ * jitter, retry/backoff e registro em `zapi_envios`.
+ *
+ * Diferenças deliberadas em relação ao texto:
+ *  - Anti-duplicado por hash de CONTEÚDO TEXTUAL não se aplica: o hash aqui é
+ *    derivado da URL do arquivo (cada upload gera caminho único), então a
+ *    checagem de duplicado em 10 min é pulada; a idempotência por phone+hash
+ *    no retry continua valendo.
+ *  - Fora da janela de 24h não há template de mídia aprovado: o envio é
+ *    recusado com erro claro, nunca convertido em template.
+ */
+export async function sendWhatsappMedia(
+  phoneRaw: string,
+  tipo: "image" | "document" | "audio" | "video",
+  url: string,
+  opts?: {
+    caption?: string;
+    filename?: string;
+    ctx?: string;
+    canal?: ZapiCanal;
+    origem?: ZapiOrigem;
+  },
+): Promise<ZapiSendResult> {
+  const canal: ZapiCanal = opts?.canal ?? "comercial";
+  const ctx = opts?.ctx;
+  const tag = ctx ? `[wa:${canal}:${ctx}]` : `[wa:${canal}]`;
+  const phone = normalizePhoneBR(phoneRaw);
+  const origem: ZapiOrigem = opts?.origem ?? "iniciado_sistema";
+
+  const { cloudEnabled, cloudSendMedia } = await import("./whatsapp-cloud.server");
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const mensagemHash = await hashMensagem(`midia:${tipo}:${url}`);
+
+  // (0) Disjuntor
+  if (canal === "comercial" && origem !== "manual_admin") {
+    const { envioAutomaticoPausado } = await import("./zapi-disjuntor.server");
+    if (await envioAutomaticoPausado()) {
+      bloquear(tag, "disjuntor_aberto", phone);
+      throw new Error("Envios automaticos pausados temporariamente (disjuntor). Tente mais tarde.");
+    }
+  }
+
+  // (1) Opt-out
+  const { data: optout } = await supabaseAdmin
+    .from("whatsapp_optout")
+    .select("phone")
+    .eq("phone", phone)
+    .maybeSingle();
+  if (optout) {
+    bloquear(tag, "optout", phone);
+    throw new Error("Contato optou por nao receber mensagens.");
+  }
+
+  // (2) Janela comercial 07:00-20:00 (mesmas regras de bypass por origem)
+  const { hora, domingo } = agoraSaoPaulo();
+  if (domingo || hora < 7 || hora >= 20) {
+    if (origem === "resposta_inbound" || origem === "manual_admin") {
+      console.log(`${tag} envio de midia fora da janela liberado motivo=${origem}`);
+    } else {
+      bloquear(tag, domingo ? "domingo" : "fora_da_janela_07_20", phone);
+      throw new Error(
+        "Fora da janela de envio (07:00-20:00, exceto domingos). Anexo nao enviado.",
+      );
+    }
+  }
+
+  const nowMs = Date.now();
+  const isoDesde = (ms: number) => new Date(nowMs - ms).toISOString();
+
+  // (3) Rate limits
+  const { count: cMesmoPhone } = await supabaseAdmin
+    .from("zapi_envios")
+    .select("id", { count: "exact", head: true })
+    .eq("phone", phone)
+    .gte("created_at", isoDesde(JANELA_MESMO_PHONE_MS));
+  if ((cMesmoPhone ?? 0) > 0) {
+    bloquear(tag, "rate_limit_mesmo_phone_20s", phone);
+    throw new Error("Aguarde 20 segundos antes de enviar outra mensagem para este contato.");
+  }
+
+  const { count: cCanalMin } = await supabaseAdmin
+    .from("zapi_envios")
+    .select("id", { count: "exact", head: true })
+    .eq("canal", canal)
+    .gte("created_at", isoDesde(JANELA_CANAL_MIN_MS));
+  if ((cCanalMin ?? 0) >= LIMITE_CANAL_MIN) {
+    bloquear(tag, "rate_limit_canal_minuto", phone);
+    throw new Error("Limite de envios por minuto atingido neste canal. Tente novamente em instantes.");
+  }
+
+  const { count: cCanal24h } = await supabaseAdmin
+    .from("zapi_envios")
+    .select("id", { count: "exact", head: true })
+    .eq("canal", canal)
+    .gte("created_at", isoDesde(24 * 60 * 60_000));
+  if ((cCanal24h ?? 0) >= LIMITE_CANAL_24H) {
+    bloquear(tag, "rate_limit_canal_24h", phone);
+    throw new Error("Limite diario de envios deste canal atingido (200 em 24h).");
+  }
+
+  // (5) Guarda de configuração do canal
+  if (!cloudEnabled()) {
+    bloquear(tag, "cloud_nao_configurado", phone);
+    await registrarAlertaIndisponivel(canal, "META_PHONE_NUMBER_ID/META_ACCESS_TOKEN ausentes");
+    throw new Error("WhatsApp Cloud API nao configurado. Anexo nao enviado.");
+  }
+
+  // Janela de 24h: mídia livre só dentro da janela (não existe template de mídia).
+  if (!(await janelaAtendimentoAberta(phone))) {
+    bloquear(tag, "fora_janela_24h_midia", phone);
+    throw new Error(
+      "Janela de 24h encerrada: o WhatsApp nao permite enviar anexos agora. Envie um modelo aprovado e aguarde a resposta do cliente.",
+    );
+  }
+
+  // (6) Jitter humano
+  await sleep(JITTER_MIN_MS + Math.floor(Math.random() * (JITTER_MAX_MS - JITTER_MIN_MS)));
+
+  async function jaEnviadoRecentemente() {
+    const desde = new Date(Date.now() - 60_000).toISOString();
+    const { count } = await supabaseAdmin
+      .from("zapi_envios")
+      .select("id", { count: "exact", head: true })
+      .eq("phone", phone)
+      .eq("mensagem_hash", mensagemHash)
+      .gte("created_at", desde);
+    return (count ?? 0) > 0;
+  }
+
+  let ultimoErro: Error = new Error("Falha desconhecida no envio de anexo por WhatsApp.");
+
+  for (let tentativa = 1; tentativa <= RETRY_BACKOFF_MS.length + 1; tentativa++) {
+    if (tentativa > 1) {
+      if (await jaEnviadoRecentemente()) {
+        console.warn(`${tag} tentativa=${tentativa} abortada — anexo ja registrado (idempotencia).`);
+        return { ok: true, status: 200, body: "", phone, messageId: null, zaapId: null };
+      }
+      const espera = RETRY_BACKOFF_MS[tentativa - 2]!;
+      console.warn(`${tag} retry em ${espera}ms (tentativa=${tentativa}) motivo=${ultimoErro.message}`);
+      await sleep(espera);
+    }
+
+    const r = await cloudSendMedia(phone, tipo, url, {
+      ...(opts?.caption ? { caption: opts.caption } : {}),
+      ...(opts?.filename ? { filename: opts.filename } : {}),
+    });
+
+    console.log(
+      `${tag} tentativa=${tentativa} midia=${tipo} ok=${r.ok} status=${r.status ?? "-"} phone=${mascararTelefoneLog(phone)}`,
+    );
+
+    if (!r.ok) {
+      const erro = new Error(
+        `WhatsApp Cloud API${r.status ? ` [${r.status}]` : ""}: ${r.error ?? "falha"}`,
+      );
+      if (r.status === undefined || RETRY_STATUS.has(r.status)) {
+        ultimoErro = erro;
+        continue;
+      }
+      throw erro;
+    }
+
+    const { error: regErr } = await supabaseAdmin
+      .from("zapi_envios")
+      .insert({ canal, phone, ctx: ctx ?? null, mensagem_hash: mensagemHash });
+    if (regErr) console.error(`${tag} falha ao registrar envio de anexo:`, regErr.message);
+
+    return {
+      ok: true,
+      status: r.status ?? 200,
+      body: "",
+      phone,
+      messageId: r.messageId ?? null,
+      zaapId: null,
+    };
+  }
+
+  throw ultimoErro;
+}
+
+
 

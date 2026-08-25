@@ -6,6 +6,8 @@ import {
 
   Phone,
   Send,
+  Loader2,
+
   Bot,
   User as UserIcon,
   Search,
@@ -35,7 +37,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
-import { sendConversaMessage, statusJanelaConversa, posseConversa } from "@/lib/canais.functions";
+import {
+  sendConversaMessage,
+  sendConversaAnexo,
+  statusJanelaConversa,
+  posseConversa,
+} from "@/lib/canais.functions";
 import {
   assumirConversa,
   devolverParaIA,
@@ -58,6 +65,19 @@ type Conversa = Database["public"]["Tables"]["whatsapp_conversas"]["Row"];
 type Mensagem = Database["public"]["Tables"]["whatsapp_mensagens"]["Row"];
 
 type ConversasSearch = { c?: string };
+
+/** Tipos de documento aceitos pela API da Meta (limite de 100 MB). */
+const DOCUMENTOS_ACEITOS = new Set([
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "text/plain",
+]);
+
 
 export const Route = createFileRoute("/conversas")({
   validateSearch: (search: Record<string, unknown>): ConversasSearch => ({
@@ -486,8 +506,11 @@ function ChatPanel({
 
   const [acaoEmCurso, setAcaoEmCurso] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [enviandoAnexo, setEnviandoAnexo] = useState(false);
 
   const send = useServerFn(sendConversaMessage);
+  const enviarAnexo = useServerFn(sendConversaAnexo);
   const pedirIA = useServerFn(assistenteRedacao);
   const assumir = useServerFn(assumirConversa);
   const devolver = useServerFn(devolverParaIA);
@@ -663,6 +686,91 @@ function ChatPanel({
       setSending(false);
     }
   }
+
+  async function handleAnexo(file: File) {
+    if (!conversa) return;
+
+    const mime = file.type || "application/octet-stream";
+    const MB = 1024 * 1024;
+    let tipoEnvio: "image" | "document" | "audio" | "video";
+    let limite: number;
+
+    if (mime === "image/jpeg" || mime === "image/png") {
+      tipoEnvio = "image";
+      limite = 5 * MB;
+    } else if (mime.startsWith("audio/")) {
+      tipoEnvio = "audio";
+      limite = 16 * MB;
+    } else if (mime.startsWith("video/")) {
+      tipoEnvio = "video";
+      limite = 16 * MB;
+    } else if (DOCUMENTOS_ACEITOS.has(mime)) {
+      tipoEnvio = "document";
+      limite = 100 * MB;
+    } else {
+      toast.error("Tipo de arquivo não suportado", {
+        description:
+          "Aceitos: imagem JPEG/PNG, áudio, vídeo, PDF, Word, Excel, PowerPoint e texto.",
+      });
+      return;
+    }
+
+    if (file.size > limite) {
+      toast.error("Arquivo muito grande", {
+        description: `Limite para este tipo: ${Math.round(limite / MB)} MB.`,
+      });
+      return;
+    }
+
+    const legenda = window.prompt("Legenda (opcional):", "")?.trim() ?? "";
+
+    setEnviandoAnexo(true);
+    try {
+      const nomeSeguro = file.name.normalize("NFD").replace(/[^\w.\-]+/g, "_").slice(-120);
+      const caminho = `${conversa.id}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${nomeSeguro}`;
+
+      const { error: upErr } = await supabase.storage
+        .from("whatsapp-anexos")
+        .upload(caminho, file, { contentType: mime, upsert: false });
+      if (upErr) throw new Error(upErr.message);
+
+      const { data: pub } = supabase.storage.from("whatsapp-anexos").getPublicUrl(caminho);
+      const fileUrl = pub.publicUrl;
+
+      let assumirPosse = false;
+      const posse = await verificarPosse({ data: { conversaId: conversa.id } });
+      if (!posse.souDono && !posse.semDono) {
+        assumirPosse = window.confirm(
+          `Esta conversa está com ${posse.nomeDono ?? "outro atendente"}. Assumir o atendimento?`,
+        );
+      }
+      if (iaNoControle) await assumir({ data: { conversaId: conversa.id } });
+
+      await enviarAnexo({
+        data: {
+          conversaId: conversa.id,
+          fileUrl,
+          mimeType: mime,
+          fileName: file.name.slice(-120),
+          ...(legenda ? { caption: legenda } : {}),
+          tipoEnvio,
+          assumirPosse,
+        },
+      });
+
+      void loadMensagens(conversa.id);
+      onChanged();
+      toast.success("Anexo enviado");
+    } catch (e) {
+      toast.error("Falha ao enviar anexo", {
+        description: e instanceof Error ? e.message : String(e),
+      });
+    } finally {
+      setEnviandoAnexo(false);
+    }
+  }
+
+
 
   async function handleIA(modo: ModoIA) {
     if (!conversa) return;
@@ -892,16 +1000,35 @@ function ChatPanel({
               loading={iaLoading}
               onAcao={(modo) => void handleIA(modo)}
             />
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                e.target.value = "";
+                if (f) void handleAnexo(f);
+              }}
+            />
             <Button
-
               size="icon"
               variant="ghost"
-              disabled
-              title="Anexos — em breve"
-              aria-label="Anexos (em breve)"
+              disabled={sending || enviandoAnexo || bloqueadoPorStatus || janela24h?.aberta === false}
+              title={
+                janela24h?.aberta === false
+                  ? "Janela de 24h encerrada — anexos indisponíveis"
+                  : "Anexar arquivo"
+              }
+              aria-label="Anexar arquivo"
+              onClick={() => fileInputRef.current?.click()}
             >
-              <Paperclip className="h-4 w-4" />
+              {enviandoAnexo ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Paperclip className="h-4 w-4" />
+              )}
             </Button>
+
             <Button
               size="icon"
               variant="ghost"
