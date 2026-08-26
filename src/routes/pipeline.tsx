@@ -34,11 +34,11 @@ import { gerarPedidoInterno } from "@/lib/omie.functions";
 type SortMode = "default" | "urgency" | "urgency-desc";
 const CARDS_PER_PAGE = 15;
 /**
- * Perdido saiu do quadro (a base de recontato vive na tela /leads).
- * Qualificação e Negociação também saíram: Negociação virou uma tag no card da
- * proposta e Qualificação deixou de existir no funil.
+ * Qualificação e Negociação saíram do quadro: Negociação virou uma tag no card
+ * da proposta e Qualificação deixou de existir no funil.
+ * Perdido continua no quadro, mas oculto atrás de um toggle.
  */
-const HIDDEN_STAGES: StageId[] = ["perdido", "qualificacao", "negociacao"];
+const HIDDEN_STAGES: StageId[] = ["qualificacao", "negociacao"];
 const BOARD_STAGES = STAGES.filter((s) => !HIDDEN_STAGES.includes(s.id));
 /** Colunas cujos cards são PROPOSTAS (não leads). */
 const PROPOSAL_STAGES: StageId[] = ["proposta", "ganho"];
@@ -66,6 +66,8 @@ function PipelinePage() {
   const [lostTarget, setLostTarget] = useState<{ leadId: string; company: string } | null>(null);
   // Fase 3: por padrão, oculta ganhos que já viraram pedido operacional (não deleta nada).
   const [mostrarGanhosCompletos, setMostrarGanhosCompletos] = useState(false);
+  // Coluna Perdido volta ao quadro, oculta por padrão para não poluir.
+  const [mostrarPerdidos, setMostrarPerdidos] = useState(false);
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const [selectMode, setSelectMode] = useState(false);
@@ -131,7 +133,8 @@ function PipelinePage() {
     const q = search.toLowerCase();
     return leads.filter((l) => {
       if (HIDDEN_STAGES.includes(l.stage)) return false;
-      if (leadsComProposta.has(l.id)) return false;
+      // Leads perdidos aparecem na própria coluna mesmo se tiveram proposta.
+      if (l.stage !== "perdido" && leadsComProposta.has(l.id)) return false;
       if (q && !(l.company.toLowerCase().includes(q) ||
         l.contactName.toLowerCase().includes(q) ||
         l.product.toLowerCase().includes(q))) return false;
@@ -377,6 +380,18 @@ function PipelinePage() {
               ? "Ocultar ganhos c/ pedido"
               : `Mostrar ganhos c/ pedido${ganhosOcultos > 0 ? ` (${ganhosOcultos})` : ""}`}
           </Toggle>
+          <Toggle
+            pressed={mostrarPerdidos}
+            onPressedChange={setMostrarPerdidos}
+            size="sm"
+            className="h-7 gap-1 text-xs data-[state=on]:bg-destructive/15 data-[state=on]:text-destructive"
+            title="Leads marcados como Perdido. Ficam ocultos por padrão; os dados permanecem no banco."
+          >
+            <X className="h-3 w-3" />
+            {mostrarPerdidos
+              ? "Ocultar perdidos"
+              : `Mostrar perdidos${byStage.perdido.length > 0 ? ` (${byStage.perdido.length})` : ""}`}
+          </Toggle>
           <ArrowDownUp className="h-3.5 w-3.5 text-muted-foreground" />
           <Select value={sortMode} onValueChange={(v) => setSortMode(v as SortMode)}>
             <SelectTrigger className="h-7 w-[200px] text-xs">
@@ -395,6 +410,7 @@ function PipelinePage() {
         <div className="-mx-4 min-h-0 flex-1 overflow-auto px-4 md:-mx-8 md:px-8">
           <div className="flex gap-4 pb-4">
             {BOARD_STAGES.map((stage) =>
+              stage.id === "perdido" && !mostrarPerdidos ? null :
               PROPOSAL_STAGES.includes(stage.id) ? (
                 <ProposalColumn
                   key={stage.id}
