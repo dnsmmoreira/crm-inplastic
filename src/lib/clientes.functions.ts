@@ -643,7 +643,8 @@ export async function garantirClienteDoLead(
 
   // (A) Documento obrigatório e válido — mesma validação do cadastro de cliente.
   const digits = onlyDigitsCnpj(String(lead.cnpj ?? ""));
-  const DOC_MSG = "Preencha o CNPJ ou CPF do contato antes de marcar como Ganho.";
+  const DOC_MSG =
+    "Este lead ainda não tem um cliente vinculado com CNPJ ou CPF cadastrado. Abra o cadastro de cliente e vincule ou informe o documento antes de marcar como Ganho.";
   let tipo: TipoPessoa;
   if (digits.length === 14) {
     if (!isValidCnpj(digits)) return { ok: false, erros: ["CNPJ inválido (dígitos verificadores)."] };
@@ -652,8 +653,26 @@ export async function garantirClienteDoLead(
     if (!isValidCpf(digits)) return { ok: false, erros: ["CPF inválido (dígitos verificadores)."] };
     tipo = "PF";
   } else {
+    // (A2) Fallback: tenta achar por telefone / e-mail / razão social um cliente
+    // já cadastrado. Só vincula quando há EXATAMENTE 1 candidato sem ambiguidade.
+    const auto = await autoMatchClienteDoLead(supabase, lead as Record<string, unknown>);
+    if (auto) {
+      const { error: linkErr } = await supabase
+        .from("leads")
+        .update({ cliente_id: auto })
+        .eq("id", leadId);
+      if (linkErr) return { ok: false, erros: [linkErr.message] };
+      await registrarAuditoriaPromocao(supabase, {
+        leadId,
+        clienteId: auto,
+        criado: false,
+        userId,
+      });
+      return { ok: true, clienteId: auto, criado: false };
+    }
     return { ok: false, erros: [DOC_MSG] };
   }
+
 
   // (B1) Já existe cliente com o mesmo documento? → apenas vincula.
   let existenteId: string | null = null;
