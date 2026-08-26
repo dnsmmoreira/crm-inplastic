@@ -5,10 +5,16 @@
  * - Telefone: APENAS formatação de exibição — nunca altera dado gravado.
  */
 
-export function normalizarTexto(valor: string | null | undefined): string {
+export function normalizarTexto(valor: unknown): string {
   if (valor === null || valor === undefined) return "";
-  return valor.trim().replace(/\s+/g, " ").toUpperCase();
+  if (typeof valor === "object") {
+    // Nunca deve chegar objeto aqui, mas não pode derrubar o fluxo do chamador.
+    console.warn("[normalizarTexto] valor não-textual recebido:", valor);
+    return "";
+  }
+  return String(valor).trim().replace(/\s+/g, " ").toUpperCase();
 }
+
 
 export function normalizarEmail(valor: string | null | undefined): string {
   if (valor === null || valor === undefined) return "";
