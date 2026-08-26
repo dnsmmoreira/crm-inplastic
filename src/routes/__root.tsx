@@ -682,6 +682,7 @@ function AuthGate() {
 
   if (pathname === "/auth") return <Outlet />;
   if (pathname.startsWith("/proposta-publica/")) return <Outlet />;
+  if (pathname.startsWith("/lovable/")) return <Outlet />;
 
 
   // Enquanto o Supabase não terminou a restauração inicial da sessão, mostramos loading.

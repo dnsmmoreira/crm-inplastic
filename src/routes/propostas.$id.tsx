@@ -1,7 +1,7 @@
 import { MargemPropostaCard } from "@/components/arena/MargemPropostaCard";
 import { createFileRoute, Link, useNavigate, useBlocker } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Plus, Trash2, Printer, RefreshCw, Send, CheckCircle2, XCircle, Check, ChevronsUpDown, Search, AlertCircle, Lock, Unlock, ShieldAlert } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Printer, RefreshCw, Send, CheckCircle2, XCircle, Check, ChevronsUpDown, Search, AlertCircle, Lock, Unlock, ShieldAlert, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { format } from "date-fns";
