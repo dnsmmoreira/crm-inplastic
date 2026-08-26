@@ -47,6 +47,8 @@ import {
 import { cn } from "@/lib/utils";
 import { formatBRL } from "@/lib/crm-store";
 import { formatDateBr } from "@/lib/condicoes-comerciais";
+import { useDuplicarProposta } from "@/hooks/use-duplicar-proposta";
+
 import {
   getPedidoDetalhes,
   decidirAprovacao,
