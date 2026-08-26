@@ -3,7 +3,7 @@
  * nativo da plataforma. Mesma regra de `sent_at` do envio por WhatsApp.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { sendTemplateEmail } from "@/lib/email-templates/send-email";
+
 
 const LINK_BASE = "https://crm.inplastic.com.br/proposta-publica";
 
