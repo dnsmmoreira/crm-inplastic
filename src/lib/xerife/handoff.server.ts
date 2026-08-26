@@ -4,7 +4,7 @@
  *
  * Server-only. Usa o client admin (bypassa RLS) — nunca importar no cliente.
  */
-import { notifyOwner, notifyDiretoria, crmLeadLink } from "@/lib/xerife/notify.server";
+import { notifyOwner, crmLeadLink } from "@/lib/xerife/notify.server";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SB = any;
@@ -28,24 +28,32 @@ export async function notificarUsuario(
   if (error) console.error("[handoff] notificacoes insert falhou:", error.message);
 }
 
-/** Notificação in-app para todos os admins ativos + aviso à diretoria. */
+/**
+ * Notificação in-app para quem administra o sistema.
+ *
+ * Destinatário = quem tem a permissão granular `usuarios.gerenciar` no perfil
+ * ativo (mesmo critério do resumo diário do Xerife). NÃO usa mais
+ * `user_roles.role = 'admin'`: aquele papel é amplo demais e incluía perfis
+ * comerciais (ex.: Gestor Comercial) em alertas de operação de atendimento.
+ *
+ * Também não dispara mais para o grupo do Telegram da diretoria — este alerta
+ * é in-app (sino).
+ */
 export async function alertarAdmins(
   sb: SB,
   params: { tipo: string; titulo: string; conversaId?: string | null; mensagem?: string },
 ): Promise<void> {
-  const { data: admins } = await sb
-    .from("user_roles")
-    .select("user_id")
-    .eq("role", "admin");
-  for (const a of (admins ?? []) as { user_id: string }[]) {
+  void params.mensagem;
+  const { usuariosComPermissao } = await import("@/lib/pedidos-fluxo.server");
+  const destinatarios = await usuariosComPermissao(sb, "usuarios.gerenciar");
+  for (const userId of destinatarios) {
     await notificarUsuario(sb, {
-      userId: a.user_id,
+      userId,
       tipo: params.tipo,
       titulo: params.titulo,
       conversaId: params.conversaId ?? null,
     });
   }
-  await notifyDiretoria(params.mensagem ?? params.titulo);
 }
 
 /**

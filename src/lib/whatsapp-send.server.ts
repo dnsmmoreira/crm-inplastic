@@ -91,14 +91,13 @@ async function registrarAlertaIndisponivel(canal: ZapiCanal, detalhe: string) {
 
     if ((count ?? 0) > 0) return; // já avisou nos últimos 60 min
 
-    const { enviarNotificacaoInterna } = await import("@/lib/xerife/notify.server");
-    const phone = (process.env.WHATSAPP_DIRETORIA ?? "").trim();
-    const chatId = (process.env.TELEGRAM_CHAT_DIRETORIA ?? "").trim() || null;
-    await enviarNotificacaoInterna(
-      phone,
-      `ALERTA: o canal ${canal} do WhatsApp (Cloud API) esta indisponivel. Nenhuma mensagem esta saindo.`,
-      "wa-alerta",
-      { telegramChatId: chatId, bypassGuards: true },
+    // Sinal técnico: vai para a tela "Falhas do sistema", não para o grupo do
+    // Telegram da diretoria (ruído técnico fora do canal comercial).
+    const { registrarFalhaAdmin } = await import("@/lib/falhas.server");
+    await registrarFalhaAdmin(
+      "whatsapp.canal",
+      `Canal ${canal} do WhatsApp (Cloud API) indisponível — nenhuma mensagem está saindo.`,
+      { canal, detalhe: detalhe.slice(0, 500) },
     );
   } catch (e) {
     console.error(

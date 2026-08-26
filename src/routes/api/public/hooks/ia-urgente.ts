@@ -22,8 +22,8 @@ type UrgenteBody = {
 
 /**
  * Endpoint chamado pelo n8n quando um lead é qualificado como URGENTE
- * fora do horário comercial. Envia mensagem via Z-API para o número da
- * diretoria (secret WHATSAPP_DIRETORIA) e registra em lead_ai_actions.
+ * fora do horário comercial. Registra o lead e a escalação em
+ * lead_ai_actions (sem alerta para o grupo da diretoria).
  * Header obrigatório: x-n8n-secret (validado contra N8N_SECRET).
  */
 export const Route = createFileRoute("/api/public/hooks/ia-urgente")({
@@ -142,34 +142,16 @@ export const Route = createFileRoute("/api/public/hooks/ia-urgente")({
           `Urgência: ${motivo || dados.urgencia || "—"}\n` +
           `Conversa no CRM: crm.inplastic.com.br`;
 
-        const diretoria = process.env.WHATSAPP_DIRETORIA;
-        let enviado = false;
-        let envioErro: string | null = null;
+        // O alerta NÃO vai mais para o grupo da diretoria (Telegram/WhatsApp).
+        // Fica registrado em `lead_ai_actions` e visível no CRM; a notificação
+        // individual ao vendedor responsável segue pelo fluxo normal do lead.
+        const enviado = false;
+        const envioErro: string | null = null;
+        void texto;
+        console.log(`[ia-urgente] lead urgente registrado (sem alerta de grupo) lead=${leadId}`);
 
-        if (diretoria) {
-          const { enviarNotificacaoInterna } = await import("@/lib/xerife/notify.server");
-          console.log(
-            `[ia-urgente] enviando alerta para diretoria (${diretoria.slice(0, 4)}****) conversa=${conversaId} lead=${leadId}`,
-          );
-          const r = await enviarNotificacaoInterna(diretoria, texto, "ia-urgente");
-          enviado = r.enviado;
-          if (r.enviado) {
-            console.log(`[ia-urgente] alerta enviado com sucesso lead=${leadId}`);
-          } else {
-            envioErro = r.motivo ?? "desconhecido";
-            console.warn(`[ia-urgente] alerta não enviado: ${envioErro}`);
-          }
-        } else {
-          console.warn(
-            "[ia-urgente] WHATSAPP_DIRETORIA não configurado — apenas registrando em lead_ai_actions",
-          );
-        }
-
-        const descricao = enviado
-          ? `Escalação URGENTE (fora do horário) enviada à diretoria via WhatsApp. ${motivo}`.trim()
-          : diretoria
-            ? `Escalação URGENTE (fora do horário) — falha ao enviar à diretoria: ${envioErro}. ${motivo}`.trim()
-            : `Escalação URGENTE (fora do horário) — WHATSAPP_DIRETORIA não configurado. ${motivo}`.trim();
+        const descricao =
+          `Escalação URGENTE (fora do horário) registrada no CRM. ${motivo}`.trim();
 
         await supabaseAdmin.from("lead_ai_actions").insert({
           lead_id: leadId,
@@ -182,7 +164,7 @@ export const Route = createFileRoute("/api/public/hooks/ia-urgente")({
             dados,
             motivo,
             escalacao: "urgente_fora_horario",
-            diretoria_configurada: !!diretoria,
+            diretoria_configurada: false,
             enviado,
             envio_erro: envioErro,
           },
@@ -193,7 +175,7 @@ export const Route = createFileRoute("/api/public/hooks/ia-urgente")({
             ok: true,
             lead_id: leadId,
             enviado,
-            diretoria_configurada: !!diretoria,
+            diretoria_configurada: false,
             ...(envioErro ? { envio_erro: envioErro } : {}),
           },
           { headers: CORS },

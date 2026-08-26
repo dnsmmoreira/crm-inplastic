@@ -94,7 +94,7 @@ export type XerifePlanItem = {
   descricao: string;
   motivo: string;
   prioridade: number;
-  acao: "criar_tarefa" | "notificar_diretoria" | "marcar_esfriando";
+  acao: "criar_tarefa" | "notificar_diretoria" | "marcar_esfriando" | "registrar_escalacao";
 };
 
 type Cfg = {
@@ -230,6 +230,21 @@ async function runEngine(
     if (dryRun) return;
     await notifyDiretoria(msg);
   };
+  /**
+   * Registra o evento no plano/simulador e em `xerife_log`, SEM disparar para o
+   * grupo do Telegram da diretoria. Usado nas escalações A1/A3, que já geram
+   * tarefa e notificação individual para o vendedor responsável.
+   */
+  const registrarSemDiretoria = async (
+    msg: string,
+    ctx: { regra: string; lead_id: string; lead_company: string | null; owner_id: string | null },
+  ) => {
+    plan.push({
+      regra: ctx.regra, lead_id: ctx.lead_id, lead_company: ctx.lead_company,
+      owner_id: ctx.owner_id, tipo: "escalacao", titulo: "Escalação registrada (sem grupo)",
+      descricao: msg, motivo: msg, prioridade: 0, acao: "registrar_escalacao",
+    });
+  };
   const marcarEsfriando = async (leadId: string, company: string | null, ownerId: string | null, regra: string) => {
     plan.push({
       regra, lead_id: leadId, lead_company: company, owner_id: ownerId,
@@ -269,9 +284,12 @@ async function runEngine(
         if (!dryRun) {
           const { data: newOwner, error: rpcErr } = await sb.rpc("atribuir_proximo_vendedor", { _lead_id: l.id });
           if (rpcErr) {
-            await alertDiretoria(
-              `⚠️ Falha ao atribuir automaticamente lead órfão\n\nCliente: ${l.company}\nErro: ${rpcErr.message}\n${crmLeadLink(l.id)}`,
-              { regra, lead_id: l.id, lead_company: l.company, owner_id: null },
+            // Falha técnica: vai para "Falhas do sistema", não para o grupo.
+            const { registrarFalhaAdmin } = await import("@/lib/falhas.server");
+            await registrarFalhaAdmin(
+              "xerife.atribuicao",
+              `Falha ao atribuir automaticamente lead órfão: ${rpcErr.message}`,
+              { regra, lead_id: l.id, lead_company: l.company },
             );
           }
           await log(sb, {
@@ -340,14 +358,13 @@ async function runEngine(
       if (l.created_at && l.created_at < escalarIso) {
         const escRegra = "A1_escalado";
         if (!(await alreadyActed(sb, escRegra, l.id, 24))) {
-          await alertDiretoria(
-            `🚨 Lead sem contato há +${cfg.sla_primeiro_contato_escalar_min}min úteis\n\n` +
-            `Cliente: ${l.company}\nMotivo: vendedor não fez primeiro contato\n${crmLeadLink(l.id)}`,
+          await registrarSemDiretoria(
+            `Lead sem contato há +${cfg.sla_primeiro_contato_escalar_min}min úteis — ${l.company}`,
             { regra: escRegra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id },
           );
           await log(sb, {
             regra: escRegra, leadId: l.id, vendedorId: l.owner_id,
-            acao: "diretoria notificada",
+            acao: "escalação registrada (sem grupo)",
             payload: { sla_escalar_min: cfg.sla_primeiro_contato_escalar_min },
           });
           stats.a1_escalado++;
@@ -445,14 +462,13 @@ async function runEngine(
       if (l.ultima_msg_cliente_at < escalarIso) {
         const escRegra = "A3_escalado";
         if (!(await alreadyActed(sb, escRegra, l.id, 24))) {
-          await alertDiretoria(
-            `🚨 Cliente sem resposta +${cfg.sla_resposta_whatsapp_escalar_horas}h úteis\n\n` +
-            `Cliente: ${l.company}\n${crmLeadLink(l.id)}`,
+          await registrarSemDiretoria(
+            `Cliente sem resposta +${cfg.sla_resposta_whatsapp_escalar_horas}h úteis — ${l.company}`,
             { regra: escRegra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id },
           );
           await log(sb, {
             regra: escRegra, leadId: l.id, vendedorId: l.owner_id,
-            acao: "diretoria notificada",
+            acao: "escalação registrada (sem grupo)",
           });
           stats.a3_escalado++;
         }

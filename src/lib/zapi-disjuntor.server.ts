@@ -20,14 +20,17 @@ async function admin() {
   return supabaseAdmin;
 }
 
-async function alertarInterno(texto: string) {
+/**
+ * Sinal técnico do disjuntor: registrado em `falhas_sistema` (tela "Falhas do
+ * sistema"). Não vai mais para o grupo do Telegram da diretoria — é ruído
+ * técnico no canal errado. Nunca lança.
+ */
+async function registrarSinalTecnico(texto: string, contexto: Record<string, unknown>) {
   try {
-    const chatId = (process.env.TELEGRAM_CHAT_DIRETORIA ?? "").trim();
-    if (!chatId) return;
-    const { sendTelegramText } = await import("./telegram-send.server");
-    await sendTelegramText(chatId, texto, "disjuntor");
+    const { registrarFalhaAdmin } = await import("./falhas.server");
+    await registrarFalhaAdmin("whatsapp.disjuntor", texto, contexto);
   } catch (e) {
-    console.error("[disjuntor] falha ao alertar:", e instanceof Error ? e.message : String(e));
+    console.error("[disjuntor] falha ao registrar sinal:", e instanceof Error ? e.message : String(e));
   }
 }
 
@@ -68,8 +71,9 @@ export async function abrirDisjuntor(motivo: string): Promise<void> {
       { onConflict: "chave" },
     );
     console.warn(`[disjuntor] ABERTO motivo=${motivo} ate=${pausadoAte}`);
-    await alertarInterno(
-      `DISJUNTOR ABERTO — envios automaticos do WhatsApp pausados por 30 minutos.\nMotivo: ${motivo}\nRetorno previsto: ${pausadoAte}\nhttps://crm.inplastic.com.br/canais`,
+    await registrarSinalTecnico(
+      "Disjuntor ABERTO — envios automáticos do WhatsApp pausados por 30 minutos.",
+      { estado: "aberto", motivo, pausado_ate: pausadoAte },
     );
   } catch (e) {
     console.error("[disjuntor] falha ao abrir:", e instanceof Error ? e.message : String(e));
@@ -89,8 +93,9 @@ export async function fecharDisjuntor(motivo: string): Promise<void> {
       { onConflict: "chave" },
     );
     console.log(`[disjuntor] FECHADO motivo=${motivo}`);
-    await alertarInterno(
-      `DISJUNTOR FECHADO — envios automaticos do WhatsApp liberados novamente.\nMotivo: ${motivo}`,
+    await registrarSinalTecnico(
+      "Disjuntor FECHADO — envios automáticos do WhatsApp liberados novamente.",
+      { estado: "fechado", motivo },
     );
   } catch (e) {
     console.error("[disjuntor] falha ao fechar:", e instanceof Error ? e.message : String(e));
