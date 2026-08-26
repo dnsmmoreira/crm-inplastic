@@ -4,7 +4,7 @@
  *
  * Server-only. Usa o client admin (bypassa RLS) — nunca importar no cliente.
  */
-import { notifyOwner, notifyDiretoria, crmLeadLink } from "@/lib/xerife/notify.server";
+import { notifyOwner, crmLeadLink } from "@/lib/xerife/notify.server";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SB = any;
