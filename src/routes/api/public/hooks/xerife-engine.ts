@@ -230,6 +230,21 @@ async function runEngine(
     if (dryRun) return;
     await notifyDiretoria(msg);
   };
+  /**
+   * Registra o evento no plano/simulador e em `xerife_log`, SEM disparar para o
+   * grupo do Telegram da diretoria. Usado nas escalações A1/A3, que já geram
+   * tarefa e notificação individual para o vendedor responsável.
+   */
+  const registrarSemDiretoria = async (
+    msg: string,
+    ctx: { regra: string; lead_id: string; lead_company: string | null; owner_id: string | null },
+  ) => {
+    plan.push({
+      regra: ctx.regra, lead_id: ctx.lead_id, lead_company: ctx.lead_company,
+      owner_id: ctx.owner_id, tipo: "escalacao", titulo: "Escalação registrada (sem grupo)",
+      descricao: msg, motivo: msg, prioridade: 0, acao: "registrar_escalacao",
+    });
+  };
   const marcarEsfriando = async (leadId: string, company: string | null, ownerId: string | null, regra: string) => {
     plan.push({
       regra, lead_id: leadId, lead_company: company, owner_id: ownerId,
