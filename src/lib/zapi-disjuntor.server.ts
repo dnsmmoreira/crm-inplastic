@@ -20,14 +20,17 @@ async function admin() {
   return supabaseAdmin;
 }
 
-async function alertarInterno(texto: string) {
+/**
+ * Sinal técnico do disjuntor: registrado em `falhas_sistema` (tela "Falhas do
+ * sistema"). Não vai mais para o grupo do Telegram da diretoria — é ruído
+ * técnico no canal errado. Nunca lança.
+ */
+async function registrarSinalTecnico(texto: string, contexto: Record<string, unknown>) {
   try {
-    const chatId = (process.env.TELEGRAM_CHAT_DIRETORIA ?? "").trim();
-    if (!chatId) return;
-    const { sendTelegramText } = await import("./telegram-send.server");
-    await sendTelegramText(chatId, texto, "disjuntor");
+    const { registrarFalhaAdmin } = await import("./falhas.server");
+    await registrarFalhaAdmin("whatsapp.disjuntor", texto, contexto);
   } catch (e) {
-    console.error("[disjuntor] falha ao alertar:", e instanceof Error ? e.message : String(e));
+    console.error("[disjuntor] falha ao registrar sinal:", e instanceof Error ? e.message : String(e));
   }
 }
 
