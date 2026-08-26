@@ -545,7 +545,7 @@ function PropostaDetalhe() {
               ) : (
                 <Send className="h-4 w-4" />
               )}
-              {enviarWhatsMut.isPending ? "Enviando..." : "Enviar"}
+              {enviarWhatsMut.isPending ? "Enviando..." : "Enviar por WhatsApp"}
             </Button>
           )}
 
