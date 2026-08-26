@@ -238,11 +238,9 @@ export async function runWatchdogConversa(
           `🔔 Lead novo do WhatsApp (watchdog)\n\nCliente: ${company}\nTelefone: ${conv.phone}\nA IA ficou +${cfg.watchdog_conversa_ia_min} min úteis sem avançar.\n${crmLeadLink(lead.id)}`,
         );
         if (ok) stats.notificados++;
-      } else {
-        await notifyDiretoria(
-          `⚠️ Watchdog: conversa parada virou lead SEM vendedor\n\nCliente: ${company}\nTelefone: ${conv.phone}\nMotivo: ${erroFila ?? "nenhum vendedor ativo na fila"}\n${crmLeadLink(lead.id)}`,
-        );
       }
+      // Sem vendedor: fica registrado em xerife_log/`stats.sem_vendedor` e no
+      // painel — não vai mais para o grupo do Telegram da diretoria.
 
       await logAction(sb, {
         regra: REGRA,
