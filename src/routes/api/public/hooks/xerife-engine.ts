@@ -94,7 +94,7 @@ export type XerifePlanItem = {
   descricao: string;
   motivo: string;
   prioridade: number;
-  acao: "criar_tarefa" | "notificar_diretoria" | "marcar_esfriando";
+  acao: "criar_tarefa" | "notificar_diretoria" | "marcar_esfriando" | "registrar_escalacao";
 };
 
 type Cfg = {
