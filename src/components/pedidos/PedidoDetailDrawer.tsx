@@ -169,7 +169,20 @@ function PedidoDetailBody({
             </div>
           </SheetDescription>
         </div>
+        <div className="pt-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            disabled={duplicando}
+            onClick={() => void duplicarPedido(pedido.id)}
+          >
+            <Copy className="h-3.5 w-3.5" />
+            {duplicando ? "Duplicando…" : "Duplicar em nova proposta"}
+          </Button>
+        </div>
       </SheetHeader>
+
 
       <ScrollArea className="flex-1">
         <div className="p-6 space-y-6">
