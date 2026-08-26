@@ -410,6 +410,7 @@ function PipelinePage() {
         <div className="-mx-4 min-h-0 flex-1 overflow-auto px-4 md:-mx-8 md:px-8">
           <div className="flex gap-4 pb-4">
             {BOARD_STAGES.map((stage) =>
+              stage.id === "perdido" && !mostrarPerdidos ? null :
               PROPOSAL_STAGES.includes(stage.id) ? (
                 <ProposalColumn
                   key={stage.id}
