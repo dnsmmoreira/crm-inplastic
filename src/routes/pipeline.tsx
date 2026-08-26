@@ -66,6 +66,8 @@ function PipelinePage() {
   const [lostTarget, setLostTarget] = useState<{ leadId: string; company: string } | null>(null);
   // Fase 3: por padrão, oculta ganhos que já viraram pedido operacional (não deleta nada).
   const [mostrarGanhosCompletos, setMostrarGanhosCompletos] = useState(false);
+  // Coluna Perdido volta ao quadro, oculta por padrão para não poluir.
+  const [mostrarPerdidos, setMostrarPerdidos] = useState(false);
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const [selectMode, setSelectMode] = useState(false);
