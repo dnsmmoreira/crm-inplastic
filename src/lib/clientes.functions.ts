@@ -816,7 +816,10 @@ export async function garantirClienteDoLead(
     return { ok: false, erros: ["Preencha a razão social ou o nome da empresa antes de marcar como Ganho."] };
   }
 
+  const end = achatarEnderecoLead(lead);
+
   const res = await criarClienteCore(supabase, userId, {
+
     tipo_pessoa: tipo,
     cnpj: tipo === "PJ" ? digits : "",
     cpf: tipo === "PF" ? digits : null,
