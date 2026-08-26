@@ -294,7 +294,7 @@ async function runEngine(
           }
           await log(sb, {
             regra, leadId: l.id, vendedorId: (newOwner as string) ?? null,
-            acao: rpcErr ? "atribuição falhou → diretoria notificada" : "atribuído via round-robin",
+            acao: rpcErr ? "atribuição falhou → registrada em Falhas do sistema" : "atribuído via round-robin",
             payload: { sla_min: cfg.sla_lead_orfao_min, created_at: l.created_at, auto: true, erro: rpcErr?.message ?? null },
           });
         }
