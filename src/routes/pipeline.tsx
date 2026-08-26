@@ -380,6 +380,18 @@ function PipelinePage() {
               ? "Ocultar ganhos c/ pedido"
               : `Mostrar ganhos c/ pedido${ganhosOcultos > 0 ? ` (${ganhosOcultos})` : ""}`}
           </Toggle>
+          <Toggle
+            pressed={mostrarPerdidos}
+            onPressedChange={setMostrarPerdidos}
+            size="sm"
+            className="h-7 gap-1 text-xs data-[state=on]:bg-destructive/15 data-[state=on]:text-destructive"
+            title="Leads marcados como Perdido. Ficam ocultos por padrão; os dados permanecem no banco."
+          >
+            <X className="h-3 w-3" />
+            {mostrarPerdidos
+              ? "Ocultar perdidos"
+              : `Mostrar perdidos${byStage.perdido.length > 0 ? ` (${byStage.perdido.length})` : ""}`}
+          </Toggle>
           <ArrowDownUp className="h-3.5 w-3.5 text-muted-foreground" />
           <Select value={sortMode} onValueChange={(v) => setSortMode(v as SortMode)}>
             <SelectTrigger className="h-7 w-[200px] text-xs">
