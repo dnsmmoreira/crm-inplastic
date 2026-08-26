@@ -200,6 +200,15 @@ export const getPropostaPublica = createServerFn({ method: "POST" })
 
 const LINK_BASE = "https://crm.inplastic.com.br/proposta-publica";
 
+/** Envia o link da proposta pública ao cliente por e-mail. */
+export const enviarPropostaEmail = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) => z.object({ propostaId: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    const { enviarPropostaEmailImpl } = await import("./propostas-email.server");
+    return enviarPropostaEmailImpl(context.supabase, data.propostaId, context.userId);
+  });
+
 /** Envia o link da proposta pública ao cliente por WhatsApp (janela de 24h). */
 export const enviarPropostaWhatsapp = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

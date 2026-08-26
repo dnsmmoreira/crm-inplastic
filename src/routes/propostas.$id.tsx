@@ -1,7 +1,7 @@
 import { MargemPropostaCard } from "@/components/arena/MargemPropostaCard";
 import { createFileRoute, Link, useNavigate, useBlocker } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Plus, Trash2, Printer, RefreshCw, Send, CheckCircle2, XCircle, Check, ChevronsUpDown, Search, AlertCircle, Lock, Unlock, ShieldAlert } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Printer, RefreshCw, Send, CheckCircle2, XCircle, Check, ChevronsUpDown, Search, AlertCircle, Lock, Unlock, ShieldAlert, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { format } from "date-fns";
@@ -41,7 +41,7 @@ import { gerarPedidoOmie } from "@/lib/omie.functions";
 import { formatDocumentoCliente } from "@/lib/clientes";
 import { getVendedorDaProposta, type VendedorContato, type ClienteRow } from "@/lib/clientes.functions";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { enviarPropostaWhatsapp } from "@/lib/propostas.functions";
+import { enviarPropostaWhatsapp, enviarPropostaEmail } from "@/lib/propostas.functions";
 
 import { formatCep } from "@/lib/format";
 import { useServerFn } from "@tanstack/react-start";
@@ -364,7 +364,16 @@ function PropostaDetalhe() {
     onError: (err: Error) => toast.error(err.message),
   });
 
-
+  // Envio real da proposta por e-mail (mesmo link da página pública).
+  const enviarEmailFn = useServerFn(enviarPropostaEmail);
+  const enviarEmailMut = useMutation({
+    mutationFn: (propostaId: string) => enviarEmailFn({ data: { propostaId } }),
+    onSuccess: (r: { email?: string }, propostaId: string) => {
+      setStatus(propostaId, "enviada");
+      toast.success(`Proposta enviada por e-mail${r?.email ? ` para ${r.email}` : ""}!`);
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
 
   /**
    * Troca a condição de pagamento: descarta as parcelas anteriores (marcando-as
@@ -538,7 +547,22 @@ function PropostaDetalhe() {
               )}
               {enviarWhatsMut.isPending ? "Enviando..." : "Enviar"}
             </Button>
+          )}
 
+          {!isPedido && (
+            <Button
+              variant="outline"
+              className="gap-2"
+              disabled={enviarEmailMut.isPending}
+              onClick={() => enviarEmailMut.mutate(proposal.id)}
+            >
+              {enviarEmailMut.isPending ? (
+                <RefreshCw className="h-4 w-4 animate-spin" />
+              ) : (
+                <Mail className="h-4 w-4" />
+              )}
+              {enviarEmailMut.isPending ? "Enviando..." : "Enviar por e-mail"}
+            </Button>
           )}
 
           {/* Fechar pedido: admin gera direto; vendedor solicita aprovação. */}
