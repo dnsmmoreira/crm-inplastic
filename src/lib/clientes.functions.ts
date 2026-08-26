@@ -665,14 +665,19 @@ export async function autoMatchClienteDoLead(
   }
   if (ors.length === 0) return null;
 
-  const { data, error } = await supabase
-    .from("clientes")
-    .select("id, cnpj, cpf, email, telefone, telefone2, razao_social, nome_fantasia, ativo")
-    .or(ors.join(","))
-    .limit(20);
-  if (error) return null;
+  let rows: Array<Record<string, unknown>> = [];
+  try {
+    const { data, error } = await supabase
+      .from("clientes")
+      .select("id, cnpj, cpf, email, telefone, telefone2, razao_social, nome_fantasia, ativo")
+      .or(ors.join(","))
+      .limit(20);
+    if (error) return null;
+    rows = (data ?? []) as Array<Record<string, unknown>>;
+  } catch {
+    return null;
+  }
 
-  const rows = (data ?? []) as Array<Record<string, unknown>>;
   const matches = rows.filter((c) => {
     if (c["ativo"] === false) return false;
     const doc = digitsOf(c["cnpj"]) || digitsOf(c["cpf"]);
