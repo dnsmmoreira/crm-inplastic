@@ -1,6 +1,7 @@
 import { MargemPropostaCard } from "@/components/arena/MargemPropostaCard";
 import { createFileRoute, Link, useNavigate, useBlocker } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { useDuplicarProposta } from "@/hooks/use-duplicar-proposta";
 import { ArrowLeft, Plus, Trash2, Printer, RefreshCw, Send, CheckCircle2, XCircle, Check, ChevronsUpDown, Search, AlertCircle, Lock, Unlock, ShieldAlert, Mail, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
