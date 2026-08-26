@@ -22,8 +22,8 @@ type UrgenteBody = {
 
 /**
  * Endpoint chamado pelo n8n quando um lead é qualificado como URGENTE
- * fora do horário comercial. Envia mensagem via Z-API para o número da
- * diretoria (secret WHATSAPP_DIRETORIA) e registra em lead_ai_actions.
+ * fora do horário comercial. Registra o lead e a escalação em
+ * lead_ai_actions (sem alerta para o grupo da diretoria).
  * Header obrigatório: x-n8n-secret (validado contra N8N_SECRET).
  */
 export const Route = createFileRoute("/api/public/hooks/ia-urgente")({
