@@ -133,7 +133,8 @@ function PipelinePage() {
     const q = search.toLowerCase();
     return leads.filter((l) => {
       if (HIDDEN_STAGES.includes(l.stage)) return false;
-      if (leadsComProposta.has(l.id)) return false;
+      // Leads perdidos aparecem na própria coluna mesmo se tiveram proposta.
+      if (l.stage !== "perdido" && leadsComProposta.has(l.id)) return false;
       if (q && !(l.company.toLowerCase().includes(q) ||
         l.contactName.toLowerCase().includes(q) ||
         l.product.toLowerCase().includes(q))) return false;
