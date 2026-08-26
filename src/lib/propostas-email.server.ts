@@ -89,25 +89,25 @@ export async function enviarPropostaEmailImpl(
     "Inplastic";
 
   const link = `${LINK_BASE}/${proposta.id}`;
-  const result = await sendTemplateEmail("proposta", destinatario, {
-    idempotencyKey: `proposta-${proposta.id}-${proposta.sent_at ?? "novo"}`,
-    templateData: {
-      numero: proposta.number,
-      cliente: nomeCliente ?? "Cliente",
-      contato: lead.contact_name ?? "",
-      total: brl(total),
-      validade: proposta.validity_days ? `${proposta.validity_days} dias` : "",
-      link,
-      vendedor: (vendedorRes.data as { name?: string } | null)?.name ?? "",
-      emitente,
-    },
+  const dados = {
+    numero: String(proposta.number ?? ""),
+    cliente: nomeCliente ?? "Cliente",
+    contato: lead.contact_name ?? "",
+    total: brl(total),
+    validade: proposta.validity_days ? `${proposta.validity_days} dias` : "",
+    link,
+    vendedor: (vendedorRes.data as { name?: string } | null)?.name ?? "",
+    emitente,
+  };
+
+  const { sendResendEmail, propostaEmailHtml, propostaEmailText } = await import("./resend-send.server");
+  await sendResendEmail({
+    to: destinatario,
+    subject: `Proposta comercial nº ${dados.numero} — ${dados.emitente}`,
+    html: propostaEmailHtml(dados),
+    text: propostaEmailText(dados),
   });
 
-  if (!result.sent) {
-    throw new Error(
-      "O e-mail deste destinatário está bloqueado (descadastro ou retorno anterior). Envie por outro canal.",
-    );
-  }
 
   const patch: { status: "enviada"; sent_at?: string } = { status: "enviada" };
   if (!proposta.sent_at) patch.sent_at = new Date().toISOString();
