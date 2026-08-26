@@ -621,7 +621,86 @@ async function mensagemClienteDeOutroVendedor(
  * - Caso contrário, cria o cliente pelo MESMO fluxo de `createCliente`.
  * Opera com o client do usuário autenticado → respeita RLS (vendedor_id/owner_id).
  */
+/** Normaliza texto para comparação exata (case/acentos/espaços). */
+function normalizeNome(v: unknown): string {
+  return String(v ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toUpperCase();
+}
+
+function digitsOf(v: unknown): string {
+  return String(v ?? "").replace(/\D/g, "");
+}
+
+/**
+ * Fallback de auto-match: acha um cliente já cadastrado que corresponda ao lead
+ * por telefone, e-mail exato ou razão social/nome fantasia exatos.
+ * Retorna o id APENAS quando há exatamente 1 candidato (sem ambiguidade).
+ */
+export async function autoMatchClienteDoLead(
+  supabase: LooseDb,
+  lead: Record<string, unknown>,
+): Promise<string | null> {
+  const telefones = [lead["phone"], lead["telefone_whatsapp"], lead["whatsapp"], lead["telefone2"]]
+    .map((t) => digitsOf(t))
+    .filter((t) => t.length >= 8)
+    .map((t) => t.slice(-8));
+  const email = String(lead["email"] ?? "").trim().toLowerCase();
+  const nomes = [lead["company"], lead["razao_social"], lead["nome_fantasia"]]
+    .map((n) => normalizeNome(n))
+    .filter((n) => n.length >= 3);
+
+  const ors: string[] = [];
+  for (const t of telefones) {
+    const tail = t.slice(-4);
+    ors.push(`telefone.ilike.%${tail}%`, `telefone2.ilike.%${tail}%`);
+  }
+  if (email) ors.push(`email.ilike.${email}`);
+  for (const n of nomes) {
+    const safe = n.replace(/[,()]/g, " ");
+    ors.push(`razao_social.ilike.${safe}`, `nome_fantasia.ilike.${safe}`);
+  }
+  if (ors.length === 0) return null;
+
+  let rows: Array<Record<string, unknown>> = [];
+  try {
+    const { data, error } = await supabase
+      .from("clientes")
+      .select("id, cnpj, cpf, email, telefone, telefone2, razao_social, nome_fantasia, ativo")
+      .or(ors.join(","))
+      .limit(20);
+    if (error) return null;
+    rows = (data ?? []) as Array<Record<string, unknown>>;
+  } catch {
+    return null;
+  }
+
+  const matches = rows.filter((c) => {
+    if (c["ativo"] === false) return false;
+    const doc = digitsOf(c["cnpj"]) || digitsOf(c["cpf"]);
+    if (doc.length !== 14 && doc.length !== 11) return false;
+    const telOk = telefones.some((t) =>
+      [c["telefone"], c["telefone2"]].some((ct) => {
+        const d = digitsOf(ct);
+        return d.length >= 8 && d.slice(-8) === t;
+      }),
+    );
+    const mailOk = !!email && String(c["email"] ?? "").trim().toLowerCase() === email;
+    const nomeOk = nomes.some(
+      (n) => normalizeNome(c["razao_social"]) === n || normalizeNome(c["nome_fantasia"]) === n,
+    );
+    return telOk || mailOk || nomeOk;
+  });
+
+  const ids = Array.from(new Set(matches.map((c) => String(c["id"]))));
+  return ids.length === 1 ? ids[0] : null;
+}
+
 export async function garantirClienteDoLead(
+
   supabase: LooseDb,
   userId: string,
   leadId: string,
@@ -643,7 +722,8 @@ export async function garantirClienteDoLead(
 
   // (A) Documento obrigatório e válido — mesma validação do cadastro de cliente.
   const digits = onlyDigitsCnpj(String(lead.cnpj ?? ""));
-  const DOC_MSG = "Preencha o CNPJ ou CPF do contato antes de marcar como Ganho.";
+  const DOC_MSG =
+    "Este lead ainda não tem um cliente vinculado com CNPJ ou CPF cadastrado. Abra o cadastro de cliente e vincule ou informe o documento antes de marcar como Ganho.";
   let tipo: TipoPessoa;
   if (digits.length === 14) {
     if (!isValidCnpj(digits)) return { ok: false, erros: ["CNPJ inválido (dígitos verificadores)."] };
@@ -652,8 +732,26 @@ export async function garantirClienteDoLead(
     if (!isValidCpf(digits)) return { ok: false, erros: ["CPF inválido (dígitos verificadores)."] };
     tipo = "PF";
   } else {
+    // (A2) Fallback: tenta achar por telefone / e-mail / razão social um cliente
+    // já cadastrado. Só vincula quando há EXATAMENTE 1 candidato sem ambiguidade.
+    const auto = await autoMatchClienteDoLead(supabase, lead as Record<string, unknown>);
+    if (auto) {
+      const { error: linkErr } = await supabase
+        .from("leads")
+        .update({ cliente_id: auto })
+        .eq("id", leadId);
+      if (linkErr) return { ok: false, erros: [linkErr.message] };
+      await registrarAuditoriaPromocao(supabase, {
+        leadId,
+        clienteId: auto,
+        criado: false,
+        userId,
+      });
+      return { ok: true, clienteId: auto, criado: false };
+    }
     return { ok: false, erros: [DOC_MSG] };
   }
+
 
   // (B1) Já existe cliente com o mesmo documento? → apenas vincula.
   let existenteId: string | null = null;

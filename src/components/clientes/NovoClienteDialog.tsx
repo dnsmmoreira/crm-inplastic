@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { isValidCnpj, onlyDigitsCnpj, friendlyCnpjError } from "@/lib/cnpj";
 import { friendlyClienteError } from "@/lib/clientes";
 import { lookupCnpj } from "@/lib/cnpj.functions";
-import { createCliente, listVendedores, reativarCliente, type ClienteRow } from "@/lib/clientes.functions";
+import { createCliente, listVendedores, reativarCliente, vincularClienteAoLead, type ClienteRow } from "@/lib/clientes.functions";
 import { ClienteFormFields, emptyCliente, type ClienteFormState } from "./ClienteFormFields";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -22,10 +22,12 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   cnpjInicial?: string;
+  /** Quando aberto a partir de uma tela de lead, vincula o cliente criado ao lead. */
+  leadId?: string | null;
   onClienteCriado?: (c: ClienteRow) => void;
 };
 
-export function NovoClienteDialog({ open, onOpenChange, cnpjInicial, onClienteCriado }: Props) {
+export function NovoClienteDialog({ open, onOpenChange, cnpjInicial, leadId, onClienteCriado }: Props) {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const [state, setState] = useState<ClienteFormState>(() => emptyCliente(cnpjInicial ?? ""));
@@ -35,6 +37,16 @@ export function NovoClienteDialog({ open, onOpenChange, cnpjInicial, onClienteCr
   const lookupFn = useServerFn(lookupCnpj);
   const createFn = useServerFn(createCliente);
   const listVendedoresFn = useServerFn(listVendedores);
+  const vincularFn = useServerFn(vincularClienteAoLead);
+
+  const vincularAoLead = async (clienteId: string) => {
+    if (!leadId) return;
+    try {
+      await vincularFn({ data: { leadId, clienteId } });
+    } catch {
+      toast.error("Cliente salvo, mas não foi possível vinculá-lo ao lead.");
+    }
+  };
 
   const vendedoresQ = useQuery({
     queryKey: ["vendedores"],
@@ -100,6 +112,7 @@ export function NovoClienteDialog({ open, onOpenChange, cnpjInicial, onClienteCr
   const doReativar = async (id: string) => {
     try {
       const cli = await reativarFn({ data: { id } });
+      await vincularAoLead(cli.id);
       toast.success("Cliente reativado");
       onClienteCriado?.(cli);
       onOpenChange(false);
@@ -140,6 +153,7 @@ export function NovoClienteDialog({ open, onOpenChange, cnpjInicial, onClienteCr
       } });
 
       if (res.ok) {
+        await vincularAoLead(res.cliente.id);
         toast.success("Cliente cadastrado");
         onClienteCriado?.(res.cliente);
         onOpenChange(false);
