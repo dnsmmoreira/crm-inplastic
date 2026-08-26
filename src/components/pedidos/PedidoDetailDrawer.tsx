@@ -19,7 +19,9 @@ import {
   Wallet,
   History as HistoryIcon,
   MessageSquareText,
+  Copy,
 } from "lucide-react";
+
 import {
   Sheet,
   SheetContent,
