@@ -32,6 +32,25 @@ export type EntradaWhatsapp = {
   tag: string;
 };
 
+/**
+ * Gatilhos de opt-out (lista inalterada). A correspondência é por PALAVRA
+ * INTEIRA no início da mensagem e só vale para mensagens curtas — antes era
+ * `startsWith` solto, o que fazia "parece que..." casar com "pare".
+ */
+const GATILHOS_OPTOUT = ["sair", "parar", "pare", "descadastrar", "nao quero", "me tira"];
+const MAX_PALAVRAS_OPTOUT = 6;
+
+/** Recebe o texto JÁ normalizado (minúsculas, sem acentos). */
+export function ehPedidoDeOptout(textoNormalizado: string) {
+  const txt = String(textoNormalizado ?? "")
+    .replace(/[.!?,;:]+$/g, "")
+    .trim();
+  if (!txt) return false;
+  const palavras = txt.split(/\s+/).length;
+  if (palavras > MAX_PALAVRAS_OPTOUT) return false;
+  return GATILHOS_OPTOUT.some((g) => new RegExp(`^${g}\\b`).test(txt));
+}
+
 export type ResultadoEntrada = Record<string, unknown>;
 
 export async function processarEntradaWhatsapp(
