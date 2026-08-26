@@ -1,4 +1,5 @@
 import type { ComponentType } from 'react'
+import { template as propostaTemplate } from './proposta'
 
 export interface TemplateEntry {
   component: ComponentType<any>
