@@ -71,8 +71,9 @@ export async function abrirDisjuntor(motivo: string): Promise<void> {
       { onConflict: "chave" },
     );
     console.warn(`[disjuntor] ABERTO motivo=${motivo} ate=${pausadoAte}`);
-    await alertarInterno(
-      `DISJUNTOR ABERTO — envios automaticos do WhatsApp pausados por 30 minutos.\nMotivo: ${motivo}\nRetorno previsto: ${pausadoAte}\nhttps://crm.inplastic.com.br/canais`,
+    await registrarSinalTecnico(
+      "Disjuntor ABERTO — envios automáticos do WhatsApp pausados por 30 minutos.",
+      { estado: "aberto", motivo, pausado_ate: pausadoAte },
     );
   } catch (e) {
     console.error("[disjuntor] falha ao abrir:", e instanceof Error ? e.message : String(e));
