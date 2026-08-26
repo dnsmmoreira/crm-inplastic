@@ -34,11 +34,11 @@ import { gerarPedidoInterno } from "@/lib/omie.functions";
 type SortMode = "default" | "urgency" | "urgency-desc";
 const CARDS_PER_PAGE = 15;
 /**
- * Perdido saiu do quadro (a base de recontato vive na tela /leads).
- * Qualificação e Negociação também saíram: Negociação virou uma tag no card da
- * proposta e Qualificação deixou de existir no funil.
+ * Qualificação e Negociação saíram do quadro: Negociação virou uma tag no card
+ * da proposta e Qualificação deixou de existir no funil.
+ * Perdido continua no quadro, mas oculto atrás de um toggle.
  */
-const HIDDEN_STAGES: StageId[] = ["perdido", "qualificacao", "negociacao"];
+const HIDDEN_STAGES: StageId[] = ["qualificacao", "negociacao"];
 const BOARD_STAGES = STAGES.filter((s) => !HIDDEN_STAGES.includes(s.id));
 /** Colunas cujos cards são PROPOSTAS (não leads). */
 const PROPOSAL_STAGES: StageId[] = ["proposta", "ganho"];
