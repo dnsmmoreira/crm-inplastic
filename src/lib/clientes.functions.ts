@@ -884,3 +884,49 @@ export async function registrarAuditoriaPromocao(
   }
 }
 
+
+/**
+ * `leads.endereco` pode vir como texto simples OU como jsonb objeto
+ * ({logradouro, numero, complemento, bairro, cep, cidade, uf}).
+ * Achata os dois formatos nos campos planos do cadastro de cliente,
+ * dando prioridade às colunas planas do lead quando existirem.
+ */
+export function achatarEnderecoLead(lead: Record<string, unknown>): {
+  endereco: string | null;
+  numero: string | null;
+  complemento: string | null;
+  bairro: string | null;
+  cep: string | null;
+  cidade: string | null;
+  estado: string | null;
+} {
+  const raw = lead.endereco;
+  const obj: Record<string, unknown> =
+    raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
+  const isObj = Object.keys(obj).length > 0;
+
+  const txt = (v: unknown): string | null => {
+    if (v === null || v === undefined) return null;
+    const s = String(v).trim();
+    return s === "" ? null : s;
+  };
+  const pick = (flat: unknown, ...keys: string[]): string | null => {
+    const f = txt(flat);
+    if (f) return f;
+    for (const k of keys) {
+      const v = txt(obj[k]);
+      if (v) return v;
+    }
+    return null;
+  };
+
+  return {
+    endereco: isObj ? pick(null, "logradouro", "endereco", "rua") : txt(raw),
+    numero: pick(lead.numero, "numero"),
+    complemento: pick(lead.complemento, "complemento"),
+    bairro: pick(lead.bairro, "bairro"),
+    cep: pick(lead.cep, "cep"),
+    cidade: pick(lead.cidade, "cidade"),
+    estado: pick(lead.estado, "uf", "estado"),
+  };
+}
