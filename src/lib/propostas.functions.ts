@@ -309,3 +309,21 @@ export const enviarPropostaWhatsapp = createServerFn({ method: "POST" })
 
     return { ok: true as const };
   });
+
+/** Duplica uma proposta existente em nova proposta rascunho. */
+export const duplicarProposta = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) => z.object({ propostaId: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    const { duplicarPropostaImpl } = await import("./propostas-duplicar.server");
+    return duplicarPropostaImpl(context.supabase as never, data.propostaId, context.userId);
+  });
+
+/** Duplica um pedido em nova proposta rascunho (editável). */
+export const duplicarPedidoEmProposta = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) => z.object({ pedidoId: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    const { duplicarPedidoImpl } = await import("./propostas-duplicar.server");
+    return duplicarPedidoImpl(context.supabase as never, data.pedidoId, context.userId);
+  });
