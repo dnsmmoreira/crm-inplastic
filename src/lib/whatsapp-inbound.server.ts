@@ -133,9 +133,7 @@ export async function processarEntradaWhatsapp(
   // 5a) Opt-out pedido pelo contato ("sair", "parar", ...).
   {
     const { normalizarTexto } = await import("@/lib/whatsapp-send.server");
-    const txt = normalizarTexto(message);
-    const gatilhos = ["sair", "parar", "pare", "descadastrar", "nao quero", "me tira"];
-    if (gatilhos.some((g) => txt === g || txt.startsWith(g))) {
+    if (ehPedidoDeOptout(normalizarTexto(message))) {
       const { error: ooErr } = await supabaseAdmin
         .from("whatsapp_optout")
         .upsert({ phone, motivo: "pedido do contato" }, { onConflict: "phone" });
