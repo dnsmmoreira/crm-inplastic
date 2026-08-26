@@ -22,7 +22,7 @@ import {
   type BusinessWindow,
 } from "@/lib/xerife/businessTime.server";
 import { logAction } from "@/lib/xerife/dedupe.server";
-import { notifyOwner, notifyDiretoria, crmLeadLink } from "@/lib/xerife/notify.server";
+import { notifyOwner, crmLeadLink } from "@/lib/xerife/notify.server";
 
 export const REGRA = "watchdog_conversa_ia";
 export const REGRA_FRIA = "watchdog_conversa_fria";
