@@ -283,6 +283,8 @@ function PropostaDetalhe() {
 
   
   const isAdmin = useIsAdmin();
+  const { duplicando, duplicarProposta } = useDuplicarProposta();
+
   const currentUser = useCurrentUser();
   const approver = proposal?.approvedByUserId ? USERS.find((u) => u.id === proposal.approvedByUserId) : null;
   const editRequester = proposal?.editRequestedByUserId ? USERS.find((u) => u.id === proposal.editRequestedByUserId) : null;
