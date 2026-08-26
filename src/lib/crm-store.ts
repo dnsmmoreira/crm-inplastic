@@ -533,6 +533,7 @@ export type ProposalItem = {
   omieCodigoProduto?: number; // Código do produto no Omie (novo campo canônico)
   description: string; // snapshot
   sku: string;         // snapshot
+  ncm?: string;        // snapshot (código fiscal do produto)
   unit: ProductUnit;
   quantity: number;
   unitPrice: number;
@@ -1227,6 +1228,7 @@ export const useCrm = create<CrmState>()(
                       omieCodigoProduto: undefined,
                       description: product.name,
                       sku: product.sku,
+                      ncm: product.ncm || undefined,
                       unit: product.unit,
                       quantity,
                       unitPrice: product.defaultPrice,

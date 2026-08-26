@@ -813,6 +813,7 @@ function PropostaDetalhe() {
                 <TableRow>
                   <TableHead>Produto</TableHead>
                   <TableHead>SKU</TableHead>
+                  <TableHead>NCM</TableHead>
                   <TableHead>Un</TableHead>
                   <TableHead className="w-24">Qtd</TableHead>
                   <TableHead className="w-32">Preço un.</TableHead>
@@ -837,6 +838,7 @@ function PropostaDetalhe() {
                         />
                       </TableCell>
                       <TableCell className="font-mono text-xs">{it.sku}</TableCell>
+                      <TableCell className="font-mono text-xs">{it.ncm || "—"}</TableCell>
                       <TableCell>{it.unit}</TableCell>
                       <TableCell>
                         <Input
@@ -1696,6 +1698,7 @@ function PropostaDetalhe() {
               <th className="border p-1.5 text-left w-8">#</th>
               <th className="border p-1.5 text-left">Descrição do produto</th>
               <th className="border p-1.5 text-left">Código</th>
+              <th className="border p-1.5 text-left w-24">NCM</th>
               <th className="border p-1.5 text-center w-12">Un</th>
               <th className="border p-1.5 text-right w-20">Qtd.</th>
               <th className="border p-1.5 text-right w-28">Preço un.</th>
@@ -1708,6 +1711,7 @@ function PropostaDetalhe() {
                 <td className="border p-1.5">{idx + 1}</td>
                 <td className="border p-1.5">{it.description}</td>
                 <td className="border p-1.5 font-mono">{it.sku}</td>
+                <td className="border p-1.5 font-mono">{it.ncm || "—"}</td>
                 <td className="border p-1.5 text-center">{it.unit}</td>
                 <td className="border p-1.5 text-right">{it.quantity.toLocaleString("pt-BR")}</td>
                 <td className="border p-1.5 text-right">{formatBRL(it.unitPrice)}</td>
@@ -1715,7 +1719,7 @@ function PropostaDetalhe() {
               </tr>
             ))}
             {proposal.items.length === 0 && (
-              <tr><td colSpan={7} className="border p-3 text-center text-muted-foreground italic">Nenhum item adicionado.</td></tr>
+              <tr><td colSpan={8} className="border p-3 text-center text-muted-foreground italic">Nenhum item adicionado.</td></tr>
             )}
           </tbody>
         </table>

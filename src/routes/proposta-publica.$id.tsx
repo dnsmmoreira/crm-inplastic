@@ -122,6 +122,7 @@ function Conteudo({ p }: { p: PropostaPublica }) {
                 <th className="border p-1.5 text-left w-8">#</th>
                 <th className="border p-1.5 text-left">Descrição</th>
                 <th className="border p-1.5 text-left">Código</th>
+                <th className="border p-1.5 text-left w-24">NCM</th>
                 <th className="border p-1.5 text-center w-12">Un</th>
                 <th className="border p-1.5 text-right w-20">Qtd.</th>
                 <th className="border p-1.5 text-right w-28">Preço un.</th>
@@ -134,6 +135,7 @@ function Conteudo({ p }: { p: PropostaPublica }) {
                   <td className="border p-1.5">{i + 1}</td>
                   <td className="border p-1.5">{it.description ?? "—"}</td>
                   <td className="border p-1.5 font-mono">{it.sku ?? "—"}</td>
+                  <td className="border p-1.5 font-mono">{it.ncm ?? "—"}</td>
                   <td className="border p-1.5 text-center">{it.unit ?? "—"}</td>
                   <td className="border p-1.5 text-right">{it.quantity.toLocaleString("pt-BR")}</td>
                   <td className="border p-1.5 text-right">{brl(it.unit_price)}</td>
@@ -144,7 +146,7 @@ function Conteudo({ p }: { p: PropostaPublica }) {
               ))}
               {p.itens.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="border p-3 text-center italic text-slate-500">
+                  <td colSpan={8} className="border p-3 text-center italic text-slate-500">
                     Nenhum item.
                   </td>
                 </tr>

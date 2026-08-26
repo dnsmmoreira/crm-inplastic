@@ -20,6 +20,7 @@ function normalizePhoneBR(phone: string) {
 export type PropostaPublicaItem = {
   id: string;
   sku: string | null;
+  ncm: string | null;
   description: string | null;
   unit: string | null;
   quantity: number;
@@ -92,7 +93,7 @@ export const getPropostaPublica = createServerFn({ method: "POST" })
     const [itensRes, parcelasRes, emitterRes, condRes, leadRes] = await Promise.all([
       supabaseAdmin
         .from("proposta_itens")
-        .select("id, sku, description, unit, quantity, unit_price")
+        .select("id, sku, ncm, description, unit, quantity, unit_price")
         .eq("proposta_id", p.id)
         .order("position", { ascending: true }),
       supabaseAdmin
