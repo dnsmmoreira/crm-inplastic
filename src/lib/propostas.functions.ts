@@ -129,6 +129,7 @@ export const getPropostaPublica = createServerFn({ method: "POST" })
     const itens = (itensRes.data ?? []).map((i) => ({
       id: i.id,
       sku: i.sku ?? null,
+      ncm: i.ncm ?? null,
       description: i.description ?? null,
       unit: i.unit ?? null,
       quantity: Number(i.quantity) || 0,
