@@ -284,9 +284,12 @@ async function runEngine(
         if (!dryRun) {
           const { data: newOwner, error: rpcErr } = await sb.rpc("atribuir_proximo_vendedor", { _lead_id: l.id });
           if (rpcErr) {
-            await alertDiretoria(
-              `⚠️ Falha ao atribuir automaticamente lead órfão\n\nCliente: ${l.company}\nErro: ${rpcErr.message}\n${crmLeadLink(l.id)}`,
-              { regra, lead_id: l.id, lead_company: l.company, owner_id: null },
+            // Falha técnica: vai para "Falhas do sistema", não para o grupo.
+            const { registrarFalhaAdmin } = await import("@/lib/falhas.server");
+            await registrarFalhaAdmin(
+              "xerife.atribuicao",
+              `Falha ao atribuir automaticamente lead órfão: ${rpcErr.message}`,
+              { regra, lead_id: l.id, lead_company: l.company },
             );
           }
           await log(sb, {
