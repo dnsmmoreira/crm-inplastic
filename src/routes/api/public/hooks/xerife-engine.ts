@@ -358,14 +358,13 @@ async function runEngine(
       if (l.created_at && l.created_at < escalarIso) {
         const escRegra = "A1_escalado";
         if (!(await alreadyActed(sb, escRegra, l.id, 24))) {
-          await alertDiretoria(
-            `🚨 Lead sem contato há +${cfg.sla_primeiro_contato_escalar_min}min úteis\n\n` +
-            `Cliente: ${l.company}\nMotivo: vendedor não fez primeiro contato\n${crmLeadLink(l.id)}`,
+          await registrarSemDiretoria(
+            `Lead sem contato há +${cfg.sla_primeiro_contato_escalar_min}min úteis — ${l.company}`,
             { regra: escRegra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id },
           );
           await log(sb, {
             regra: escRegra, leadId: l.id, vendedorId: l.owner_id,
-            acao: "diretoria notificada",
+            acao: "escalação registrada (sem grupo)",
             payload: { sla_escalar_min: cfg.sla_primeiro_contato_escalar_min },
           });
           stats.a1_escalado++;
@@ -463,14 +462,13 @@ async function runEngine(
       if (l.ultima_msg_cliente_at < escalarIso) {
         const escRegra = "A3_escalado";
         if (!(await alreadyActed(sb, escRegra, l.id, 24))) {
-          await alertDiretoria(
-            `🚨 Cliente sem resposta +${cfg.sla_resposta_whatsapp_escalar_horas}h úteis\n\n` +
-            `Cliente: ${l.company}\n${crmLeadLink(l.id)}`,
+          await registrarSemDiretoria(
+            `Cliente sem resposta +${cfg.sla_resposta_whatsapp_escalar_horas}h úteis — ${l.company}`,
             { regra: escRegra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id },
           );
           await log(sb, {
             regra: escRegra, leadId: l.id, vendedorId: l.owner_id,
-            acao: "diretoria notificada",
+            acao: "escalação registrada (sem grupo)",
           });
           stats.a3_escalado++;
         }
