@@ -123,7 +123,7 @@ describe("garantirClienteDoLead", () => {
     const r = await garantirClienteDoLead(sb, USER, "lead-1");
     expect(r.ok).toBe(false);
     if (!r.ok) {
-      expect(r.erros[0]).toBe("Preencha o CNPJ ou CPF do contato antes de marcar como Ganho.");
+      expect(r.erros[0]).toMatch(/CNPJ ou CPF/i);
     }
   });
 

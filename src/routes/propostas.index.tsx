@@ -738,6 +738,7 @@ function NovaPropostaDialog({ open, onOpenChange }: { open: boolean; onOpenChang
       <NovoClienteDialog
         open={openNovo}
         onOpenChange={setOpenNovo}
+        leadId={selectedLeadId}
         onClienteCriado={(c) => {
           setOpenNovo(false);
           void criarPropostaComClienteNovo(c);
