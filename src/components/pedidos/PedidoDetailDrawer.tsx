@@ -146,6 +146,8 @@ function PedidoDetailBody({
   // Visão por PAPEL (independente da etapa): o servidor já zera os valores para
   // quem não é admin/financeiro/dono, aqui só escondemos as seções monetárias.
   const podeVerValores = pedido.pode_ver_valores;
+  const { duplicando, duplicarPedido } = useDuplicarProposta();
+
 
 
   return (
