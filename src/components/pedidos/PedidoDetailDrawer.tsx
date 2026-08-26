@@ -19,7 +19,9 @@ import {
   Wallet,
   History as HistoryIcon,
   MessageSquareText,
+  Copy,
 } from "lucide-react";
+
 import {
   Sheet,
   SheetContent,
@@ -45,6 +47,8 @@ import {
 import { cn } from "@/lib/utils";
 import { formatBRL } from "@/lib/crm-store";
 import { formatDateBr } from "@/lib/condicoes-comerciais";
+import { useDuplicarProposta } from "@/hooks/use-duplicar-proposta";
+
 import {
   getPedidoDetalhes,
   decidirAprovacao,
@@ -142,6 +146,8 @@ function PedidoDetailBody({
   // Visão por PAPEL (independente da etapa): o servidor já zera os valores para
   // quem não é admin/financeiro/dono, aqui só escondemos as seções monetárias.
   const podeVerValores = pedido.pode_ver_valores;
+  const { duplicando, duplicarPedido } = useDuplicarProposta();
+
 
 
   return (
@@ -169,7 +175,20 @@ function PedidoDetailBody({
             </div>
           </SheetDescription>
         </div>
+        <div className="pt-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            disabled={duplicando}
+            onClick={() => void duplicarPedido(pedido.id)}
+          >
+            <Copy className="h-3.5 w-3.5" />
+            {duplicando ? "Duplicando…" : "Duplicar em nova proposta"}
+          </Button>
+        </div>
       </SheetHeader>
+
 
       <ScrollArea className="flex-1">
         <div className="p-6 space-y-6">

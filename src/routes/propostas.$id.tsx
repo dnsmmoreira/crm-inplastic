@@ -1,7 +1,8 @@
 import { MargemPropostaCard } from "@/components/arena/MargemPropostaCard";
 import { createFileRoute, Link, useNavigate, useBlocker } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Plus, Trash2, Printer, RefreshCw, Send, CheckCircle2, XCircle, Check, ChevronsUpDown, Search, AlertCircle, Lock, Unlock, ShieldAlert, Mail } from "lucide-react";
+import { useDuplicarProposta } from "@/hooks/use-duplicar-proposta";
+import { ArrowLeft, Plus, Trash2, Printer, RefreshCw, Send, CheckCircle2, XCircle, Check, ChevronsUpDown, Search, AlertCircle, Lock, Unlock, ShieldAlert, Mail, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { format } from "date-fns";
@@ -283,6 +284,8 @@ function PropostaDetalhe() {
 
   
   const isAdmin = useIsAdmin();
+  const { duplicando, duplicarProposta } = useDuplicarProposta();
+
   const currentUser = useCurrentUser();
   const approver = proposal?.approvedByUserId ? USERS.find((u) => u.id === proposal.approvedByUserId) : null;
   const editRequester = proposal?.editRequestedByUserId ? USERS.find((u) => u.id === proposal.editRequestedByUserId) : null;
@@ -533,6 +536,16 @@ function PropostaDetalhe() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            className="gap-2"
+            disabled={duplicando}
+            onClick={() => void duplicarProposta(proposal.id)}
+          >
+            <Copy className="h-4 w-4" />
+            {duplicando ? "Duplicando..." : "Duplicar"}
+          </Button>
+
           {!isPedido && (
             <Button
               variant="outline"

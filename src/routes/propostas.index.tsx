@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, FileText, Search, Trash2, UserPlus, Loader2, Building2, Check, ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react";
+import { Plus, FileText, Search, Trash2, UserPlus, Loader2, Building2, Check, Copy, ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { lookupCnpj } from "@/lib/cnpj.functions";
 import { listClientes, vincularClienteAoLead } from "@/lib/clientes.functions";
@@ -21,6 +21,7 @@ import {
   type ProposalStatus,
 } from "@/lib/crm-store";
 import { useAuth } from "@/hooks/use-auth";
+import { useDuplicarProposta } from "@/hooks/use-duplicar-proposta";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -102,6 +103,7 @@ function PropostasPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
+  const { duplicando, duplicarProposta } = useDuplicarProposta();
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | ProposalStatus>("all");
   const [emitterFilter, setEmitterFilter] = useState<string>("all");
@@ -350,7 +352,20 @@ function PropostasPage() {
                     </TableCell>
 
                     <TableCell className="text-right">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        disabled={duplicando}
+                        title="Duplicar proposta"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void duplicarProposta(p.id);
+                        }}
+                      >
+                        <Copy className="h-3.5 w-3.5" />
+                      </Button>
                       {(() => {
+
                         const isLocked = (p.status === "aprovada" || p.status === "pedido") && !isAdmin;
                         return (
                           <Button
