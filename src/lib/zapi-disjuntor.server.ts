@@ -93,8 +93,9 @@ export async function fecharDisjuntor(motivo: string): Promise<void> {
       { onConflict: "chave" },
     );
     console.log(`[disjuntor] FECHADO motivo=${motivo}`);
-    await alertarInterno(
-      `DISJUNTOR FECHADO — envios automaticos do WhatsApp liberados novamente.\nMotivo: ${motivo}`,
+    await registrarSinalTecnico(
+      "Disjuntor FECHADO — envios automáticos do WhatsApp liberados novamente.",
+      { estado: "fechado", motivo },
     );
   } catch (e) {
     console.error("[disjuntor] falha ao fechar:", e instanceof Error ? e.message : String(e));
