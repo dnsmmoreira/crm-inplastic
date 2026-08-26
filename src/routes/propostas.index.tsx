@@ -350,7 +350,20 @@ function PropostasPage() {
                     </TableCell>
 
                     <TableCell className="text-right">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        disabled={duplicando}
+                        title="Duplicar proposta"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void duplicarProposta(p.id);
+                        }}
+                      >
+                        <Copy className="h-3.5 w-3.5" />
+                      </Button>
                       {(() => {
+
                         const isLocked = (p.status === "aprovada" || p.status === "pedido") && !isAdmin;
                         return (
                           <Button
