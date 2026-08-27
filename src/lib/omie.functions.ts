@@ -125,8 +125,6 @@ export const gerarPedidoInterno = createServerFn({ method: "POST" })
       return { ok: false, validacao_erros: promo.erros, proposta_id: propostaId };
     }
 
-    // Fluxo de aprovação (mantém o gate existente).
-    if (proposta.status !== "pedido") {
     // Fluxo de aprovação. Admin continua com bypass total (o client envia
     // `requer_aprovacao=false`); para o vendedor, o motivo/decisão são
     // calculados AQUI — nunca vindos do client.
