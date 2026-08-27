@@ -1199,9 +1199,14 @@ export const useCrm = create<CrmState>()(
         });
         if (insertError) {
           console.error("[createProposal] insert error:", insertError);
-          toast.error(`Erro ao salvar proposta: ${insertError.message}`);
-          throw insertError;
+          // Erro do Postgrest não é instanceof Error: reembala para que a
+          // mensagem real chegue ao catch do diálogo em vez do texto genérico.
+          const detalhe = [insertError.message, insertError.details, insertError.hint]
+            .filter(Boolean)
+            .join(" — ");
+          throw new Error(detalhe || "Erro ao salvar proposta");
         }
+
 
         set((s) => ({ proposals: [proposal, ...s.proposals] }));
         if (emitterReason) {
