@@ -190,15 +190,7 @@ export const gerarPedidoInterno = createServerFn({ method: "POST" })
       };
       // Rastro de auditoria do auto-aprovado (admin não grava motivo).
       if (motivoAuditoria) patchAprovacao['approval_reason'] = motivoAuditoria;
-      await loose
-        .from("propostas")
-        .update({
-          status: "pedido",
-          approved_by_user_id: userId,
-          approved_at: nowIso,
-          order_created_at: nowIso,
-        })
-        .eq("id", propostaId);
+      await loose.from("propostas").update(patchAprovacao).eq("id", propostaId);
     }
 
     // Move o lead para ganho automaticamente.
