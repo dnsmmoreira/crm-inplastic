@@ -253,7 +253,7 @@ function payTermToInsert(t: PaymentTerm): PayTermInsert {
 
 
 
-function rowToLead(
+export function rowToLead(
   r: LeadRow,
   interactions: Interaction[],
   aiActions: AiAction[],
@@ -326,7 +326,7 @@ function normalizarEnderecoLead(e: Lead["endereco"]): Lead["endereco"] | null {
   return out as Lead["endereco"];
 }
 
-function leadToInsert(l: Lead): LeadInsert {
+export function leadToInsert(l: Lead): LeadInsert {
   return {
     id: l.id,
     company: normalizarTexto(l.company),
