@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { Trophy, TrendingUp, TrendingDown, Minus, Target, Settings2, History, AlertTriangle } from "lucide-react";
 import {
   getPlacar, listMetas, setMeta, listMetasHistorico,
+  getGanhosForaDoPlacar,
   type PlacarPeriodo, type PlacarVendedor,
 } from "@/lib/placar.functions";
 import { formatBRL } from "@/lib/crm-store";
@@ -609,4 +610,50 @@ function fmtMinutes(min: number) {
   const h = min / 60;
   if (h < 24) return `${h.toFixed(1)}h`;
   return `${(h / 24).toFixed(1)}d`;
+}
+
+/** Vendas de quem não participa do ranking (ex.: diretoria). Só número, sem posição no placar. */
+function ForaDoPlacarCard({ periodo }: { periodo: PlacarPeriodo }) {
+  const fetchFora = useServerFn(getGanhosForaDoPlacar);
+  const { data } = useQuery({
+    queryKey: ["placar", "fora", periodo],
+    queryFn: () => fetchFora({ data: { periodo } }),
+    staleTime: 60_000,
+  });
+  const linhas = data ?? [];
+  if (linhas.length === 0) return null;
+  const total = linhas.reduce((s, l) => s + l.ganhos_valor, 0);
+
+  return (
+    <Card className="border-dashed">
+      <CardContent className="p-4 space-y-2">
+        <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
+          Vendas fora do placar — {PERIODO_LABEL[periodo]}
+        </div>
+        <ul className="space-y-1">
+          {linhas.map((l) => (
+            <li key={l.vendedor_id} className="flex items-center gap-3 text-sm">
+              <span
+                className="flex h-6 w-6 items-center justify-center rounded-full text-white text-[10px] font-semibold shrink-0"
+                style={{ background: l.avatar_color }}
+              >
+                {initials(l.nome)}
+              </span>
+              <span className="flex-1 min-w-0 truncate">{l.nome}</span>
+              <span className="text-muted-foreground text-xs">{l.ganhos_qtd} pedido(s)</span>
+              <span className="font-medium tabular-nums">{formatBRL(l.ganhos_valor)}</span>
+            </li>
+          ))}
+        </ul>
+        <div className="flex justify-between border-t pt-2 text-sm">
+          <span className="text-muted-foreground">Total fora do placar</span>
+          <span className="font-semibold tabular-nums">{formatBRL(total)}</span>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Não participam da ARENA: valores contabilizados apenas para visão de faturamento, sem
+          posição, score ou meta no ranking.
+        </p>
+      </CardContent>
+    </Card>
+  );
 }
