@@ -10,6 +10,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { vincularClienteAoLead } from "@/lib/clientes.functions";
+import { persistLeadNow } from "@/lib/crm-sync";
 import { useCrm, useVisibleLeads } from "@/lib/crm-store";
 
 /** Formato mínimo aceito — compatível com `ClienteRow` e com o retorno de `getCliente`. */
@@ -34,7 +35,13 @@ export function useCriarPropostaParaCliente() {
   const criarPropostaDoLead = async (leadId: string, opts?: { onSuccess?: () => void }) => {
     setCriando(true);
     try {
+      // O save do CRM é batched (debounce). Se o lead acabou de ser criado
+      // localmente, a proposta (INSERT imediato com `lead_id`) violaria a FK.
+      // Persistir o lead agora fecha essa corrida; para leads já salvos é um
+      // upsert idempotente.
+      await persistLeadNow(leadId);
       const propId = await createProposal(leadId);
+
       toast.success("Proposta criada — adicione os itens");
       opts?.onSuccess?.();
       await navigate({ to: "/propostas/$id", params: { id: propId } });
@@ -72,6 +79,9 @@ export function useCriarPropostaParaCliente() {
           nomeFantasia: c.nome_fantasia ?? undefined,
           clienteId: c.id,
         });
+        // O save do CRM é batched; a proposta é inserida na hora e referencia
+        // `lead_id`. Persistimos o lead agora pra não violar a FK.
+        await persistLeadNow(leadId);
         vincularFn({ data: { leadId, clienteId: c.id } }).catch((err) => {
           toast.error(err instanceof Error ? err.message : "Erro ao vincular cliente ao lead");
         });
