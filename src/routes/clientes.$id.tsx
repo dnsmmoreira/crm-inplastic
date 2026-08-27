@@ -27,6 +27,7 @@ import {
 } from "@/lib/clientes.functions";
 import { iniciarConversaCliente } from "@/lib/canais.functions";
 import { useAuth } from "@/hooks/use-auth";
+import { useCriarPropostaParaCliente } from "@/hooks/use-criar-proposta-para-cliente";
 import {
   ClienteFormFields,
   fromRow,
@@ -82,6 +83,7 @@ function ClienteDetailPage() {
   const [saving, setSaving] = useState(false);
   const [iniciandoConversa, setIniciandoConversa] = useState(false);
   const iniciarConversaFn = useServerFn(iniciarConversaCliente);
+  const { criando: criandoProposta, criarPropostaParaCliente } = useCriarPropostaParaCliente();
 
   useEffect(() => {
     if (clienteQ.data) setForm(fromRow(clienteQ.data));
