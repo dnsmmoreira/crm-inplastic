@@ -479,12 +479,10 @@ function PropostasPage() {
 // Dialog "Nova proposta comercial" — seletor de lead/cliente
 // ============================================================
 function NovaPropostaDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
-  const navigate = useNavigate();
   const leads = useVisibleLeads();
-  const addLead = useCrm((s) => s.addLead);
-  const createProposal = useCrm((s) => s.createProposal);
-  const vincularFn = useServerFn(vincularClienteAoLead);
   const listClientesFn = useServerFn(listClientes);
+  const { criando, setCriando, criarPropostaDoLead, criarPropostaParaCliente } =
+    useCriarPropostaParaCliente();
 
   const [query, setQuery] = useState("");
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
@@ -492,7 +490,7 @@ function NovaPropostaDialog({ open, onOpenChange }: { open: boolean; onOpenChang
   const [clientes, setClientes] = useState<ClienteRow[]>([]);
   const [buscandoClientes, setBuscandoClientes] = useState(false);
   const [openNovo, setOpenNovo] = useState(false);
-  const [criando, setCriando] = useState(false);
+
 
   useEffect(() => {
     if (!open) {
