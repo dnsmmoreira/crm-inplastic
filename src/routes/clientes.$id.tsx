@@ -208,9 +208,25 @@ function ClienteDetailPage() {
             </Tooltip>
           </TooltipProvider>
 
-          <Button variant="outline" onClick={() => navigate({ to: "/propostas" })}>
+          <Button
+            variant="outline"
+            disabled={criandoProposta}
+            onClick={() => {
+              void criarPropostaParaCliente({
+                id: c.id,
+                razao_social: c.razao_social,
+                nome_fantasia: c.nome_fantasia,
+                cnpj: c.cnpj,
+                contato: c.contato,
+                email: c.email,
+                telefone: c.telefone,
+              });
+            }}
+          >
+            {criandoProposta && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             Nova proposta
           </Button>
+
 
         </div>
       </div>
