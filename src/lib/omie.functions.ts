@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
 import { garantirClienteDoLead } from "@/lib/clientes.functions";
+import { computeLeadScore } from "@/lib/lead-score";
+import { decidirAprovacaoFinanceira } from "@/lib/aprovacao-financeira";
 
 /**
  * Fluxo interno de fechamento de pedido — SEM integração externa (nenhum ERP).
