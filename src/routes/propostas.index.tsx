@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Plus, FileText, Search, Trash2, UserPlus, Loader2, Building2, Check, Copy, ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { lookupCnpj } from "@/lib/cnpj.functions";
-import { listClientes, vincularClienteAoLead } from "@/lib/clientes.functions";
+import { listClientes } from "@/lib/clientes.functions";
 import { NovoClienteDialog } from "@/components/clientes/NovoClienteDialog";
 import type { ClienteRow } from "@/lib/clientes.functions";
 import { isValidCnpj, formatCnpj } from "@/lib/cnpj";
