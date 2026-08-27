@@ -236,3 +236,35 @@ export const snapshotMes = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true, linhas: Number(n ?? 0) };
   });
+
+export type GanhoForaDoPlacar = {
+  vendedor_id: string;
+  nome: string;
+  avatar_color: string;
+  ganhos_qtd: number;
+  ganhos_valor: number;
+};
+
+/** Vendas de quem NÃO participa do Placar (não entram no ranking). Somente admin. */
+export const getGanhosForaDoPlacar = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => inputSchema.parse(data ?? {}))
+  .handler(async ({ data, context }): Promise<GanhoForaDoPlacar[]> => {
+    const { supabase, userId } = context;
+    const { data: isAdmin } = await supabase.rpc("has_role" as any, {
+      _user_id: userId,
+      _role: "admin",
+    });
+    if (!isAdmin) return [];
+    const { data: rows, error } = await supabase.rpc("ganhos_fora_do_placar" as any, {
+      _periodo: data.periodo,
+    });
+    if (error) throw new Error(error.message);
+    return ((rows ?? []) as any[]).map((r) => ({
+      vendedor_id: r.vendedor_id,
+      nome: r.nome,
+      avatar_color: r.avatar_color,
+      ganhos_qtd: Number(r.ganhos_qtd ?? 0),
+      ganhos_valor: Number(r.ganhos_valor ?? 0),
+    }));
+  });
