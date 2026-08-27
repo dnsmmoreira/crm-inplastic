@@ -40,11 +40,12 @@ function relaxSupabase(sb: unknown): LooseClient {
 
 export const gerarPedidoInterno = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { proposta_id: string; requer_aprovacao?: boolean }) =>
+  .inputValidator((input: { proposta_id: string; requer_aprovacao?: boolean; conferencia_confirmada?: boolean }) =>
     z
       .object({
         proposta_id: z.string().uuid(),
         requer_aprovacao: z.boolean().optional(),
+        conferencia_confirmada: z.boolean().optional(),
       })
       .parse(input),
   )
