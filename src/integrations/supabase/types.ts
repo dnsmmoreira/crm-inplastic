@@ -714,6 +714,57 @@ export type Database = {
           },
         ]
       }
+      documentos: {
+        Row: {
+          categoria: string
+          categoria_outro: string | null
+          content_type: string | null
+          entidade_id: string
+          entidade_tipo: string
+          enviado_em: string
+          enviado_por: string | null
+          expira_em: string | null
+          id: string
+          nome_arquivo: string
+          removido_em: string | null
+          removido_por: string | null
+          storage_path: string
+          tamanho_bytes: number | null
+        }
+        Insert: {
+          categoria: string
+          categoria_outro?: string | null
+          content_type?: string | null
+          entidade_id: string
+          entidade_tipo: string
+          enviado_em?: string
+          enviado_por?: string | null
+          expira_em?: string | null
+          id?: string
+          nome_arquivo: string
+          removido_em?: string | null
+          removido_por?: string | null
+          storage_path: string
+          tamanho_bytes?: number | null
+        }
+        Update: {
+          categoria?: string
+          categoria_outro?: string | null
+          content_type?: string | null
+          entidade_id?: string
+          entidade_tipo?: string
+          enviado_em?: string
+          enviado_por?: string | null
+          expira_em?: string | null
+          id?: string
+          nome_arquivo?: string
+          removido_em?: string | null
+          removido_por?: string | null
+          storage_path?: string
+          tamanho_bytes?: number | null
+        }
+        Relationships: []
+      }
       emitters: {
         Row: {
           address: string | null
@@ -3266,6 +3317,14 @@ export type Database = {
           tempo_medio_primeira_resposta_min: number
           vendedor_id: string
         }[]
+      }
+      pode_editar_documento: {
+        Args: { _entidade_id: string; _tipo: string }
+        Returns: boolean
+      }
+      pode_ver_documento: {
+        Args: { _entidade_id: string; _tipo: string }
+        Returns: boolean
       }
       snapshot_metas_mes: {
         Args: { _ano: number; _mes: number }

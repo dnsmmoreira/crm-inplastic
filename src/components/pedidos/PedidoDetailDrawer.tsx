@@ -20,7 +20,11 @@ import {
   History as HistoryIcon,
   MessageSquareText,
   Copy,
+  FileText,
 } from "lucide-react";
+
+import { DocumentosSection } from "@/components/documentos/DocumentosSection";
+
 
 import {
   Sheet,
@@ -470,7 +474,20 @@ function TratativaBlock({ pedido }: { pedido: PedidoDetalhes }) {
   );
 }
 
+/* ---------------------------- Documentos do pedido ---------------------------- */
+
+function DocumentosBlock({ pedido, readOnly }: { pedido: PedidoDetalhes; readOnly?: boolean }) {
+  return (
+    <section className="space-y-3">
+      <SectionTitle icon={<FileText className="h-4 w-4" />} label="Documentos do pedido" />
+      <DocumentosSection entidadeTipo="pedido" entidadeId={pedido.id} readOnly={readOnly} />
+    </section>
+  );
+}
+
 /* --------------------- Observações vindas da proposta --------------------- */
+
+
 
 function ObservacoesPropostaBlock({ pedido }: { pedido: PedidoDetalhes }) {
   const numeroPedidoCliente = (pedido.proposta_numero_pedido_cliente ?? "").trim();
