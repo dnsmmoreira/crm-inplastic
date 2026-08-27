@@ -198,6 +198,8 @@ function PlacarPage() {
         </CardContent>
       </Card>
 
+      {isAdmin && <ForaDoPlacarCard periodo={periodo} />}
+
       <div className="space-y-1 text-xs text-muted-foreground">
         <p>
           <span className="font-medium text-amber-700">ARENA Premiação</span> — Score de Atividade:
