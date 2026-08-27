@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Plus, FileText, Search, Trash2, UserPlus, Loader2, Building2, Check, Copy, ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { lookupCnpj } from "@/lib/cnpj.functions";
-import { listClientes, vincularClienteAoLead } from "@/lib/clientes.functions";
+import { listClientes } from "@/lib/clientes.functions";
 import { NovoClienteDialog } from "@/components/clientes/NovoClienteDialog";
 import type { ClienteRow } from "@/lib/clientes.functions";
 import { isValidCnpj, formatCnpj } from "@/lib/cnpj";
@@ -22,6 +22,7 @@ import {
 } from "@/lib/crm-store";
 import { useAuth } from "@/hooks/use-auth";
 import { useDuplicarProposta } from "@/hooks/use-duplicar-proposta";
+import { useCriarPropostaParaCliente } from "@/hooks/use-criar-proposta-para-cliente";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -479,12 +480,10 @@ function PropostasPage() {
 // Dialog "Nova proposta comercial" — seletor de lead/cliente
 // ============================================================
 function NovaPropostaDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
-  const navigate = useNavigate();
   const leads = useVisibleLeads();
-  const addLead = useCrm((s) => s.addLead);
-  const createProposal = useCrm((s) => s.createProposal);
-  const vincularFn = useServerFn(vincularClienteAoLead);
   const listClientesFn = useServerFn(listClientes);
+  const { criando, setCriando, criarPropostaDoLead, criarPropostaParaCliente } =
+    useCriarPropostaParaCliente();
 
   const [query, setQuery] = useState("");
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
@@ -492,7 +491,7 @@ function NovaPropostaDialog({ open, onOpenChange }: { open: boolean; onOpenChang
   const [clientes, setClientes] = useState<ClienteRow[]>([]);
   const [buscandoClientes, setBuscandoClientes] = useState(false);
   const [openNovo, setOpenNovo] = useState(false);
-  const [criando, setCriando] = useState(false);
+
 
   useEffect(() => {
     if (!open) {
@@ -556,53 +555,14 @@ function NovaPropostaDialog({ open, onOpenChange }: { open: boolean; onOpenChang
     [clientes, selectedClienteId],
   );
 
-  const criarProposta = async (leadId: string) => {
-    setCriando(true);
-    try {
-      const propId = await createProposal(leadId);
-      toast.success("Proposta criada — adicione os itens");
-      onOpenChange(false);
-      navigate({ to: "/propostas/$id", params: { id: propId } });
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro ao criar proposta");
-    } finally {
-      setCriando(false);
-    }
-  };
+  const fecharDialog = () => onOpenChange(false);
 
-  const criarPropostaComClienteNovo = async (c: ClienteRow) => {
-    try {
-      const existente = leads.find((l) => l.clienteId === c.id);
-      let leadId: string;
-      if (existente) {
-        leadId = existente.id;
-      } else {
-        leadId = addLead({
-          company: c.razao_social,
-          contactName: c.contato ?? "",
-          email: c.email ?? "",
-          phone: c.telefone ?? "",
-          product: "",
-          quantity: 0,
-          estimatedValue: 0,
-          stage: "novo",
-          tags: [],
-          source: "Cliente",
-          notes: "",
-          cnpj: c.cnpj ?? undefined,
-          razaoSocial: c.razao_social,
-          nomeFantasia: c.nome_fantasia ?? undefined,
-          clienteId: c.id,
-        });
-        vincularFn({ data: { leadId, clienteId: c.id } }).catch((err) => {
-          toast.error(err instanceof Error ? err.message : "Erro ao vincular cliente ao lead");
-        });
-      }
-      await criarProposta(leadId);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro ao cadastrar cliente");
-    }
-  };
+  const criarProposta = (leadId: string) =>
+    criarPropostaDoLead(leadId, { onSuccess: fecharDialog });
+
+  const criarPropostaComClienteNovo = (c: ClienteRow) =>
+    criarPropostaParaCliente(c, { onSuccess: fecharDialog });
+
 
   return (
     <>

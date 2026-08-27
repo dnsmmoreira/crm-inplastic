@@ -27,6 +27,7 @@ import {
 } from "@/lib/clientes.functions";
 import { iniciarConversaCliente } from "@/lib/canais.functions";
 import { useAuth } from "@/hooks/use-auth";
+import { useCriarPropostaParaCliente } from "@/hooks/use-criar-proposta-para-cliente";
 import {
   ClienteFormFields,
   fromRow,
@@ -82,6 +83,7 @@ function ClienteDetailPage() {
   const [saving, setSaving] = useState(false);
   const [iniciandoConversa, setIniciandoConversa] = useState(false);
   const iniciarConversaFn = useServerFn(iniciarConversaCliente);
+  const { criando: criandoProposta, criarPropostaParaCliente } = useCriarPropostaParaCliente();
 
   useEffect(() => {
     if (clienteQ.data) setForm(fromRow(clienteQ.data));
@@ -208,9 +210,25 @@ function ClienteDetailPage() {
             </Tooltip>
           </TooltipProvider>
 
-          <Button variant="outline" onClick={() => navigate({ to: "/propostas" })}>
+          <Button
+            variant="outline"
+            disabled={criandoProposta}
+            onClick={() => {
+              void criarPropostaParaCliente({
+                id: c.id,
+                razao_social: c.razao_social,
+                nome_fantasia: c.nome_fantasia,
+                cnpj: c.cnpj,
+                contato: c.contato,
+                email: c.email,
+                telefone: c.telefone,
+              });
+            }}
+          >
+            {criandoProposta && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             Nova proposta
           </Button>
+
 
         </div>
       </div>
