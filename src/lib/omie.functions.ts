@@ -40,11 +40,12 @@ function relaxSupabase(sb: unknown): LooseClient {
 
 export const gerarPedidoInterno = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { proposta_id: string; requer_aprovacao?: boolean }) =>
+  .inputValidator((input: { proposta_id: string; requer_aprovacao?: boolean; conferencia_confirmada?: boolean }) =>
     z
       .object({
         proposta_id: z.string().uuid(),
         requer_aprovacao: z.boolean().optional(),
+        conferencia_confirmada: z.boolean().optional(),
       })
       .parse(input),
   )
@@ -167,6 +168,15 @@ export const gerarPedidoInterno = createServerFn({ method: "POST" })
         motivoAuditoria = decisao.motivo;
       }
 
+      // Auditoria da conferência final feita na tela da proposta.
+      // O timestamp é sempre gerado no servidor — o client só envia o flag.
+      const conferencia: Record<string, unknown> = data.conferencia_confirmada
+        ? {
+            conferencia_confirmada_em: new Date().toISOString(),
+            conferencia_confirmada_por_user_id: userId,
+          }
+        : {};
+
       if (precisaAprovacao) {
         await loose
           .from("propostas")
@@ -174,6 +184,7 @@ export const gerarPedidoInterno = createServerFn({ method: "POST" })
             status: "aguardando_aprovacao",
             approval_requested_at: new Date().toISOString(),
             approval_reason: motivoAuditoria,
+            ...conferencia,
           })
           .eq("id", propostaId);
         return {
@@ -189,6 +200,7 @@ export const gerarPedidoInterno = createServerFn({ method: "POST" })
         approved_by_user_id: userId,
         approved_at: nowIso,
         order_created_at: nowIso,
+        ...conferencia,
       };
       // Rastro de auditoria do auto-aprovado (admin não grava motivo).
       if (motivoAuditoria) patchAprovacao['approval_reason'] = motivoAuditoria;

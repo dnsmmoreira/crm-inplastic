@@ -56,6 +56,7 @@ import {
   valoresPorPercentual,
 } from "@/lib/condicoes-comerciais";
 import { markDeleted } from "@/lib/delete-intents";
+import { ConferenciaFinalDialog } from "@/components/propostas/ConferenciaFinalDialog";
 
 
 /** Parcelas de exibição (dias + percentual da condição) a partir do total da proposta. */
@@ -212,6 +213,11 @@ function PropostaDetalhe() {
   const calcFreight = useServerFn(calculateFreightDistance);
   const gerarPedido = useServerFn(gerarPedidoOmie);
   const [omieBusy, setOmieBusy] = useState(false);
+  /** Conferência final obrigatória antes de gerar/solicitar o pedido. */
+  const [conferencia, setConferencia] = useState<{ open: boolean; requerAprovacao: boolean }>({
+    open: false,
+    requerAprovacao: false,
+  });
   /** Intervalo (dias) entre parcelas escolhido pelo vendedor; null = usa o da condição. */
   const [intervaloParcelas, setIntervaloParcelas] = useState<number | null>(null);
 
@@ -436,7 +442,13 @@ function PropostaDetalhe() {
     setOmieBusy(true);
     const t = toast.loading(requerAprovacao ? "Solicitando aprovação..." : "Gerando pedido...");
     try {
-      const r = await gerarPedido({ data: { proposta_id: proposal.id, requer_aprovacao: requerAprovacao } });
+      const r = await gerarPedido({
+        data: {
+          proposta_id: proposal.id,
+          requer_aprovacao: requerAprovacao,
+          conferencia_confirmada: true,
+        },
+      });
       toast.dismiss(t);
       if (!r.ok) {
         toast.error("Pendências antes de gerar o pedido", {
@@ -578,13 +590,14 @@ function PropostaDetalhe() {
             </Button>
           )}
 
-          {/* Fechar pedido: admin gera direto; vendedor solicita aprovação. */}
+          {/* Fechar pedido: admin gera direto; vendedor solicita aprovação.
+              Ambos passam antes pela conferência final item a item. */}
           {proposal.status !== "pedido" && proposal.status !== "aguardando_aprovacao" && (
             <Button
               variant="default"
               className="gap-2"
               disabled={omieBusy}
-              onClick={() => void handleGerarPedido(!isAdmin)}
+              onClick={() => setConferencia({ open: true, requerAprovacao: !isAdmin })}
             >
               <CheckCircle2 className="h-4 w-4" /> {isAdmin ? "Gerar pedido" : "Solicitar pedido"}
             </Button>
@@ -606,11 +619,56 @@ function PropostaDetalhe() {
             <Button
               className="gap-2 bg-emerald-600 hover:bg-emerald-700"
               disabled={omieBusy}
-              onClick={() => void handleGerarPedido(false)}
+              onClick={() => setConferencia({ open: true, requerAprovacao: false })}
             >
               <CheckCircle2 className="h-4 w-4" /> Aprovar liberação
             </Button>
           )}
+
+          <ConferenciaFinalDialog
+            open={conferencia.open}
+            onOpenChange={(v) => setConferencia((c) => ({ ...c, open: v }))}
+            busy={omieBusy}
+            confirmLabel={
+              conferencia.requerAprovacao
+                ? "Confirmar e solicitar aprovação"
+                : "Confirmar e gerar pedido"
+            }
+            input={{
+              items: proposal.items.map((it) => ({
+                id: it.id,
+                description: it.description,
+                sku: it.sku,
+                quantity: it.quantity,
+                unit: it.unit,
+                unitPrice: it.unitPrice,
+              })),
+              cliente: {
+                razaoSocial: clienteRow?.razao_social ?? lead?.company ?? null,
+                documento: clienteRow ? formatDocumentoCliente(clienteRow) : null,
+              },
+              condicao: {
+                label: selectedTerm?.label ?? null,
+                parcelas: selectedTerm ? descreverParcelas(termParcelas(selectedTerm)) : null,
+              },
+              transporte: {
+                freightPayer: proposal.transport.freightPayer,
+                carrier: proposal.transport.carrier,
+                endereco:
+                  proposal.transport.deliveryAddress ??
+                  (proposal.transport.deliveryCep
+                    ? `CEP ${formatCep(proposal.transport.deliveryCep)}`
+                    : null),
+              },
+              descontoPercent: proposal.discountPercent,
+              validadeDias: proposal.validityDays,
+            }}
+            onConfirm={() => {
+              setConferencia((c) => ({ ...c, open: false }));
+              void handleGerarPedido(conferencia.requerAprovacao);
+            }}
+          />
+
           {proposal.status === "aguardando_aprovacao" && !isAdmin && (
             <Badge variant="outline" className="border-amber-500 text-amber-700 bg-amber-500/10 gap-1 self-center px-3 py-1.5">
               <AlertCircle className="h-3.5 w-3.5" /> Aguardando liberação do supervisor
