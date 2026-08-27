@@ -20,7 +20,11 @@ import {
   History as HistoryIcon,
   MessageSquareText,
   Copy,
+  FileText,
 } from "lucide-react";
+
+import { DocumentosSection } from "@/components/documentos/DocumentosSection";
+
 
 import {
   Sheet,
@@ -197,6 +201,8 @@ function PedidoDetailBody({
               <ItensBlock pedido={pedido} comValores={false} />
               {podeVerValores && <TratativaBlock pedido={pedido} />}
               <ObservacoesPropostaBlock pedido={pedido} />
+              <DocumentosBlock pedido={pedido} readOnly />
+
               <DecisaoLeitura pedido={pedido} />
             </>
           ) : visaoFinanceira ? (
@@ -206,6 +212,8 @@ function PedidoDetailBody({
               {podeVerValores && <HistoricoClienteBlock pedido={pedido} />}
               {podeVerValores && <TratativaBlock pedido={pedido} />}
               <ObservacoesPropostaBlock pedido={pedido} />
+              <DocumentosBlock pedido={pedido} />
+
               <AprovacaoBlock pedido={pedido} onChanged={onChanged} />
               <OcorrenciasBlock pedido={pedido} onChanged={onChanged} />
             </>
@@ -216,6 +224,8 @@ function PedidoDetailBody({
               {podeVerValores && <HistoricoClienteBlock pedido={pedido} />}
               {podeVerValores && <TratativaBlock pedido={pedido} />}
               <ObservacoesPropostaBlock pedido={pedido} />
+              <DocumentosBlock pedido={pedido} />
+
               <ChecklistBlock pedido={pedido} onChanged={onChanged} />
               <FiscalBlock pedido={pedido} onChanged={onChanged} />
               <OcorrenciasBlock pedido={pedido} onChanged={onChanged} />
@@ -470,7 +480,20 @@ function TratativaBlock({ pedido }: { pedido: PedidoDetalhes }) {
   );
 }
 
+/* ---------------------------- Documentos do pedido ---------------------------- */
+
+function DocumentosBlock({ pedido, readOnly }: { pedido: PedidoDetalhes; readOnly?: boolean }) {
+  return (
+    <section className="space-y-3">
+      <SectionTitle icon={<FileText className="h-4 w-4" />} label="Documentos do pedido" />
+      <DocumentosSection entidadeTipo="pedido" entidadeId={pedido.id} readOnly={readOnly} />
+    </section>
+  );
+}
+
 /* --------------------- Observações vindas da proposta --------------------- */
+
+
 
 function ObservacoesPropostaBlock({ pedido }: { pedido: PedidoDetalhes }) {
   const numeroPedidoCliente = (pedido.proposta_numero_pedido_cliente ?? "").trim();
