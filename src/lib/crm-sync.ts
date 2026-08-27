@@ -701,7 +701,29 @@ async function loadAll(userId: string) {
   });
 }
 
+// ============ Persistência imediata ============
+
+/**
+ * Persiste AGORA um lead do estado local no banco (INSERT/UPSERT aguardado).
+ *
+ * O save do CRM é batched (debounce de 500ms), então um `addLead` seguido de um
+ * INSERT dependente (ex.: `createProposal`, que grava `propostas.lead_id`)
+ * quebrava com violação de FK. Use esta função para fechar essa corrida.
+ * Atualiza o snapshot para o save batched não reenviar a mesma linha.
+ */
+export async function persistLeadNow(leadId: string): Promise<void> {
+  const lead = useCrm.getState().leads.find((l) => l.id === leadId);
+  if (!lead) throw new Error("Lead não encontrado no estado local");
+  const payload = leadToInsert(lead);
+  const { error } = await supabase.from("leads").upsert(payload, { onConflict: "id" });
+  if (error) {
+    throw new Error(error.message || "Falha ao salvar o lead no banco");
+  }
+  snapshot.leads.set(lead.id, JSON.stringify(payload));
+}
+
 // ============ Cleanup ============
+
 
 export function clearCrmState() {
   currentUserId = null;
