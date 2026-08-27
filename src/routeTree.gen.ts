@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UsuariosRouteImport } from './routes/usuarios'
 import { Route as TrocarSenhaRouteImport } from './routes/trocar-senha'
+import { Route as TransportadorasRouteImport } from './routes/transportadoras'
 import { Route as TarefasRouteImport } from './routes/tarefas'
 import { Route as TabelaPrecosRouteImport } from './routes/tabela-precos'
 import { Route as RelatoriosRouteImport } from './routes/relatorios'
@@ -71,6 +72,11 @@ const UsuariosRoute = UsuariosRouteImport.update({
 const TrocarSenhaRoute = TrocarSenhaRouteImport.update({
   id: '/trocar-senha',
   path: '/trocar-senha',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TransportadorasRoute = TransportadorasRouteImport.update({
+  id: '/transportadoras',
+  path: '/transportadoras',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TarefasRoute = TarefasRouteImport.update({
@@ -372,6 +378,7 @@ export interface FileRoutesByFullPath {
   '/relatorios': typeof RelatoriosRoute
   '/tabela-precos': typeof TabelaPrecosRoute
   '/tarefas': typeof TarefasRoute
+  '/transportadoras': typeof TransportadorasRoute
   '/trocar-senha': typeof TrocarSenhaRoute
   '/usuarios': typeof UsuariosRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
@@ -427,6 +434,7 @@ export interface FileRoutesByTo {
   '/relatorios': typeof RelatoriosRoute
   '/tabela-precos': typeof TabelaPrecosRoute
   '/tarefas': typeof TarefasRoute
+  '/transportadoras': typeof TransportadorasRoute
   '/trocar-senha': typeof TrocarSenhaRoute
   '/usuarios': typeof UsuariosRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
@@ -483,6 +491,7 @@ export interface FileRoutesById {
   '/relatorios': typeof RelatoriosRoute
   '/tabela-precos': typeof TabelaPrecosRoute
   '/tarefas': typeof TarefasRoute
+  '/transportadoras': typeof TransportadorasRoute
   '/trocar-senha': typeof TrocarSenhaRoute
   '/usuarios': typeof UsuariosRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
@@ -540,6 +549,7 @@ export interface FileRouteTypes {
     | '/relatorios'
     | '/tabela-precos'
     | '/tarefas'
+    | '/transportadoras'
     | '/trocar-senha'
     | '/usuarios'
     | '/.mcp/list-tools'
@@ -595,6 +605,7 @@ export interface FileRouteTypes {
     | '/relatorios'
     | '/tabela-precos'
     | '/tarefas'
+    | '/transportadoras'
     | '/trocar-senha'
     | '/usuarios'
     | '/.mcp/list-tools'
@@ -650,6 +661,7 @@ export interface FileRouteTypes {
     | '/relatorios'
     | '/tabela-precos'
     | '/tarefas'
+    | '/transportadoras'
     | '/trocar-senha'
     | '/usuarios'
     | '/.mcp/list-tools'
@@ -706,6 +718,7 @@ export interface RootRouteChildren {
   RelatoriosRoute: typeof RelatoriosRoute
   TabelaPrecosRoute: typeof TabelaPrecosRoute
   TarefasRoute: typeof TarefasRoute
+  TransportadorasRoute: typeof TransportadorasRoute
   TrocarSenhaRoute: typeof TrocarSenhaRoute
   UsuariosRoute: typeof UsuariosRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
@@ -749,6 +762,13 @@ declare module '@tanstack/react-router' {
       path: '/trocar-senha'
       fullPath: '/trocar-senha'
       preLoaderRoute: typeof TrocarSenhaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/transportadoras': {
+      id: '/transportadoras'
+      path: '/transportadoras'
+      fullPath: '/transportadoras'
+      preLoaderRoute: typeof TransportadorasRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/tarefas': {
@@ -1138,6 +1158,7 @@ const rootRouteChildren: RootRouteChildren = {
   RelatoriosRoute: RelatoriosRoute,
   TabelaPrecosRoute: TabelaPrecosRoute,
   TarefasRoute: TarefasRoute,
+  TransportadorasRoute: TransportadorasRoute,
   TrocarSenhaRoute: TrocarSenhaRoute,
   UsuariosRoute: UsuariosRoute,
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
