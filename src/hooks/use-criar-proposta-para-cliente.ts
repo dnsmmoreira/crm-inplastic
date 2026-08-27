@@ -10,6 +10,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { vincularClienteAoLead } from "@/lib/clientes.functions";
+import { persistLeadNow } from "@/lib/crm-sync";
 import { useCrm, useVisibleLeads } from "@/lib/crm-store";
 
 /** Formato mínimo aceito — compatível com `ClienteRow` e com o retorno de `getCliente`. */
