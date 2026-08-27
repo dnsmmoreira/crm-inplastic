@@ -31,6 +31,7 @@ import {
   BookOpen,
   BarChart3,
   Tags,
+  Truck,
   PanelLeftClose,
   PanelLeftOpen,
   ChevronDown,
