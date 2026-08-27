@@ -22,6 +22,7 @@ import {
 } from "@/lib/crm-store";
 import { useAuth } from "@/hooks/use-auth";
 import { useDuplicarProposta } from "@/hooks/use-duplicar-proposta";
+import { useCriarPropostaParaCliente } from "@/hooks/use-criar-proposta-para-cliente";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
