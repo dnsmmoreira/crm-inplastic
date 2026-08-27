@@ -644,7 +644,7 @@ function PropostaDetalhe() {
                 unitPrice: it.unitPrice,
               })),
               cliente: {
-                razaoSocial: clienteRow?.razao_social ?? lead?.company ?? lead?.name ?? null,
+                razaoSocial: clienteRow?.razao_social ?? lead?.company ?? null,
                 documento: clienteRow ? formatDocumentoCliente(clienteRow) : null,
               },
               condicao: {
