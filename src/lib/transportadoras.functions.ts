@@ -58,7 +58,7 @@ export const atualizarTransportadora = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    const patch: Record<string, unknown> = {};
+    const patch: { nome?: string; ativo?: boolean } = {};
     if (data.nome !== undefined) patch.nome = data.nome;
     if (data.ativo !== undefined) patch.ativo = data.ativo;
     const { data: row, error } = await context.supabase
