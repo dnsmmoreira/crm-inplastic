@@ -1091,14 +1091,22 @@ export const useCrm = create<CrmState>()(
         const { toast } = await import("sonner");
 
         // Aloca número atomicamente no servidor para evitar colisão de UNIQUE
-        // entre vendedores (RLS oculta propostas de terceiros no cliente).
-        let number = `${year}-${String(get().proposals.filter((p) => p.number.startsWith(`${year}-`)).length + 1).padStart(4, "0")}`;
+        // entre vendedores (RLS oculta propostas de terceiros no cliente, então
+        // qualquer contagem client-side subconta e colide com números já usados).
+        let number: string;
         try {
           const { data, error } = await supabase.rpc("next_proposta_number", { _year: year });
-          if (!error && typeof data === "string" && data.length > 0) number = data;
-        } catch {
-          // fallback já definido acima
+          if (error || typeof data !== "string" || data.length === 0) {
+            console.error("[createProposal] next_proposta_number failed:", error);
+            throw new Error(
+              `Não foi possível gerar o número da proposta${error?.message ? `: ${error.message}` : ""}`,
+            );
+          }
+          number = data;
+        } catch (e) {
+          throw e instanceof Error ? e : new Error("Não foi possível gerar o número da proposta");
         }
+
 
         const finalOwnerId = ownerId ?? get().currentUserId;
         let emitterId = get().defaultEmitterId || get().emitters[0]?.id;
