@@ -52,6 +52,13 @@ import {
   type TransportadoraRow,
 } from "@/lib/transportadoras.functions";
 import { ehOpcaoEspecialTransporte, OPCOES_ESPECIAIS_TRANSPORTE } from "@/lib/transportadoras";
+import { cotarFreteLalamove } from "@/lib/lalamove.functions";
+import {
+  formatarDistanciaLalamove,
+  formatarValorLalamove,
+  LALAMOVE_AVISO_RESPONSABILIDADE,
+  ufAceitaLalamove,
+} from "@/lib/lalamove";
 import {
   addDaysToDateInput,
   aplicarIntervalo,
@@ -79,6 +86,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
@@ -291,6 +299,12 @@ function PropostaDetalhe() {
     queryFn: () => sugerirTransportadoraFn({ data: { uf: ufCliente } }),
   });
   const sugestaoTransportadora = sugestaoQ.data ?? null;
+
+  // Lalamove — canal de frete separado, só para clientes de SP.
+  const lalamovePermitido = ufAceitaLalamove(ufCliente);
+  const cotarLalamoveFn = useServerFn(cotarFreteLalamove);
+  const [lalamoveLoading, setLalamoveLoading] = useState(false);
+
   const visiblePaymentTerms = useMemo(() => {
     const base = isClientePf
       ? activePaymentTerms.filter((t: PaymentTerm) => !!t.permitePf)
@@ -1165,7 +1179,107 @@ function PropostaDetalhe() {
           <Card>
             <CardHeader><CardTitle className="text-base">Transporte</CardTitle></CardHeader>
             <CardContent className="space-y-3">
-              <div>
+              {lalamovePermitido && (
+                <div className="rounded-md border p-3 space-y-2">
+                  <label className="flex items-center gap-2 text-sm font-medium">
+                    <Checkbox
+                      checked={!!proposal.transport.lalamoveAtivo}
+                      disabled={readOnly}
+                      onCheckedChange={(v) =>
+                        updateProposal(proposal.id, {
+                          transport: {
+                            ...proposal.transport,
+                            lalamoveAtivo: v === true,
+                            ...(v === true
+                              ? { carrier: "Lalamove", carrierTransportadoraId: null }
+                              : {}),
+                          },
+                        })
+                      }
+                    />
+                    Usar Lalamove (entrega em SP)
+                  </label>
+
+                  {proposal.transport.lalamoveAtivo && (
+                    <div className="space-y-2">
+                      <p className="text-[11px] font-medium text-destructive leading-relaxed">
+                        {LALAMOVE_AVISO_RESPONSABILIDADE}
+                      </p>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={readOnly || lalamoveLoading || !proposal.transport.deliveryCep}
+                        onClick={async () => {
+                          try {
+                            setLalamoveLoading(true);
+                            const res = await cotarLalamoveFn({
+                              data: {
+                                originCep: freightConfig.originCep,
+                                destinationCep: proposal.transport.deliveryCep!,
+                                ufCliente: ufCliente,
+                              },
+                            });
+                            updateProposal(proposal.id, {
+                              transport: {
+                                ...proposal.transport,
+                                lalamoveValor: res.valor,
+                                lalamoveDistanciaKm: res.distanciaKm,
+                                lalamoveServiceType: res.serviceType,
+                                lalamoveQuotationId: res.quotationId,
+                                lalamoveCotadoEm: new Date().toISOString(),
+                              },
+                            });
+                            toast.success("Cotação Lalamove recebida", {
+                              description: `${formatarValorLalamove(res.valor)} · ${formatarDistanciaLalamove(res.distanciaKm)}`,
+                            });
+                          } catch (err) {
+                            toast.error("Falha ao cotar via Lalamove", {
+                              description: err instanceof Error ? err.message : "Tente novamente",
+                            });
+                          } finally {
+                            setLalamoveLoading(false);
+                          }
+                        }}
+                      >
+                        {lalamoveLoading ? "Cotando..." : "Calcular via Lalamove"}
+                      </Button>
+                      {!proposal.transport.deliveryCep && (
+                        <p className="text-[11px] text-muted-foreground">
+                          Informe o CEP de entrega abaixo para cotar.
+                        </p>
+                      )}
+                      {proposal.transport.lalamoveValor != null && (
+                        <div className="rounded-md bg-muted/40 p-2 text-xs space-y-1">
+                          <div>
+                            Valor: <strong>{formatarValorLalamove(proposal.transport.lalamoveValor)}</strong> ·
+                            Distância: {formatarDistanciaLalamove(proposal.transport.lalamoveDistanciaKm)} ·
+                            Serviço: {proposal.transport.lalamoveServiceType ?? "—"}
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            className="h-7 text-[11px]"
+                            disabled={readOnly}
+                            onClick={() => {
+                              updateProposal(proposal.id, {
+                                transport: {
+                                  ...proposal.transport,
+                                  freightValue: proposal.transport.lalamoveValor ?? 0,
+                                },
+                              });
+                              toast.success("Valor aplicado ao frete definitivo");
+                            }}
+                          >
+                            Usar este valor no frete
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+              <div className={proposal.transport.lalamoveAtivo ? "hidden" : undefined}>
                 <Label>Transportador</Label>
                 <Select
                   value={
@@ -1966,6 +2080,12 @@ function PropostaDetalhe() {
                 </tr>
               </tbody>
             </table>
+          </div>
+        )}
+
+        {proposal.transport.lalamoveAtivo && (
+          <div className="mb-4 print-block rounded-md border border-destructive p-2 text-[11px] font-medium text-destructive leading-relaxed">
+            {LALAMOVE_AVISO_RESPONSABILIDADE}
           </div>
         )}
 

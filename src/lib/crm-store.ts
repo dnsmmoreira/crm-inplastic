@@ -566,6 +566,14 @@ export type TransportInfo = {
   deliveryCep?: string;           // CEP de entrega
   deliveryAddress?: string;       // endereço resolvido pela API
   distanceKm?: number;            // distância rodoviária origem → destino
+  /** Frete via Lalamove (terceiro, só clientes de SP) — independente do cadastro
+   *  de transportadoras e fora da estatística de sugestão. */
+  lalamoveAtivo?: boolean;
+  lalamoveValor?: number | null;
+  lalamoveDistanciaKm?: number | null;
+  lalamoveServiceType?: string | null;
+  lalamoveQuotationId?: string | null;
+  lalamoveCotadoEm?: string | null;
 };
 
 export type FreightConfig = {
