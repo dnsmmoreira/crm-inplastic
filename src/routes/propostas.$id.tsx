@@ -212,6 +212,11 @@ function PropostaDetalhe() {
   const calcFreight = useServerFn(calculateFreightDistance);
   const gerarPedido = useServerFn(gerarPedidoOmie);
   const [omieBusy, setOmieBusy] = useState(false);
+  /** Conferência final obrigatória antes de gerar/solicitar o pedido. */
+  const [conferencia, setConferencia] = useState<{ open: boolean; requerAprovacao: boolean }>({
+    open: false,
+    requerAprovacao: false,
+  });
   /** Intervalo (dias) entre parcelas escolhido pelo vendedor; null = usa o da condição. */
   const [intervaloParcelas, setIntervaloParcelas] = useState<number | null>(null);
 
