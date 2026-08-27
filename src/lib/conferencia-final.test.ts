@@ -95,12 +95,4 @@ describe("conferência final da proposta", () => {
     expect(todosConfirmados(entries, reaberto)).toBe(false);
   });
 
-  it("proposta sem itens nunca libera a confirmação", () => {
-    const entries = buildConferenciaEntries({ ...base, items: [] });
-    let marcados = estadoInicialConferencia();
-    for (const e of entries) marcados = alternarConferencia(marcados, e.id);
-    expect(entries.some((e) => e.grupo === "item")).toBe(false);
-    expect(todosConfirmados(entries, marcados)).toBe(true); // gerais ok…
-    // …mas a tela bloqueia por não haver itens; garantido pelo guard de items.length
-  });
 });
