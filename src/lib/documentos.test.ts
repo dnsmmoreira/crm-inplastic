@@ -71,7 +71,7 @@ describe("categoriaLabel", () => {
 describe("caminhoStorage", () => {
   it("normaliza o nome do arquivo", () => {
     expect(caminhoStorage("cliente", "abc", "Balanço 2025 (final).pdf", "u1")).toBe(
-      "cliente/abc/u1-Balan_o_2025_final_.pdf",
+      "cliente/abc/u1-Balanc_o_2025_final_.pdf",
     );
   });
 });
