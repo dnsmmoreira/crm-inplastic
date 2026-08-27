@@ -127,13 +127,53 @@ export const gerarPedidoInterno = createServerFn({ method: "POST" })
 
     // Fluxo de aprovação (mantém o gate existente).
     if (proposta.status !== "pedido") {
+    // Fluxo de aprovação. Admin continua com bypass total (o client envia
+    // `requer_aprovacao=false`); para o vendedor, o motivo/decisão são
+    // calculados AQUI — nunca vindos do client.
+    if (proposta.status !== "pedido") {
+      let motivoAuditoria: string | null = null;
+      let precisaAprovacao = Boolean(data.requer_aprovacao);
+
       if (data.requer_aprovacao) {
+        const valorTotal = (itens ?? []).reduce(
+          (s: number, i: { quantity: number; unit_price: number }) =>
+            s + Number(i.quantity ?? 0) * Number(i.unit_price ?? 0),
+          0,
+        );
+
+        const { count } = await loose
+          .from("pedidos")
+          .select("id", { count: "exact", head: true })
+          .eq("lead_id", leadId)
+          .neq("proposta_id", propostaId);
+        const pedidosAnteriores = Number(count ?? 0);
+
+        const score = computeLeadScore({
+          dataAbertura: leadRow?.data_abertura ?? undefined,
+          capitalSocial:
+            leadRow?.capital_social !== null && leadRow?.capital_social !== undefined
+              ? Number(leadRow.capital_social)
+              : undefined,
+          porte: leadRow?.porte ?? undefined,
+          simplesOptante: leadRow?.simples_optante ?? undefined,
+          inscricaoEstadual: leadRow?.inscricao_estadual ?? undefined,
+          socios: Array.isArray(leadRow?.socios) ? leadRow.socios : undefined,
+          cnpj: leadRow?.cnpj ?? undefined,
+          razaoSocial: leadRow?.razao_social ?? undefined,
+        });
+
+        const decisao = decidirAprovacaoFinanceira({ valorTotal, pedidosAnteriores, score });
+        precisaAprovacao = decisao.requerAprovacao;
+        motivoAuditoria = decisao.motivo;
+      }
+
+      if (precisaAprovacao) {
         await loose
           .from("propostas")
           .update({
             status: "aguardando_aprovacao",
             approval_requested_at: new Date().toISOString(),
-            approval_reason: "Geração de pedido requer autorização do supervisor",
+            approval_reason: motivoAuditoria,
           })
           .eq("id", propostaId);
         return {
@@ -144,6 +184,14 @@ export const gerarPedidoInterno = createServerFn({ method: "POST" })
       }
 
       const nowIso = new Date().toISOString();
+      const patchAprovacao: Record<string, unknown> = {
+        status: "pedido",
+        approved_by_user_id: userId,
+        approved_at: nowIso,
+        order_created_at: nowIso,
+      };
+      // Rastro de auditoria do auto-aprovado (admin não grava motivo).
+      if (motivoAuditoria) patchAprovacao['approval_reason'] = motivoAuditoria;
       await loose
         .from("propostas")
         .update({
