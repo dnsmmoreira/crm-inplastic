@@ -341,7 +341,12 @@ function PropostasPage() {
                     <TableCell className="text-right font-semibold">{formatBRL(t.total)}</TableCell>
                     <TableCell>
                       <div className="flex flex-wrap items-center gap-1">
-                        <Badge variant={s.variant}>{s.label}</Badge>
+                        <Badge variant={s.variant} title={p.status === "aguardando_aprovacao" ? (p.approvalReason ?? undefined) : undefined}>{s.label}</Badge>
+                        {p.status === "aguardando_aprovacao" && p.approvalReason && (
+                          <span className="text-[10px] text-muted-foreground max-w-[220px] truncate" title={p.approvalReason}>
+                            {p.approvalReason}
+                          </span>
+                        )}
                         {p.status === "pedido" && p.editRequestedAt && !p.editUnlockedAt && (
                           <Badge variant="outline" className="border-amber-500 text-amber-700 bg-amber-500/10 text-[10px]">alteração solicitada</Badge>
                         )}
