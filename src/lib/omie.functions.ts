@@ -83,7 +83,9 @@ export const gerarPedidoInterno = createServerFn({ method: "POST" })
     // Pessoa Física: bloqueia condições a prazo/boleto (apenas à vista ou cartão).
     const { data: leadRow } = await loose
       .from("leads")
-      .select("cliente_id")
+      .select(
+        "cliente_id, data_abertura, capital_social, porte, simples_optante, inscricao_estadual, socios, cnpj, razao_social",
+      )
       .eq("id", leadId)
       .maybeSingle();
     if (leadRow?.cliente_id) {
