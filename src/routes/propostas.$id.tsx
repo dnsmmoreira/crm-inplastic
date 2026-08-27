@@ -436,7 +436,13 @@ function PropostaDetalhe() {
     setOmieBusy(true);
     const t = toast.loading(requerAprovacao ? "Solicitando aprovação..." : "Gerando pedido...");
     try {
-      const r = await gerarPedido({ data: { proposta_id: proposal.id, requer_aprovacao: requerAprovacao } });
+      const r = await gerarPedido({
+        data: {
+          proposta_id: proposal.id,
+          requer_aprovacao: requerAprovacao,
+          conferencia_confirmada: true,
+        },
+      });
       toast.dismiss(t);
       if (!r.ok) {
         toast.error("Pendências antes de gerar o pedido", {
