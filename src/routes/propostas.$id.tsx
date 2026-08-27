@@ -278,6 +278,19 @@ function PropostaDetalhe() {
 
   // Pessoa Física: só condições à vista ou cartão (permite_pf).
   const isClientePf = clienteRow?.tipo_pessoa === "PF";
+
+  const ufCliente =
+    (clienteRow as { estado?: string | null } | null)?.estado ??
+    (lead as { endereco?: { uf?: string } } | undefined)?.endereco?.uf ??
+    null;
+  const sugerirTransportadoraFn = useServerFn(sugerirTransportadora);
+  const sugestaoQ = useQuery({
+    queryKey: ["sugestao-transportadora", ufCliente],
+    enabled: !!ufCliente,
+    staleTime: 5 * 60 * 1000,
+    queryFn: () => sugerirTransportadoraFn({ data: { uf: ufCliente } }),
+  });
+  const sugestaoTransportadora = sugestaoQ.data ?? null;
   const visiblePaymentTerms = useMemo(() => {
     const base = isClientePf
       ? activePaymentTerms.filter((t: PaymentTerm) => !!t.permitePf)
