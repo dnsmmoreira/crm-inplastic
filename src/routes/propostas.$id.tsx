@@ -591,6 +591,16 @@ function PropostaDetalhe() {
           )}
 
 
+          {/* Motivo calculado pelas regras de aprovação financeira. */}
+          {proposal.status === "aguardando_aprovacao" && proposal.approvalReason && (
+            <div className="flex items-start gap-2 self-center rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-300 max-w-md">
+              <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              <span>
+                <span className="font-medium">Motivo da aprovação:</span> {proposal.approvalReason}
+              </span>
+            </div>
+          )}
+
           {/* ADM libera pedidos aguardando aprovação — geração no ato. */}
           {proposal.status === "aguardando_aprovacao" && isAdmin && (
             <Button

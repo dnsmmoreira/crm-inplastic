@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
 import { garantirClienteDoLead } from "@/lib/clientes.functions";
+import { computeLeadScore } from "@/lib/lead-score";
+import { decidirAprovacaoFinanceira } from "@/lib/aprovacao-financeira";
 
 /**
  * Fluxo interno de fechamento de pedido — SEM integração externa (nenhum ERP).
@@ -83,7 +85,9 @@ export const gerarPedidoInterno = createServerFn({ method: "POST" })
     // Pessoa Física: bloqueia condições a prazo/boleto (apenas à vista ou cartão).
     const { data: leadRow } = await loose
       .from("leads")
-      .select("cliente_id")
+      .select(
+        "cliente_id, data_abertura, capital_social, porte, simples_optante, inscricao_estadual, socios, cnpj, razao_social",
+      )
       .eq("id", leadId)
       .maybeSingle();
     if (leadRow?.cliente_id) {
@@ -123,15 +127,53 @@ export const gerarPedidoInterno = createServerFn({ method: "POST" })
       return { ok: false, validacao_erros: promo.erros, proposta_id: propostaId };
     }
 
-    // Fluxo de aprovação (mantém o gate existente).
+    // Fluxo de aprovação. Admin continua com bypass total (o client envia
+    // `requer_aprovacao=false`); para o vendedor, o motivo/decisão são
+    // calculados AQUI — nunca vindos do client.
     if (proposta.status !== "pedido") {
+      let motivoAuditoria: string | null = null;
+      let precisaAprovacao = Boolean(data.requer_aprovacao);
+
       if (data.requer_aprovacao) {
+        const valorTotal = (itens ?? []).reduce(
+          (s: number, i: { quantity: number; unit_price: number }) =>
+            s + Number(i.quantity ?? 0) * Number(i.unit_price ?? 0),
+          0,
+        );
+
+        const { count } = await loose
+          .from("pedidos")
+          .select("id", { count: "exact", head: true })
+          .eq("lead_id", leadId)
+          .neq("proposta_id", propostaId);
+        const pedidosAnteriores = Number(count ?? 0);
+
+        const score = computeLeadScore({
+          dataAbertura: leadRow?.data_abertura ?? undefined,
+          capitalSocial:
+            leadRow?.capital_social !== null && leadRow?.capital_social !== undefined
+              ? Number(leadRow.capital_social)
+              : undefined,
+          porte: leadRow?.porte ?? undefined,
+          simplesOptante: leadRow?.simples_optante ?? undefined,
+          inscricaoEstadual: leadRow?.inscricao_estadual ?? undefined,
+          socios: Array.isArray(leadRow?.socios) ? leadRow.socios : undefined,
+          cnpj: leadRow?.cnpj ?? undefined,
+          razaoSocial: leadRow?.razao_social ?? undefined,
+        });
+
+        const decisao = decidirAprovacaoFinanceira({ valorTotal, pedidosAnteriores, score });
+        precisaAprovacao = decisao.requerAprovacao;
+        motivoAuditoria = decisao.motivo;
+      }
+
+      if (precisaAprovacao) {
         await loose
           .from("propostas")
           .update({
             status: "aguardando_aprovacao",
             approval_requested_at: new Date().toISOString(),
-            approval_reason: "Geração de pedido requer autorização do supervisor",
+            approval_reason: motivoAuditoria,
           })
           .eq("id", propostaId);
         return {
@@ -142,15 +184,15 @@ export const gerarPedidoInterno = createServerFn({ method: "POST" })
       }
 
       const nowIso = new Date().toISOString();
-      await loose
-        .from("propostas")
-        .update({
-          status: "pedido",
-          approved_by_user_id: userId,
-          approved_at: nowIso,
-          order_created_at: nowIso,
-        })
-        .eq("id", propostaId);
+      const patchAprovacao: Record<string, unknown> = {
+        status: "pedido",
+        approved_by_user_id: userId,
+        approved_at: nowIso,
+        order_created_at: nowIso,
+      };
+      // Rastro de auditoria do auto-aprovado (admin não grava motivo).
+      if (motivoAuditoria) patchAprovacao['approval_reason'] = motivoAuditoria;
+      await loose.from("propostas").update(patchAprovacao).eq("id", propostaId);
     }
 
     // Move o lead para ganho automaticamente.
