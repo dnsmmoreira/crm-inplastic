@@ -3280,6 +3280,16 @@ export type Database = {
               mesmo_vendedor: boolean
             }[]
           }
+      ganhos_fora_do_placar: {
+        Args: { _periodo?: string }
+        Returns: {
+          avatar_color: string
+          ganhos_qtd: number
+          ganhos_valor: number
+          nome: string
+          vendedor_id: string
+        }[]
+      }
       ganhos_por_vendedor: {
         Args: { _end: string; _start: string }
         Returns: {
