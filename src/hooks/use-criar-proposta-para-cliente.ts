@@ -35,7 +35,13 @@ export function useCriarPropostaParaCliente() {
   const criarPropostaDoLead = async (leadId: string, opts?: { onSuccess?: () => void }) => {
     setCriando(true);
     try {
+      // O save do CRM é batched (debounce). Se o lead acabou de ser criado
+      // localmente, a proposta (INSERT imediato com `lead_id`) violaria a FK.
+      // Persistir o lead agora fecha essa corrida; para leads já salvos é um
+      // upsert idempotente.
+      await persistLeadNow(leadId);
       const propId = await createProposal(leadId);
+
       toast.success("Proposta criada — adicione os itens");
       opts?.onSuccess?.();
       await navigate({ to: "/propostas/$id", params: { id: propId } });
