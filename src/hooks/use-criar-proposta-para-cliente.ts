@@ -73,6 +73,9 @@ export function useCriarPropostaParaCliente() {
           nomeFantasia: c.nome_fantasia ?? undefined,
           clienteId: c.id,
         });
+        // O save do CRM é batched; a proposta é inserida na hora e referencia
+        // `lead_id`. Persistimos o lead agora pra não violar a FK.
+        await persistLeadNow(leadId);
         vincularFn({ data: { leadId, clienteId: c.id } }).catch((err) => {
           toast.error(err instanceof Error ? err.message : "Erro ao vincular cliente ao lead");
         });
