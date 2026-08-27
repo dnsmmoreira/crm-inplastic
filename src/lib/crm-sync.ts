@@ -307,6 +307,14 @@ function rowToLead(
     numFuncionarios: r.num_funcionarios ?? undefined,
     decisorNome: r.decisor_nome ?? undefined,
     decisorCargo: r.decisor_cargo ?? undefined,
+    // Cadastro fiscal complementar (CNPJá) — alimenta o score do lead
+    dataAbertura: (r as any).data_abertura ?? undefined,
+    capitalSocial:
+      (r as any).capital_social !== null && (r as any).capital_social !== undefined
+        ? Number((r as any).capital_social)
+        : undefined,
+    simplesOptante: (r as any).simples_optante ?? undefined,
+    socios: (Array.isArray((r as any).socios) ? (r as any).socios : undefined) as Lead["socios"],
   };
 }
 function normalizarEnderecoLead(e: Lead["endereco"]): Lead["endereco"] | null {
