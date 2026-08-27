@@ -962,7 +962,7 @@ function ChatPanel({
             A IA está atendendo. Ao enviar, você assume a conversa automaticamente.
           </div>
         )}
-        {janela24h?.aberta === false && (
+        {janela24h?.aberta !== true && (
           <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-700">
             Janela de 24h encerrada. Só é possível enviar um modelo aprovado.
           </div>
@@ -991,7 +991,7 @@ function ChatPanel({
               disabled={sending}
               onClick={() => setModelosAberto(true)}
             >
-              {janela24h?.aberta === false ? "Escolher modelo" : "Modelos"}
+              {janela24h?.aberta !== true ? "Escolher modelo" : "Modelos"}
             </Button>
             <TemplatesButton
               nome={conversa.name}
@@ -1017,9 +1017,9 @@ function ChatPanel({
             <Button
               size="icon"
               variant="ghost"
-              disabled={sending || enviandoAnexo || bloqueadoPorStatus || janela24h?.aberta === false}
+              disabled={sending || enviandoAnexo || bloqueadoPorStatus || janela24h?.aberta !== true}
               title={
-                janela24h?.aberta === false
+                janela24h?.aberta !== true
                   ? "Janela de 24h encerrada — anexos indisponíveis"
                   : "Anexar arquivo"
               }
@@ -1049,12 +1049,12 @@ function ChatPanel({
             placeholder={
               bloqueadoPorStatus
                 ? "Somente leitura — assuma o atendimento para responder"
-                : janela24h?.aberta === false
+                : janela24h?.aberta !== true
                   ? "Janela de 24h encerrada — envie um modelo aprovado"
                   : "Escreva uma mensagem…"
             }
             rows={2}
-            disabled={sending || bloqueadoPorStatus || janela24h?.aberta === false}
+            disabled={sending || bloqueadoPorStatus || janela24h?.aberta !== true}
             className="resize-none"
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
@@ -1065,7 +1065,7 @@ function ChatPanel({
           />
           <Button
             onClick={handleSend}
-            disabled={sending || bloqueadoPorStatus || !text.trim() || janela24h?.aberta === false}
+            disabled={sending || bloqueadoPorStatus || !text.trim() || janela24h?.aberta !== true}
             className="gap-1"
           >
             <Send className="h-4 w-4" /> Enviar
