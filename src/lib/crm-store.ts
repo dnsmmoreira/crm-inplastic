@@ -554,6 +554,9 @@ export type PaymentInstallment = {
 
 export type TransportInfo = {
   carrier: string;
+  /** Id do cadastro de transportadoras — só quando é transportadora real
+   *  (as opções especiais "Cliente retira"/"Veículo próprio" não têm id). */
+  carrierTransportadoraId?: string | null;
   freightPayer: "CIF" | "FOB";
   grossWeightKg: number;
   cubageM3: number;               // volume cúbico total (m³)
