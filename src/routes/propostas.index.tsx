@@ -554,53 +554,14 @@ function NovaPropostaDialog({ open, onOpenChange }: { open: boolean; onOpenChang
     [clientes, selectedClienteId],
   );
 
-  const criarProposta = async (leadId: string) => {
-    setCriando(true);
-    try {
-      const propId = await createProposal(leadId);
-      toast.success("Proposta criada — adicione os itens");
-      onOpenChange(false);
-      navigate({ to: "/propostas/$id", params: { id: propId } });
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro ao criar proposta");
-    } finally {
-      setCriando(false);
-    }
-  };
+  const fecharDialog = () => onOpenChange(false);
 
-  const criarPropostaComClienteNovo = async (c: ClienteRow) => {
-    try {
-      const existente = leads.find((l) => l.clienteId === c.id);
-      let leadId: string;
-      if (existente) {
-        leadId = existente.id;
-      } else {
-        leadId = addLead({
-          company: c.razao_social,
-          contactName: c.contato ?? "",
-          email: c.email ?? "",
-          phone: c.telefone ?? "",
-          product: "",
-          quantity: 0,
-          estimatedValue: 0,
-          stage: "novo",
-          tags: [],
-          source: "Cliente",
-          notes: "",
-          cnpj: c.cnpj ?? undefined,
-          razaoSocial: c.razao_social,
-          nomeFantasia: c.nome_fantasia ?? undefined,
-          clienteId: c.id,
-        });
-        vincularFn({ data: { leadId, clienteId: c.id } }).catch((err) => {
-          toast.error(err instanceof Error ? err.message : "Erro ao vincular cliente ao lead");
-        });
-      }
-      await criarProposta(leadId);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro ao cadastrar cliente");
-    }
-  };
+  const criarProposta = (leadId: string) =>
+    criarPropostaDoLead(leadId, { onSuccess: fecharDialog });
+
+  const criarPropostaComClienteNovo = (c: ClienteRow) =>
+    criarPropostaParaCliente(c, { onSuccess: fecharDialog });
+
 
   return (
     <>
