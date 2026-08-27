@@ -2083,6 +2083,12 @@ function PropostaDetalhe() {
           </div>
         )}
 
+        {proposal.transport.lalamoveAtivo && (
+          <div className="mb-4 print-block rounded-md border border-destructive p-2 text-[11px] font-medium text-destructive leading-relaxed">
+            {LALAMOVE_AVISO_RESPONSABILIDADE}
+          </div>
+        )}
+
         <div className="mb-4 print-block">
           <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1 print-title">Outras Informações</div>
           <table className="w-full text-[11px] border-collapse">
