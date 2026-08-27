@@ -1091,6 +1091,7 @@ export type Database = {
       leads: {
         Row: {
           bairro: string | null
+          capital_social: number | null
           cep: string | null
           cidade: string | null
           cliente_id: string | null
@@ -1101,6 +1102,7 @@ export type Database = {
           complemento: string | null
           contact_name: string
           created_at: string
+          data_abertura: string | null
           data_previsao_entrega: string | null
           decisor_cargo: string | null
           decisor_nome: string | null
@@ -1153,6 +1155,7 @@ export type Database = {
           segment: string | null
           simples_optante: boolean | null
           site: string | null
+          socios: Json | null
           source: string
           stage: Database["public"]["Enums"]["lead_stage"]
           suframa_isento: boolean | null
@@ -1169,6 +1172,7 @@ export type Database = {
         }
         Insert: {
           bairro?: string | null
+          capital_social?: number | null
           cep?: string | null
           cidade?: string | null
           cliente_id?: string | null
@@ -1179,6 +1183,7 @@ export type Database = {
           complemento?: string | null
           contact_name?: string
           created_at?: string
+          data_abertura?: string | null
           data_previsao_entrega?: string | null
           decisor_cargo?: string | null
           decisor_nome?: string | null
@@ -1231,6 +1236,7 @@ export type Database = {
           segment?: string | null
           simples_optante?: boolean | null
           site?: string | null
+          socios?: Json | null
           source?: string
           stage?: Database["public"]["Enums"]["lead_stage"]
           suframa_isento?: boolean | null
@@ -1247,6 +1253,7 @@ export type Database = {
         }
         Update: {
           bairro?: string | null
+          capital_social?: number | null
           cep?: string | null
           cidade?: string | null
           cliente_id?: string | null
@@ -1257,6 +1264,7 @@ export type Database = {
           complemento?: string | null
           contact_name?: string
           created_at?: string
+          data_abertura?: string | null
           data_previsao_entrega?: string | null
           decisor_cargo?: string | null
           decisor_nome?: string | null
@@ -1309,6 +1317,7 @@ export type Database = {
           segment?: string | null
           simples_optante?: boolean | null
           site?: string | null
+          socios?: Json | null
           source?: string
           stage?: Database["public"]["Enums"]["lead_stage"]
           suframa_isento?: boolean | null

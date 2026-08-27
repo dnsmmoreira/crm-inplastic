@@ -253,7 +253,7 @@ function payTermToInsert(t: PaymentTerm): PayTermInsert {
 
 
 
-function rowToLead(
+export function rowToLead(
   r: LeadRow,
   interactions: Interaction[],
   aiActions: AiAction[],
@@ -307,6 +307,14 @@ function rowToLead(
     numFuncionarios: r.num_funcionarios ?? undefined,
     decisorNome: r.decisor_nome ?? undefined,
     decisorCargo: r.decisor_cargo ?? undefined,
+    // Cadastro fiscal complementar (CNPJá) — alimenta o score do lead
+    dataAbertura: r.data_abertura ?? undefined,
+    capitalSocial:
+      r.capital_social !== null && r.capital_social !== undefined
+        ? Number(r.capital_social)
+        : undefined,
+    simplesOptante: r.simples_optante ?? undefined,
+    socios: (Array.isArray(r.socios) ? r.socios : undefined) as Lead["socios"],
   };
 }
 function normalizarEnderecoLead(e: Lead["endereco"]): Lead["endereco"] | null {
@@ -318,7 +326,7 @@ function normalizarEnderecoLead(e: Lead["endereco"]): Lead["endereco"] | null {
   return out as Lead["endereco"];
 }
 
-function leadToInsert(l: Lead): LeadInsert {
+export function leadToInsert(l: Lead): LeadInsert {
   return {
     id: l.id,
     company: normalizarTexto(l.company),
@@ -356,6 +364,10 @@ function leadToInsert(l: Lead): LeadInsert {
     num_funcionarios: l.numFuncionarios ?? null,
     decisor_nome: l.decisorNome ? normalizarTexto(l.decisorNome) : null,
     decisor_cargo: l.decisorCargo ? normalizarTexto(l.decisorCargo) : null,
+    data_abertura: l.dataAbertura || null,
+    capital_social: l.capitalSocial ?? null,
+    simples_optante: l.simplesOptante ?? null,
+    socios: (l.socios?.length ? l.socios : null) as unknown as Json,
   };
 }
 
