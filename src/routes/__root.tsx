@@ -308,6 +308,12 @@ const NAV_GROUPS: NavGroup[] = [
         icon: Settings2,
         show: key("empresas.editar"),
       },
+      {
+        to: "/transportadoras",
+        label: "Transportadoras",
+        icon: Truck,
+        show: key("empresas.editar"),
+      },
       { to: "/tabela-precos", label: "Tabela de Preços", icon: Tags, show: vendas },
     ],
   },
