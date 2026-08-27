@@ -201,6 +201,8 @@ function PedidoDetailBody({
               <ItensBlock pedido={pedido} comValores={false} />
               {podeVerValores && <TratativaBlock pedido={pedido} />}
               <ObservacoesPropostaBlock pedido={pedido} />
+              <DocumentosBlock pedido={pedido} readOnly />
+
               <DecisaoLeitura pedido={pedido} />
             </>
           ) : visaoFinanceira ? (
