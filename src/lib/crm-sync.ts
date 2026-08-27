@@ -422,6 +422,7 @@ function rowToProposal(
     installments,
     transport: {
       carrier: t.carrier ?? "A definir",
+      carrierTransportadoraId: t.carrierTransportadoraId ?? null,
       freightPayer: (t.freightPayer as "CIF" | "FOB") ?? "FOB",
       grossWeightKg: Number(t.grossWeightKg ?? 0),
       cubageM3: Number(t.cubageM3 ?? 0),

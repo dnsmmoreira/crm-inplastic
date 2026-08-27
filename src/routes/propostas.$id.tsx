@@ -47,6 +47,12 @@ import { enviarPropostaWhatsapp, enviarPropostaEmail } from "@/lib/propostas.fun
 import { formatCep } from "@/lib/format";
 import { useServerFn } from "@tanstack/react-start";
 import {
+  listarTransportadorasAtivas,
+  sugerirTransportadora,
+  type TransportadoraRow,
+} from "@/lib/transportadoras.functions";
+import { ehOpcaoEspecialTransporte, OPCOES_ESPECIAIS_TRANSPORTE } from "@/lib/transportadoras";
+import {
   addDaysToDateInput,
   aplicarIntervalo,
   descreverParcelas,
@@ -221,6 +227,15 @@ function PropostaDetalhe() {
   /** Intervalo (dias) entre parcelas escolhido pelo vendedor; null = usa o da condição. */
   const [intervaloParcelas, setIntervaloParcelas] = useState<number | null>(null);
 
+  // Cadastro de transportadoras + sugestão por UF do cliente (campo estruturado).
+  const listarTransportadorasFn = useServerFn(listarTransportadorasAtivas);
+  const transportadorasQ = useQuery<TransportadoraRow[]>({
+    queryKey: ["transportadoras-ativas"],
+    staleTime: 5 * 60 * 1000,
+    queryFn: () => listarTransportadorasFn({ data: undefined as never }),
+  });
+  const transportadoras = transportadorasQ.data ?? [];
+
 
   const selectedTerm = useMemo(
     () => paymentTerms.find((t: PaymentTerm) => t.id === proposal?.paymentTermId) ?? null,
@@ -263,6 +278,19 @@ function PropostaDetalhe() {
 
   // Pessoa Física: só condições à vista ou cartão (permite_pf).
   const isClientePf = clienteRow?.tipo_pessoa === "PF";
+
+  const ufCliente =
+    (clienteRow as { estado?: string | null } | null)?.estado ??
+    (lead as { endereco?: { uf?: string } } | undefined)?.endereco?.uf ??
+    null;
+  const sugerirTransportadoraFn = useServerFn(sugerirTransportadora);
+  const sugestaoQ = useQuery({
+    queryKey: ["sugestao-transportadora", ufCliente],
+    enabled: !!ufCliente,
+    staleTime: 5 * 60 * 1000,
+    queryFn: () => sugerirTransportadoraFn({ data: { uf: ufCliente } }),
+  });
+  const sugestaoTransportadora = sugestaoQ.data ?? null;
   const visiblePaymentTerms = useMemo(() => {
     const base = isClientePf
       ? activePaymentTerms.filter((t: PaymentTerm) => !!t.permitePf)
@@ -1139,10 +1167,80 @@ function PropostaDetalhe() {
             <CardContent className="space-y-3">
               <div>
                 <Label>Transportador</Label>
-                <Input
-                  value={proposal.transport.carrier}
-                  onChange={(e) => updateProposal(proposal.id, { transport: { ...proposal.transport, carrier: e.target.value } })}
-                />
+                <Select
+                  value={
+                    proposal.transport.carrierTransportadoraId
+                      ? `id:${proposal.transport.carrierTransportadoraId}`
+                      : ehOpcaoEspecialTransporte(proposal.transport.carrier)
+                        ? `especial:${proposal.transport.carrier}`
+                        : ""
+                  }
+                  onValueChange={(v) => {
+                    if (v.startsWith("especial:")) {
+                      updateProposal(proposal.id, {
+                        transport: {
+                          ...proposal.transport,
+                          carrier: v.slice("especial:".length),
+                          carrierTransportadoraId: null,
+                        },
+                      });
+                      return;
+                    }
+                    const tid = v.slice("id:".length);
+                    const t = transportadoras.find((x) => x.id === tid);
+                    if (!t) return;
+                    updateProposal(proposal.id, {
+                      transport: {
+                        ...proposal.transport,
+                        carrier: t.nome,
+                        carrierTransportadoraId: t.id,
+                      },
+                    });
+                  }}
+                  disabled={readOnly}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={proposal.transport.carrier || "Selecionar transportador"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sugestaoTransportadora && (
+                      <SelectItem value={`id:${sugestaoTransportadora.id}`}>
+                        <span className="flex items-center gap-2">
+                          {sugestaoTransportadora.nome}
+                          <Badge variant="secondary" className="text-[10px]">sugerida</Badge>
+                        </span>
+                      </SelectItem>
+                    )}
+                    {OPCOES_ESPECIAIS_TRANSPORTE.map((o) => (
+                      <SelectItem key={o} value={`especial:${o}`}>
+                        <span className="flex items-center gap-2">
+                          {o}
+                          <span className="text-[10px] text-muted-foreground">(sem transportadora)</span>
+                        </span>
+                      </SelectItem>
+                    ))}
+                    {transportadoras
+                      .filter((t) => t.id !== sugestaoTransportadora?.id)
+                      .map((t) => (
+                        <SelectItem key={t.id} value={`id:${t.id}`}>
+                          {t.nome}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+                {sugestaoTransportadora && (
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Sugestão: {sugestaoTransportadora.nome} — mais usada em clientes de{" "}
+                    {sugestaoTransportadora.uf} ({sugestaoTransportadora.usos} propostas).
+                  </p>
+                )}
+                {!proposal.transport.carrierTransportadoraId &&
+                  !ehOpcaoEspecialTransporte(proposal.transport.carrier) &&
+                  proposal.transport.carrier && (
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      Valor atual (texto antigo): {proposal.transport.carrier}
+                    </p>
+                  )}
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div className="col-span-2">
