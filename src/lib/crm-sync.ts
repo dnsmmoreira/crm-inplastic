@@ -364,6 +364,10 @@ function leadToInsert(l: Lead): LeadInsert {
     num_funcionarios: l.numFuncionarios ?? null,
     decisor_nome: l.decisorNome ? normalizarTexto(l.decisorNome) : null,
     decisor_cargo: l.decisorCargo ? normalizarTexto(l.decisorCargo) : null,
+    data_abertura: l.dataAbertura || null,
+    capital_social: l.capitalSocial ?? null,
+    simples_optante: l.simplesOptante ?? null,
+    socios: (l.socios?.length ? l.socios : null) as unknown as Json,
   };
 }
 
