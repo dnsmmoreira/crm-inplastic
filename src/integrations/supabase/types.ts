@@ -3280,6 +3280,14 @@ export type Database = {
               mesmo_vendedor: boolean
             }[]
           }
+      ganhos_por_vendedor: {
+        Args: { _end: string; _start: string }
+        Returns: {
+          qtd: number
+          valor: number
+          vid: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
