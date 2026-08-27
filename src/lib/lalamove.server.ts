@@ -72,7 +72,9 @@ export function mensagemDeErroLalamove(status: number, body: string): string {
   }
   try {
     const parsed = JSON.parse(body) as {
-      errors?: Array<{ id?: string; message?: string; detail?: string }> | { id?: string; message?: string };
+      errors?:
+        | Array<{ id?: string; message?: string; detail?: string }>
+        | { id?: string; message?: string; detail?: string };
       message?: string;
     };
     const err = Array.isArray(parsed.errors) ? parsed.errors[0] : parsed.errors;

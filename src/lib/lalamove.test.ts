@@ -61,7 +61,7 @@ describe("parseQuotation", () => {
           serviceType: "VAN",
           expiresAt: "2026-08-27T12:00:00Z",
           priceBreakdown: { total: "89.9", currency: "BRL" },
-          distance: { value: "12450", unit: "m" },
+          distance: { value: "12500", unit: "m" },
         },
       },
       "VAN",
