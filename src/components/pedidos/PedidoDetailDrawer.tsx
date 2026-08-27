@@ -212,6 +212,8 @@ function PedidoDetailBody({
               {podeVerValores && <HistoricoClienteBlock pedido={pedido} />}
               {podeVerValores && <TratativaBlock pedido={pedido} />}
               <ObservacoesPropostaBlock pedido={pedido} />
+              <DocumentosBlock pedido={pedido} />
+
               <AprovacaoBlock pedido={pedido} onChanged={onChanged} />
               <OcorrenciasBlock pedido={pedido} onChanged={onChanged} />
             </>
