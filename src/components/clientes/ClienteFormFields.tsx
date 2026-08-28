@@ -122,7 +122,13 @@ export function ClienteFormFields({
   useEffect(() => setCpfMasked(formatCpf(value.cpf ?? "")), [value.cpf]);
   useEffect(() => setCepMasked(formatCep(value.cep ?? "")), [value.cep]);
 
+  const paymentTerms = useCrm((s) => s.paymentTerms);
+  const prazos = [...(paymentTerms ?? [])]
+    .filter((t) => t.active)
+    .sort((a, b) => (a.ordem ?? 999) - (b.ordem ?? 999) || a.label.localeCompare(b.label));
+
   const disabled = !!readOnly;
+
   const isPF = value.tipo_pessoa === "PF";
   const cpfInvalido = isPF && (value.cpf ?? "").length === 11 && !isValidCpf(value.cpf ?? "");
 
