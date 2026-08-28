@@ -45,7 +45,12 @@ export function emptyCliente(cnpjInicial = ""): ClienteFormState {
     simples_optante: null,
     suframa_isento: null,
     suframa_numero: "",
+    condicao_pagamento_padrao_id: null,
+    email_nf: "",
+    regras_faturamento: "",
+    aceite_desconto_duplicata: false,
   };
+
 }
 
 export function fromRow(r: ClienteRow): ClienteFormState {
