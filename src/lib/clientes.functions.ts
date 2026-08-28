@@ -444,7 +444,22 @@ export const updateCliente = createServerFn({ method: "POST" })
         patch.suframa_numero !== undefined
           ? patch.suframa_numero
           : (current as ClienteRow).suframa_numero,
+      condicao_pagamento_padrao_id:
+        patch.condicao_pagamento_padrao_id !== undefined
+          ? patch.condicao_pagamento_padrao_id
+          : (current as ClienteRow).condicao_pagamento_padrao_id,
+      email_nf:
+        patch.email_nf !== undefined ? patch.email_nf : (current as ClienteRow).email_nf,
+      regras_faturamento:
+        patch.regras_faturamento !== undefined
+          ? patch.regras_faturamento
+          : (current as ClienteRow).regras_faturamento,
+      aceite_desconto_duplicata:
+        patch.aceite_desconto_duplicata !== undefined
+          ? patch.aceite_desconto_duplicata
+          : !!(current as ClienteRow).aceite_desconto_duplicata,
     };
+
     const { errors, clean } = validateInput(merged);
     if (errors.length) throw new Error(errors.join("; "));
 
