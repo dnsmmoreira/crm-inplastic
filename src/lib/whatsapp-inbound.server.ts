@@ -85,11 +85,14 @@ export async function processarEntradaWhatsapp(
   //    Se não existe → cria em 'ia_atendendo' com ia_ativa=true.
   let conversaId: string | null = null;
   {
-    const { data: existing } = await supabaseAdmin
+    const { candidatosTelefoneBR } = await import("@/lib/telefone-br");
+    const { data: encontradas } = await supabaseAdmin
       .from("whatsapp_conversas")
       .select("id")
-      .eq("phone", phone)
-      .maybeSingle();
+      .in("phone", candidatosTelefoneBR(phone))
+      .order("updated_at", { ascending: false })
+      .limit(1);
+    const existing = encontradas?.[0] ?? null;
 
     if (existing?.id) {
       conversaId = existing.id;
