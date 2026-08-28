@@ -144,7 +144,12 @@ function ClienteDetailPage() {
           observacao: form.observacao,
           empresa_padrao: form.empresa_padrao,
           ativo: form.ativo,
+          condicao_pagamento_padrao_id: form.condicao_pagamento_padrao_id ?? null,
+          email_nf: form.email_nf ?? null,
+          regras_faturamento: form.regras_faturamento ?? null,
+          aceite_desconto_duplicata: !!form.aceite_desconto_duplicata,
           ...(isAdmin ? { vendedor_id: form.vendedor_id } : {}),
+
         },
       } });
       toast.success("Cliente atualizado");
