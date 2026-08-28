@@ -126,8 +126,13 @@ function validateInput(d: ClienteInput): { errors: string[]; clean: ClienteInput
       cidade: d.cidade ? normalizarTexto(d.cidade) : d.cidade ?? null,
       contato: d.contato ? normalizarTexto(d.contato) : d.contato ?? null,
       email: d.email ? normalizarEmail(d.email) : d.email ?? null,
+      email_nf: d.email_nf ? normalizarEmail(d.email_nf) : d.email_nf ?? null,
+      condicao_pagamento_padrao_id: (d.condicao_pagamento_padrao_id ?? "") || null,
+      regras_faturamento: (d.regras_faturamento ?? "").toString().trim() || null,
+      aceite_desconto_duplicata: !!d.aceite_desconto_duplicata,
       empresa_padrao: empresa,
       estado: uf || null,
+
     },
   };
 }
