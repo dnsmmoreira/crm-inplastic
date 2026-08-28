@@ -94,5 +94,27 @@ describe("conferência final da proposta", () => {
     expect(contarConfirmados(entries, reaberto)).toBe(0);
     expect(todosConfirmados(entries, reaberto)).toBe(false);
   });
+  it("fluxo sequencial: só a linha atual pode ser confirmada", () => {
+    const entries = buildConferenciaEntries(base);
+    let marcados = estadoInicialConferencia();
+    expect(indiceAtual(entries, marcados)).toBe(0);
+    // clicar numa linha bloqueada não muda nada
+    marcados = acionarEntrada(entries, marcados, "geral:validade");
+    expect(contarConfirmados(entries, marcados)).toBe(0);
+    marcados = acionarEntrada(entries, marcados, entries[0].id);
+    expect(estadoDaEntrada(entries, marcados, 0)).toBe("confirmado");
+    expect(estadoDaEntrada(entries, marcados, 1)).toBe("atual");
+    expect(estadoDaEntrada(entries, marcados, 2)).toBe("bloqueado");
+  });
 
+  it("reabrir uma linha confirmada reseta o progresso dali pra frente", () => {
+    const entries = buildConferenciaEntries(base);
+    let marcados = estadoInicialConferencia();
+    for (const e of entries) marcados = acionarEntrada(entries, marcados, e.id);
+    expect(todosConfirmados(entries, marcados)).toBe(true);
+    marcados = acionarEntrada(entries, marcados, entries[1].id);
+    expect(indiceAtual(entries, marcados)).toBe(1);
+    expect(contarConfirmados(entries, marcados)).toBe(1);
+  });
 });
+
