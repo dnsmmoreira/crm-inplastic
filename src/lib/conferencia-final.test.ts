@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  acionarEntrada,
   alternarConferencia,
   buildConferenciaEntries,
   contarConfirmados,
+  estadoDaEntrada,
   estadoInicialConferencia,
+  indiceAtual,
   todosConfirmados,
   type ConferenciaInput,
 } from "./conferencia-final";
