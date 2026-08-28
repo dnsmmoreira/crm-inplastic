@@ -73,11 +73,14 @@ export const Route = createFileRoute("/api/public/hooks/lead-externo")({
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
         // 1) Conversa: cria ou garante ia_ativa=false / name preenchido
-        const { data: existente } = await supabaseAdmin
+        const { candidatosTelefoneBR } = await import("@/lib/telefone-br");
+        const { data: encontradas } = await supabaseAdmin
           .from("whatsapp_conversas")
           .select("id, name, lead_id")
-          .eq("phone", telefone)
-          .maybeSingle();
+          .in("phone", candidatosTelefoneBR(telefone))
+          .order("updated_at", { ascending: false })
+          .limit(1);
+        const existente = encontradas?.[0] ?? null;
 
         let conversaId: string;
         if (!existente) {
