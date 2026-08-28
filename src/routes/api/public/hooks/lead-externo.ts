@@ -162,15 +162,37 @@ export const Route = createFileRoute("/api/public/hooks/lead-externo")({
           })
           .eq("id", conversaId);
 
-        // 3) Resumo da IA como nota no lead
-        if (resumo) {
-          const { error: rErr } = await supabaseAdmin.from("lead_interactions").insert({
-            lead_id: leadId,
-            owner_id: null,
-            type: "note",
-            content: `Resumo da IA (Gabriel) — origem WhatsApp Inplastic/OPA:\n${resumo}`,
+        // 3) Resumo da IA como nota no lead + trilha no chat
+        if (resumo || body.motivo) {
+          if (resumo) {
+            const { error: rErr } = await supabaseAdmin.from("lead_interactions").insert({
+              lead_id: leadId,
+              owner_id: null,
+              type: "note",
+              content: `Resumo da IA (Gabriel) — origem WhatsApp Inplastic/OPA:\n${resumo}`,
+            });
+            if (rErr) console.error("[lead-externo] falha ao gravar resumo:", rErr.message);
+          }
+
+          const { error: mErr } = await supabaseAdmin.from("whatsapp_mensagens").insert({
+            conversa_id: conversaId,
+            direcao: "saida",
+            autor: "ia",
+            tipo: "resumo_opa",
+            conteudo: [
+              "Atendimento qualificado via WhatsApp Inplastic (OPA) — fora deste CRM.",
+              body.protocolo_opa ? `Protocolo: ${body.protocolo_opa}` : null,
+              body.empresa ? `Empresa: ${body.empresa}` : null,
+              body.produto ? `Produto: ${body.produto}` : null,
+              body.quantidade ? `Quantidade: ${body.quantidade}` : null,
+              body.cidade_uf ? `Cidade/UF: ${body.cidade_uf}` : null,
+              "",
+              resumo || body.motivo || "Sem resumo detalhado.",
+            ]
+              .filter((l) => l !== null)
+              .join("\n"),
           });
-          if (rErr) console.error("[lead-externo] falha ao gravar resumo:", rErr.message);
+          if (mErr) console.error("[lead-externo] falha ao gravar resumo no chat:", mErr.message);
         }
 
         // 4) Round-robin + notificação ao vendedor
