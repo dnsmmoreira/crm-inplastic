@@ -356,6 +356,58 @@ export function ClienteFormFields({
       </Card>
       )}
 
+      <Card>
+        <CardHeader className="pb-3"><CardTitle className="text-base">Faturamento</CardTitle></CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <Label>Prazo de pagamento padrão</Label>
+            <Select
+              value={value.condicao_pagamento_padrao_id ?? SEM_PRAZO}
+              onValueChange={(v) => onChange({ condicao_pagamento_padrao_id: v === SEM_PRAZO ? null : v })}
+              disabled={disabled}
+            >
+              <SelectTrigger><SelectValue placeholder="Sem padrão definido" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value={SEM_PRAZO}>Sem padrão definido</SelectItem>
+                {prazos.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>E-mail para envio de NFs</Label>
+            <Input
+              type="email"
+              value={value.email_nf ?? ""}
+              disabled={disabled}
+              onChange={(e) => onChange({ email_nf: e.target.value })}
+              placeholder="financeiro@empresa.com.br"
+            />
+          </div>
+          <div className="md:col-span-2">
+            <Label>Regras para faturamento</Label>
+            <Textarea
+              value={value.regras_faturamento ?? ""}
+              disabled={disabled}
+              rows={4}
+              onChange={(e) => onChange({ regras_faturamento: e.target.value })}
+              placeholder="Ex.: enviar boleto com 5 dias de antecedência; faturar contra a matriz."
+            />
+          </div>
+          <label className="md:col-span-2 flex items-center gap-2">
+            <Switch
+              checked={value.aceite_desconto_duplicata === true}
+              disabled={disabled}
+              onCheckedChange={(c) => onChange({ aceite_desconto_duplicata: c })}
+            />
+            <span className="text-sm">Cliente autoriza desconto de duplicata</span>
+          </label>
+        </CardContent>
+      </Card>
+
+
+
       {showInternal && (
         <Card>
           <CardHeader className="pb-3"><CardTitle className="text-base">Interno</CardTitle></CardHeader>
