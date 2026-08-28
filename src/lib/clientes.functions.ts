@@ -38,6 +38,10 @@ export type ClienteRow = {
   simples_optante: boolean | null;
   suframa_isento: boolean | null;
   suframa_numero: string | null;
+  condicao_pagamento_padrao_id: string | null;
+  email_nf: string | null;
+  regras_faturamento: string | null;
+  aceite_desconto_duplicata: boolean;
 };
 
 export type ClienteInput = {
@@ -67,7 +71,12 @@ export type ClienteInput = {
   simples_optante?: boolean | null;
   suframa_isento?: boolean | null;
   suframa_numero?: string | null;
+  condicao_pagamento_padrao_id?: string | null;
+  email_nf?: string | null;
+  regras_faturamento?: string | null;
+  aceite_desconto_duplicata?: boolean;
 };
+
 
 function validateInput(d: ClienteInput): { errors: string[]; clean: ClienteInput } {
   const errors: string[] = [];
