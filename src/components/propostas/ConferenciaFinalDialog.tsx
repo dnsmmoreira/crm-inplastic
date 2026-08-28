@@ -103,12 +103,11 @@ function ConferenciaConteudo({
   const estadoDe = (e: ConferenciaEntry) =>
     estadoDaEntrada(entries, marcados, entries.indexOf(e));
 
-  const acionar = (id: string) =>
-    setMarcados((m) => {
-      const next = acionarEntrada(entries, m, id);
-      if (next !== m) setDeclaracao(false);
-      return next;
-    });
+  const acionar = (id: string) => {
+    setDeclaracao(false);
+    setMarcados((m) => acionarEntrada(entries, m, id));
+  };
+
 
   const subtotal = input.items.reduce((s, it) => s + it.quantity * it.unitPrice, 0);
   const desconto = subtotal * (input.descontoPercent / 100);
