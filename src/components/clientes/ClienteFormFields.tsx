@@ -14,8 +14,12 @@ import {
 import { formatCnpj, formatCpf, isValidCpf } from "@/lib/cnpj";
 import { formatCep } from "@/lib/format";
 import type { ClienteInput, ClienteRow } from "@/lib/clientes.functions";
+import { useCrm } from "@/lib/crm-store";
+
+const SEM_PRAZO = "__sem_prazo__";
 
 export type ClienteFormState = ClienteInput;
+
 
 export function emptyCliente(cnpjInicial = ""): ClienteFormState {
   return {
