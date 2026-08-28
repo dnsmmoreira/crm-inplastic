@@ -1099,9 +1099,16 @@ function urlDaMidia(midia: unknown): string | null {
 
 function Bolha({ m, nomeVendedor }: { m: Mensagem; nomeVendedor?: string }) {
   const isCliente = m.autor === "cliente";
-  const isIA = m.autor === "ia";
-  const Icon = isIA ? Bot : UserIcon;
-  const rotulo = isCliente ? "Cliente" : isIA ? "IA — Lucas" : (nomeVendedor ?? "Você");
+  const isResumoOpa = (m.tipo ?? "").toLowerCase() === "resumo_opa";
+  const isIA = m.autor === "ia" && !isResumoOpa;
+  const Icon = isResumoOpa ? FileText : isIA ? Bot : UserIcon;
+  const rotulo = isResumoOpa
+    ? "Atendimento externo (OPA)"
+    : isCliente
+      ? "Cliente"
+      : isIA
+        ? "IA — Lucas"
+        : (nomeVendedor ?? "Você");
   const url = urlDaMidia(m.midia);
   const tipo = (m.tipo ?? "texto").toLowerCase();
 
@@ -1110,16 +1117,19 @@ function Bolha({ m, nomeVendedor }: { m: Mensagem; nomeVendedor?: string }) {
       <div
         className={cn(
           "max-w-[78%] rounded-2xl px-3 py-2 text-sm shadow-sm",
-          isCliente
-            ? "rounded-bl-sm bg-muted text-foreground"
-            : isIA
-              ? "rounded-br-sm border border-blue-500/20 bg-blue-500/10 text-blue-900 dark:text-blue-100"
-              : "rounded-br-sm bg-primary text-primary-foreground",
+          isResumoOpa
+            ? "rounded-br-sm border border-dashed border-muted-foreground/50 bg-muted/40 text-muted-foreground"
+            : isCliente
+              ? "rounded-bl-sm bg-muted text-foreground"
+              : isIA
+                ? "rounded-br-sm border border-blue-500/20 bg-blue-500/10 text-blue-900 dark:text-blue-100"
+                : "rounded-br-sm bg-primary text-primary-foreground",
         )}
       >
         <div className="mb-0.5 flex items-center gap-1 text-[10px] uppercase tracking-wide opacity-70">
           <Icon className="h-3 w-3" /> {rotulo}
         </div>
+
 
         {url && (tipo.includes("imag") || tipo === "image" || tipo === "photo") ? (
           <a href={url} target="_blank" rel="noreferrer">
