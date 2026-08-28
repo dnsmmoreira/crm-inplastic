@@ -38,6 +38,10 @@ export type ClienteRow = {
   simples_optante: boolean | null;
   suframa_isento: boolean | null;
   suframa_numero: string | null;
+  condicao_pagamento_padrao_id: string | null;
+  email_nf: string | null;
+  regras_faturamento: string | null;
+  aceite_desconto_duplicata: boolean;
 };
 
 export type ClienteInput = {
@@ -67,7 +71,12 @@ export type ClienteInput = {
   simples_optante?: boolean | null;
   suframa_isento?: boolean | null;
   suframa_numero?: string | null;
+  condicao_pagamento_padrao_id?: string | null;
+  email_nf?: string | null;
+  regras_faturamento?: string | null;
+  aceite_desconto_duplicata?: boolean;
 };
+
 
 function validateInput(d: ClienteInput): { errors: string[]; clean: ClienteInput } {
   const errors: string[] = [];
@@ -117,8 +126,13 @@ function validateInput(d: ClienteInput): { errors: string[]; clean: ClienteInput
       cidade: d.cidade ? normalizarTexto(d.cidade) : d.cidade ?? null,
       contato: d.contato ? normalizarTexto(d.contato) : d.contato ?? null,
       email: d.email ? normalizarEmail(d.email) : d.email ?? null,
+      email_nf: d.email_nf ? normalizarEmail(d.email_nf) : d.email_nf ?? null,
+      condicao_pagamento_padrao_id: (d.condicao_pagamento_padrao_id ?? "") || null,
+      regras_faturamento: (d.regras_faturamento ?? "").toString().trim() || null,
+      aceite_desconto_duplicata: !!d.aceite_desconto_duplicata,
       empresa_padrao: empresa,
       estado: uf || null,
+
     },
   };
 }
@@ -322,6 +336,11 @@ export async function criarClienteCore(
         simples_optante: clean.simples_optante ?? null,
         suframa_isento: clean.suframa_isento ?? null,
         suframa_numero: (clean.suframa_numero ?? "").trim() || null,
+        condicao_pagamento_padrao_id: clean.condicao_pagamento_padrao_id ?? null,
+        email_nf: clean.email_nf ?? null,
+        regras_faturamento: clean.regras_faturamento ?? null,
+        aceite_desconto_duplicata: !!clean.aceite_desconto_duplicata,
+
       })
       .select("*")
       .single();
@@ -425,7 +444,22 @@ export const updateCliente = createServerFn({ method: "POST" })
         patch.suframa_numero !== undefined
           ? patch.suframa_numero
           : (current as ClienteRow).suframa_numero,
+      condicao_pagamento_padrao_id:
+        patch.condicao_pagamento_padrao_id !== undefined
+          ? patch.condicao_pagamento_padrao_id
+          : (current as ClienteRow).condicao_pagamento_padrao_id,
+      email_nf:
+        patch.email_nf !== undefined ? patch.email_nf : (current as ClienteRow).email_nf,
+      regras_faturamento:
+        patch.regras_faturamento !== undefined
+          ? patch.regras_faturamento
+          : (current as ClienteRow).regras_faturamento,
+      aceite_desconto_duplicata:
+        patch.aceite_desconto_duplicata !== undefined
+          ? patch.aceite_desconto_duplicata
+          : !!(current as ClienteRow).aceite_desconto_duplicata,
     };
+
     const { errors, clean } = validateInput(merged);
     if (errors.length) throw new Error(errors.join("; "));
 
@@ -452,6 +486,11 @@ export const updateCliente = createServerFn({ method: "POST" })
       simples_optante: clean.simples_optante ?? null,
       suframa_isento: clean.suframa_isento ?? null,
       suframa_numero: (clean.suframa_numero ?? "")?.toString().trim() || null,
+      condicao_pagamento_padrao_id: clean.condicao_pagamento_padrao_id ?? null,
+      email_nf: clean.email_nf ?? null,
+      regras_faturamento: clean.regras_faturamento ?? null,
+      aceite_desconto_duplicata: !!clean.aceite_desconto_duplicata,
+
       atualizado_em: new Date().toISOString(),
       ...(patch.vendedor_id !== undefined ? { vendedor_id: patch.vendedor_id } : {}),
     };

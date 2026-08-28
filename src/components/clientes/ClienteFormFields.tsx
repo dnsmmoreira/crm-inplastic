@@ -14,8 +14,12 @@ import {
 import { formatCnpj, formatCpf, isValidCpf } from "@/lib/cnpj";
 import { formatCep } from "@/lib/format";
 import type { ClienteInput, ClienteRow } from "@/lib/clientes.functions";
+import { useCrm } from "@/lib/crm-store";
+
+const SEM_PRAZO = "__sem_prazo__";
 
 export type ClienteFormState = ClienteInput;
+
 
 export function emptyCliente(cnpjInicial = ""): ClienteFormState {
   return {
@@ -45,7 +49,12 @@ export function emptyCliente(cnpjInicial = ""): ClienteFormState {
     simples_optante: null,
     suframa_isento: null,
     suframa_numero: "",
+    condicao_pagamento_padrao_id: null,
+    email_nf: "",
+    regras_faturamento: "",
+    aceite_desconto_duplicata: false,
   };
+
 }
 
 export function fromRow(r: ClienteRow): ClienteFormState {
@@ -76,7 +85,12 @@ export function fromRow(r: ClienteRow): ClienteFormState {
     simples_optante: r.simples_optante,
     suframa_isento: r.suframa_isento,
     suframa_numero: r.suframa_numero ?? "",
+    condicao_pagamento_padrao_id: r.condicao_pagamento_padrao_id ?? null,
+    email_nf: r.email_nf ?? "",
+    regras_faturamento: r.regras_faturamento ?? "",
+    aceite_desconto_duplicata: !!r.aceite_desconto_duplicata,
   };
+
 }
 
 export type Vendedor = { id: string; name: string; avatarColor: string; roles: string[] };
@@ -108,7 +122,13 @@ export function ClienteFormFields({
   useEffect(() => setCpfMasked(formatCpf(value.cpf ?? "")), [value.cpf]);
   useEffect(() => setCepMasked(formatCep(value.cep ?? "")), [value.cep]);
 
+  const paymentTerms = useCrm((s) => s.paymentTerms);
+  const prazos = [...(paymentTerms ?? [])]
+    .filter((t) => t.active)
+    .sort((a, b) => (a.ordem ?? 999) - (b.ordem ?? 999) || a.label.localeCompare(b.label));
+
   const disabled = !!readOnly;
+
   const isPF = value.tipo_pessoa === "PF";
   const cpfInvalido = isPF && (value.cpf ?? "").length === 11 && !isValidCpf(value.cpf ?? "");
 
@@ -345,6 +365,58 @@ export function ClienteFormFields({
         </CardContent>
       </Card>
       )}
+
+      <Card>
+        <CardHeader className="pb-3"><CardTitle className="text-base">Faturamento</CardTitle></CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <Label>Prazo de pagamento padrão</Label>
+            <Select
+              value={value.condicao_pagamento_padrao_id ?? SEM_PRAZO}
+              onValueChange={(v) => onChange({ condicao_pagamento_padrao_id: v === SEM_PRAZO ? null : v })}
+              disabled={disabled}
+            >
+              <SelectTrigger><SelectValue placeholder="Sem padrão definido" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value={SEM_PRAZO}>Sem padrão definido</SelectItem>
+                {prazos.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>E-mail para envio de NFs</Label>
+            <Input
+              type="email"
+              value={value.email_nf ?? ""}
+              disabled={disabled}
+              onChange={(e) => onChange({ email_nf: e.target.value })}
+              placeholder="financeiro@empresa.com.br"
+            />
+          </div>
+          <div className="md:col-span-2">
+            <Label>Regras para faturamento</Label>
+            <Textarea
+              value={value.regras_faturamento ?? ""}
+              disabled={disabled}
+              rows={4}
+              onChange={(e) => onChange({ regras_faturamento: e.target.value })}
+              placeholder="Ex.: enviar boleto com 5 dias de antecedência; faturar contra a matriz."
+            />
+          </div>
+          <label className="md:col-span-2 flex items-center gap-2">
+            <Switch
+              checked={value.aceite_desconto_duplicata === true}
+              disabled={disabled}
+              onCheckedChange={(c) => onChange({ aceite_desconto_duplicata: c })}
+            />
+            <span className="text-sm">Cliente autoriza desconto de duplicata</span>
+          </label>
+        </CardContent>
+      </Card>
+
+
 
       {showInternal && (
         <Card>

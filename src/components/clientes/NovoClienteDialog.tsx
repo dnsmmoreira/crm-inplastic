@@ -150,6 +150,11 @@ export function NovoClienteDialog({ open, onOpenChange, cnpjInicial, leadId, onC
         simples_optante: state.simples_optante ?? null,
         suframa_isento: state.suframa_isento ?? null,
         suframa_numero: state.suframa_numero ?? null,
+        condicao_pagamento_padrao_id: state.condicao_pagamento_padrao_id ?? null,
+        email_nf: state.email_nf ?? null,
+        regras_faturamento: state.regras_faturamento ?? null,
+        aceite_desconto_duplicata: !!state.aceite_desconto_duplicata,
+
       } });
 
       if (res.ok) {

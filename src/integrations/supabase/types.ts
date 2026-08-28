@@ -497,6 +497,7 @@ export type Database = {
       }
       clientes: {
         Row: {
+          aceite_desconto_duplicata: boolean
           ativo: boolean
           atualizado_em: string
           bairro: string | null
@@ -504,11 +505,13 @@ export type Database = {
           cidade: string | null
           cnpj: string | null
           complemento: string | null
+          condicao_pagamento_padrao_id: string | null
           contato: string | null
           cpf: string | null
           criado_em: string
           criado_por: string | null
           email: string | null
+          email_nf: string | null
           empresa_padrao: string | null
           endereco: string | null
           estado: string | null
@@ -522,6 +525,7 @@ export type Database = {
           omie_codigo_cliente_taoplast: number | null
           razao_social: string
           recorrente_manual: boolean
+          regras_faturamento: string | null
           simples_optante: boolean | null
           suframa_isento: boolean | null
           suframa_numero: string | null
@@ -532,6 +536,7 @@ export type Database = {
           website: string | null
         }
         Insert: {
+          aceite_desconto_duplicata?: boolean
           ativo?: boolean
           atualizado_em?: string
           bairro?: string | null
@@ -539,11 +544,13 @@ export type Database = {
           cidade?: string | null
           cnpj?: string | null
           complemento?: string | null
+          condicao_pagamento_padrao_id?: string | null
           contato?: string | null
           cpf?: string | null
           criado_em?: string
           criado_por?: string | null
           email?: string | null
+          email_nf?: string | null
           empresa_padrao?: string | null
           endereco?: string | null
           estado?: string | null
@@ -557,6 +564,7 @@ export type Database = {
           omie_codigo_cliente_taoplast?: number | null
           razao_social: string
           recorrente_manual?: boolean
+          regras_faturamento?: string | null
           simples_optante?: boolean | null
           suframa_isento?: boolean | null
           suframa_numero?: string | null
@@ -567,6 +575,7 @@ export type Database = {
           website?: string | null
         }
         Update: {
+          aceite_desconto_duplicata?: boolean
           ativo?: boolean
           atualizado_em?: string
           bairro?: string | null
@@ -574,11 +583,13 @@ export type Database = {
           cidade?: string | null
           cnpj?: string | null
           complemento?: string | null
+          condicao_pagamento_padrao_id?: string | null
           contato?: string | null
           cpf?: string | null
           criado_em?: string
           criado_por?: string | null
           email?: string | null
+          email_nf?: string | null
           empresa_padrao?: string | null
           endereco?: string | null
           estado?: string | null
@@ -592,6 +603,7 @@ export type Database = {
           omie_codigo_cliente_taoplast?: number | null
           razao_social?: string
           recorrente_manual?: boolean
+          regras_faturamento?: string | null
           simples_optante?: boolean | null
           suframa_isento?: boolean | null
           suframa_numero?: string | null
@@ -601,7 +613,15 @@ export type Database = {
           vendedor_id?: string | null
           website?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "clientes_condicao_pagamento_padrao_id_fkey"
+            columns: ["condicao_pagamento_padrao_id"]
+            isOneToOne: false
+            referencedRelation: "condicoes_pagamento"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       condicoes_pagamento: {
         Row: {
