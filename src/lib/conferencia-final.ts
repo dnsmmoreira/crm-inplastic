@@ -131,3 +131,71 @@ export function todosConfirmados(
 ): boolean {
   return entries.length > 0 && entries.every((e) => marcados[e.id] === true);
 }
+
+/**
+ * Índice da entrada "atual" no fluxo sequencial: a primeira ainda não confirmada.
+ * Retorna entries.length quando tudo já foi confirmado.
+ */
+export function indiceAtual(
+  entries: ConferenciaEntry[],
+  marcados: Record<string, boolean>,
+): number {
+  const i = entries.findIndex((e) => marcados[e.id] !== true);
+  return i === -1 ? entries.length : i;
+}
+
+export type EstadoEntrada = "confirmado" | "atual" | "bloqueado";
+
+export function estadoDaEntrada(
+  entries: ConferenciaEntry[],
+  marcados: Record<string, boolean>,
+  index: number,
+): EstadoEntrada {
+  const atual = indiceAtual(entries, marcados);
+  if (index < atual) return "confirmado";
+  if (index === atual) return "atual";
+  return "bloqueado";
+}
+
+/** Confirma a entrada atual (ignora cliques em entradas bloqueadas). */
+export function confirmarEntrada(
+  entries: ConferenciaEntry[],
+  marcados: Record<string, boolean>,
+  id: string,
+): Record<string, boolean> {
+  const index = entries.findIndex((e) => e.id === id);
+  if (index === -1) return marcados;
+  if (estadoDaEntrada(entries, marcados, index) !== "atual") return marcados;
+  return { ...marcados, [id]: true };
+}
+
+/**
+ * Reabre uma entrada já confirmada para correção: ela volta a ser a "atual" e
+ * todas as posteriores voltam a ficar bloqueadas.
+ */
+export function reabrirEntrada(
+  entries: ConferenciaEntry[],
+  marcados: Record<string, boolean>,
+  id: string,
+): Record<string, boolean> {
+  const index = entries.findIndex((e) => e.id === id);
+  if (index === -1) return marcados;
+  const next: Record<string, boolean> = { ...marcados };
+  for (const e of entries.slice(index)) delete next[e.id];
+  return next;
+}
+
+/** Clique numa linha: confirma se for a atual, reabre se já confirmada, ignora se bloqueada. */
+export function acionarEntrada(
+  entries: ConferenciaEntry[],
+  marcados: Record<string, boolean>,
+  id: string,
+): Record<string, boolean> {
+  const index = entries.findIndex((e) => e.id === id);
+  if (index === -1) return marcados;
+  const estado = estadoDaEntrada(entries, marcados, index);
+  if (estado === "confirmado") return reabrirEntrada(entries, marcados, id);
+  if (estado === "atual") return confirmarEntrada(entries, marcados, id);
+  return marcados;
+}
+
