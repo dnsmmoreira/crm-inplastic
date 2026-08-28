@@ -336,6 +336,11 @@ export async function criarClienteCore(
         simples_optante: clean.simples_optante ?? null,
         suframa_isento: clean.suframa_isento ?? null,
         suframa_numero: (clean.suframa_numero ?? "").trim() || null,
+        condicao_pagamento_padrao_id: clean.condicao_pagamento_padrao_id ?? null,
+        email_nf: clean.email_nf ?? null,
+        regras_faturamento: clean.regras_faturamento ?? null,
+        aceite_desconto_duplicata: !!clean.aceite_desconto_duplicata,
+
       })
       .select("*")
       .single();
