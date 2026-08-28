@@ -81,7 +81,12 @@ export function fromRow(r: ClienteRow): ClienteFormState {
     simples_optante: r.simples_optante,
     suframa_isento: r.suframa_isento,
     suframa_numero: r.suframa_numero ?? "",
+    condicao_pagamento_padrao_id: r.condicao_pagamento_padrao_id ?? null,
+    email_nf: r.email_nf ?? "",
+    regras_faturamento: r.regras_faturamento ?? "",
+    aceite_desconto_duplicata: !!r.aceite_desconto_duplicata,
   };
+
 }
 
 export type Vendedor = { id: string; name: string; avatarColor: string; roles: string[] };
