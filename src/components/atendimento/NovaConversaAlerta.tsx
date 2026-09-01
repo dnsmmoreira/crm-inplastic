@@ -45,12 +45,12 @@ export function NovaConversaAlerta() {
               “{conversa.last_message_preview}”
             </p>
           )}
-          <div className="mt-2 flex w-full gap-2">
-            <Button variant="outline" className="flex-1" onClick={dispensar}>
+          <div className="mt-2 flex w-full flex-col gap-2 sm:flex-row">
+            <Button variant="outline" className="w-full min-h-11 sm:flex-1" onClick={dispensar}>
               Depois
             </Button>
             <Button
-              className="flex-1"
+              className="w-full min-h-11 sm:flex-1"
               onClick={() => {
                 const id = conversa.id;
                 dispensar();
