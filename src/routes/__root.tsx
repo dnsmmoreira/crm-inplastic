@@ -575,94 +575,136 @@ function AppShell({ children }: { children: ReactNode }) {
         )}
       </aside>
 
-      {/* Mobile top nav */}
-      <div className="flex flex-1 flex-col min-w-0">
-        <header className="md:hidden flex items-center justify-between border-b bg-sidebar text-sidebar-foreground px-4 py-3">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
+      {/* Mobile drawer */}
+      <div className="flex flex-1 flex-col min-w-0 overflow-x-hidden">
+        <header className="md:hidden sticky top-0 z-30 flex items-center justify-between border-b bg-sidebar text-sidebar-foreground px-3 py-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setDrawerOpen(true)}
+              aria-label="Abrir menu"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
               <Boxes className="h-4 w-4" />
             </div>
-            <span className="font-display font-semibold">PDP CRM</span>
+            <span className="truncate font-display font-semibold">PDP CRM</span>
           </div>
           <NotificacoesBell />
         </header>
 
-        <nav className="md:hidden border-b bg-card p-2 space-y-1">
-          {rootItems.map((item) => {
-            const Icon = item.icon;
-            const a = ACCENT[item.accent ?? "neutral"];
-            const active = pathname === item.to;
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                className={cn(
-                  "flex items-center gap-2 rounded-md border-l-[3px] px-3 py-2 text-sm transition-colors",
-                  active
-                    ? cn("font-medium text-foreground", a.active, a.border)
-                    : cn("border-transparent text-muted-foreground", a.hover),
-                )}
-              >
-                <Icon className={cn("h-4 w-4", a.icon)} />
-                {item.label}
-              </Link>
-            );
-          })}
-          {groups.map((group) => {
-            const GroupIcon = group.icon;
-            const open = mobileOpen === group.id;
-            const ga = ACCENT[group.accent];
-            return (
-              <div key={group.id}>
+        {drawerOpen && (
+          <div className="md:hidden fixed inset-0 z-50">
+            <button
+              type="button"
+              aria-label="Fechar menu"
+              onClick={() => setDrawerOpen(false)}
+              className="absolute inset-0 h-full w-full bg-black/60"
+            />
+            <div className="absolute inset-y-0 left-0 flex w-[280px] max-w-[85vw] flex-col bg-sidebar text-sidebar-foreground shadow-2xl">
+              <div className="flex items-center gap-2 border-b border-sidebar-border px-4 py-4">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                  <Boxes className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 flex-1 leading-tight">
+                  <div className="truncate font-display text-sm font-semibold">INPLASTIC - CRM</div>
+                  <div className="text-[11px] uppercase tracking-wider text-sidebar-foreground/60">
+                    CRM Interno
+                  </div>
+                </div>
                 <button
                   type="button"
-                  onClick={() => toggleMobileGroup(group.id)}
-                  aria-expanded={open}
-                  className="flex w-full items-center gap-2 rounded-md border-l-[3px] border-transparent px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+                  onClick={() => setDrawerOpen(false)}
+                  aria-label="Fechar menu"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-sidebar-foreground/70 hover:bg-sidebar-accent"
                 >
-                  <GroupIcon className={cn("h-4 w-4", ga.icon)} />
-                  <span className="flex-1 text-left">{group.label}</span>
-                  <ChevronDown
-                    className={cn("h-3.5 w-3.5 transition-transform", !open && "-rotate-90")}
-                  />
+                  <X className="h-5 w-5" />
                 </button>
-                {open &&
-                  group.items.map((item) => {
-                    const Icon = item.icon;
-                    const active = pathname === item.to;
-                    return (
-                      <Link
-                        key={item.to}
-                        to={item.to}
-                        className={cn(
-                          "flex items-center gap-2 rounded-md border-l-[3px] py-2 pl-8 pr-3 text-sm transition-colors",
-                          active
-                            ? cn("font-medium text-foreground", ga.active, ga.border)
-                            : cn("border-transparent text-muted-foreground", ga.hover),
-                        )}
-                      >
-                        <Icon className={cn("h-4 w-4", ga.icon)} />
-                        {item.label}
-                      </Link>
-                    );
-                  })}
               </div>
-            );
-          })}
 
-          <a
-            href="/manual.html"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={cn(
-              "flex items-center gap-2 whitespace-nowrap px-4 py-3 text-sm border-b-2",
-              "border-transparent text-muted-foreground",
-            )}
-          >
-            <BookOpen className="h-4 w-4" />
-            Manual do CRM
-          </a>
-        </nav>
+              <nav className="flex-1 space-y-1 overflow-y-auto p-3">
+                {rootItems.map((item) => {
+                  const Icon = item.icon;
+                  const a = ACCENT[item.accent ?? "neutral"];
+                  const active = pathname === item.to;
+                  return (
+                    <Link
+                      key={item.to}
+                      to={item.to}
+                      onClick={() => setDrawerOpen(false)}
+                      className={cn(
+                        "flex min-h-11 items-center gap-3 rounded-md border-l-[3px] px-3 py-2 text-sm transition-colors",
+                        active
+                          ? cn("font-medium text-sidebar-foreground", a.active, a.border)
+                          : cn("border-transparent text-sidebar-foreground/80", a.hover),
+                      )}
+                    >
+                      <Icon className={cn("h-4 w-4 shrink-0", a.icon)} />
+                      {item.label}
+                    </Link>
+                  );
+                })}
+                {groups.map((group) => {
+                  const GroupIcon = group.icon;
+                  const open = mobileOpen === group.id;
+                  const ga = ACCENT[group.accent];
+                  return (
+                    <div key={group.id}>
+                      <button
+                        type="button"
+                        onClick={() => toggleMobileGroup(group.id)}
+                        aria-expanded={open}
+                        className="flex min-h-11 w-full items-center gap-3 rounded-md border-l-[3px] border-transparent px-3 py-2 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/60"
+                      >
+                        <GroupIcon className={cn("h-4 w-4 shrink-0", ga.icon)} />
+                        <span className="flex-1 text-left">{group.label}</span>
+                        <ChevronDown
+                          className={cn("h-3.5 w-3.5 transition-transform", !open && "-rotate-90")}
+                        />
+                      </button>
+                      {open &&
+                        group.items.map((item) => {
+                          const Icon = item.icon;
+                          const active = pathname === item.to;
+                          return (
+                            <Link
+                              key={item.to}
+                              to={item.to}
+                              onClick={() => setDrawerOpen(false)}
+                              className={cn(
+                                "flex min-h-11 items-center gap-3 rounded-md border-l-[3px] py-2 pl-8 pr-3 text-sm transition-colors",
+                                active
+                                  ? cn("font-medium text-sidebar-foreground", ga.active, ga.border)
+                                  : cn("border-transparent text-sidebar-foreground/80", ga.hover),
+                              )}
+                            >
+                              <Icon className={cn("h-4 w-4 shrink-0", ga.icon)} />
+                              {item.label}
+                            </Link>
+                          );
+                        })}
+                    </div>
+                  );
+                })}
+
+                <a
+                  href="/manual.html"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setDrawerOpen(false)}
+                  className="flex min-h-11 items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent"
+                >
+                  <BookOpen className="h-4 w-4 shrink-0" />
+                  Manual do CRM
+                </a>
+              </nav>
+
+              <UserBadge />
+            </div>
+          </div>
+        )}
 
         <main className="flex-1 min-w-0">{children}</main>
       </div>
