@@ -414,6 +414,15 @@ function AppShell({ children }: { children: ReactNode }) {
   const activeGroupId = groups.find((g) => g.items.some((i) => i.to === pathname))?.id ?? null;
   const [openGroups, setOpenGroups] = useState<string[]>([]);
   const [mobileOpen, setMobileOpen] = useState<string | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [drawerOpen]);
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(OPEN_STORAGE_KEY);
