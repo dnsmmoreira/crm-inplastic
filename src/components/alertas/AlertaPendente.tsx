@@ -83,7 +83,7 @@ export function AlertasPendentesProvider({ children }: { children?: ReactNode })
                 <div className="text-[11px] font-semibold uppercase tracking-widest text-primary">
                   {kickerDe(atual.tipo)}
                 </div>
-                <h2 className="mt-1 text-base font-semibold leading-snug">
+                <h2 className="mt-1 text-base font-semibold leading-snug break-words">
                   {atual.titulo ?? "Você tem um aviso pendente."}
                 </h2>
                 {pendentes.length > 1 && (
@@ -92,17 +92,17 @@ export function AlertasPendentesProvider({ children }: { children?: ReactNode })
                   </div>
                 )}
               </div>
-              <div className="mt-2 flex w-full gap-2">
+              <div className="mt-2 flex w-full flex-col gap-2 sm:flex-row">
                 <Button
                   variant="outline"
-                  className="flex-1"
+                  className="w-full min-h-11 sm:flex-1"
                   disabled={processando}
                   onClick={() => void adiar(atual.id)}
                 >
                   Lembrar em 10 min
                 </Button>
                 <Button
-                  className="flex-1"
+                  className="w-full min-h-11 sm:flex-1"
                   disabled={processando}
                   onClick={async () => {
                     await aceitar(atual.id);
