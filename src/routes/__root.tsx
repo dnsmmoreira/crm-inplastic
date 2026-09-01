@@ -36,6 +36,8 @@ import {
   PanelLeftOpen,
   ChevronDown,
   FlaskConical,
+  Menu,
+  X,
 } from "lucide-react";
 
 import appCss from "../styles.css?url";
