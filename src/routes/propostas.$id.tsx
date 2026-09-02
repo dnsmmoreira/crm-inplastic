@@ -70,6 +70,7 @@ import {
 } from "@/lib/condicoes-comerciais";
 import { markDeleted } from "@/lib/delete-intents";
 import { ConferenciaFinalDialog } from "@/components/propostas/ConferenciaFinalDialog";
+import { RomaneiosPosPedidoDialog } from "@/components/pedidos/RomaneiosPosPedidoDialog";
 
 
 /** Parcelas de exibição (dias + percentual da condição) a partir do total da proposta. */
