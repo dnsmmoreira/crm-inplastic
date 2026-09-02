@@ -2,6 +2,32 @@ import { describe, expect, it, vi } from "vitest";
 
 import { redigirContexto, mensagemDeErro, registrarFalha } from "./falhas.server";
 
+/**
+ * O fallback pelo client de serviço é mockado: por padrão ele também falha,
+ * para que os testes de "não lança" continuem valendo. Um teste específico
+ * troca o comportamento para provar que o fallback grava.
+ */
+let fallbackFunciona = false;
+vi.mock("@/integrations/supabase/client.server", () => ({
+  get supabaseAdmin() {
+    if (!fallbackFunciona) throw new Error("service role indisponível");
+    return {
+      from: () => ({
+        select: () => {
+          const chain = {
+            eq: () => chain,
+            is: () => chain,
+            limit: () => chain,
+            maybeSingle: async () => ({ data: null }),
+          };
+          return chain;
+        },
+        insert: async () => ({ error: null }),
+      }),
+    };
+  },
+}));
+
 /** Client falso mínimo com o encadeamento usado pelo helper. */
 function fakeSb(opts: {
   existente?: { id: string; ocorrencias: number } | null;
@@ -69,6 +95,15 @@ describe("redigirContexto", () => {
 });
 
 describe("registrarFalha", () => {
+  it("reenvia pelo client de serviço quando o client de usuário bate no RLS", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    fallbackFunciona = true;
+    const { sb } = fakeSb({ insertError: "permission denied" });
+    await expect(registrarFalha(sb, "pedido.tarefa", new Error("x"))).resolves.toBe(true);
+    fallbackFunciona = false;
+    spy.mockRestore();
+  });
+
   it("não lança quando a gravação falha", async () => {
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
     const { sb } = fakeSb({ insertError: "permission denied" });

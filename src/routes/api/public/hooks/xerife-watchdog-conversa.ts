@@ -18,10 +18,10 @@ export const Route = createFileRoute("/api/public/hooks/xerife-watchdog-conversa
           return cronJsonResponse(result);
         } catch (e) {
           console.error("[xerife-watchdog-conversa] error:", e);
-          return new Response(
-            JSON.stringify({ ok: false, error: "internal_error" }),
-            { status: 500, headers: { "Content-Type": "application/json" } },
-          );
+          return new Response(JSON.stringify({ ok: false, error: "internal_error" }), {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+          });
         }
       },
     },

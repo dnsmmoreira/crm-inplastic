@@ -9,10 +9,14 @@ import { alreadyActed, logAction } from "@/lib/xerife/dedupe.server";
 import { notifyOwner } from "@/lib/xerife/notify.server";
 
 function endOfTodayIso(): string {
-  const d = new Date(); d.setHours(23, 59, 59, 999); return d.toISOString();
+  const d = new Date();
+  d.setHours(23, 59, 59, 999);
+  return d.toISOString();
 }
 function startOfTodayIso(): string {
-  const d = new Date(); d.setHours(0, 0, 0, 0); return d.toISOString();
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString();
 }
 
 async function runCheckpoint(force = false): Promise<{ vendedoresNotificados: number }> {
@@ -22,7 +26,10 @@ async function runCheckpoint(force = false): Promise<{ vendedoresNotificados: nu
     return { vendedoresNotificados: 0 };
   }
 
-  const { data: vendedores } = await sb.from("user_roles").select("user_id").eq("role", "vendedor" as any);
+  const { data: vendedores } = await sb
+    .from("user_roles")
+    .select("user_id")
+    .eq("role", "vendedor" as any);
   let vendedoresNotificados = 0;
   let vendedoresSemNada = 0;
   const vendedoresProcessados = (vendedores ?? []).length;
@@ -46,9 +53,14 @@ async function runCheckpoint(force = false): Promise<{ vendedoresNotificados: nu
 
     const pend = pendentes ?? [];
     const feitas = (concluidasHoje as any)?.count ?? 0;
-    if (pend.length === 0 && feitas === 0) { vendedoresSemNada++; continue; }
+    if (pend.length === 0 && feitas === 0) {
+      vendedoresSemNada++;
+      continue;
+    }
 
-    const criticas = pend.filter((t: any) => (t.prioridade ?? 3) <= 1 || (t.escalonamentos ?? 0) > 0);
+    const criticas = pend.filter(
+      (t: any) => (t.prioridade ?? 3) <= 1 || (t.escalonamentos ?? 0) > 0,
+    );
     const lines: string[] = [];
     lines.push(`⏱️ *Checkpoint 13h*`);
     lines.push(`✅ Concluídas: *${feitas}*`);
@@ -62,7 +74,9 @@ async function runCheckpoint(force = false): Promise<{ vendedoresNotificados: nu
     if (await notifyOwner(uid, lines.join("\n"))) {
       vendedoresNotificados++;
       await logAction(sb, {
-        regra: "checkpoint", vendedorId: uid, acao: "checkpoint enviado",
+        regra: "checkpoint",
+        vendedorId: uid,
+        acao: "checkpoint enviado",
         payload: { pendentes: pend.length, criticas: criticas.length, concluidas: feitas },
       });
     }
@@ -89,8 +103,10 @@ export const Route = createFileRoute("/api/public/hooks/xerife-checkpoint")({
           return cronJsonResponse(r);
         } catch (e) {
           console.error("[xerife-checkpoint]", e);
-          return new Response(JSON.stringify({ ok: false, error: "internal_error" }),
-            { status: 500, headers: { "Content-Type": "application/json" } });
+          return new Response(JSON.stringify({ ok: false, error: "internal_error" }), {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+          });
         }
       },
     },

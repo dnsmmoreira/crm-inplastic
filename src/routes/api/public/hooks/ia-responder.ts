@@ -6,7 +6,6 @@ const CORS = {
   "Access-Control-Allow-Headers": "Content-Type, x-n8n-secret",
 } as const;
 
-
 /**
  * Endpoint chamado pelo n8n para responder ao cliente via WhatsApp.
  * Header obrigatório: x-n8n-secret (validado contra N8N_SECRET).

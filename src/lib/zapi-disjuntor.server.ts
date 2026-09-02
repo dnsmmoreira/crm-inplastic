@@ -30,7 +30,10 @@ async function registrarSinalTecnico(texto: string, contexto: Record<string, unk
     const { registrarFalhaAdmin } = await import("./falhas.server");
     await registrarFalhaAdmin("whatsapp.disjuntor", texto, contexto);
   } catch (e) {
-    console.error("[disjuntor] falha ao registrar sinal:", e instanceof Error ? e.message : String(e));
+    console.error(
+      "[disjuntor] falha ao registrar sinal:",
+      e instanceof Error ? e.message : String(e),
+    );
   }
 }
 
@@ -61,7 +64,9 @@ export async function abrirDisjuntor(motivo: string): Promise<void> {
     if (estado.pausado && pausaAtiva(estado.pausado_ate ?? null, Date.now())) return;
     const pausadoAte = calcularPausadoAte(Date.now());
     const sb = await admin();
-    await sb.from("zapi_estado").upsert(
+    // ABORTAR (via catch local): se o estado não grava, o disjuntor não abre de
+    // verdade — o `catch` abaixo registra e evita anunciar pausa inexistente.
+    const upAbre = await sb.from("zapi_estado").upsert(
       {
         chave: CHAVE,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -70,6 +75,7 @@ export async function abrirDisjuntor(motivo: string): Promise<void> {
       },
       { onConflict: "chave" },
     );
+    if (upAbre?.error) throw new Error(String(upAbre.error.message ?? upAbre.error));
     console.warn(`[disjuntor] ABERTO motivo=${motivo} ate=${pausadoAte}`);
     await registrarSinalTecnico(
       "Disjuntor ABERTO — envios automáticos do WhatsApp pausados por 30 minutos.",
@@ -83,7 +89,8 @@ export async function abrirDisjuntor(motivo: string): Promise<void> {
 export async function fecharDisjuntor(motivo: string): Promise<void> {
   try {
     const sb = await admin();
-    await sb.from("zapi_estado").upsert(
+    // ABORTAR (via catch local): sem gravar, o disjuntor continuaria aberto.
+    const upFecha = await sb.from("zapi_estado").upsert(
       {
         chave: CHAVE,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -92,6 +99,7 @@ export async function fecharDisjuntor(motivo: string): Promise<void> {
       },
       { onConflict: "chave" },
     );
+    if (upFecha?.error) throw new Error(String(upFecha.error.message ?? upFecha.error));
     console.log(`[disjuntor] FECHADO motivo=${motivo}`);
     await registrarSinalTecnico(
       "Disjuntor FECHADO — envios automáticos do WhatsApp liberados novamente.",

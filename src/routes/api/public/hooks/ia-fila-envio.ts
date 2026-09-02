@@ -18,10 +18,10 @@ export const Route = createFileRoute("/api/public/hooks/ia-fila-envio")({
           return cronJsonResponse(r);
         } catch (e) {
           console.error("[ia-fila-envio] error:", e);
-          return new Response(
-            JSON.stringify({ ok: false, error: "internal_error" }),
-            { status: 500, headers: { "Content-Type": "application/json" } },
-          );
+          return new Response(JSON.stringify({ ok: false, error: "internal_error" }), {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+          });
         }
       },
     },

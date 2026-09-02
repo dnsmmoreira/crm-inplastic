@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { registrarFalhaSegura } from "@/lib/guard-erros";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -75,10 +76,8 @@ export const Route = createFileRoute("/api/public/hooks/ia-urgente")({
         // Garante lead (cria se ainda não existe, mesma lógica do ia-qualificar)
         let leadId = conv.lead_id as string | null;
         if (!leadId) {
-          const company =
-            dados.empresa?.trim() || conv.name?.trim() || `WhatsApp ${conv.phone}`;
-          const contactName =
-            dados.contato?.trim() || conv.name?.trim() || "A identificar";
+          const company = dados.empresa?.trim() || conv.name?.trim() || `WhatsApp ${conv.phone}`;
+          const contactName = dados.contato?.trim() || conv.name?.trim() || "A identificar";
           const quantidade =
             typeof dados.quantidade === "string"
               ? Number(dados.quantidade.replace(/[^\d]/g, "")) || undefined
@@ -114,16 +113,24 @@ export const Route = createFileRoute("/api/public/hooks/ia-urgente")({
             .select("id")
             .single();
           if (lErr || !lead) {
-            return new Response(
-              JSON.stringify({ error: lErr?.message ?? "falha ao criar lead" }),
-              { status: 500, headers: { "Content-Type": "application/json", ...CORS } },
-            );
+            return new Response(JSON.stringify({ error: lErr?.message ?? "falha ao criar lead" }), {
+              status: 500,
+              headers: { "Content-Type": "application/json", ...CORS },
+            });
           }
           leadId = lead.id;
-          await supabaseAdmin
+          // REGISTRAR E SEGUIR: o lead urgente já existe; o vínculo com a
+          // conversa é recuperável e não pode impedir o registro do alerta.
+          const vincErr = await supabaseAdmin
             .from("whatsapp_conversas")
             .update({ lead_id: leadId, updated_at: new Date().toISOString() })
             .eq("id", conversaId);
+          if (vincErr.error) {
+            await registrarFalhaSegura("ia-urgente.vincularConversa", vincErr.error, {
+              conversa_id: conversaId,
+              lead_id: leadId,
+            });
+          }
         }
 
         // Monta a mensagem para a diretoria
@@ -131,7 +138,9 @@ export const Route = createFileRoute("/api/public/hooks/ia-urgente")({
         const contato = dados.contato?.trim() || conv.name?.trim() || "—";
         const produto = dados.produto?.trim() || "—";
         const quantidade =
-          dados.quantidade !== undefined && dados.quantidade !== null && String(dados.quantidade).length
+          dados.quantidade !== undefined &&
+          dados.quantidade !== null &&
+          String(dados.quantidade).length
             ? String(dados.quantidade)
             : "";
         const texto =
@@ -150,10 +159,11 @@ export const Route = createFileRoute("/api/public/hooks/ia-urgente")({
         void texto;
         console.log(`[ia-urgente] lead urgente registrado (sem alerta de grupo) lead=${leadId}`);
 
-        const descricao =
-          `Escalação URGENTE (fora do horário) registrada no CRM. ${motivo}`.trim();
+        const descricao = `Escalação URGENTE (fora do horário) registrada no CRM. ${motivo}`.trim();
 
-        await supabaseAdmin.from("lead_ai_actions").insert({
+        // ABORTAR: este INSERT É o alerta (não há mais envio para grupo). Se ele
+        // some, o lead urgente fica invisível — o n8n reentrega em 5xx.
+        const insAlerta = await supabaseAdmin.from("lead_ai_actions").insert({
           lead_id: leadId,
           owner_id: null,
           type: "alerta",
@@ -169,6 +179,16 @@ export const Route = createFileRoute("/api/public/hooks/ia-urgente")({
             envio_erro: envioErro,
           },
         });
+        if (insAlerta.error) {
+          await registrarFalhaSegura("ia-urgente.alerta", insAlerta.error, {
+            conversa_id: conversaId,
+            lead_id: leadId,
+          });
+          return new Response(JSON.stringify({ error: "falha ao registrar alerta urgente" }), {
+            status: 500,
+            headers: { "Content-Type": "application/json", ...CORS },
+          });
+        }
 
         return Response.json(
           {

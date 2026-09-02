@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { registrarFalhaSegura } from "@/lib/guard-erros";
 
 /** Nome plausível: tem ao menos 2 caracteres e contém alguma letra. */
 function nomePlausivel(v: string | null | undefined): string | null {
@@ -122,10 +123,10 @@ export const Route = createFileRoute("/api/public/hooks/ia-qualificar")({
             .select("id")
             .single();
           if (lErr || !lead) {
-            return new Response(
-              JSON.stringify({ error: lErr?.message ?? "falha ao criar lead" }),
-              { status: 500, headers: { "Content-Type": "application/json", ...CORS } },
-            );
+            return new Response(JSON.stringify({ error: lErr?.message ?? "falha ao criar lead" }), {
+              status: 500,
+              headers: { "Content-Type": "application/json", ...CORS },
+            });
           }
           leadId = lead.id;
         }
@@ -143,7 +144,10 @@ export const Route = createFileRoute("/api/public/hooks/ia-qualificar")({
         }
 
         // 2) Vincula lead à conversa + marca como qualificado e desliga IA
-        await supabaseAdmin
+        // ABORTAR: se a conversa não for vinculada/desligada da IA, o handoff
+        // abaixo distribuiria uma conversa que a IA continua respondendo.
+        // O n8n reentrega em 5xx e o lead já criado é reaproveitado (idempotente).
+        const vincErr = await supabaseAdmin
           .from("whatsapp_conversas")
           .update({
             lead_id: leadId,
@@ -153,7 +157,16 @@ export const Route = createFileRoute("/api/public/hooks/ia-qualificar")({
             updated_at: new Date().toISOString(),
           })
           .eq("id", conversaId);
-
+        if (vincErr.error) {
+          await registrarFalhaSegura("ia-qualificar.vincularConversa", vincErr.error, {
+            conversa_id: conversaId,
+            lead_id: leadId,
+          });
+          return new Response(JSON.stringify({ error: "falha ao vincular conversa ao lead" }), {
+            status: 500,
+            headers: { "Content-Type": "application/json", ...CORS },
+          });
+        }
 
         // 3) Rede de segurança: a IA foi desligada, então a conversa NUNCA pode
         //    sair daqui sem responsável — round-robin + notificação ao vendedor.
@@ -166,7 +179,9 @@ export const Route = createFileRoute("/api/public/hooks/ia-qualificar")({
         });
         const vendedorId = atribuicao.vendedorId;
 
-        await supabaseAdmin.from("lead_ai_actions").insert({
+        // REGISTRAR E SEGUIR: lead criado e conversa distribuída; a trilha não
+        // pode derrubar o handoff já efetivado.
+        const insTrilha = await supabaseAdmin.from("lead_ai_actions").insert({
           lead_id: leadId,
           owner_id: vendedorId,
           type: "qualify",
@@ -185,6 +200,12 @@ export const Route = createFileRoute("/api/public/hooks/ia-qualificar")({
             erro_distribuicao: atribuicao.erro,
           },
         });
+        if (insTrilha.error) {
+          await registrarFalhaSegura("ia-qualificar.trilha", insTrilha.error, {
+            conversa_id: conversaId,
+            lead_id: leadId,
+          });
+        }
 
         return Response.json(
           {

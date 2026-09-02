@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
-import { assertRpcPermissao } from "@/lib/guard-erros";
+import { assertRpcPermissao, registrarFalhaSegura } from "@/lib/guard-erros";
 
 /**
  * Criação de usuários e recuperação de senha.
@@ -59,15 +59,20 @@ async function auditar(
 ): Promise<void> {
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    await supabaseAdmin.from("user_audit_log").insert({
+    // REGISTRAR E SEGUIR: auditoria nunca derruba o fluxo de convite, mas a
+    // perda de trilha precisa ficar visível em /falhas.
+    const ins = await supabaseAdmin.from("user_audit_log").insert({
       user_id: userId,
       alterado_por: autorId,
       campo,
       valor_anterior: null,
       valor_novo: novo,
     } as never);
-  } catch {
-    // auditoria nunca derruba o fluxo
+    if (ins.error) {
+      await registrarFalhaSegura("invites.auditoria", ins.error, { user_id: userId, campo });
+    }
+  } catch (e) {
+    await registrarFalhaSegura("invites.auditoria", e, { user_id: userId, campo });
   }
 }
 

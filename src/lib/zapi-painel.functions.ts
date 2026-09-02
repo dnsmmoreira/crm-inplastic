@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
+import { registrarFalhaSegura } from "@/lib/guard-erros";
 
 /** Mascara o telefone deixando visíveis apenas os 4 últimos dígitos. */
 function mascararPhone(phone: string) {
@@ -28,7 +29,10 @@ export const painelWhatsapp = createServerFn({ method: "POST" })
     const iso = (ms: number) => new Date(agora - ms).toISOString();
 
     const [envios24h, enviosRecentes, optouts, alertas] = await Promise.all([
-      supabase.from("zapi_envios").select("canal, created_at").gte("created_at", iso(24 * 60 * 60_000)),
+      supabase
+        .from("zapi_envios")
+        .select("canal, created_at")
+        .gte("created_at", iso(24 * 60 * 60_000)),
       supabase
         .from("zapi_envios")
         .select("id, canal, phone, ctx, created_at")
@@ -70,7 +74,7 @@ export const painelWhatsapp = createServerFn({ method: "POST" })
         })),
       },
       optouts: {
-        total: optouts.count ?? (optouts.data?.length ?? 0),
+        total: optouts.count ?? optouts.data?.length ?? 0,
         recentes: (optouts.data ?? []).map((o) => ({
           phone: o.phone,
           phoneMascarado: mascararPhone(o.phone),
@@ -106,11 +110,7 @@ export const diagnosticoCanaisInternos = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     await exigirAdmin(supabase, userId);
 
-    const nomes = [
-      "TELEGRAM_BOT_TOKEN",
-      "TELEGRAM_CHAT_DIRETORIA",
-      "WHATSAPP_FINANCEIRO",
-    ] as const;
+    const nomes = ["TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_DIRETORIA", "WHATSAPP_FINANCEIRO"] as const;
 
     const variaveis = Object.fromEntries(
       nomes.map((n) => [n, ((process.env[n] ?? "") as string).trim().length > 0]),
@@ -226,7 +226,6 @@ export const testarEnvioCloud = createServerFn({ method: "POST" })
       `WA-CLOUD teste_envio http_status=${httpStatus ?? "-"} message_id=${messageId ?? "-"} erro_codigo=${erroCodigo ?? "-"} janela_ignorada=${janelaIgnorada}`,
     );
 
-
     if (ok) {
       // Persistência pelo fluxo existente: conversa + mensagem de saída.
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -237,7 +236,9 @@ export const testarEnvioCloud = createServerFn({ method: "POST" })
         .maybeSingle();
       let conversaId = existente?.id ?? null;
       if (!conversaId) {
-        const { data: criada } = await supabaseAdmin
+        // REGISTRAR E SEGUIR: a mensagem JÁ saiu pelo WhatsApp; abortar não a
+        // desfaz. Sem conversa, só perdemos a persistência do histórico.
+        const { data: criada, error: cErr } = await supabaseAdmin
           .from("whatsapp_conversas")
           .insert({
             phone,
@@ -248,16 +249,26 @@ export const testarEnvioCloud = createServerFn({ method: "POST" })
           })
           .select("id")
           .single();
+        if (cErr) {
+          await registrarFalhaSegura("zapi-painel.criarConversa", cErr, { usuario_id: userId });
+        }
         conversaId = criada?.id ?? null;
       }
       if (conversaId) {
-        await supabaseAdmin.from("whatsapp_mensagens").insert({
+        // REGISTRAR E SEGUIR: idem — envio já efetivado.
+        const insMsg = await supabaseAdmin.from("whatsapp_mensagens").insert({
           conversa_id: conversaId,
           direcao: "saida",
           autor: "vendedor",
           conteudo,
           usuario_id: userId,
         });
+        if (insMsg.error) {
+          await registrarFalhaSegura("zapi-painel.registrarMensagem", insMsg.error, {
+            conversa_id: conversaId,
+            usuario_id: userId,
+          });
+        }
       }
     }
 
@@ -285,7 +296,9 @@ export const diagnosticoCloud = createServerFn({ method: "POST" })
       r.dados && typeof r.dados === "object" && "error" in (r.dados as Record<string, unknown>)
         ? ((r.dados as { error?: { code?: number } }).error?.code ?? null)
         : null;
-    console.log(`WA-CLOUD diagnostico http_status=${r.http_status ?? "-"} erro_codigo=${codigo ?? "-"}`);
+    console.log(
+      `WA-CLOUD diagnostico http_status=${r.http_status ?? "-"} erro_codigo=${codigo ?? "-"}`,
+    );
 
     return {
       configurado: r.configurado,
@@ -317,7 +330,9 @@ export const inscreverWaba = createServerFn({ method: "POST" })
 
     const { cloudInscreverWaba } = await import("./whatsapp-cloud.server");
     const r = await cloudInscreverWaba();
-    console.log(`WA-CLOUD subscribed_apps_inscrever http_status=${r.http_status ?? "-"} ok=${r.ok}`);
+    console.log(
+      `WA-CLOUD subscribed_apps_inscrever http_status=${r.http_status ?? "-"} ok=${r.ok}`,
+    );
 
     return { ok: r.ok, http_status: r.http_status, dados_json: JSON.stringify(r.body ?? null) };
   });

@@ -4,6 +4,7 @@
  * (`processarEntradaWhatsapp`). Nenhuma regra de negócio é duplicada aqui.
  */
 import { createFileRoute } from "@tanstack/react-router";
+import { registrarFalhaSegura } from "@/lib/guard-erros";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -81,7 +82,10 @@ export const Route = createFileRoute("/api/public/hooks/whatsapp-cloud")({
             igual_apos_trim: compararTempoConstante(tokenRecebido.trim(), secretEsperado.trim()),
           });
         }
-        return new Response("Forbidden", { status: 403, headers: { "Content-Type": "text/plain" } });
+        return new Response("Forbidden", {
+          status: 403,
+          headers: { "Content-Type": "text/plain" },
+        });
       },
 
       POST: async ({ request }) => {
@@ -139,10 +143,12 @@ export const Route = createFileRoute("/api/public/hooks/whatsapp-cloud")({
                   phone_number_id_confere = false;
                 }
                 for (const c of value.contacts ?? []) {
-                  if (onlyDigits(String(c?.wa_id ?? "")) === "16505551111") numero_de_amostra = true;
+                  if (onlyDigits(String(c?.wa_id ?? "")) === "16505551111")
+                    numero_de_amostra = true;
                 }
                 for (const m of value.messages ?? []) {
-                  if (onlyDigits(String(m['from'] ?? "")) === "16505551111") numero_de_amostra = true;
+                  if (onlyDigits(String(m["from"] ?? "")) === "16505551111")
+                    numero_de_amostra = true;
                 }
               }
             }
@@ -186,25 +192,30 @@ export const Route = createFileRoute("/api/public/hooks/whatsapp-cloud")({
 
               // --- statuses (entrega/leitura/falha) ---
               for (const st of value.statuses ?? []) {
-                const waId = typeof st['id'] === "string" ? (st['id'] as string) : null;
-                const erros = Array.isArray(st['errors'])
-                  ? (st['errors'] as Array<Record<string, unknown>>)
+                const waId = typeof st["id"] === "string" ? (st["id"] as string) : null;
+                const erros = Array.isArray(st["errors"])
+                  ? (st["errors"] as Array<Record<string, unknown>>)
                   : [];
                 const err0 = erros[0];
                 console.warn("WA-CLOUD status", {
-                  status: st['status'] ?? null,
-                  erro_codigo: err0?.['code'] ?? null,
-                  erro_titulo: err0?.['title'] ?? null,
+                  status: st["status"] ?? null,
+                  erro_codigo: err0?.["code"] ?? null,
+                  erro_titulo: err0?.["title"] ?? null,
                   erro_detalhe:
-                    (err0?.['error_data'] as { details?: unknown } | undefined)?.details ?? null,
+                    (err0?.["error_data"] as { details?: unknown } | undefined)?.details ?? null,
                   tem_wamid: Boolean(waId),
                 });
                 const phone =
-                  typeof st['recipient_id'] === "string" ? onlyDigits(st['recipient_id'] as string) : null;
-                await supabaseAdmin.from("wa_cloud_eventos").upsert(
+                  typeof st["recipient_id"] === "string"
+                    ? onlyDigits(st["recipient_id"] as string)
+                    : null;
+                // REGISTRAR E SEGUIR: status é telemetria e a Meta reentrega em
+                // 5xx o LOTE inteiro — devolver erro reprocessaria mensagens já
+                // tratadas. Registra com o wa_message_id para reconciliar.
+                const upStatus = await supabaseAdmin.from("wa_cloud_eventos").upsert(
                   {
-                    tipo: `status_${String(st['status'] ?? "desconhecido")}`,
-                    wa_message_id: waId ? `status:${waId}:${String(st['status'] ?? "")}` : null,
+                    tipo: `status_${String(st["status"] ?? "desconhecido")}`,
+                    wa_message_id: waId ? `status:${waId}:${String(st["status"] ?? "")}` : null,
                     phone,
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     payload: st as any,
@@ -212,13 +223,19 @@ export const Route = createFileRoute("/api/public/hooks/whatsapp-cloud")({
                   },
                   { onConflict: "wa_message_id", ignoreDuplicates: true },
                 );
+                if (upStatus.error) {
+                  await registrarFalhaSegura("wa-cloud-webhook.status", upStatus.error, {
+                    wa_message_id: waId,
+                    status: st["status"] ?? null,
+                  });
+                }
               }
 
               // --- messages (entrada) ---
               for (const msg of value.messages ?? []) {
-                const waId = typeof msg['id'] === "string" ? (msg['id'] as string) : null;
-                const phone = onlyDigits(String(msg['from'] ?? ""));
-                const tipoBruto = String(msg['type'] ?? "desconhecido");
+                const waId = typeof msg["id"] === "string" ? (msg["id"] as string) : null;
+                const phone = onlyDigits(String(msg["from"] ?? ""));
+                const tipoBruto = String(msg["type"] ?? "desconhecido");
 
                 // Idempotência por wa_message_id.
                 if (waId) {
@@ -228,7 +245,9 @@ export const Route = createFileRoute("/api/public/hooks/whatsapp-cloud")({
                     .eq("wa_message_id", waId)
                     .maybeSingle();
                   if (ja?.id) {
-                    console.warn(`[wa-cloud-webhook] evento duplicado ignorado phone=${mascararTelefoneLog(phone)}`);
+                    console.warn(
+                      `[wa-cloud-webhook] evento duplicado ignorado phone=${mascararTelefoneLog(phone)}`,
+                    );
                     continue;
                   }
                 }
@@ -241,7 +260,15 @@ export const Route = createFileRoute("/api/public/hooks/whatsapp-cloud")({
                   payload: msg as any,
                 });
                 if (evErr && evErr.code === "23505") continue;
-                if (evErr) console.error("wa_cloud_eventos insert failed:", evErr);
+                if (evErr) {
+                  // REGISTRAR E SEGUIR: o pipeline abaixo ainda pode processar a
+                  // mensagem; a Meta reentrega o lote inteiro em 5xx.
+                  console.error("wa_cloud_eventos insert failed:", evErr);
+                  await registrarFalhaSegura("wa-cloud-webhook.evento", evErr, {
+                    wa_message_id: waId,
+                    tipo: tipoBruto,
+                  });
+                }
 
                 if (tipoBruto !== "text") {
                   console.warn(
@@ -251,7 +278,7 @@ export const Route = createFileRoute("/api/public/hooks/whatsapp-cloud")({
                 }
 
                 const texto = String(
-                  (msg['text'] as { body?: string } | undefined)?.body ?? "",
+                  (msg["text"] as { body?: string } | undefined)?.body ?? "",
                 ).trim();
                 if (!phone || !texto) continue;
 
@@ -267,29 +294,48 @@ export const Route = createFileRoute("/api/public/hooks/whatsapp-cloud")({
                     tag: "wa-cloud-webhook",
                   });
                   if (waId) {
-                    await supabaseAdmin
+                    // REGISTRAR E SEGUIR: a mensagem já foi processada; a marca
+                    // de "processado" é só idempotência.
+                    const marcado = await supabaseAdmin
                       .from("wa_cloud_eventos")
                       .update({ processado: true })
                       .eq("wa_message_id", waId);
+                    if (marcado.error) {
+                      await registrarFalhaSegura(
+                        "wa-cloud-webhook.marcarProcessado",
+                        marcado.error,
+                        {
+                          wa_message_id: waId,
+                        },
+                      );
+                    }
                   }
                 } catch (e) {
                   const m = e instanceof Error ? e.message : String(e);
                   console.error(`[wa-cloud-webhook] pipeline falhou: ${m}`);
+                  await registrarFalhaSegura("wa-cloud-webhook.pipeline", e, {
+                    wa_message_id: waId,
+                    phone_mascarado: mascararTelefoneLog(phone),
+                  });
                   if (waId) {
-                    await supabaseAdmin
+                    const marcadoErro = await supabaseAdmin
                       .from("wa_cloud_eventos")
                       .update({ erro: m.slice(0, 500) })
                       .eq("wa_message_id", waId);
+                    if (marcadoErro.error) {
+                      await registrarFalhaSegura("wa-cloud-webhook.marcarErro", marcadoErro.error, {
+                        wa_message_id: waId,
+                      });
+                    }
                   }
                 }
               }
             }
           }
         } catch (e) {
-          console.error(
-            "[wa-cloud-webhook] erro:",
-            e instanceof Error ? e.message : String(e),
-          );
+          // REGISTRAR E SEGUIR: a Meta exige 200; erro aqui vira incidente.
+          console.error("[wa-cloud-webhook] erro:", e instanceof Error ? e.message : String(e));
+          await registrarFalhaSegura("wa-cloud-webhook.lote", e);
         }
 
         // A Meta exige 200 rápido sempre.

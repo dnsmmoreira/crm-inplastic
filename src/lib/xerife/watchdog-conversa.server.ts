@@ -23,6 +23,7 @@ import {
 } from "@/lib/xerife/businessTime.server";
 import { logAction } from "@/lib/xerife/dedupe.server";
 import { notifyOwner, crmLeadLink } from "@/lib/xerife/notify.server";
+import { registrarFalhaSegura } from "@/lib/guard-erros";
 
 export const REGRA = "watchdog_conversa_ia";
 export const REGRA_FRIA = "watchdog_conversa_fria";
@@ -67,11 +68,7 @@ type Cfg = {
 
 async function loadCfg(): Promise<Cfg> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data } = await supabaseAdmin
-    .from("xerife_config")
-    .select("*")
-    .eq("id", 1)
-    .maybeSingle();
+  const { data } = await supabaseAdmin.from("xerife_config").select("*").eq("id", 1).maybeSingle();
   const d: any = data ?? {};
   return {
     watchdog_conversa_ativo: d.watchdog_conversa_ativo ?? false,
@@ -317,9 +314,8 @@ export async function runWatchdogConversa(
         continue;
       }
 
-      const { garantirResponsavelConversa, notificarUsuario } = await import(
-        "@/lib/xerife/handoff.server"
-      );
+      const { garantirResponsavelConversa, notificarUsuario } =
+        await import("@/lib/xerife/handoff.server");
 
       let responsavel: string | null = conv.atribuido_para ?? null;
       if (!responsavel) {
@@ -431,10 +427,17 @@ export async function reenviarAlertasHandoff(sb: any): Promise<number> {
         `Cliente: ${quem}\nMotivo: ${c.motivo_handoff ?? "-"}\n` +
         `https://crm.inplastic.com.br/conversas?c=${c.id}`,
     });
-    await sb
+    // REGISTRAR E SEGUIR: o realerta JÁ foi enviado aos admins; abortar não o
+    // desfaz. Sem a marca, o watchdog repete o alerta na próxima rodada.
+    const marca = await sb
       .from("whatsapp_conversas")
       .update({ handoff_realertado_em: new Date().toISOString() })
       .eq("id", c.id);
+    if (marca?.error) {
+      await registrarFalhaSegura("watchdog-conversa.marcarRealerta", marca.error, {
+        conversa_id: c.id,
+      });
+    }
     console.warn(
       `[watchdog-conversa] REENVIO handoff phone=${mascararTelefoneLog(c.phone)} conversa=${c.id}`,
     );

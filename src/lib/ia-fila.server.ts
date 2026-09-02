@@ -179,12 +179,19 @@ export async function despacharResposta(
       });
     }
     const { registrarFalhaEntrega } = await import("./zapi-disjuntor.server");
-    await sb.from("zapi_eventos").insert({
+    // REGISTRAR E SEGUIR: já estamos no caminho de erro do envio; a telemetria
+    // do disjuntor não pode mascarar a falha original.
+    const insEvento = await sb.from("zapi_eventos").insert({
       tipo: "falha_entrega",
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       payload: { origem: "ia-fila", erro: msg.slice(0, 500) } as any,
       telefone_mascarado: mascararTelefoneLog(phone),
     });
+    if (insEvento?.error) {
+      await registrarFalhaSegura("ia-fila.despacharResposta/zapi_eventos", insEvento.error, {
+        resposta_id: id,
+      });
+    }
     await registrarFalhaEntrega(msg);
     const { registrarFalhaAdmin } = await import("./falhas.server");
     await registrarFalhaAdmin("ia.envio", msg, {
