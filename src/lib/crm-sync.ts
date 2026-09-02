@@ -16,6 +16,14 @@
 
 import { isIntentionalDelete, clearDeleteIntent, markDeleted } from "@/lib/delete-intents";
 import { reportarFalhaSync } from "@/lib/sync-falhas";
+import {
+  planejarEventoRealtime,
+  mesclarPorId,
+  removerPorId,
+  type ColecaoRealtime,
+  type EventoRealtime,
+  type TabelaRealtime,
+} from "@/lib/crm-realtime";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database, Json } from "@/integrations/supabase/types";
 import { normalizarParcelas } from "@/lib/condicoes-comerciais";
@@ -74,6 +82,7 @@ let subscribed = false;
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 let realtimeChannels: Array<ReturnType<typeof supabase.channel>> = [];
 let reloadTimer: ReturnType<typeof setTimeout> | null = null;
+let resyncTimer: ReturnType<typeof setInterval> | null = null;
 let suppressSave = false; // evita loop write→realtime→reload→write
 
 // Snapshot da última versão persistida — usado para diff
@@ -690,7 +699,9 @@ async function loadAll(userId: string) {
   const leads = montarLeads((leadRows ?? []) as LeadRow[], interByLead, aiByLead);
 
   // ---- tasks ----
-  const tasks = montarTasks((taskRows ?? []) as TaskRow[], (leadRows ?? []) as LeadRow[]);
+  const ownerPorLead = new Map<string, string | null>();
+  ((leadRows ?? []) as LeadRow[]).forEach((r) => ownerPorLead.set(r.id, r.owner_id));
+  const tasks = montarTasks((taskRows ?? []) as TaskRow[], (id) => ownerPorLead.get(id) ?? null);
 
   // ---- proposals ----
   const proposals = montarPropostas(
@@ -755,12 +766,10 @@ function montarLeads(
   return leads;
 }
 
-function montarTasks(taskRows: TaskRow[], leadRows: LeadRow[]): Task[] {
+function montarTasks(taskRows: TaskRow[], ownerOf: (leadId: string) => string | null): Task[] {
   const tasks = taskRows.map(rowToTask);
-  const leadOwnerMap = new Map<string, string | null>();
-  leadRows.forEach((r) => leadOwnerMap.set(r.id, r.owner_id));
   tasks.forEach((t) => {
-    const owner = leadOwnerMap.get(t.leadId) ?? null;
+    const owner = ownerOf(t.leadId);
     snapshot.tasks.set(t.id, JSON.stringify(taskToInsert(t, owner)));
   });
   return tasks;
@@ -879,6 +888,7 @@ export function clearCrmState() {
   saveTimer = null;
   if (reloadTimer) clearTimeout(reloadTimer);
   reloadTimer = null;
+  recargasPendentes.clear();
   detachRealtime();
   useCrm.setState({
     leads: [],
@@ -1101,7 +1111,11 @@ async function recarregarColecao(colecao: ColecaoRealtime) {
     }
     case "tasks": {
       const { data } = await queryTarefas();
-      const tasks = montarTasks((data ?? []) as TaskRow[], []);
+      const leadsAtuais = useCrm.getState().leads;
+      const tasks = montarTasks(
+        (data ?? []) as TaskRow[],
+        (id) => leadsAtuais.find((l) => l.id === id)?.ownerId ?? null,
+      );
       aplicarNoStore(() => useCrm.setState({ tasks }));
       return;
     }
