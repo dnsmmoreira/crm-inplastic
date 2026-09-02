@@ -670,13 +670,15 @@ async function loadAll(userId: string) {
   // ---- produtos ----
   const products =
     prodRows && prodRows.length
-      ? prodRows.map(rowToProduct)
+      ? (prodRows as unknown as ProductRow[]).map(rowToProduct)
       : []; // vazio até admin cadastrar
   products.forEach((p) => snapshot.products.set(p.id, JSON.stringify(productToInsert(p))));
 
   // ---- emitters ----
   const emitters =
-    emitRows && emitRows.length ? emitRows.map(rowToEmitter) : DEFAULT_EMITTERS;
+    emitRows && emitRows.length
+      ? (emitRows as unknown as EmitterRow[]).map(rowToEmitter)
+      : DEFAULT_EMITTERS;
   const defaultRow = (emitRows ?? []).find((r) => r.is_default);
   const defaultEmitterId =
     sys.defaultEmitterId && emitters.some((e) => e.id === sys.defaultEmitterId)
@@ -689,25 +691,30 @@ async function loadAll(userId: string) {
 
   // ---- payment terms ----
   const paymentTerms =
-    termRows && termRows.length ? termRows.map(rowToPayTerm) : DEFAULT_PAYMENT_TERMS;
+    termRows && termRows.length
+      ? (termRows as unknown as PayTermRow[]).map(rowToPayTerm)
+      : DEFAULT_PAYMENT_TERMS;
   paymentTerms.forEach((t) => snapshot.paymentTerms.set(t.id, JSON.stringify(payTermToInsert(t))));
 
   // ---- interactions & ai actions por lead ----
-  const { interByLead, aiByLead } = indexarHistoricoLead(interRows ?? [], aiRows ?? []);
+  const { interByLead, aiByLead } = indexarHistoricoLead(
+    (interRows ?? []) as unknown as InteractionRow[],
+    (aiRows ?? []) as unknown as AiActionRow[],
+  );
 
   // ---- leads ----
-  const leads = montarLeads((leadRows ?? []) as LeadRow[], interByLead, aiByLead);
+  const leads = montarLeads((leadRows ?? []) as unknown as LeadRow[], interByLead, aiByLead);
 
   // ---- tasks ----
   const ownerPorLead = new Map<string, string | null>();
-  ((leadRows ?? []) as LeadRow[]).forEach((r) => ownerPorLead.set(r.id, r.owner_id));
-  const tasks = montarTasks((taskRows ?? []) as TaskRow[], (id) => ownerPorLead.get(id) ?? null);
+  ((leadRows ?? []) as unknown as LeadRow[]).forEach((r) => ownerPorLead.set(r.id, r.owner_id));
+  const tasks = montarTasks((taskRows ?? []) as unknown as TaskRow[], (id) => ownerPorLead.get(id) ?? null);
 
   // ---- proposals ----
   const proposals = montarPropostas(
-    (propRows ?? []) as ProposalRow[],
-    (pItemRows ?? []) as PItemRow[],
-    (pParcRows ?? []) as PParcelaRow[],
+    (propRows ?? []) as unknown as ProposalRow[],
+    (pItemRows ?? []) as unknown as PItemRow[],
+    (pParcRows ?? []) as unknown as PParcelaRow[],
   );
 
 
@@ -1102,10 +1109,10 @@ async function recarregarColecao(colecao: ColecaoRealtime) {
         queryAiActions(),
       ]);
       const { interByLead, aiByLead } = indexarHistoricoLead(
-        (interRows ?? []) as InteractionRow[],
-        (aiRows ?? []) as AiActionRow[],
+        (interRows ?? []) as unknown as InteractionRow[],
+        (aiRows ?? []) as unknown as AiActionRow[],
       );
-      const leads = montarLeads((leadRows ?? []) as LeadRow[], interByLead, aiByLead);
+      const leads = montarLeads((leadRows ?? []) as unknown as LeadRow[], interByLead, aiByLead);
       aplicarNoStore(() => useCrm.setState({ leads }));
       return;
     }
@@ -1113,7 +1120,7 @@ async function recarregarColecao(colecao: ColecaoRealtime) {
       const { data } = await queryTarefas();
       const leadsAtuais = useCrm.getState().leads;
       const tasks = montarTasks(
-        (data ?? []) as TaskRow[],
+        (data ?? []) as unknown as TaskRow[],
         (id) => leadsAtuais.find((l) => l.id === id)?.ownerId ?? null,
       );
       aplicarNoStore(() => useCrm.setState({ tasks }));
@@ -1126,23 +1133,23 @@ async function recarregarColecao(colecao: ColecaoRealtime) {
         queryParcelas(),
       ]);
       const proposals = montarPropostas(
-        (propRows ?? []) as ProposalRow[],
-        (itemRows ?? []) as PItemRow[],
-        (parcRows ?? []) as PParcelaRow[],
+        (propRows ?? []) as unknown as ProposalRow[],
+        (itemRows ?? []) as unknown as PItemRow[],
+        (parcRows ?? []) as unknown as PParcelaRow[],
       );
       aplicarNoStore(() => useCrm.setState({ proposals }));
       return;
     }
     case "products": {
       const { data } = await queryProdutos();
-      const products = ((data ?? []) as ProductRow[]).map(rowToProduct);
+      const products = ((data ?? []) as unknown as ProductRow[]).map(rowToProduct);
       products.forEach((p) => snapshot.products.set(p.id, JSON.stringify(productToInsert(p))));
       aplicarNoStore(() => useCrm.setState({ products }));
       return;
     }
     case "emitters": {
       const { data } = await queryEmitters();
-      const emitters = ((data ?? []) as EmitterRow[]).map(rowToEmitter);
+      const emitters = ((data ?? []) as unknown as EmitterRow[]).map(rowToEmitter);
       if (!emitters.length) return;
       const def = useCrm.getState().defaultEmitterId;
       emitters.forEach((e) =>
@@ -1153,7 +1160,7 @@ async function recarregarColecao(colecao: ColecaoRealtime) {
     }
     case "paymentTerms": {
       const { data } = await queryTermos();
-      const paymentTerms = ((data ?? []) as PayTermRow[]).map(rowToPayTerm);
+      const paymentTerms = ((data ?? []) as unknown as PayTermRow[]).map(rowToPayTerm);
       if (!paymentTerms.length) return;
       paymentTerms.forEach((t) =>
         snapshot.paymentTerms.set(t.id, JSON.stringify(payTermToInsert(t))),
