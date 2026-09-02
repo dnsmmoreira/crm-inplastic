@@ -27,7 +27,7 @@ export type RelatorioPedidoRow = {
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type LooseClient = any;
+export type LooseClient = any;
 
 /** Lê a permissão do próprio usuário no servidor (admin sempre liberado). */
 const CHAVE_GRANULAR: Record<string, string> = {
@@ -35,7 +35,7 @@ const CHAVE_GRANULAR: Record<string, string> = {
   exportar_dados: "pedidos.exportar",
 };
 
-async function assertPermissao(
+export async function assertPermissao(
   sb: LooseClient,
   userId: string,
   perm: "ver_relatorios" | "exportar_dados",
@@ -72,7 +72,7 @@ async function assertPermissao(
  * Escopo do relatório: quem não tem `pedidos.ver_todos` (vendedor comum) só
  * enxerga os próprios pedidos — o filtro é aplicado no servidor, além do RLS.
  */
-async function escopoProprio(sb: LooseClient, userId: string): Promise<boolean> {
+export async function escopoProprio(sb: LooseClient, userId: string): Promise<boolean> {
   const data = await assertRpcPermissao(
     await sb.rpc("tem_permissao", { _user_id: userId, _chave: "pedidos.ver_todos" }),
     "relatorios.escopoProprio/tem_permissao",
