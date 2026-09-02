@@ -229,6 +229,15 @@ function ProdutosPage() {
                       <Button
                         size="icon"
                         variant="ghost"
+                        title="Duplicar produto"
+                        disabled={!isAdmin}
+                        onClick={() => duplicarProduto(p)}
+                      >
+                        <Copy className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
                         disabled={!isAdmin}
                         onClick={() => {
                           if (confirm(`Remover ${p.name}?`)) {
