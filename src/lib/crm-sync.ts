@@ -1301,7 +1301,8 @@ async function doSave() {
   }
 
   // ---- produtos (admin-only via RLS) ----
-  if (isAdmin && precisaDiff("products", state.products)) {
+  if (isAdmin) {
+    if (precisaDiff("products", state.products))
     await syncCollection<Product>({
       current: state.products,
       snapshot: snapshot.products,
@@ -1317,6 +1318,7 @@ async function doSave() {
 
     // ---- emitters ----
     const emitCurrent = state.emitters;
+    if (precisaDiff("emitters", state.emitters, state.defaultEmitterId))
     await syncCollection<EmitterProfile>({
       current: emitCurrent,
       snapshot: snapshot.emitters,
@@ -1357,6 +1359,7 @@ async function doSave() {
     }
 
     // ---- payment terms ----
+    if (precisaDiff("paymentTerms", state.paymentTerms))
     await syncCollection<PaymentTerm>({
       current: state.paymentTerms,
       snapshot: snapshot.paymentTerms,
@@ -1374,6 +1377,7 @@ async function doSave() {
   }
 
   // ---- leads (RLS filtra por owner_id) ----
+  if (precisaDiff("leads", state.leads))
   await syncCollection<Lead>({
     current: state.leads,
     snapshot: snapshot.leads,
@@ -1390,6 +1394,8 @@ async function doSave() {
   // ---- tarefas ----
   const leadOwnerMap = new Map<string, string>();
   state.leads.forEach((l) => leadOwnerMap.set(l.id, l.ownerId));
+  // tarefas dependem também de `leads` (owner_id derivado do lead)
+  if (precisaDiff("tasks", state.tasks, state.leads))
   await syncCollection<Task>({
     current: state.tasks,
     snapshot: snapshot.tasks,
@@ -1409,6 +1415,7 @@ async function doSave() {
   });
 
   // ---- propostas ----
+  if (precisaDiff("proposals", state.proposals))
   await syncCollection<Proposal>({
     current: state.proposals,
     snapshot: snapshot.proposals,
@@ -1422,6 +1429,11 @@ async function doSave() {
     onDeleted: (ids) => clearDeleteIntent("proposals", ids),
   });
 
+  // ---- proposta_itens / proposta_parcelas / históricos derivam de `proposals`
+  // e `leads`: só recalculam quando esses arrays mudam de referência.
+  const propostasMudaram = precisaDiff("proposalsFilhos", state.proposals);
+  const leadsMudaram = precisaDiff("leadsHistorico", state.leads);
+  if (propostasMudaram) {
   // ---- proposta_itens ----
   const allItems: Array<{ propId: string; index: number; item: ProposalItem }> = [];
   state.proposals.forEach((p) =>
@@ -1519,6 +1531,9 @@ async function doSave() {
     onDeleted: (ids) => clearDeleteIntent("proposalParcelas", ids),
   });
 
+  }
+
+  if (!leadsMudaram) return;
   // ---- lead_interactions (append-only) ----
   const newInter: Array<{ leadId: string; ownerId: string; i: Interaction }> = [];
   state.leads.forEach((l) =>
@@ -1620,6 +1635,7 @@ async function syncCollection<T>(opts: {
     } else {
       // Snapshot intocado de propósito: o registro segue "sujo" e é reenviado
       // no próximo ciclo de save.
+      if (collectionName) forcarColecao.add(collectionName);
       reportarFalhaSync(collectionName ?? "collection", "upsert", error, {
         registros: toUpsert.length,
       });
@@ -1631,6 +1647,7 @@ async function syncCollection<T>(opts: {
       toDelete.forEach((k) => snap.delete(k));
       onDeleted?.(toDelete);
     } else {
+      if (collectionName) forcarColecao.add(collectionName);
       reportarFalhaSync(collectionName ?? "collection", "delete", error, { ids: toDelete });
     }
   }
