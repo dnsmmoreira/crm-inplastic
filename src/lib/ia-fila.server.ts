@@ -16,6 +16,7 @@ import {
   sleep,
 } from "./zapi-humanizacao";
 import { mascararTelefoneLog } from "./whatsapp-send.server";
+import { assertNoError, registrarFalhaSegura } from "./guard-erros";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SB = any;
@@ -30,12 +31,19 @@ export async function enfileirarRespostaIA(conversaId: string, mensagem: string)
   const atrasoMs = calcularAtrasoMs();
   const responderApos = new Date(Date.now() + atrasoMs).toISOString();
 
-  // Agregação: cancela respostas ainda não enviadas desta conversa.
-  await sb
+  // ABORTAR: transição ANTES do envio. Se o cancelamento das pendentes
+  // anteriores falhar, o cliente receberia duas respostas da IA.
+  const cancelAnteriores = await sb
     .from("ia_respostas_pendentes")
     .update({ status: "cancelada", erro: "substituida por resposta mais recente" })
     .eq("conversa_id", conversaId)
     .eq("status", "pendente");
+  await assertNoError(
+    cancelAnteriores,
+    "ia-fila.enfileirarRespostaIA/cancelar-anteriores",
+    { conversa_id: conversaId },
+    "Não foi possível preparar a fila de resposta automática.",
+  );
 
   const { data, error } = await sb
     .from("ia_respostas_pendentes")
@@ -76,10 +84,12 @@ export async function despacharResposta(
     .limit(1)
     .maybeSingle();
   if (maisNova?.id) {
-    await sb
+    // ABORTAR: precede o envio — se não cancelar, o cron reenvia e duplica.
+    const canc = await sb
       .from("ia_respostas_pendentes")
       .update({ status: "cancelada", erro: "agregada em resposta mais recente" })
       .eq("id", id);
+    await assertNoError(canc, "ia-fila.despacharResposta/cancelar-agregada", { resposta_id: id });
     return { enviado: false, motivo: "agregada" };
   }
 
@@ -97,21 +107,33 @@ export async function despacharResposta(
     .maybeSingle();
   if (!conv) return { enviado: false, motivo: "conversa_nao_encontrada" };
   if (!conv.ia_ativa) {
-    await sb
+    // ABORTAR: precede o envio — pendência não cancelada volta pelo cron.
+    const canc = await sb
       .from("ia_respostas_pendentes")
       .update({ status: "cancelada", erro: "ia_ativa=false" })
       .eq("id", id);
+    await assertNoError(canc, "ia-fila.despacharResposta/cancelar-ia-desligada", {
+      resposta_id: id,
+      conversa_id: linha.conversa_id,
+    });
     return { enviado: false, motivo: "ia_desligada" };
   }
 
-  // Reserva a linha (evita corrida entre request e cron).
-  const { data: reservada } = await sb
+  // ABORTAR: a reserva é o lock que precede o envio; se falhar, seguir
+  // enviaria mensagem duplicada (request + cron).
+  const { data: reservada, error: reservaErro } = await sb
     .from("ia_respostas_pendentes")
     .update({ status: "enviando" })
     .eq("id", id)
     .eq("status", "pendente")
     .select("id")
     .maybeSingle();
+  await assertNoError(
+    { error: reservaErro },
+    "ia-fila.despacharResposta/reservar",
+    { resposta_id: id, conversa_id: linha.conversa_id },
+    "Não foi possível reservar a resposta automática para envio.",
+  );
   if (!reservada) return { enviado: false, motivo: "ja_em_processamento" };
 
   const phone: string = conv.phone;
@@ -145,10 +167,17 @@ export async function despacharResposta(
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error(`[ia-fila] envio falhou phone=${mascararTelefoneLog(phone)}: ${msg}`);
-    await sb
+    // REGISTRAR E SEGUIR: já estamos no caminho de erro do envio; abortar aqui
+    // apagaria o registro da falha original.
+    const marcarErro = await sb
       .from("ia_respostas_pendentes")
       .update({ status: "erro", erro: msg.slice(0, 500) })
       .eq("id", id);
+    if (marcarErro?.error) {
+      await registrarFalhaSegura("ia-fila.despacharResposta/marcar-erro", marcarErro.error, {
+        resposta_id: id,
+      });
+    }
     const { registrarFalhaEntrega } = await import("./zapi-disjuntor.server");
     await sb.from("zapi_eventos").insert({
       tipo: "falha_entrega",
@@ -166,17 +195,31 @@ export async function despacharResposta(
     return { enviado: false, motivo: "erro_envio" };
   }
 
-  await sb.from("whatsapp_mensagens").insert({
+  // REGISTRAR E SEGUIR: a mensagem JÁ saiu para o cliente pela Meta/Z-API;
+  // abortar não desfaz o envio e ainda deixaria a fila sem baixa.
+  const insHist = await sb.from("whatsapp_mensagens").insert({
     conversa_id: linha.conversa_id,
     direcao: "saida",
     autor: "ia",
     conteudo: linha.mensagem,
   });
+  if (insHist?.error) {
+    await registrarFalhaSegura("ia-fila.despacharResposta/historico", insHist.error, {
+      conversa_id: linha.conversa_id,
+      resposta_id: id,
+    });
+  }
 
-  await sb
+  // REGISTRAR E SEGUIR: baixa posterior ao envio.
+  const baixa = await sb
     .from("ia_respostas_pendentes")
     .update({ status: "enviada", enviado_em: new Date().toISOString() })
     .eq("id", id);
+  if (baixa?.error) {
+    await registrarFalhaSegura("ia-fila.despacharResposta/baixa", baixa.error, {
+      resposta_id: id,
+    });
+  }
 
   return { enviado: true };
 }

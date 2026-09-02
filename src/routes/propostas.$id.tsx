@@ -411,9 +411,10 @@ function PropostaDetalhe() {
   const enviarPropostaFn = useServerFn(enviarPropostaWhatsapp);
   const enviarWhatsMut = useMutation({
     mutationFn: (propostaId: string) => enviarPropostaFn({ data: { propostaId } }),
-    onSuccess: (_r: unknown, propostaId: string) => {
+    onSuccess: (r: { aviso?: string }, propostaId: string) => {
       setStatus(propostaId, "enviada");
-      toast.success("Proposta enviada por WhatsApp!");
+      if (r?.aviso) toast.warning(r.aviso);
+      else toast.success("Proposta enviada por WhatsApp!");
     },
     onError: (err: Error) => toast.error(err.message),
   });
@@ -422,9 +423,10 @@ function PropostaDetalhe() {
   const enviarEmailFn = useServerFn(enviarPropostaEmail);
   const enviarEmailMut = useMutation({
     mutationFn: (propostaId: string) => enviarEmailFn({ data: { propostaId } }),
-    onSuccess: (r: { email?: string }, propostaId: string) => {
+    onSuccess: (r: { email?: string; aviso?: string }, propostaId: string) => {
       setStatus(propostaId, "enviada");
-      toast.success(`Proposta enviada por e-mail${r?.email ? ` para ${r.email}` : ""}!`);
+      if (r?.aviso) toast.warning(r.aviso);
+      else toast.success(`Proposta enviada por e-mail${r?.email ? ` para ${r.email}` : ""}!`);
     },
     onError: (err: Error) => toast.error(err.message),
   });

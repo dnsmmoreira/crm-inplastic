@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { assertNoError, registrarFalhaSegura } from "@/lib/guard-erros";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
 import { PERM_PEDIDOS_MOVIMENTAR } from "@/lib/permissoes";
@@ -323,7 +324,12 @@ async function isAdminOuFinanceiro(sb: LooseClient, userId: string): Promise<boo
 /** Chave granular no servidor (tem_permissao já libera admin). */
 async function temPermissao(sb: LooseClient, userId: string, chave: string): Promise<boolean> {
   try {
-    const { data } = await sb.rpc("tem_permissao", { _user_id: userId, _chave: chave });
+    // BAIXA / só registrar: já é fail-closed (retorna false em qualquer erro).
+    const { data, error } = await sb.rpc("tem_permissao", { _user_id: userId, _chave: chave });
+    if (error) {
+      await registrarFalhaSegura("pedidos.temPermissao", error, { user_id: userId, chave });
+      return false;
+    }
     return data === true;
   } catch {
     return false;
@@ -396,7 +402,8 @@ async function enqueueStageChangeNotification(
     `${stageLabel(args.from)} → ${stageLabel(args.to)}.`;
 
   try {
-    await sb.from("pedido_notificacoes").insert({
+    // REGISTRAR E SEGUIR: notificação é efeito secundário da movimentação.
+    const insNotif = await sb.from("pedido_notificacoes").insert({
       pedido_id: args.pedido_id,
       evento_id,
       etapa_anterior: args.from,
@@ -408,6 +415,16 @@ async function enqueueStageChangeNotification(
       status: "pendente",
       criado_por: args.criado_por,
     });
+    if (insNotif?.error) {
+      const em = String(insNotif.error.message ?? "");
+      // unique violation → outra chamada concorrente já registrou
+      if (!em.includes("duplicate") && !em.includes("23505")) {
+        await registrarFalhaSegura("pedidos.notificarMudancaEtapa", insNotif.error, {
+          pedido_id: args.pedido_id,
+          nova_etapa: args.to,
+        });
+      }
+    }
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     // unique violation → outra chamada concorrente já registrou
@@ -1163,7 +1180,8 @@ export const reprovarPedidoFinanceiro = createServerFn({ method: "POST" })
       .eq("id", data.pedido_id);
     if (updErr) throw new Error(`Falha ao reprovar pedido: ${updErr.message}`);
 
-    await sb.from("pedido_stage_history").insert({
+    // REGISTRAR E SEGUIR: o pedido já mudou de etapa; histórico é auxiliar.
+    const hist = await sb.from("pedido_stage_history").insert({
       pedido_id: data.pedido_id,
       from_stage: fromStage,
       to_stage: "reprovado_financeiro",
@@ -1171,17 +1189,47 @@ export const reprovarPedidoFinanceiro = createServerFn({ method: "POST" })
       motivo: data.motivo,
       moved_by: context.userId,
     });
+    if (hist?.error) {
+      await registrarFalhaSegura("pedidos.stage-history", hist.error, {
+        pedido_id: data.pedido_id,
+        to_stage: "reprovado_financeiro",
+      });
+    }
 
     // Reabre a proposta e o lead no Funil de Vendas — a reprovação desfaz o "ganho".
+    // ABORTAR: rollback pela metade é pior que nada — proposta e lead têm que
+    // voltar juntos ao funil. A falha do 2º update é marcada como parcial.
     if (propostaId) {
-      await sb
+      const rbProp = await sb
         .from("propostas")
         .update({ status: "enviada" })
         .eq("id", propostaId)
         .eq("status", "pedido");
+      await assertNoError(
+        rbProp,
+        "pedidos.reprovarPedidoFinanceiro/rollback-proposta",
+        { pedido_id: data.pedido_id, proposta_id: propostaId },
+        "Não foi possível reabrir a proposta no funil. Tente novamente.",
+      );
     }
     if (leadId) {
-      await sb.from("leads").update({ stage: "proposta" }).eq("id", leadId).eq("stage", "ganho");
+      const rbLead = await sb
+        .from("leads")
+        .update({ stage: "proposta" })
+        .eq("id", leadId)
+        .eq("stage", "ganho");
+      await assertNoError(
+        rbLead,
+        "pedidos.reprovarPedidoFinanceiro/rollback-lead",
+        {
+          pedido_id: data.pedido_id,
+          lead_id: leadId,
+          proposta_id: propostaId,
+          rollback_parcial: true,
+          detalhe: "rollback parcial: proposta reaberta, lead permaneceu em ganho",
+        },
+        "Rollback parcial: a proposta foi reaberta, mas o lead não voltou ao funil. Verifique em Falhas do sistema.",
+      );
     }
 
     const { aoEntrarNaEtapa } = await import("@/lib/pedidos-fluxo.server");
@@ -1253,7 +1301,8 @@ export const devolverPedidoOperacional = createServerFn({ method: "POST" })
       .eq("id", data.pedido_id);
     if (updErr) throw new Error(`Falha ao devolver pedido: ${updErr.message}`);
 
-    await sb.from("pedido_stage_history").insert({
+    // REGISTRAR E SEGUIR: o pedido já mudou de etapa; histórico é auxiliar.
+    const hist = await sb.from("pedido_stage_history").insert({
       pedido_id: data.pedido_id,
       from_stage: fromStage,
       to_stage: PEDIDO_STAGE_CANCELADO,
@@ -1261,16 +1310,46 @@ export const devolverPedidoOperacional = createServerFn({ method: "POST" })
       motivo: data.motivo,
       moved_by: context.userId,
     });
+    if (hist?.error) {
+      await registrarFalhaSegura("pedidos.stage-history", hist.error, {
+        pedido_id: data.pedido_id,
+        to_stage: PEDIDO_STAGE_CANCELADO,
+      });
+    }
 
+    // ABORTAR: rollback pela metade é pior que nada — proposta e lead têm que
+    // voltar juntos ao funil. A falha do 2º update é marcada como parcial.
     if (propostaId) {
-      await sb
+      const rbProp = await sb
         .from("propostas")
         .update({ status: "enviada" })
         .eq("id", propostaId)
         .eq("status", "pedido");
+      await assertNoError(
+        rbProp,
+        "pedidos.devolverPedido/rollback-proposta",
+        { pedido_id: data.pedido_id, proposta_id: propostaId },
+        "Não foi possível reabrir a proposta no funil. Tente novamente.",
+      );
     }
     if (leadId) {
-      await sb.from("leads").update({ stage: "proposta" }).eq("id", leadId).eq("stage", "ganho");
+      const rbLead = await sb
+        .from("leads")
+        .update({ stage: "proposta" })
+        .eq("id", leadId)
+        .eq("stage", "ganho");
+      await assertNoError(
+        rbLead,
+        "pedidos.devolverPedido/rollback-lead",
+        {
+          pedido_id: data.pedido_id,
+          lead_id: leadId,
+          proposta_id: propostaId,
+          rollback_parcial: true,
+          detalhe: "rollback parcial: proposta reaberta, lead permaneceu em ganho",
+        },
+        "Rollback parcial: a proposta foi reaberta, mas o lead não voltou ao funil. Verifique em Falhas do sistema.",
+      );
     }
 
     const { aoEntrarNaEtapa } = await import("@/lib/pedidos-fluxo.server");
@@ -1459,10 +1538,16 @@ export const registrarOcorrencia = createServerFn({ method: "POST" })
       .select("id")
       .single();
     if (error) throw new Error(`Falha ao registrar ocorrência: ${error.message}`);
-    await sb
+    // REGISTRAR E SEGUIR: a ocorrência já foi gravada; este campo é resumo.
+    const upOco = await sb
       .from("pedidos")
       .update({ ocorrencia: `[${data.severidade}] ${data.tipo}: ${data.descricao}`.slice(0, 500) })
       .eq("id", data.pedido_id);
+    if (upOco?.error) {
+      await registrarFalhaSegura("pedidos.registrarOcorrencia/resumo", upOco.error, {
+        pedido_id: data.pedido_id,
+      });
+    }
     return { ok: true as const, id: inserted.id as string };
   });
 
@@ -1497,7 +1582,16 @@ export const resolverOcorrencia = createServerFn({ method: "POST" })
       .eq("pedido_id", updated.pedido_id)
       .eq("resolvida", false);
     if ((count ?? 0) === 0) {
-      await sb.from("pedidos").update({ ocorrencia: null }).eq("id", updated.pedido_id);
+      // REGISTRAR E SEGUIR: limpeza do resumo, secundária à resolução.
+      const limpa = await sb
+        .from("pedidos")
+        .update({ ocorrencia: null })
+        .eq("id", updated.pedido_id);
+      if (limpa?.error) {
+        await registrarFalhaSegura("pedidos.resolverOcorrencia/limpar-resumo", limpa.error, {
+          pedido_id: updated.pedido_id,
+        });
+      }
     }
     return { ok: true as const };
   });

@@ -53,7 +53,8 @@ export async function logAction(
     payload?: Record<string, unknown>;
   },
 ): Promise<void> {
-  await sb.from("xerife_log").insert({
+  // BAIXA / só registrar: log de ação do Xerife é telemetria.
+  const ins = await sb.from("xerife_log").insert({
     regra: args.regra,
     lead_id: args.leadId ?? null,
     cliente_id: args.clienteId ?? null,
@@ -61,4 +62,8 @@ export async function logAction(
     acao_tomada: args.acao,
     payload: args.payload ?? {},
   });
+  if (ins?.error) {
+    const { registrarFalhaSegura } = await import("@/lib/guard-erros");
+    await registrarFalhaSegura("xerife.logAction", ins.error, { regra: args.regra });
+  }
 }

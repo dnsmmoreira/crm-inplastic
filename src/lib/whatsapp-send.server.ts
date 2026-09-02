@@ -85,9 +85,14 @@ async function registrarAlertaIndisponivel(canal: ZapiCanal, detalhe: string) {
       .eq("tipo", "desconectado")
       .gte("created_at", desde);
 
-    await supabaseAdmin
+    // BAIXA / só registrar: telemetria de canal desconectado.
+    const insAlerta = await supabaseAdmin
       .from("zapi_alertas")
       .insert({ canal, tipo: "desconectado", detalhe: detalhe.slice(0, 1000) || null });
+    if (insAlerta?.error) {
+      const { registrarFalhaSegura } = await import("@/lib/guard-erros");
+      await registrarFalhaSegura("whatsapp-send/alerta-desconectado", insAlerta.error, { canal });
+    }
 
     if ((count ?? 0) > 0) return; // já avisou nos últimos 60 min
 

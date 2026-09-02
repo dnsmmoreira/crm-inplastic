@@ -4,6 +4,7 @@ import { requireSupabaseAuth } from "@/lib/auth.middleware";
 import { garantirClienteDoLead } from "@/lib/clientes.functions";
 import { computeLeadScore } from "@/lib/lead-score";
 import { decidirAprovacaoFinanceira } from "@/lib/aprovacao-financeira";
+import { assertNoError, registrarFalhaSegura } from "@/lib/guard-erros";
 
 /**
  * Fluxo interno de fechamento de pedido — SEM integração externa (nenhum ERP).
@@ -180,7 +181,9 @@ export const gerarPedidoInterno = createServerFn({ method: "POST" })
         : {};
 
       if (precisaAprovacao) {
-        await loose
+        // ABORTAR: sem o status coerente, a proposta ficaria "livre" e o
+        // pedido poderia nascer sem passar pela aprovação.
+        const upAguardando = await loose
           .from("propostas")
           .update({
             status: "aguardando_aprovacao",
@@ -189,6 +192,12 @@ export const gerarPedidoInterno = createServerFn({ method: "POST" })
             ...conferencia,
           })
           .eq("id", propostaId);
+        await assertNoError(
+          upAguardando,
+          "omie.gerarPedidoInterno/aguardando-aprovacao",
+          { proposta_id: propostaId },
+          "Não foi possível enviar a proposta para aprovação. Tente novamente.",
+        );
         return {
           ok: false,
           proposta_id: propostaId,
@@ -206,11 +215,27 @@ export const gerarPedidoInterno = createServerFn({ method: "POST" })
       };
       // Rastro de auditoria do auto-aprovado (admin não grava motivo).
       if (motivoAuditoria) patchAprovacao['approval_reason'] = motivoAuditoria;
-      await loose.from("propostas").update(patchAprovacao).eq("id", propostaId);
+      // ABORTAR: o pedido não pode nascer com a proposta em status incoerente.
+      const upAprovada = await loose
+        .from("propostas")
+        .update(patchAprovacao)
+        .eq("id", propostaId);
+      await assertNoError(
+        upAprovada,
+        "omie.gerarPedidoInterno/aprovar-proposta",
+        { proposta_id: propostaId },
+        "Não foi possível atualizar o status da proposta. Tente novamente.",
+      );
     }
 
-    // Move o lead para ganho automaticamente.
-    await loose.from("leads").update({ stage: "ganho" }).eq("id", leadId);
+    // ABORTAR: o pedido depende do lead em "ganho".
+    const upLead = await loose.from("leads").update({ stage: "ganho" }).eq("id", leadId);
+    await assertNoError(
+      upLead,
+      "omie.gerarPedidoInterno/lead-ganho",
+      { lead_id: leadId, proposta_id: propostaId },
+      "Não foi possível mover o lead para Ganho. Tente novamente.",
+    );
 
     // Cria (ou reutiliza) o pedido operacional interno — idempotente.
     let pedidoNumber: string | undefined;
@@ -264,7 +289,17 @@ export const moverParaGanho = createServerFn({ method: "POST" })
       return { ok: false, validacao_erros: promo.erros };
     }
 
-    await loose.from("leads").update({ stage: "ganho" }).eq("id", data.lead_id);
+    // ABORTAR: o Ganho é o efeito principal desta operação.
+    const upLeadGanho = await loose
+      .from("leads")
+      .update({ stage: "ganho" })
+      .eq("id", data.lead_id);
+    await assertNoError(
+      upLeadGanho,
+      "omie.moverParaGanho/lead-ganho",
+      { lead_id: data.lead_id },
+      "Não foi possível mover o lead para Ganho. Tente novamente.",
+    );
 
     // Fase 2 — cria pedido operacional interno de forma idempotente.
     // Não bloqueia o Ganho se algo falhar aqui (idempotência protege reexecução).
@@ -435,7 +470,9 @@ async function ensurePedidoFromProposta(
   }
 
   // 9) Histórico da etapa inicial + notificações/automações de entrada
-  await sb.from("pedido_stage_history").insert({
+  // REGISTRAR E SEGUIR: histórico de etapa é auxiliar; o pedido já existe e
+  // abortar aqui deixaria o pedido criado sem retorno para a tela.
+  const histIni = await sb.from("pedido_stage_history").insert({
     pedido_id: novoPedido.id,
     from_stage: null,
     to_stage: decisao.stage,
@@ -443,6 +480,11 @@ async function ensurePedidoFromProposta(
     motivo: `Rota automática de aprovação: ${decisao.rota}`,
     moved_by: callerId,
   });
+  if (histIni?.error) {
+    await registrarFalhaSegura("omie.ensurePedidoFromProposta/stage-history", histIni.error, {
+      pedido_id: novoPedido.id,
+    });
+  }
   // Efeitos de entrada de etapa — mesmos de uma movimentação manual.
   // Nunca podem derrubar a criação do pedido, mas também não podem ser
   // engolidos em silêncio.

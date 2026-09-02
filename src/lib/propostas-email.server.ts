@@ -111,14 +111,31 @@ export async function enviarPropostaEmailImpl(
 
   const patch: { status: "enviada"; sent_at?: string } = { status: "enviada" };
   if (!proposta.sent_at) patch.sent_at = new Date().toISOString();
-  await supabase.from("propostas").update(patch).eq("id", proposta.id);
+  // REGISTRAR E SEGUIR: o e-mail JÁ saiu; abortar não desfaz o envio.
+  const { registrarFalhaSegura } = await import("./guard-erros");
+  let aviso: string | undefined;
+  const upStatus = await supabase.from("propostas").update(patch).eq("id", proposta.id);
+  if (upStatus?.error) {
+    await registrarFalhaSegura("propostas-email/marcar-enviada", upStatus.error, {
+      proposta_id: proposta.id,
+    });
+    aviso =
+      "E-mail enviado, mas não foi possível marcar a proposta como enviada — atualize manualmente.";
+  }
 
-  await supabase.from("lead_interactions").insert({
+  // REGISTRAR E SEGUIR: histórico de interação, posterior ao envio.
+  const insInter = await supabase.from("lead_interactions").insert({
     lead_id: lead.id,
     owner_id: userId,
     type: "email",
     content: `Proposta nº ${proposta.number} enviada por e-mail para ${destinatario}: ${link}`,
   });
+  if (insInter?.error) {
+    await registrarFalhaSegura("propostas-email/interacao", insInter.error, {
+      proposta_id: proposta.id,
+      lead_id: lead.id,
+    });
+  }
 
-  return { ok: true as const, email: destinatario };
+  return { ok: true as const, email: destinatario, aviso };
 }

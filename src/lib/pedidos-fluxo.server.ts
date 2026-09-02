@@ -538,7 +538,9 @@ export async function aoEntrarNaEtapa(
     if (stage === "pos_venda") {
       // registra Entregue/Coletado conforme a modalidade, se ainda não registrado
       if (!p.entrega_confirmada) {
-        await sb
+        // ABORTAR: a confirmação de entrega é pré-requisito do pós-venda;
+        // seguir criaria tarefa de pós-venda sobre entrega não registrada.
+        const upEntrega = await sb
           .from("pedidos")
           .update({
             entrega_confirmada:
@@ -546,6 +548,13 @@ export async function aoEntrarNaEtapa(
             entregue_em: new Date().toISOString(),
           })
           .eq("id", pedidoId);
+        const { assertNoError } = await import("@/lib/guard-erros");
+        await assertNoError(
+          upEntrega,
+          "pedidos-fluxo.aoEntrarNaEtapa/confirmar-entrega",
+          { pedido_id: pedidoId },
+          "Não foi possível confirmar a entrega do pedido. Tente novamente.",
+        );
       }
       // fonte única de pós-venda: uma tarefa por pedido
       await criarTarefaPedido(sb, {
@@ -612,11 +621,18 @@ export async function encerrarPedidoPorTarefa(sb: SB, tarefaId: string): Promise
       .eq("id", tarefaId)
       .maybeSingle();
     if (!t?.pedido_id || t.tipo !== TAREFA_TIPO_POS_VENDA_PEDIDO) return;
-    await sb
+    // ABORTAR: o fechamento do pós-venda é o efeito principal — se falhar,
+    // o pedido ficaria eternamente aberto sem ninguém saber.
+    const upEncerrar = await sb
       .from("pedidos")
       .update({ encerrado_em: new Date().toISOString(), pos_venda_status: "concluido" })
       .eq("id", t.pedido_id)
       .is("encerrado_em", null);
+    if (upEncerrar?.error) {
+      throw new Error(
+        `Não foi possível encerrar o pedido no pós-venda: ${upEncerrar.error.message}`,
+      );
+    }
   } catch (e) {
     console.error("[pedidos-fluxo] encerrarPedidoPorTarefa falhou:", e);
     const { registrarFalhaAdmin } = await import("@/lib/falhas.server");
