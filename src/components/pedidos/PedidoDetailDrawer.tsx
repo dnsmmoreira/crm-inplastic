@@ -227,6 +227,7 @@ function PedidoDetailBody({
               <ObservacoesPropostaBlock pedido={pedido} />
               <DocumentosBlock pedido={pedido} />
 
+              <RomaneiosBlock pedidoId={pedido.id} />
               <ChecklistBlock pedido={pedido} onChanged={onChanged} />
               <FiscalBlock pedido={pedido} onChanged={onChanged} />
               <OcorrenciasBlock pedido={pedido} onChanged={onChanged} />
