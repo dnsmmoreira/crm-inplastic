@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 
 import { DocumentosSection } from "@/components/documentos/DocumentosSection";
+import { RomaneiosBlock } from "@/components/pedidos/RomaneiosBlock";
 
 
 import {
