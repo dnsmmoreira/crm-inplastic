@@ -5,8 +5,6 @@ import { markDeleted } from "@/lib/delete-intents";
 import { DEFAULT_FLEET, type FleetVehicle } from "@/lib/logistica";
 import { normalizarParcelas, type ParcelaCondicao } from "@/lib/condicoes-comerciais";
 
-
-
 export type UserRole = "admin" | "vendedor";
 export type User = { id: string; name: string; role: UserRole; avatarColor: string };
 
@@ -16,7 +14,6 @@ export const USERS: User[] = [
   { id: "u-carla", name: "Carla Vendas", role: "vendedor", avatarColor: "#db2777" },
   { id: "u-diego", name: "Diego Vendas", role: "vendedor", avatarColor: "#ea580c" },
 ];
-
 
 export type StageId =
   | "atendimento"
@@ -127,9 +124,7 @@ export type Lead = {
   simplesDesde?: string;
   suframa?: { numero: string; status: string; desde: string; aprovado: boolean }[];
   socios?: { nome: string; qualificacao: string; desde: string; taxId?: string }[];
-
 };
-
 
 export const DEFAULT_LEAD_TAGS: string[] = [
   "Recorrente",
@@ -152,7 +147,6 @@ export const DEFAULT_LEAD_SEGMENTS: string[] = [
   "Energia",
   "Orgão Publico",
 ];
-
 
 export type Task = {
   id: string;
@@ -221,11 +215,28 @@ const seedLeads: Lead[] = [
       { id: "i1", date: iso(-45), type: "email", content: "Solicitação de orçamento via site." },
       { id: "i2", date: iso(-30), type: "call", content: "Alinhamento técnico com engenharia." },
       { id: "i3", date: iso(-10), type: "meeting", content: "Reunião com diretoria de compras." },
-      { id: "i4", date: iso(-2), type: "whatsapp", content: "Enviada revisão da proposta comercial." },
+      {
+        id: "i4",
+        date: iso(-2),
+        type: "whatsapp",
+        content: "Enviada revisão da proposta comercial.",
+      },
     ],
     aiActions: [
-      { id: "a1", date: iso(-6), type: "followup", content: "Lead ficou 4 dias sem resposta. IA enviou WhatsApp: \"Oi Marcos, tudo bem? Podemos agendar 15min para tirar dúvidas sobre a proposta?\"" },
-      { id: "a2", date: iso(-3), type: "schedule", content: "IA agendou reunião com Marcos na agenda do vendedor para quinta-feira 15h — confirmada pelo lead via WhatsApp." },
+      {
+        id: "a1",
+        date: iso(-6),
+        type: "followup",
+        content:
+          'Lead ficou 4 dias sem resposta. IA enviou WhatsApp: "Oi Marcos, tudo bem? Podemos agendar 15min para tirar dúvidas sobre a proposta?"',
+      },
+      {
+        id: "a2",
+        date: iso(-3),
+        type: "schedule",
+        content:
+          "IA agendou reunião com Marcos na agenda do vendedor para quinta-feira 15h — confirmada pelo lead via WhatsApp.",
+      },
     ],
   },
   {
@@ -251,7 +262,13 @@ const seedLeads: Lead[] = [
       { id: "i7", date: iso(-5), type: "email", content: "Proposta comercial enviada." },
     ],
     aiActions: [
-      { id: "a3", date: iso(-2), type: "followup", content: "IA enviou lembrete automático: \"Renata, você teve chance de revisar a proposta? Posso ajudar em algum ponto técnico.\"" },
+      {
+        id: "a3",
+        date: iso(-2),
+        type: "followup",
+        content:
+          'IA enviou lembrete automático: "Renata, você teve chance de revisar a proposta? Posso ajudar em algum ponto técnico."',
+      },
     ],
   },
   {
@@ -295,10 +312,21 @@ const seedLeads: Lead[] = [
     nextFollowUp: iso(1),
     notes: "Contrato anual. Norma NIMF-15 dispensada (plástico).",
     interactions: [
-      { id: "i10", date: iso(-1), type: "email", content: "Novo lead do site — orçamento inicial." },
+      {
+        id: "i10",
+        date: iso(-1),
+        type: "email",
+        content: "Novo lead do site — orçamento inicial.",
+      },
     ],
     aiActions: [
-      { id: "a4", date: iso(0), type: "qualify", content: "IA fez pré-qualificação automática: identificou volume alto (2.000 un) e mercado de exportação — priorizado como Alto Valor." },
+      {
+        id: "a4",
+        date: iso(0),
+        type: "qualify",
+        content:
+          "IA fez pré-qualificação automática: identificou volume alto (2.000 un) e mercado de exportação — priorizado como Alto Valor.",
+      },
     ],
   },
   {
@@ -317,9 +345,7 @@ const seedLeads: Lead[] = [
     createdAt: iso(-90),
     lastContact: iso(-3),
     notes: "Fechado! Entrega em 2 lotes.",
-    interactions: [
-      { id: "i11", date: iso(-3), type: "email", content: "Pedido confirmado." },
-    ],
+    interactions: [{ id: "i11", date: iso(-3), type: "email", content: "Pedido confirmado." }],
     aiActions: [],
   },
   {
@@ -371,11 +397,29 @@ const seedLeads: Lead[] = [
 ];
 
 const seedTasks: Task[] = [
-  { id: "t1", leadId: "l1", title: "Ligar para Marcos — revisão contrato", dueDate: iso(0), done: false },
-  { id: "t2", leadId: "l4", title: "Enviar proposta inicial AgroExport", dueDate: iso(0), done: false },
+  {
+    id: "t1",
+    leadId: "l1",
+    title: "Ligar para Marcos — revisão contrato",
+    dueDate: iso(0),
+    done: false,
+  },
+  {
+    id: "t2",
+    leadId: "l4",
+    title: "Enviar proposta inicial AgroExport",
+    dueDate: iso(0),
+    done: false,
+  },
   { id: "t3", leadId: "l3", title: "Agendar visita técnica Ápice", dueDate: iso(1), done: false },
   { id: "t4", leadId: "l2", title: "Follow-up Renata (proposta)", dueDate: iso(2), done: false },
-  { id: "t5", leadId: "l6", title: "Retorno financeiro Bebidas Cristal", dueDate: iso(3), done: false },
+  {
+    id: "t5",
+    leadId: "l6",
+    title: "Retorno financeiro Bebidas Cristal",
+    dueDate: iso(3),
+    done: false,
+  },
 ];
 
 const seedWhatsapp: WhatsappMessage[] = [
@@ -390,7 +434,8 @@ const seedWhatsapp: WhatsappMessage[] = [
   {
     id: "w2",
     phone: "(19) 99432-1187",
-    message: "Olá, vocês trabalham com pallet higiênico para frigorífico? Volume seria 1.200 un/mês.",
+    message:
+      "Olá, vocês trabalham com pallet higiênico para frigorífico? Volume seria 1.200 un/mês.",
     receivedAt: iso(0, 8, 47),
     status: "novo",
   },
@@ -414,15 +459,47 @@ const seedWhatsapp: WhatsappMessage[] = [
 ];
 
 const seedCalendar: CalendarSlot[] = [
-  { id: "c1", date: iso(0, 9, 0), durationMin: 60, status: "ocupado", title: "Reunião interna comercial" },
+  {
+    id: "c1",
+    date: iso(0, 9, 0),
+    durationMin: 60,
+    status: "ocupado",
+    title: "Reunião interna comercial",
+  },
   { id: "c2", date: iso(0, 11, 0), durationMin: 30, status: "livre" },
-  { id: "c3", date: iso(0, 14, 0), durationMin: 45, status: "agendado_ia", title: "Call — Marcos (Frigorífico Sul)", leadId: "l1" },
+  {
+    id: "c3",
+    date: iso(0, 14, 0),
+    durationMin: 45,
+    status: "agendado_ia",
+    title: "Call — Marcos (Frigorífico Sul)",
+    leadId: "l1",
+  },
   { id: "c4", date: iso(0, 16, 0), durationMin: 30, status: "livre" },
-  { id: "c5", date: iso(1, 9, 30), durationMin: 60, status: "ocupado", title: "Visita técnica Ápice" },
+  {
+    id: "c5",
+    date: iso(1, 9, 30),
+    durationMin: 60,
+    status: "ocupado",
+    title: "Visita técnica Ápice",
+  },
   { id: "c6", date: iso(1, 11, 0), durationMin: 30, status: "livre" },
-  { id: "c7", date: iso(1, 15, 0), durationMin: 45, status: "agendado_ia", title: "Follow-up — Renata (IQ Norte)", leadId: "l2" },
+  {
+    id: "c7",
+    date: iso(1, 15, 0),
+    durationMin: 45,
+    status: "agendado_ia",
+    title: "Follow-up — Renata (IQ Norte)",
+    leadId: "l2",
+  },
   { id: "c8", date: iso(2, 10, 0), durationMin: 30, status: "livre" },
-  { id: "c9", date: iso(2, 14, 0), durationMin: 60, status: "ocupado", title: "Apresentação AgroExport" },
+  {
+    id: "c9",
+    date: iso(2, 14, 0),
+    durationMin: 60,
+    status: "ocupado",
+    title: "Apresentação AgroExport",
+  },
   { id: "c10", date: iso(3, 9, 0), durationMin: 30, status: "livre" },
 ];
 
@@ -446,16 +523,16 @@ export type Product = {
   name: string;
   description: string;
   unit: ProductUnit;
-  weightKg: number;      // peso unitário
+  weightKg: number; // peso unitário
   heightCm: number;
   widthCm: number;
   lengthCm: number;
   ncm: string;
-  defaultPrice: number;  // preço unitário sugerido
+  defaultPrice: number; // preço unitário sugerido
   active: boolean;
   pecasPorColuna: number; // logística: quantas peças empilham por coluna
   stackHeightCm?: number | null; // altura real do volume empilhado (cm) — usada quando o produto é aninhável
-  family?: string;        // agrupador opcional (ex.: "HV", "Container Bin")
+  family?: string; // agrupador opcional (ex.: "HV", "Container Bin")
 };
 
 const seedProducts: Product[] = [
@@ -529,11 +606,11 @@ const seedProducts: Product[] = [
 
 export type ProposalItem = {
   id: string;
-  productId: string;          // DEPRECATED — mantido só p/ compat com itens antigos
+  productId: string; // DEPRECATED — mantido só p/ compat com itens antigos
   omieCodigoProduto?: number; // legado: nome enganoso, é o código do produto
   description: string; // snapshot
-  sku: string;         // snapshot
-  ncm?: string;        // snapshot (código fiscal do produto)
+  sku: string; // snapshot
+  ncm?: string; // snapshot (código fiscal do produto)
   unit: ProductUnit;
   quantity: number;
   unitPrice: number;
@@ -550,8 +627,6 @@ export type PaymentInstallment = {
   dueDate?: string;
 };
 
-
-
 export type TransportInfo = {
   carrier: string;
   /** Id do cadastro de transportadoras — só quando é transportadora real
@@ -559,13 +634,13 @@ export type TransportInfo = {
   carrierTransportadoraId?: string | null;
   freightPayer: "CIF" | "FOB";
   grossWeightKg: number;
-  cubageM3: number;               // volume cúbico total (m³)
+  cubageM3: number; // volume cúbico total (m³)
   volumes: number;
-  freightValue: number;           // valor definitivo (usado para total)
-  approxFreightValue: number;     // valor aproximado informado pelo vendedor
-  deliveryCep?: string;           // CEP de entrega
-  deliveryAddress?: string;       // endereço resolvido pela API
-  distanceKm?: number;            // distância rodoviária origem → destino
+  freightValue: number; // valor definitivo (usado para total)
+  approxFreightValue: number; // valor aproximado informado pelo vendedor
+  deliveryCep?: string; // CEP de entrega
+  deliveryAddress?: string; // endereço resolvido pela API
+  distanceKm?: number; // distância rodoviária origem → destino
   /** Frete via Lalamove (terceiro, só clientes de SP) — independente do cadastro
    *  de transportadoras e fora da estatística de sugestão. */
   lalamoveAtivo?: boolean;
@@ -579,8 +654,8 @@ export type TransportInfo = {
 export type FreightConfig = {
   originCep: string;
   originAddress: string;
-  rateBRLPerKgKm: number;         // R$ por kg transportado por km
-  cubageFactorKgPerM3: number;    // fator de cubagem rodoviário (padrão 300 kg/m³)
+  rateBRLPerKgKm: number; // R$ por kg transportado por km
+  cubageFactorKgPerM3: number; // fator de cubagem rodoviário (padrão 300 kg/m³)
 };
 
 export const DEFAULT_FREIGHT_CONFIG: FreightConfig = {
@@ -593,14 +668,14 @@ export const DEFAULT_FREIGHT_CONFIG: FreightConfig = {
 export type ProposalStatus =
   | "rascunho"
   | "enviada"
-  | "aguardando_aprovacao"   // CIF fechado pelo vendedor, aguardando ADM
+  | "aguardando_aprovacao" // CIF fechado pelo vendedor, aguardando ADM
   | "aprovada"
   | "recusada"
-  | "pedido";                // pedido efetivamente gerado (após aprovação ou FOB direto)
+  | "pedido"; // pedido efetivamente gerado (após aprovação ou FOB direto)
 
 export type Proposal = {
   id: string;
-  number: string;           // ex: 2026-0001
+  number: string; // ex: 2026-0001
   leadId: string;
   ownerId: string;
   createdAt: string;
@@ -611,21 +686,21 @@ export type Proposal = {
   transport: TransportInfo;
   observations: string;
   customerOrderNumber?: string; // Número do pedido do cliente (PO/OC)
-  orderNotes?: string;          // Observações do pedido (separado de observations)
-  tratativaComercial?: string;  // INTERNO — nunca impresso na proposta
-  paymentTermId?: string;   // ADM-managed payment term chosen by seller
-  formaPagamento?: PaymentForm;   // Boleto / Depósito em Conta / PIX
-  billingForecastDate?: string;   // previsão de faturamento (yyyy-MM-dd)
+  orderNotes?: string; // Observações do pedido (separado de observations)
+  tratativaComercial?: string; // INTERNO — nunca impresso na proposta
+  paymentTermId?: string; // ADM-managed payment term chosen by seller
+  formaPagamento?: PaymentForm; // Boleto / Depósito em Conta / PIX
+  billingForecastDate?: string; // previsão de faturamento (yyyy-MM-dd)
 
-  emNegociacao: boolean;    // toggle "em negociação" exibido no funil
-  emitterId: string;        // qual CNPJ do grupo emite esta proposta
-  discountPercent: number;  // % de desconto aplicado sobre o subtotal (limite gerido pelo ADM)
+  emNegociacao: boolean; // toggle "em negociação" exibido no funil
+  emitterId: string; // qual CNPJ do grupo emite esta proposta
+  discountPercent: number; // % de desconto aplicado sobre o subtotal (limite gerido pelo ADM)
   approvalRequestedAt?: string;
   approvalReason?: string;
   approvedByUserId?: string;
   approvedAt?: string;
   orderCreatedAt?: string;
-  sentAt?: string;          // primeira vez que a proposta foi enviada ao cliente
+  sentAt?: string; // primeira vez que a proposta foi enviada ao cliente
   expectedDeliveryDate?: string; // yyyy-MM-dd — data prevista de entrega
   // Solicitação/liberação de alteração em pedido já fechado
   editRequestedAt?: string;
@@ -635,8 +710,6 @@ export type Proposal = {
   editUnlockedByUserId?: string;
 };
 
-
-
 export type PaymentMethod = "Boleto" | "PIX" | "Depósito em Conta" | "Cartão" | "Dinheiro";
 
 /** Forma de pagamento escolhida NA PROPOSTA (separada do prazo do catálogo). */
@@ -645,16 +718,16 @@ export const PAYMENT_FORMS: PaymentForm[] = ["Boleto", "Depósito em Conta", "PI
 
 export type PaymentTerm = {
   id: string;
-  label: string;             // ex: "Boleto 30/60/90 dias"
+  label: string; // ex: "Boleto 30/60/90 dias"
   method: PaymentMethod;
-  splits: number[];          // days per installment; [0] = à vista (legado, sincronizado com `parcelas`)
+  splits: number[]; // days per installment; [0] = à vista (legado, sincronizado com `parcelas`)
   /** Fonte da verdade: dias + percentual de cada parcela. */
   parcelas?: ParcelaCondicao[];
   notes?: string;
-  active: boolean;           // ADM toggle — only active terms show in seller dropdown
-  permitePf?: boolean;       // liberada para cliente Pessoa Física (à vista ou cartão)
+  active: boolean; // ADM toggle — only active terms show in seller dropdown
+  permitePf?: boolean; // liberada para cliente Pessoa Física (à vista ou cartão)
   acrescimoPercent?: number; // % de acréscimo aplicado ao subtotal
-  ordem?: number;            // posição na lista de prazos (menor primeiro)
+  ordem?: number; // posição na lista de prazos (menor primeiro)
 };
 
 /** Parcelas efetivas da condição — cai no legado `splits` quando `parcelas` está vazio. */
@@ -665,39 +738,197 @@ export const termParcelas = (t: PaymentTerm): ParcelaCondicao[] =>
 export const isTermPf = (t: PaymentTerm): boolean =>
   t.permitePf ?? (t.method === "Cartão" || (t.splits.length === 1 && t.splits[0] === 0));
 
-
 /** Seed de 20 condições comerciais mais usadas — o administrador pode editar. */
 export const DEFAULT_PAYMENT_TERMS: PaymentTerm[] = [
-  { id: "pix-avista",        label: "PIX à vista",                       method: "PIX",                splits: [0],              active: true, permitePf: true,  acrescimoPercent: 0 },
-  { id: "pix-7",             label: "PIX 7 dias",                        method: "PIX",                splits: [7],              active: true, permitePf: false, acrescimoPercent: 0 },
-  { id: "pix-14",            label: "PIX 14 dias",                       method: "PIX",                splits: [14],             active: true, permitePf: false, acrescimoPercent: 0 },
-  { id: "pix-28",            label: "PIX 28 dias",                       method: "PIX",                splits: [28],             active: true, permitePf: false, acrescimoPercent: 0 },
-  { id: "dinheiro-avista",   label: "Dinheiro à vista",                  method: "Dinheiro",           splits: [0],              active: true, permitePf: true,  acrescimoPercent: 0 },
-  { id: "dep-avista",        label: "Depósito em Conta à vista",         method: "Depósito em Conta",  splits: [0],              active: true, permitePf: true,  acrescimoPercent: 0 },
-  { id: "dep-15",            label: "Depósito em Conta 15 dias",         method: "Depósito em Conta",  splits: [15],             active: true, permitePf: false, acrescimoPercent: 0 },
-  { id: "boleto-avista",     label: "Boleto à vista",                    method: "Boleto",             splits: [0],              active: true, permitePf: true,  acrescimoPercent: 0 },
-  { id: "boleto-14",         label: "Boleto 14 dias",                    method: "Boleto",             splits: [14],             active: true, permitePf: false, acrescimoPercent: 0 },
-  { id: "boleto-21",         label: "Boleto 21 dias",                    method: "Boleto",             splits: [21],             active: true, permitePf: false, acrescimoPercent: 0 },
-  { id: "boleto-28",         label: "Boleto 28 dias",                    method: "Boleto",             splits: [28],             active: true, permitePf: false, acrescimoPercent: 0 },
-  { id: "boleto-30",         label: "Boleto 30 dias",                    method: "Boleto",             splits: [30],             active: true, permitePf: false, acrescimoPercent: 2 },
-  { id: "boleto-2x-30-60",   label: "Boleto 2x — 30/60 dias",            method: "Boleto",             splits: [30, 60],         active: true, permitePf: false, acrescimoPercent: 3.5 },
-  { id: "boleto-3x-30-60-90",label: "Boleto 3x — 30/60/90 dias",         method: "Boleto",             splits: [30, 60, 90],     active: true, permitePf: false, acrescimoPercent: 5 },
-  { id: "boleto-4x",         label: "Boleto 4x — 30/60/90/120 dias",     method: "Boleto",             splits: [30, 60, 90, 120], active: true, permitePf: false, acrescimoPercent: 0 },
-  { id: "boleto-6x",         label: "Boleto 6x — 30 a 180 dias",         method: "Boleto",             splits: [30, 60, 90, 120, 150, 180], active: true, permitePf: false, acrescimoPercent: 0 },
-  { id: "boleto-entrada-30", label: "Boleto — entrada + 30 dias",        method: "Boleto",             splits: [0, 30],          active: true, permitePf: false, acrescimoPercent: 0 },
-  { id: "cartao-avista",     label: "Cartão à vista",                    method: "Cartão",             splits: [0],              active: true, permitePf: true,  acrescimoPercent: 3 },
-  { id: "cartao-3x",         label: "Cartão 3x sem juros",               method: "Cartão",             splits: [0, 30, 60],      active: true, permitePf: true,  acrescimoPercent: 6 },
-  { id: "cartao-6x",         label: "Cartão 6x sem juros",               method: "Cartão",             splits: [0, 30, 60, 90, 120, 150], active: true, permitePf: true, acrescimoPercent: 9 },
+  {
+    id: "pix-avista",
+    label: "PIX à vista",
+    method: "PIX",
+    splits: [0],
+    active: true,
+    permitePf: true,
+    acrescimoPercent: 0,
+  },
+  {
+    id: "pix-7",
+    label: "PIX 7 dias",
+    method: "PIX",
+    splits: [7],
+    active: true,
+    permitePf: false,
+    acrescimoPercent: 0,
+  },
+  {
+    id: "pix-14",
+    label: "PIX 14 dias",
+    method: "PIX",
+    splits: [14],
+    active: true,
+    permitePf: false,
+    acrescimoPercent: 0,
+  },
+  {
+    id: "pix-28",
+    label: "PIX 28 dias",
+    method: "PIX",
+    splits: [28],
+    active: true,
+    permitePf: false,
+    acrescimoPercent: 0,
+  },
+  {
+    id: "dinheiro-avista",
+    label: "Dinheiro à vista",
+    method: "Dinheiro",
+    splits: [0],
+    active: true,
+    permitePf: true,
+    acrescimoPercent: 0,
+  },
+  {
+    id: "dep-avista",
+    label: "Depósito em Conta à vista",
+    method: "Depósito em Conta",
+    splits: [0],
+    active: true,
+    permitePf: true,
+    acrescimoPercent: 0,
+  },
+  {
+    id: "dep-15",
+    label: "Depósito em Conta 15 dias",
+    method: "Depósito em Conta",
+    splits: [15],
+    active: true,
+    permitePf: false,
+    acrescimoPercent: 0,
+  },
+  {
+    id: "boleto-avista",
+    label: "Boleto à vista",
+    method: "Boleto",
+    splits: [0],
+    active: true,
+    permitePf: true,
+    acrescimoPercent: 0,
+  },
+  {
+    id: "boleto-14",
+    label: "Boleto 14 dias",
+    method: "Boleto",
+    splits: [14],
+    active: true,
+    permitePf: false,
+    acrescimoPercent: 0,
+  },
+  {
+    id: "boleto-21",
+    label: "Boleto 21 dias",
+    method: "Boleto",
+    splits: [21],
+    active: true,
+    permitePf: false,
+    acrescimoPercent: 0,
+  },
+  {
+    id: "boleto-28",
+    label: "Boleto 28 dias",
+    method: "Boleto",
+    splits: [28],
+    active: true,
+    permitePf: false,
+    acrescimoPercent: 0,
+  },
+  {
+    id: "boleto-30",
+    label: "Boleto 30 dias",
+    method: "Boleto",
+    splits: [30],
+    active: true,
+    permitePf: false,
+    acrescimoPercent: 2,
+  },
+  {
+    id: "boleto-2x-30-60",
+    label: "Boleto 2x — 30/60 dias",
+    method: "Boleto",
+    splits: [30, 60],
+    active: true,
+    permitePf: false,
+    acrescimoPercent: 3.5,
+  },
+  {
+    id: "boleto-3x-30-60-90",
+    label: "Boleto 3x — 30/60/90 dias",
+    method: "Boleto",
+    splits: [30, 60, 90],
+    active: true,
+    permitePf: false,
+    acrescimoPercent: 5,
+  },
+  {
+    id: "boleto-4x",
+    label: "Boleto 4x — 30/60/90/120 dias",
+    method: "Boleto",
+    splits: [30, 60, 90, 120],
+    active: true,
+    permitePf: false,
+    acrescimoPercent: 0,
+  },
+  {
+    id: "boleto-6x",
+    label: "Boleto 6x — 30 a 180 dias",
+    method: "Boleto",
+    splits: [30, 60, 90, 120, 150, 180],
+    active: true,
+    permitePf: false,
+    acrescimoPercent: 0,
+  },
+  {
+    id: "boleto-entrada-30",
+    label: "Boleto — entrada + 30 dias",
+    method: "Boleto",
+    splits: [0, 30],
+    active: true,
+    permitePf: false,
+    acrescimoPercent: 0,
+  },
+  {
+    id: "cartao-avista",
+    label: "Cartão à vista",
+    method: "Cartão",
+    splits: [0],
+    active: true,
+    permitePf: true,
+    acrescimoPercent: 3,
+  },
+  {
+    id: "cartao-3x",
+    label: "Cartão 3x sem juros",
+    method: "Cartão",
+    splits: [0, 30, 60],
+    active: true,
+    permitePf: true,
+    acrescimoPercent: 6,
+  },
+  {
+    id: "cartao-6x",
+    label: "Cartão 6x sem juros",
+    method: "Cartão",
+    splits: [0, 30, 60, 90, 120, 150],
+    active: true,
+    permitePf: true,
+    acrescimoPercent: 9,
+  },
 ];
 
 /** @deprecated use `useCrm(s => s.paymentTerms)` — kept for legacy imports. */
 export const PAYMENT_TERMS = DEFAULT_PAYMENT_TERMS;
 
-
 export type EmitterProfile = {
   id: string;
-  brand: string;             // nome fantasia / marca curta usada no cabeçalho
-  tagline?: string;          // subtítulo abaixo da marca no documento
+  brand: string; // nome fantasia / marca curta usada no cabeçalho
+  tagline?: string; // subtítulo abaixo da marca no documento
   legalName: string;
   cnpj: string;
   ie: string;
@@ -768,9 +999,6 @@ export const DEFAULT_EMITTERS: EmitterProfile[] = [
 
 const DEFAULT_EMITTER_ID = DEFAULT_EMITTERS[0].id;
 
-
-
-
 type CrmState = {
   leads: Lead[];
   tasks: Task[];
@@ -779,7 +1007,11 @@ type CrmState = {
   agent: AgentSettings;
   currentUserId: string;
   setCurrentUser: (id: string) => void;
-  addLead: (l: Omit<Lead, "id" | "createdAt" | "lastContact" | "interactions" | "ownerId"> & { ownerId?: string }) => string;
+  addLead: (
+    l: Omit<Lead, "id" | "createdAt" | "lastContact" | "interactions" | "ownerId"> & {
+      ownerId?: string;
+    },
+  ) => string;
   updateLead: (id: string, patch: Partial<Lead>) => void;
   removeLead: (id: string) => void;
   moveLead: (id: string, stage: StageId) => void;
@@ -814,7 +1046,13 @@ type CrmState = {
   addProposalItem: (proposalId: string, productId: string, quantity: number) => void;
   addProposalItemFromOmie: (
     proposalId: string,
-    omie: { omieCodigoProduto: number; description: string; sku: string; unit: string; unitPrice: number },
+    omie: {
+      omieCodigoProduto: number;
+      description: string;
+      sku: string;
+      unit: string;
+      unitPrice: number;
+    },
     quantity: number,
   ) => void;
   updateProposalItem: (proposalId: string, itemId: string, patch: Partial<ProposalItem>) => void;
@@ -850,531 +1088,537 @@ const uid = () =>
     ? crypto.randomUUID()
     : Math.random().toString(36).slice(2, 10);
 
-export const useCrm = create<CrmState>()(
-  (set, get) => ({
-      leads: [],
-      tasks: [],
-      whatsapp: seedWhatsapp,
+export const useCrm = create<CrmState>()((set, get) => ({
+  leads: [],
+  tasks: [],
+  whatsapp: seedWhatsapp,
 
-      calendar: seedCalendar,
-      agent: defaultAgent,
-      currentUserId: "",
-      setCurrentUser: (id) => set({ currentUserId: id }),
-      addLead: (l) => {
-        const id = uid();
-        const newCnpj = (l.cnpj ?? "").replace(/\D/g, "");
-        if (newCnpj) {
-          const dup = get().leads.find(
-            (x) => (x.cnpj ?? "").replace(/\D/g, "") === newCnpj,
-          );
-          if (dup) {
-            throw new Error(
-              `CNPJ já cadastrado para "${dup.company}". Solicite ao ADM a transferência do lead.`,
-            );
-          }
-        }
-        set((s) => ({
-          leads: [
+  calendar: seedCalendar,
+  agent: defaultAgent,
+  currentUserId: "",
+  setCurrentUser: (id) => set({ currentUserId: id }),
+  addLead: (l) => {
+    const id = uid();
+    const newCnpj = (l.cnpj ?? "").replace(/\D/g, "");
+    if (newCnpj) {
+      const dup = get().leads.find((x) => (x.cnpj ?? "").replace(/\D/g, "") === newCnpj);
+      if (dup) {
+        throw new Error(
+          `CNPJ já cadastrado para "${dup.company}". Solicite ao ADM a transferência do lead.`,
+        );
+      }
+    }
+    set((s) => ({
+      leads: [
+        {
+          ...l,
+          ownerId: l.ownerId ?? get().currentUserId,
+          id,
+          createdAt: new Date().toISOString(),
+          lastContact: new Date().toISOString(),
+          interactions: [
             {
+              id: uid(),
+              date: new Date().toISOString(),
+              type: "note",
+              content: "Lead criado no CRM.",
+            },
+          ],
+          aiActions: [],
+        },
+        ...s.leads,
+      ],
+    }));
+    return id;
+  },
+  updateLead: (id, patch) => {
+    if (patch.cnpj !== undefined) {
+      const newCnpj = (patch.cnpj ?? "").replace(/\D/g, "");
+      if (newCnpj) {
+        const dup = get().leads.find(
+          (x) => x.id !== id && (x.cnpj ?? "").replace(/\D/g, "") === newCnpj,
+        );
+        if (dup) {
+          throw new Error(`CNPJ já cadastrado para "${dup.company}".`);
+        }
+      }
+    }
+    set((s) => ({ leads: s.leads.map((l) => (l.id === id ? { ...l, ...patch } : l)) }));
+  },
+  removeLead: (id) =>
+    set((s) => {
+      markDeleted("leads", id);
+      markDeleted("tasks", ...s.tasks.filter((t) => t.leadId === id).map((t) => t.id));
+      return {
+        leads: s.leads.filter((l) => l.id !== id),
+        tasks: s.tasks.filter((t) => t.leadId !== id),
+      };
+    }),
+  moveLead: (id, stage) =>
+    set((s) => ({
+      leads: s.leads.map((l) =>
+        l.id === id ? { ...l, stage, lastContact: new Date().toISOString() } : l,
+      ),
+    })),
+  addInteraction: (leadId, i) =>
+    set((s) => ({
+      leads: s.leads.map((l) =>
+        l.id === leadId
+          ? { ...l, lastContact: i.date, interactions: [{ ...i, id: uid() }, ...l.interactions] }
+          : l,
+      ),
+    })),
+  addAiAction: (leadId, a) =>
+    set((s) => ({
+      leads: s.leads.map((l) =>
+        l.id === leadId ? { ...l, aiActions: [{ ...a, id: uid() }, ...(l.aiActions ?? [])] } : l,
+      ),
+    })),
+  addTask: (t) => set((s) => ({ tasks: [...s.tasks, { ...t, id: uid(), done: false }] })),
+  toggleTask: (id) =>
+    set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? { ...t, done: !t.done } : t)) })),
+  removeTask: (id) =>
+    set((s) => {
+      markDeleted("tasks", id);
+      return { tasks: s.tasks.filter((t) => t.id !== id) };
+    }),
+  receiveWhatsapp: (m) =>
+    set((s) => ({
+      whatsapp: [
+        { ...m, id: uid(), receivedAt: new Date().toISOString(), status: "novo" },
+        ...s.whatsapp,
+      ],
+    })),
+  convertWhatsappToLead: (id) => {
+    const msg = get().whatsapp.find((w) => w.id === id);
+    if (!msg) return null;
+    const leadId = uid();
+    const nowIso = new Date().toISOString();
+    set((s) => ({
+      leads: [
+        {
+          id: leadId,
+          company: msg.name ?? `Contato WhatsApp ${msg.phone}`,
+          contactName: msg.name ?? "A identificar",
+          email: "",
+          phone: msg.phone,
+          product: "Pallet Standard 1000x1200",
+          quantity: 0,
+          estimatedValue: 0,
+          stage: "atendimento",
+          tags: ["WhatsApp"],
+          source: "WhatsApp",
+          ownerId: get().currentUserId,
+          createdAt: nowIso,
+          lastContact: msg.receivedAt,
+          notes: `Primeira mensagem: "${msg.message}"`,
+          interactions: [
+            { id: uid(), date: msg.receivedAt, type: "whatsapp", content: msg.message },
+          ],
+          aiActions: [
+            {
+              id: uid(),
+              date: nowIso,
+              type: "qualify",
+              content: "IA capturou lead via WhatsApp automaticamente e iniciou triagem.",
+            },
+          ],
+        },
+        ...s.leads,
+      ],
+      whatsapp: s.whatsapp.map((w) => (w.id === id ? { ...w, status: "convertido", leadId } : w)),
+    }));
+    return leadId;
+  },
+  ignoreWhatsapp: (id) =>
+    set((s) => ({
+      whatsapp: s.whatsapp.map((w) => (w.id === id ? { ...w, status: "ignorado" } : w)),
+    })),
+  updateAgent: (patch) => set((s) => ({ agent: { ...s.agent, ...patch } })),
+  bookSlotWithAi: (slotId, leadId, title) =>
+    set((s) => ({
+      calendar: s.calendar.map((c) =>
+        c.id === slotId ? { ...c, status: "agendado_ia", title, leadId } : c,
+      ),
+      leads: s.leads.map((l) =>
+        l.id === leadId
+          ? {
               ...l,
-              ownerId: l.ownerId ?? get().currentUserId,
-              id,
-              createdAt: new Date().toISOString(),
-              lastContact: new Date().toISOString(),
-              interactions: [
+              aiActions: [
                 {
                   id: uid(),
                   date: new Date().toISOString(),
-                  type: "note",
-                  content: "Lead criado no CRM.",
+                  type: "schedule",
+                  content: `IA agendou "${title}" na agenda do vendedor de forma autônoma.`,
                 },
+                ...(l.aiActions ?? []),
               ],
-              aiActions: [],
-            },
-            ...s.leads,
-          ],
-        }));
-        return id;
-      },
-      updateLead: (id, patch) => {
-        if (patch.cnpj !== undefined) {
-          const newCnpj = (patch.cnpj ?? "").replace(/\D/g, "");
-          if (newCnpj) {
-            const dup = get().leads.find(
-              (x) => x.id !== id && (x.cnpj ?? "").replace(/\D/g, "") === newCnpj,
-            );
-            if (dup) {
-              throw new Error(`CNPJ já cadastrado para "${dup.company}".`);
             }
-          }
-        }
-        set((s) => ({ leads: s.leads.map((l) => (l.id === id ? { ...l, ...patch } : l)) }));
-      },
-      removeLead: (id) =>
-        set((s) => {
-          markDeleted("leads", id);
-          markDeleted("tasks", ...s.tasks.filter((t) => t.leadId === id).map((t) => t.id));
-          return {
-            leads: s.leads.filter((l) => l.id !== id),
-            tasks: s.tasks.filter((t) => t.leadId !== id),
-          };
-        }),
-      moveLead: (id, stage) =>
-        set((s) => ({
-          leads: s.leads.map((l) =>
-            l.id === id ? { ...l, stage, lastContact: new Date().toISOString() } : l,
-          ),
-        })),
-      addInteraction: (leadId, i) =>
-        set((s) => ({
-          leads: s.leads.map((l) =>
-            l.id === leadId
-              ? { ...l, lastContact: i.date, interactions: [{ ...i, id: uid() }, ...l.interactions] }
-              : l,
-          ),
-        })),
-      addAiAction: (leadId, a) =>
-        set((s) => ({
-          leads: s.leads.map((l) =>
-            l.id === leadId
-              ? { ...l, aiActions: [{ ...a, id: uid() }, ...(l.aiActions ?? [])] }
-              : l,
-          ),
-        })),
-      addTask: (t) => set((s) => ({ tasks: [...s.tasks, { ...t, id: uid(), done: false }] })),
-      toggleTask: (id) =>
-        set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? { ...t, done: !t.done } : t)) })),
-      removeTask: (id) =>
-        set((s) => {
-          markDeleted("tasks", id);
-          return { tasks: s.tasks.filter((t) => t.id !== id) };
-        }),
-      receiveWhatsapp: (m) =>
-        set((s) => ({
-          whatsapp: [
-            { ...m, id: uid(), receivedAt: new Date().toISOString(), status: "novo" },
-            ...s.whatsapp,
-          ],
-        })),
-      convertWhatsappToLead: (id) => {
-        const msg = get().whatsapp.find((w) => w.id === id);
-        if (!msg) return null;
-        const leadId = uid();
-        const nowIso = new Date().toISOString();
-        set((s) => ({
-          leads: [
-            {
-              id: leadId,
-              company: msg.name ?? `Contato WhatsApp ${msg.phone}`,
-              contactName: msg.name ?? "A identificar",
-              email: "",
-              phone: msg.phone,
-              product: "Pallet Standard 1000x1200",
-              quantity: 0,
-              estimatedValue: 0,
-              stage: "atendimento",
-              tags: ["WhatsApp"],
-              source: "WhatsApp",
-              ownerId: get().currentUserId,
-              createdAt: nowIso,
-              lastContact: msg.receivedAt,
-              notes: `Primeira mensagem: "${msg.message}"`,
-              interactions: [
-                { id: uid(), date: msg.receivedAt, type: "whatsapp", content: msg.message },
-              ],
+          : l,
+      ),
+    })),
+  runAiFollowUp: (leadId) => {
+    const lead = get().leads.find((l) => l.id === leadId);
+    if (!lead) return;
+    const nowIso = new Date().toISOString();
+    set((s) => ({
+      leads: s.leads.map((l) =>
+        l.id === leadId
+          ? {
+              ...l,
+              lastContact: nowIso,
               aiActions: [
                 {
                   id: uid(),
                   date: nowIso,
-                  type: "qualify",
-                  content: "IA capturou lead via WhatsApp automaticamente e iniciou triagem.",
+                  type: "followup",
+                  content: `IA enviou WhatsApp automático: "Olá ${lead.contactName.split(" ")[0]}, notei que ainda não tivemos retorno. Posso ajudar com dúvidas sobre a proposta?"`,
+                },
+                ...(l.aiActions ?? []),
+              ],
+            }
+          : l,
+      ),
+    }));
+  },
+
+  // ============ Produtos ============
+  products: seedProducts,
+  addProduct: (p) => {
+    const id = uid();
+    set((s) => ({ products: [{ ...p, id }, ...s.products] }));
+    return id;
+  },
+  updateProduct: (id, patch) =>
+    set((s) => ({ products: s.products.map((p) => (p.id === id ? { ...p, ...patch } : p)) })),
+  removeProduct: (id) =>
+    set((s) => {
+      markDeleted("products", id);
+      return { products: s.products.filter((p) => p.id !== id) };
+    }),
+
+  // ============ Propostas ============
+  proposals: [],
+  emitters: DEFAULT_EMITTERS,
+  defaultEmitterId: DEFAULT_EMITTER_ID,
+  maxDiscountPercentVendedor: 3,
+  setMaxDiscountPercentVendedor: (pct) =>
+    set({ maxDiscountPercentVendedor: Math.max(0, Math.min(100, pct)) }),
+  setDefaultEmitter: (id) => set({ defaultEmitterId: id }),
+  updateEmitter: (id, patch) =>
+    set((s) => ({
+      emitters: s.emitters.map((e) => (e.id === id ? { ...e, ...patch } : e)),
+    })),
+  createProposal: async (leadId, ownerId) => {
+    const id = uid();
+    const year = new Date().getFullYear();
+    const { supabase } = await import("@/integrations/supabase/client");
+    const { toast } = await import("sonner");
+
+    // Aloca número atomicamente no servidor para evitar colisão de UNIQUE
+    // entre vendedores (RLS oculta propostas de terceiros no cliente, então
+    // qualquer contagem client-side subconta e colide com números já usados).
+    let number: string;
+    try {
+      const { data, error } = await supabase.rpc("next_proposta_number", { _year: year });
+      if (error || typeof data !== "string" || data.length === 0) {
+        console.error("[createProposal] next_proposta_number failed:", error);
+        throw new Error(
+          `Não foi possível gerar o número da proposta${error?.message ? `: ${error.message}` : ""}`,
+        );
+      }
+      number = data;
+    } catch (e) {
+      throw e instanceof Error ? e : new Error("Não foi possível gerar o número da proposta");
+    }
+
+    const finalOwnerId = ownerId ?? get().currentUserId;
+    let emitterId = get().defaultEmitterId || get().emitters[0]?.id;
+    let emitterReason = "";
+    // Sugestão de emitente:
+    // 1) reutiliza o emitente da última proposta do mesmo cliente;
+    // 2) senão, aplica regra fiscal do cliente (SUFRAMA → Taoplast; Simples → Licitaplas);
+    // 3) senão, empresa_padrao do cliente;
+    // 4) senão, default.
+    try {
+      const lead = get().leads.find((l) => l.id === leadId);
+      const clienteId = (lead as { clienteId?: string } | undefined)?.clienteId;
+      if (clienteId) {
+        const { data: cli } = await supabase
+          .from("clientes")
+          .select("empresa_padrao, simples_optante, suframa_isento")
+          .eq("id", clienteId)
+          .maybeSingle();
+
+        const { data: prev } = await supabase
+          .from("propostas")
+          .select("emitter_id, created_at, lead_id, leads!inner(cliente_id)")
+          .eq("leads.cliente_id", clienteId)
+          .order("created_at", { ascending: false })
+          .limit(1);
+
+        const prevEmitter = (prev?.[0] as { emitter_id?: string } | undefined)?.emitter_id;
+        if (prevEmitter && get().emitters.find((e) => e.id === prevEmitter)) {
+          emitterId = prevEmitter;
+          emitterReason = "Histórico: última proposta deste cliente usou esta empresa.";
+        } else if (cli?.suframa_isento) {
+          const m = get().emitters.find((e) => e.id === "taoplast");
+          if (m) {
+            emitterId = m.id;
+            emitterReason = "Cliente com SUFRAMA — sugerido TAOPLAST.";
+          }
+        } else if (cli?.simples_optante) {
+          const m = get().emitters.find((e) => e.id === "licitaplas");
+          if (m) {
+            emitterId = m.id;
+            emitterReason = "Cliente optante do Simples — sugerido LICITAPLAS.";
+          }
+        } else if (cli?.empresa_padrao) {
+          const key = String(cli.empresa_padrao).toLowerCase();
+          const match = get().emitters.find((e) => e.id === key);
+          if (match) {
+            emitterId = match.id;
+            emitterReason = "Empresa padrão do cliente.";
+          }
+        }
+      }
+    } catch {
+      // segue com o default
+    }
+    if (!emitterId) {
+      toast.error(
+        "Nenhum emitente configurado — peça ao admin para cadastrar um emitente antes de criar propostas.",
+      );
+      throw new Error("no default emitter");
+    }
+    if (!finalOwnerId) {
+      toast.error("Sessão expirada — faça login novamente.");
+      throw new Error("no owner");
+    }
+
+    const proposal: Proposal = {
+      id,
+      number,
+      leadId,
+      ownerId: finalOwnerId,
+      createdAt: new Date().toISOString(),
+      status: "rascunho",
+      emNegociacao: false,
+      validityDays: 10,
+      emitterId,
+      items: [],
+      // Sem parcela placeholder: elas são geradas ao escolher a condição
+      // de pagamento e informar a previsão de faturamento.
+      installments: [],
+      transport: {
+        carrier: "A definir",
+        freightPayer: "FOB",
+        grossWeightKg: 0,
+        cubageM3: 0,
+        volumes: 0,
+        freightValue: 0,
+        approxFreightValue: 0,
+      },
+      observations:
+        "Proposta comercial válida por 10 dias. Preços em reais, impostos inclusos conforme legislação vigente. Prazo de entrega a combinar após aprovação.",
+
+      discountPercent: 0,
+    };
+
+    // Persistência direta e síncrona: cria no banco AGORA, com erro visível.
+    // O sync batched só cobre updates subsequentes (que já sobrescrevem esta linha).
+    const { error: insertError } = await supabase.from("propostas").insert({
+      id: proposal.id,
+      number: proposal.number,
+      lead_id: proposal.leadId,
+      owner_id: proposal.ownerId,
+      emitter_id: proposal.emitterId,
+      status: proposal.status,
+      validity_days: proposal.validityDays,
+      discount_percent: proposal.discountPercent,
+      observations: proposal.observations,
+      transport: proposal.transport as never,
+      created_at: proposal.createdAt,
+    });
+    if (insertError) {
+      console.error("[createProposal] insert error:", insertError);
+      // Erro do Postgrest não é instanceof Error: reembala para que a
+      // mensagem real chegue ao catch do diálogo em vez do texto genérico.
+      const detalhe = [insertError.message, insertError.details, insertError.hint]
+        .filter(Boolean)
+        .join(" — ");
+      throw new Error(detalhe || "Erro ao salvar proposta");
+    }
+
+    set((s) => ({ proposals: [proposal, ...s.proposals] }));
+    if (emitterReason) {
+      const brand = get().emitters.find((e) => e.id === emitterId)?.brand ?? "";
+      toast.success(`Emissora sugerida: ${brand} — ${emitterReason}`);
+    }
+    return id;
+  },
+
+  updateProposal: (id, patch) =>
+    set((s) => ({ proposals: s.proposals.map((p) => (p.id === id ? { ...p, ...patch } : p)) })),
+  removeProposal: (id) =>
+    set((s) => {
+      markDeleted("proposals", id);
+      const prop = s.proposals.find((p) => p.id === id);
+      if (prop) {
+        markDeleted("proposalItems", ...prop.items.map((it) => it.id));
+        markDeleted("proposalParcelas", ...prop.installments.map((pa) => pa.id));
+      }
+      return { proposals: s.proposals.filter((p) => p.id !== id) };
+    }),
+  addProposalItem: (proposalId, productId, quantity) => {
+    const product = get().products.find((p) => p.id === productId);
+    if (!product) return;
+    set((s) => ({
+      proposals: s.proposals.map((p) =>
+        p.id === proposalId
+          ? {
+              ...p,
+              items: [
+                ...p.items,
+                {
+                  id: uid(),
+                  productId: product.id,
+                  omieCodigoProduto: undefined,
+                  description: product.name,
+                  sku: product.sku,
+                  ncm: product.ncm || undefined,
+                  unit: product.unit,
+                  quantity,
+                  unitPrice: product.defaultPrice,
                 },
               ],
-            },
-            ...s.leads,
-          ],
-          whatsapp: s.whatsapp.map((w) =>
-            w.id === id ? { ...w, status: "convertido", leadId } : w,
-          ),
-        }));
-        return leadId;
-      },
-      ignoreWhatsapp: (id) =>
-        set((s) => ({
-          whatsapp: s.whatsapp.map((w) => (w.id === id ? { ...w, status: "ignorado" } : w)),
-        })),
-      updateAgent: (patch) => set((s) => ({ agent: { ...s.agent, ...patch } })),
-      bookSlotWithAi: (slotId, leadId, title) =>
-        set((s) => ({
-          calendar: s.calendar.map((c) =>
-            c.id === slotId ? { ...c, status: "agendado_ia", title, leadId } : c,
-          ),
-          leads: s.leads.map((l) =>
-            l.id === leadId
-              ? {
-                  ...l,
-                  aiActions: [
-                    {
-                      id: uid(),
-                      date: new Date().toISOString(),
-                      type: "schedule",
-                      content: `IA agendou "${title}" na agenda do vendedor de forma autônoma.`,
-                    },
-                    ...(l.aiActions ?? []),
-                  ],
-                }
-              : l,
-          ),
-        })),
-      runAiFollowUp: (leadId) => {
-        const lead = get().leads.find((l) => l.id === leadId);
-        if (!lead) return;
-        const nowIso = new Date().toISOString();
-        set((s) => ({
-          leads: s.leads.map((l) =>
-            l.id === leadId
-              ? {
-                  ...l,
-                  lastContact: nowIso,
-                  aiActions: [
-                    {
-                      id: uid(),
-                      date: nowIso,
-                      type: "followup",
-                      content: `IA enviou WhatsApp automático: "Olá ${lead.contactName.split(" ")[0]}, notei que ainda não tivemos retorno. Posso ajudar com dúvidas sobre a proposta?"`,
-                    },
-                    ...(l.aiActions ?? []),
-                  ],
-                }
-              : l,
-          ),
-        }));
-      },
-
-      // ============ Produtos ============
-      products: seedProducts,
-      addProduct: (p) => {
-        const id = uid();
-        set((s) => ({ products: [{ ...p, id }, ...s.products] }));
-        return id;
-      },
-      updateProduct: (id, patch) =>
-        set((s) => ({ products: s.products.map((p) => (p.id === id ? { ...p, ...patch } : p)) })),
-      removeProduct: (id) =>
-        set((s) => {
-          markDeleted("products", id);
-          return { products: s.products.filter((p) => p.id !== id) };
-        }),
-
-      // ============ Propostas ============
-      proposals: [],
-      emitters: DEFAULT_EMITTERS,
-      defaultEmitterId: DEFAULT_EMITTER_ID,
-      maxDiscountPercentVendedor: 3,
-      setMaxDiscountPercentVendedor: (pct) =>
-        set({ maxDiscountPercentVendedor: Math.max(0, Math.min(100, pct)) }),
-      setDefaultEmitter: (id) => set({ defaultEmitterId: id }),
-      updateEmitter: (id, patch) =>
-        set((s) => ({
-          emitters: s.emitters.map((e) => (e.id === id ? { ...e, ...patch } : e)),
-        })),
-      createProposal: async (leadId, ownerId) => {
-        const id = uid();
-        const year = new Date().getFullYear();
-        const { supabase } = await import("@/integrations/supabase/client");
-        const { toast } = await import("sonner");
-
-        // Aloca número atomicamente no servidor para evitar colisão de UNIQUE
-        // entre vendedores (RLS oculta propostas de terceiros no cliente, então
-        // qualquer contagem client-side subconta e colide com números já usados).
-        let number: string;
-        try {
-          const { data, error } = await supabase.rpc("next_proposta_number", { _year: year });
-          if (error || typeof data !== "string" || data.length === 0) {
-            console.error("[createProposal] next_proposta_number failed:", error);
-            throw new Error(
-              `Não foi possível gerar o número da proposta${error?.message ? `: ${error.message}` : ""}`,
-            );
-          }
-          number = data;
-        } catch (e) {
-          throw e instanceof Error ? e : new Error("Não foi possível gerar o número da proposta");
-        }
-
-
-        const finalOwnerId = ownerId ?? get().currentUserId;
-        let emitterId = get().defaultEmitterId || get().emitters[0]?.id;
-        let emitterReason = "";
-        // Sugestão de emitente:
-        // 1) reutiliza o emitente da última proposta do mesmo cliente;
-        // 2) senão, aplica regra fiscal do cliente (SUFRAMA → Taoplast; Simples → Licitaplas);
-        // 3) senão, empresa_padrao do cliente;
-        // 4) senão, default.
-        try {
-          const lead = get().leads.find((l) => l.id === leadId);
-          const clienteId = (lead as { clienteId?: string } | undefined)?.clienteId;
-          if (clienteId) {
-            const { data: cli } = await supabase
-              .from("clientes")
-              .select("empresa_padrao, simples_optante, suframa_isento")
-              .eq("id", clienteId)
-              .maybeSingle();
-
-            const { data: prev } = await supabase
-              .from("propostas")
-              .select("emitter_id, created_at, lead_id, leads!inner(cliente_id)")
-              .eq("leads.cliente_id", clienteId)
-              .order("created_at", { ascending: false })
-              .limit(1);
-
-            const prevEmitter = (prev?.[0] as { emitter_id?: string } | undefined)?.emitter_id;
-            if (prevEmitter && get().emitters.find((e) => e.id === prevEmitter)) {
-              emitterId = prevEmitter;
-              emitterReason = "Histórico: última proposta deste cliente usou esta empresa.";
-            } else if (cli?.suframa_isento) {
-              const m = get().emitters.find((e) => e.id === "taoplast");
-              if (m) { emitterId = m.id; emitterReason = "Cliente com SUFRAMA — sugerido TAOPLAST."; }
-            } else if (cli?.simples_optante) {
-              const m = get().emitters.find((e) => e.id === "licitaplas");
-              if (m) { emitterId = m.id; emitterReason = "Cliente optante do Simples — sugerido LICITAPLAS."; }
-            } else if (cli?.empresa_padrao) {
-              const key = String(cli.empresa_padrao).toLowerCase();
-              const match = get().emitters.find((e) => e.id === key);
-              if (match) { emitterId = match.id; emitterReason = "Empresa padrão do cliente."; }
             }
-          }
-        } catch {
-          // segue com o default
-        }
-        if (!emitterId) {
-          toast.error("Nenhum emitente configurado — peça ao admin para cadastrar um emitente antes de criar propostas.");
-          throw new Error("no default emitter");
-        }
-        if (!finalOwnerId) {
-          toast.error("Sessão expirada — faça login novamente.");
-          throw new Error("no owner");
-        }
-
-        const proposal: Proposal = {
-          id,
-          number,
-          leadId,
-          ownerId: finalOwnerId,
-          createdAt: new Date().toISOString(),
-          status: "rascunho",
-          emNegociacao: false,
-          validityDays: 10,
-          emitterId,
-          items: [],
-          // Sem parcela placeholder: elas são geradas ao escolher a condição
-          // de pagamento e informar a previsão de faturamento.
-          installments: [],
-          transport: {
-            carrier: "A definir",
-            freightPayer: "FOB",
-            grossWeightKg: 0,
-            cubageM3: 0,
-            volumes: 0,
-            freightValue: 0,
-            approxFreightValue: 0,
-          },
-          observations:
-            "Proposta comercial válida por 10 dias. Preços em reais, impostos inclusos conforme legislação vigente. Prazo de entrega a combinar após aprovação.",
-
-          discountPercent: 0,
-        };
-
-        // Persistência direta e síncrona: cria no banco AGORA, com erro visível.
-        // O sync batched só cobre updates subsequentes (que já sobrescrevem esta linha).
-        const { error: insertError } = await supabase.from("propostas").insert({
-          id: proposal.id,
-          number: proposal.number,
-          lead_id: proposal.leadId,
-          owner_id: proposal.ownerId,
-          emitter_id: proposal.emitterId,
-          status: proposal.status,
-          validity_days: proposal.validityDays,
-          discount_percent: proposal.discountPercent,
-          observations: proposal.observations,
-          transport: proposal.transport as never,
-          created_at: proposal.createdAt,
-        });
-        if (insertError) {
-          console.error("[createProposal] insert error:", insertError);
-          // Erro do Postgrest não é instanceof Error: reembala para que a
-          // mensagem real chegue ao catch do diálogo em vez do texto genérico.
-          const detalhe = [insertError.message, insertError.details, insertError.hint]
-            .filter(Boolean)
-            .join(" — ");
-          throw new Error(detalhe || "Erro ao salvar proposta");
-        }
-
-
-        set((s) => ({ proposals: [proposal, ...s.proposals] }));
-        if (emitterReason) {
-          const brand = get().emitters.find((e) => e.id === emitterId)?.brand ?? "";
-          toast.success(`Emissora sugerida: ${brand} — ${emitterReason}`);
-        }
-        return id;
-      },
-
-      updateProposal: (id, patch) =>
-        set((s) => ({ proposals: s.proposals.map((p) => (p.id === id ? { ...p, ...patch } : p)) })),
-      removeProposal: (id) =>
-        set((s) => {
-          markDeleted("proposals", id);
-          const prop = s.proposals.find((p) => p.id === id);
-          if (prop) {
-            markDeleted("proposalItems", ...prop.items.map((it) => it.id));
-            markDeleted("proposalParcelas", ...prop.installments.map((pa) => pa.id));
-          }
-          return { proposals: s.proposals.filter((p) => p.id !== id) };
-        }),
-      addProposalItem: (proposalId, productId, quantity) => {
-        const product = get().products.find((p) => p.id === productId);
-        if (!product) return;
-        set((s) => ({
-          proposals: s.proposals.map((p) =>
-            p.id === proposalId
-              ? {
-                  ...p,
-                  items: [
-                    ...p.items,
-                    {
-                      id: uid(),
-                      productId: product.id,
-                      omieCodigoProduto: undefined,
-                      description: product.name,
-                      sku: product.sku,
-                      ncm: product.ncm || undefined,
-                      unit: product.unit,
-                      quantity,
-                      unitPrice: product.defaultPrice,
-                    },
-                  ],
-                }
-              : p,
-          ),
-        }));
-      },
-      addProposalItemFromOmie: (proposalId, omie, quantity) => {
-        set((s) => ({
-          proposals: s.proposals.map((p) =>
-            p.id === proposalId
-              ? {
-                  ...p,
-                  items: [
-                    ...p.items,
-                    {
-                      id: uid(),
-                      productId: "",
-                      omieCodigoProduto: omie.omieCodigoProduto,
-                      description: omie.description,
-                      sku: omie.sku,
-                      unit: (omie.unit || "Un") as ProductUnit,
-                      quantity,
-                      unitPrice: omie.unitPrice,
-                    },
-                  ],
-                }
-              : p,
-          ),
-        }));
-      },
-      updateProposalItem: (proposalId, itemId, patch) =>
-        set((s) => ({
-          proposals: s.proposals.map((p) =>
-            p.id === proposalId
-              ? { ...p, items: p.items.map((it) => (it.id === itemId ? { ...it, ...patch } : it)) }
-              : p,
-          ),
-        })),
-      removeProposalItem: (proposalId, itemId) =>
-        set((s) => (markDeleted("proposalItems", itemId), {
+          : p,
+      ),
+    }));
+  },
+  addProposalItemFromOmie: (proposalId, omie, quantity) => {
+    set((s) => ({
+      proposals: s.proposals.map((p) =>
+        p.id === proposalId
+          ? {
+              ...p,
+              items: [
+                ...p.items,
+                {
+                  id: uid(),
+                  productId: "",
+                  omieCodigoProduto: omie.omieCodigoProduto,
+                  description: omie.description,
+                  sku: omie.sku,
+                  unit: (omie.unit || "Un") as ProductUnit,
+                  quantity,
+                  unitPrice: omie.unitPrice,
+                },
+              ],
+            }
+          : p,
+      ),
+    }));
+  },
+  updateProposalItem: (proposalId, itemId, patch) =>
+    set((s) => ({
+      proposals: s.proposals.map((p) =>
+        p.id === proposalId
+          ? { ...p, items: p.items.map((it) => (it.id === itemId ? { ...it, ...patch } : it)) }
+          : p,
+      ),
+    })),
+  removeProposalItem: (proposalId, itemId) =>
+    set(
+      (s) => (
+        markDeleted("proposalItems", itemId),
+        {
           proposals: s.proposals.map((p) =>
             p.id === proposalId ? { ...p, items: p.items.filter((it) => it.id !== itemId) } : p,
           ),
-        })),
-      setProposalStatus: (id, status) =>
-        set((s) => ({
-          proposals: s.proposals.map((p) =>
-            p.id === id
-              ? {
-                  ...p,
-                  status,
-                  // Primeira transição para "enviada" carimba sentAt; nunca sobrescreve.
-                  ...(status === "enviada" && !p.sentAt
-                    ? { sentAt: new Date().toISOString() }
-                    : {}),
-                }
-              : p,
-          ),
-        })),
+        }
+      ),
+    ),
+  setProposalStatus: (id, status) =>
+    set((s) => ({
+      proposals: s.proposals.map((p) =>
+        p.id === id
+          ? {
+              ...p,
+              status,
+              // Primeira transição para "enviada" carimba sentAt; nunca sobrescreve.
+              ...(status === "enviada" && !p.sentAt ? { sentAt: new Date().toISOString() } : {}),
+            }
+          : p,
+      ),
+    })),
 
-      // ============ Payment Terms (ADM catalogue) ============
-      paymentTerms: DEFAULT_PAYMENT_TERMS,
-      addPaymentTerm: (t) => {
-        const id = uid();
-        set((s) => ({ paymentTerms: [...s.paymentTerms, { ...t, id }] }));
-        return id;
-      },
-      updatePaymentTerm: (id, patch) =>
-        set((s) => ({
-          paymentTerms: s.paymentTerms.map((t) => (t.id === id ? { ...t, ...patch } : t)),
-        })),
-      removePaymentTerm: (id) =>
-        set((s) => {
-          markDeleted("paymentTerms", id);
-          return { paymentTerms: s.paymentTerms.filter((t) => t.id !== id) };
-        }),
-      togglePaymentTermActive: (id) =>
-        set((s) => ({
-          paymentTerms: s.paymentTerms.map((t) => (t.id === id ? { ...t, active: !t.active } : t)),
-        })),
-      resetPaymentTerms: () => set({ paymentTerms: DEFAULT_PAYMENT_TERMS }),
-
-      // ============ Lead tags & segments ============
-      leadTags: DEFAULT_LEAD_TAGS,
-      leadSegments: DEFAULT_LEAD_SEGMENTS,
-      addLeadTag: (t) =>
-        set((s) => {
-          const v = t.trim();
-          if (!v || s.leadTags.some((x) => x.toLowerCase() === v.toLowerCase())) return s;
-          return { leadTags: [...s.leadTags, v] };
-        }),
-      removeLeadTag: (t) =>
-        set((s) => ({ leadTags: s.leadTags.filter((x) => x !== t) })),
-      addLeadSegment: (seg) =>
-        set((s) => {
-          const v = seg.trim();
-          if (!v || s.leadSegments.some((x) => x.toLowerCase() === v.toLowerCase())) return s;
-          return { leadSegments: [...s.leadSegments, v] };
-        }),
-      removeLeadSegment: (seg) =>
-        set((s) => ({ leadSegments: s.leadSegments.filter((x) => x !== seg) })),
-
-      // ============ Freight config ============
-      freightConfig: DEFAULT_FREIGHT_CONFIG,
-      setFreightConfig: (patch) =>
-        set((s) => ({ freightConfig: { ...s.freightConfig, ...patch } })),
-
-      fleet: DEFAULT_FLEET,
-      setFleet: (list) => set({ fleet: list }),
-      upsertFleetVehicle: (v) =>
-        set((s) => {
-          const idx = s.fleet.findIndex((x) => x.id === v.id);
-          if (idx < 0) return { fleet: [...s.fleet, v] };
-          const next = s.fleet.slice();
-          next[idx] = v;
-          return { fleet: next };
-        }),
-      removeFleetVehicle: (id) => set((s) => ({ fleet: s.fleet.filter((v) => v.id !== id) })),
+  // ============ Payment Terms (ADM catalogue) ============
+  paymentTerms: DEFAULT_PAYMENT_TERMS,
+  addPaymentTerm: (t) => {
+    const id = uid();
+    set((s) => ({ paymentTerms: [...s.paymentTerms, { ...t, id }] }));
+    return id;
+  },
+  updatePaymentTerm: (id, patch) =>
+    set((s) => ({
+      paymentTerms: s.paymentTerms.map((t) => (t.id === id ? { ...t, ...patch } : t)),
+    })),
+  removePaymentTerm: (id) =>
+    set((s) => {
+      markDeleted("paymentTerms", id);
+      return { paymentTerms: s.paymentTerms.filter((t) => t.id !== id) };
     }),
-);
+  togglePaymentTermActive: (id) =>
+    set((s) => ({
+      paymentTerms: s.paymentTerms.map((t) => (t.id === id ? { ...t, active: !t.active } : t)),
+    })),
+  resetPaymentTerms: () => set({ paymentTerms: DEFAULT_PAYMENT_TERMS }),
 
+  // ============ Lead tags & segments ============
+  leadTags: DEFAULT_LEAD_TAGS,
+  leadSegments: DEFAULT_LEAD_SEGMENTS,
+  addLeadTag: (t) =>
+    set((s) => {
+      const v = t.trim();
+      if (!v || s.leadTags.some((x) => x.toLowerCase() === v.toLowerCase())) return s;
+      return { leadTags: [...s.leadTags, v] };
+    }),
+  removeLeadTag: (t) => set((s) => ({ leadTags: s.leadTags.filter((x) => x !== t) })),
+  addLeadSegment: (seg) =>
+    set((s) => {
+      const v = seg.trim();
+      if (!v || s.leadSegments.some((x) => x.toLowerCase() === v.toLowerCase())) return s;
+      return { leadSegments: [...s.leadSegments, v] };
+    }),
+  removeLeadSegment: (seg) =>
+    set((s) => ({ leadSegments: s.leadSegments.filter((x) => x !== seg) })),
+
+  // ============ Freight config ============
+  freightConfig: DEFAULT_FREIGHT_CONFIG,
+  setFreightConfig: (patch) => set((s) => ({ freightConfig: { ...s.freightConfig, ...patch } })),
+
+  fleet: DEFAULT_FLEET,
+  setFleet: (list) => set({ fleet: list }),
+  upsertFleetVehicle: (v) =>
+    set((s) => {
+      const idx = s.fleet.findIndex((x) => x.id === v.id);
+      if (idx < 0) return { fleet: [...s.fleet, v] };
+      const next = s.fleet.slice();
+      next[idx] = v;
+      return { fleet: next };
+    }),
+  removeFleetVehicle: (id) => set((s) => ({ fleet: s.fleet.filter((v) => v.id !== id) })),
+}));
 
 export const formatBRL = (n: number) =>
-  n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  n.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 
 // Current user is derived from the authenticated session (see src/hooks/use-auth.tsx).
 // Legacy USERS array is kept only to display owner names on seeded/legacy records.
@@ -1444,13 +1688,15 @@ export const useBestSellerOfMonth = () => {
     let bestId: string | null = null;
     let best = { value: 0, deals: 0 };
     totals.forEach((v, k) => {
-      if (v.value > best.value) { best = v; bestId = k; }
+      if (v.value > best.value) {
+        best = v;
+        bestId = k;
+      }
     });
     const user = bestId ? USERS.find((u) => u.id === bestId) : null;
     return user ? { user, value: best.value, deals: best.deals } : null;
   }, [leads]);
 };
-
 
 export const useVisibleProposals = () => {
   const proposals = useCrm((s) => s.proposals);
@@ -1458,16 +1704,21 @@ export const useVisibleProposals = () => {
   const { user: authUser } = useAuth();
   const verTodas = hasPerm(authUser, "propostas.ver_todas");
   return useMemo(
-    () => (user.role === "admin" || verTodas ? proposals : proposals.filter((p) => p.ownerId === user.id)),
+    () =>
+      user.role === "admin" || verTodas
+        ? proposals
+        : proposals.filter((p) => p.ownerId === user.id),
     [proposals, user, verTodas],
   );
 };
 
-
 export const proposalTotals = (p: Proposal, surchargePercent = 0) => {
   const items = Array.isArray(p?.items) ? p.items : [];
   const transport = p?.transport ?? ({} as Proposal["transport"]);
-  const subtotal = items.reduce((s, i) => s + (Number(i?.quantity) || 0) * (Number(i?.unitPrice) || 0), 0);
+  const subtotal = items.reduce(
+    (s, i) => s + (Number(i?.quantity) || 0) * (Number(i?.unitPrice) || 0),
+    0,
+  );
   const pct = Math.max(0, Math.min(100, p?.discountPercent ?? 0));
   const discountAmount = +(subtotal * (pct / 100)).toFixed(2);
   const subtotalAfterDiscount = +(subtotal - discountAmount).toFixed(2);
@@ -1517,9 +1768,7 @@ export const leadValueFromProposals = (
   proposals: Proposal[],
 ): number => {
   const fallback = Number(lead.estimatedValue) || 0;
-  const relevantes = proposals.filter(
-    (p) => p.leadId === lead.id && p.status !== "recusada",
-  );
+  const relevantes = proposals.filter((p) => p.leadId === lead.id && p.status !== "recusada");
   if (!relevantes.length) return fallback;
   const best = [...relevantes].sort((a, b) => {
     const pri = (PROPOSAL_PRIORITY[b.status] ?? 0) - (PROPOSAL_PRIORITY[a.status] ?? 0);
@@ -1589,19 +1838,49 @@ export const leadTemperature = (
   const days = Math.max(0, Math.floor((Date.now() - ref) / 86400000));
   const hint = days === 0 ? "Contato hoje" : `${days} dia${days === 1 ? "" : "s"} sem contato`;
   if (lead.stage === "perdido")
-    return { level: "frozen", label: "Congelado", days, emoji: "🧊",
-      className: "bg-slate-500/15 text-slate-600 border-slate-500/30", hint };
+    return {
+      level: "frozen",
+      label: "Congelado",
+      days,
+      emoji: "🧊",
+      className: "bg-slate-500/15 text-slate-600 border-slate-500/30",
+      hint,
+    };
   if (lead.stage === "ganho" || days <= 2)
-    return { level: "hot", label: "Quente", days, emoji: "🔥",
-      className: "bg-red-500/15 text-red-600 border-red-500/30", hint };
+    return {
+      level: "hot",
+      label: "Quente",
+      days,
+      emoji: "🔥",
+      className: "bg-red-500/15 text-red-600 border-red-500/30",
+      hint,
+    };
   if (days <= 5)
-    return { level: "warm", label: "Morno", days, emoji: "☀️",
-      className: "bg-amber-500/15 text-amber-700 border-amber-500/30", hint };
+    return {
+      level: "warm",
+      label: "Morno",
+      days,
+      emoji: "☀️",
+      className: "bg-amber-500/15 text-amber-700 border-amber-500/30",
+      hint,
+    };
   if (days <= 14)
-    return { level: "cold", label: "Frio", days, emoji: "❄️",
-      className: "bg-blue-500/15 text-blue-600 border-blue-500/30", hint };
-  return { level: "frozen", label: "Congelado", days, emoji: "🧊",
-    className: "bg-slate-500/15 text-slate-600 border-slate-500/30", hint };
+    return {
+      level: "cold",
+      label: "Frio",
+      days,
+      emoji: "❄️",
+      className: "bg-blue-500/15 text-blue-600 border-blue-500/30",
+      hint,
+    };
+  return {
+    level: "frozen",
+    label: "Congelado",
+    days,
+    emoji: "🧊",
+    className: "bg-slate-500/15 text-slate-600 border-slate-500/30",
+    hint,
+  };
 };
 
 export type FollowupLevel = "urgent" | "attention" | "scheduled" | "ok";
@@ -1620,41 +1899,78 @@ export const followupTemperature = (
   lead: Pick<Lead, "nextFollowUp" | "lastContact" | "createdAt" | "stage">,
 ): FollowupTemperature => {
   if (lead.stage === "ganho" || lead.stage === "perdido") {
-    return { level: "ok", label: "Encerrado", emoji: "✓",
+    return {
+      level: "ok",
+      label: "Encerrado",
+      emoji: "✓",
       className: "bg-slate-500/15 text-slate-600 border-slate-500/30",
-      hint: "Lead encerrado", overdueDays: null };
+      hint: "Lead encerrado",
+      overdueDays: null,
+    };
   }
-  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
   const inactivity = Math.floor(
     (Date.now() - new Date(lead.lastContact ?? lead.createdAt).getTime()) / 86400000,
   );
 
   if (!lead.nextFollowUp) {
     if (inactivity > 7)
-      return { level: "urgent", label: "Sem retorno", emoji: "🔥",
+      return {
+        level: "urgent",
+        label: "Sem retorno",
+        emoji: "🔥",
         className: "bg-red-500/15 text-red-600 border-red-500/30",
-        hint: `Sem agenda · ${inactivity}d sem contato`, overdueDays: inactivity };
-    return { level: "attention", label: "Sem agenda", emoji: "⚠️",
+        hint: `Sem agenda · ${inactivity}d sem contato`,
+        overdueDays: inactivity,
+      };
+    return {
+      level: "attention",
+      label: "Sem agenda",
+      emoji: "⚠️",
       className: "bg-amber-500/15 text-amber-700 border-amber-500/30",
-      hint: "Nenhum follow-up programado", overdueDays: null };
+      hint: "Nenhum follow-up programado",
+      overdueDays: null,
+    };
   }
 
-  const due = new Date(lead.nextFollowUp); due.setHours(0, 0, 0, 0);
+  const due = new Date(lead.nextFollowUp);
+  due.setHours(0, 0, 0, 0);
   const diff = Math.floor((today.getTime() - due.getTime()) / 86400000);
 
   if (diff > 3)
-    return { level: "urgent", label: "Atrasado", emoji: "🔥",
+    return {
+      level: "urgent",
+      label: "Atrasado",
+      emoji: "🔥",
       className: "bg-red-500/15 text-red-600 border-red-500/30",
-      hint: `Follow-up atrasado ${diff}d`, overdueDays: diff };
+      hint: `Follow-up atrasado ${diff}d`,
+      overdueDays: diff,
+    };
   if (diff >= 1)
-    return { level: "attention", label: "Atrasado", emoji: "⚠️",
+    return {
+      level: "attention",
+      label: "Atrasado",
+      emoji: "⚠️",
       className: "bg-amber-500/15 text-amber-700 border-amber-500/30",
-      hint: `Follow-up atrasado ${diff}d`, overdueDays: diff };
+      hint: `Follow-up atrasado ${diff}d`,
+      overdueDays: diff,
+    };
   if (diff === 0)
-    return { level: "attention", label: "Hoje", emoji: "📅",
+    return {
+      level: "attention",
+      label: "Hoje",
+      emoji: "📅",
       className: "bg-amber-500/15 text-amber-700 border-amber-500/30",
-      hint: "Retorno hoje", overdueDays: 0 };
-  return { level: "scheduled", label: "Agendado", emoji: "❄️",
+      hint: "Retorno hoje",
+      overdueDays: 0,
+    };
+  return {
+    level: "scheduled",
+    label: "Agendado",
+    emoji: "❄️",
     className: "bg-blue-500/15 text-blue-600 border-blue-500/30",
-    hint: `Retorno em ${-diff}d`, overdueDays: diff };
+    hint: `Retorno em ${-diff}d`,
+    overdueDays: diff,
+  };
 };

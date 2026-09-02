@@ -72,7 +72,8 @@ export function normalizarParcelas(rows: Array<Record<string, unknown>>): Parcel
   return rows.map((p, idx) => ({
     days: num(p["days"]),
     amount: num(p["amount"]),
-    percentual: p["percentual"] === null || p["percentual"] === undefined ? null : num(p["percentual"]),
+    percentual:
+      p["percentual"] === null || p["percentual"] === undefined ? null : num(p["percentual"]),
     notes: str(p["notes"]),
     position: Number.isFinite(Number(p["position"])) ? Number(p["position"]) : idx,
   }));
@@ -136,14 +137,16 @@ export async function criarPropostaDuplicada(
     const { error } = await sb
       .from("proposta_itens")
       .insert(itens.map((i) => ({ ...i, proposta_id: nova.id })));
-    if (error) throw new Error(`Falha ao copiar os itens: ${(error as { message?: string }).message}`);
+    if (error)
+      throw new Error(`Falha ao copiar os itens: ${(error as { message?: string }).message}`);
   }
 
   if (parcelas.length > 0) {
     const { error } = await sb
       .from("proposta_parcelas")
       .insert(parcelas.map((p) => ({ ...p, proposta_id: nova.id, due_date: null })));
-    if (error) throw new Error(`Falha ao copiar as parcelas: ${(error as { message?: string }).message}`);
+    if (error)
+      throw new Error(`Falha ao copiar as parcelas: ${(error as { message?: string }).message}`);
   }
 
   return { id: nova.id as string, number: nova.number as string };

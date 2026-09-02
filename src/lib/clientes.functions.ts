@@ -78,7 +78,6 @@ export type ClienteInput = {
   aceite_desconto_duplicata?: boolean;
 };
 
-
 function validateInput(d: ClienteInput): { errors: string[]; clean: ClienteInput } {
   const errors: string[] = [];
   const tipo: TipoPessoa = d.tipo_pessoa === "PF" ? "PF" : "PJ";
@@ -114,26 +113,25 @@ function validateInput(d: ClienteInput): { errors: string[]; clean: ClienteInput
       cnpj: tipo === "PF" ? "" : cnpj,
       cpf: tipo === "PF" ? cpf : null,
       // PF não tem IE / Simples / SUFRAMA
-      inscricao_estadual: tipo === "PF" ? null : d.inscricao_estadual ?? null,
+      inscricao_estadual: tipo === "PF" ? null : (d.inscricao_estadual ?? null),
       ie_isento: tipo === "PF" ? false : !!d.ie_isento,
-      simples_optante: tipo === "PF" ? null : d.simples_optante ?? null,
-      suframa_isento: tipo === "PF" ? null : d.suframa_isento ?? null,
-      suframa_numero: tipo === "PF" ? null : d.suframa_numero ?? null,
+      simples_optante: tipo === "PF" ? null : (d.simples_optante ?? null),
+      suframa_isento: tipo === "PF" ? null : (d.suframa_isento ?? null),
+      suframa_numero: tipo === "PF" ? null : (d.suframa_numero ?? null),
       razao_social: normalizarTexto(razao),
-      nome_fantasia: d.nome_fantasia ? normalizarTexto(d.nome_fantasia) : d.nome_fantasia ?? null,
-      endereco: d.endereco ? normalizarTexto(d.endereco) : d.endereco ?? null,
-      complemento: d.complemento ? normalizarTexto(d.complemento) : d.complemento ?? null,
-      bairro: d.bairro ? normalizarTexto(d.bairro) : d.bairro ?? null,
-      cidade: d.cidade ? normalizarTexto(d.cidade) : d.cidade ?? null,
-      contato: d.contato ? normalizarTexto(d.contato) : d.contato ?? null,
-      email: d.email ? normalizarEmail(d.email) : d.email ?? null,
-      email_nf: d.email_nf ? normalizarEmail(d.email_nf) : d.email_nf ?? null,
+      nome_fantasia: d.nome_fantasia ? normalizarTexto(d.nome_fantasia) : (d.nome_fantasia ?? null),
+      endereco: d.endereco ? normalizarTexto(d.endereco) : (d.endereco ?? null),
+      complemento: d.complemento ? normalizarTexto(d.complemento) : (d.complemento ?? null),
+      bairro: d.bairro ? normalizarTexto(d.bairro) : (d.bairro ?? null),
+      cidade: d.cidade ? normalizarTexto(d.cidade) : (d.cidade ?? null),
+      contato: d.contato ? normalizarTexto(d.contato) : (d.contato ?? null),
+      email: d.email ? normalizarEmail(d.email) : (d.email ?? null),
+      email_nf: d.email_nf ? normalizarEmail(d.email_nf) : (d.email_nf ?? null),
       condicao_pagamento_padrao_id: (d.condicao_pagamento_padrao_id ?? "") || null,
       regras_faturamento: (d.regras_faturamento ?? "").toString().trim() || null,
       aceite_desconto_duplicata: !!d.aceite_desconto_duplicata,
       empresa_padrao: empresa,
       estado: uf || null,
-
     },
   };
 }
@@ -143,21 +141,23 @@ function validateInput(d: ClienteInput): { errors: string[]; clean: ClienteInput
 // ==========================
 export const listClientes = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: {
-    q?: string;
-    empresa?: string;
-    vendedorId?: string;
-    somenteAtivos?: boolean;
-    page?: number;
-    pageSize?: number;
-  }) => ({
-    q: (data?.q ?? "").trim(),
-    empresa: data?.empresa ?? "",
-    vendedorId: data?.vendedorId ?? "",
-    somenteAtivos: data?.somenteAtivos !== false,
-    page: Math.max(1, Number(data?.page ?? 1)),
-    pageSize: Math.min(100, Math.max(1, Number(data?.pageSize ?? 25))),
-  }))
+  .inputValidator(
+    (data: {
+      q?: string;
+      empresa?: string;
+      vendedorId?: string;
+      somenteAtivos?: boolean;
+      page?: number;
+      pageSize?: number;
+    }) => ({
+      q: (data?.q ?? "").trim(),
+      empresa: data?.empresa ?? "",
+      vendedorId: data?.vendedorId ?? "",
+      somenteAtivos: data?.somenteAtivos !== false,
+      page: Math.max(1, Number(data?.page ?? 1)),
+      pageSize: Math.min(100, Math.max(1, Number(data?.pageSize ?? 25))),
+    }),
+  )
   .handler(async ({ data, context }) => {
     const { supabase } = context;
     const from = (data.page - 1) * data.pageSize;
@@ -259,10 +259,10 @@ export async function criarClienteCore(
     const { errors, clean } = validateInput(data);
     if (errors.length) throw new Error(errors.join("; "));
 
-
     // Checagem via RPC SECURITY DEFINER (enxerga cross-vendor sem expor dados sensíveis)
-    const { data: statusRows, error: statusErr } = await context.supabase
-      .rpc("cnpj_status", { _cnpj: clean.cnpj });
+    const { data: statusRows, error: statusErr } = await context.supabase.rpc("cnpj_status", {
+      _cnpj: clean.cnpj,
+    });
 
     if (statusErr) {
       // Falha na verificação preliminar: não abortar; o mapeamento 23505 abaixo cuida da duplicidade.
@@ -341,7 +341,6 @@ export async function criarClienteCore(
         email_nf: clean.email_nf ?? null,
         regras_faturamento: clean.regras_faturamento ?? null,
         aceite_desconto_duplicata: !!clean.aceite_desconto_duplicata,
-
       })
       .select("*")
       .single();
@@ -349,7 +348,11 @@ export async function criarClienteCore(
     if (error) {
       const errCode = (error as { code?: string }).code;
       const errMsg = error.message ?? "";
-      if (errCode === "23505" || /clientes_cnpj_key/i.test(errMsg) || /duplicate key/i.test(errMsg)) {
+      if (
+        errCode === "23505" ||
+        /clientes_cnpj_key/i.test(errMsg) ||
+        /duplicate key/i.test(errMsg)
+      ) {
         return {
           ok: false,
           code: "duplicate_other",
@@ -369,10 +372,10 @@ export async function criarClienteCore(
 export const createCliente = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: ClienteInput) => data)
-  .handler(async ({ data, context }): Promise<CreateClienteResult> =>
-    criarClienteCore(context.supabase, context.userId, data),
+  .handler(
+    async ({ data, context }): Promise<CreateClienteResult> =>
+      criarClienteCore(context.supabase, context.userId, data),
   );
-
 
 // ==========================
 // REATIVAR CLIENTE (dono ou admin, via RLS de UPDATE)
@@ -409,12 +412,15 @@ export const updateCliente = createServerFn({ method: "POST" })
 
     // Buscar registro atual para validar
     const { data: current, error: err0 } = await context.supabase
-      .from("clientes").select("*").eq("id", id).maybeSingle();
+      .from("clientes")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
     if (err0) throw new Error(err0.message);
     if (!current) throw new Error("Cliente não encontrado ou sem acesso");
 
     const merged: ClienteInput = {
-      tipo_pessoa: ((current as ClienteRow).tipo_pessoa === "PF" ? "PF" : "PJ"),
+      tipo_pessoa: (current as ClienteRow).tipo_pessoa === "PF" ? "PF" : "PJ",
       cnpj: (current as ClienteRow).cnpj ?? "", // documento é imutável
       cpf: (current as ClienteRow).cpf ?? null,
       razao_social: patch.razao_social ?? (current as ClienteRow).razao_social,
@@ -453,8 +459,7 @@ export const updateCliente = createServerFn({ method: "POST" })
         patch.condicao_pagamento_padrao_id !== undefined
           ? patch.condicao_pagamento_padrao_id
           : (current as ClienteRow).condicao_pagamento_padrao_id,
-      email_nf:
-        patch.email_nf !== undefined ? patch.email_nf : (current as ClienteRow).email_nf,
+      email_nf: patch.email_nf !== undefined ? patch.email_nf : (current as ClienteRow).email_nf,
       regras_faturamento:
         patch.regras_faturamento !== undefined
           ? patch.regras_faturamento
@@ -501,7 +506,11 @@ export const updateCliente = createServerFn({ method: "POST" })
     };
 
     const { data: updated, error } = await context.supabase
-      .from("clientes").update(updateFields).eq("id", id).select("*").single();
+      .from("clientes")
+      .update(updateFields)
+      .eq("id", id)
+      .select("*")
+      .single();
     if (error) throw new Error("Não foi possível salvar o cliente. Tente novamente.");
     return updated as ClienteRow;
   });
@@ -692,7 +701,9 @@ export async function autoMatchClienteDoLead(
     .map((t) => digitsOf(t))
     .filter((t) => t.length >= 8)
     .map((t) => t.slice(-8));
-  const email = String(lead["email"] ?? "").trim().toLowerCase();
+  const email = String(lead["email"] ?? "")
+    .trim()
+    .toLowerCase();
   const nomes = [lead["company"], lead["razao_social"], lead["nome_fantasia"]]
     .map((n) => normalizeNome(n))
     .filter((n) => n.length >= 3);
@@ -732,7 +743,11 @@ export async function autoMatchClienteDoLead(
         return d.length >= 8 && d.slice(-8) === t;
       }),
     );
-    const mailOk = !!email && String(c["email"] ?? "").trim().toLowerCase() === email;
+    const mailOk =
+      !!email &&
+      String(c["email"] ?? "")
+        .trim()
+        .toLowerCase() === email;
     const nomeOk = nomes.some(
       (n) => normalizeNome(c["razao_social"]) === n || normalizeNome(c["nome_fantasia"]) === n,
     );
@@ -744,7 +759,6 @@ export async function autoMatchClienteDoLead(
 }
 
 export async function garantirClienteDoLead(
-
   supabase: LooseDb,
   userId: string,
   leadId: string,
@@ -770,7 +784,8 @@ export async function garantirClienteDoLead(
     "Este lead ainda não tem um cliente vinculado com CNPJ ou CPF cadastrado. Abra o cadastro de cliente e vincule ou informe o documento antes de marcar como Ganho.";
   let tipo: TipoPessoa;
   if (digits.length === 14) {
-    if (!isValidCnpj(digits)) return { ok: false, erros: ["CNPJ inválido (dígitos verificadores)."] };
+    if (!isValidCnpj(digits))
+      return { ok: false, erros: ["CNPJ inválido (dígitos verificadores)."] };
     tipo = "PJ";
   } else if (digits.length === 11) {
     if (!isValidCpf(digits)) return { ok: false, erros: ["CPF inválido (dígitos verificadores)."] };
@@ -796,7 +811,6 @@ export async function garantirClienteDoLead(
     return { ok: false, erros: [DOC_MSG] };
   }
 
-
   // (B1) Já existe cliente com o mesmo documento? → apenas vincula.
   let existenteId: string | null = null;
 
@@ -820,7 +834,10 @@ export async function garantirClienteDoLead(
       | undefined;
     if (st?.existe) {
       if (!st.mesmo_vendedor) {
-        return { ok: false, erros: [await mensagemClienteDeOutroVendedor(supabase, st.cliente_id)] };
+        return {
+          ok: false,
+          erros: [await mensagemClienteDeOutroVendedor(supabase, st.cliente_id)],
+        };
       }
       existenteId = st.cliente_id ?? null;
     }
@@ -851,7 +868,6 @@ export async function garantirClienteDoLead(
     return { ok: true, clienteId: existenteId, criado: false };
   }
 
-
   // (B2) Não existe → cria pelo mesmo fluxo do cadastro manual.
   const empresaPadrao = ["INPLASTIC", "TAOPLAST", "LICITAPLAS"].includes(
     String(lead.empresa ?? "").toUpperCase(),
@@ -864,13 +880,15 @@ export async function garantirClienteDoLead(
     String(lead.company ?? "").trim() ||
     String(lead.contact_name ?? "").trim();
   if (!nome) {
-    return { ok: false, erros: ["Preencha a razão social ou o nome da empresa antes de marcar como Ganho."] };
+    return {
+      ok: false,
+      erros: ["Preencha a razão social ou o nome da empresa antes de marcar como Ganho."],
+    };
   }
 
   const end = achatarEnderecoLead(lead);
 
   const res = await criarClienteCore(supabase, userId, {
-
     tipo_pessoa: tipo,
     cnpj: tipo === "PJ" ? digits : "",
     cpf: tipo === "PF" ? digits : null,
@@ -887,7 +905,7 @@ export async function garantirClienteDoLead(
 
     contato: (lead.contact_name as string | null) ?? null,
     email: (lead.email as string | null) ?? null,
-    telefone: ((lead.phone as string | null) ?? (lead.telefone_whatsapp as string | null)) ?? null,
+    telefone: (lead.phone as string | null) ?? (lead.telefone_whatsapp as string | null) ?? null,
     telefone2: (lead.telefone2 as string | null) ?? null,
     empresa_padrao: empresaPadrao,
     vendedor_id: (lead.owner_id as string | null) ?? userId,
@@ -941,7 +959,6 @@ export async function registrarAuditoriaPromocao(
     console.error("[promocao_cliente] falha ao registrar auditoria:", e);
   }
 }
-
 
 /**
  * `leads.endereco` pode vir como texto simples OU como jsonb objeto

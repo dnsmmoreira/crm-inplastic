@@ -31,7 +31,6 @@ export type InternalOrderResult = {
   pedido_id?: string;
 };
 
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type LooseClient = any;
 function relaxSupabase(sb: unknown): LooseClient {
@@ -40,14 +39,19 @@ function relaxSupabase(sb: unknown): LooseClient {
 
 export const gerarPedidoInterno = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { proposta_id: string; requer_aprovacao?: boolean; conferencia_confirmada?: boolean }) =>
-    z
-      .object({
-        proposta_id: z.string().uuid(),
-        requer_aprovacao: z.boolean().optional(),
-        conferencia_confirmada: z.boolean().optional(),
-      })
-      .parse(input),
+  .inputValidator(
+    (input: {
+      proposta_id: string;
+      requer_aprovacao?: boolean;
+      conferencia_confirmada?: boolean;
+    }) =>
+      z
+        .object({
+          proposta_id: z.string().uuid(),
+          requer_aprovacao: z.boolean().optional(),
+          conferencia_confirmada: z.boolean().optional(),
+        })
+        .parse(input),
   )
   .handler(async ({ data, context }): Promise<InternalOrderResult> => {
     const { supabase, userId } = context;
@@ -211,12 +215,9 @@ export const gerarPedidoInterno = createServerFn({ method: "POST" })
         ...conferencia,
       };
       // Rastro de auditoria do auto-aprovado (admin não grava motivo).
-      if (motivoAuditoria) patchAprovacao['approval_reason'] = motivoAuditoria;
+      if (motivoAuditoria) patchAprovacao["approval_reason"] = motivoAuditoria;
       // ABORTAR: o pedido não pode nascer com a proposta em status incoerente.
-      const upAprovada = await loose
-        .from("propostas")
-        .update(patchAprovacao)
-        .eq("id", propostaId);
+      const upAprovada = await loose.from("propostas").update(patchAprovacao).eq("id", propostaId);
       await assertNoError(
         upAprovada,
         "pedidos-gerar.gerarPedidoInterno/aprovar-proposta",
@@ -287,10 +288,7 @@ export const moverParaGanho = createServerFn({ method: "POST" })
     }
 
     // ABORTAR: o Ganho é o efeito principal desta operação.
-    const upLeadGanho = await loose
-      .from("leads")
-      .update({ stage: "ganho" })
-      .eq("id", data.lead_id);
+    const upLeadGanho = await loose.from("leads").update({ stage: "ganho" }).eq("id", data.lead_id);
     await assertNoError(
       upLeadGanho,
       "pedidos-gerar.moverParaGanho/lead-ganho",
@@ -478,9 +476,13 @@ async function ensurePedidoFromProposta(
     moved_by: callerId,
   });
   if (histIni?.error) {
-    await registrarFalhaSegura("pedidos-gerar.ensurePedidoFromProposta/stage-history", histIni.error, {
-      pedido_id: novoPedido.id,
-    });
+    await registrarFalhaSegura(
+      "pedidos-gerar.ensurePedidoFromProposta/stage-history",
+      histIni.error,
+      {
+        pedido_id: novoPedido.id,
+      },
+    );
   }
   // Efeitos de entrada de etapa — mesmos de uma movimentação manual.
   // Nunca podem derrubar a criação do pedido, mas também não podem ser
@@ -505,4 +507,3 @@ async function ensurePedidoFromProposta(
 export const gerarPedidoOmie = gerarPedidoInterno;
 /** @deprecated use `moverParaGanho` — alias mantido só pelos call sites atuais. */
 export const moverParaGanhoOmie = moverParaGanho;
-
