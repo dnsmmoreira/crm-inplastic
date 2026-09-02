@@ -30,6 +30,7 @@ import { NewLeadDialog, LeadDrawer } from "@/components/crm/LeadDrawer";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { gerarPedidoInterno } from "@/lib/omie.functions";
+import { RomaneiosPosPedidoDialog } from "@/components/pedidos/RomaneiosPosPedidoDialog";
 
 type SortMode = "default" | "urgency" | "urgency-desc";
 const CARDS_PER_PAGE = 15;
