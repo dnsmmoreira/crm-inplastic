@@ -1193,9 +1193,37 @@ export function resyncAgora() {
 
 // ============ Save (write-through com diff) ============
 
+/**
+ * Gargalo 3 — diff O(n) a cada 500 ms.
+ *
+ * Escolhida a alternativa de MENOR RISCO: em vez de instrumentar todas as
+ * actions do store com um `Set` de ids sujos (invasivo, ~40 actions, fácil de
+ * esquecer uma e perder escrita), o diff continua igual, mas só roda nas
+ * coleções cujo array mudou de REFERÊNCIA desde o último save — comparação
+ * `===`, O(1) por coleção. O zustand já cria array novo em toda action que
+ * altera a coleção, então isso é conservador: no máximo roda um diff a mais.
+ * Coleções com falha de gravação ficam marcadas para reprocessar no próximo
+ * ciclo (senão o retry do registro sujo nunca aconteceria).
+ */
+const ultimoRefSalvo = new Map<string, unknown>();
+const forcarColecao = new Set<string>();
+
+function precisaDiff(nome: string, ...refs: unknown[]): boolean {
+  const chave = JSON.stringify(refs.map((_, i) => i)); // só para tamanho fixo
+  void chave;
+  const anterior = ultimoRefSalvo.get(nome) as unknown[] | undefined;
+  const mudou =
+    !anterior || anterior.length !== refs.length || refs.some((r, i) => r !== anterior[i]);
+  if (!mudou && !forcarColecao.has(nome)) return false;
+  ultimoRefSalvo.set(nome, refs);
+  forcarColecao.delete(nome);
+  return true;
+}
+
 /** Referências das fatias persistidas no último agendamento — evita agendar save
  *  para mudanças de estado puramente locais/efêmeras (filtros, UI, seleção). */
 let lastPersistedRefs: unknown[] = [];
+
 
 function persistedRefs() {
   const s = useCrm.getState();
