@@ -1,6 +1,6 @@
 import { MargemPropostaCard } from "@/components/arena/MargemPropostaCard";
 import { createFileRoute, Link, useNavigate, useBlocker } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useDuplicarProposta } from "@/hooks/use-duplicar-proposta";
 import {
   ArrowLeft,
@@ -76,6 +76,7 @@ import {
 } from "@/lib/clientes.functions";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { enviarPropostaWhatsapp, enviarPropostaEmail } from "@/lib/propostas.functions";
+import { tratativaValida, MSG_TRATATIVA_OBRIGATORIA } from "@/lib/tratativa-comercial";
 
 import { formatCep } from "@/lib/format";
 import { useServerFn } from "@tanstack/react-start";
@@ -521,6 +522,19 @@ function PropostaDetalhe() {
     return _setStatus(...a);
   };
 
+  /**
+   * Gate de processo antes de enviar: sem tratativa comercial não sai proposta
+   * (o servidor também recusa). Rola e foca o campo para o vendedor preencher.
+   */
+  const tratativaRef = useRef<HTMLTextAreaElement | null>(null);
+  const podeEnviarProposta = () => {
+    if (tratativaValida(proposal?.tratativaComercial)) return true;
+    toast.error(MSG_TRATATIVA_OBRIGATORIA);
+    tratativaRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    tratativaRef.current?.focus({ preventScroll: true });
+    return false;
+  };
+
   // Envio real da proposta por WhatsApp (link da página pública).
   const enviarPropostaFn = useServerFn(enviarPropostaWhatsapp);
   const enviarWhatsMut = useMutation({
@@ -764,7 +778,9 @@ function PropostaDetalhe() {
               variant="outline"
               className="gap-2"
               disabled={enviarWhatsMut.isPending}
-              onClick={() => enviarWhatsMut.mutate(proposal.id)}
+              onClick={() => {
+                if (podeEnviarProposta()) enviarWhatsMut.mutate(proposal.id);
+              }}
             >
               {enviarWhatsMut.isPending ? (
                 <RefreshCw className="h-4 w-4 animate-spin" />
@@ -780,7 +796,9 @@ function PropostaDetalhe() {
               variant="outline"
               className="gap-2"
               disabled={enviarEmailMut.isPending}
-              onClick={() => enviarEmailMut.mutate(proposal.id)}
+              onClick={() => {
+                if (podeEnviarProposta()) enviarEmailMut.mutate(proposal.id);
+              }}
             >
               {enviarEmailMut.isPending ? (
                 <RefreshCw className="h-4 w-4 animate-spin" />
@@ -2259,6 +2277,7 @@ function PropostaDetalhe() {
               <div>
                 <Label>Tratativa comercial (interno)</Label>
                 <Textarea
+                  ref={tratativaRef}
                   rows={4}
                   placeholder="O que foi combinado com o cliente: condições, concessões, contexto, promessas…"
                   value={proposal.tratativaComercial ?? ""}

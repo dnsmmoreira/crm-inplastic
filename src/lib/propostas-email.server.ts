@@ -3,6 +3,7 @@
  * nativo da plataforma. Mesma regra de `sent_at` do envio por WhatsApp.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { tratativaValida, MSG_TRATATIVA_OBRIGATORIA } from "@/lib/tratativa-comercial";
 
 
 const LINK_BASE = "https://crm.inplastic.com.br/proposta-publica";
@@ -23,12 +24,14 @@ export async function enviarPropostaEmailImpl(
   const { data: proposta, error: pErr } = await supabase
     .from("propostas")
     .select(
-      "id, number, lead_id, sent_at, validity_days, discount_percent, payment_term_id, emitter_id, transport",
+      "id, number, lead_id, sent_at, validity_days, discount_percent, payment_term_id, emitter_id, transport, tratativa_comercial",
     )
     .eq("id", propostaId)
     .maybeSingle();
   if (pErr || !proposta) throw new Error("Proposta não encontrada ou sem permissão.");
   if (!proposta.lead_id) throw new Error("Proposta sem lead vinculado.");
+  // Gate de processo (vale para todos, inclusive admin).
+  if (!tratativaValida(proposta.tratativa_comercial)) throw new Error(MSG_TRATATIVA_OBRIGATORIA);
 
   const { data: lead } = await supabase
     .from("leads")

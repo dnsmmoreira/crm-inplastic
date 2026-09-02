@@ -6,6 +6,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
+import { tratativaValida, MSG_TRATATIVA_OBRIGATORIA } from "@/lib/tratativa-comercial";
 
 function onlyDigits(s: string) {
   return String(s ?? "").replace(/\D/g, "");
@@ -220,11 +221,13 @@ export const enviarPropostaWhatsapp = createServerFn({ method: "POST" })
 
     const { data: proposta, error: pErr } = await supabase
       .from("propostas")
-      .select("id, number, lead_id, sent_at")
+      .select("id, number, lead_id, sent_at, tratativa_comercial")
       .eq("id", data.propostaId)
       .maybeSingle();
     if (pErr || !proposta) throw new Error("Proposta não encontrada ou sem permissão.");
     if (!proposta.lead_id) throw new Error("Proposta sem lead vinculado.");
+    // Gate de processo (vale para todos, inclusive admin).
+    if (!tratativaValida(proposta.tratativa_comercial)) throw new Error(MSG_TRATATIVA_OBRIGATORIA);
 
     const { data: lead } = await supabase
       .from("leads")
