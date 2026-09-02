@@ -684,79 +684,21 @@ async function loadAll(userId: string) {
   paymentTerms.forEach((t) => snapshot.paymentTerms.set(t.id, JSON.stringify(payTermToInsert(t))));
 
   // ---- interactions & ai actions por lead ----
-  const interByLead = new Map<string, Interaction[]>();
-  (interRows ?? []).forEach((r) => {
-    if (!r.lead_id) return;
-    snapshot.interactions.add(r.id);
-    const arr = interByLead.get(r.lead_id) ?? [];
-    arr.push(rowToInteraction(r));
-    interByLead.set(r.lead_id, arr);
-  });
-  const aiByLead = new Map<string, AiAction[]>();
-  (aiRows ?? []).forEach((r) => {
-    if (!r.lead_id) return;
-    snapshot.aiActions.add(r.id);
-    const arr = aiByLead.get(r.lead_id) ?? [];
-    arr.push(rowToAiAction(r));
-    aiByLead.set(r.lead_id, arr);
-  });
+  const { interByLead, aiByLead } = indexarHistoricoLead(interRows ?? [], aiRows ?? []);
 
   // ---- leads ----
-  const leads: Lead[] = (leadRows ?? []).map((r) =>
-    rowToLead(r, interByLead.get(r.id) ?? [], aiByLead.get(r.id) ?? []),
-  );
-  leads.forEach((l) => snapshot.leads.set(l.id, JSON.stringify(leadToInsert(l))));
+  const leads = montarLeads((leadRows ?? []) as LeadRow[], interByLead, aiByLead);
 
   // ---- tasks ----
-  const tasks: Task[] = (taskRows ?? []).map(rowToTask);
-  const leadOwnerMap = new Map<string, string | null>();
-  (leadRows ?? []).forEach((r) => leadOwnerMap.set(r.id, r.owner_id));
-  tasks.forEach((t) => {
-    const owner = leadOwnerMap.get(t.leadId) ?? null;
-    snapshot.tasks.set(t.id, JSON.stringify(taskToInsert(t, owner)));
-  });
+  const tasks = montarTasks((taskRows ?? []) as TaskRow[], (leadRows ?? []) as LeadRow[]);
 
   // ---- proposals ----
-  const itemsByProp = new Map<string, ProposalItem[]>();
-  (pItemRows ?? []).forEach((r: PItemRow) => {
-    const item: ProposalItem = {
-      id: r.id,
-      productId: r.product_id ?? "",
-      omieCodigoProduto:
-        (r as unknown as { omie_codigo_produto?: number | null }).omie_codigo_produto ?? undefined,
-      description: r.description,
-      sku: r.sku,
-      ncm: (r as unknown as { ncm?: string | null }).ncm ?? undefined,
-      unit: r.unit as ProductUnit,
-      quantity: Number(r.quantity ?? 0),
-      unitPrice: Number(r.unit_price ?? 0),
-    };
-    const arr = itemsByProp.get(r.proposta_id) ?? [];
-    arr.push(item);
-    itemsByProp.set(r.proposta_id, arr);
-    snapshot.proposalItems.set(r.id, JSON.stringify({ ...r }));
-  });
-  const parcByProp = new Map<string, PaymentInstallment[]>();
-  (pParcRows ?? []).forEach((r: PParcelaRow) => {
-    const loose = r as unknown as { due_date?: string | null; percentual?: number | null };
-    const p: PaymentInstallment = {
-      id: r.id,
-      days: r.days,
-      amount: Number(r.amount ?? 0),
-      notes: r.notes ?? "",
-      percentual: loose.percentual == null ? undefined : Number(loose.percentual),
-      dueDate: loose.due_date ?? undefined,
-    };
-
-    const arr = parcByProp.get(r.proposta_id) ?? [];
-    arr.push(p);
-    parcByProp.set(r.proposta_id, arr);
-    snapshot.proposalParcelas.set(r.id, JSON.stringify({ ...r }));
-  });
-  const proposals: Proposal[] = (propRows ?? []).map((r) =>
-    rowToProposal(r, itemsByProp.get(r.id) ?? [], parcByProp.get(r.id) ?? []),
+  const proposals = montarPropostas(
+    (propRows ?? []) as ProposalRow[],
+    (pItemRows ?? []) as PItemRow[],
+    (pParcRows ?? []) as PParcelaRow[],
   );
-  proposals.forEach((p) => snapshot.proposals.set(p.id, JSON.stringify(proposalToInsert(p))));
+
 
   // ---- aplica no store ----
   const s = useCrm.getState();
