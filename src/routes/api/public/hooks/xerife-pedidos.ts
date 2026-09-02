@@ -29,6 +29,12 @@ import {
   notificarUsuarios,
 } from "@/lib/pedidos-fluxo.server";
 import { stageLabel } from "@/lib/pedidos-stages";
+import {
+  deveEscalarFinanceiro,
+  ESCALONAMENTO_FINANCEIRO_REPETE_HORAS,
+} from "@/lib/xerife/escalonamento-financeiro";
+import { usuariosComPermissao } from "@/lib/pedidos-fluxo.server";
+import { assertNoError, registrarFalhaSegura } from "@/lib/guard-erros";
 
 type SB = SupabaseClient<any, any, any>;
 
@@ -134,6 +140,7 @@ type Stats = {
   ocorrencia_aberta: number;
   pos_venda_entrega: number;
   pos_venda_recompra: number;
+  financeiro_escalado: number;
   skipped_dedupe: number;
 };
 
@@ -154,6 +161,7 @@ async function runXerifePedidos(
     ocorrencia_aberta: 0,
     pos_venda_entrega: 0,
     pos_venda_recompra: 0,
+    financeiro_escalado: 0,
     skipped_dedupe: 0,
   };
 
@@ -546,6 +554,126 @@ async function runXerifePedidos(
         janelaHoras: 24 * 60,
       });
       if (ok) stats.pos_venda_recompra++;
+    }
+  }
+
+  // ─────────────── R8: Escalonamento financeiro (elimina ponto único de falha) ───────────────
+  // Pedido em `analise_financeira` sem decisão há +24h → avisa quem tem
+  // `usuarios.gerenciar` (mesmo critério do `alertarAdmins`) com aceite
+  // obrigatório + mensagem no grupo da diretoria. Repete no máx. 1x/24h por
+  // pedido (dedupe do xerife_log) e para sozinho quando há decisão/mudança de
+  // etapa. Nada aqui altera as regras de aprovação nem quem aprova.
+  {
+    const { data: pedidos, error: errPedidos } = await sb
+      .from("pedidos")
+      .select(
+        "id, number, stage, total, updated_at, aprovacao_decisao, aprovacao_solicitada_em, lead_id, vendedor_proprietario_id, responsavel_atual_id",
+      )
+      .eq("stage", "analise_financeira" as any)
+      .is("aprovacao_decisao", null)
+      .limit(500);
+    if (errPedidos) {
+      await registrarFalhaSegura("xerife-pedidos.escalonamento_financeiro.listar", errPedidos);
+    }
+
+    let gestores: string[] | null = null;
+
+    for (const p of pedidos ?? []) {
+      // Fonte da entrada na etapa: histórico > aprovacao_solicitada_em > updated_at.
+      const { data: hist } = await sb
+        .from("pedido_stage_history")
+        .select("created_at")
+        .eq("pedido_id", p.id)
+        .eq("to_stage", "analise_financeira" as any)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      const entrou = hist?.[0]?.created_at ?? p.aprovacao_solicitada_em ?? p.updated_at ?? null;
+
+      const decisao = deveEscalarFinanceiro(
+        {
+          stage: p.stage as string,
+          aprovacao_decisao: (p.aprovacao_decisao as string | null) ?? null,
+          entrou_na_etapa_em: entrou,
+        },
+        now,
+      );
+      if (!decisao.escalar) continue;
+
+      // Dedupe de 24h por pedido (mesmo mecanismo das outras regras).
+      const regra = "pedido_financeiro_escalado";
+      if (await alreadyActedPedido(sb, regra, p.id, ESCALONAMENTO_FINANCEIRO_REPETE_HORAS)) {
+        stats.skipped_dedupe++;
+        continue;
+      }
+      if (dryRun) {
+        stats.financeiro_escalado++;
+        continue;
+      }
+
+      // Nome do cliente (via lead) — só para o texto do alerta.
+      let cliente = "cliente não informado";
+      if (p.lead_id) {
+        const { data: lead } = await sb
+          .from("leads")
+          .select("company, contact_name")
+          .eq("id", p.lead_id)
+          .maybeSingle();
+        cliente = (lead?.company || lead?.contact_name || cliente) as string;
+      }
+      const valor = Number(p.total ?? 0).toLocaleString("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+      });
+      const titulo = `Pedido ${p.number} parado em análise financeira há ${decisao.horasParado}h — ${cliente} — ${valor}`;
+
+      gestores ??= await usuariosComPermissao(sb, "usuarios.gerenciar");
+
+      // Falha em um destinatário não pode impedir os outros nem derrubar o job:
+      // cada inserção é isolada e apenas registrada.
+      let enviados = 0;
+      for (const userId of gestores) {
+        try {
+          const ins = await sb.from("notificacoes").insert({
+            user_id: userId,
+            tipo: regra,
+            titulo: titulo.slice(0, 300),
+            pedido_id: p.id,
+            exige_aceite: true,
+          });
+          await assertNoError(ins, "xerife-pedidos.escalonamento_financeiro.notificar", {
+            pedido_id: p.id,
+            user_id: userId,
+          });
+          enviados++;
+        } catch (e) {
+          console.error("[xerife-pedidos] escalonamento financeiro (in-app):", e);
+        }
+      }
+
+      // Telegram da diretoria — efeito secundário: registrar e seguir.
+      try {
+        await notifyDiretoria(
+          `⚠️ Pedido parado em análise financeira\n\nPedido: ${p.number}\nCliente: ${cliente}\nValor: ${valor}\nSem decisão há: ${decisao.horasParado}h`,
+        );
+      } catch (e) {
+        await registrarFalhaSegura("xerife-pedidos.escalonamento_financeiro.telegram", e, {
+          pedido_id: p.id,
+        });
+      }
+
+      await logAction(sb, {
+        regra,
+        leadId: p.lead_id ?? null,
+        vendedorId: p.vendedor_proprietario_id ?? p.responsavel_atual_id ?? null,
+        acao: "escalonamento financeiro enviado",
+        payload: {
+          pedido_id: p.id,
+          pedido_number: p.number,
+          horas: decisao.horasParado,
+          destinatarios: enviados,
+        },
+      });
+      stats.financeiro_escalado++;
     }
   }
 
