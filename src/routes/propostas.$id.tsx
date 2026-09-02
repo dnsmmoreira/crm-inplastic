@@ -70,6 +70,7 @@ import {
 } from "@/lib/condicoes-comerciais";
 import { markDeleted } from "@/lib/delete-intents";
 import { ConferenciaFinalDialog } from "@/components/propostas/ConferenciaFinalDialog";
+import { RomaneiosPosPedidoDialog } from "@/components/pedidos/RomaneiosPosPedidoDialog";
 
 
 /** Parcelas de exibição (dias + percentual da condição) a partir do total da proposta. */
@@ -227,6 +228,8 @@ function PropostaDetalhe() {
   const calcFreight = useServerFn(calculateFreightDistance);
   const gerarPedido = useServerFn(gerarPedidoOmie);
   const [omieBusy, setOmieBusy] = useState(false);
+  // Gatilho opcional dos romaneios logo depois que o pedido nasce.
+  const [romaneioAlvo, setRomaneioAlvo] = useState<{ id: string; number?: string } | null>(null);
   /** Conferência final obrigatória antes de gerar/solicitar o pedido. */
   const [conferencia, setConferencia] = useState<{ open: boolean; requerAprovacao: boolean }>({
     open: false,
@@ -512,6 +515,7 @@ function PropostaDetalhe() {
           approvedByUserId: currentUser.id,
           approvedAt: new Date().toISOString(),
         });
+        if (r.pedido_id) setRomaneioAlvo({ id: r.pedido_id, number: r.pedido_number });
       }
       setDirty(false);
     } catch (e) {
@@ -672,6 +676,13 @@ function PropostaDetalhe() {
               <CheckCircle2 className="h-4 w-4" /> Aprovar liberação
             </Button>
           )}
+
+          <RomaneiosPosPedidoDialog
+            pedidoId={romaneioAlvo?.id ?? null}
+            pedidoNumber={romaneioAlvo?.number ?? null}
+            open={romaneioAlvo !== null}
+            onOpenChange={(o) => { if (!o) setRomaneioAlvo(null); }}
+          />
 
           <ConferenciaFinalDialog
             open={conferencia.open}

@@ -45,6 +45,7 @@ import { Route as PropostaPublicaIdRouteImport } from './routes/proposta-publica
 import { Route as ClientesIdRouteImport } from './routes/clientes.$id'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
+import { Route as RomaneioPedidoIdTipoRouteImport } from './routes/romaneio.$pedidoId.$tipo'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
@@ -246,6 +247,11 @@ const Char91DotmcpChar93ListToolsRoute =
     path: '/.mcp/list-tools',
     getParentRoute: () => rootRouteImport,
   } as any)
+const RomaneioPedidoIdTipoRoute = RomaneioPedidoIdTipoRouteImport.update({
+  id: '/romaneio/$pedidoId/$tipo',
+  path: '/romaneio/$pedidoId/$tipo',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const Char91DotmcpChar93InvokeToolToolRoute =
   Char91DotmcpChar93InvokeToolToolRouteImport.update({
     id: '/.mcp/invoke-tool/$tool',
@@ -390,6 +396,7 @@ export interface FileRoutesByFullPath {
   '/propostas/': typeof PropostasIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/romaneio/$pedidoId/$tipo': typeof RomaneioPedidoIdTipoRoute
   '/api/public/hooks/ia-fila-envio': typeof ApiPublicHooksIaFilaEnvioRoute
   '/api/public/hooks/ia-handoff': typeof ApiPublicHooksIaHandoffRoute
   '/api/public/hooks/ia-qualificar': typeof ApiPublicHooksIaQualificarRoute
@@ -446,6 +453,7 @@ export interface FileRoutesByTo {
   '/propostas': typeof PropostasIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/romaneio/$pedidoId/$tipo': typeof RomaneioPedidoIdTipoRoute
   '/api/public/hooks/ia-fila-envio': typeof ApiPublicHooksIaFilaEnvioRoute
   '/api/public/hooks/ia-handoff': typeof ApiPublicHooksIaHandoffRoute
   '/api/public/hooks/ia-qualificar': typeof ApiPublicHooksIaQualificarRoute
@@ -503,6 +511,7 @@ export interface FileRoutesById {
   '/propostas/': typeof PropostasIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/romaneio/$pedidoId/$tipo': typeof RomaneioPedidoIdTipoRoute
   '/api/public/hooks/ia-fila-envio': typeof ApiPublicHooksIaFilaEnvioRoute
   '/api/public/hooks/ia-handoff': typeof ApiPublicHooksIaHandoffRoute
   '/api/public/hooks/ia-qualificar': typeof ApiPublicHooksIaQualificarRoute
@@ -561,6 +570,7 @@ export interface FileRouteTypes {
     | '/propostas/'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/romaneio/$pedidoId/$tipo'
     | '/api/public/hooks/ia-fila-envio'
     | '/api/public/hooks/ia-handoff'
     | '/api/public/hooks/ia-qualificar'
@@ -617,6 +627,7 @@ export interface FileRouteTypes {
     | '/propostas'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/romaneio/$pedidoId/$tipo'
     | '/api/public/hooks/ia-fila-envio'
     | '/api/public/hooks/ia-handoff'
     | '/api/public/hooks/ia-qualificar'
@@ -673,6 +684,7 @@ export interface FileRouteTypes {
     | '/propostas/'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/romaneio/$pedidoId/$tipo'
     | '/api/public/hooks/ia-fila-envio'
     | '/api/public/hooks/ia-handoff'
     | '/api/public/hooks/ia-qualificar'
@@ -730,6 +742,7 @@ export interface RootRouteChildren {
   PropostasIndexRoute: typeof PropostasIndexRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
+  RomaneioPedidoIdTipoRoute: typeof RomaneioPedidoIdTipoRoute
   ApiPublicHooksIaFilaEnvioRoute: typeof ApiPublicHooksIaFilaEnvioRoute
   ApiPublicHooksIaHandoffRoute: typeof ApiPublicHooksIaHandoffRoute
   ApiPublicHooksIaQualificarRoute: typeof ApiPublicHooksIaQualificarRoute
@@ -1002,6 +1015,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/romaneio/$pedidoId/$tipo': {
+      id: '/romaneio/$pedidoId/$tipo'
+      path: '/romaneio/$pedidoId/$tipo'
+      fullPath: '/romaneio/$pedidoId/$tipo'
+      preLoaderRoute: typeof RomaneioPedidoIdTipoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/.mcp/invoke-tool/$tool': {
       id: '/.mcp/invoke-tool/$tool'
       path: '/.mcp/invoke-tool/$tool'
@@ -1171,6 +1191,7 @@ const rootRouteChildren: RootRouteChildren = {
   PropostasIndexRoute: PropostasIndexRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
+  RomaneioPedidoIdTipoRoute: RomaneioPedidoIdTipoRoute,
   ApiPublicHooksIaFilaEnvioRoute: ApiPublicHooksIaFilaEnvioRoute,
   ApiPublicHooksIaHandoffRoute: ApiPublicHooksIaHandoffRoute,
   ApiPublicHooksIaQualificarRoute: ApiPublicHooksIaQualificarRoute,

@@ -1767,6 +1767,50 @@ export type Database = {
           },
         ]
       }
+      pedido_romaneios: {
+        Row: {
+          concluido_em: string | null
+          concluido_por: string | null
+          gerado_em: string
+          gerado_por: string | null
+          id: string
+          itens: Json
+          itens_conferidos: Json
+          pedido_id: string
+          tipo: string
+        }
+        Insert: {
+          concluido_em?: string | null
+          concluido_por?: string | null
+          gerado_em?: string
+          gerado_por?: string | null
+          id?: string
+          itens?: Json
+          itens_conferidos?: Json
+          pedido_id: string
+          tipo: string
+        }
+        Update: {
+          concluido_em?: string | null
+          concluido_por?: string | null
+          gerado_em?: string
+          gerado_por?: string | null
+          id?: string
+          itens?: Json
+          itens_conferidos?: Json
+          pedido_id?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pedido_romaneios_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pedido_stage_history: {
         Row: {
           created_at: string

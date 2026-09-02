@@ -27,6 +27,8 @@ export type InternalOrderResult = {
   validacao_erros?: string[];
   proposta_id?: string;
   pedido_number?: string;
+  /** Id do pedido operacional criado — usado pelo gatilho de romaneios na UI. */
+  pedido_id?: string;
 };
 
 export type OmieResult = InternalOrderResult;
@@ -212,6 +214,7 @@ export const gerarPedidoInterno = createServerFn({ method: "POST" })
 
     // Cria (ou reutiliza) o pedido operacional interno — idempotente.
     let pedidoNumber: string | undefined;
+    let pedidoId: string | undefined;
     try {
       const ped = await ensurePedidoFromProposta(loose, {
         propostaId,
@@ -219,11 +222,17 @@ export const gerarPedidoInterno = createServerFn({ method: "POST" })
         callerId: userId,
       });
       pedidoNumber = ped.number;
+      pedidoId = ped.id;
     } catch (e) {
       console.error("[gerarPedidoInterno] falha ao criar pedido operacional:", e);
     }
 
-    return { ok: true, proposta_id: propostaId, pedido_number: pedidoNumber };
+    return {
+      ok: true,
+      proposta_id: propostaId,
+      pedido_number: pedidoNumber,
+      pedido_id: pedidoId,
+    };
   });
 
 export const moverParaGanho = createServerFn({ method: "POST" })
