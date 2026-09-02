@@ -244,7 +244,7 @@ function MinhasConversasPage() {
   }, [load]);
 
   // fallback de polling: pausa com a aba oculta e afrouxa sem conversa aberta
-  usePoll(() => void load(), selectedId ? 15000 : 45000);
+  usePoll(() => void load(), 45000, selectedId === null);
 
   const aguardandoIds = useMemo(() => {
     const s = new Set<string>();
@@ -586,9 +586,15 @@ function ChatPanel({
   }, [conversa, loadMensagens]);
 
   const conversaIdAtual = conversa?.id ?? null;
-  usePoll(() => {
-    if (conversaIdAtual) void loadMensagens(conversaIdAtual);
-  }, 12000, conversaIdAtual !== null);
+  usePoll(
+    () => {
+      if (!conversaIdAtual) return;
+      void loadMensagens(conversaIdAtual);
+      onChanged(); // único poll ativo enquanto há conversa aberta
+    },
+    12000,
+    conversaIdAtual !== null,
+  );
 
   useEffect(() => {
     const leadId = conversa?.lead_id ?? null;

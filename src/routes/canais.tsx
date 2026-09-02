@@ -105,7 +105,8 @@ function CanaisPage() {
     };
   }, [loadConversas]);
 
-  usePoll(() => void loadConversas(), selectedId ? 15000 : 45000);
+  // UM poll por rota (ver comentário em atendimento-ia.tsx).
+  usePoll(() => void loadConversas(), 45000, selectedId === null);
 
   const selected = useMemo(
     () => conversas.find((c) => c.id === selectedId) ?? null,
@@ -149,6 +150,7 @@ function CanaisPage() {
           conversa={selected}
           onOpenLead={(id) => setOpenLead(id)}
           onLeadCreated={() => void loadConversas()}
+          onRefreshLista={() => void loadConversas()}
         />
 
         <aside className="space-y-4">
@@ -313,9 +315,15 @@ function ConversationPanel({
   }, [conversa, loadMensagens]);
 
   const conversaIdAtual = conversa?.id ?? null;
-  usePoll(() => {
-    if (conversaIdAtual) void loadMensagens(conversaIdAtual);
-  }, 12000, conversaIdAtual !== null);
+  usePoll(
+    () => {
+      if (!conversaIdAtual) return;
+      void loadMensagens(conversaIdAtual);
+      onRefreshLista?.();
+    },
+    12000,
+    conversaIdAtual !== null,
+  );
 
   const { temNovas, onScroll, scrollParaFim } = useAutoScrollMensagens(
     scrollRef,

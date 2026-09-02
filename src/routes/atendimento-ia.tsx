@@ -140,7 +140,10 @@ function AtendimentoIAPage() {
     };
   }, [load]);
 
-  usePoll(() => void load(), selectedId ? 15000 : 45000);
+  // UM poll por rota: a lista só é pesquisada quando não há conversa aberta;
+  // com conversa aberta quem faz o tick (12s) é o painel, que também recarrega
+  // a lista. `usePoll` já pausa com a aba oculta.
+  usePoll(() => void load(), 45000, selectedId === null);
 
   const selected = useMemo(
     () => conversas.find((c) => c.id === selectedId) ?? null,
@@ -315,9 +318,15 @@ function ConversationPanel({
   }, [conversa, loadMensagens]);
 
   const conversaIdAtual = conversa?.id ?? null;
-  usePoll(() => {
-    if (conversaIdAtual) void loadMensagens(conversaIdAtual);
-  }, 12000, conversaIdAtual !== null);
+  usePoll(
+    () => {
+      if (!conversaIdAtual) return;
+      void loadMensagens(conversaIdAtual);
+      onChanged(); // único poll ativo enquanto há conversa aberta
+    },
+    12000,
+    conversaIdAtual !== null,
+  );
 
   const { temNovas, onScroll, scrollParaFim } = useAutoScrollMensagens(
     scrollRef,
