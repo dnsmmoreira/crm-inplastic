@@ -8,8 +8,7 @@ import { assertNoError, registrarFalhaSegura } from "@/lib/guard-erros";
 
 /**
  * Fluxo interno de fechamento de pedido — SEM integração externa (nenhum ERP).
- * O nome do arquivo é mantido apenas por compatibilidade com imports existentes;
- * toda a lógica é interna ao CRM.
+ * Este é o ÚNICO ponto que cria pedido no sistema.
  *
  * `gerarPedidoInterno`:
  *   - Marca a proposta como `status='pedido'` (idempotente).
@@ -19,8 +18,8 @@ import { assertNoError, registrarFalhaSegura } from "@/lib/guard-erros";
  * `moverParaGanho`:
  *   - Gate do kanban: só permite mover para ganho se houver proposta com `status='pedido'`.
  *
- * Aliases `gerarPedidoOmie` / `moverParaGanhoOmie` são mantidos como re-export
- * para não quebrar imports legados; devem ser removidos em uma etapa futura.
+ * Aliases `gerarPedidoOmie` / `moverParaGanhoOmie` seguem exportados como
+ * re-export @deprecated apenas para não mexer nos call sites agora.
  */
 
 export type InternalOrderResult = {
@@ -192,7 +191,7 @@ export const gerarPedidoInterno = createServerFn({ method: "POST" })
           .eq("id", propostaId);
         await assertNoError(
           upAguardando,
-          "omie.gerarPedidoInterno/aguardando-aprovacao",
+          "pedidos-gerar.gerarPedidoInterno/aguardando-aprovacao",
           { proposta_id: propostaId },
           "Não foi possível enviar a proposta para aprovação. Tente novamente.",
         );
@@ -220,7 +219,7 @@ export const gerarPedidoInterno = createServerFn({ method: "POST" })
         .eq("id", propostaId);
       await assertNoError(
         upAprovada,
-        "omie.gerarPedidoInterno/aprovar-proposta",
+        "pedidos-gerar.gerarPedidoInterno/aprovar-proposta",
         { proposta_id: propostaId },
         "Não foi possível atualizar o status da proposta. Tente novamente.",
       );
@@ -230,7 +229,7 @@ export const gerarPedidoInterno = createServerFn({ method: "POST" })
     const upLead = await loose.from("leads").update({ stage: "ganho" }).eq("id", leadId);
     await assertNoError(
       upLead,
-      "omie.gerarPedidoInterno/lead-ganho",
+      "pedidos-gerar.gerarPedidoInterno/lead-ganho",
       { lead_id: leadId, proposta_id: propostaId },
       "Não foi possível mover o lead para Ganho. Tente novamente.",
     );
@@ -294,7 +293,7 @@ export const moverParaGanho = createServerFn({ method: "POST" })
       .eq("id", data.lead_id);
     await assertNoError(
       upLeadGanho,
-      "omie.moverParaGanho/lead-ganho",
+      "pedidos-gerar.moverParaGanho/lead-ganho",
       { lead_id: data.lead_id },
       "Não foi possível mover o lead para Ganho. Tente novamente.",
     );
@@ -479,7 +478,7 @@ async function ensurePedidoFromProposta(
     moved_by: callerId,
   });
   if (histIni?.error) {
-    await registrarFalhaSegura("omie.ensurePedidoFromProposta/stage-history", histIni.error, {
+    await registrarFalhaSegura("pedidos-gerar.ensurePedidoFromProposta/stage-history", histIni.error, {
       pedido_id: novoPedido.id,
     });
   }

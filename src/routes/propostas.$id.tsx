@@ -38,7 +38,7 @@ import {
   type PaymentInstallment,
 } from "@/lib/crm-store";
 import { calculateFreightDistance } from "@/lib/freight.functions";
-import { gerarPedidoOmie } from "@/lib/omie.functions";
+import { gerarPedidoOmie } from "@/lib/pedidos-gerar.functions";
 import { formatDocumentoCliente } from "@/lib/clientes";
 import { getVendedorDaProposta, type VendedorContato, type ClienteRow } from "@/lib/clientes.functions";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -227,7 +227,7 @@ function PropostaDetalhe() {
   const [freightLoading, setFreightLoading] = useState(false);
   const calcFreight = useServerFn(calculateFreightDistance);
   const gerarPedido = useServerFn(gerarPedidoOmie);
-  const [omieBusy, setOmieBusy] = useState(false);
+  const [gerandoPedido, setGerandoPedido] = useState(false);
   // Gatilho opcional dos romaneios logo depois que o pedido nasce.
   const [romaneioAlvo, setRomaneioAlvo] = useState<{ id: string; number?: string } | null>(null);
   /** Conferência final obrigatória antes de gerar/solicitar o pedido. */
@@ -486,7 +486,7 @@ function PropostaDetalhe() {
       toast.error("Adicione ao menos um item antes de fechar o pedido.");
       return;
     }
-    setOmieBusy(true);
+    setGerandoPedido(true);
     const t = toast.loading(requerAprovacao ? "Solicitando aprovação..." : "Gerando pedido...");
     try {
       const r = await gerarPedido({
@@ -524,7 +524,7 @@ function PropostaDetalhe() {
       toast.dismiss(t);
       toast.error("Erro ao gerar pedido", { description: e instanceof Error ? e.message : String(e) });
     } finally {
-      setOmieBusy(false);
+      setGerandoPedido(false);
     }
   }
 
@@ -650,7 +650,7 @@ function PropostaDetalhe() {
             <Button
               variant="default"
               className="gap-2"
-              disabled={omieBusy}
+              disabled={gerandoPedido}
               onClick={() => setConferencia({ open: true, requerAprovacao: !isAdmin })}
             >
               <CheckCircle2 className="h-4 w-4" /> {isAdmin ? "Gerar pedido" : "Solicitar pedido"}
@@ -672,7 +672,7 @@ function PropostaDetalhe() {
           {proposal.status === "aguardando_aprovacao" && isAdmin && (
             <Button
               className="gap-2 bg-emerald-600 hover:bg-emerald-700"
-              disabled={omieBusy}
+              disabled={gerandoPedido}
               onClick={() => setConferencia({ open: true, requerAprovacao: false })}
             >
               <CheckCircle2 className="h-4 w-4" /> Aprovar liberação
@@ -689,7 +689,7 @@ function PropostaDetalhe() {
           <ConferenciaFinalDialog
             open={conferencia.open}
             onOpenChange={(v) => setConferencia((c) => ({ ...c, open: v }))}
-            busy={omieBusy}
+            busy={gerandoPedido}
             confirmLabel={
               conferencia.requerAprovacao
                 ? "Confirmar e solicitar aprovação"
