@@ -16,7 +16,9 @@ function ev(p: Partial<EventoRealtime> & { table: string }): EventoRealtime {
 describe("planejarEventoRealtime", () => {
   it("INSERT/UPDATE completo vira merge da coleção", () => {
     const row = { id: "l1", company: "ACME", stage: "novo", created_at: "2026-01-01" };
-    expect(planejarEventoRealtime(ev({ table: "leads", eventType: "INSERT", new: row }), nunca)).toEqual({
+    expect(
+      planejarEventoRealtime(ev({ table: "leads", eventType: "INSERT", new: row }), nunca),
+    ).toEqual({
       acao: "merge",
       colecao: "leads",
       row,
@@ -25,7 +27,10 @@ describe("planejarEventoRealtime", () => {
 
   it("DELETE remove por old.id", () => {
     expect(
-      planejarEventoRealtime(ev({ table: "produtos", eventType: "DELETE", old: { id: "p1" } }), nunca),
+      planejarEventoRealtime(
+        ev({ table: "produtos", eventType: "DELETE", old: { id: "p1" } }),
+        nunca,
+      ),
     ).toEqual({ acao: "remover", colecao: "products", id: "p1" });
   });
 
@@ -54,23 +59,31 @@ describe("planejarEventoRealtime", () => {
         colecao: "proposals",
       });
     }
-    expect(planejarEventoRealtime(ev({ table: "lead_interactions", new: { id: "x" } }), nunca)).toEqual({
+    expect(
+      planejarEventoRealtime(ev({ table: "lead_interactions", new: { id: "x" } }), nunca),
+    ).toEqual({
       acao: "recarregar",
       colecao: "leads",
     });
   });
 
   it("tabela fora do escopo é ignorada", () => {
-    expect(planejarEventoRealtime(ev({ table: "whatsapp_mensagens", new: { id: "x" } }), nunca).acao).toBe(
-      "ignorar",
-    );
+    expect(
+      planejarEventoRealtime(ev({ table: "whatsapp_mensagens", new: { id: "x" } }), nunca).acao,
+    ).toBe("ignorar");
   });
 });
 
 describe("mesclarPorId / removerPorId", () => {
   it("substitui existente e adiciona novo no topo", () => {
-    const base = [{ id: "a", v: 1 }, { id: "b", v: 2 }];
-    expect(mesclarPorId(base, { id: "b", v: 9 })).toEqual([{ id: "a", v: 1 }, { id: "b", v: 9 }]);
+    const base = [
+      { id: "a", v: 1 },
+      { id: "b", v: 2 },
+    ];
+    expect(mesclarPorId(base, { id: "b", v: 9 })).toEqual([
+      { id: "a", v: 1 },
+      { id: "b", v: 9 },
+    ]);
     expect(mesclarPorId(base, { id: "c", v: 3 })[0]).toEqual({ id: "c", v: 3 });
   });
 

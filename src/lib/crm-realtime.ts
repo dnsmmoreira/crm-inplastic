@@ -96,10 +96,7 @@ export type ContextoRealtime = {
   ehEscritaPropria: (colecao: ColecaoRealtime, row: Record<string, unknown>) => boolean;
 };
 
-export function planejarEventoRealtime(
-  ev: EventoRealtime,
-  ctx: ContextoRealtime,
-): PlanoRealtime {
+export function planejarEventoRealtime(ev: EventoRealtime, ctx: ContextoRealtime): PlanoRealtime {
   const colecao = COLECAO_POR_TABELA[ev.table as TabelaRealtime];
   if (!colecao) return { acao: "ignorar", motivo: "tabela fora do escopo do store" };
 

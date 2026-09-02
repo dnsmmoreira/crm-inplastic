@@ -18,7 +18,6 @@ import {
   AlertTriangle,
   RefreshCw,
   Activity,
-
 } from "lucide-react";
 import { useHasPerm } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -43,7 +42,6 @@ import {
   registrarNumeroCloud,
   listarAppsInscritos,
   inscreverWaba,
-
 } from "@/lib/zapi-painel.functions";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Database } from "@/integrations/supabase/types";
@@ -140,11 +138,7 @@ function CanaisPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[320px_1fr_320px]">
-        <ConversationList
-          conversas={conversas}
-          selectedId={selectedId}
-          onSelect={setSelectedId}
-        />
+        <ConversationList conversas={conversas} selectedId={selectedId} onSelect={setSelectedId} />
 
         <ConversationPanel
           conversa={selected}
@@ -164,7 +158,6 @@ function CanaisPage() {
           </div>
 
           <PainelSaudeWhatsapp />
-
         </aside>
       </div>
 
@@ -231,7 +224,9 @@ function ConversationList({
                         <CheckCircle2 className="h-3 w-3" /> Lead
                       </Badge>
                     ) : (
-                      <Badge variant="outline" className="text-[10px]">Sem lead</Badge>
+                      <Badge variant="outline" className="text-[10px]">
+                        Sem lead
+                      </Badge>
                     )}
                     <StatusChip status={c.status} />
                     {c.requer_humano && (
@@ -239,7 +234,6 @@ function ConversationList({
                         <AlertTriangle className="h-3 w-3" /> Requer humano
                       </Badge>
                     )}
-
                   </div>
                 </div>
               </button>
@@ -267,7 +261,6 @@ function ConversationPanel({
   onLeadCreated: () => void;
   onRefreshLista?: () => void;
 }) {
-
   const [mensagens, setMensagens] = useState<Mensagem[]>([]);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
@@ -334,7 +327,6 @@ function ConversationPanel({
     mensagens,
   );
 
-
   if (!conversa) {
     return (
       <div className="rounded-xl border bg-card flex items-center justify-center min-h-[600px]">
@@ -377,7 +369,9 @@ function ConversationPanel({
       onLeadCreated();
       onOpenLead(r.leadId);
     } catch (e) {
-      toast.error("Falha ao criar lead", { description: e instanceof Error ? e.message : String(e) });
+      toast.error("Falha ao criar lead", {
+        description: e instanceof Error ? e.message : String(e),
+      });
     } finally {
       setCreating(false);
     }
@@ -443,7 +437,6 @@ function ConversationPanel({
           </button>
         )}
       </div>
-
 
       <div className="border-t p-3 flex gap-2">
         <Textarea
@@ -520,21 +513,16 @@ function MessageBubble({ m }: { m: Mensagem }) {
           <span>·</span>
           <span>{format(new Date(m.created_at), "HH:mm")}</span>
         </div>
-        <div className="whitespace-pre-wrap break-words">{limparOrigemAnuncio(m.conteudo ?? "")}</div>
+        <div className="whitespace-pre-wrap break-words">
+          {limparOrigemAnuncio(m.conteudo ?? "")}
+        </div>
         <MidiaPreview m={m} />
       </div>
     </div>
   );
 }
 
-
-function StatusChip({
-  status,
-  className,
-}: {
-  status: Conversa["status"];
-  className?: string;
-}) {
+function StatusChip({ status, className }: { status: Conversa["status"]; className?: string }) {
   const map: Record<Conversa["status"], { label: string; cls: string }> = {
     ia_atendendo: { label: "IA", cls: "border-blue-500/50 text-blue-700" },
     aguardando_humano: {
@@ -553,15 +541,7 @@ function StatusChip({
   );
 }
 
-function StatCard({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: number;
-  tone?: "ok" | "warn";
-}) {
+function StatCard({ label, value, tone }: { label: string; value: number; tone?: "ok" | "warn" }) {
   return (
     <div className="rounded-xl border bg-card p-4">
       <div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
@@ -579,13 +559,7 @@ function StatCard({
   );
 }
 
-function IntegrationRow({
-  name,
-  status,
-}: {
-  name: string;
-  status: "conectado" | "pendente";
-}) {
+function IntegrationRow({ name, status }: { name: string; status: "conectado" | "pendente" }) {
   return (
     <div className="flex items-center justify-between text-sm">
       <span>{name}</span>
@@ -648,8 +622,6 @@ function PainelSaudeWhatsapp() {
       setWabaCarregando(false);
     }
   }
-
-
 
   async function handleDiagnosticoCloud() {
     setDiagCloudCarregando(true);
@@ -742,7 +714,6 @@ function PainelSaudeWhatsapp() {
     }
   }
 
-
   const load = useCallback(async () => {
     try {
       setData(await carregar());
@@ -763,7 +734,8 @@ function PainelSaudeWhatsapp() {
   }, [load]);
 
   async function handleRemover(phone: string) {
-    if (!window.confirm(`Remover o opt-out de ${phone}? O contato voltará a receber mensagens.`)) return;
+    if (!window.confirm(`Remover o opt-out de ${phone}? O contato voltará a receber mensagens.`))
+      return;
     try {
       await remover({ data: { phone } });
       toast.success("Opt-out removido");
@@ -798,7 +770,6 @@ function PainelSaudeWhatsapp() {
       void load();
     }
   }
-
 
   if (negado || !data) return null;
 
@@ -871,82 +842,79 @@ function PainelSaudeWhatsapp() {
           {cloudResultado && (
             <span className="text-[11px] text-muted-foreground break-all">{cloudResultado}</span>
           )}
-      </div>
-
-      <div className="space-y-2 rounded-md border p-3">
-        <div className="text-xs font-medium">Número na Cloud API (Meta)</div>
-        <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7 text-[11px]"
-            disabled={diagCloudCarregando}
-            onClick={() => void handleDiagnosticoCloud()}
-          >
-            {diagCloudCarregando ? "Consultando…" : "Diagnóstico Cloud"}
-          </Button>
         </div>
-        {diagCloudResultado && (
-          <pre className="max-h-48 overflow-auto rounded-md bg-muted p-2 text-[10px] whitespace-pre-wrap break-all">
-            {diagCloudResultado}
-          </pre>
-        )}
-        <div className="flex items-center gap-2">
-          <input
-            type="password"
-            inputMode="numeric"
-            maxLength={6}
-            className="h-8 w-32 rounded-md border bg-background px-2 text-[11px]"
-            placeholder="PIN (6 dígitos)"
-            value={pinCloud}
-            onChange={(e) => setPinCloud(e.target.value.replace(/\D/g, "").slice(0, 6))}
-            autoComplete="off"
-          />
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7 text-[11px]"
-            disabled={registrando}
-            onClick={() => void handleRegistrarCloud()}
-          >
-            {registrando ? "Registrando…" : "Registrar número na Cloud API"}
-          </Button>
-          {registroResultado && (
-            <span className="text-[11px] text-muted-foreground break-all">{registroResultado}</span>
+
+        <div className="space-y-2 rounded-md border p-3">
+          <div className="text-xs font-medium">Número na Cloud API (Meta)</div>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-[11px]"
+              disabled={diagCloudCarregando}
+              onClick={() => void handleDiagnosticoCloud()}
+            >
+              {diagCloudCarregando ? "Consultando…" : "Diagnóstico Cloud"}
+            </Button>
+          </div>
+          {diagCloudResultado && (
+            <pre className="max-h-48 overflow-auto rounded-md bg-muted p-2 text-[10px] whitespace-pre-wrap break-all">
+              {diagCloudResultado}
+            </pre>
+          )}
+          <div className="flex items-center gap-2">
+            <input
+              type="password"
+              inputMode="numeric"
+              maxLength={6}
+              className="h-8 w-32 rounded-md border bg-background px-2 text-[11px]"
+              placeholder="PIN (6 dígitos)"
+              value={pinCloud}
+              onChange={(e) => setPinCloud(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              autoComplete="off"
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-[11px]"
+              disabled={registrando}
+              onClick={() => void handleRegistrarCloud()}
+            >
+              {registrando ? "Registrando…" : "Registrar número na Cloud API"}
+            </Button>
+            {registroResultado && (
+              <span className="text-[11px] text-muted-foreground break-all">
+                {registroResultado}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-[11px]"
+              disabled={wabaCarregando}
+              onClick={() => void handleAssinaturaWaba("ver")}
+            >
+              {wabaCarregando ? "Consultando…" : "Ver assinatura da WABA"}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-[11px]"
+              disabled={wabaCarregando}
+              onClick={() => void handleAssinaturaWaba("assinar")}
+            >
+              {wabaCarregando ? "Enviando…" : "Assinar WABA no app"}
+            </Button>
+          </div>
+          {wabaResultado && (
+            <pre className="max-h-48 overflow-auto rounded-md bg-muted p-2 text-[10px] whitespace-pre-wrap break-all">
+              {wabaResultado}
+            </pre>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7 text-[11px]"
-            disabled={wabaCarregando}
-            onClick={() => void handleAssinaturaWaba("ver")}
-          >
-            {wabaCarregando ? "Consultando…" : "Ver assinatura da WABA"}
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7 text-[11px]"
-            disabled={wabaCarregando}
-            onClick={() => void handleAssinaturaWaba("assinar")}
-          >
-            {wabaCarregando ? "Enviando…" : "Assinar WABA no app"}
-          </Button>
-        </div>
-        {wabaResultado && (
-          <pre className="max-h-48 overflow-auto rounded-md bg-muted p-2 text-[10px] whitespace-pre-wrap break-all">
-            {wabaResultado}
-          </pre>
-        )}
       </div>
-
-
-
-      </div>
-
-
 
       <div className="space-y-1">
         <div className="text-xs font-medium">Últimos envios</div>
@@ -1034,7 +1002,6 @@ function PainelSaudeWhatsapp() {
               </div>
             </div>
           )}
-
 
           <div className="flex items-center gap-2">
             <TooltipProvider>

@@ -150,7 +150,8 @@ function rowToProduct(r: ProductRow): Product {
     ncm: r.ncm ?? "",
     defaultPrice: Number(r.default_price ?? 0),
     active: !!r.active,
-    pecasPorColuna: Number((r as unknown as { pecas_por_coluna?: number }).pecas_por_coluna ?? 1) || 1,
+    pecasPorColuna:
+      Number((r as unknown as { pecas_por_coluna?: number }).pecas_por_coluna ?? 1) || 1,
     stackHeightCm: (() => {
       const v = (r as unknown as { stack_height_cm?: number | string | null }).stack_height_cm;
       if (v === null || v === undefined || v === "") return null;
@@ -261,13 +262,7 @@ function payTermToInsert(t: PaymentTerm): PayTermInsert {
   } as PayTermInsert;
 }
 
-
-
-export function rowToLead(
-  r: LeadRow,
-  interactions: Interaction[],
-  aiActions: AiAction[],
-): Lead {
+export function rowToLead(r: LeadRow, interactions: Interaction[], aiActions: AiAction[]): Lead {
   const endereco = (r.endereco ?? undefined) as LeadAddress | undefined;
   return {
     id: r.id,
@@ -381,7 +376,6 @@ export function leadToInsert(l: Lead): LeadInsert {
   };
 }
 
-
 function rowToTask(r: TaskRow): Task {
   return {
     id: r.id,
@@ -450,15 +444,22 @@ function rowToProposal(
       lalamoveCotadoEm: t.lalamoveCotadoEm ?? null,
     },
     observations: r.observations ?? "",
-    customerOrderNumber: (r as unknown as { numero_pedido_cliente?: string | null }).numero_pedido_cliente ?? undefined,
-    orderNotes: (r as unknown as { observacoes_pedido?: string | null }).observacoes_pedido ?? undefined,
+    customerOrderNumber:
+      (r as unknown as { numero_pedido_cliente?: string | null }).numero_pedido_cliente ??
+      undefined,
+    orderNotes:
+      (r as unknown as { observacoes_pedido?: string | null }).observacoes_pedido ?? undefined,
     tratativaComercial:
       (r as unknown as { tratativa_comercial?: string | null }).tratativa_comercial ?? undefined,
     paymentTermId: r.payment_term_id ?? undefined,
     formaPagamento:
-      ((r as unknown as { forma_pagamento?: string | null }).forma_pagamento as PaymentForm | null) ?? undefined,
-    billingForecastDate: (r as unknown as { previsao_faturamento?: string | null }).previsao_faturamento ?? undefined,
-    emNegociacao: Boolean((r as unknown as { em_negociacao?: boolean | null }).em_negociacao ?? false),
+      ((r as unknown as { forma_pagamento?: string | null })
+        .forma_pagamento as PaymentForm | null) ?? undefined,
+    billingForecastDate:
+      (r as unknown as { previsao_faturamento?: string | null }).previsao_faturamento ?? undefined,
+    emNegociacao: Boolean(
+      (r as unknown as { em_negociacao?: boolean | null }).em_negociacao ?? false,
+    ),
     emitterId: r.emitter_id,
     discountPercent: Number(r.discount_percent ?? 0),
     approvalRequestedAt: r.approval_requested_at ?? undefined,
@@ -472,10 +473,14 @@ function rowToProposal(
     editRequestedByUserId: r.edit_requested_by_user_id ?? undefined,
     editUnlockedAt: r.edit_unlocked_at ?? undefined,
     editUnlockedByUserId: r.edit_unlocked_by_user_id ?? undefined,
-    expectedDeliveryDate: (r as unknown as { expected_delivery_date?: string | null }).expected_delivery_date ?? undefined,
+    expectedDeliveryDate:
+      (r as unknown as { expected_delivery_date?: string | null }).expected_delivery_date ??
+      undefined,
     omieStatus: (r as unknown as { omie_status?: Proposal["omieStatus"] }).omie_status ?? null,
-    omieNumeroPedido: (r as unknown as { omie_numero_pedido?: string | null }).omie_numero_pedido ?? null,
-    omieCodigoPedido: (r as unknown as { omie_codigo_pedido?: number | null }).omie_codigo_pedido ?? null,
+    omieNumeroPedido:
+      (r as unknown as { omie_numero_pedido?: string | null }).omie_numero_pedido ?? null,
+    omieCodigoPedido:
+      (r as unknown as { omie_codigo_pedido?: number | null }).omie_codigo_pedido ?? null,
     omieErro: (r as unknown as { omie_erro?: string | null }).omie_erro ?? null,
     omieEnviadoEm: (r as unknown as { omie_enviado_em?: string | null }).omie_enviado_em ?? null,
   };
@@ -519,10 +524,7 @@ function proposalToInsert(p: Proposal): ProposalInsert {
 
 // ============ Hidratação ============
 
-export async function hydrateCrmForUser(
-  userId: string,
-  role: "admin" | "vendedor",
-) {
+export async function hydrateCrmForUser(userId: string, role: "admin" | "vendedor") {
   currentUserId = userId;
   currentRole = role;
   hydrated = false;
@@ -598,7 +600,10 @@ function queryTarefas() {
     .order("due_date");
 }
 function queryPropostas() {
-  return supabase.from("propostas").select(COLS_PROPOSTAS).order("created_at", { ascending: false });
+  return supabase
+    .from("propostas")
+    .select(COLS_PROPOSTAS)
+    .order("created_at", { ascending: false });
 }
 function queryItens() {
   return supabase.from("proposta_itens").select(COLS_PITENS).order("position");
@@ -650,7 +655,6 @@ async function loadAll(userId: string) {
     queryParcelas(),
   ]);
 
-
   // ---- system settings (globais leves) ----
   type SysPayload = {
     leadTags?: string[];
@@ -669,9 +673,7 @@ async function loadAll(userId: string) {
 
   // ---- produtos ----
   const products =
-    prodRows && prodRows.length
-      ? (prodRows as unknown as ProductRow[]).map(rowToProduct)
-      : []; // vazio até admin cadastrar
+    prodRows && prodRows.length ? (prodRows as unknown as ProductRow[]).map(rowToProduct) : []; // vazio até admin cadastrar
   products.forEach((p) => snapshot.products.set(p.id, JSON.stringify(productToInsert(p))));
 
   // ---- emitters ----
@@ -683,7 +685,7 @@ async function loadAll(userId: string) {
   const defaultEmitterId =
     sys.defaultEmitterId && emitters.some((e) => e.id === sys.defaultEmitterId)
       ? sys.defaultEmitterId
-      : defaultRow?.id ?? emitters[0]?.id ?? DEFAULT_EMITTERS[0].id;
+      : (defaultRow?.id ?? emitters[0]?.id ?? DEFAULT_EMITTERS[0].id);
   emitters.forEach((e) =>
     snapshot.emitters.set(e.id, JSON.stringify(emitterToInsert(e, e.id === defaultEmitterId))),
   );
@@ -708,7 +710,10 @@ async function loadAll(userId: string) {
   // ---- tasks ----
   const ownerPorLead = new Map<string, string | null>();
   ((leadRows ?? []) as unknown as LeadRow[]).forEach((r) => ownerPorLead.set(r.id, r.owner_id));
-  const tasks = montarTasks((taskRows ?? []) as unknown as TaskRow[], (id) => ownerPorLead.get(id) ?? null);
+  const tasks = montarTasks(
+    (taskRows ?? []) as unknown as TaskRow[],
+    (id) => ownerPorLead.get(id) ?? null,
+  );
 
   // ---- proposals ----
   const proposals = montarPropostas(
@@ -716,7 +721,6 @@ async function loadAll(userId: string) {
     (pItemRows ?? []) as unknown as PItemRow[],
     (pParcRows ?? []) as unknown as PParcelaRow[],
   );
-
 
   // ---- aplica no store ----
   const s = useCrm.getState();
@@ -731,7 +735,8 @@ async function loadAll(userId: string) {
     leadTags: sys.leadTags?.length ? sys.leadTags : DEFAULT_LEAD_TAGS,
     leadSegments: sys.leadSegments?.length ? sys.leadSegments : DEFAULT_LEAD_SEGMENTS,
     freightConfig: sys.freightConfig ?? DEFAULT_FREIGHT_CONFIG,
-    fleet: sys.fleet && sys.fleet.length ? sys.fleet : (await import("@/lib/logistica")).DEFAULT_FLEET,
+    fleet:
+      sys.fleet && sys.fleet.length ? sys.fleet : (await import("@/lib/logistica")).DEFAULT_FLEET,
     maxDiscountPercentVendedor:
       typeof sys.maxDiscountPercentVendedor === "number" ? sys.maxDiscountPercentVendedor : 3,
     agent: usr.agent ?? s.agent,
@@ -860,8 +865,6 @@ function montarPropostas(
   return proposals;
 }
 
-
-
 // ============ Persistência imediata ============
 
 /**
@@ -884,7 +887,6 @@ export async function persistLeadNow(leadId: string): Promise<void> {
 }
 
 // ============ Cleanup ============
-
 
 export function clearCrmState() {
   currentUserId = null;
@@ -924,16 +926,13 @@ function attachRealtime(userId: string, role: "admin" | "vendedor") {
   // um único canal com N listeners (antes: um canal por tabela = 10 subscriptions)
   let ch = supabase.channel(`crm-sync-${userId}`);
   tables.forEach((table) => {
-    ch = ch.on(
-      "postgres_changes",
-      { event: "*", schema: "public", table },
-      (payload) =>
-        tratarEventoRealtime({
-          table,
-          eventType: payload.eventType as EventoRealtime["eventType"],
-          new: payload.new as Record<string, unknown> | null,
-          old: payload.old as Record<string, unknown> | null,
-        }),
+    ch = ch.on("postgres_changes", { event: "*", schema: "public", table }, (payload) =>
+      tratarEventoRealtime({
+        table,
+        eventType: payload.eventType as EventoRealtime["eventType"],
+        new: payload.new as Record<string, unknown> | null,
+        old: payload.old as Record<string, unknown> | null,
+      }),
     );
   });
   realtimeChannels.push(ch.subscribe());
@@ -1030,15 +1029,17 @@ function converterRow(
   }
 }
 
-const CAMPO_STORE: Record<ColecaoRealtime, "leads" | "tasks" | "proposals" | "products" | "emitters" | "paymentTerms"> =
-  {
-    leads: "leads",
-    tasks: "tasks",
-    proposals: "proposals",
-    products: "products",
-    emitters: "emitters",
-    paymentTerms: "paymentTerms",
-  };
+const CAMPO_STORE: Record<
+  ColecaoRealtime,
+  "leads" | "tasks" | "proposals" | "products" | "emitters" | "paymentTerms"
+> = {
+  leads: "leads",
+  tasks: "tasks",
+  proposals: "proposals",
+  products: "products",
+  emitters: "emitters",
+  paymentTerms: "paymentTerms",
+};
 
 /** Aplica no store sem disparar o save (o dado veio do banco). */
 function aplicarNoStore(fn: () => void) {
@@ -1197,7 +1198,6 @@ export function resyncAgora() {
     });
 }
 
-
 // ============ Save (write-through com diff) ============
 
 /**
@@ -1236,7 +1236,6 @@ function precisaDiff(nome: string, ...refs: unknown[]): boolean {
 /** Referências das fatias persistidas no último agendamento — evita agendar save
  *  para mudanças de estado puramente locais/efêmeras (filtros, UI, seleção). */
 let lastPersistedRefs: unknown[] = [];
-
 
 function persistedRefs() {
   const s = useCrm.getState();
@@ -1318,40 +1317,37 @@ async function doSave() {
   // ---- produtos (admin-only via RLS) ----
   if (isAdmin) {
     if (precisaDiff("products", state.products))
-    await syncCollection<Product>({
-      current: state.products,
-      snapshot: snapshot.products,
-      toKey: (p) => p.id,
-      toJson: (p) => JSON.stringify(productToInsert(p)),
-      upsert: (items) =>
-        supabase.from("produtos").upsert(items.map(productToInsert), { onConflict: "id" }),
-      del: (ids) => supabase.from("produtos").delete().in("id", ids),
-    isIntentionalDelete: isIntentionalDelete("products"),
-    collectionName: "products",
-    onDeleted: (ids) => clearDeleteIntent("products", ids),
-    });
+      await syncCollection<Product>({
+        current: state.products,
+        snapshot: snapshot.products,
+        toKey: (p) => p.id,
+        toJson: (p) => JSON.stringify(productToInsert(p)),
+        upsert: (items) =>
+          supabase.from("produtos").upsert(items.map(productToInsert), { onConflict: "id" }),
+        del: (ids) => supabase.from("produtos").delete().in("id", ids),
+        isIntentionalDelete: isIntentionalDelete("products"),
+        collectionName: "products",
+        onDeleted: (ids) => clearDeleteIntent("products", ids),
+      });
 
     // ---- emitters ----
     const emitCurrent = state.emitters;
     if (precisaDiff("emitters", state.emitters, state.defaultEmitterId))
-    await syncCollection<EmitterProfile>({
-      current: emitCurrent,
-      snapshot: snapshot.emitters,
-      toKey: (e) => e.id,
-      toJson: (e) =>
-        JSON.stringify(emitterToInsert(e, e.id === state.defaultEmitterId)),
-      upsert: (items) =>
-        supabase
-          .from("emitters")
-          .upsert(
+      await syncCollection<EmitterProfile>({
+        current: emitCurrent,
+        snapshot: snapshot.emitters,
+        toKey: (e) => e.id,
+        toJson: (e) => JSON.stringify(emitterToInsert(e, e.id === state.defaultEmitterId)),
+        upsert: (items) =>
+          supabase.from("emitters").upsert(
             items.map((e) => emitterToInsert(e, e.id === state.defaultEmitterId)),
             { onConflict: "id" },
           ),
-      del: (ids) => supabase.from("emitters").delete().in("id", ids),
-    isIntentionalDelete: isIntentionalDelete("emitters"),
-    collectionName: "emitters",
-    onDeleted: (ids) => clearDeleteIntent("emitters", ids),
-    });
+        del: (ids) => supabase.from("emitters").delete().in("id", ids),
+        isIntentionalDelete: isIntentionalDelete("emitters"),
+        collectionName: "emitters",
+        onDeleted: (ids) => clearDeleteIntent("emitters", ids),
+      });
     // update default flag isolado se apenas ele mudou
     if (state.defaultEmitterId !== snapshot.defaultEmitterId) {
       const limpar = await supabase
@@ -1375,106 +1371,89 @@ async function doSave() {
 
     // ---- payment terms ----
     if (precisaDiff("paymentTerms", state.paymentTerms))
-    await syncCollection<PaymentTerm>({
-      current: state.paymentTerms,
-      snapshot: snapshot.paymentTerms,
-      toKey: (t) => t.id,
-      toJson: (t) => JSON.stringify(payTermToInsert(t)),
-      upsert: (items) =>
-        supabase
-          .from("condicoes_pagamento")
-          .upsert(items.map(payTermToInsert), { onConflict: "id" }),
-      del: (ids) => supabase.from("condicoes_pagamento").delete().in("id", ids),
-    isIntentionalDelete: isIntentionalDelete("paymentTerms"),
-    collectionName: "paymentTerms",
-    onDeleted: (ids) => clearDeleteIntent("paymentTerms", ids),
-    });
+      await syncCollection<PaymentTerm>({
+        current: state.paymentTerms,
+        snapshot: snapshot.paymentTerms,
+        toKey: (t) => t.id,
+        toJson: (t) => JSON.stringify(payTermToInsert(t)),
+        upsert: (items) =>
+          supabase
+            .from("condicoes_pagamento")
+            .upsert(items.map(payTermToInsert), { onConflict: "id" }),
+        del: (ids) => supabase.from("condicoes_pagamento").delete().in("id", ids),
+        isIntentionalDelete: isIntentionalDelete("paymentTerms"),
+        collectionName: "paymentTerms",
+        onDeleted: (ids) => clearDeleteIntent("paymentTerms", ids),
+      });
   }
 
   // ---- leads (RLS filtra por owner_id) ----
   if (precisaDiff("leads", state.leads))
-  await syncCollection<Lead>({
-    current: state.leads,
-    snapshot: snapshot.leads,
-    toKey: (l) => l.id,
-    toJson: (l) => JSON.stringify(leadToInsert(l)),
-    upsert: (items) =>
-      supabase.from("leads").upsert(items.map(leadToInsert), { onConflict: "id" }),
-    del: (ids) => supabase.from("leads").delete().in("id", ids),
-    isIntentionalDelete: isIntentionalDelete("leads"),
-    collectionName: "leads",
-    onDeleted: (ids) => clearDeleteIntent("leads", ids),
-  });
+    await syncCollection<Lead>({
+      current: state.leads,
+      snapshot: snapshot.leads,
+      toKey: (l) => l.id,
+      toJson: (l) => JSON.stringify(leadToInsert(l)),
+      upsert: (items) =>
+        supabase.from("leads").upsert(items.map(leadToInsert), { onConflict: "id" }),
+      del: (ids) => supabase.from("leads").delete().in("id", ids),
+      isIntentionalDelete: isIntentionalDelete("leads"),
+      collectionName: "leads",
+      onDeleted: (ids) => clearDeleteIntent("leads", ids),
+    });
 
   // ---- tarefas ----
   const leadOwnerMap = new Map<string, string>();
   state.leads.forEach((l) => leadOwnerMap.set(l.id, l.ownerId));
   // tarefas dependem também de `leads` (owner_id derivado do lead)
   if (precisaDiff("tasks", state.tasks, state.leads))
-  await syncCollection<Task>({
-    current: state.tasks,
-    snapshot: snapshot.tasks,
-    toKey: (t) => t.id,
-    toJson: (t) => JSON.stringify(taskToInsert(t, leadOwnerMap.get(t.leadId) ?? userId)),
-    upsert: (items) =>
-      supabase
-        .from("tarefas")
-        .upsert(
+    await syncCollection<Task>({
+      current: state.tasks,
+      snapshot: snapshot.tasks,
+      toKey: (t) => t.id,
+      toJson: (t) => JSON.stringify(taskToInsert(t, leadOwnerMap.get(t.leadId) ?? userId)),
+      upsert: (items) =>
+        supabase.from("tarefas").upsert(
           items.map((t) => taskToInsert(t, leadOwnerMap.get(t.leadId) ?? userId)),
           { onConflict: "id" },
         ),
-    del: (ids) => supabase.from("tarefas").delete().in("id", ids),
-    isIntentionalDelete: isIntentionalDelete("tasks"),
-    collectionName: "tasks",
-    onDeleted: (ids) => clearDeleteIntent("tasks", ids),
-  });
+      del: (ids) => supabase.from("tarefas").delete().in("id", ids),
+      isIntentionalDelete: isIntentionalDelete("tasks"),
+      collectionName: "tasks",
+      onDeleted: (ids) => clearDeleteIntent("tasks", ids),
+    });
 
   // ---- propostas ----
   if (precisaDiff("proposals", state.proposals))
-  await syncCollection<Proposal>({
-    current: state.proposals,
-    snapshot: snapshot.proposals,
-    toKey: (p) => p.id,
-    toJson: (p) => JSON.stringify(proposalToInsert(p)),
-    upsert: (items) =>
-      supabase.from("propostas").upsert(items.map(proposalToInsert), { onConflict: "id" }),
-    del: (ids) => supabase.from("propostas").delete().in("id", ids),
-    isIntentionalDelete: isIntentionalDelete("proposals"),
-    collectionName: "proposals",
-    onDeleted: (ids) => clearDeleteIntent("proposals", ids),
-  });
+    await syncCollection<Proposal>({
+      current: state.proposals,
+      snapshot: snapshot.proposals,
+      toKey: (p) => p.id,
+      toJson: (p) => JSON.stringify(proposalToInsert(p)),
+      upsert: (items) =>
+        supabase.from("propostas").upsert(items.map(proposalToInsert), { onConflict: "id" }),
+      del: (ids) => supabase.from("propostas").delete().in("id", ids),
+      isIntentionalDelete: isIntentionalDelete("proposals"),
+      collectionName: "proposals",
+      onDeleted: (ids) => clearDeleteIntent("proposals", ids),
+    });
 
   // ---- proposta_itens / proposta_parcelas / históricos derivam de `proposals`
   // e `leads`: só recalculam quando esses arrays mudam de referência.
   const propostasMudaram = precisaDiff("proposalsFilhos", state.proposals);
   const leadsMudaram = precisaDiff("leadsHistorico", state.leads);
   if (propostasMudaram) {
-  // ---- proposta_itens ----
-  const allItems: Array<{ propId: string; index: number; item: ProposalItem }> = [];
-  state.proposals.forEach((p) =>
-    p.items.forEach((it, idx) => allItems.push({ propId: p.id, index: idx, item: it })),
-  );
-  await syncCollection({
-    current: allItems,
-    snapshot: snapshot.proposalItems,
-    toKey: (x) => x.item.id,
-    toJson: (x) =>
-      JSON.stringify({
-        id: x.item.id,
-        proposta_id: x.propId,
-        position: x.index,
-        product_id: x.item.productId || null,
-        omie_codigo_produto: x.item.omieCodigoProduto ?? null,
-        description: x.item.description,
-        sku: x.item.sku,
-        ncm: x.item.ncm ?? null,
-        unit: x.item.unit,
-        quantity: x.item.quantity,
-        unit_price: x.item.unitPrice,
-      }),
-    upsert: (rows) =>
-      supabase.from("proposta_itens").upsert(
-        rows.map((x) => ({
+    // ---- proposta_itens ----
+    const allItems: Array<{ propId: string; index: number; item: ProposalItem }> = [];
+    state.proposals.forEach((p) =>
+      p.items.forEach((it, idx) => allItems.push({ propId: p.id, index: idx, item: it })),
+    );
+    await syncCollection({
+      current: allItems,
+      snapshot: snapshot.proposalItems,
+      toKey: (x) => x.item.id,
+      toJson: (x) =>
+        JSON.stringify({
           id: x.item.id,
           proposta_id: x.propId,
           position: x.index,
@@ -1486,48 +1465,51 @@ async function doSave() {
           unit: x.item.unit,
           quantity: x.item.quantity,
           unit_price: x.item.unitPrice,
-        })) as never,
-        { onConflict: "id" },
-      ),
-    del: (ids) => supabase.from("proposta_itens").delete().in("id", ids),
-    isIntentionalDelete: isIntentionalDelete("proposalItems"),
-    collectionName: "proposalItems",
-    onDeleted: (ids) => clearDeleteIntent("proposalItems", ids),
-  });
+        }),
+      upsert: (rows) =>
+        supabase.from("proposta_itens").upsert(
+          rows.map((x) => ({
+            id: x.item.id,
+            proposta_id: x.propId,
+            position: x.index,
+            product_id: x.item.productId || null,
+            omie_codigo_produto: x.item.omieCodigoProduto ?? null,
+            description: x.item.description,
+            sku: x.item.sku,
+            ncm: x.item.ncm ?? null,
+            unit: x.item.unit,
+            quantity: x.item.quantity,
+            unit_price: x.item.unitPrice,
+          })) as never,
+          { onConflict: "id" },
+        ),
+      del: (ids) => supabase.from("proposta_itens").delete().in("id", ids),
+      isIntentionalDelete: isIntentionalDelete("proposalItems"),
+      collectionName: "proposalItems",
+      onDeleted: (ids) => clearDeleteIntent("proposalItems", ids),
+    });
 
-  // ---- proposta_parcelas ----
-  // Regra: sem previsão de faturamento não existe vencimento calculável, então
-  // NENHUMA linha é gravada. Linhas que já existam nesse estado são apagadas
-  // (exclusão intencional) em vez de ficarem como parcela fantasma zerada.
-  const allParc: Array<{ propId: string; index: number; parc: PaymentInstallment }> = [];
-  state.proposals.forEach((p) => {
-    if (!p.billingForecastDate) {
-      if (p.installments.length > 0) {
-        markDeleted("proposalParcelas", ...p.installments.map((pa) => pa.id));
+    // ---- proposta_parcelas ----
+    // Regra: sem previsão de faturamento não existe vencimento calculável, então
+    // NENHUMA linha é gravada. Linhas que já existam nesse estado são apagadas
+    // (exclusão intencional) em vez de ficarem como parcela fantasma zerada.
+    const allParc: Array<{ propId: string; index: number; parc: PaymentInstallment }> = [];
+    state.proposals.forEach((p) => {
+      if (!p.billingForecastDate) {
+        if (p.installments.length > 0) {
+          markDeleted("proposalParcelas", ...p.installments.map((pa) => pa.id));
+        }
+        return;
       }
-      return;
-    }
-    p.installments.forEach((pa, idx) => allParc.push({ propId: p.id, index: idx, parc: pa }));
-  });
+      p.installments.forEach((pa, idx) => allParc.push({ propId: p.id, index: idx, parc: pa }));
+    });
 
-  await syncCollection({
-    current: allParc,
-    snapshot: snapshot.proposalParcelas,
-    toKey: (x) => x.parc.id,
-    toJson: (x) =>
-      JSON.stringify({
-        id: x.parc.id,
-        proposta_id: x.propId,
-        position: x.index,
-        days: x.parc.days,
-        amount: x.parc.amount,
-        notes: x.parc.notes ?? "",
-        percentual: x.parc.percentual ?? null,
-        due_date: x.parc.dueDate ?? null,
-      }),
-    upsert: (rows) =>
-      supabase.from("proposta_parcelas").upsert(
-        rows.map((x) => ({
+    await syncCollection({
+      current: allParc,
+      snapshot: snapshot.proposalParcelas,
+      toKey: (x) => x.parc.id,
+      toJson: (x) =>
+        JSON.stringify({
           id: x.parc.id,
           proposta_id: x.propId,
           position: x.index,
@@ -1536,16 +1518,27 @@ async function doSave() {
           notes: x.parc.notes ?? "",
           percentual: x.parc.percentual ?? null,
           due_date: x.parc.dueDate ?? null,
-        })),
-        { onConflict: "id" },
-      ),
+        }),
+      upsert: (rows) =>
+        supabase.from("proposta_parcelas").upsert(
+          rows.map((x) => ({
+            id: x.parc.id,
+            proposta_id: x.propId,
+            position: x.index,
+            days: x.parc.days,
+            amount: x.parc.amount,
+            notes: x.parc.notes ?? "",
+            percentual: x.parc.percentual ?? null,
+            due_date: x.parc.dueDate ?? null,
+          })),
+          { onConflict: "id" },
+        ),
 
-    del: (ids) => supabase.from("proposta_parcelas").delete().in("id", ids),
-    isIntentionalDelete: isIntentionalDelete("proposalParcelas"),
-    collectionName: "proposalParcelas",
-    onDeleted: (ids) => clearDeleteIntent("proposalParcelas", ids),
-  });
-
+      del: (ids) => supabase.from("proposta_parcelas").delete().in("id", ids),
+      isIntentionalDelete: isIntentionalDelete("proposalParcelas"),
+      collectionName: "proposalParcelas",
+      onDeleted: (ids) => clearDeleteIntent("proposalParcelas", ids),
+    });
   }
 
   if (!leadsMudaram) return;

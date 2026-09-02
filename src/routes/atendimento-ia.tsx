@@ -2,14 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import {
-  Radio,
-  Phone,
-  Bot,
-  User as UserIcon,
-  MessageSquare,
-  RotateCcw,
-} from "lucide-react";
+import { Radio, Phone, Bot, User as UserIcon, MessageSquare, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LeadDrawer } from "@/components/crm/LeadDrawer";
@@ -25,12 +18,17 @@ import {
   listarVendedoresAtendimento,
 } from "@/lib/atendimento.functions";
 
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useAuth, hasPerm } from "@/hooks/use-auth";
 import { useAutoScrollMensagens } from "@/hooks/use-auto-scroll-mensagens";
 import { DistribuirConversasDialog } from "@/components/atendimento/DistribuirConversasDialog";
 import type { Database } from "@/integrations/supabase/types";
-
 
 type Conversa = Database["public"]["Tables"]["whatsapp_conversas"]["Row"];
 type Mensagem = Database["public"]["Tables"]["whatsapp_mensagens"]["Row"];
@@ -43,10 +41,7 @@ export const Route = createFileRoute("/atendimento-ia")({
   }),
 });
 
-const STATUS_META: Record<
-  Status,
-  { label: string; className: string; dot: string }
-> = {
+const STATUS_META: Record<Status, { label: string; className: string; dot: string }> = {
   ia_atendendo: {
     label: "IA atendendo",
     className: "bg-blue-500/10 text-blue-600 border-blue-500/30",
@@ -119,7 +114,6 @@ function AtendimentoIAPage() {
     setConversas(data ?? []);
   }, [isVendedor, userId]);
 
-
   useEffect(() => {
     void load();
     const channel = supabase
@@ -171,7 +165,6 @@ function AtendimentoIAPage() {
         {user?.role === "admin" && <DistribuirConversasDialog onSaved={load} />}
       </div>
 
-
       <div className="grid gap-3 md:grid-cols-4">
         <StatCard label="Total" value={stats.total} />
         <StatCard label="IA atendendo" value={stats.ia} tone="text-blue-600" />
@@ -180,11 +173,7 @@ function AtendimentoIAPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[380px,1fr]">
-        <ConversationList
-          conversas={conversas}
-          selectedId={selectedId}
-          onSelect={setSelectedId}
-        />
+        <ConversationList conversas={conversas} selectedId={selectedId} onSelect={setSelectedId} />
         <ConversationPanel
           conversa={selected}
           onOpenLead={(id) => setOpenLead(id)}
@@ -192,7 +181,11 @@ function AtendimentoIAPage() {
         />
       </div>
 
-      <LeadDrawer leadId={openLead} open={openLead !== null} onOpenChange={(o) => !o && setOpenLead(null)} />
+      <LeadDrawer
+        leadId={openLead}
+        open={openLead !== null}
+        onOpenChange={(o) => !o && setOpenLead(null)}
+      />
     </div>
   );
 }
@@ -255,8 +248,6 @@ function ConversationList({
             conversa ou aguarde a chegada de um lead seu.
           </li>
         )}
-
-
       </ul>
     </div>
   );
@@ -276,7 +267,6 @@ function ConversationPanel({
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   const devolver = useServerFn(devolverParaIA);
-
 
   const loadMensagens = useCallback(async (conversaId: string) => {
     const { data, error } = await supabase
@@ -334,7 +324,6 @@ function ConversationPanel({
     mensagens,
   );
 
-
   if (!conversa) {
     return (
       <div className="rounded-xl border bg-card flex items-center justify-center min-h-[600px]">
@@ -382,7 +371,13 @@ function ConversationPanel({
             </Button>
           )}
           {!conversa.ia_ativa && (
-            <Button size="sm" variant="outline" disabled={busy} onClick={handleDevolver} className="gap-1">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busy}
+              onClick={handleDevolver}
+              className="gap-1"
+            >
               <RotateCcw className="h-3.5 w-3.5" /> Devolver p/ IA
             </Button>
           )}
@@ -415,7 +410,6 @@ function ConversationPanel({
         )}
       </div>
 
-
       <div className="border-t px-4 py-3 text-[11px] text-muted-foreground">
         Esta tela é somente para acompanhar e <strong>direcionar</strong> a conversa a um vendedor.
         Para responder o cliente, use a tela <strong>Conversas</strong>.
@@ -423,7 +417,6 @@ function ConversationPanel({
     </div>
   );
 }
-
 
 function MessageBubble({ m }: { m: Mensagem }) {
   const isCliente = m.autor === "cliente";
@@ -442,9 +435,14 @@ function MessageBubble({ m }: { m: Mensagem }) {
         <div className="flex items-center gap-1 text-[10px] uppercase tracking-wide opacity-75 mb-0.5">
           <Icon className="h-3 w-3" /> {authorLabel}
         </div>
-        <div className="whitespace-pre-wrap break-words">{limparOrigemAnuncio(m.conteudo ?? "")}</div>
+        <div className="whitespace-pre-wrap break-words">
+          {limparOrigemAnuncio(m.conteudo ?? "")}
+        </div>
         <div className="mt-1 text-[10px] opacity-60">
-          {new Date(m.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+          {new Date(m.created_at).toLocaleTimeString("pt-BR", {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
         </div>
       </div>
     </div>
@@ -522,5 +520,4 @@ function AtribuirSelect({ conversa, onChanged }: { conversa: Conversa; onChanged
       </Select>
     </div>
   );
-
 }
