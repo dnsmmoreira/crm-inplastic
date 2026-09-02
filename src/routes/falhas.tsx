@@ -110,14 +110,26 @@ function PainelFalhas() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const origens = useMemo(
-    () => Array.from(new Set((data?.falhas ?? []).map((f) => f.origem))).sort(),
-    [data],
-  );
+  // Origens são hierárquicas ("xerife-pedidos.criarTarefa"): o filtro oferece
+  // o prefixo (módulo, sufixo ".*") e também a origem exata.
+  const prefixoDe = (o: string) => o.split(/[./]/)[0] ?? o;
+  const origens = useMemo(() => {
+    const todas = (data?.falhas ?? []).map((f) => f.origem);
+    const prefixos = Array.from(new Set(todas.map(prefixoDe)))
+      .sort()
+      .map((p) => `${p}.*`);
+    return [...prefixos, ...Array.from(new Set(todas)).sort()];
+  }, [data]);
   const falhas = useMemo(
-    () => (data?.falhas ?? []).filter((f) => origem === "todas" || f.origem === origem),
+    () =>
+      (data?.falhas ?? []).filter((f) => {
+        if (origem === "todas") return true;
+        if (origem.endsWith(".*")) return prefixoDe(f.origem) === origem.slice(0, -2);
+        return f.origem === origem;
+      }),
     [data, origem],
   );
+
 
   return (
     <div className="space-y-6 p-4 md:p-8">
