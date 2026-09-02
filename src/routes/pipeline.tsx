@@ -314,6 +314,12 @@ function PipelinePage() {
 
   return (
     <div className="flex h-[calc(100dvh-4rem)] flex-col gap-4 overflow-hidden p-4 md:p-8">
+      <RomaneiosPosPedidoDialog
+        pedidoId={romaneioAlvo?.id ?? null}
+        pedidoNumber={romaneioAlvo?.number ?? null}
+        open={romaneioAlvo !== null}
+        onOpenChange={(o) => { if (!o) setRomaneioAlvo(null); }}
+      />
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
 
         <div>
