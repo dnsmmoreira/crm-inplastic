@@ -721,6 +721,131 @@ async function loadAll(userId: string) {
   });
 }
 
+// ============ Builders (compartilhados por loadAll e pela recarga por coleção) ============
+
+function indexarHistoricoLead(interRows: InteractionRow[], aiRows: AiActionRow[]) {
+  const interByLead = new Map<string, Interaction[]>();
+  interRows.forEach((r) => {
+    if (!r.lead_id) return;
+    snapshot.interactions.add(r.id);
+    const arr = interByLead.get(r.lead_id) ?? [];
+    arr.push(rowToInteraction(r));
+    interByLead.set(r.lead_id, arr);
+  });
+  const aiByLead = new Map<string, AiAction[]>();
+  aiRows.forEach((r) => {
+    if (!r.lead_id) return;
+    snapshot.aiActions.add(r.id);
+    const arr = aiByLead.get(r.lead_id) ?? [];
+    arr.push(rowToAiAction(r));
+    aiByLead.set(r.lead_id, arr);
+  });
+  return { interByLead, aiByLead };
+}
+
+function montarLeads(
+  leadRows: LeadRow[],
+  interByLead: Map<string, Interaction[]>,
+  aiByLead: Map<string, AiAction[]>,
+): Lead[] {
+  const leads = leadRows.map((r) =>
+    rowToLead(r, interByLead.get(r.id) ?? [], aiByLead.get(r.id) ?? []),
+  );
+  leads.forEach((l) => snapshot.leads.set(l.id, JSON.stringify(leadToInsert(l))));
+  return leads;
+}
+
+function montarTasks(taskRows: TaskRow[], leadRows: LeadRow[]): Task[] {
+  const tasks = taskRows.map(rowToTask);
+  const leadOwnerMap = new Map<string, string | null>();
+  leadRows.forEach((r) => leadOwnerMap.set(r.id, r.owner_id));
+  tasks.forEach((t) => {
+    const owner = leadOwnerMap.get(t.leadId) ?? null;
+    snapshot.tasks.set(t.id, JSON.stringify(taskToInsert(t, owner)));
+  });
+  return tasks;
+}
+
+/** Mesma forma do `toJson` do save — snapshot e save comparam o mesmo objeto. */
+function itemRowJson(r: PItemRow, position: number): string {
+  return JSON.stringify({
+    id: r.id,
+    proposta_id: r.proposta_id,
+    position,
+    product_id: r.product_id || null,
+    omie_codigo_produto:
+      (r as unknown as { omie_codigo_produto?: number | null }).omie_codigo_produto ?? null,
+    description: r.description,
+    sku: r.sku,
+    ncm: (r as unknown as { ncm?: string | null }).ncm ?? null,
+    unit: r.unit,
+    quantity: Number(r.quantity ?? 0),
+    unit_price: Number(r.unit_price ?? 0),
+  });
+}
+function parcelaRowJson(r: PParcelaRow, position: number): string {
+  const loose = r as unknown as { due_date?: string | null; percentual?: number | null };
+  return JSON.stringify({
+    id: r.id,
+    proposta_id: r.proposta_id,
+    position,
+    days: r.days,
+    amount: Number(r.amount ?? 0),
+    notes: r.notes ?? "",
+    percentual: loose.percentual == null ? null : Number(loose.percentual),
+    due_date: loose.due_date ?? null,
+  });
+}
+
+function montarPropostas(
+  propRows: ProposalRow[],
+  pItemRows: PItemRow[],
+  pParcRows: PParcelaRow[],
+): Proposal[] {
+  const itemsByProp = new Map<string, ProposalItem[]>();
+  pItemRows.forEach((r) => {
+    const item: ProposalItem = {
+      id: r.id,
+      productId: r.product_id ?? "",
+      omieCodigoProduto:
+        (r as unknown as { omie_codigo_produto?: number | null }).omie_codigo_produto ?? undefined,
+      description: r.description,
+      sku: r.sku,
+      ncm: (r as unknown as { ncm?: string | null }).ncm ?? undefined,
+      unit: r.unit as ProductUnit,
+      quantity: Number(r.quantity ?? 0),
+      unitPrice: Number(r.unit_price ?? 0),
+    };
+    const arr = itemsByProp.get(r.proposta_id) ?? [];
+    arr.push(item);
+    itemsByProp.set(r.proposta_id, arr);
+    snapshot.proposalItems.set(r.id, itemRowJson(r, arr.length - 1));
+  });
+  const parcByProp = new Map<string, PaymentInstallment[]>();
+  pParcRows.forEach((r) => {
+    const loose = r as unknown as { due_date?: string | null; percentual?: number | null };
+    const p: PaymentInstallment = {
+      id: r.id,
+      days: r.days,
+      amount: Number(r.amount ?? 0),
+      notes: r.notes ?? "",
+      percentual: loose.percentual == null ? undefined : Number(loose.percentual),
+      dueDate: loose.due_date ?? undefined,
+    };
+    const arr = parcByProp.get(r.proposta_id) ?? [];
+    arr.push(p);
+    parcByProp.set(r.proposta_id, arr);
+    snapshot.proposalParcelas.set(r.id, parcelaRowJson(r, arr.length - 1));
+  });
+  const proposals = propRows.map((r) =>
+    rowToProposal(r, itemsByProp.get(r.id) ?? [], parcByProp.get(r.id) ?? []),
+  );
+  proposals.forEach((p) => snapshot.proposals.set(p.id, JSON.stringify(proposalToInsert(p))));
+  return proposals;
+}
+
+
+
 // ============ Persistência imediata ============
 
 /**
