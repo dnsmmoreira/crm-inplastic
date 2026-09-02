@@ -536,6 +536,82 @@ export async function hydrateCrmForUser(
   attachRealtime(userId, role);
 }
 
+// ---- colunas explícitas (evita `select("*")` puxando colunas que nenhum
+// `rowTo*` lê — menos bytes por hidratação/recarga de coleção) ----
+const COLS_PRODUTOS =
+  "id,sku,name,description,unit,weight_kg,height_cm,width_cm,length_cm,ncm,default_price,active,pecas_por_coluna,stack_height_cm,family,created_at";
+const COLS_EMITTERS =
+  "id,brand,tagline,legal_name,cnpj,ie,address,phone,whatsapp,email,website,is_default,banco,agencia,conta,pix";
+const COLS_TERMOS =
+  "id,label,method,splits,notes,active,permite_pf,acrescimo_percent,parcelas,ordem";
+const COLS_LEADS =
+  "id,company,contact_name,email,phone,product,product_id,quantity,estimated_value,stage,tags,segment,source,created_at,last_contact,last_contact_at,next_followup,notes,owner_id,cliente_id,cnpj,razao_social,nome_fantasia,inscricao_estadual,inscricao_municipal,endereco,email_financeiro,email_nf_xml,telefone_fixo,whatsapp,site,porte,cnae_principal,faturamento_estimado,num_funcionarios,decisor_nome,decisor_cargo,data_abertura,capital_social,simples_optante,socios";
+const COLS_TAREFAS = "id,lead_id,title,due_date,done";
+const COLS_PROPOSTAS =
+  "id,number,lead_id,owner_id,emitter_id,status,validity_days,payment_term_id,forma_pagamento,previsao_faturamento,discount_percent,observations,transport,approval_requested_at,approval_reason,approved_by_user_id,approved_at,order_created_at,sent_at,created_at,expected_delivery_date,numero_pedido_cliente,observacoes_pedido,tratativa_comercial,em_negociacao,edit_requested_at,edit_request_reason,edit_requested_by_user_id,edit_unlocked_at,edit_unlocked_by_user_id,omie_status,omie_numero_pedido,omie_codigo_pedido,omie_erro,omie_enviado_em";
+const COLS_PITENS =
+  "id,proposta_id,position,product_id,omie_codigo_produto,description,sku,ncm,unit,quantity,unit_price";
+const COLS_PPARCELAS = "id,proposta_id,position,days,amount,notes,percentual,due_date";
+const COLS_INTERACOES = "id,lead_id,type,content,occurred_at";
+
+/**
+ * Janelas de tempo em coleções que só crescem.
+ *
+ * - `tarefas`: todas as abertas + as concluídas nos últimos 30 dias. As telas
+ *   de tarefas/agenda/dashboard só olham pendentes e conclusões recentes.
+ * - `lead_interactions` / `lead_ai_actions`: últimos 90 dias. O histórico
+ *   completo de um lead antigo não é usado por nenhuma tela hoje (o LeadDrawer
+ *   mostra a timeline recente); se precisar, buscar sob demanda por lead.
+ */
+const DIAS_TAREFAS_CONCLUIDAS = 30;
+const DIAS_HISTORICO_LEAD = 90;
+function isoDiasAtras(dias: number): string {
+  return new Date(Date.now() - dias * 24 * 60 * 60 * 1000).toISOString();
+}
+
+function queryProdutos() {
+  return supabase.from("produtos").select(COLS_PRODUTOS).order("created_at", { ascending: false });
+}
+function queryEmitters() {
+  return supabase.from("emitters").select(COLS_EMITTERS).order("brand");
+}
+function queryTermos() {
+  return supabase.from("condicoes_pagamento").select(COLS_TERMOS).order("ordem").order("label");
+}
+function queryLeads() {
+  return supabase.from("leads").select(COLS_LEADS).order("created_at", { ascending: false });
+}
+function queryTarefas() {
+  return supabase
+    .from("tarefas")
+    .select(COLS_TAREFAS)
+    .or(`done.eq.false,updated_at.gte.${isoDiasAtras(DIAS_TAREFAS_CONCLUIDAS)}`)
+    .order("due_date");
+}
+function queryPropostas() {
+  return supabase.from("propostas").select(COLS_PROPOSTAS).order("created_at", { ascending: false });
+}
+function queryItens() {
+  return supabase.from("proposta_itens").select(COLS_PITENS).order("position");
+}
+function queryParcelas() {
+  return supabase.from("proposta_parcelas").select(COLS_PPARCELAS).order("position");
+}
+function queryInteracoes() {
+  return supabase
+    .from("lead_interactions")
+    .select(COLS_INTERACOES)
+    .gte("occurred_at", isoDiasAtras(DIAS_HISTORICO_LEAD))
+    .order("occurred_at", { ascending: false });
+}
+function queryAiActions() {
+  return supabase
+    .from("lead_ai_actions")
+    .select(COLS_INTERACOES)
+    .gte("occurred_at", isoDiasAtras(DIAS_HISTORICO_LEAD))
+    .order("occurred_at", { ascending: false });
+}
+
 async function loadAll(userId: string) {
   const [
     { data: sysRow },
@@ -553,17 +629,18 @@ async function loadAll(userId: string) {
   ] = await Promise.all([
     supabase.from("system_workspace").select("data").eq("id", 1).maybeSingle(),
     supabase.from("user_workspaces").select("data").eq("user_id", userId).maybeSingle(),
-    supabase.from("produtos").select("*").order("created_at", { ascending: false }),
-    supabase.from("emitters").select("*").order("brand"),
-    supabase.from("condicoes_pagamento").select("*").order("ordem").order("label"),
-    supabase.from("leads").select("*").order("created_at", { ascending: false }),
-    supabase.from("tarefas").select("*").order("due_date"),
-    supabase.from("lead_interactions").select("*").order("occurred_at", { ascending: false }),
-    supabase.from("lead_ai_actions").select("*").order("occurred_at", { ascending: false }),
-    supabase.from("propostas").select("*").order("created_at", { ascending: false }),
-    supabase.from("proposta_itens").select("*").order("position"),
-    supabase.from("proposta_parcelas").select("*").order("position"),
+    queryProdutos(),
+    queryEmitters(),
+    queryTermos(),
+    queryLeads(),
+    queryTarefas(),
+    queryInteracoes(),
+    queryAiActions(),
+    queryPropostas(),
+    queryItens(),
+    queryParcelas(),
   ]);
+
 
   // ---- system settings (globais leves) ----
   type SysPayload = {
