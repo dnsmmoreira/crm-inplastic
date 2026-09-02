@@ -892,7 +892,7 @@ export function clearCrmState() {
 
 function attachRealtime(userId: string, role: "admin" | "vendedor") {
   detachRealtime();
-  const tables = [
+  const tables: TabelaRealtime[] = [
     "leads",
     "tarefas",
     "propostas",
@@ -910,10 +910,17 @@ function attachRealtime(userId: string, role: "admin" | "vendedor") {
     ch = ch.on(
       "postgres_changes",
       { event: "*", schema: "public", table },
-      () => scheduleReload(),
+      (payload) =>
+        tratarEventoRealtime({
+          table,
+          eventType: payload.eventType as EventoRealtime["eventType"],
+          new: payload.new as Record<string, unknown> | null,
+          old: payload.old as Record<string, unknown> | null,
+        }),
     );
   });
   realtimeChannels.push(ch.subscribe());
+  agendarResyncSeguranca();
   void role; // reservado para uso futuro (canais específicos por role)
 }
 
@@ -926,22 +933,249 @@ function detachRealtime() {
     }
   });
   realtimeChannels = [];
+  if (resyncTimer) clearInterval(resyncTimer);
+  resyncTimer = null;
 }
 
-function scheduleReload() {
+/** Snapshot por coleção — usado para detectar eco da própria escrita. */
+const SNAPSHOT_POR_COLECAO: Record<ColecaoRealtime, () => Map<string, string>> = {
+  leads: () => snapshot.leads,
+  tasks: () => snapshot.tasks,
+  proposals: () => snapshot.proposals,
+  products: () => snapshot.products,
+  emitters: () => snapshot.emitters,
+  paymentTerms: () => snapshot.paymentTerms,
+};
+
+/**
+ * Eco da própria aba: o payload, convertido para a mesma forma do que
+ * gravamos, é idêntico ao snapshot do dirty-tracking daquele id.
+ */
+function ehEscritaPropria(colecao: ColecaoRealtime, row: Record<string, unknown>): boolean {
+  const id = row["id"] as string;
+  const atual = SNAPSHOT_POR_COLECAO[colecao]().get(id);
+  if (!atual) return false;
+  const convertido = converterRow(colecao, row);
+  if (!convertido) return false;
+  return convertido.json === atual;
+}
+
+/** Converte a linha do payload no objeto do store + json equivalente ao salvo. */
+function converterRow(
+  colecao: ColecaoRealtime,
+  row: Record<string, unknown>,
+): { item: { id: string }; json: string } | null {
+  const state = useCrm.getState();
+  try {
+    switch (colecao) {
+      case "leads": {
+        const anterior = state.leads.find((l) => l.id === row["id"]);
+        const lead = rowToLead(
+          row as unknown as LeadRow,
+          anterior?.interactions ?? [],
+          anterior?.aiActions ?? [],
+        );
+        return { item: lead, json: JSON.stringify(leadToInsert(lead)) };
+      }
+      case "tasks": {
+        const task = rowToTask(row as unknown as TaskRow);
+        const owner = state.leads.find((l) => l.id === task.leadId)?.ownerId ?? null;
+        return { item: task, json: JSON.stringify(taskToInsert(task, owner)) };
+      }
+      case "proposals": {
+        const anterior = state.proposals.find((p) => p.id === row["id"]);
+        const prop = rowToProposal(
+          row as unknown as ProposalRow,
+          anterior?.items ?? [],
+          anterior?.installments ?? [],
+        );
+        return { item: prop, json: JSON.stringify(proposalToInsert(prop)) };
+      }
+      case "products": {
+        const p = rowToProduct(row as unknown as ProductRow);
+        return { item: p, json: JSON.stringify(productToInsert(p)) };
+      }
+      case "emitters": {
+        const e = rowToEmitter(row as unknown as EmitterRow);
+        return {
+          item: e,
+          json: JSON.stringify(emitterToInsert(e, e.id === state.defaultEmitterId)),
+        };
+      }
+      case "paymentTerms": {
+        const t = rowToPayTerm(row as unknown as PayTermRow);
+        return { item: t, json: JSON.stringify(payTermToInsert(t)) };
+      }
+    }
+  } catch (e) {
+    console.warn("[crm-sync] payload realtime não convertível:", e);
+    return null;
+  }
+}
+
+const CAMPO_STORE: Record<ColecaoRealtime, "leads" | "tasks" | "proposals" | "products" | "emitters" | "paymentTerms"> =
+  {
+    leads: "leads",
+    tasks: "tasks",
+    proposals: "proposals",
+    products: "products",
+    emitters: "emitters",
+    paymentTerms: "paymentTerms",
+  };
+
+/** Aplica no store sem disparar o save (o dado veio do banco). */
+function aplicarNoStore(fn: () => void) {
+  suppressSave = true;
+  try {
+    fn();
+  } finally {
+    suppressSave = false;
+  }
+}
+
+function tratarEventoRealtime(ev: EventoRealtime) {
   if (!currentUserId || !hydrated) return;
+  const plano = planejarEventoRealtime(ev, { ehEscritaPropria });
+  if (plano.acao === "ignorar") return;
+
+  if (plano.acao === "recarregar") {
+    agendarRecarga(plano.colecao);
+    return;
+  }
+
+  if (plano.acao === "remover") {
+    const campo = CAMPO_STORE[plano.colecao];
+    aplicarNoStore(() => {
+      const lista = useCrm.getState()[campo] as Array<{ id: string }>;
+      useCrm.setState({ [campo]: removerPorId(lista, plano.id) } as never);
+    });
+    SNAPSHOT_POR_COLECAO[plano.colecao]().delete(plano.id);
+    return;
+  }
+
+  // merge
+  const convertido = converterRow(plano.colecao, plano.row);
+  if (!convertido) {
+    agendarRecarga(plano.colecao);
+    return;
+  }
+  const campo = CAMPO_STORE[plano.colecao];
+  aplicarNoStore(() => {
+    const lista = useCrm.getState()[campo] as Array<{ id: string }>;
+    useCrm.setState({ [campo]: mesclarPorId(lista, convertido.item) } as never);
+  });
+  SNAPSHOT_POR_COLECAO[plano.colecao]().set(convertido.item.id, convertido.json);
+}
+
+// ---- recarga por coleção (1 query; nunca loadAll) ----
+const recargasPendentes = new Set<ColecaoRealtime>();
+
+function agendarRecarga(colecao: ColecaoRealtime) {
+  recargasPendentes.add(colecao);
   if (reloadTimer) clearTimeout(reloadTimer);
   reloadTimer = setTimeout(() => {
-    if (!currentUserId) return;
-    const uid = currentUserId;
-    suppressSave = true;
-    void loadAll(uid)
-      .catch((e) => console.warn("[crm-sync] realtime reload:", e))
-      .finally(() => {
-        suppressSave = false;
-      });
+    const pendentes = Array.from(recargasPendentes);
+    recargasPendentes.clear();
+    void Promise.all(pendentes.map((c) => recarregarColecao(c))).catch((e) =>
+      console.warn("[crm-sync] recarga de coleção:", e),
+    );
   }, 800);
 }
+
+async function recarregarColecao(colecao: ColecaoRealtime) {
+  if (!currentUserId || !hydrated) return;
+  switch (colecao) {
+    case "leads": {
+      const [{ data: leadRows }, { data: interRows }, { data: aiRows }] = await Promise.all([
+        queryLeads(),
+        queryInteracoes(),
+        queryAiActions(),
+      ]);
+      const { interByLead, aiByLead } = indexarHistoricoLead(
+        (interRows ?? []) as InteractionRow[],
+        (aiRows ?? []) as AiActionRow[],
+      );
+      const leads = montarLeads((leadRows ?? []) as LeadRow[], interByLead, aiByLead);
+      aplicarNoStore(() => useCrm.setState({ leads }));
+      return;
+    }
+    case "tasks": {
+      const { data } = await queryTarefas();
+      const tasks = montarTasks((data ?? []) as TaskRow[], []);
+      aplicarNoStore(() => useCrm.setState({ tasks }));
+      return;
+    }
+    case "proposals": {
+      const [{ data: propRows }, { data: itemRows }, { data: parcRows }] = await Promise.all([
+        queryPropostas(),
+        queryItens(),
+        queryParcelas(),
+      ]);
+      const proposals = montarPropostas(
+        (propRows ?? []) as ProposalRow[],
+        (itemRows ?? []) as PItemRow[],
+        (parcRows ?? []) as PParcelaRow[],
+      );
+      aplicarNoStore(() => useCrm.setState({ proposals }));
+      return;
+    }
+    case "products": {
+      const { data } = await queryProdutos();
+      const products = ((data ?? []) as ProductRow[]).map(rowToProduct);
+      products.forEach((p) => snapshot.products.set(p.id, JSON.stringify(productToInsert(p))));
+      aplicarNoStore(() => useCrm.setState({ products }));
+      return;
+    }
+    case "emitters": {
+      const { data } = await queryEmitters();
+      const emitters = ((data ?? []) as EmitterRow[]).map(rowToEmitter);
+      if (!emitters.length) return;
+      const def = useCrm.getState().defaultEmitterId;
+      emitters.forEach((e) =>
+        snapshot.emitters.set(e.id, JSON.stringify(emitterToInsert(e, e.id === def))),
+      );
+      aplicarNoStore(() => useCrm.setState({ emitters }));
+      return;
+    }
+    case "paymentTerms": {
+      const { data } = await queryTermos();
+      const paymentTerms = ((data ?? []) as PayTermRow[]).map(rowToPayTerm);
+      if (!paymentTerms.length) return;
+      paymentTerms.forEach((t) =>
+        snapshot.paymentTerms.set(t.id, JSON.stringify(payTermToInsert(t))),
+      );
+      aplicarNoStore(() => useCrm.setState({ paymentTerms }));
+      return;
+    }
+  }
+}
+
+/**
+ * Rede de segurança: um `loadAll` a cada 10 min, só com a aba visível
+ * (evento perdido por queda de socket / volta de offline).
+ */
+function agendarResyncSeguranca() {
+  if (resyncTimer) clearInterval(resyncTimer);
+  resyncTimer = setInterval(
+    () => {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+      resyncAgora();
+    },
+    10 * 60 * 1000,
+  );
+}
+
+export function resyncAgora() {
+  if (!currentUserId || !hydrated) return;
+  const uid = currentUserId;
+  suppressSave = true;
+  void loadAll(uid)
+    .catch((e) => console.warn("[crm-sync] resync:", e))
+    .finally(() => {
+      suppressSave = false;
+    });
+}
+
 
 // ============ Save (write-through com diff) ============
 
