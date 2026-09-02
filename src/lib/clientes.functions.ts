@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
 import { isValidCnpj, onlyDigitsCnpj, isValidCpf, onlyDigitsCpf } from "@/lib/cnpj";
 import { normalizarTexto, normalizarEmail } from "@/lib/normalizacao";
-import { assertRpcPermissao, registrarFalhaSegura } from "@/lib/guard-erros";
+import { registrarFalhaSegura } from "@/lib/guard-erros";
 
 export type TipoPessoa = "PJ" | "PF";
 

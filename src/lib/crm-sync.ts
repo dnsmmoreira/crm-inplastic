@@ -15,6 +15,7 @@
  */
 
 import { isIntentionalDelete, clearDeleteIntent, markDeleted } from "@/lib/delete-intents";
+import { reportarFalhaSync } from "@/lib/sync-falhas";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database, Json } from "@/integrations/supabase/types";
 import { normalizarParcelas } from "@/lib/condicoes-comerciais";
@@ -860,7 +861,11 @@ async function doSave() {
       .from("system_workspace")
       .update({ data: sysPayload })
       .eq("id", 1);
-    if (!error) snapshot.systemJson = sysJson;
+    if (error) {
+      reportarFalhaSync("configurações", "upsert", error, { tabela: "system_workspace" });
+    } else {
+      snapshot.systemJson = sysJson;
+    }
   }
 
   // ---- user_workspaces (agent do próprio usuário) ----
@@ -870,7 +875,11 @@ async function doSave() {
     const { error } = await supabase
       .from("user_workspaces")
       .upsert({ user_id: userId, data: usrPayload }, { onConflict: "user_id" });
-    if (!error) snapshot.userJson = usrJson;
+    if (error) {
+      reportarFalhaSync("configurações", "upsert", error, { tabela: "user_workspaces" });
+    } else {
+      snapshot.userJson = usrJson;
+    }
   }
 
   // ---- produtos (admin-only via RLS) ----
@@ -910,12 +919,23 @@ async function doSave() {
     });
     // update default flag isolado se apenas ele mudou
     if (state.defaultEmitterId !== snapshot.defaultEmitterId) {
-      await supabase.from("emitters").update({ is_default: false }).neq("id", state.defaultEmitterId);
-      await supabase
+      const limpar = await supabase
+        .from("emitters")
+        .update({ is_default: false })
+        .neq("id", state.defaultEmitterId);
+      const marcar = await supabase
         .from("emitters")
         .update({ is_default: true })
         .eq("id", state.defaultEmitterId);
-      snapshot.defaultEmitterId = state.defaultEmitterId;
+      const erroDefault = limpar.error ?? marcar.error;
+      if (erroDefault) {
+        reportarFalhaSync("emitters", "upsert", erroDefault, {
+          campo: "is_default",
+          emitterId: state.defaultEmitterId,
+        });
+      } else {
+        snapshot.defaultEmitterId = state.defaultEmitterId;
+      }
     }
 
     // ---- payment terms ----
@@ -1180,7 +1200,11 @@ async function syncCollection<T>(opts: {
     if (!error) {
       toUpsert.forEach((item) => snap.set(toKey(item), toJson(item)));
     } else {
-      console.warn("[crm-sync] upsert error:", error);
+      // Snapshot intocado de propósito: o registro segue "sujo" e é reenviado
+      // no próximo ciclo de save.
+      reportarFalhaSync(collectionName ?? "collection", "upsert", error, {
+        registros: toUpsert.length,
+      });
     }
   }
   if (toDelete.length) {
@@ -1189,7 +1213,7 @@ async function syncCollection<T>(opts: {
       toDelete.forEach((k) => snap.delete(k));
       onDeleted?.(toDelete);
     } else {
-      console.warn("[crm-sync] delete error:", error);
+      reportarFalhaSync(collectionName ?? "collection", "delete", error, { ids: toDelete });
     }
   }
 }
