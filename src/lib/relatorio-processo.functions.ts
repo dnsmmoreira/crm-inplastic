@@ -20,7 +20,7 @@ import {
   propostaParada,
   resumoDuracao,
   type ResumoDuracao,
-} from "@/lib/relatorio-processo.ts";
+} from "@/lib/relatorio-processo";
 
 export type FunilResumo = {
   lead_para_proposta: ResumoDuracao;
