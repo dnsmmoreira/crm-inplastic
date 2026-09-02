@@ -92,6 +92,8 @@ function PipelinePage() {
   const updateProposal = useCrm((s) => s.updateProposal);
   const navigate = useNavigate();
   const gerarPedidoFn = useServerFn(gerarPedidoInterno);
+  // Gatilho opcional dos romaneios logo depois que o pedido nasce.
+  const [romaneioAlvo, setRomaneioAlvo] = useState<{ id: string; number?: string } | null>(null);
 
   const leadById = useMemo(() => new Map(leads.map((l) => [l.id, l])), [leads]);
 
