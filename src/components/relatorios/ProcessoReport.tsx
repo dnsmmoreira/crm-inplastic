@@ -9,11 +9,8 @@ import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatBRL } from "@/lib/crm-store";
-import {
-  getRelatorioProcesso,
-  type RelatorioProcesso,
-  type ResumoDuracaoView,
-} from "./processo-tipos";
+import { getRelatorioProcesso, type RelatorioProcesso } from "@/lib/relatorio-processo.functions";
+import type { ResumoDuracao } from "@/lib/relatorio-processo";
 
 const PERIODOS = [30, 90, 180] as const;
 
@@ -23,7 +20,7 @@ function fmtHoras(h: number | null): string {
   return `${(h / 24).toFixed(1)} d`;
 }
 
-function Celula({ r }: { r: ResumoDuracaoView }) {
+function Celula({ r }: { r: ResumoDuracao & { so_ia?: number } }) {
   return (
     <div className="whitespace-nowrap">
       <span className="font-medium">{fmtHoras(r.mediana)}</span>
