@@ -104,7 +104,12 @@ export async function garantirResponsavelConversa(
       .update({ atribuido_para: vendedorId, updated_at: new Date().toISOString() })
       .eq("id", conversaId)
       .is("atribuido_para", null);
-    if (upErr) console.error("[handoff] atribuir conversa falhou:", upErr.message);
+    if (upErr) {
+      // REGISTRAR E SEGUIR: a notificação ao vendedor ainda é útil.
+      console.error("[handoff] atribuir conversa falhou:", upErr.message);
+      const { registrarFalhaSegura } = await import("@/lib/guard-erros");
+      await registrarFalhaSegura("xerife.handoff/atribuir-conversa", upErr, { conversa_id: conversaId });
+    }
 
     await notifyOwner(
       vendedorId,
@@ -116,7 +121,9 @@ export async function garantirResponsavelConversa(
   }
 
   // Falhou: nunca deixar em silêncio.
-  await sb
+  // REGISTRAR E SEGUIR (gravidade alta): o caminho alternativo de alerta
+  // (alertarAdmins, logo abaixo) precisa acontecer mesmo se a marcação falhar.
+  const upRequer = await sb
     .from("whatsapp_conversas")
     .update({
       requer_humano: true,
@@ -124,6 +131,13 @@ export async function garantirResponsavelConversa(
       updated_at: new Date().toISOString(),
     })
     .eq("id", conversaId);
+  if (upRequer?.error) {
+    const { registrarFalhaSegura } = await import("@/lib/guard-erros");
+    await registrarFalhaSegura("xerife.handoff/marcar-requer-humano", upRequer.error, {
+      conversa_id: conversaId,
+      gravidade: "alta",
+    });
+  }
 
   await alertarAdmins(sb, {
     tipo: "conversa_sem_responsavel",

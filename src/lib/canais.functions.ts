@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
 import { podeEscreverConversa } from "@/lib/permissoes";
+import { assertNoError, registrarFalhaSegura } from "@/lib/guard-erros";
 
 function onlyDigits(s: string) {
   return s.replace(/\D/g, "");
@@ -49,36 +50,64 @@ async function aplicarPosseConversa(
 ) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-  await supabaseAdmin
+  // ABORTAR: o roteamento da conversa é pré-requisito do envio manual;
+  // seguir com a IA ainda ativa causaria resposta automática por cima.
+  const rot = await supabaseAdmin
     .from("whatsapp_conversas")
     .update({ status: "humano_atendendo", ia_ativa: false })
     .eq("id", conversaId);
+  await assertNoError(
+    rot,
+    "canais.aplicarPosseConversa/rotear",
+    { conversa_id: conversaId },
+    "Não foi possível assumir a conversa. Tente novamente.",
+  );
 
   if (donoAtual === userId) return { posse: "mantida" as const };
 
   if (!donoAtual) {
-    await supabaseAdmin
+    // ABORTAR: sem posse gravada, o atendimento seguiria sem dono definido.
+    const assumir = await supabaseAdmin
       .from("whatsapp_conversas")
       .update({ atribuido_para: userId, atribuido_em: new Date().toISOString() })
       .eq("id", conversaId)
       .is("atribuido_para", null);
+    await assertNoError(
+      assumir,
+      "canais.aplicarPosseConversa/assumir",
+      { conversa_id: conversaId },
+      "Não foi possível assumir a conversa. Tente novamente.",
+    );
     return { posse: "assumida" as const };
   }
 
   if (!assumirPosse) return { posse: "inalterada" as const };
 
-  await supabaseAdmin
+  // ABORTAR: transferência de posse é o efeito principal desta chamada.
+  const transferir = await supabaseAdmin
     .from("whatsapp_conversas")
     .update({ atribuido_para: userId, atribuido_em: new Date().toISOString() })
     .eq("id", conversaId);
+  await assertNoError(
+    transferir,
+    "canais.aplicarPosseConversa/transferir",
+    { conversa_id: conversaId, dono_anterior: donoAtual },
+    "Não foi possível transferir a posse da conversa. Tente novamente.",
+  );
 
-  await supabaseAdmin.from("user_audit_log").insert({
+  // REGISTRAR E SEGUIR: auditoria é efeito secundário; a posse já mudou.
+  const audit = await supabaseAdmin.from("user_audit_log").insert({
     alvo_user_id: donoAtual,
     ator_user_id: userId,
     campo: "conversa_atribuido_para",
     valor_anterior: donoAtual,
     valor_novo: userId,
   });
+  if (audit?.error) {
+    await registrarFalhaSegura("canais.aplicarPosseConversa/auditoria", audit.error, {
+      conversa_id: conversaId,
+    });
+  }
 
   return { posse: "transferida" as const };
 }
@@ -166,10 +195,14 @@ export const sendConversaMessage = createServerFn({ method: "POST" })
     // Qualquer incerteza (erro/nulo) => tratado como NÃO administrador.
     let isAdmin = false;
     try {
-      const { data: adminFlag } = await supabase.rpc("has_role", {
+      // BAIXA / só registrar: fail-closed já é o comportamento (isAdmin=false).
+      const { data: adminFlag, error: adminErr } = await supabase.rpc("has_role", {
         _user_id: userId,
         _role: "admin",
       });
+      if (adminErr) {
+        await registrarFalhaSegura("canais.has_role", adminErr, { user_id: userId });
+      }
       isAdmin = adminFlag === true;
     } catch {
       isAdmin = false;
@@ -305,10 +338,14 @@ export const sendConversaAnexo = createServerFn({ method: "POST" })
 
     let isAdmin = false;
     try {
-      const { data: adminFlag } = await supabase.rpc("has_role", {
+      // BAIXA / só registrar: fail-closed já é o comportamento (isAdmin=false).
+      const { data: adminFlag, error: adminErr } = await supabase.rpc("has_role", {
         _user_id: userId,
         _role: "admin",
       });
+      if (adminErr) {
+        await registrarFalhaSegura("canais.has_role", adminErr, { user_id: userId });
+      }
       isAdmin = adminFlag === true;
     } catch {
       isAdmin = false;
@@ -463,19 +500,32 @@ export const createLeadFromConversa = createServerFn({ method: "POST" })
       .single();
     if (lErr || !lead) throw new Error(lErr?.message ?? "Falha ao criar lead.");
 
-    await supabase
+    // ABORTAR: sem o vínculo, o lead recém-criado fica órfão da conversa.
+    const vinculo = await supabase
       .from("whatsapp_conversas")
       .update({ lead_id: lead.id, status: "humano_atendendo", ia_ativa: false })
       .eq("id", data.conversaId);
+    await assertNoError(
+      vinculo,
+      "canais.criarLeadDaConversa/vincular",
+      { conversa_id: data.conversaId, lead_id: lead.id },
+      "Lead criado, mas não foi possível vinculá-lo à conversa. Tente novamente.",
+    );
 
     // Registra interação (dispara trigger de last_interaction)
     if (conversa.last_message_preview) {
-      await supabase.from("lead_interactions").insert({
+      // REGISTRAR E SEGUIR: histórico de interação é efeito secundário.
+      const inter = await supabase.from("lead_interactions").insert({
         lead_id: lead.id,
         owner_id: userId,
         type: "whatsapp",
         content: conversa.last_message_preview,
       });
+      if (inter?.error) {
+        await registrarFalhaSegura("canais.criarLeadDaConversa/interacao", inter.error, {
+          lead_id: lead.id,
+        });
+      }
     }
 
     return { leadId: lead.id };
@@ -692,12 +742,18 @@ export const enviarTemplateConversa = createServerFn({ method: "POST" })
 
     // Auditoria
     if (conversa.lead_id) {
-      await supabase.from("lead_interactions").insert({
+      // REGISTRAR E SEGUIR: o template já foi enviado ao cliente.
+      const interTpl = await supabase.from("lead_interactions").insert({
         lead_id: conversa.lead_id,
         owner_id: userId,
         type: "whatsapp",
         content: `Template enviado: ${tpl.name} — ${textoFinal}`,
       });
+      if (interTpl?.error) {
+        await registrarFalhaSegura("canais.enviarTemplate/interacao", interTpl.error, {
+          lead_id: conversa.lead_id,
+        });
+      }
     }
 
     return { ok: true, texto: textoFinal };

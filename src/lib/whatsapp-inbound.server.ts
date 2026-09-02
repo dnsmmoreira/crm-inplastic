@@ -97,11 +97,19 @@ export async function processarEntradaWhatsapp(
     if (existing?.id) {
       conversaId = existing.id;
       if (name) {
-        await supabaseAdmin
+        // REGISTRAR E SEGUIR: preencher o nome é enriquecimento; abortar o
+        // webhook por isso perderia a mensagem recebida.
+        const upName = await supabaseAdmin
           .from("whatsapp_conversas")
           .update({ name })
           .eq("id", conversaId)
           .is("name", null);
+        if (upName?.error) {
+          const { registrarFalhaSegura } = await import("@/lib/guard-erros");
+          await registrarFalhaSegura("whatsapp-inbound/nome-conversa", upName.error, {
+            conversa_id: conversaId,
+          });
+        }
       }
     } else {
       const { data: leadMatch } = await supabaseAdmin
@@ -159,11 +167,33 @@ export async function processarEntradaWhatsapp(
       const { error: ooErr } = await supabaseAdmin
         .from("whatsapp_optout")
         .upsert({ phone, motivo: "pedido do contato" }, { onConflict: "phone" });
-      if (ooErr) console.error("optout upsert failed:", ooErr);
-      await supabaseAdmin
+      const { registrarFalhaSegura } = await import("@/lib/guard-erros");
+      if (ooErr) {
+        console.error("optout upsert failed:", ooErr);
+        await registrarFalhaSegura("whatsapp-inbound/optout-upsert", ooErr, {
+          conversa_id: conversaId,
+        });
+      }
+      // REGISTRAR E SEGUIR (gravidade alta): webhook da Meta responde 200
+      // sempre — lançar só faria a Meta reentregar. Como é compliance,
+      // tentamos uma segunda vez antes de registrar a falha.
+      let desligar = await supabaseAdmin
         .from("whatsapp_conversas")
         .update({ ia_ativa: false })
         .eq("id", conversaId);
+      if (desligar?.error) {
+        desligar = await supabaseAdmin
+          .from("whatsapp_conversas")
+          .update({ ia_ativa: false })
+          .eq("id", conversaId);
+      }
+      if (desligar?.error) {
+        await registrarFalhaSegura("whatsapp-inbound/optout-desligar-ia", desligar.error, {
+          conversa_id: conversaId,
+          gravidade: "alta",
+          compliance: "opt-out não aplicado na conversa",
+        });
+      }
       console.warn(`[${tag}] OPT-OUT registrado phone=${mascararTelefoneLog(phone)}`);
       return { ok: true, conversaId, optout: true };
     }
@@ -229,12 +259,21 @@ export async function processarEntradaWhatsapp(
       await sendWhatsappText(phone, aviso, "handoff-midia", "comercial", {
         origem: "resposta_inbound",
       });
-      await supabaseAdmin.from("whatsapp_mensagens").insert({
+      // REGISTRAR E SEGUIR: a mensagem já foi entregue ao cliente; o insert
+      // é só histórico e pode ser reconciliado depois.
+      const insAviso = await supabaseAdmin.from("whatsapp_mensagens").insert({
         conversa_id: conversaId,
         direcao: "saida",
         autor: "ia",
         conteudo: aviso,
       });
+      if (insAviso?.error) {
+        const { registrarFalhaSegura } = await import("@/lib/guard-erros");
+        await registrarFalhaSegura("whatsapp-inbound/historico-aviso-midia", insAviso.error, {
+          conversa_id: conversaId,
+          wa_message_id: externalId ?? null,
+        });
+      }
       console.log(`[${tag}] aviso de mídia enviado phone=${mascararTelefoneLog(phone)}`);
     } catch (e) {
       console.error(

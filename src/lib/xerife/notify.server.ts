@@ -43,13 +43,18 @@ export type ResultadoNotificacaoInterna = {
 async function registrarAlertaNaoEntregue(canal: string, faltantes: string[]) {
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    await supabaseAdmin.from("zapi_alertas").insert({
+    // REGISTRAR E SEGUIR: rastreio de alerta não entregue; nunca lança.
+    const ins = await supabaseAdmin.from("zapi_alertas").insert({
       canal,
       tipo: "alerta_nao_entregue",
       detalhe: faltantes.length
         ? `Variáveis ausentes: ${faltantes.join(", ")}`
         : "Nenhum canal interno configurado",
     });
+    if (ins?.error) {
+      const { registrarFalhaSegura } = await import("@/lib/guard-erros");
+      await registrarFalhaSegura("xerife.notificacao/alerta-nao-entregue", ins.error, { canal });
+    }
   } catch (e) {
     console.error(
       "[notificacao-interna] falha ao registrar alerta_nao_entregue:",

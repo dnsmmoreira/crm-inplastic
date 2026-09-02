@@ -267,10 +267,17 @@ export const enviarPropostaWhatsapp = createServerFn({ method: "POST" })
       conversaId = criada.id;
       // A atribuição vem em UPDATE: no INSERT o trigger de notificação referencia
       // uma conversa que ainda não existe e a FK falha.
-      await supabaseAdmin
+      // REGISTRAR E SEGUIR: a conversa já existe; a atribuição é secundária.
+      const upAtrib = await supabaseAdmin
         .from("whatsapp_conversas")
         .update({ atribuido_para: userId })
         .eq("id", conversaId);
+      if (upAtrib?.error) {
+        const { registrarFalhaSegura } = await import("@/lib/guard-erros");
+        await registrarFalhaSegura("propostas.enviarPropostaWhatsapp/atribuir", upAtrib.error, {
+          conversa_id: conversaId,
+        });
+      }
     }
 
 
@@ -298,16 +305,33 @@ export const enviarPropostaWhatsapp = createServerFn({ method: "POST" })
     // `sent_at` nunca é sobrescrito (mesma regra de `setProposalStatus`).
     const patch: { status: "enviada"; sent_at?: string } = { status: "enviada" };
     if (!proposta.sent_at) patch.sent_at = new Date().toISOString();
-    await supabase.from("propostas").update(patch).eq("id", proposta.id);
+    // REGISTRAR E SEGUIR: o WhatsApp JÁ saiu; abortar não desfaz o envio.
+    const { registrarFalhaSegura } = await import("@/lib/guard-erros");
+    let aviso: string | undefined;
+    const upStatus = await supabase.from("propostas").update(patch).eq("id", proposta.id);
+    if (upStatus?.error) {
+      await registrarFalhaSegura("propostas.enviarPropostaWhatsapp/marcar-enviada", upStatus.error, {
+        proposta_id: proposta.id,
+      });
+      aviso =
+        "WhatsApp enviado, mas não foi possível marcar a proposta como enviada — atualize manualmente.";
+    }
 
-    await supabase.from("lead_interactions").insert({
+    // REGISTRAR E SEGUIR: histórico de interação, posterior ao envio.
+    const insInter = await supabase.from("lead_interactions").insert({
       lead_id: lead.id,
       owner_id: userId,
       type: "whatsapp",
       content: mensagem,
     });
+    if (insInter?.error) {
+      await registrarFalhaSegura("propostas.enviarPropostaWhatsapp/interacao", insInter.error, {
+        proposta_id: proposta.id,
+        lead_id: lead.id,
+      });
+    }
 
-    return { ok: true as const };
+    return { ok: true as const, aviso };
   });
 
 /** Duplica uma proposta existente em nova proposta rascunho. */

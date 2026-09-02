@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { registrarFalhaSegura } from "@/lib/guard-erros";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
 
@@ -31,12 +32,18 @@ export const assumirConversa = createServerFn({ method: "POST" })
       .eq("id", data.conversaId);
     if (error) throw new Error(error.message);
 
-    await supabase
+    // BAIXA / registrar e seguir: marcar notificação como lida é cosmético.
+    const upNotif = await supabase
       .from("notificacoes")
       .update({ lida_em: new Date().toISOString() })
       .eq("conversa_id", data.conversaId)
       .eq("user_id", userId)
       .is("lida_em", null);
+    if (upNotif?.error) {
+      await registrarFalhaSegura("atendimento/marcar-notificacao-lida", upNotif.error, {
+        conversa_id: data.conversaId,
+      });
+    }
 
     return { ok: true };
   });
@@ -59,7 +66,12 @@ export const devolverParaIA = createServerFn({ method: "POST" })
       .maybeSingle();
     if (cErr || !conversa) throw new Error("Conversa não encontrada ou sem permissão.");
 
-    const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
+    // MÉDIA / registrar e seguir: o gate já é fail-closed (isAdmin indefinido bloqueia).
+    const { data: isAdmin, error: isAdminErr } = await supabase.rpc("has_role", {
+      _user_id: userId,
+      _role: "admin",
+    });
+    if (isAdminErr) await registrarFalhaSegura("atendimento/has_role", isAdminErr, { user_id: userId });
     const dono = conversa.atribuido_para ?? null;
     if (!isAdmin && dono && dono !== userId) {
       throw new Error("Somente o responsável pela conversa ou um administrador pode devolvê-la.");
@@ -78,13 +90,19 @@ export const devolverParaIA = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     if (dono) {
-      await supabaseAdmin.from("user_audit_log").insert({
+      // REGISTRAR E SEGUIR: auditoria posterior à devolução já efetivada.
+      const audit = await supabaseAdmin.from("user_audit_log").insert({
         alvo_user_id: dono,
         ator_user_id: userId,
         campo: "conversa_devolvida_ia",
         valor_anterior: dono,
         valor_novo: null,
       });
+      if (audit?.error) {
+        await registrarFalhaSegura("atendimento.devolverConversa/auditoria", audit.error, {
+          conversa_id: data.conversaId,
+        });
+      }
     }
 
     return { ok: true };
@@ -107,12 +125,18 @@ export const encerrarConversa = createServerFn({ method: "POST" })
       .eq("id", data.conversaId);
     if (error) throw new Error(error.message);
 
-    await supabase
+    // BAIXA / registrar e seguir: marcar notificação como lida é cosmético.
+    const upNotif = await supabase
       .from("notificacoes")
       .update({ lida_em: new Date().toISOString() })
       .eq("conversa_id", data.conversaId)
       .eq("user_id", userId)
       .is("lida_em", null);
+    if (upNotif?.error) {
+      await registrarFalhaSegura("atendimento/marcar-notificacao-lida", upNotif.error, {
+        conversa_id: data.conversaId,
+      });
+    }
 
     return { ok: true };
   });
@@ -150,7 +174,12 @@ export const atribuirConversa = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
+    // MÉDIA / registrar e seguir: o gate já é fail-closed (isAdmin indefinido bloqueia).
+    const { data: isAdmin, error: isAdminErr } = await supabase.rpc("has_role", {
+      _user_id: userId,
+      _role: "admin",
+    });
+    if (isAdminErr) await registrarFalhaSegura("atendimento/has_role", isAdminErr, { user_id: userId });
     if (!isAdmin) throw new Error("Apenas administradores podem atribuir conversas.");
     const { error } = await supabase
       .from("whatsapp_conversas")
@@ -168,7 +197,12 @@ export const listarConversasSemAtribuicao = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
-    const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
+    // MÉDIA / registrar e seguir: o gate já é fail-closed (isAdmin indefinido bloqueia).
+    const { data: isAdmin, error: isAdminErr } = await supabase.rpc("has_role", {
+      _user_id: userId,
+      _role: "admin",
+    });
+    if (isAdminErr) await registrarFalhaSegura("atendimento/has_role", isAdminErr, { user_id: userId });
     if (!isAdmin) return [];
     const { data, error } = await supabase
       .from("whatsapp_conversas")
@@ -205,7 +239,12 @@ export const atribuirConversasEmLote = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
+    // MÉDIA / registrar e seguir: o gate já é fail-closed (isAdmin indefinido bloqueia).
+    const { data: isAdmin, error: isAdminErr } = await supabase.rpc("has_role", {
+      _user_id: userId,
+      _role: "admin",
+    });
+    if (isAdminErr) await registrarFalhaSegura("atendimento/has_role", isAdminErr, { user_id: userId });
     if (!isAdmin) throw new Error("Apenas administradores podem atribuir conversas.");
 
     const alvos = [...new Set(data.atribuicoes.map((a) => a.vendedorId))];

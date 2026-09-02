@@ -99,15 +99,22 @@ export async function processarFilaN8n(sb: SB): Promise<ResultadoFilaN8n> {
     const tentativas = item.tentativas + 1;
     try {
       await enviarAvisoN8n(url, secret, item.payload);
-      await sb
+      // REGISTRAR E SEGUIR: o aviso já foi entregue ao n8n; sem a baixa o
+      // item será reenviado no próximo ciclo (n8n é idempotente por payload).
+      const baixa = await sb
         .from("n8n_reenvio_fila")
         .update({ status: "enviado", tentativas, ultimo_erro: null })
         .eq("id", item.id);
+      if (baixa?.error) {
+        const { registrarFalhaSegura } = await import("@/lib/guard-erros");
+        await registrarFalhaSegura("n8n-fila/baixa-enviado", baixa.error, { item_id: item.id });
+      }
       out.reenviados++;
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       const esgotou = tentativas >= item.max_tentativas;
-      await sb
+      // REGISTRAR E SEGUIR: já estamos tratando um erro de envio.
+      const upFalha = await sb
         .from("n8n_reenvio_fila")
         .update({
           status: esgotou ? "falhou" : "pendente",
@@ -116,6 +123,12 @@ export async function processarFilaN8n(sb: SB): Promise<ResultadoFilaN8n> {
           proxima_tentativa_em: proximaTentativa(tentativas),
         })
         .eq("id", item.id);
+      if (upFalha?.error) {
+        const { registrarFalhaSegura } = await import("@/lib/guard-erros");
+        await registrarFalhaSegura("n8n-fila/atualizar-tentativa", upFalha.error, {
+          item_id: item.id,
+        });
+      }
       if (esgotou) out.esgotados++;
       else out.falhas++;
     }

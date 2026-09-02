@@ -78,11 +78,19 @@ export const assistenteRedacao = createServerFn({ method: "POST" })
     // Só conta no limite se a geração for bem-sucedida e passar na validação.
     const texto = await gerarTexto(promptDoModo(data.modo), userPrompt);
 
-    await supabase.from("assistente_redacao_uso").insert({
+    // REGISTRAR E SEGUIR: o texto já foi gerado; a contagem de uso é auxiliar.
+    const insUso = await supabase.from("assistente_redacao_uso").insert({
       usuario_id: userId,
       conversa_id: data.conversaId,
       modo: data.modo,
     });
+    if (insUso?.error) {
+      const { registrarFalhaSegura } = await import("@/lib/guard-erros");
+      await registrarFalhaSegura("assistente-redacao/registrar-uso", insUso.error, {
+        usuario_id: userId,
+        conversa_id: data.conversaId,
+      });
+    }
 
     return { texto };
   });

@@ -922,7 +922,8 @@ export async function registrarAuditoriaPromocao(
   args: { leadId: string; clienteId: string; criado: boolean; userId: string },
 ): Promise<void> {
   try {
-    await supabase.from("lead_interactions").insert({
+    // REGISTRAR E SEGUIR: auditoria nunca bloqueia a promoção lead → cliente.
+    const insAudit = await supabase.from("lead_interactions").insert({
       lead_id: args.leadId,
       owner_id: args.userId,
       type: "note",
@@ -930,6 +931,12 @@ export async function registrarAuditoriaPromocao(
         args.criado ? "criado" : "vinculado"
       } (cliente_id=${args.clienteId}) por usuário ${args.userId}.`,
     });
+    if (insAudit?.error) {
+      await registrarFalhaSegura("clientes.registrarAuditoriaPromocao", insAudit.error, {
+        lead_id: args.leadId,
+        cliente_id: args.clienteId,
+      });
+    }
   } catch (e) {
     console.error("[promocao_cliente] falha ao registrar auditoria:", e);
   }
