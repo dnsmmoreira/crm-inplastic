@@ -501,5 +501,8 @@ async function ensurePedidoFromProposta(
  * Aliases legados — mantidos para não quebrar imports existentes.
  * Preferir `gerarPedidoInterno` / `moverParaGanho` em código novo.
  */
+/** @deprecated use `gerarPedidoInterno` — alias mantido só pelos call sites atuais. */
 export const gerarPedidoOmie = gerarPedidoInterno;
+/** @deprecated use `moverParaGanho` — alias mantido só pelos call sites atuais. */
 export const moverParaGanhoOmie = moverParaGanho;
+
