@@ -27,6 +27,8 @@ export type InternalOrderResult = {
   validacao_erros?: string[];
   proposta_id?: string;
   pedido_number?: string;
+  /** Id do pedido operacional criado — usado pelo gatilho de romaneios na UI. */
+  pedido_id?: string;
 };
 
 export type OmieResult = InternalOrderResult;
