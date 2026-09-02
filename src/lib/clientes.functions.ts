@@ -804,12 +804,17 @@ export async function garantirClienteDoLead(
     // Checagem cross-vendor via RPC SECURITY DEFINER (sobrecarga de 2 args):
     // a pergunta correta é "o cliente é do DONO DO LEAD?" — não "é meu?".
     const donoLead = (lead.owner_id as string | null) ?? userId;
-    const statusRows = await assertRpcPermissao(
-      await supabase.rpc("cnpj_status", { _cnpj: digits, _vendedor_id: donoLead }),
-      "clientes.garantirClienteDoLead/cnpj_status",
-      { leadId, donoLead },
-      "Não foi possível verificar o CNPJ, tente novamente",
-    );
+    const cnpjRes = await supabase.rpc("cnpj_status", { _cnpj: digits, _vendedor_id: donoLead });
+    if (cnpjRes.error) {
+      // FAIL-CLOSED: sem confirmação da RPC, não dá para decidir a posse do CNPJ.
+      await registrarFalhaSegura("clientes.garantirClienteDoLead/cnpj_status", cnpjRes.error, {
+        leadId,
+        donoLead,
+      });
+      return { ok: false, erros: ["Não foi possível verificar o CNPJ, tente novamente"] };
+    }
+    const statusRows = cnpjRes.data;
+
     const st = (statusRows ?? [])[0] as
       | { existe: boolean; ativo: boolean; mesmo_vendedor: boolean; cliente_id: string | null }
       | undefined;
