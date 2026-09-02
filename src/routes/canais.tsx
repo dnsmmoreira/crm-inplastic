@@ -260,11 +260,14 @@ function ConversationPanel({
   conversa,
   onOpenLead,
   onLeadCreated,
+  onRefreshLista,
 }: {
   conversa: Conversa | null;
   onOpenLead: (id: string) => void;
   onLeadCreated: () => void;
+  onRefreshLista?: () => void;
 }) {
+
   const [mensagens, setMensagens] = useState<Mensagem[]>([]);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
