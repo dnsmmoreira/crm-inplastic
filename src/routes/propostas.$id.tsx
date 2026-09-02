@@ -228,6 +228,8 @@ function PropostaDetalhe() {
   const calcFreight = useServerFn(calculateFreightDistance);
   const gerarPedido = useServerFn(gerarPedidoOmie);
   const [omieBusy, setOmieBusy] = useState(false);
+  // Gatilho opcional dos romaneios logo depois que o pedido nasce.
+  const [romaneioAlvo, setRomaneioAlvo] = useState<{ id: string; number?: string } | null>(null);
   /** Conferência final obrigatória antes de gerar/solicitar o pedido. */
   const [conferencia, setConferencia] = useState<{ open: boolean; requerAprovacao: boolean }>({
     open: false,
