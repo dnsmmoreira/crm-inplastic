@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
+import { assertRpcPermissao } from "@/lib/guard-erros";
 import { requireSupabaseAuth as requireSupabaseAuthBase } from "@/integrations/supabase/auth-middleware";
 
 /* ------------------------------------------------------------------ */
@@ -507,13 +508,19 @@ export const setUsuarioAtivo = createServerFn({ method: "POST" })
     }
     const sb = await admin();
     if (!data.ativo) {
-      const { data: isAdmin } = await sb.rpc("has_role", {
-        _user_id: data.userId,
-        _role: "admin",
-      });
+      const isAdmin = await assertRpcPermissao(
+        await sb.rpc("has_role", { _user_id: data.userId, _role: "admin" }),
+        "usuarios.setUsuarioAtivo/has_role",
+        { userId: data.userId },
+      );
       if (isAdmin) {
-        const { data: count } = await sb.rpc("admins_ativos_count");
-        if ((count ?? 0) <= 1) {
+        const count = await assertRpcPermissao(
+          await sb.rpc("admins_ativos_count"),
+          "usuarios.setUsuarioAtivo/admins_ativos_count",
+          { userId: data.userId },
+          "Não foi possível confirmar quantos administradores estão ativos. Operação bloqueada por segurança.",
+        );
+        if (count == null || Number(count) <= 1) {
           throw new Error("É necessário manter pelo menos um administrador ativo.");
         }
       }
@@ -600,10 +607,20 @@ export const softDeleteUsuario = createServerFn({ method: "POST" })
     if (data.userId === context.userId) throw new Error("Você não pode excluir a própria conta.");
     const sb = await admin();
 
-    const { data: isAdmin } = await sb.rpc("has_role", { _user_id: data.userId, _role: "admin" });
+    const isAdmin = await assertRpcPermissao(
+      await sb.rpc("has_role", { _user_id: data.userId, _role: "admin" }),
+      "usuarios.softDeleteUsuario/has_role",
+      { userId: data.userId },
+    );
     if (isAdmin) {
-      const { data: count } = await sb.rpc("admins_ativos_count");
-      if ((count ?? 0) <= 1) throw new Error("É necessário manter pelo menos um administrador ativo.");
+      const count = await assertRpcPermissao(
+        await sb.rpc("admins_ativos_count"),
+        "usuarios.softDeleteUsuario/admins_ativos_count",
+        { userId: data.userId },
+        "Não foi possível confirmar quantos administradores estão ativos. Operação bloqueada por segurança.",
+      );
+      if (count == null || Number(count) <= 1)
+        throw new Error("É necessário manter pelo menos um administrador ativo.");
     }
 
     const { error } = await sb
@@ -675,10 +692,20 @@ export const hardDeleteUsuario = createServerFn({ method: "POST" })
       throw new Error("O usuário de destino é inválido.");
     }
 
-    const { data: isAdmin } = await sb.rpc("has_role", { _user_id: data.userId, _role: "admin" });
+    const isAdmin = await assertRpcPermissao(
+      await sb.rpc("has_role", { _user_id: data.userId, _role: "admin" }),
+      "usuarios.excluirUsuarioDefinitivo/has_role",
+      { userId: data.userId },
+    );
     if (isAdmin) {
-      const { data: count } = await sb.rpc("admins_ativos_count");
-      if ((count ?? 0) <= 1) throw new Error("É necessário manter pelo menos um administrador ativo.");
+      const count = await assertRpcPermissao(
+        await sb.rpc("admins_ativos_count"),
+        "usuarios.excluirUsuarioDefinitivo/admins_ativos_count",
+        { userId: data.userId },
+        "Não foi possível confirmar quantos administradores estão ativos. Operação bloqueada por segurança.",
+      );
+      if (count == null || Number(count) <= 1)
+        throw new Error("É necessário manter pelo menos um administrador ativo.");
     }
 
     // 1) Reatribuição obrigatória ANTES da exclusão

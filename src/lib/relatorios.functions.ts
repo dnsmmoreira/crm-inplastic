@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
+import { assertRpcPermissao } from "@/lib/guard-erros";
 import type { PedidoStageId } from "@/lib/pedidos.functions";
 
 /**
@@ -40,12 +41,29 @@ async function assertPermissao(
   perm: "ver_relatorios" | "exportar_dados",
   mensagem: string,
 ) {
-  const { data: isAdmin } = await sb.rpc("has_role", { _user_id: userId, _role: "admin" });
+  const isAdmin = await assertRpcPermissao(
+    await sb.rpc("has_role", { _user_id: userId, _role: "admin" }),
+    "relatorios.assertPermissao/has_role",
+    { userId, perm },
+  );
   if (isAdmin) return;
-  const { data } = await sb.from("user_permissions").select(perm).eq("user_id", userId).maybeSingle();
+  const { data, error: permErr } = await sb
+    .from("user_permissions")
+    .select(perm)
+    .eq("user_id", userId)
+    .maybeSingle();
+  await assertRpcPermissao(
+    { data: null, error: permErr },
+    "relatorios.assertPermissao/user_permissions",
+    { userId, perm },
+  );
   if (data && data[perm] === true) return;
   // Amplia via perfis (etapa de permissões granulares) — nunca restringe.
-  const { data: viaPerfil } = await sb.rpc("tem_permissao", { _user_id: userId, _chave: CHAVE_GRANULAR[perm] });
+  const viaPerfil = await assertRpcPermissao(
+    await sb.rpc("tem_permissao", { _user_id: userId, _chave: CHAVE_GRANULAR[perm] }),
+    "relatorios.assertPermissao/tem_permissao",
+    { userId, perm },
+  );
   if (viaPerfil === true) return;
   throw new Error(mensagem);
 }
@@ -55,7 +73,11 @@ async function assertPermissao(
  * enxerga os próprios pedidos — o filtro é aplicado no servidor, além do RLS.
  */
 async function escopoProprio(sb: LooseClient, userId: string): Promise<boolean> {
-  const { data } = await sb.rpc("tem_permissao", { _user_id: userId, _chave: "pedidos.ver_todos" });
+  const data = await assertRpcPermissao(
+    await sb.rpc("tem_permissao", { _user_id: userId, _chave: "pedidos.ver_todos" }),
+    "relatorios.escopoProprio/tem_permissao",
+    { userId },
+  );
   return data !== true;
 }
 

@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
+import { assertRpcPermissao } from "@/lib/guard-erros";
 
 export type PlacarPeriodo = "semana" | "mes" | "trimestre";
 
@@ -65,7 +66,8 @@ export const getPlacar = createServerFn({ method: "GET" })
       supabase.rpc("has_role" as any, { _user_id: userId, _role: "admin" }),
     ]);
     if (rankRes.error) throw new Error(rankRes.error.message);
-    const isAdmin = roleRes.data === true;
+    const isAdmin =
+      (await assertRpcPermissao(roleRes, "placar.getPlacar/has_role", { userId })) === true;
 
     const vendedores = ((rankRes.data ?? []) as any[]).map((r) => {
       const isSelf = r.vendedor_id === userId;
@@ -114,10 +116,11 @@ export const listMetas = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
-    const { data: isAdmin } = await supabase.rpc("has_role" as any, {
-      _user_id: userId,
-      _role: "admin",
-    });
+    const isAdmin = await assertRpcPermissao(
+      await supabase.rpc("has_role" as any, { _user_id: userId, _role: "admin" }),
+      "placar.listMetas/has_role",
+      { userId },
+    );
     if (!isAdmin) throw new Error("Forbidden");
     const { data: metas, error } = await supabase
       .from("vendedor_metas" as any)
@@ -154,10 +157,11 @@ export const setMeta = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const { data: isAdmin } = await supabase.rpc("has_role" as any, {
-      _user_id: userId,
-      _role: "admin",
-    });
+    const isAdmin = await assertRpcPermissao(
+      await supabase.rpc("has_role" as any, { _user_id: userId, _role: "admin" }),
+      "placar.setMeta/has_role",
+      { userId },
+    );
     if (!isAdmin) throw new Error("Forbidden");
     const { error } = await supabase
       .from("vendedor_metas" as any)
@@ -181,10 +185,11 @@ export const listMetasHistorico = createServerFn({ method: "GET" })
   )
   .handler(async ({ data, context }): Promise<MetaHistoricoRow[]> => {
     const { supabase, userId } = context;
-    const { data: isAdmin } = await supabase.rpc("has_role" as any, {
-      _user_id: userId,
-      _role: "admin",
-    });
+    const isAdmin = await assertRpcPermissao(
+      await supabase.rpc("has_role" as any, { _user_id: userId, _role: "admin" }),
+      "placar.listMetasHistorico/has_role",
+      { userId },
+    );
 
     let q = supabase
       .from("vendedor_metas_historico" as any)
@@ -224,10 +229,11 @@ export const snapshotMes = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const { data: isAdmin } = await supabase.rpc("has_role" as any, {
-      _user_id: userId,
-      _role: "admin",
-    });
+    const isAdmin = await assertRpcPermissao(
+      await supabase.rpc("has_role" as any, { _user_id: userId, _role: "admin" }),
+      "placar.snapshotMes/has_role",
+      { userId },
+    );
     if (!isAdmin) throw new Error("Forbidden");
     const { data: n, error } = await supabase.rpc("snapshot_metas_mes" as any, {
       _ano: data.ano,
@@ -251,10 +257,11 @@ export const getGanhosForaDoPlacar = createServerFn({ method: "GET" })
   .inputValidator((data: unknown) => inputSchema.parse(data ?? {}))
   .handler(async ({ data, context }): Promise<GanhoForaDoPlacar[]> => {
     const { supabase, userId } = context;
-    const { data: isAdmin } = await supabase.rpc("has_role" as any, {
-      _user_id: userId,
-      _role: "admin",
-    });
+    const isAdmin = await assertRpcPermissao(
+      await supabase.rpc("has_role" as any, { _user_id: userId, _role: "admin" }),
+      "placar.getGanhosForaDoPlacar/has_role",
+      { userId },
+    );
     if (!isAdmin) return [];
     const { data: rows, error } = await supabase.rpc("ganhos_fora_do_placar" as any, {
       _periodo: data.periodo,

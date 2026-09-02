@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
 import { isValidCnpj, onlyDigitsCnpj, isValidCpf, onlyDigitsCpf } from "@/lib/cnpj";
 import { normalizarTexto, normalizarEmail } from "@/lib/normalizacao";
+import { registrarFalhaSegura } from "@/lib/guard-erros";
 
 export type TipoPessoa = "PJ" | "PF";
 
@@ -355,6 +356,10 @@ export async function criarClienteCore(
           message: "Já existe um cliente com este CNPJ.",
         };
       }
+      await registrarFalhaSegura("clientes.criarClienteCore/insert", error, {
+        userId: context.userId,
+        vendedorId,
+      });
       throw new Error("Não foi possível salvar o cliente. Tente novamente.");
     }
     return { ok: true, cliente: inserted as ClienteRow };
@@ -799,10 +804,17 @@ export async function garantirClienteDoLead(
     // Checagem cross-vendor via RPC SECURITY DEFINER (sobrecarga de 2 args):
     // a pergunta correta é "o cliente é do DONO DO LEAD?" — não "é meu?".
     const donoLead = (lead.owner_id as string | null) ?? userId;
-    const { data: statusRows } = await supabase.rpc("cnpj_status", {
-      _cnpj: digits,
-      _vendedor_id: donoLead,
-    });
+    const cnpjRes = await supabase.rpc("cnpj_status", { _cnpj: digits, _vendedor_id: donoLead });
+    if (cnpjRes.error) {
+      // FAIL-CLOSED: sem confirmação da RPC, não dá para decidir a posse do CNPJ.
+      await registrarFalhaSegura("clientes.garantirClienteDoLead/cnpj_status", cnpjRes.error, {
+        leadId,
+        donoLead,
+      });
+      return { ok: false, erros: ["Não foi possível verificar o CNPJ, tente novamente"] };
+    }
+    const statusRows = cnpjRes.data;
+
     const st = (statusRows ?? [])[0] as
       | { existe: boolean; ativo: boolean; mesmo_vendedor: boolean; cliente_id: string | null }
       | undefined;

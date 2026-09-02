@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
+import { assertRpcPermissao } from "@/lib/guard-erros";
 
 /**
  * Criação de usuários e recuperação de senha.
@@ -119,10 +120,11 @@ export const reenviarConvite = createServerFn({ method: "POST" })
     z.object({ email: z.string().trim().email().max(255) }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { data: isAdmin } = await context.supabase.rpc("has_role", {
-      _user_id: context.userId,
-      _role: "admin",
-    });
+    const isAdmin = await assertRpcPermissao(
+      await context.supabase.rpc("has_role", { _user_id: context.userId, _role: "admin" }),
+      "invites.reenviarConvite/has_role",
+      { userId: context.userId },
+    );
     if (!isAdmin) throw new Error("Somente administradores podem reenviar convites.");
     if (!rateLimit(`convite:${data.email.toLowerCase()}`, 3, 15 * 60_000)) {
       throw new Error("Muitas tentativas para este e-mail. Tente novamente em alguns minutos.");
