@@ -6,6 +6,7 @@
  * Idempotente: grava em xerife_log com regra='agenda_diaria' + janela 20h.
  */
 import { createFileRoute } from "@tanstack/react-router";
+import { registrarFalhaSegura } from "@/lib/guard-erros";
 import { requireXerifeCronAuth, cronJsonResponse } from "@/lib/xerife/cron-auth.server";
 import { alreadyActed, logAction } from "@/lib/xerife/dedupe.server";
 import { notifyOwner, crmLeadLink } from "@/lib/xerife/notify.server";
@@ -91,7 +92,18 @@ async function runAgendaDiaria(force = false): Promise<{
         .limit(falta);
       if (extras?.length) {
         const ids = extras.map((e: any) => e.id);
-        await sb.from("tarefas").update({ due_date: new Date().toISOString() }).in("id", ids);
+        // REGISTRAR E SEGUIR: antecipar tarefas é otimização da agenda do dia;
+        // sem isso o vendedor recebe uma agenda menor, não um erro.
+        const upAntecipa = await sb
+          .from("tarefas")
+          .update({ due_date: new Date().toISOString() })
+          .in("id", ids);
+        if (upAntecipa?.error) {
+          await registrarFalhaSegura("xerife-agenda.antecipar", upAntecipa.error, {
+            owner_id: uid,
+            tarefas: ids.length,
+          });
+        }
         antecipadas += extras.length;
         lista = lista.concat(extras);
       }

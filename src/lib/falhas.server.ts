@@ -56,15 +56,23 @@ export function redigirContexto(ctx: unknown, profundidade = 0): unknown {
 }
 
 /**
- * Registra uma falha. Nunca lança, nunca interrompe o chamador.
- * Retorna `true` quando conseguiu gravar.
+ * Registra uma falha usando o client informado. Nunca lança.
+ *
+ * ATENÇÃO: o INSERT em `falhas_sistema` é liberado apenas para `service_role`.
+ * Com um client de usuário o INSERT morre no RLS — por isso, se a gravação
+ * falhar, esta função NÃO desiste em silêncio: ela reenvia pelo client de
+ * serviço (`registrarFalhaAdmin`). Prefira sempre `registrarFalhaAdmin`.
+ * Retorna `true` quando conseguiu gravar (direto ou pelo fallback).
  */
 export async function registrarFalha(
   sb: SB,
   origem: string,
   erro: unknown,
   contexto?: Record<string, unknown>,
+  /** Uso interno: evita recursão quando já estamos no client de serviço. */
+  semFallback = false,
 ): Promise<boolean> {
+
   try {
     const mensagem = mensagemDeErro(erro).slice(0, 1000);
     const ctx = contexto ? (redigirContexto(contexto) as Record<string, unknown>) : null;
@@ -103,6 +111,18 @@ export async function registrarFalha(
       `[falhas] não consegui registrar a falha (origem=${origem}):`,
       e instanceof Error ? e.message : String(e),
     );
+    // Fallback: provavelmente RLS (client de usuário). Reenvia pelo service_role.
+    if (!semFallback) {
+      try {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        return await registrarFalha(supabaseAdmin as SB, origem, erro, contexto, true);
+      } catch (e2) {
+        console.error(
+          `[falhas] fallback pelo client de serviço também falhou (origem=${origem}):`,
+          e2 instanceof Error ? e2.message : String(e2),
+        );
+      }
+    }
     return false;
   }
 }
@@ -119,7 +139,8 @@ export async function registrarFalhaAdmin(
 ): Promise<boolean> {
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    return await registrarFalha(supabaseAdmin as SB, origem, erro, contexto);
+    return await registrarFalha(supabaseAdmin as SB, origem, erro, contexto, true);
+
   } catch (e) {
     console.error(
       `[falhas] client de serviço indisponível (origem=${origem}):`,

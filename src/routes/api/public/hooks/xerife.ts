@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { requireXerifeCronAuth, cronJsonResponse } from "@/lib/xerife/cron-auth.server";
+import { registrarFalhaSegura } from "@/lib/guard-erros";
 
 type XerifeConfig = {
   dias_sem_interacao_por_etapa: Record<string, number>;
@@ -132,7 +133,9 @@ async function runXerife(dryRun = false): Promise<{
     if (!phone) return;
     const ok = await enviarAlertaInterno(phone, msg);
     if (!ok) return;
-    await supabaseAdmin.from("lead_ai_actions").insert({
+    // REGISTRAR E SEGUIR: o WhatsApp JÁ saiu; abortar não desfaz o envio.
+    // Sem este registro o dedupe de 24h se perde -> risco de repetir o alerta.
+    const insAlerta = await supabaseAdmin.from("lead_ai_actions").insert({
       lead_id: leadId,
       owner_id: ownerId,
       type: "alerta",
@@ -140,6 +143,12 @@ async function runXerife(dryRun = false): Promise<{
       metadata: { channel: "whatsapp", urgent: true },
       occurred_at: new Date().toISOString(),
     });
+    if (insAlerta.error) {
+      await registrarFalhaSegura("xerife.alertaWhatsapp/lead_ai_actions", insAlerta.error, {
+        lead_id: leadId,
+        owner_id: ownerId,
+      });
+    }
     alertasWhatsappEnviados++;
     totalActions++;
   }
@@ -189,7 +198,8 @@ async function runXerife(dryRun = false): Promise<{
         if (!tErr) followupsCreated++;
       }
 
-      await supabaseAdmin.from("lead_ai_actions").insert({
+      // REGISTRAR E SEGUIR: cron; a próxima rodada reavalia o lead.
+      const insFollow = await supabaseAdmin.from("lead_ai_actions").insert({
         lead_id: l.id,
         owner_id: l.owner_id,
         type: "followup",
@@ -197,6 +207,12 @@ async function runXerife(dryRun = false): Promise<{
         metadata: { stage, dias_limite: dias, last_interaction_at: last },
         occurred_at: nowIso,
       });
+      if (insFollow.error) {
+        await registrarFalhaSegura("xerife.regra1/lead_ai_actions", insFollow.error, {
+          lead_id: l.id,
+          stage,
+        });
+      }
       totalActions++;
     }
   }
@@ -219,7 +235,8 @@ async function runXerife(dryRun = false): Promise<{
       .gte("occurred_at", dedupeSinceIso);
     if ((count ?? 0) > 0) continue;
 
-    await supabaseAdmin.from("lead_ai_actions").insert({
+    // REGISTRAR E SEGUIR: cron; sem este registro o dedupe repete o alerta.
+    const insTarefaAtrasada = await supabaseAdmin.from("lead_ai_actions").insert({
       lead_id: t.lead_id,
       owner_id: t.owner_id,
       type: "alerta",
@@ -227,6 +244,12 @@ async function runXerife(dryRun = false): Promise<{
       metadata: { tarefa_id: t.id, due_date: t.due_date },
       occurred_at: nowIso,
     });
+    if (insTarefaAtrasada.error) {
+      await registrarFalhaSegura("xerife.regra2/lead_ai_actions", insTarefaAtrasada.error, {
+        lead_id: t.lead_id,
+        tarefa_id: t.id,
+      });
+    }
     tarefasAtrasadasSinalizadas++;
     totalActions++;
 
@@ -257,7 +280,8 @@ async function runXerife(dryRun = false): Promise<{
       .gte("occurred_at", dedupeSinceIso);
     if ((count ?? 0) > 0) continue;
 
-    await supabaseAdmin.from("lead_ai_actions").insert({
+    // REGISTRAR E SEGUIR: cron; sem este registro o dedupe repete o follow-up.
+    const insProposta = await supabaseAdmin.from("lead_ai_actions").insert({
       lead_id: p.lead_id,
       owner_id: p.owner_id,
       type: "followup",
@@ -265,6 +289,12 @@ async function runXerife(dryRun = false): Promise<{
       metadata: { proposta_id: p.id, sent_at: p.sent_at },
       occurred_at: nowIso,
     });
+    if (insProposta.error) {
+      await registrarFalhaSegura("xerife.regra3/lead_ai_actions", insProposta.error, {
+        lead_id: p.lead_id,
+        proposta_id: p.id,
+      });
+    }
     propostasSemRespostaSinalizadas++;
     totalActions++;
   }
@@ -418,7 +448,8 @@ async function runResumoDiario(force = false): Promise<{
     const ok = await enviarAlertaInterno(phone, msg);
     if (ok) {
       vendedoresNotificados++;
-      await supabaseAdmin.from("lead_ai_actions").insert({
+      // REGISTRAR E SEGUIR: resumo já enviado ao vendedor; é só trilha.
+      const insResumoVend = await supabaseAdmin.from("lead_ai_actions").insert({
         lead_id: null,
         owner_id: uid,
         type: "resumo",
@@ -431,6 +462,11 @@ async function runResumoDiario(force = false): Promise<{
         } },
         occurred_at: nowIso,
       });
+      if (insResumoVend.error) {
+        await registrarFalhaSegura("xerife.resumoDiario/vendedor", insResumoVend.error, {
+          owner_id: uid,
+        });
+      }
     }
   }
 
@@ -449,7 +485,9 @@ async function runResumoDiario(force = false): Promise<{
       placarBlock = lines.join("\n");
     }
   } catch (e) {
+    // REGISTRAR E SEGUIR: o placar é um bloco opcional do resumo.
     console.error("[xerife resumo] placar_vendedores falhou:", e);
+    await registrarFalhaSegura("xerife.resumoDiario/placar_vendedores", e);
   }
 
   for (const uid of adminIds) {
@@ -460,7 +498,8 @@ async function runResumoDiario(force = false): Promise<{
     const ok = await enviarAlertaInterno(phone, msg);
     if (ok) {
       adminsNotificados++;
-      await supabaseAdmin.from("lead_ai_actions").insert({
+      // REGISTRAR E SEGUIR: resumo já enviado ao admin; é só trilha.
+      const insResumoAdmin = await supabaseAdmin.from("lead_ai_actions").insert({
         lead_id: null,
         owner_id: uid,
         type: "resumo",
@@ -473,6 +512,11 @@ async function runResumoDiario(force = false): Promise<{
         } },
         occurred_at: nowIso,
       });
+      if (insResumoAdmin.error) {
+        await registrarFalhaSegura("xerife.resumoDiario/admin", insResumoAdmin.error, {
+          owner_id: uid,
+        });
+      }
     }
   }
 

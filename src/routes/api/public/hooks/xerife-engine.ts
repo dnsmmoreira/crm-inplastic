@@ -14,6 +14,7 @@
  * A3 pula conversas com ia_ativa=true (Lucas está atendendo).
  */
 import { createFileRoute } from "@tanstack/react-router";
+import { registrarFalhaSegura } from "@/lib/guard-erros";
 import { requireXerifeCronAuth, cronJsonResponse } from "@/lib/xerife/cron-auth.server";
 import {
   subtractBusinessMinutes,
@@ -199,7 +200,9 @@ async function runEngine(
       acao: "criar_tarefa",
     });
     if (dryRun) return;
-    await sb.from("tarefas").insert({
+    // REGISTRAR E SEGUIR: cron; uma tarefa perdida é recriada na próxima
+    // rodada, mas a falha precisa ficar visível em /falhas.
+    const insTarefa = await sb.from("tarefas").insert({
       lead_id: t.lead_id,
       owner_id: t.owner_id,
       title: t.titulo,
@@ -212,6 +215,12 @@ async function runEngine(
       status: "pendente",
       origem: "xerife",
     });
+    if (insTarefa?.error) {
+      await registrarFalhaSegura("xerife-engine.criarTarefa", insTarefa.error, {
+        regra: t.regra,
+        lead_id: t.lead_id,
+      });
+    }
   }
 
   const log = async (...args: Parameters<typeof logAction>) => {
@@ -253,7 +262,14 @@ async function runEngine(
       prioridade: 3, acao: "marcar_esfriando",
     });
     if (dryRun) return;
-    await sb.from("leads").update({ esfriando: true }).eq("id", leadId);
+    // REGISTRAR E SEGUIR: marcação de "esfriando" é reavaliada a cada rodada.
+    const upEsfriando = await sb.from("leads").update({ esfriando: true }).eq("id", leadId);
+    if (upEsfriando?.error) {
+      await registrarFalhaSegura("xerife-engine.marcarEsfriando", upEsfriando.error, {
+        regra,
+        lead_id: leadId,
+      });
+    }
   };
 
   const now = new Date();

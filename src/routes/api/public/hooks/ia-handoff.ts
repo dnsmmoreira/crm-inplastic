@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { registrarFalhaSegura } from "@/lib/guard-erros";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -71,7 +72,9 @@ export const Route = createFileRoute("/api/public/hooks/ia-handoff")({
         const agora = new Date().toISOString();
 
         if (motivo === "encerrar") {
-          await supabaseAdmin
+          // ABORTAR: nada foi efetivado ainda e o n8n reentrega em 5xx.
+          // Responder 200 aqui deixaria a IA achando que encerrou sem encerrar.
+          const encErr = await supabaseAdmin
             .from("whatsapp_conversas")
             .update({
               status: "encerrado",
@@ -80,11 +83,20 @@ export const Route = createFileRoute("/api/public/hooks/ia-handoff")({
               updated_at: agora,
             })
             .eq("id", conversaId);
+          if (encErr.error) {
+            await registrarFalhaSegura("ia-handoff.encerrar", encErr.error, { conversa_id: conversaId });
+            return new Response(JSON.stringify({ error: "falha ao encerrar conversa" }), {
+              status: 500,
+              headers: { "Content-Type": "application/json", ...CORS },
+            });
+          }
           console.warn(`[ia-handoff] conversa encerrada pela IA conversa=${conversaId}`);
           return Response.json({ ok: true, encerrada: true }, { headers: CORS });
         }
 
-        await supabaseAdmin
+        // ABORTAR: se a conversa não vira "aguardando_humano", notificar humano
+        // sem desligar a IA cria estado inconsistente. O n8n reentrega em 5xx.
+        const hoErr = await supabaseAdmin
           .from("whatsapp_conversas")
           .update({
             requer_humano: true,
@@ -96,6 +108,16 @@ export const Route = createFileRoute("/api/public/hooks/ia-handoff")({
             updated_at: agora,
           })
           .eq("id", conversaId);
+        if (hoErr.error) {
+          await registrarFalhaSegura("ia-handoff.marcarHandoff", hoErr.error, {
+            conversa_id: conversaId,
+            motivo,
+          });
+          return new Response(JSON.stringify({ error: "falha ao marcar handoff" }), {
+            status: 500,
+            headers: { "Content-Type": "application/json", ...CORS },
+          });
+        }
 
         const quem = conv.name?.trim() || conv.phone;
         const link = `https://crm.inplastic.com.br/conversas?c=${conversaId}`;

@@ -5,6 +5,7 @@
  * Idempotente: xerife_log regra='fechamento' + janela 20h.
  */
 import { createFileRoute } from "@tanstack/react-router";
+import { registrarFalhaSegura } from "@/lib/guard-erros";
 import { requireXerifeCronAuth, cronJsonResponse } from "@/lib/xerife/cron-auth.server";
 import { alreadyActed, logAction } from "@/lib/xerife/dedupe.server";
 import { notifyOwner, notifyDiretoria } from "@/lib/xerife/notify.server";
@@ -63,7 +64,15 @@ async function runFechamento(force = false): Promise<{
 
     for (const t of pendentes) {
       const patch = computeRollover(t as any, now);
-      await sb.from("tarefas").update(patch).eq("id", (t as any).id);
+      // REGISTRAR E SEGUIR: cron de fechamento; a tarefa não rolada continua
+      // pendente e entra no fechamento seguinte.
+      const upRoll = await sb.from("tarefas").update(patch).eq("id", (t as any).id);
+      if (upRoll?.error) {
+        await registrarFalhaSegura("xerife-fechamento.rollover", upRoll.error, {
+          tarefa_id: (t as any).id,
+          owner_id: uid,
+        });
+      }
     }
 
     tarefasRoladas += nRoladas;
@@ -104,7 +113,11 @@ async function runFechamento(force = false): Promise<{
   // Top 3 do Placar de Vendedores (fonte única) + notificação de faixa de meta
   const faixasCruzadasGrupo: { nome: string; faixa: number }[] = [];
   try {
-    const { data: rankRows } = await sb.rpc("placar_vendedores" as any, { _periodo: "mes" });
+    const { data: rankRows, error: rankErr } = await sb.rpc("placar_vendedores" as any, {
+      _periodo: "mes",
+    });
+    // REGISTRAR E SEGUIR: o placar é um bloco opcional do fechamento.
+    if (rankErr) await registrarFalhaSegura("xerife-fechamento.placar_vendedores", rankErr);
     const rows = ((rankRows ?? []) as any[]);
     const top3 = rows.filter((r) => Number(r.score) > 0).slice(0, 3);
     if (top3.length) {

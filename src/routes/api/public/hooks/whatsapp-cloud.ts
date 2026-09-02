@@ -4,6 +4,7 @@
  * (`processarEntradaWhatsapp`). Nenhuma regra de negócio é duplicada aqui.
  */
 import { createFileRoute } from "@tanstack/react-router";
+import { registrarFalhaSegura } from "@/lib/guard-erros";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -201,7 +202,10 @@ export const Route = createFileRoute("/api/public/hooks/whatsapp-cloud")({
                 });
                 const phone =
                   typeof st['recipient_id'] === "string" ? onlyDigits(st['recipient_id'] as string) : null;
-                await supabaseAdmin.from("wa_cloud_eventos").upsert(
+                // REGISTRAR E SEGUIR: status é telemetria e a Meta reentrega em
+                // 5xx o LOTE inteiro — devolver erro reprocessaria mensagens já
+                // tratadas. Registra com o wa_message_id para reconciliar.
+                const upStatus = await supabaseAdmin.from("wa_cloud_eventos").upsert(
                   {
                     tipo: `status_${String(st['status'] ?? "desconhecido")}`,
                     wa_message_id: waId ? `status:${waId}:${String(st['status'] ?? "")}` : null,
@@ -212,6 +216,12 @@ export const Route = createFileRoute("/api/public/hooks/whatsapp-cloud")({
                   },
                   { onConflict: "wa_message_id", ignoreDuplicates: true },
                 );
+                if (upStatus.error) {
+                  await registrarFalhaSegura("wa-cloud-webhook.status", upStatus.error, {
+                    wa_message_id: waId,
+                    status: st['status'] ?? null,
+                  });
+                }
               }
 
               // --- messages (entrada) ---
@@ -241,7 +251,15 @@ export const Route = createFileRoute("/api/public/hooks/whatsapp-cloud")({
                   payload: msg as any,
                 });
                 if (evErr && evErr.code === "23505") continue;
-                if (evErr) console.error("wa_cloud_eventos insert failed:", evErr);
+                if (evErr) {
+                  // REGISTRAR E SEGUIR: o pipeline abaixo ainda pode processar a
+                  // mensagem; a Meta reentrega o lote inteiro em 5xx.
+                  console.error("wa_cloud_eventos insert failed:", evErr);
+                  await registrarFalhaSegura("wa-cloud-webhook.evento", evErr, {
+                    wa_message_id: waId,
+                    tipo: tipoBruto,
+                  });
+                }
 
                 if (tipoBruto !== "text") {
                   console.warn(
@@ -267,29 +285,47 @@ export const Route = createFileRoute("/api/public/hooks/whatsapp-cloud")({
                     tag: "wa-cloud-webhook",
                   });
                   if (waId) {
-                    await supabaseAdmin
+                    // REGISTRAR E SEGUIR: a mensagem já foi processada; a marca
+                    // de "processado" é só idempotência.
+                    const marcado = await supabaseAdmin
                       .from("wa_cloud_eventos")
                       .update({ processado: true })
                       .eq("wa_message_id", waId);
+                    if (marcado.error) {
+                      await registrarFalhaSegura("wa-cloud-webhook.marcarProcessado", marcado.error, {
+                        wa_message_id: waId,
+                      });
+                    }
                   }
                 } catch (e) {
                   const m = e instanceof Error ? e.message : String(e);
                   console.error(`[wa-cloud-webhook] pipeline falhou: ${m}`);
+                  await registrarFalhaSegura("wa-cloud-webhook.pipeline", e, {
+                    wa_message_id: waId,
+                    phone_mascarado: mascararTelefoneLog(phone),
+                  });
                   if (waId) {
-                    await supabaseAdmin
+                    const marcadoErro = await supabaseAdmin
                       .from("wa_cloud_eventos")
                       .update({ erro: m.slice(0, 500) })
                       .eq("wa_message_id", waId);
+                    if (marcadoErro.error) {
+                      await registrarFalhaSegura("wa-cloud-webhook.marcarErro", marcadoErro.error, {
+                        wa_message_id: waId,
+                      });
+                    }
                   }
                 }
               }
             }
           }
         } catch (e) {
+          // REGISTRAR E SEGUIR: a Meta exige 200; erro aqui vira incidente.
           console.error(
             "[wa-cloud-webhook] erro:",
             e instanceof Error ? e.message : String(e),
           );
+          await registrarFalhaSegura("wa-cloud-webhook.lote", e);
         }
 
         // A Meta exige 200 rápido sempre.

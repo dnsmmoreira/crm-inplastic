@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
+import { registrarFalhaSegura } from "@/lib/guard-erros";
 
 /** Mascara o telefone deixando visíveis apenas os 4 últimos dígitos. */
 function mascararPhone(phone: string) {
@@ -237,7 +238,9 @@ export const testarEnvioCloud = createServerFn({ method: "POST" })
         .maybeSingle();
       let conversaId = existente?.id ?? null;
       if (!conversaId) {
-        const { data: criada } = await supabaseAdmin
+        // REGISTRAR E SEGUIR: a mensagem JÁ saiu pelo WhatsApp; abortar não a
+        // desfaz. Sem conversa, só perdemos a persistência do histórico.
+        const { data: criada, error: cErr } = await supabaseAdmin
           .from("whatsapp_conversas")
           .insert({
             phone,
@@ -248,16 +251,26 @@ export const testarEnvioCloud = createServerFn({ method: "POST" })
           })
           .select("id")
           .single();
+        if (cErr) {
+          await registrarFalhaSegura("zapi-painel.criarConversa", cErr, { usuario_id: userId });
+        }
         conversaId = criada?.id ?? null;
       }
       if (conversaId) {
-        await supabaseAdmin.from("whatsapp_mensagens").insert({
+        // REGISTRAR E SEGUIR: idem — envio já efetivado.
+        const insMsg = await supabaseAdmin.from("whatsapp_mensagens").insert({
           conversa_id: conversaId,
           direcao: "saida",
           autor: "vendedor",
           conteudo,
           usuario_id: userId,
         });
+        if (insMsg.error) {
+          await registrarFalhaSegura("zapi-painel.registrarMensagem", insMsg.error, {
+            conversa_id: conversaId,
+            usuario_id: userId,
+          });
+        }
       }
     }
 

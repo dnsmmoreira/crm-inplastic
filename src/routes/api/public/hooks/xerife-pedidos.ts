@@ -179,7 +179,9 @@ async function runXerifePedidos(
     if (dryRun) return true;
     // Marcador do pedido na descrição para o hasOpenTaskForPedido conseguir dedupe
     const descricaoComTag = `[pedido:${t.pedidoId}] ${t.descricao}`;
-    await sb.from("tarefas").insert({
+    // REGISTRAR E SEGUIR: cron de pedidos; a regra é reavaliada na próxima
+    // rodada, mas a falha precisa aparecer em /falhas.
+    const insTarefa = await sb.from("tarefas").insert({
       lead_id: t.leadId,
       owner_id: t.ownerId,
       title: t.titulo,
@@ -191,6 +193,12 @@ async function runXerifePedidos(
       status: "pendente",
       origem: "xerife",
     });
+    if (insTarefa?.error) {
+      await registrarFalhaSegura("xerife-pedidos.criarTarefa", insTarefa.error, {
+        regra: t.regra,
+        pedido_id: t.pedidoId,
+      });
+    }
     await logAction(sb, {
       regra: t.regra,
       leadId: t.leadId,

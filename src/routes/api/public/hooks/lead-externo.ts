@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { registrarFalhaSegura } from "@/lib/guard-erros";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -101,7 +102,9 @@ export const Route = createFileRoute("/api/public/hooks/lead-externo")({
           conversaId = nova.id;
         } else {
           conversaId = existente.id;
-          await supabaseAdmin
+          // REGISTRAR E SEGUIR: a conversa já existe; o UPDATE abaixo (passo 3)
+          // reaplica ia_ativa=false. Registra com o protocolo do OPA.
+          const upExistente = await supabaseAdmin
             .from("whatsapp_conversas")
             .update({
               ia_ativa: false,
@@ -109,6 +112,12 @@ export const Route = createFileRoute("/api/public/hooks/lead-externo")({
               updated_at: new Date().toISOString(),
             })
             .eq("id", conversaId);
+          if (upExistente.error) {
+            await registrarFalhaSegura("lead-externo.atualizarConversa", upExistente.error, {
+              conversa_id: conversaId,
+              protocolo_opa: body.protocolo_opa ?? null,
+            });
+          }
         }
 
         // 2) Lead
@@ -151,7 +160,10 @@ export const Route = createFileRoute("/api/public/hooks/lead-externo")({
           leadId = lead.id;
         }
 
-        await supabaseAdmin
+        // ABORTAR: sem o vínculo lead↔conversa a IA continuaria respondendo e o
+        // atendimento humano não acha o lead. Nada foi enviado ao cliente ainda
+        // e o remetente (OPA/n8n) reentrega em 5xx; lead/conversa são reusados.
+        const vincErr = await supabaseAdmin
           .from("whatsapp_conversas")
           .update({
             lead_id: leadId,
@@ -161,6 +173,14 @@ export const Route = createFileRoute("/api/public/hooks/lead-externo")({
             updated_at: new Date().toISOString(),
           })
           .eq("id", conversaId);
+        if (vincErr.error) {
+          await registrarFalhaSegura("lead-externo.vincularConversa", vincErr.error, {
+            conversa_id: conversaId,
+            lead_id: leadId,
+            protocolo_opa: body.protocolo_opa ?? null,
+          });
+          return json({ error: "falha ao vincular conversa ao lead" }, 500);
+        }
 
         // 3) Resumo da IA como nota no lead + trilha no chat
         if (resumo || body.motivo) {
@@ -171,7 +191,14 @@ export const Route = createFileRoute("/api/public/hooks/lead-externo")({
               type: "note",
               content: `Resumo da IA (Gabriel) — origem WhatsApp Inplastic/OPA:\n${resumo}`,
             });
-            if (rErr) console.error("[lead-externo] falha ao gravar resumo:", rErr.message);
+            if (rErr) {
+            // REGISTRAR E SEGUIR: nota do lead é complementar.
+            console.error("[lead-externo] falha ao gravar resumo:", rErr.message);
+            await registrarFalhaSegura("lead-externo.resumoLead", rErr, {
+              lead_id: leadId,
+              protocolo_opa: body.protocolo_opa ?? null,
+            });
+          }
           }
 
           const { error: mErr } = await supabaseAdmin.from("whatsapp_mensagens").insert({
@@ -192,7 +219,14 @@ export const Route = createFileRoute("/api/public/hooks/lead-externo")({
               .filter((l) => l !== null)
               .join("\n"),
           });
-          if (mErr) console.error("[lead-externo] falha ao gravar resumo no chat:", mErr.message);
+          if (mErr) {
+            // REGISTRAR E SEGUIR: trilha no chat é complementar.
+            console.error("[lead-externo] falha ao gravar resumo no chat:", mErr.message);
+            await registrarFalhaSegura("lead-externo.resumoChat", mErr, {
+              conversa_id: conversaId,
+              protocolo_opa: body.protocolo_opa ?? null,
+            });
+          }
         }
 
         // 4) Round-robin + notificação ao vendedor
@@ -224,7 +258,9 @@ export const Route = createFileRoute("/api/public/hooks/lead-externo")({
         }
 
         // 6) Registro da ação
-        await supabaseAdmin.from("lead_ai_actions").insert({
+        // REGISTRAR E SEGUIR: mensagem de re-engajamento já pode ter saído para
+        // o cliente; abortar aqui não desfaz nada e faria o OPA reenviar tudo.
+        const insAcao = await supabaseAdmin.from("lead_ai_actions").insert({
           lead_id: leadId,
           owner_id: vendedorId,
           type: "qualify",
@@ -248,6 +284,13 @@ export const Route = createFileRoute("/api/public/hooks/lead-externo")({
             erro_reengajamento: erroReengajamento,
           },
         });
+        if (insAcao.error) {
+          await registrarFalhaSegura("lead-externo.registroAcao", insAcao.error, {
+            lead_id: leadId,
+            conversa_id: conversaId,
+            protocolo_opa: body.protocolo_opa ?? null,
+          });
+        }
 
         return json({
           ok: true,

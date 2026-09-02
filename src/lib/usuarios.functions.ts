@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
-import { assertRpcPermissao } from "@/lib/guard-erros";
+import { assertNoError, assertRpcPermissao } from "@/lib/guard-erros";
 import { requireSupabaseAuth as requireSupabaseAuthBase } from "@/integrations/supabase/auth-middleware";
 
 /* ------------------------------------------------------------------ */
@@ -629,7 +629,15 @@ export const softDeleteUsuario = createServerFn({ method: "POST" })
       .eq("id", data.userId);
     if (error) throw new Error(error.message);
 
-    await sb.from("fila_vendedores").delete().eq("user_id", data.userId);
+    // ABORTAR: excluir a conta deixando o usuário na fila de rodízio faria o
+    // round-robin distribuir conversas para um vendedor inexistente.
+    const delFila = await sb.from("fila_vendedores").delete().eq("user_id", data.userId);
+    await assertNoError(
+      delFila,
+      "usuarios.excluirUsuario/fila_vendedores",
+      { userId: data.userId },
+      "Não foi possível remover o usuário da fila de rodízio. Nada foi excluído.",
+    );
     await revokeSessions(sb, data.userId);
     await logAudit(sb, data.userId, context.userId, [
       { campo: "exclusao", anterior: "ativo", novo: "excluído (lógico)" },
