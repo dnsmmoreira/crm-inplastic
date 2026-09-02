@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PedidosEmAbertoReport } from "@/components/relatorios/PedidosEmAbertoReport";
+import { ProcessoReport } from "@/components/relatorios/ProcessoReport";
 import { cn } from "@/lib/utils";
 import { useAuth, hasPerm } from "@/hooks/use-auth";
 import { PERM_PEDIDOS_VER_TODOS } from "@/lib/permissoes";
@@ -159,7 +160,12 @@ function RelatoriosPage() {
         <TabsList className="no-print">
           <TabsTrigger value="pedidos">Pedidos</TabsTrigger>
           {verGlobal && <TabsTrigger value="abertos">Pedidos em Aberto</TabsTrigger>}
+          <TabsTrigger value="processo">Processo</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="processo" className="space-y-6">
+          <ProcessoReport />
+        </TabsContent>
 
         {verGlobal && (
           <TabsContent value="abertos" className="space-y-6">
