@@ -25,6 +25,7 @@ import {
   Building2,
   LogOut,
   UserCog,
+  ListChecks,
   Radio,
   ClipboardList,
   Trophy,
@@ -45,6 +46,10 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import { useIsAdmin } from "@/lib/crm-store";
+import { useServerFn } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
+import { listarPendenciasCadastro } from "@/lib/pendencias-cadastro.functions";
+import { PENDENCIAS_QUERY_KEY, PENDENCIAS_STALE_MS } from "@/lib/pendencias-cadastro.query";
 import { AuthProvider, useAuth, hasPerm } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { NotificacoesBell } from "@/components/layout/NotificacoesBell";
@@ -234,6 +239,8 @@ type NavItem = {
   icon: typeof LayoutDashboard;
   show: (c: NavCtx) => boolean;
   accent?: Accent;
+  /** Marca o item que exibe o contador de pendências de cadastro. */
+  badge?: "pendencias";
 };
 
 type NavGroup = {
@@ -337,6 +344,13 @@ const NAV_GROUPS: NavGroup[] = [
     icon: BarChart3,
     items: [
       { to: "/relatorios", label: "Relatórios", icon: BarChart3, show: key("relatorios.ver") },
+      {
+        to: "/pendencias",
+        label: "Pendências de cadastro",
+        icon: ListChecks,
+        show: always,
+        badge: "pendencias",
+      },
       { to: "/estoque", label: "Estoque", icon: Boxes, show: key("estoque.ver") },
       { to: "/licitacoes", label: "Licitações", icon: Gavel, show: key("licitacoes.gerenciar") },
 
