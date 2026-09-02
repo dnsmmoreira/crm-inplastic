@@ -1,7 +1,7 @@
 /**
  * Regras de aprovação financeira (v1) na geração de pedido a partir de proposta.
  *
- * Lógica PURA e testável — a server fn `gerarPedidoInterno` (src/lib/omie.functions.ts)
+ * Lógica PURA e testável — a server fn `gerarPedidoInterno` (src/lib/pedidos-gerar.functions.ts)
  * apenas coleta os insumos (score do lead, valor total dos itens, pedidos anteriores
  * do lead) e delega a decisão para cá. O bypass de admin continua fora daqui:
  * admin gera direto, sem passar por estas regras.

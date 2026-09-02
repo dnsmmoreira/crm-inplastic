@@ -83,7 +83,7 @@ describe("efeitos de entrada de etapa", () => {
   });
 
   it("a criação do pedido chama aoEntrarNaEtapa com a etapa roteada", () => {
-    const src = readFileSync(resolve(__dirname, "omie.functions.ts"), "utf8");
+    const src = readFileSync(resolve(__dirname, "pedidos-gerar.functions.ts"), "utf8");
     expect(src).toContain("aoEntrarNaEtapa(sb, novoPedido.id, decisao.stage)");
     expect(src).toMatch(/efeitos de entrada falharam/);
   });

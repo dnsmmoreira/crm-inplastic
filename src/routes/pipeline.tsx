@@ -29,7 +29,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { NewLeadDialog, LeadDrawer } from "@/components/crm/LeadDrawer";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { gerarPedidoInterno } from "@/lib/omie.functions";
+import { gerarPedidoInterno } from "@/lib/pedidos-gerar.functions";
 import { RomaneiosPosPedidoDialog } from "@/components/pedidos/RomaneiosPosPedidoDialog";
 
 type SortMode = "default" | "urgency" | "urgency-desc";

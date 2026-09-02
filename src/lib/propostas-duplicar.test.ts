@@ -60,7 +60,7 @@ describe("duplicação de proposta", () => {
     expect(inserida["number"]).toBe("2026-0100");
     expect(inserida["sent_at"]).toBeNull();
     expect(inserida["order_created_at"]).toBeNull();
-    expect(inserida["omie_numero_pedido"]).toBeNull();
+    expect(inserida["approval_requested_at"]).toBeNull();
     expect(inserida["edit_unlocked_at"]).toBeNull();
   });
 });

@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
-import { moverParaGanhoOmie } from "@/lib/omie.functions";
+import { moverParaGanhoOmie } from "@/lib/pedidos-gerar.functions";
 import { registrarPerdaLead } from "@/lib/leads-perda.functions";
 import { useCrm, type StageId } from "@/lib/crm-store";
 

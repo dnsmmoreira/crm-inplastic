@@ -2,7 +2,25 @@ import { MargemPropostaCard } from "@/components/arena/MargemPropostaCard";
 import { createFileRoute, Link, useNavigate, useBlocker } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useDuplicarProposta } from "@/hooks/use-duplicar-proposta";
-import { ArrowLeft, Plus, Trash2, Printer, RefreshCw, Send, CheckCircle2, XCircle, Check, ChevronsUpDown, Search, AlertCircle, Lock, Unlock, ShieldAlert, Mail, Copy } from "lucide-react";
+import {
+  ArrowLeft,
+  Plus,
+  Trash2,
+  Printer,
+  RefreshCw,
+  Send,
+  CheckCircle2,
+  XCircle,
+  Check,
+  ChevronsUpDown,
+  Search,
+  AlertCircle,
+  Lock,
+  Unlock,
+  ShieldAlert,
+  Mail,
+  Copy,
+} from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { format } from "date-fns";
@@ -13,9 +31,21 @@ const MAX_PRICE = 10_000_000;
 const MAX_DESC = 200;
 
 const itemSchema = z.object({
-  description: z.string().trim().min(1, "Descrição não pode ficar vazia").max(MAX_DESC, `Descrição deve ter até ${MAX_DESC} caracteres`),
-  quantity: z.number({ invalid_type_error: "Quantidade inválida" }).finite("Quantidade inválida").positive("Quantidade deve ser maior que zero").max(MAX_QTY, `Quantidade máxima: ${MAX_QTY.toLocaleString("pt-BR")}`),
-  unitPrice: z.number({ invalid_type_error: "Preço inválido" }).finite("Preço inválido").nonnegative("Preço não pode ser negativo").max(MAX_PRICE, "Preço acima do limite permitido"),
+  description: z
+    .string()
+    .trim()
+    .min(1, "Descrição não pode ficar vazia")
+    .max(MAX_DESC, `Descrição deve ter até ${MAX_DESC} caracteres`),
+  quantity: z
+    .number({ invalid_type_error: "Quantidade inválida" })
+    .finite("Quantidade inválida")
+    .positive("Quantidade deve ser maior que zero")
+    .max(MAX_QTY, `Quantidade máxima: ${MAX_QTY.toLocaleString("pt-BR")}`),
+  unitPrice: z
+    .number({ invalid_type_error: "Preço inválido" })
+    .finite("Preço inválido")
+    .nonnegative("Preço não pode ser negativo")
+    .max(MAX_PRICE, "Preço acima do limite permitido"),
 });
 
 const addItemSchema = itemSchema.pick({ quantity: true, unitPrice: true }).extend({
@@ -34,13 +64,16 @@ import {
   PAYMENT_FORMS,
   type PaymentForm,
   type PaymentTerm,
-
   type PaymentInstallment,
 } from "@/lib/crm-store";
 import { calculateFreightDistance } from "@/lib/freight.functions";
-import { gerarPedidoOmie } from "@/lib/omie.functions";
+import { gerarPedidoOmie } from "@/lib/pedidos-gerar.functions";
 import { formatDocumentoCliente } from "@/lib/clientes";
-import { getVendedorDaProposta, type VendedorContato, type ClienteRow } from "@/lib/clientes.functions";
+import {
+  getVendedorDaProposta,
+  type VendedorContato,
+  type ClienteRow,
+} from "@/lib/clientes.functions";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { enviarPropostaWhatsapp, enviarPropostaEmail } from "@/lib/propostas.functions";
 
@@ -72,13 +105,15 @@ import { markDeleted } from "@/lib/delete-intents";
 import { ConferenciaFinalDialog } from "@/components/propostas/ConferenciaFinalDialog";
 import { RomaneiosPosPedidoDialog } from "@/components/pedidos/RomaneiosPosPedidoDialog";
 
-
 /** Parcelas de exibição (dias + percentual da condição) a partir do total da proposta. */
 function buildTermInstallments(term: PaymentTerm | undefined, total: number) {
   if (!term) return [];
   const parcelas = termParcelas(term);
   if (parcelas.length === 0) return [];
-  const valores = valoresPorPercentual(total, parcelas.map((p) => p.percentual));
+  const valores = valoresPorPercentual(
+    total,
+    parcelas.map((p) => p.percentual),
+  );
   return parcelas.map((p, i) => ({ days: p.dias, percentual: p.percentual, amount: valores[i] }));
 }
 
@@ -116,21 +151,42 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { cn } from "@/lib/utils";
-
 
 export const Route = createFileRoute("/propostas/$id")({
   component: PropostaDetalhe,
 });
 
-const STATUS_META: Record<ProposalStatus, { label: string; variant: "default" | "secondary" | "outline" | "destructive"; className?: string }> = {
+const STATUS_META: Record<
+  ProposalStatus,
+  {
+    label: string;
+    variant: "default" | "secondary" | "outline" | "destructive";
+    className?: string;
+  }
+> = {
   rascunho: { label: "Rascunho", variant: "outline" },
   enviada: { label: "Enviada", variant: "secondary" },
-  aguardando_aprovacao: { label: "Aguardando aprovação ADM", variant: "outline", className: "border-amber-500 text-amber-700 bg-amber-500/10" },
+  aguardando_aprovacao: {
+    label: "Aguardando aprovação ADM",
+    variant: "outline",
+    className: "border-amber-500 text-amber-700 bg-amber-500/10",
+  },
   aprovada: { label: "Aprovada", variant: "default" },
   recusada: { label: "Recusada", variant: "destructive" },
-  pedido: { label: "Pedido gerado", variant: "default", className: "bg-emerald-600 hover:bg-emerald-600" },
+  pedido: {
+    label: "Pedido gerado",
+    variant: "default",
+    className: "bg-emerald-600 hover:bg-emerald-600",
+  },
 };
 
 /** Peso e cubagem calculados a partir dos itens da proposta e do catálogo de produtos. */
@@ -156,7 +212,9 @@ function PropostaDetalhe() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const proposal = useCrm((s) => s.proposals.find((p) => p.id === id));
-  const lead = useCrm((s) => (proposal ? s.leads.find((l) => l.id === proposal.leadId) : undefined));
+  const lead = useCrm((s) =>
+    proposal ? s.leads.find((l) => l.id === proposal.leadId) : undefined,
+  );
   const products = useCrm((s) => s.products);
   const emitters = useCrm((s) => s.emitters);
   const defaultEmitterId = useCrm((s) => s.defaultEmitterId);
@@ -168,12 +226,16 @@ function PropostaDetalhe() {
     [emitters, proposal?.emitterId, defaultEmitterId],
   );
 
-
   // Sugestão dinâmica de empresa emitente com base nos flags fiscais do cliente vinculado.
-  const [emitterSuggestion, setEmitterSuggestion] = useState<{ id: string; reason: string } | null>(null);
+  const [emitterSuggestion, setEmitterSuggestion] = useState<{ id: string; reason: string } | null>(
+    null,
+  );
   useEffect(() => {
     const clienteId = (lead as { clienteId?: string | null } | undefined)?.clienteId;
-    if (!clienteId) { setEmitterSuggestion(null); return; }
+    if (!clienteId) {
+      setEmitterSuggestion(null);
+      return;
+    }
     let alive = true;
     (async () => {
       try {
@@ -193,13 +255,25 @@ function PropostaDetalhe() {
         const prevEmitter = (prev?.[0] as { emitter_id?: string } | undefined)?.emitter_id;
         if (!alive) return;
         if (prevEmitter) {
-          setEmitterSuggestion({ id: prevEmitter, reason: "Histórico: última proposta deste cliente usou esta empresa." });
+          setEmitterSuggestion({
+            id: prevEmitter,
+            reason: "Histórico: última proposta deste cliente usou esta empresa.",
+          });
         } else if (cli?.suframa_isento) {
-          setEmitterSuggestion({ id: "taoplast", reason: "Cliente com SUFRAMA — sugerido TAOPLAST." });
+          setEmitterSuggestion({
+            id: "taoplast",
+            reason: "Cliente com SUFRAMA — sugerido TAOPLAST.",
+          });
         } else if (cli?.simples_optante) {
-          setEmitterSuggestion({ id: "licitaplas", reason: "Cliente optante do Simples — sugerido LICITAPLAS." });
+          setEmitterSuggestion({
+            id: "licitaplas",
+            reason: "Cliente optante do Simples — sugerido LICITAPLAS.",
+          });
         } else if (cli?.empresa_padrao) {
-          setEmitterSuggestion({ id: String(cli.empresa_padrao).toLowerCase(), reason: "Empresa padrão do cliente." });
+          setEmitterSuggestion({
+            id: String(cli.empresa_padrao).toLowerCase(),
+            reason: "Empresa padrão do cliente.",
+          });
         } else {
           setEmitterSuggestion(null);
         }
@@ -207,7 +281,9 @@ function PropostaDetalhe() {
         if (alive) setEmitterSuggestion(null);
       }
     })();
-    return () => { alive = false; };
+    return () => {
+      alive = false;
+    };
   }, [lead, id]);
 
   const paymentTerms = useCrm((s) => s.paymentTerms);
@@ -221,13 +297,15 @@ function PropostaDetalhe() {
   const [productPickerOpen, setProductPickerOpen] = useState(false);
   const [productPickerId, setProductPickerId] = useState<string>("");
   const [productPickerQty, setProductPickerQty] = useState<number>(1);
-  const [rowErrors, setRowErrors] = useState<Record<string, { field: "description" | "quantity" | "unitPrice"; message: string } | null>>({});
+  const [rowErrors, setRowErrors] = useState<
+    Record<string, { field: "description" | "quantity" | "unitPrice"; message: string } | null>
+  >({});
   const [dirty, setDirty] = useState(false);
   const freightConfig = useCrm((s) => s.freightConfig);
   const [freightLoading, setFreightLoading] = useState(false);
   const calcFreight = useServerFn(calculateFreightDistance);
   const gerarPedido = useServerFn(gerarPedidoOmie);
-  const [omieBusy, setOmieBusy] = useState(false);
+  const [gerandoPedido, setGerandoPedido] = useState(false);
   // Gatilho opcional dos romaneios logo depois que o pedido nasce.
   const [romaneioAlvo, setRomaneioAlvo] = useState<{ id: string; number?: string } | null>(null);
   /** Conferência final obrigatória antes de gerar/solicitar o pedido. */
@@ -247,7 +325,6 @@ function PropostaDetalhe() {
   });
   const transportadoras = transportadorasQ.data ?? [];
 
-
   const selectedTerm = useMemo(
     () => paymentTerms.find((t: PaymentTerm) => t.id === proposal?.paymentTermId) ?? null,
     [paymentTerms, proposal?.paymentTermId],
@@ -265,7 +342,9 @@ function PropostaDetalhe() {
     enabled: !!proposal,
     staleTime: 5 * 60 * 1000,
     queryFn: () =>
-      vendedorFn({ data: { leadId: proposal?.leadId ?? null, ownerId: proposal?.ownerId ?? null } }),
+      vendedorFn({
+        data: { leadId: proposal?.leadId ?? null, ownerId: proposal?.ownerId ?? null },
+      }),
   });
   const vendedor = vendedorQ.data ?? null;
 
@@ -273,18 +352,27 @@ function PropostaDetalhe() {
   const clienteId = (lead as { clienteId?: string | null } | undefined)?.clienteId ?? null;
   const [clienteRow, setClienteRow] = useState<ClienteRow | null>(null);
   useEffect(() => {
-    if (!clienteId) { setClienteRow(null); return; }
+    if (!clienteId) {
+      setClienteRow(null);
+      return;
+    }
     let alive = true;
     (async () => {
       try {
         const { supabase } = await import("@/integrations/supabase/client");
-        const { data } = await supabase.from("clientes").select("*").eq("id", clienteId).maybeSingle();
+        const { data } = await supabase
+          .from("clientes")
+          .select("*")
+          .eq("id", clienteId)
+          .maybeSingle();
         if (alive) setClienteRow((data as ClienteRow | null) ?? null);
       } catch {
         if (alive) setClienteRow(null);
       }
     })();
-    return () => { alive = false; };
+    return () => {
+      alive = false;
+    };
   }, [clienteId]);
 
   // Pessoa Física: só condições à vista ou cartão (permite_pf).
@@ -328,19 +416,25 @@ function PropostaDetalhe() {
     const term = paymentTerms.find((t: PaymentTerm) => t.id === proposal.paymentTermId);
     if (term && !term.permitePf) {
       _updateProposal(proposal.id, { paymentTermId: undefined });
-      toast.warning("Condição a prazo não permitida para Pessoa Física — escolha à vista ou cartão.");
+      toast.warning(
+        "Condição a prazo não permitida para Pessoa Física — escolha à vista ou cartão.",
+      );
     }
   }, [isClientePf, proposal, paymentTerms, _updateProposal]);
 
-
-  
   const isAdmin = useIsAdmin();
   const { duplicando, duplicarProposta } = useDuplicarProposta();
 
   const currentUser = useCurrentUser();
-  const approver = proposal?.approvedByUserId ? USERS.find((u) => u.id === proposal.approvedByUserId) : null;
-  const editRequester = proposal?.editRequestedByUserId ? USERS.find((u) => u.id === proposal.editRequestedByUserId) : null;
-  const editUnlocker = proposal?.editUnlockedByUserId ? USERS.find((u) => u.id === proposal.editUnlockedByUserId) : null;
+  const approver = proposal?.approvedByUserId
+    ? USERS.find((u) => u.id === proposal.approvedByUserId)
+    : null;
+  const editRequester = proposal?.editRequestedByUserId
+    ? USERS.find((u) => u.id === proposal.editRequestedByUserId)
+    : null;
+  const editUnlocker = proposal?.editUnlockedByUserId
+    ? USERS.find((u) => u.id === proposal.editUnlockedByUserId)
+    : null;
 
   // Pedido fechado é read-only, salvo se ADM liberou edição.
   const isPedido = proposal?.status === "pedido";
@@ -353,7 +447,6 @@ function PropostaDetalhe() {
   const [editReqReason, setEditReqReason] = useState("");
   const [releaseOpen, setReleaseOpen] = useState(false);
 
-
   // Auto-recalcula peso e cubagem a partir do catálogo sempre que os itens mudam.
   const autoTransport = useMemo(
     () => (proposal ? computeAutoTransport(proposal.items, products) : null),
@@ -362,7 +455,8 @@ function PropostaDetalhe() {
   useEffect(() => {
     if (!proposal || !autoTransport) return;
     const t = proposal.transport;
-    if (t.grossWeightKg === autoTransport.grossWeightKg && t.cubageM3 === autoTransport.cubageM3) return;
+    if (t.grossWeightKg === autoTransport.grossWeightKg && t.cubageM3 === autoTransport.cubageM3)
+      return;
     _updateProposal(proposal.id, {
       transport: {
         ...t,
@@ -401,11 +495,31 @@ function PropostaDetalhe() {
   };
 
   // Wrappers: auto-mark the proposal as dirty on any mutation e bloqueia se pedido fechado.
-  const addItem: typeof _addItem = (...a) => { if (guard()) return; markDirty(); return _addItem(...a); };
-  const updateItem: typeof _updateItem = (...a) => { if (guard()) return; markDirty(); return _updateItem(...a); };
-  const removeItem: typeof _removeItem = (...a) => { if (guard()) return; markDirty(); return _removeItem(...a); };
-  const updateProposal: typeof _updateProposal = (...a) => { if (guard()) return; markDirty(); return _updateProposal(...a); };
-  const setStatus: typeof _setStatus = (...a) => { if (guard()) return; markDirty(); return _setStatus(...a); };
+  const addItem: typeof _addItem = (...a) => {
+    if (guard()) return;
+    markDirty();
+    return _addItem(...a);
+  };
+  const updateItem: typeof _updateItem = (...a) => {
+    if (guard()) return;
+    markDirty();
+    return _updateItem(...a);
+  };
+  const removeItem: typeof _removeItem = (...a) => {
+    if (guard()) return;
+    markDirty();
+    return _removeItem(...a);
+  };
+  const updateProposal: typeof _updateProposal = (...a) => {
+    if (guard()) return;
+    markDirty();
+    return _updateProposal(...a);
+  };
+  const setStatus: typeof _setStatus = (...a) => {
+    if (guard()) return;
+    markDirty();
+    return _setStatus(...a);
+  };
 
   // Envio real da proposta por WhatsApp (link da página pública).
   const enviarPropostaFn = useServerFn(enviarPropostaWhatsapp);
@@ -444,7 +558,10 @@ function PropostaDetalhe() {
     const base = proposal.billingForecastDate;
     const parcelasCond = novo ? termParcelas(novo) : [];
     const totalAtual = proposalTotals(proposal, novo?.acrescimoPercent ?? 0).total;
-    const valores = valoresPorPercentual(totalAtual, parcelasCond.map((p) => p.percentual));
+    const valores = valoresPorPercentual(
+      totalAtual,
+      parcelasCond.map((p) => p.percentual),
+    );
     updateProposal(proposal.id, {
       paymentTermId: termId,
       installments:
@@ -461,9 +578,6 @@ function PropostaDetalhe() {
     });
   };
 
-
-
-
   const validateAndUpdateItem = (
     itemId: string,
     field: "description" | "quantity" | "unitPrice",
@@ -472,7 +586,10 @@ function PropostaDetalhe() {
     const value = field === "description" ? raw : Number(raw);
     const parsed = itemSchema.shape[field].safeParse(value);
     if (!parsed.success) {
-      setRowErrors((prev) => ({ ...prev, [itemId]: { field, message: parsed.error.issues[0]?.message ?? "Valor inválido" } }));
+      setRowErrors((prev) => ({
+        ...prev,
+        [itemId]: { field, message: parsed.error.issues[0]?.message ?? "Valor inválido" },
+      }));
       updateItem(proposal!.id, itemId, { [field]: value } as never);
       return;
     }
@@ -486,7 +603,7 @@ function PropostaDetalhe() {
       toast.error("Adicione ao menos um item antes de fechar o pedido.");
       return;
     }
-    setOmieBusy(true);
+    setGerandoPedido(true);
     const t = toast.loading(requerAprovacao ? "Solicitando aprovação..." : "Gerando pedido...");
     try {
       const r = await gerarPedido({
@@ -522,18 +639,21 @@ function PropostaDetalhe() {
       setDirty(false);
     } catch (e) {
       toast.dismiss(t);
-      toast.error("Erro ao gerar pedido", { description: e instanceof Error ? e.message : String(e) });
+      toast.error("Erro ao gerar pedido", {
+        description: e instanceof Error ? e.message : String(e),
+      });
     } finally {
-      setOmieBusy(false);
+      setGerandoPedido(false);
     }
   }
-
 
   if (!proposal || !lead) {
     return (
       <div className="p-8">
         <p className="text-sm text-muted-foreground">Proposta não encontrada.</p>
-        <Button variant="link" onClick={() => navigate({ to: "/propostas" })}>Voltar</Button>
+        <Button variant="link" onClick={() => navigate({ to: "/propostas" })}>
+          Voltar
+        </Button>
       </div>
     );
   }
@@ -551,9 +671,14 @@ function PropostaDetalhe() {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl md:text-2xl font-semibold">Proposta {proposal.number}</h1>
-              <Badge variant={s.variant} className={s.className}>{s.label}</Badge>
+              <Badge variant={s.variant} className={s.className}>
+                {s.label}
+              </Badge>
               {proposal.transport.freightPayer === "CIF" && proposal.status !== "pedido" && (
-                <Badge variant="outline" className="border-amber-500 text-amber-700 bg-amber-500/10 gap-1">
+                <Badge
+                  variant="outline"
+                  className="border-amber-500 text-amber-700 bg-amber-500/10 gap-1"
+                >
                   <AlertCircle className="h-3 w-3" /> CIF · requer aprovação do supervisor
                 </Badge>
               )}
@@ -563,17 +688,26 @@ function PropostaDetalhe() {
                 </Badge>
               )}
               {isPedido && !editUnlocked && !editRequested && (
-                <Badge variant="outline" className="border-slate-400 text-slate-700 bg-slate-500/10 gap-1">
+                <Badge
+                  variant="outline"
+                  className="border-slate-400 text-slate-700 bg-slate-500/10 gap-1"
+                >
                   <Lock className="h-3 w-3" /> Pedido bloqueado para edição
                 </Badge>
               )}
               {editRequested && (
-                <Badge variant="outline" className="border-amber-500 text-amber-700 bg-amber-500/10 gap-1">
+                <Badge
+                  variant="outline"
+                  className="border-amber-500 text-amber-700 bg-amber-500/10 gap-1"
+                >
                   <ShieldAlert className="h-3 w-3" /> Alteração solicitada — aguardando ADM
                 </Badge>
               )}
               {editUnlocked && (
-                <Badge variant="outline" className="border-emerald-500 text-emerald-700 bg-emerald-500/10 gap-1">
+                <Badge
+                  variant="outline"
+                  className="border-emerald-500 text-emerald-700 bg-emerald-500/10 gap-1"
+                >
                   <Unlock className="h-3 w-3" /> Edição liberada pelo ADM
                 </Badge>
               )}
@@ -584,21 +718,34 @@ function PropostaDetalhe() {
               </p>
             )}
             <p className="text-xs text-muted-foreground">
-
-              Criada em {format(new Date(proposal.createdAt), "dd/MM/yyyy", { locale: ptBR })} · Vendedor: {vendedor?.name ?? owner?.name ?? "—"}
+              Criada em {format(new Date(proposal.createdAt), "dd/MM/yyyy", { locale: ptBR })} ·
+              Vendedor: {vendedor?.name ?? owner?.name ?? "—"}
               {proposal.approvedAt && approver && (
-                <> · Aprovada por <span className="font-medium text-foreground">{approver.name}</span> em {format(new Date(proposal.approvedAt), "dd/MM/yyyy HH:mm", { locale: ptBR })}</>
+                <>
+                  {" "}
+                  · Aprovada por{" "}
+                  <span className="font-medium text-foreground">{approver.name}</span> em{" "}
+                  {format(new Date(proposal.approvedAt), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                </>
               )}
               {editRequested && editRequester && proposal.editRequestedAt && (
-                <><br />Alteração solicitada por <span className="font-medium text-foreground">{editRequester.name}</span> em {format(new Date(proposal.editRequestedAt), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                <>
+                  <br />
+                  Alteração solicitada por{" "}
+                  <span className="font-medium text-foreground">{editRequester.name}</span> em{" "}
+                  {format(new Date(proposal.editRequestedAt), "dd/MM/yyyy HH:mm", { locale: ptBR })}
                   {proposal.editRequestReason ? <> — "{proposal.editRequestReason}"</> : null}
                 </>
               )}
               {editUnlocked && editUnlocker && proposal.editUnlockedAt && (
-                <><br />Edição liberada por <span className="font-medium text-foreground">{editUnlocker.name}</span> em {format(new Date(proposal.editUnlockedAt), "dd/MM/yyyy HH:mm", { locale: ptBR })}</>
+                <>
+                  <br />
+                  Edição liberada por{" "}
+                  <span className="font-medium text-foreground">{editUnlocker.name}</span> em{" "}
+                  {format(new Date(proposal.editUnlockedAt), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                </>
               )}
             </p>
-
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -650,13 +797,12 @@ function PropostaDetalhe() {
             <Button
               variant="default"
               className="gap-2"
-              disabled={omieBusy}
+              disabled={gerandoPedido}
               onClick={() => setConferencia({ open: true, requerAprovacao: !isAdmin })}
             >
               <CheckCircle2 className="h-4 w-4" /> {isAdmin ? "Gerar pedido" : "Solicitar pedido"}
             </Button>
           )}
-
 
           {/* Motivo calculado pelas regras de aprovação financeira. */}
           {proposal.status === "aguardando_aprovacao" && proposal.approvalReason && (
@@ -672,7 +818,7 @@ function PropostaDetalhe() {
           {proposal.status === "aguardando_aprovacao" && isAdmin && (
             <Button
               className="gap-2 bg-emerald-600 hover:bg-emerald-700"
-              disabled={omieBusy}
+              disabled={gerandoPedido}
               onClick={() => setConferencia({ open: true, requerAprovacao: false })}
             >
               <CheckCircle2 className="h-4 w-4" /> Aprovar liberação
@@ -683,13 +829,15 @@ function PropostaDetalhe() {
             pedidoId={romaneioAlvo?.id ?? null}
             pedidoNumber={romaneioAlvo?.number ?? null}
             open={romaneioAlvo !== null}
-            onOpenChange={(o) => { if (!o) setRomaneioAlvo(null); }}
+            onOpenChange={(o) => {
+              if (!o) setRomaneioAlvo(null);
+            }}
           />
 
           <ConferenciaFinalDialog
             open={conferencia.open}
             onOpenChange={(v) => setConferencia((c) => ({ ...c, open: v }))}
-            busy={omieBusy}
+            busy={gerandoPedido}
             confirmLabel={
               conferencia.requerAprovacao
                 ? "Confirmar e solicitar aprovação"
@@ -731,7 +879,10 @@ function PropostaDetalhe() {
           />
 
           {proposal.status === "aguardando_aprovacao" && !isAdmin && (
-            <Badge variant="outline" className="border-amber-500 text-amber-700 bg-amber-500/10 gap-1 self-center px-3 py-1.5">
+            <Badge
+              variant="outline"
+              className="border-amber-500 text-amber-700 bg-amber-500/10 gap-1 self-center px-3 py-1.5"
+            >
               <AlertCircle className="h-3.5 w-3.5" /> Aguardando liberação do supervisor
             </Badge>
           )}
@@ -741,7 +892,10 @@ function PropostaDetalhe() {
             <Button
               variant="outline"
               className="gap-2 border-amber-500 text-amber-700 hover:bg-amber-500/10"
-              onClick={() => { setEditReqReason(""); setEditReqOpen(true); }}
+              onClick={() => {
+                setEditReqReason("");
+                setEditReqOpen(true);
+              }}
             >
               <ShieldAlert className="h-4 w-4" /> Solicitar alteração
             </Button>
@@ -751,7 +905,11 @@ function PropostaDetalhe() {
               variant="ghost"
               className="gap-2 text-muted-foreground"
               onClick={() => {
-                _updateProposal(proposal.id, { editRequestedAt: undefined, editRequestReason: undefined, editRequestedByUserId: undefined });
+                _updateProposal(proposal.id, {
+                  editRequestedAt: undefined,
+                  editRequestReason: undefined,
+                  editRequestedByUserId: undefined,
+                });
                 toast.success("Solicitação de alteração cancelada");
               }}
             >
@@ -763,7 +921,8 @@ function PropostaDetalhe() {
               className="gap-2 bg-emerald-600 hover:bg-emerald-700"
               onClick={() => setReleaseOpen(true)}
             >
-              <Unlock className="h-4 w-4" /> {editRequested ? "Liberar alteração" : "Desbloquear edição"}
+              <Unlock className="h-4 w-4" />{" "}
+              {editRequested ? "Liberar alteração" : "Desbloquear edição"}
             </Button>
           )}
           {isPedido && editRequested && isAdmin && (
@@ -771,8 +930,14 @@ function PropostaDetalhe() {
               variant="outline"
               className="gap-2 border-destructive text-destructive hover:bg-destructive/10"
               onClick={() => {
-                _updateProposal(proposal.id, { editRequestedAt: undefined, editRequestReason: undefined, editRequestedByUserId: undefined });
-                toast.success("Solicitação recusada", { description: `${editRequester?.name ?? "Vendedor"} foi notificado — pedido permanece bloqueado.` });
+                _updateProposal(proposal.id, {
+                  editRequestedAt: undefined,
+                  editRequestReason: undefined,
+                  editRequestedByUserId: undefined,
+                });
+                toast.success("Solicitação recusada", {
+                  description: `${editRequester?.name ?? "Vendedor"} foi notificado — pedido permanece bloqueado.`,
+                });
               }}
             >
               <XCircle className="h-4 w-4" /> Recusar solicitação
@@ -783,7 +948,13 @@ function PropostaDetalhe() {
               variant="outline"
               className="gap-2"
               onClick={() => {
-                _updateProposal(proposal.id, { editUnlockedAt: undefined, editUnlockedByUserId: undefined, editRequestedAt: undefined, editRequestReason: undefined, editRequestedByUserId: undefined });
+                _updateProposal(proposal.id, {
+                  editUnlockedAt: undefined,
+                  editUnlockedByUserId: undefined,
+                  editRequestedAt: undefined,
+                  editRequestReason: undefined,
+                  editRequestedByUserId: undefined,
+                });
                 setDirty(false);
                 toast.success("Pedido re-bloqueado");
               }}
@@ -793,7 +964,13 @@ function PropostaDetalhe() {
           )}
 
           {!isPedido && (
-            <Button variant="outline" className="gap-2" onClick={() => { setStatus(proposal.id, "recusada"); }}>
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() => {
+                setStatus(proposal.id, "recusada");
+              }}
+            >
               <XCircle className="h-4 w-4" /> Recusar
             </Button>
           )}
@@ -812,7 +989,9 @@ function PropostaDetalhe() {
                   editRequestedByUserId: undefined,
                 });
                 setDirty(false);
-                toast.success("Alterações salvas", { description: "Pedido re-bloqueado automaticamente." });
+                toast.success("Alterações salvas", {
+                  description: "Pedido re-bloqueado automaticamente.",
+                });
                 return;
               }
               setDirty(false);
@@ -829,18 +1008,19 @@ function PropostaDetalhe() {
 
       <MargemPropostaCard propostaId={proposal.id} />
 
-
-
       {/* Confirm dialog for in-app navigation while dirty */}
       <AlertDialog
         open={blocker.status === "blocked"}
-        onOpenChange={(open) => { if (!open && blocker.status === "blocked") blocker.reset(); }}
+        onOpenChange={(open) => {
+          if (!open && blocker.status === "blocked") blocker.reset();
+        }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Sair sem salvar?</AlertDialogTitle>
             <AlertDialogDescription>
-              Você tem alterações nesta proposta que ainda não foram salvas. Se sair agora, elas continuam no rascunho, mas nenhum aviso será mostrado ao vendedor.
+              Você tem alterações nesta proposta que ainda não foram salvas. Se sair agora, elas
+              continuam no rascunho, mas nenhum aviso será mostrado ao vendedor.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -869,7 +1049,8 @@ function PropostaDetalhe() {
               Solicitar alteração do pedido {proposal.number}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              O pedido já foi fechado. Descreva o motivo da alteração — o supervisor ADM receberá a solicitação e decidirá se libera a edição.
+              O pedido já foi fechado. Descreva o motivo da alteração — o supervisor ADM receberá a
+              solicitação e decidirá se libera a edição.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-2">
@@ -889,14 +1070,19 @@ function PropostaDetalhe() {
             <AlertDialogAction
               onClick={() => {
                 const reason = editReqReason.trim();
-                if (reason.length < 5) { toast.error("Descreva o motivo com pelo menos 5 caracteres."); return; }
+                if (reason.length < 5) {
+                  toast.error("Descreva o motivo com pelo menos 5 caracteres.");
+                  return;
+                }
                 _updateProposal(proposal.id, {
                   editRequestedAt: new Date().toISOString(),
                   editRequestReason: reason,
                   editRequestedByUserId: currentUser.id,
                 });
                 setEditReqOpen(false);
-                toast.success("Solicitação enviada ao ADM", { description: "Você será avisado quando a edição for liberada." });
+                toast.success("Solicitação enviada ao ADM", {
+                  description: "Você será avisado quando a edição for liberada.",
+                });
               }}
             >
               Enviar solicitação
@@ -915,11 +1101,18 @@ function PropostaDetalhe() {
             </AlertDialogTitle>
             <AlertDialogDescription>
               {editRequested && editRequester ? (
-                <>Vendedor <span className="font-medium text-foreground">{editRequester.name}</span> pediu:
-                  <span className="block mt-1 rounded border bg-muted/40 p-2 text-foreground italic">"{proposal.editRequestReason}"</span>
+                <>
+                  Vendedor <span className="font-medium text-foreground">{editRequester.name}</span>{" "}
+                  pediu:
+                  <span className="block mt-1 rounded border bg-muted/40 p-2 text-foreground italic">
+                    "{proposal.editRequestReason}"
+                  </span>
                 </>
               ) : (
-                <>Você vai desbloquear este pedido para edição. Depois que o vendedor salvar, o pedido volta a ficar bloqueado automaticamente.</>
+                <>
+                  Você vai desbloquear este pedido para edição. Depois que o vendedor salvar, o
+                  pedido volta a ficar bloqueado automaticamente.
+                </>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -933,7 +1126,9 @@ function PropostaDetalhe() {
                   editUnlockedByUserId: currentUser.id,
                 });
                 setReleaseOpen(false);
-                toast.success("Edição liberada", { description: `${editRequester?.name ?? owner?.name ?? "Vendedor"} já pode alterar o pedido.` });
+                toast.success("Edição liberada", {
+                  description: `${editRequester?.name ?? owner?.name ?? "Vendedor"} já pode alterar o pedido.`,
+                });
               }}
             >
               Liberar edição
@@ -942,13 +1137,12 @@ function PropostaDetalhe() {
         </AlertDialogContent>
       </AlertDialog>
 
-
-
       {/* Editor — hidden on print */}
       <div className="grid gap-4 lg:grid-cols-3 print:hidden">
-
         <Card className="lg:col-span-2">
-          <CardHeader><CardTitle className="text-base">Itens da proposta</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base">Itens da proposta</CardTitle>
+          </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
@@ -974,7 +1168,9 @@ function PropostaDetalhe() {
                         <Input
                           value={it.description}
                           maxLength={MAX_DESC}
-                          onChange={(e) => validateAndUpdateItem(it.id, "description", e.target.value)}
+                          onChange={(e) =>
+                            validateAndUpdateItem(it.id, "description", e.target.value)
+                          }
                           className={cn("font-medium", cls("description"))}
                           aria-invalid={err?.field === "description"}
                         />
@@ -999,7 +1195,9 @@ function PropostaDetalhe() {
                           step="0.01"
                           min={0}
                           value={it.unitPrice}
-                          onChange={(e) => validateAndUpdateItem(it.id, "unitPrice", e.target.value)}
+                          onChange={(e) =>
+                            validateAndUpdateItem(it.id, "unitPrice", e.target.value)
+                          }
                           className={cls("unitPrice")}
                           aria-invalid={err?.field === "unitPrice"}
                         />
@@ -1019,8 +1217,10 @@ function PropostaDetalhe() {
                               <AlertDialogTitle>Remover item da proposta?</AlertDialogTitle>
                               <AlertDialogDescription>
                                 {it.description || "Item sem descrição"}
-                                {it.sku ? ` (${it.sku})` : ""} — {it.quantity} {it.unit} · {formatBRL(it.quantity * it.unitPrice)}.
-                                <br />Esta ação não pode ser desfeita.
+                                {it.sku ? ` (${it.sku})` : ""} — {it.quantity} {it.unit} ·{" "}
+                                {formatBRL(it.quantity * it.unitPrice)}.
+                                <br />
+                                Esta ação não pode ser desfeita.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
@@ -1029,7 +1229,11 @@ function PropostaDetalhe() {
                                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                 onClick={() => {
                                   removeItem(proposal.id, it.id);
-                                  setRowErrors((prev) => { const n = { ...prev }; delete n[it.id]; return n; });
+                                  setRowErrors((prev) => {
+                                    const n = { ...prev };
+                                    delete n[it.id];
+                                    return n;
+                                  });
                                   toast.success("Item removido");
                                 }}
                               >
@@ -1046,11 +1250,13 @@ function PropostaDetalhe() {
                   <TableRow>
                     <TableCell colSpan={7} className="bg-destructive/5 py-2">
                       <ul className="text-xs text-destructive space-y-0.5">
-                        {Object.entries(rowErrors).map(([id, e]) => e ? (
-                          <li key={id} className="flex items-center gap-1.5">
-                            <AlertCircle className="h-3 w-3" /> {e.message}
-                          </li>
-                        ) : null)}
+                        {Object.entries(rowErrors).map(([id, e]) =>
+                          e ? (
+                            <li key={id} className="flex items-center gap-1.5">
+                              <AlertCircle className="h-3 w-3" /> {e.message}
+                            </li>
+                          ) : null,
+                        )}
                       </ul>
                     </TableCell>
                   </TableRow>
@@ -1058,7 +1264,10 @@ function PropostaDetalhe() {
 
                 {proposal.items.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-6">
+                    <TableCell
+                      colSpan={7}
+                      className="text-center text-sm text-muted-foreground py-6"
+                    >
                       Nenhum item ainda. Busque um produto abaixo pelo SKU ou nome.
                     </TableCell>
                   </TableRow>
@@ -1070,29 +1279,39 @@ function PropostaDetalhe() {
               <div className="mt-3 pr-2 space-y-1 text-sm">
                 <div className="flex justify-end gap-6">
                   <span className="text-muted-foreground">Subtotal itens:</span>
-                  <span className="font-semibold w-32 text-right">{formatBRL(totals.subtotal)}</span>
+                  <span className="font-semibold w-32 text-right">
+                    {formatBRL(totals.subtotal)}
+                  </span>
                 </div>
                 {totals.discountPercent > 0 && (
                   <div className="flex justify-end gap-6 text-emerald-700">
                     <span>Desconto ({totals.discountPercent}%):</span>
-                    <span className="font-semibold w-32 text-right">− {formatBRL(totals.discountAmount)}</span>
+                    <span className="font-semibold w-32 text-right">
+                      − {formatBRL(totals.discountAmount)}
+                    </span>
                   </div>
                 )}
                 {totals.surchargeAmount > 0 && (
                   <div className="flex justify-end gap-6 text-amber-700">
                     <span>Acréscimo ({String(totals.surchargePercent).replace(".", ",")}%):</span>
-                    <span className="font-semibold w-32 text-right">+ {formatBRL(totals.surchargeAmount)}</span>
+                    <span className="font-semibold w-32 text-right">
+                      + {formatBRL(totals.surchargeAmount)}
+                    </span>
                   </div>
                 )}
                 {proposal.transport.freightValue > 0 && (
                   <div className="flex justify-end gap-6">
                     <span className="text-muted-foreground">Frete:</span>
-                    <span className="font-semibold w-32 text-right">{formatBRL(proposal.transport.freightValue)}</span>
+                    <span className="font-semibold w-32 text-right">
+                      {formatBRL(proposal.transport.freightValue)}
+                    </span>
                   </div>
                 )}
                 <div className="flex justify-end gap-6 pt-1 border-t">
                   <span className="text-muted-foreground">Total:</span>
-                  <span className="font-bold text-primary w-32 text-right">{formatBRL(totals.total)}</span>
+                  <span className="font-bold text-primary w-32 text-right">
+                    {formatBRL(totals.total)}
+                  </span>
                 </div>
               </div>
             )}
@@ -1138,7 +1357,12 @@ function PropostaDetalhe() {
                                     setProductPickerOpen(false);
                                   }}
                                 >
-                                  <Check className={cn("mr-2 h-4 w-4", productPickerId === p.id ? "opacity-100" : "opacity-0")} />
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      productPickerId === p.id ? "opacity-100" : "opacity-0",
+                                    )}
+                                  />
                                   <div className="flex flex-col">
                                     <span className="font-medium">{p.name}</span>
                                     <span className="text-[11px] text-muted-foreground">
@@ -1188,15 +1412,14 @@ function PropostaDetalhe() {
                 </Button>
               </div>
             </div>
-
-
           </CardContent>
         </Card>
 
-
         <div className="space-y-4">
           <Card>
-            <CardHeader><CardTitle className="text-base">Transporte</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-base">Transporte</CardTitle>
+            </CardHeader>
             <CardContent className="space-y-3">
               {lalamovePermitido && (
                 <div className="rounded-md border p-3 space-y-2">
@@ -1271,8 +1494,12 @@ function PropostaDetalhe() {
                       {proposal.transport.lalamoveValor != null && (
                         <div className="rounded-md bg-muted/40 p-2 text-xs space-y-1">
                           <div>
-                            Valor: <strong>{formatarValorLalamove(proposal.transport.lalamoveValor)}</strong> ·
-                            Distância: {formatarDistanciaLalamove(proposal.transport.lalamoveDistanciaKm)} ·
+                            Valor:{" "}
+                            <strong>
+                              {formatarValorLalamove(proposal.transport.lalamoveValor)}
+                            </strong>{" "}
+                            · Distância:{" "}
+                            {formatarDistanciaLalamove(proposal.transport.lalamoveDistanciaKm)} ·
                             Serviço: {proposal.transport.lalamoveServiceType ?? "—"}
                           </div>
                           <Button
@@ -1333,14 +1560,18 @@ function PropostaDetalhe() {
                   disabled={readOnly}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder={proposal.transport.carrier || "Selecionar transportador"} />
+                    <SelectValue
+                      placeholder={proposal.transport.carrier || "Selecionar transportador"}
+                    />
                   </SelectTrigger>
                   <SelectContent>
                     {sugestaoTransportadora && (
                       <SelectItem value={`id:${sugestaoTransportadora.id}`}>
                         <span className="flex items-center gap-2">
                           {sugestaoTransportadora.nome}
-                          <Badge variant="secondary" className="text-[10px]">sugerida</Badge>
+                          <Badge variant="secondary" className="text-[10px]">
+                            sugerida
+                          </Badge>
                         </span>
                       </SelectItem>
                     )}
@@ -1348,7 +1579,9 @@ function PropostaDetalhe() {
                       <SelectItem key={o} value={`especial:${o}`}>
                         <span className="flex items-center gap-2">
                           {o}
-                          <span className="text-[10px] text-muted-foreground">(sem transportadora)</span>
+                          <span className="text-[10px] text-muted-foreground">
+                            (sem transportadora)
+                          </span>
                         </span>
                       </SelectItem>
                     ))}
@@ -1380,9 +1613,15 @@ function PropostaDetalhe() {
                   <Label>Frete por conta</Label>
                   <Select
                     value={proposal.transport.freightPayer}
-                    onValueChange={(v) => updateProposal(proposal.id, { transport: { ...proposal.transport, freightPayer: v as "CIF" | "FOB" } })}
+                    onValueChange={(v) =>
+                      updateProposal(proposal.id, {
+                        transport: { ...proposal.transport, freightPayer: v as "CIF" | "FOB" },
+                      })
+                    }
                   >
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="FOB">FOB (cliente) · padrão</SelectItem>
                       <SelectItem value="CIF">CIF (emitente) · requer aprovação</SelectItem>
@@ -1391,7 +1630,8 @@ function PropostaDetalhe() {
                   {proposal.transport.freightPayer === "CIF" && (
                     <p className="mt-1 text-[11px] text-amber-700 flex items-start gap-1">
                       <AlertCircle className="h-3 w-3 mt-0.5 shrink-0" />
-                      Frete CIF exige autorização do supervisor. O pedido só será gerado após liberação do ADM.
+                      Frete CIF exige autorização do supervisor. O pedido só será gerado após
+                      liberação do ADM.
                     </p>
                   )}
                 </div>
@@ -1426,24 +1666,44 @@ function PropostaDetalhe() {
                   <Input
                     type="number"
                     value={proposal.transport.volumes}
-                    onChange={(e) => updateProposal(proposal.id, { transport: { ...proposal.transport, volumes: Number(e.target.value) } })}
+                    onChange={(e) =>
+                      updateProposal(proposal.id, {
+                        transport: { ...proposal.transport, volumes: Number(e.target.value) },
+                      })
+                    }
                   />
                 </div>
                 <div>
                   <Label>Valor frete aproximado (R$)</Label>
                   <Input
-                    type="number" step="0.01"
+                    type="number"
+                    step="0.01"
                     value={proposal.transport.approxFreightValue}
-                    onChange={(e) => updateProposal(proposal.id, { transport: { ...proposal.transport, approxFreightValue: Number(e.target.value) || 0 } })}
+                    onChange={(e) =>
+                      updateProposal(proposal.id, {
+                        transport: {
+                          ...proposal.transport,
+                          approxFreightValue: Number(e.target.value) || 0,
+                        },
+                      })
+                    }
                     placeholder="Estimativa do vendedor"
                   />
                 </div>
                 <div className="col-span-2">
                   <Label>Valor frete definitivo (R$)</Label>
                   <Input
-                    type="number" step="0.01"
+                    type="number"
+                    step="0.01"
                     value={proposal.transport.freightValue}
-                    onChange={(e) => updateProposal(proposal.id, { transport: { ...proposal.transport, freightValue: Number(e.target.value) || 0 } })}
+                    onChange={(e) =>
+                      updateProposal(proposal.id, {
+                        transport: {
+                          ...proposal.transport,
+                          freightValue: Number(e.target.value) || 0,
+                        },
+                      })
+                    }
                     placeholder="Confirmado com transportadora — entra no total"
                   />
                   <p className="text-[11px] text-muted-foreground mt-1">
@@ -1453,7 +1713,9 @@ function PropostaDetalhe() {
 
                 <div className="col-span-2 mt-1 rounded-md border bg-muted/30 p-3 space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label className="text-xs font-semibold uppercase tracking-wide">Cálculo automático por CEP</Label>
+                    <Label className="text-xs font-semibold uppercase tracking-wide">
+                      Cálculo automático por CEP
+                    </Label>
                     <span className="text-[10px] text-muted-foreground">
                       Origem: {freightConfig.originCep} · {freightConfig.originAddress}
                     </span>
@@ -1463,7 +1725,11 @@ function PropostaDetalhe() {
                       <Label>CEP de entrega</Label>
                       <Input
                         value={proposal.transport.deliveryCep ?? ""}
-                        onChange={(e) => updateProposal(proposal.id, { transport: { ...proposal.transport, deliveryCep: e.target.value } })}
+                        onChange={(e) =>
+                          updateProposal(proposal.id, {
+                            transport: { ...proposal.transport, deliveryCep: e.target.value },
+                          })
+                        }
                         placeholder="00000-000"
                       />
                     </div>
@@ -1482,9 +1748,14 @@ function PropostaDetalhe() {
                                 destinationCep: proposal.transport.deliveryCep!,
                               },
                             });
-                            const cubicKg = proposal.transport.cubageM3 * freightConfig.cubageFactorKgPerM3;
+                            const cubicKg =
+                              proposal.transport.cubageM3 * freightConfig.cubageFactorKgPerM3;
                             const taxableKg = Math.max(proposal.transport.grossWeightKg, cubicKg);
-                            const value = +(taxableKg * res.distanceKm * freightConfig.rateBRLPerKgKm).toFixed(2);
+                            const value = +(
+                              taxableKg *
+                              res.distanceKm *
+                              freightConfig.rateBRLPerKgKm
+                            ).toFixed(2);
                             updateProposal(proposal.id, {
                               transport: {
                                 ...proposal.transport,
@@ -1513,7 +1784,9 @@ function PropostaDetalhe() {
                     <div className="text-xs text-muted-foreground space-y-0.5">
                       <div>📍 {proposal.transport.deliveryAddress}</div>
                       <div>
-                        Distância: <strong>{proposal.transport.distanceKm} km</strong> · Tarifa: {freightConfig.rateBRLPerKgKm.toFixed(4)} R$/kg·km · Fator cubagem: {freightConfig.cubageFactorKgPerM3} kg/m³
+                        Distância: <strong>{proposal.transport.distanceKm} km</strong> · Tarifa:{" "}
+                        {freightConfig.rateBRLPerKgKm.toFixed(4)} R$/kg·km · Fator cubagem:{" "}
+                        {freightConfig.cubageFactorKgPerM3} kg/m³
                       </div>
                     </div>
                   )}
@@ -1524,15 +1797,18 @@ function PropostaDetalhe() {
 
           <LogisticaCard proposalId={proposal.id} />
 
-
           <Card>
-            <CardHeader><CardTitle className="text-base">Empresa emissora</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-base">Empresa emissora</CardTitle>
+            </CardHeader>
             <CardContent className="space-y-2">
               <Select
                 value={proposal.emitterId}
                 onValueChange={(v) => updateProposal(proposal.id, { emitterId: v })}
               >
-                <SelectTrigger><SelectValue placeholder="Selecione o CNPJ emissor" /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o CNPJ emissor" />
+                </SelectTrigger>
                 <SelectContent>
                   {emitters.map((e) => (
                     <SelectItem key={e.id} value={e.id}>
@@ -1544,15 +1820,21 @@ function PropostaDetalhe() {
               </Select>
               <div className="rounded-md border bg-muted/30 p-3 text-[11px] leading-relaxed">
                 <div className="font-medium text-sm">{emitter.legalName}</div>
-                <div>CNPJ: {emitter.cnpj} · IE: {emitter.ie}</div>
+                <div>
+                  CNPJ: {emitter.cnpj} · IE: {emitter.ie}
+                </div>
                 <div>{emitter.address}</div>
-                <div>Tel: {emitter.phone} · {emitter.email}</div>
+                <div>
+                  Tel: {emitter.phone} · {emitter.email}
+                </div>
               </div>
               {emitterSuggestion && proposal && (
                 <div className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-[11px] leading-relaxed flex items-start justify-between gap-2">
                   <div>
                     <div className="font-medium text-primary">
-                      Sugerido: {emitters.find((e) => e.id === emitterSuggestion.id)?.brand ?? emitterSuggestion.id.toUpperCase()}
+                      Sugerido:{" "}
+                      {emitters.find((e) => e.id === emitterSuggestion.id)?.brand ??
+                        emitterSuggestion.id.toUpperCase()}
                     </div>
                     <div className="text-muted-foreground">{emitterSuggestion.reason}</div>
                   </div>
@@ -1561,7 +1843,9 @@ function PropostaDetalhe() {
                       size="sm"
                       variant="outline"
                       className="h-7 text-[11px]"
-                      onClick={() => _updateProposal(proposal.id, { emitterId: emitterSuggestion.id })}
+                      onClick={() =>
+                        _updateProposal(proposal.id, { emitterId: emitterSuggestion.id })
+                      }
                     >
                       Usar sugestão
                     </Button>
@@ -1575,7 +1859,9 @@ function PropostaDetalhe() {
           </Card>
 
           <Card>
-            <CardHeader><CardTitle className="text-base">Condições comerciais</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-base">Condições comerciais</CardTitle>
+            </CardHeader>
 
             <CardContent className="space-y-3">
               <div>
@@ -1587,10 +1873,14 @@ function PropostaDetalhe() {
                     updateProposal(proposal.id, { formaPagamento: v as PaymentForm })
                   }
                 >
-                  <SelectTrigger><SelectValue placeholder="Boleto, Depósito em Conta ou PIX" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Boleto, Depósito em Conta ou PIX" />
+                  </SelectTrigger>
                   <SelectContent>
                     {PAYMENT_FORMS.map((f) => (
-                      <SelectItem key={f} value={f}>{f}</SelectItem>
+                      <SelectItem key={f} value={f}>
+                        {f}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -1605,7 +1895,9 @@ function PropostaDetalhe() {
                   value={proposal.paymentTermId ?? ""}
                   onValueChange={(v) => trocarCondicao(v)}
                 >
-                  <SelectTrigger><SelectValue placeholder="Escolha um prazo cadastrado" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Escolha um prazo cadastrado" />
+                  </SelectTrigger>
                   <SelectContent className="max-h-80">
                     {visiblePaymentTerms.map((t: PaymentTerm) => (
                       <SelectItem key={t.id} value={t.id}>
@@ -1633,7 +1925,9 @@ function PropostaDetalhe() {
                   type="date"
                   value={proposal.expectedDeliveryDate ?? ""}
                   onChange={(e) =>
-                    updateProposal(proposal.id, { expectedDeliveryDate: e.target.value || undefined })
+                    updateProposal(proposal.id, {
+                      expectedDeliveryDate: e.target.value || undefined,
+                    })
                   }
                   disabled={readOnly}
                 />
@@ -1654,7 +1948,11 @@ function PropostaDetalhe() {
                 const irregular = espacamentoIrregular(diasCond) && intervaloParcelas === null;
 
                 /** Recria as parcelas a partir dos percentuais da condição. */
-                const gerarParcelas = (base?: string, t: PaymentTerm | null = term, intervalo?: number | null) => {
+                const gerarParcelas = (
+                  base?: string,
+                  t: PaymentTerm | null = term,
+                  intervalo?: number | null,
+                ) => {
                   const dataBase = base ?? previsao;
                   if (!t || !dataBase) return;
                   const cond = termParcelas(t);
@@ -1663,10 +1961,17 @@ function PropostaDetalhe() {
                   const dias =
                     iv === null || iv === undefined
                       ? cond.map((p) => p.dias)
-                      : aplicarIntervalo(cond.map((p) => p.dias), iv);
-                  const valores = valoresPorPercentual(total, cond.map((p) => p.percentual));
+                      : aplicarIntervalo(
+                          cond.map((p) => p.dias),
+                          iv,
+                        );
+                  const valores = valoresPorPercentual(
+                    total,
+                    cond.map((p) => p.percentual),
+                  );
                   const antigas = proposal.installments ?? [];
-                  if (antigas.length > 0) markDeleted("proposalParcelas", ...antigas.map((p) => p.id));
+                  if (antigas.length > 0)
+                    markDeleted("proposalParcelas", ...antigas.map((p) => p.id));
                   updateProposal(proposal.id, {
                     installments: cond.map((p, i) => ({
                       id: crypto.randomUUID(),
@@ -1688,7 +1993,6 @@ function PropostaDetalhe() {
                 const divergente = parcelas.length > 0 && Math.abs(soma - total) > 0.009;
                 const preview = term && previsao ? buildTermInstallments(term, total) : [];
 
-
                 return (
                   <>
                     <div>
@@ -1704,7 +2008,8 @@ function PropostaDetalhe() {
                         }}
                       />
                       <p className="text-[11px] text-muted-foreground mt-1">
-                        Os vencimentos são calculados como previsão de faturamento + prazo de cada parcela.
+                        Os vencimentos são calculados como previsão de faturamento + prazo de cada
+                        parcela.
                       </p>
                     </div>
 
@@ -1715,7 +2020,11 @@ function PropostaDetalhe() {
                           type="number"
                           min={0}
                           disabled={readOnly}
-                          placeholder={irregular ? "Espaçamento irregular da condição" : String(intervaloEfetivo)}
+                          placeholder={
+                            irregular
+                              ? "Espaçamento irregular da condição"
+                              : String(intervaloEfetivo)
+                          }
                           value={intervaloParcelas === null ? "" : String(intervaloParcelas)}
                           onChange={(e) => {
                             const raw = e.target.value;
@@ -1737,7 +2046,9 @@ function PropostaDetalhe() {
                     </div>
 
                     {!term ? (
-                      <p className="text-xs text-muted-foreground italic">Nenhuma condição selecionada.</p>
+                      <p className="text-xs text-muted-foreground italic">
+                        Nenhuma condição selecionada.
+                      </p>
                     ) : !previsao ? (
                       <div className="rounded-md border bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground">
                         <span className="font-medium text-foreground">{term.label}</span> ·{" "}
@@ -1745,7 +2056,6 @@ function PropostaDetalhe() {
                         <br />
                         Informe a previsão de faturamento para calcular os vencimentos.
                       </div>
-
                     ) : (
                       <div className="rounded-md border bg-muted/30">
                         <div className="px-3 py-2 border-b flex items-center justify-between gap-2 text-xs">
@@ -1784,21 +2094,33 @@ function PropostaDetalhe() {
                             {parcelas.length === 0 &&
                               preview.map((r, i) => (
                                 <TableRow key={`prev-${i}`} className="text-xs">
-                                  <TableCell className="py-1.5">{i + 1}/{preview.length}</TableCell>
-                                  <TableCell className="py-1.5">{r.days === 0 ? "à vista" : `${r.days} dias`}</TableCell>
+                                  <TableCell className="py-1.5">
+                                    {i + 1}/{preview.length}
+                                  </TableCell>
+                                  <TableCell className="py-1.5">
+                                    {r.days === 0 ? "à vista" : `${r.days} dias`}
+                                  </TableCell>
                                   <TableCell className="py-1.5 text-right text-muted-foreground">
                                     {String(+r.percentual.toFixed(2)).replace(".", ",")}%
                                   </TableCell>
                                   <TableCell className="py-1.5 text-muted-foreground">
-                                    {previsao ? formatDateBr(addDaysToDateInput(previsao, r.days)) : "—"}
+                                    {previsao
+                                      ? formatDateBr(addDaysToDateInput(previsao, r.days))
+                                      : "—"}
                                   </TableCell>
-                                  <TableCell className="py-1.5 text-right font-medium">{formatBRL(r.amount)}</TableCell>
+                                  <TableCell className="py-1.5 text-right font-medium">
+                                    {formatBRL(r.amount)}
+                                  </TableCell>
                                 </TableRow>
                               ))}
                             {parcelas.map((p, i) => (
                               <TableRow key={p.id} className="text-xs">
-                                <TableCell className="py-1.5">{i + 1}/{parcelas.length}</TableCell>
-                                <TableCell className="py-1.5">{p.days === 0 ? "à vista" : `${p.days} dias`}</TableCell>
+                                <TableCell className="py-1.5">
+                                  {i + 1}/{parcelas.length}
+                                </TableCell>
+                                <TableCell className="py-1.5">
+                                  {p.days === 0 ? "à vista" : `${p.days} dias`}
+                                </TableCell>
                                 <TableCell className="py-1.5 text-right text-muted-foreground">
                                   {p.percentual == null
                                     ? "—"
@@ -1810,7 +2132,9 @@ function PropostaDetalhe() {
                                     className="h-8"
                                     disabled={readOnly}
                                     value={p.dueDate ?? ""}
-                                    onChange={(e) => patchParcela(p.id, { dueDate: e.target.value || undefined })}
+                                    onChange={(e) =>
+                                      patchParcela(p.id, { dueDate: e.target.value || undefined })
+                                    }
                                   />
                                 </TableCell>
                                 <TableCell className="py-1.5">
@@ -1821,7 +2145,9 @@ function PropostaDetalhe() {
                                     className="h-8 text-right"
                                     disabled={readOnly}
                                     value={p.amount}
-                                    onChange={(e) => patchParcela(p.id, { amount: Number(e.target.value) || 0 })}
+                                    onChange={(e) =>
+                                      patchParcela(p.id, { amount: Number(e.target.value) || 0 })
+                                    }
                                   />
                                 </TableCell>
                               </TableRow>
@@ -1832,14 +2158,20 @@ function PropostaDetalhe() {
                         {parcelas.length > 0 && (
                           <div className="flex items-center justify-between px-3 py-2 border-t text-[11px]">
                             <span className="text-muted-foreground">Soma das parcelas</span>
-                            <span className={divergente ? "font-semibold text-destructive" : "font-semibold"}>
+                            <span
+                              className={
+                                divergente ? "font-semibold text-destructive" : "font-semibold"
+                              }
+                            >
                               {formatBRL(soma)}
                               {divergente ? ` · difere do total (${formatBRL(total)})` : ""}
                             </span>
                           </div>
                         )}
                         {term.notes && (
-                          <div className="px-3 py-2 border-t text-[11px] text-muted-foreground">{term.notes}</div>
+                          <div className="px-3 py-2 border-t text-[11px] text-muted-foreground">
+                            {term.notes}
+                          </div>
                         )}
                       </div>
                     )}
@@ -1867,7 +2199,9 @@ function PropostaDetalhe() {
                       return;
                     }
                     if (raw > maxDiscount) {
-                      toast.error(`Desconto máximo permitido: ${maxDiscount}%. Fale com o administrador para aumentar o limite.`);
+                      toast.error(
+                        `Desconto máximo permitido: ${maxDiscount}%. Fale com o administrador para aumentar o limite.`,
+                      );
                       updateProposal(proposal.id, { discountPercent: maxDiscount });
                       return;
                     }
@@ -1881,14 +2215,22 @@ function PropostaDetalhe() {
 
               <div>
                 <Label>Validade (dias)</Label>
-                <Input type="number" value={proposal.validityDays} onChange={(e) => updateProposal(proposal.id, { validityDays: Number(e.target.value) })} />
+                <Input
+                  type="number"
+                  value={proposal.validityDays}
+                  onChange={(e) =>
+                    updateProposal(proposal.id, { validityDays: Number(e.target.value) })
+                  }
+                />
               </div>
               <div>
                 <Label>Nº do pedido do cliente</Label>
                 <Input
                   placeholder="Ex.: PO-12345 / OC 2026-001"
                   value={proposal.customerOrderNumber ?? ""}
-                  onChange={(e) => updateProposal(proposal.id, { customerOrderNumber: e.target.value })}
+                  onChange={(e) =>
+                    updateProposal(proposal.id, { customerOrderNumber: e.target.value })
+                  }
                 />
                 <p className="text-[11px] text-muted-foreground mt-1">
                   Opcional. Aparece no cabeçalho da proposta impressa quando preenchido.
@@ -1896,7 +2238,11 @@ function PropostaDetalhe() {
               </div>
               <div>
                 <Label>Observações</Label>
-                <Textarea rows={3} value={proposal.observations} onChange={(e) => updateProposal(proposal.id, { observations: e.target.value })} />
+                <Textarea
+                  rows={3}
+                  value={proposal.observations}
+                  onChange={(e) => updateProposal(proposal.id, { observations: e.target.value })}
+                />
               </div>
               <div>
                 <Label>Observações do pedido</Label>
@@ -1916,34 +2262,42 @@ function PropostaDetalhe() {
                   rows={4}
                   placeholder="O que foi combinado com o cliente: condições, concessões, contexto, promessas…"
                   value={proposal.tratativaComercial ?? ""}
-                  onChange={(e) => updateProposal(proposal.id, { tratativaComercial: e.target.value })}
+                  onChange={(e) =>
+                    updateProposal(proposal.id, { tratativaComercial: e.target.value })
+                  }
                 />
                 <p className="text-[11px] text-muted-foreground mt-1">
-                  Não aparece na proposta enviada ao cliente. É o que o financeiro vai ler ao aprovar.
+                  Não aparece na proposta enviada ao cliente. É o que o financeiro vai ler ao
+                  aprovar.
                 </p>
               </div>
             </CardContent>
           </Card>
-
-
         </div>
       </div>
 
       {/* Documento imprimível */}
-      <div className="bg-white text-[13px] leading-snug border rounded-lg p-8 md:p-10 shadow-sm print:border-0 print:shadow-none print:rounded-none print:p-6 print:text-[11px]" id="proposta-print">
+      <div
+        className="bg-white text-[13px] leading-snug border rounded-lg p-8 md:p-10 shadow-sm print:border-0 print:shadow-none print:rounded-none print:p-6 print:text-[11px]"
+        id="proposta-print"
+      >
         {/* Print-only running header: repeats on every printed page */}
         <div className="print-running-header" aria-hidden="true">
           <div className="print-running-header-inner">
             <div className="print-running-header-brand">{emitter.brand}</div>
             <div className="print-running-header-meta">
-              <span>PROPOSTA Nº <strong>{proposal.number}</strong></span>
+              <span>
+                PROPOSTA Nº <strong>{proposal.number}</strong>
+              </span>
               <span> · {format(new Date(proposal.createdAt), "dd/MM/yyyy")}</span>
             </div>
           </div>
         </div>
         <div className="print-running-footer" aria-hidden="true">
           <div className="print-running-footer-inner">
-            <span>{emitter.legalName} · CNPJ {emitter.cnpj} · {emitter.phone} · {emitter.email}</span>
+            <span>
+              {emitter.legalName} · CNPJ {emitter.cnpj} · {emitter.phone} · {emitter.email}
+            </span>
             <span className="print-page-counter" />
           </div>
         </div>
@@ -1954,20 +2308,31 @@ function PropostaDetalhe() {
 
             <div className="mt-2 text-[11px] leading-relaxed">
               <div className="font-medium">{emitter.legalName}</div>
-              <div>CNPJ: {emitter.cnpj} · IE: {emitter.ie}</div>
+              <div>
+                CNPJ: {emitter.cnpj} · IE: {emitter.ie}
+              </div>
               <div>{emitter.address}</div>
-              <div>Tel: {emitter.phone} · WhatsApp: {emitter.whatsapp}</div>
-              <div>{emitter.email} · {emitter.website}</div>
+              <div>
+                Tel: {emitter.phone} · WhatsApp: {emitter.whatsapp}
+              </div>
+              <div>
+                {emitter.email} · {emitter.website}
+              </div>
             </div>
           </div>
           <div className="text-right">
-            <div className="text-xs uppercase tracking-wider text-muted-foreground">Proposta Nº</div>
+            <div className="text-xs uppercase tracking-wider text-muted-foreground">
+              Proposta Nº
+            </div>
             <div className="font-display text-2xl font-bold">{proposal.number}</div>
             <div className="text-[11px] mt-2">
               <div>Data: {format(new Date(proposal.createdAt), "dd/MM/yyyy")}</div>
               <div>Validade: {proposal.validityDays} dias</div>
               {proposal.customerOrderNumber && proposal.customerOrderNumber.trim() && (
-                <div>Pedido do cliente: <span className="font-semibold">{proposal.customerOrderNumber}</span></div>
+                <div>
+                  Pedido do cliente:{" "}
+                  <span className="font-semibold">{proposal.customerOrderNumber}</span>
+                </div>
               )}
             </div>
           </div>
@@ -1978,7 +2343,13 @@ function PropostaDetalhe() {
             <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Para</div>
             <div className="font-semibold">{clienteRow?.razao_social || lead.company}</div>
             <div className="text-[11px] leading-relaxed">
-              {clienteRow && <div>{formatDocumentoCliente(clienteRow) !== "—" ? `${clienteRow.tipo_pessoa === "PF" ? "CPF" : "CNPJ"}: ${formatDocumentoCliente(clienteRow)}` : ""}</div>}
+              {clienteRow && (
+                <div>
+                  {formatDocumentoCliente(clienteRow) !== "—"
+                    ? `${clienteRow.tipo_pessoa === "PF" ? "CPF" : "CNPJ"}: ${formatDocumentoCliente(clienteRow)}`
+                    : ""}
+                </div>
+              )}
               {(clienteRow?.endereco || clienteRow?.numero) && (
                 <div>
                   {[clienteRow?.endereco, clienteRow?.numero].filter(Boolean).join(", ")}
@@ -1996,14 +2367,17 @@ function PropostaDetalhe() {
             </div>
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Vendedor(a)</div>
+            <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">
+              Vendedor(a)
+            </div>
             <div className="font-semibold">{vendedor?.name ?? owner?.name ?? "—"}</div>
             <div className="text-[11px]">{vendedor?.email ?? emitter.email}</div>
-
           </div>
         </div>
 
-        <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Itens da proposta comercial</div>
+        <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">
+          Itens da proposta comercial
+        </div>
         <table className="w-full text-[11px] border-collapse mb-4">
           <thead>
             <tr className="bg-muted/60">
@@ -2027,11 +2401,17 @@ function PropostaDetalhe() {
                 <td className="border p-1.5 text-center">{it.unit}</td>
                 <td className="border p-1.5 text-right">{it.quantity.toLocaleString("pt-BR")}</td>
                 <td className="border p-1.5 text-right">{formatBRL(it.unitPrice)}</td>
-                <td className="border p-1.5 text-right font-semibold">{formatBRL(it.quantity * it.unitPrice)}</td>
+                <td className="border p-1.5 text-right font-semibold">
+                  {formatBRL(it.quantity * it.unitPrice)}
+                </td>
               </tr>
             ))}
             {proposal.items.length === 0 && (
-              <tr><td colSpan={8} className="border p-3 text-center text-muted-foreground italic">Nenhum item adicionado.</td></tr>
+              <tr>
+                <td colSpan={8} className="border p-3 text-center text-muted-foreground italic">
+                  Nenhum item adicionado.
+                </td>
+              </tr>
             )}
           </tbody>
         </table>
@@ -2063,12 +2443,15 @@ function PropostaDetalhe() {
                   ? `+ ${formatBRL(totals?.surchargeAmount ?? 0)} (${String(totals?.surchargePercent).replace(".", ",")}%)`
                   : "—"}
               </td>
-              <td className="border p-1.5 text-right">{formatBRL(proposal.transport.freightValue)}</td>
-              <td className="border p-1.5 text-right font-bold text-primary">{formatBRL(totals?.total ?? 0)}</td>
+              <td className="border p-1.5 text-right">
+                {formatBRL(proposal.transport.freightValue)}
+              </td>
+              <td className="border p-1.5 text-right font-bold text-primary">
+                {formatBRL(totals?.total ?? 0)}
+              </td>
             </tr>
           </tbody>
         </table>
-
 
         {proposal.installments.length > 0 && (
           <div className="mb-4 print-block">
@@ -2080,21 +2463,29 @@ function PropostaDetalhe() {
                 <tr className="print-head-row">
                   <th className="border p-1.5 text-left w-28">Parcela</th>
                   {proposal.installments.map((p, i) => (
-                    <th key={`n-${p.id}`} className="border p-1.5 text-center">{i + 1}</th>
+                    <th key={`n-${p.id}`} className="border p-1.5 text-center">
+                      {i + 1}
+                    </th>
                   ))}
                 </tr>
                 <tr>
                   <td className="border p-1.5 bg-muted/40 font-medium">Vencimento</td>
                   {proposal.installments.map((p) => (
                     <td key={`d-${p.id}`} className="border p-1.5 text-center">
-                      {p.dueDate ? formatDateBr(p.dueDate) : (p.days === 0 ? "à vista" : `${p.days} dias`)}
+                      {p.dueDate
+                        ? formatDateBr(p.dueDate)
+                        : p.days === 0
+                          ? "à vista"
+                          : `${p.days} dias`}
                     </td>
                   ))}
                 </tr>
                 <tr>
                   <td className="border p-1.5 bg-muted/40 font-medium">Valor (R$)</td>
                   {proposal.installments.map((p) => (
-                    <td key={`v-${p.id}`} className="border p-1.5 text-center">{formatBRL(p.amount)}</td>
+                    <td key={`v-${p.id}`} className="border p-1.5 text-center">
+                      {formatBRL(p.amount)}
+                    </td>
                   ))}
                 </tr>
               </tbody>
@@ -2109,13 +2500,19 @@ function PropostaDetalhe() {
         )}
 
         <div className="mb-4 print-block">
-          <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1 print-title">Outras Informações</div>
+          <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1 print-title">
+            Outras Informações
+          </div>
           <table className="w-full text-[11px] border-collapse">
             <tbody>
               <tr>
                 <td className="border p-1.5 bg-muted/40 font-medium w-44">Proposta incluída em</td>
-                <td className="border p-1.5">{format(new Date(proposal.createdAt), "dd/MM/yyyy")}</td>
-                <td className="border p-1.5 bg-muted/40 font-medium w-44">Previsão de faturamento</td>
+                <td className="border p-1.5">
+                  {format(new Date(proposal.createdAt), "dd/MM/yyyy")}
+                </td>
+                <td className="border p-1.5 bg-muted/40 font-medium w-44">
+                  Previsão de faturamento
+                </td>
                 <td className="border p-1.5">{formatDateBr(proposal.billingForecastDate)}</td>
               </tr>
               <tr>
@@ -2132,7 +2529,9 @@ function PropostaDetalhe() {
 
         <div className="grid grid-cols-2 gap-6 mb-4">
           <div>
-            <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Condições comerciais</div>
+            <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">
+              Condições comerciais
+            </div>
             {(() => {
               const term = paymentTerms.find((t: PaymentTerm) => t.id === proposal.paymentTermId);
               if (!term) {
@@ -2163,7 +2562,9 @@ function PropostaDetalhe() {
                     <span className="font-semibold">{term.label}</span>
                     {proposal.formaPagamento ? <> · Forma: {proposal.formaPagamento}</> : null}
                   </div>
-                  <div className="text-[10px] text-muted-foreground mb-1">{descreverParcelas(termParcelas(term))}</div>
+                  <div className="text-[10px] text-muted-foreground mb-1">
+                    {descreverParcelas(termParcelas(term))}
+                  </div>
                   <table className="w-full text-[11px] border-collapse">
                     <thead>
                       <tr className="bg-muted/60">
@@ -2176,15 +2577,23 @@ function PropostaDetalhe() {
                     <tbody>
                       {rows.map((r, i) => (
                         <tr key={i}>
-                          <td className="border p-1.5">{i + 1}/{rows.length}</td>
-                          <td className="border p-1.5">{r.days === 0 ? "à vista" : `${r.days} dias`}</td>
-                          <td className="border p-1.5">{r.dueDate ? formatDateBr(r.dueDate) : "—"}</td>
+                          <td className="border p-1.5">
+                            {i + 1}/{rows.length}
+                          </td>
+                          <td className="border p-1.5">
+                            {r.days === 0 ? "à vista" : `${r.days} dias`}
+                          </td>
+                          <td className="border p-1.5">
+                            {r.dueDate ? formatDateBr(r.dueDate) : "—"}
+                          </td>
                           <td className="border p-1.5 text-right">{formatBRL(r.amount)}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
-                  {term.notes && <div className="text-[10px] text-muted-foreground mt-1">{term.notes}</div>}
+                  {term.notes && (
+                    <div className="text-[10px] text-muted-foreground mt-1">{term.notes}</div>
+                  )}
                 </>
               );
             })()}
@@ -2194,15 +2603,37 @@ function PropostaDetalhe() {
             </div>
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Transportador</div>
+            <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">
+              Transportador
+            </div>
             <table className="w-full text-[11px] border-collapse">
               <tbody>
-                <tr><td className="border p-1.5 bg-muted/40 font-medium w-32">Nome</td><td className="border p-1.5">{proposal.transport.carrier}</td></tr>
-                <tr><td className="border p-1.5 bg-muted/40 font-medium">Frete por conta</td><td className="border p-1.5">{proposal.transport.freightPayer}</td></tr>
-                <tr><td className="border p-1.5 bg-muted/40 font-medium">Peso Bruto (kg)</td><td className="border p-1.5">{proposal.transport.grossWeightKg}</td></tr>
-                <tr><td className="border p-1.5 bg-muted/40 font-medium">Cubagem (m³)</td><td className="border p-1.5">{proposal.transport.cubageM3}</td></tr>
-                <tr><td className="border p-1.5 bg-muted/40 font-medium">Qtd Volumes</td><td className="border p-1.5">{proposal.transport.volumes}</td></tr>
-                <tr><td className="border p-1.5 bg-muted/40 font-medium">Frete aproximado</td><td className="border p-1.5">{formatBRL(proposal.transport.approxFreightValue ?? 0)}</td></tr>
+                <tr>
+                  <td className="border p-1.5 bg-muted/40 font-medium w-32">Nome</td>
+                  <td className="border p-1.5">{proposal.transport.carrier}</td>
+                </tr>
+                <tr>
+                  <td className="border p-1.5 bg-muted/40 font-medium">Frete por conta</td>
+                  <td className="border p-1.5">{proposal.transport.freightPayer}</td>
+                </tr>
+                <tr>
+                  <td className="border p-1.5 bg-muted/40 font-medium">Peso Bruto (kg)</td>
+                  <td className="border p-1.5">{proposal.transport.grossWeightKg}</td>
+                </tr>
+                <tr>
+                  <td className="border p-1.5 bg-muted/40 font-medium">Cubagem (m³)</td>
+                  <td className="border p-1.5">{proposal.transport.cubageM3}</td>
+                </tr>
+                <tr>
+                  <td className="border p-1.5 bg-muted/40 font-medium">Qtd Volumes</td>
+                  <td className="border p-1.5">{proposal.transport.volumes}</td>
+                </tr>
+                <tr>
+                  <td className="border p-1.5 bg-muted/40 font-medium">Frete aproximado</td>
+                  <td className="border p-1.5">
+                    {formatBRL(proposal.transport.approxFreightValue ?? 0)}
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -2210,30 +2641,48 @@ function PropostaDetalhe() {
 
         {proposal.observations && (
           <div className="mb-6">
-            <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Observações</div>
-            <div className="text-[11px] whitespace-pre-wrap border rounded p-3 bg-muted/20">{proposal.observations}</div>
+            <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">
+              Observações
+            </div>
+            <div className="text-[11px] whitespace-pre-wrap border rounded p-3 bg-muted/20">
+              {proposal.observations}
+            </div>
           </div>
         )}
 
         {proposal.orderNotes && proposal.orderNotes.trim() && (
           <div className="mb-6">
-            <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Observações do pedido</div>
-            <div className="text-[11px] whitespace-pre-wrap border rounded p-3 bg-muted/20">{proposal.orderNotes}</div>
+            <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">
+              Observações do pedido
+            </div>
+            <div className="text-[11px] whitespace-pre-wrap border rounded p-3 bg-muted/20">
+              {proposal.orderNotes}
+            </div>
           </div>
         )}
 
         {(emitter.banco || emitter.agencia || emitter.conta || emitter.pix) && (
           <div className="mb-6">
-            <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Dados para pagamento</div>
+            <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">
+              Dados para pagamento
+            </div>
             <div className="border rounded p-3 bg-muted/10 text-[11px] leading-relaxed">
               <div className="font-semibold">{emitter.legalName}</div>
               <div>CNPJ: {emitter.cnpj}</div>
               {emitter.banco && <div>Banco: {emitter.banco}</div>}
               {(emitter.agencia || emitter.conta) && (
                 <div>
-                  {emitter.agencia && <>Agência: <span className="font-mono">{emitter.agencia}</span></>}
+                  {emitter.agencia && (
+                    <>
+                      Agência: <span className="font-mono">{emitter.agencia}</span>
+                    </>
+                  )}
                   {emitter.agencia && emitter.conta && " · "}
-                  {emitter.conta && <>Conta corrente: <span className="font-mono">{emitter.conta}</span></>}
+                  {emitter.conta && (
+                    <>
+                      Conta corrente: <span className="font-mono">{emitter.conta}</span>
+                    </>
+                  )}
                 </div>
               )}
               {emitter.pix && (
@@ -2246,7 +2695,11 @@ function PropostaDetalhe() {
           </div>
         )}
 
-        <div className="text-[11px] mt-6">Atenciosamente,<br/>Departamento de Vendas</div>
+        <div className="text-[11px] mt-6">
+          Atenciosamente,
+          <br />
+          Departamento de Vendas
+        </div>
 
         <div className="mt-8 grid grid-cols-3 gap-6 text-[11px]">
           <div>
@@ -2257,8 +2710,13 @@ function PropostaDetalhe() {
             <div className="border-t pt-1">Assinatura do cliente</div>
           </div>
           <div className="text-right">
-            <div className="text-xs">Proposta Nº <span className="font-bold">{proposal.number}</span></div>
-            <div className="text-sm">Valor Total: <span className="font-bold text-primary">{formatBRL(totals?.total ?? 0)}</span></div>
+            <div className="text-xs">
+              Proposta Nº <span className="font-bold">{proposal.number}</span>
+            </div>
+            <div className="text-sm">
+              Valor Total:{" "}
+              <span className="font-bold text-primary">{formatBRL(totals?.total ?? 0)}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -2396,7 +2854,9 @@ function LogisticaCard({ proposalId }: { proposalId: string }) {
   const updateProposal = useCrm((s) => s.updateProposal);
   const cotar = useServerFn(cotarLogistica);
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<(CalcResultado & { originAddress: string; destinationAddress: string }) | null>(null);
+  const [result, setResult] = useState<
+    (CalcResultado & { originAddress: string; destinationAddress: string }) | null
+  >(null);
   const [error, setError] = useState<string | null>(null);
 
   if (!proposal) return null;
@@ -2432,7 +2892,9 @@ function LogisticaCard({ proposalId }: { proposalId: string }) {
     setError(null);
     setLoading(true);
     try {
-      const res = await cotar({ data: { itens, frota: fleet, originCep, destinationCep: destCep } });
+      const res = await cotar({
+        data: { itens, frota: fleet, originCep, destinationCep: destCep },
+      });
       setResult(res);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Falha na cotação");
@@ -2458,12 +2920,19 @@ function LogisticaCard({ proposalId }: { proposalId: string }) {
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-xs text-muted-foreground">
-          Usa os itens da proposta + dimensões cadastradas do produto para calcular peso, cubagem, mix de veículos e frete por peça.
+          Usa os itens da proposta + dimensões cadastradas do produto para calcular peso, cubagem,
+          mix de veículos e frete por peça.
         </p>
         <div className="text-xs space-y-1">
-          <div>Origem: <span className="font-mono">{originCep}</span> · {freightConfig.originAddress}</div>
-          <div>Destino: <span className="font-mono">{destCep || "— informe CEP em Transporte"}</span></div>
-          <div>Itens: {itens.length} SKU · {itens.reduce((s, i) => s + i.quantidade, 0)} peça(s)</div>
+          <div>
+            Origem: <span className="font-mono">{originCep}</span> · {freightConfig.originAddress}
+          </div>
+          <div>
+            Destino: <span className="font-mono">{destCep || "— informe CEP em Transporte"}</span>
+          </div>
+          <div>
+            Itens: {itens.length} SKU · {itens.reduce((s, i) => s + i.quantidade, 0)} peça(s)
+          </div>
         </div>
         <Button size="sm" onClick={run} disabled={!canCalc || loading} className="w-full">
           {loading ? "Calculando…" : "Calcular logística"}
@@ -2480,9 +2949,15 @@ function LogisticaCard({ proposalId }: { proposalId: string }) {
               📍 {result.destinationAddress} · <strong>{result.distanciaKm} km</strong>
             </div>
             <div className="text-xs flex flex-wrap gap-3">
-              <span>Peso total: <strong>{result.totalPesoKg.toLocaleString("pt-BR")} kg</strong></span>
-              <span>Cubagem: <strong>{result.totalVolumeM3.toFixed(2)} m³</strong></span>
-              <span>Peças: <strong>{result.totalPecas}</strong></span>
+              <span>
+                Peso total: <strong>{result.totalPesoKg.toLocaleString("pt-BR")} kg</strong>
+              </span>
+              <span>
+                Cubagem: <strong>{result.totalVolumeM3.toFixed(2)} m³</strong>
+              </span>
+              <span>
+                Peças: <strong>{result.totalPecas}</strong>
+              </span>
             </div>
             <div className="overflow-x-auto">
               <Table>
@@ -2504,17 +2979,35 @@ function LogisticaCard({ proposalId }: { proposalId: string }) {
                     return (
                       <TableRow key={v.vehicleId} className={isBest ? "bg-primary/5" : ""}>
                         <TableCell className="font-medium">
-                          {v.nome} {isBest && <Badge variant="secondary" className="ml-1 text-[10px]">melhor</Badge>}
+                          {v.nome}{" "}
+                          {isBest && (
+                            <Badge variant="secondary" className="ml-1 text-[10px]">
+                              melhor
+                            </Badge>
+                          )}
                         </TableCell>
-                        <TableCell className="text-right">{noFit ? "—" : v.veiculosNecessarios}</TableCell>
-                        <TableCell className="text-right">{noFit ? "—" : `${v.aproveitamentoPct}%`}</TableCell>
+                        <TableCell className="text-right">
+                          {noFit ? "—" : v.veiculosNecessarios}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {noFit ? "—" : `${v.aproveitamentoPct}%`}
+                        </TableCell>
                         <TableCell className="text-xs text-muted-foreground">
                           {noFit ? "não cabe" : v.limitante}
                         </TableCell>
-                        <TableCell className="text-right">{noFit ? "—" : formatBRL(v.freteTotal)}</TableCell>
-                        <TableCell className="text-right">{noFit ? "—" : formatBRL(v.fretePorPeca)}</TableCell>
                         <TableCell className="text-right">
-                          <Button size="sm" variant="ghost" disabled={noFit} onClick={() => aplicarFrete(v.freteTotal)}>
+                          {noFit ? "—" : formatBRL(v.freteTotal)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {noFit ? "—" : formatBRL(v.fretePorPeca)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={noFit}
+                            onClick={() => aplicarFrete(v.freteTotal)}
+                          >
                             Usar
                           </Button>
                         </TableCell>
@@ -2530,4 +3023,3 @@ function LogisticaCard({ proposalId }: { proposalId: string }) {
     </Card>
   );
 }
-
