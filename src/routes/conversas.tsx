@@ -3,11 +3,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   MessageSquare,
   ArrowLeft,
-
   Phone,
   Send,
   Loader2,
-
   Bot,
   User as UserIcon,
   Search,
@@ -77,7 +75,6 @@ const DOCUMENTOS_ACEITOS = new Set([
   "application/vnd.openxmlformats-officedocument.presentationml.presentation",
   "text/plain",
 ]);
-
 
 export const Route = createFileRoute("/conversas")({
   validateSearch: (search: Record<string, unknown>): ConversasSearch => ({
@@ -170,7 +167,6 @@ function MinhasConversasPage() {
   const [fila, setFila] = useState<Fila>("todas");
   const [novoAberto, setNovoAberto] = useState(false);
 
-
   const load = useCallback(async () => {
     if (!userId) return;
     let query = supabase
@@ -229,8 +225,10 @@ function MinhasConversasPage() {
     void load();
     const channel = supabase
       .channel(`minhas-conversas-${Math.random().toString(36).slice(2)}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "whatsapp_conversas" }, () =>
-        void load(),
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "whatsapp_conversas" },
+        () => void load(),
       )
       .on(
         "postgres_changes",
@@ -244,7 +242,7 @@ function MinhasConversasPage() {
   }, [load]);
 
   // fallback de polling: pausa com a aba oculta e afrouxa sem conversa aberta
-  usePoll(() => void load(), selectedId ? 15000 : 45000);
+  usePoll(() => void load(), 45000, selectedId === null);
 
   const aguardandoIds = useMemo(() => {
     const s = new Set<string>();
@@ -271,7 +269,6 @@ function MinhasConversasPage() {
       return (c.name ?? "").toLowerCase().includes(q) || c.phone.includes(q);
     });
   }, [daFila, busca, aba, aguardandoIds]);
-
 
   const selected = useMemo(
     () => conversas.find((c) => c.id === selectedId) ?? null,
@@ -315,7 +312,6 @@ function MinhasConversasPage() {
             selectedId ? "hidden" : "flex",
           )}
         >
-
           <div className="space-y-2 border-b bg-muted/40 p-3">
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
@@ -436,7 +432,6 @@ function MinhasConversasPage() {
                         )}
                       </span>
                     </span>
-
                   </button>
                 </li>
               );
@@ -458,7 +453,6 @@ function MinhasConversasPage() {
             onVoltar={() => void navigate({ search: {} })}
           />
         </div>
-
       </div>
     </div>
   );
@@ -477,7 +471,9 @@ function diaLabel(iso: string) {
   const ontem = new Date();
   ontem.setDate(hoje.getDate() - 1);
   const mesmo = (a: Date, b: Date) =>
-    a.getDate() === b.getDate() && a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear();
+    a.getDate() === b.getDate() &&
+    a.getMonth() === b.getMonth() &&
+    a.getFullYear() === b.getFullYear();
   if (mesmo(d, hoje)) return "Hoje";
   if (mesmo(d, ontem)) return "Ontem";
   return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -492,7 +488,6 @@ function ChatPanel({
   onChanged: () => void;
   onVoltar?: () => void;
 }) {
-
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const [mensagens, setMensagens] = useState<Mensagem[]>([]);
@@ -529,7 +524,6 @@ function ChatPanel({
     conversa?.id ?? null,
     mensagens,
   );
-
 
   const loadMensagens = useCallback(async (conversaId: string) => {
     const { data, error } = await supabase
@@ -586,9 +580,15 @@ function ChatPanel({
   }, [conversa, loadMensagens]);
 
   const conversaIdAtual = conversa?.id ?? null;
-  usePoll(() => {
-    if (conversaIdAtual) void loadMensagens(conversaIdAtual);
-  }, 12000, conversaIdAtual !== null);
+  usePoll(
+    () => {
+      if (!conversaIdAtual) return;
+      void loadMensagens(conversaIdAtual);
+      onChanged(); // único poll ativo enquanto há conversa aberta
+    },
+    12000,
+    conversaIdAtual !== null,
+  );
 
   useEffect(() => {
     const leadId = conversa?.lead_id ?? null;
@@ -603,8 +603,6 @@ function ChatPanel({
       .maybeSingle()
       .then(({ data }) => setEmpresaLead(data?.company ?? null));
   }, [conversa?.lead_id]);
-
-
 
   useEffect(() => {
     const id = conversa?.id;
@@ -641,13 +639,11 @@ function ChatPanel({
   const encerrada = conversa.status === "encerrado";
   // Escrita manual só em conversas aguardando humano ou em atendimento humano
   // (admin não é limitado). Mesmo guard existe no servidor.
-  const bloqueadoPorStatus =
-    user?.role !== "admin" && !podeEscreverConversa(conversa.status);
+  const bloqueadoPorStatus = user?.role !== "admin" && !podeEscreverConversa(conversa.status);
   const temInbound = mensagens.some((m) => m.direcao === "entrada");
   const agoraSP = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
   const dentroDaJanela =
     agoraSP.getDay() !== 0 && agoraSP.getHours() >= 7 && agoraSP.getHours() < 20;
-
 
   async function rodarAcao(fn: () => Promise<unknown>, ok: string) {
     setAcaoEmCurso(true);
@@ -726,7 +722,10 @@ function ChatPanel({
 
     setEnviandoAnexo(true);
     try {
-      const nomeSeguro = file.name.normalize("NFD").replace(/[^\w.\-]+/g, "_").slice(-120);
+      const nomeSeguro = file.name
+        .normalize("NFD")
+        .replace(/[^\w.\-]+/g, "_")
+        .slice(-120);
       const caminho = `${conversa.id}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${nomeSeguro}`;
 
       const { error: upErr } = await supabase.storage
@@ -773,8 +772,6 @@ function ChatPanel({
       setEnviandoAnexo(false);
     }
   }
-
-
 
   async function handleIA(modo: ModoIA) {
     if (!conversa) return;
@@ -896,41 +893,43 @@ function ChatPanel({
       </div>
 
       <div className="relative flex min-h-0 flex-1 flex-col">
-      <div
-        ref={scrollRef}
-        onScroll={onScroll}
-        className="min-h-0 flex-1 space-y-2 overflow-auto p-4"
-      >
-
-        {mensagens.map((m, i) => {
-          const anterior = i > 0 ? mensagens[i - 1] : undefined;
-          const novoDia =
-            !anterior ||
-            new Date(anterior.created_at).toDateString() !== new Date(m.created_at).toDateString();
-          return (
-            <div key={m.id} className="space-y-2">
-              {novoDia && (
-                <div className="flex justify-center">
-                  <span className="rounded-full bg-muted px-3 py-1 text-[10px] font-medium text-muted-foreground">
-                    {diaLabel(m.created_at)}
-                  </span>
-                </div>
-              )}
-              <Bolha m={m} nomeVendedor={m.usuario_id ? nomesUsuarios[m.usuario_id] : undefined} />
+        <div
+          ref={scrollRef}
+          onScroll={onScroll}
+          className="min-h-0 flex-1 space-y-2 overflow-auto p-4"
+        >
+          {mensagens.map((m, i) => {
+            const anterior = i > 0 ? mensagens[i - 1] : undefined;
+            const novoDia =
+              !anterior ||
+              new Date(anterior.created_at).toDateString() !==
+                new Date(m.created_at).toDateString();
+            return (
+              <div key={m.id} className="space-y-2">
+                {novoDia && (
+                  <div className="flex justify-center">
+                    <span className="rounded-full bg-muted px-3 py-1 text-[10px] font-medium text-muted-foreground">
+                      {diaLabel(m.created_at)}
+                    </span>
+                  </div>
+                )}
+                <Bolha
+                  m={m}
+                  nomeVendedor={m.usuario_id ? nomesUsuarios[m.usuario_id] : undefined}
+                />
+              </div>
+            );
+          })}
+          {mensagens.length === 0 && (
+            <div className="py-10 text-center text-xs text-muted-foreground">
+              Sem mensagens nesta conversa ainda.
             </div>
-          );
-        })}
-        {mensagens.length === 0 && (
-          <div className="py-10 text-center text-xs text-muted-foreground">
-            Sem mensagens nesta conversa ainda.
-          </div>
-        )}
-      </div>
+          )}
+        </div>
         {temNovas && (
           <button
             type="button"
             onClick={scrollParaFim}
-
             className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full border bg-background/95 px-3 py-1 text-[11px] font-medium shadow-md backdrop-blur"
           >
             Novas mensagens
@@ -943,7 +942,9 @@ function ChatPanel({
           <span
             className={cn(
               "inline-flex items-center gap-1 rounded-full px-2 py-0.5",
-              dentroDaJanela ? "bg-emerald-500/10 text-emerald-600" : "bg-amber-500/10 text-amber-600",
+              dentroDaJanela
+                ? "bg-emerald-500/10 text-emerald-600"
+                : "bg-amber-500/10 text-amber-600",
             )}
           >
             {dentroDaJanela ? "Dentro da janela (07:00–20:00)" : "Fora da janela de envio"}
@@ -1017,7 +1018,9 @@ function ChatPanel({
             <Button
               size="icon"
               variant="ghost"
-              disabled={sending || enviandoAnexo || bloqueadoPorStatus || janela24h?.aberta !== true}
+              disabled={
+                sending || enviandoAnexo || bloqueadoPorStatus || janela24h?.aberta !== true
+              }
               title={
                 janela24h?.aberta !== true
                   ? "Janela de 24h encerrada — anexos indisponíveis"
@@ -1130,7 +1133,6 @@ function Bolha({ m, nomeVendedor }: { m: Mensagem; nomeVendedor?: string }) {
           <Icon className="h-3 w-3" /> {rotulo}
         </div>
 
-
         {url && (tipo.includes("imag") || tipo === "image" || tipo === "photo") ? (
           <a href={url} target="_blank" rel="noreferrer">
             <img src={url} alt={m.conteudo || "Imagem recebida"} className="max-h-64 rounded-lg" />
@@ -1138,13 +1140,17 @@ function Bolha({ m, nomeVendedor }: { m: Mensagem; nomeVendedor?: string }) {
         ) : url && (tipo.includes("audio") || tipo.includes("ptt") || tipo.includes("voice")) ? (
           <audio controls src={url} className="w-56" />
         ) : url ? (
-          <a href={url} target="_blank" rel="noreferrer" className="flex items-center gap-1 underline">
+          <a
+            href={url}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1 underline"
+          >
             <FileText className="h-3.5 w-3.5" /> {m.conteudo?.trim() || "Abrir arquivo"}
           </a>
         ) : (
           <div className="whitespace-pre-wrap break-words">
-            {limparOrigemAnuncio(m.conteudo ?? "").trim() ||
-              (tipo !== "texto" ? `[${tipo}]` : "")}
+            {limparOrigemAnuncio(m.conteudo ?? "").trim() || (tipo !== "texto" ? `[${tipo}]` : "")}
           </div>
         )}
 
@@ -1160,4 +1166,3 @@ function Bolha({ m, nomeVendedor }: { m: Mensagem; nomeVendedor?: string }) {
     </div>
   );
 }
-
