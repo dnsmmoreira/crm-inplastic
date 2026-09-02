@@ -48,6 +48,9 @@ import {
 import { Switch } from "@/components/ui/switch";
 
 export const Route = createFileRoute("/produtos")({
+  // Deep-link: /produtos?editar=<id> abre o ProductDialog já com o produto.
+  validateSearch: (s: Record<string, unknown>): { editar?: string } =>
+    typeof s['editar'] === "string" && s['editar'] ? { editar: s['editar'] } : {},
   component: ProdutosPage,
 });
 
