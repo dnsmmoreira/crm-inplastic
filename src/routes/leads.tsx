@@ -73,7 +73,8 @@ function LeadsPage() {
   const [stage, setStage] = useState<StageId | "all">("perdido");
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
-  const [openLead, setOpenLead] = useState<string | null>(null);
+  const { lead: leadParam } = Route.useSearch();
+  const [openLead, setOpenLead] = useState<string | null>(leadParam ?? null);
   const [sortMotivo, setSortMotivo] = useState<"asc" | "desc" | null>(null);
 
   const listVendedoresFn = useServerFn(listVendedores);
