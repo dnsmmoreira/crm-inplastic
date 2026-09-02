@@ -90,6 +90,30 @@ function ProdutosPage() {
     try { window.localStorage.setItem(SORT_STORAGE_KEY, sort); } catch { /* noop */ }
   }, [sort]);
 
+  function gerarSkuUnico(skuBase: string): string {
+    const existentes = new Set(products.map((p) => p.sku.toLowerCase()));
+    let candidato = `${skuBase}-COPIA`;
+    let n = 2;
+    while (existentes.has(candidato.toLowerCase())) {
+      candidato = `${skuBase}-COPIA-${n}`;
+      n += 1;
+    }
+    return candidato;
+  }
+
+  function duplicarProduto(p: Product) {
+    const { id: _id, ...rest } = p;
+    const novo: Omit<Product, "id"> = {
+      ...rest,
+      sku: gerarSkuUnico(p.sku),
+      name: `${p.name} (cópia)`,
+    };
+    const novoId = addProduct(novo);
+    toast.success("Produto duplicado — ajuste o SKU/nome antes de usar");
+    setEditing({ ...novo, id: novoId });
+    setOpen(true);
+  }
+
   const filtered = useMemo(() => {
     const t = q.toLowerCase().trim();
     const base = !t
