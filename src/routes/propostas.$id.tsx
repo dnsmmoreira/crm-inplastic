@@ -1,6 +1,6 @@
 import { MargemPropostaCard } from "@/components/arena/MargemPropostaCard";
 import { createFileRoute, Link, useNavigate, useBlocker } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useDuplicarProposta } from "@/hooks/use-duplicar-proposta";
 import {
   ArrowLeft,
