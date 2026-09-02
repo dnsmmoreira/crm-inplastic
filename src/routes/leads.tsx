@@ -31,6 +31,9 @@ import { listVendedores } from "@/lib/clientes.functions";
 import { listPerdasEstruturadas } from "@/lib/leads-perda.functions";
 
 export const Route = createFileRoute("/leads")({
+  // Deep-link: /leads?lead=<id> abre o LeadDrawer direto (usado por /pendencias).
+  validateSearch: (s: Record<string, unknown>): { lead?: string } =>
+    typeof s['lead'] === "string" && s['lead'] ? { lead: s['lead'] } : {},
   head: () => ({
     meta: [
       { title: "Leads — CRM INPLASTIC" },
