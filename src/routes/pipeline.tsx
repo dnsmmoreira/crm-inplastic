@@ -226,6 +226,7 @@ function PipelinePage() {
           orderCreatedAt: new Date().toISOString(),
         });
         toast.success(r.pedido_number ? `Pedido ${r.pedido_number} gerado` : `${label} → Ganho`);
+        if (r.pedido_id) setRomaneioAlvo({ id: r.pedido_id, number: r.pedido_number });
       }
     } catch (err) {
       toast.dismiss(t);
