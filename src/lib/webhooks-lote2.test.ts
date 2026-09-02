@@ -96,7 +96,7 @@ describe("(a) Meta: falha de escrita após aceitar o payload", () => {
     });
     const res = await handler(Route, "POST")({ request: req });
     expect(res.status).toBe(200);
-    const origens = registrarFalhaAdmin.mock.calls.map((c) => String(c[0]));
+    const origens = registrarFalhaAdmin.mock.calls.map((c) => String((c as unknown[])[0]));
     expect(origens.some((o) => o.startsWith("wa-cloud-webhook"))).toBe(true);
     const contextos = JSON.stringify(registrarFalhaAdmin.mock.calls);
     expect(contextos).toContain("wamid.TESTE1");
