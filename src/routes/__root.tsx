@@ -25,6 +25,7 @@ import {
   Building2,
   LogOut,
   UserCog,
+  ListChecks,
   Radio,
   ClipboardList,
   Trophy,
@@ -45,6 +46,10 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import { useIsAdmin } from "@/lib/crm-store";
+import { useServerFn } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
+import { listarPendenciasCadastro } from "@/lib/pendencias-cadastro.functions";
+import { PENDENCIAS_QUERY_KEY, PENDENCIAS_STALE_MS } from "@/lib/pendencias-cadastro.query";
 import { AuthProvider, useAuth, hasPerm } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { NotificacoesBell } from "@/components/layout/NotificacoesBell";
@@ -234,6 +239,8 @@ type NavItem = {
   icon: typeof LayoutDashboard;
   show: (c: NavCtx) => boolean;
   accent?: Accent;
+  /** Marca o item que exibe o contador de pendências de cadastro. */
+  badge?: "pendencias";
 };
 
 type NavGroup = {
@@ -337,6 +344,13 @@ const NAV_GROUPS: NavGroup[] = [
     icon: BarChart3,
     items: [
       { to: "/relatorios", label: "Relatórios", icon: BarChart3, show: key("relatorios.ver") },
+      {
+        to: "/pendencias",
+        label: "Pendências de cadastro",
+        icon: ListChecks,
+        show: always,
+        badge: "pendencias",
+      },
       { to: "/estoque", label: "Estoque", icon: Boxes, show: key("estoque.ver") },
       { to: "/licitacoes", label: "Licitações", icon: Gavel, show: key("licitacoes.gerenciar") },
 
@@ -381,6 +395,18 @@ const NAV_GROUPS: NavGroup[] = [
 
 const OPEN_STORAGE_KEY = "crm-sidebar-groups";
 
+/** Contador do menu — reaproveita a mesma query da tela /pendencias (staleTime 5 min). */
+function usePendenciasBadge(): number {
+  const fetchPendencias = useServerFn(listarPendenciasCadastro);
+  const { data } = useQuery({
+    queryKey: PENDENCIAS_QUERY_KEY,
+    queryFn: () => fetchPendencias(),
+    staleTime: PENDENCIAS_STALE_MS,
+    retry: false,
+  });
+  return data?.resumo.total ?? 0;
+}
+
 function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isAdmin = useIsAdmin();
@@ -405,6 +431,7 @@ function AppShell({ children }: { children: ReactNode }) {
     });
   };
   const ctx: NavCtx = { isAdmin, user };
+  const pendenciasTotal = usePendenciasBadge();
   const rootItems = NAV_ROOT.filter((i) => i.show(ctx));
   const groups = NAV_GROUPS.map((g) => ({
     ...g,
@@ -554,7 +581,12 @@ function AppShell({ children }: { children: ReactNode }) {
                         className={itemLinkClass(pathname === item.to, true, group.accent)}
                       >
                         <Icon className={cn("h-4 w-4 shrink-0", ga.icon)} />
-                        {!collapsed && item.label}
+                        {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
+                        {!collapsed && item.badge === "pendencias" && pendenciasTotal > 0 && (
+                          <span className="ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
+                            {pendenciasTotal}
+                          </span>
+                        )}
                       </Link>
                     );
                   })}
@@ -692,7 +724,12 @@ function AppShell({ children }: { children: ReactNode }) {
                               )}
                             >
                               <Icon className={cn("h-4 w-4 shrink-0", ga.icon)} />
-                              {item.label}
+                              <span className="flex-1 truncate">{item.label}</span>
+                              {item.badge === "pendencias" && pendenciasTotal > 0 && (
+                                <span className="ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
+                                  {pendenciasTotal}
+                                </span>
+                              )}
                             </Link>
                           );
                         })}

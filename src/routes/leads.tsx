@@ -31,6 +31,9 @@ import { listVendedores } from "@/lib/clientes.functions";
 import { listPerdasEstruturadas } from "@/lib/leads-perda.functions";
 
 export const Route = createFileRoute("/leads")({
+  // Deep-link: /leads?lead=<id> abre o LeadDrawer direto (usado por /pendencias).
+  validateSearch: (s: Record<string, unknown>): { lead?: string } =>
+    typeof s['lead'] === "string" && s['lead'] ? { lead: s['lead'] } : {},
   head: () => ({
     meta: [
       { title: "Leads — CRM INPLASTIC" },
@@ -73,7 +76,8 @@ function LeadsPage() {
   const [stage, setStage] = useState<StageId | "all">("perdido");
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
-  const [openLead, setOpenLead] = useState<string | null>(null);
+  const { lead: leadParam } = Route.useSearch();
+  const [openLead, setOpenLead] = useState<string | null>(leadParam ?? null);
   const [sortMotivo, setSortMotivo] = useState<"asc" | "desc" | null>(null);
 
   const listVendedoresFn = useServerFn(listVendedores);

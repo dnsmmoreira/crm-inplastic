@@ -48,6 +48,9 @@ import {
 import { Switch } from "@/components/ui/switch";
 
 export const Route = createFileRoute("/produtos")({
+  // Deep-link: /produtos?editar=<id> abre o ProductDialog já com o produto.
+  validateSearch: (s: Record<string, unknown>): { editar?: string } =>
+    typeof s['editar'] === "string" && s['editar'] ? { editar: s['editar'] } : {},
   component: ProdutosPage,
 });
 
@@ -89,6 +92,18 @@ function ProdutosPage() {
   useEffect(() => {
     try { window.localStorage.setItem(SORT_STORAGE_KEY, sort); } catch { /* noop */ }
   }, [sort]);
+
+  // Abre o diálogo de edição quando chega por /produtos?editar=<id>.
+  const { editar } = Route.useSearch();
+  const [deepLinkFeito, setDeepLinkFeito] = useState(false);
+  useEffect(() => {
+    if (!editar || deepLinkFeito) return;
+    const p = products.find((x) => x.id === editar);
+    if (!p) return;
+    setEditing(p);
+    setOpen(true);
+    setDeepLinkFeito(true);
+  }, [editar, products, deepLinkFeito]);
 
   function gerarSkuUnico(skuBase: string): string {
     const existentes = new Set(products.map((p) => p.sku.toLowerCase()));
