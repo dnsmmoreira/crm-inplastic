@@ -123,10 +123,10 @@ export const Route = createFileRoute("/api/public/hooks/ia-qualificar")({
             .select("id")
             .single();
           if (lErr || !lead) {
-            return new Response(
-              JSON.stringify({ error: lErr?.message ?? "falha ao criar lead" }),
-              { status: 500, headers: { "Content-Type": "application/json", ...CORS } },
-            );
+            return new Response(JSON.stringify({ error: lErr?.message ?? "falha ao criar lead" }), {
+              status: 500,
+              headers: { "Content-Type": "application/json", ...CORS },
+            });
           }
           leadId = lead.id;
         }

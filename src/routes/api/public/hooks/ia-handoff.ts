@@ -84,7 +84,9 @@ export const Route = createFileRoute("/api/public/hooks/ia-handoff")({
             })
             .eq("id", conversaId);
           if (encErr.error) {
-            await registrarFalhaSegura("ia-handoff.encerrar", encErr.error, { conversa_id: conversaId });
+            await registrarFalhaSegura("ia-handoff.encerrar", encErr.error, {
+              conversa_id: conversaId,
+            });
             return new Response(JSON.stringify({ error: "falha ao encerrar conversa" }), {
               status: 500,
               headers: { "Content-Type": "application/json", ...CORS },

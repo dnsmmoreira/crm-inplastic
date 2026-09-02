@@ -38,13 +38,22 @@ function _valid(iso: string | null | undefined): Date | null {
 function fmtDDMM(iso: string | null | undefined): string | null {
   const d = _valid(iso);
   if (!d) return null;
-  const p = new Intl.DateTimeFormat("pt-BR", { timeZone: SP_TZ, day: "2-digit", month: "2-digit" }).format(d);
+  const p = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: SP_TZ,
+    day: "2-digit",
+    month: "2-digit",
+  }).format(d);
   return p;
 }
 function fmtHHhMM(iso: string | null | undefined): string | null {
   const d = _valid(iso);
   if (!d) return null;
-  const parts = new Intl.DateTimeFormat("pt-BR", { timeZone: SP_TZ, hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(d);
+  const parts = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: SP_TZ,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(d);
   const hh = parts.find((x) => x.type === "hour")?.value ?? "00";
   const mm = parts.find((x) => x.type === "minute")?.value ?? "00";
   return `${hh}h${mm}`;
@@ -145,9 +154,7 @@ async function loadCfg(): Promise<Cfg> {
 
 type Stats = Record<string, number>;
 
-async function runEngine(
-  opts: { force?: boolean; dryRun?: boolean } = {},
-): Promise<{
+async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Promise<{
   ran: boolean;
   reason?: string;
   stats: Stats;
@@ -167,15 +174,19 @@ async function runEngine(
 
   const stats: Stats = {
     a0_lead_orfao: 0,
-    a1_primeiro_contato: 0, a1_escalado: 0,
+    a1_primeiro_contato: 0,
+    a1_escalado: 0,
     a2_lead_parado: 0,
-    a3_sem_resposta: 0, a3_escalado: 0,
+    a3_sem_resposta: 0,
+    a3_escalado: 0,
     a4_cadencia_proposta: 0,
     b1_carteira_45: 0,
     b2_carteira_60: 0,
     b3_reciclagem: 0,
     c_pos_venda: 0,
-    d1_abandono: 0, d1_escalado: 0, d1_reatribuido: 0,
+    d1_abandono: 0,
+    d1_escalado: 0,
+    d1_reatribuido: 0,
   };
 
   const plan: XerifePlanItem[] = [];
@@ -194,9 +205,15 @@ async function runEngine(
     dueDate?: Date;
   }) {
     plan.push({
-      regra: t.regra, lead_id: t.lead_id, lead_company: t.lead_company,
-      owner_id: t.owner_id, tipo: t.tipo, titulo: t.titulo,
-      descricao: t.descricao, motivo: t.motivo, prioridade: t.prioridade,
+      regra: t.regra,
+      lead_id: t.lead_id,
+      lead_company: t.lead_company,
+      owner_id: t.owner_id,
+      tipo: t.tipo,
+      titulo: t.titulo,
+      descricao: t.descricao,
+      motivo: t.motivo,
+      prioridade: t.prioridade,
       acao: "criar_tarefa",
     });
     if (dryRun) return;
@@ -232,9 +249,16 @@ async function runEngine(
     ctx: { regra: string; lead_id: string; lead_company: string | null; owner_id: string | null },
   ) => {
     plan.push({
-      regra: ctx.regra, lead_id: ctx.lead_id, lead_company: ctx.lead_company,
-      owner_id: ctx.owner_id, tipo: "alerta_diretoria", titulo: "Notificar diretoria",
-      descricao: msg, motivo: msg, prioridade: 0, acao: "notificar_diretoria",
+      regra: ctx.regra,
+      lead_id: ctx.lead_id,
+      lead_company: ctx.lead_company,
+      owner_id: ctx.owner_id,
+      tipo: "alerta_diretoria",
+      titulo: "Notificar diretoria",
+      descricao: msg,
+      motivo: msg,
+      prioridade: 0,
+      acao: "notificar_diretoria",
     });
     if (dryRun) return;
     await notifyDiretoria(msg);
@@ -249,17 +273,35 @@ async function runEngine(
     ctx: { regra: string; lead_id: string; lead_company: string | null; owner_id: string | null },
   ) => {
     plan.push({
-      regra: ctx.regra, lead_id: ctx.lead_id, lead_company: ctx.lead_company,
-      owner_id: ctx.owner_id, tipo: "escalacao", titulo: "Escalação registrada (sem grupo)",
-      descricao: msg, motivo: msg, prioridade: 0, acao: "registrar_escalacao",
+      regra: ctx.regra,
+      lead_id: ctx.lead_id,
+      lead_company: ctx.lead_company,
+      owner_id: ctx.owner_id,
+      tipo: "escalacao",
+      titulo: "Escalação registrada (sem grupo)",
+      descricao: msg,
+      motivo: msg,
+      prioridade: 0,
+      acao: "registrar_escalacao",
     });
   };
-  const marcarEsfriando = async (leadId: string, company: string | null, ownerId: string | null, regra: string) => {
+  const marcarEsfriando = async (
+    leadId: string,
+    company: string | null,
+    ownerId: string | null,
+    regra: string,
+  ) => {
     plan.push({
-      regra, lead_id: leadId, lead_company: company, owner_id: ownerId,
-      tipo: "esfriando", titulo: "Marcar lead como esfriando",
-      descricao: "Definir esfriando=true", motivo: "lead parado além do máximo",
-      prioridade: 3, acao: "marcar_esfriando",
+      regra,
+      lead_id: leadId,
+      lead_company: company,
+      owner_id: ownerId,
+      tipo: "esfriando",
+      titulo: "Marcar lead como esfriando",
+      descricao: "Definir esfriando=true",
+      motivo: "lead parado além do máximo",
+      prioridade: 3,
+      acao: "marcar_esfriando",
     });
     if (dryRun) return;
     // REGISTRAR E SEGUIR: marcação de "esfriando" é reavaliada a cada rodada.
@@ -291,14 +333,21 @@ async function runEngine(
 
       if (cfg.auto_atribuir_lead_orfao) {
         plan.push({
-          regra, lead_id: l.id, lead_company: l.company, owner_id: null,
-          tipo: "atribuir_vendedor", titulo: "Atribuir vendedor (round-robin)",
+          regra,
+          lead_id: l.id,
+          lead_company: l.company,
+          owner_id: null,
+          tipo: "atribuir_vendedor",
+          titulo: "Atribuir vendedor (round-robin)",
           descricao: `Lead sem vendedor há +${cfg.sla_lead_orfao_min} min úteis — atribuir via fila.`,
           motivo: `Lead sem vendedor há +${cfg.sla_lead_orfao_min} min úteis.`,
-          prioridade: 1, acao: "criar_tarefa",
+          prioridade: 1,
+          acao: "criar_tarefa",
         });
         if (!dryRun) {
-          const { data: newOwner, error: rpcErr } = await sb.rpc("atribuir_proximo_vendedor", { _lead_id: l.id });
+          const { data: newOwner, error: rpcErr } = await sb.rpc("atribuir_proximo_vendedor", {
+            _lead_id: l.id,
+          });
           if (rpcErr) {
             // Falha técnica: vai para "Falhas do sistema", não para o grupo.
             const { registrarFalhaAdmin } = await import("@/lib/falhas.server");
@@ -309,9 +358,18 @@ async function runEngine(
             );
           }
           await log(sb, {
-            regra, leadId: l.id, vendedorId: (newOwner as string) ?? null,
-            acao: rpcErr ? "atribuição falhou → registrada em Falhas do sistema" : "atribuído via round-robin",
-            payload: { sla_min: cfg.sla_lead_orfao_min, created_at: l.created_at, auto: true, erro: rpcErr?.message ?? null },
+            regra,
+            leadId: l.id,
+            vendedorId: (newOwner as string) ?? null,
+            acao: rpcErr
+              ? "atribuição falhou → registrada em Falhas do sistema"
+              : "atribuído via round-robin",
+            payload: {
+              sla_min: cfg.sla_lead_orfao_min,
+              created_at: l.created_at,
+              auto: true,
+              erro: rpcErr?.message ?? null,
+            },
           });
         }
       } else {
@@ -320,7 +378,9 @@ async function runEngine(
           { regra, lead_id: l.id, lead_company: l.company, owner_id: null },
         );
         await log(sb, {
-          regra, leadId: l.id, vendedorId: null,
+          regra,
+          leadId: l.id,
+          vendedorId: null,
           acao: "diretoria notificada (atribuição manual)",
           payload: { sla_min: cfg.sla_lead_orfao_min, created_at: l.created_at, auto: false },
         });
@@ -331,12 +391,22 @@ async function runEngine(
 
   // ─────────────── A1: primeiro contato (SLA em min úteis) ───────────────
   {
-    const thresholdIso = subtractBusinessMinutes(cfg.sla_primeiro_contato_min, win, now).toISOString();
-    const escalarIso = subtractBusinessMinutes(cfg.sla_primeiro_contato_escalar_min, win, now).toISOString();
+    const thresholdIso = subtractBusinessMinutes(
+      cfg.sla_primeiro_contato_min,
+      win,
+      now,
+    ).toISOString();
+    const escalarIso = subtractBusinessMinutes(
+      cfg.sla_primeiro_contato_escalar_min,
+      win,
+      now,
+    ).toISOString();
 
     const { data: leads } = await sb
       .from("leads")
-      .select("id, company, owner_id, created_at, last_contact_at, last_interaction_at, origem, source")
+      .select(
+        "id, company, owner_id, created_at, last_contact_at, last_interaction_at, origem, source",
+      )
       .in("stage", ["novo", "qualificacao"] as any)
       .lt("created_at", thresholdIso)
       .is("last_contact_at", null)
@@ -353,18 +423,25 @@ async function runEngine(
       const hora = fmtHHhMM(l.created_at);
       const canal = canalLabel((l as any).origem ?? (l as any).source);
       const ctxPc = hora
-        ? (canal ? `lead chegou às ${hora} via ${canal}` : `lead chegou às ${hora}`)
+        ? canal
+          ? `lead chegou às ${hora} via ${canal}`
+          : `lead chegou às ${hora}`
         : null;
       await criarTarefa({
-        regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id,
+        regra,
+        lead_id: l.id,
+        lead_company: l.company,
+        owner_id: l.owner_id,
         tipo: "primeiro_contato",
         titulo: withCtx(`Primeiro contato: ${l.company}`, ctxPc),
         descricao: `Lead entrou há mais de ${cfg.sla_primeiro_contato_min} min úteis e não teve nenhum contato.`,
         motivo: `Lead entrou há mais de ${cfg.sla_primeiro_contato_min} min úteis e não teve nenhum contato.`,
         prioridade: 1,
-        });
+      });
       await log(sb, {
-        regra, leadId: l.id, vendedorId: l.owner_id,
+        regra,
+        leadId: l.id,
+        vendedorId: l.owner_id,
         acao: "tarefa criada",
         payload: { created_at: l.created_at, sla_min: cfg.sla_primeiro_contato_min },
       });
@@ -379,7 +456,9 @@ async function runEngine(
             { regra: escRegra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id },
           );
           await log(sb, {
-            regra: escRegra, leadId: l.id, vendedorId: l.owner_id,
+            regra: escRegra,
+            leadId: l.id,
+            vendedorId: l.owner_id,
             acao: "escalação registrada (sem grupo)",
             payload: { sla_escalar_min: cfg.sla_primeiro_contato_escalar_min },
           });
@@ -410,16 +489,24 @@ async function runEngine(
         const diasParado = diasDesde(l.etapa_changed_at, now) ?? maxDias;
         const etapaLabel = STAGE_LABEL[stage] ?? stage;
         await criarTarefa({
-          regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id,
+          regra,
+          lead_id: l.id,
+          lead_company: l.company,
+          owner_id: l.owner_id,
           tipo: "follow_up",
-          titulo: withCtx(`Destravar ${l.company}`, `parado em ${etapaLabel} há ${diasParado} dias`),
+          titulo: withCtx(
+            `Destravar ${l.company}`,
+            `parado em ${etapaLabel} há ${diasParado} dias`,
+          ),
           descricao: `Lead parado em "${stage}" há +${maxDias} dias. Ligar/definir próximo passo.`,
           motivo: `Lead parado em "${stage}" há +${maxDias} dias. Ligar/definir próximo passo.`,
           prioridade: 2,
-          });
+        });
         await marcarEsfriando(l.id, l.company, l.owner_id, regra);
         await log(sb, {
-          regra, leadId: l.id, vendedorId: l.owner_id,
+          regra,
+          leadId: l.id,
+          vendedorId: l.owner_id,
           acao: "tarefa criada + esfriando=true",
           payload: { stage, max_dias: maxDias, etapa_changed_at: l.etapa_changed_at },
         });
@@ -430,8 +517,16 @@ async function runEngine(
 
   // ─────────────── A3: cliente sem resposta no WhatsApp (pula ia_ativa=true) ───────────────
   {
-    const thresholdIso = subtractBusinessHours(cfg.sla_resposta_whatsapp_horas, win, now).toISOString();
-    const escalarIso = subtractBusinessHours(cfg.sla_resposta_whatsapp_escalar_horas, win, now).toISOString();
+    const thresholdIso = subtractBusinessHours(
+      cfg.sla_resposta_whatsapp_horas,
+      win,
+      now,
+    ).toISOString();
+    const escalarIso = subtractBusinessHours(
+      cfg.sla_resposta_whatsapp_escalar_horas,
+      win,
+      now,
+    ).toISOString();
 
     // conversas com última msg cliente recente demais NÃO qualificam;
     // buscamos leads onde ultima_msg_cliente_at é antiga o suficiente e ultima_msg_vendedor_at é anterior a ela
@@ -461,17 +556,28 @@ async function runEngine(
 
       const hEspera = horasDesde(l.ultima_msg_cliente_at, now);
       await criarTarefa({
-        regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id,
+        regra,
+        lead_id: l.id,
+        lead_company: l.company,
+        owner_id: l.owner_id,
         tipo: "resposta_pendente",
-        titulo: withCtx(`Responder ${l.company}`, hEspera != null ? `cliente aguardando há ${hEspera}h` : null),
+        titulo: withCtx(
+          `Responder ${l.company}`,
+          hEspera != null ? `cliente aguardando há ${hEspera}h` : null,
+        ),
         descricao: `Cliente enviou mensagem há +${cfg.sla_resposta_whatsapp_horas}h úteis sem resposta.`,
         motivo: `Cliente enviou mensagem há +${cfg.sla_resposta_whatsapp_horas}h úteis sem resposta.`,
         prioridade: 1,
-        });
+      });
       await log(sb, {
-        regra, leadId: l.id, vendedorId: l.owner_id,
+        regra,
+        leadId: l.id,
+        vendedorId: l.owner_id,
         acao: "tarefa criada",
-        payload: { ultima_msg_cliente_at: l.ultima_msg_cliente_at, sla_h: cfg.sla_resposta_whatsapp_horas },
+        payload: {
+          ultima_msg_cliente_at: l.ultima_msg_cliente_at,
+          sla_h: cfg.sla_resposta_whatsapp_horas,
+        },
       });
       stats.a3_sem_resposta++;
 
@@ -483,7 +589,9 @@ async function runEngine(
             { regra: escRegra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id },
           );
           await log(sb, {
-            regra: escRegra, leadId: l.id, vendedorId: l.owner_id,
+            regra: escRegra,
+            leadId: l.id,
+            vendedorId: l.owner_id,
             acao: "escalação registrada (sem grupo)",
           });
           stats.a3_escalado++;
@@ -503,7 +611,9 @@ async function runEngine(
       .limit(500);
 
     for (const l of leads ?? []) {
-      const diasCorridos = Math.floor((now.getTime() - new Date(l.proposta_enviada_at!).getTime()) / 86400_000);
+      const diasCorridos = Math.floor(
+        (now.getTime() - new Date(l.proposta_enviada_at!).getTime()) / 86400_000,
+      );
       const passo = cfg.cadencia_proposta_dias.find((d) => d === diasCorridos);
       if (!passo) continue;
 
@@ -516,27 +626,31 @@ async function runEngine(
         ? `Decisão D+${passo}: ${l.company}`
         : `Follow proposta D+${passo}: ${l.company}`;
       const ctxA4 = propDDMM
-        ? (isDecisao
-            ? `sem retorno desde ${propDDMM}, retomar ou marcar perdido`
-            : `proposta enviada em ${propDDMM}`)
+        ? isDecisao
+          ? `sem retorno desde ${propDDMM}, retomar ou marcar perdido`
+          : `proposta enviada em ${propDDMM}`
         : null;
       await criarTarefa({
-        regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id,
+        regra,
+        lead_id: l.id,
+        lead_company: l.company,
+        owner_id: l.owner_id,
         tipo: "cadencia_proposta",
         titulo: withCtx(baseTitulo, ctxA4),
         descricao: `Proposta enviada há ${passo} dias. Cadência: ${cfg.cadencia_proposta_dias.join("/")}.`,
         motivo: `Proposta enviada há ${passo} dias. Cadência: ${cfg.cadencia_proposta_dias.join("/")}.`,
         prioridade: 2,
-        });
+      });
       await log(sb, {
-        regra, leadId: l.id, vendedorId: l.owner_id,
+        regra,
+        leadId: l.id,
+        vendedorId: l.owner_id,
         acao: "tarefa criada",
         payload: { dias_corridos: diasCorridos, cadencia: cfg.cadencia_proposta_dias },
       });
       stats.a4_cadencia_proposta++;
     }
   }
-
 
   // ─────────────── D1: lead ativo sem contato (régua 2/5/10 dias) ───────────────
   // Passo 1 e 2: tarefa para o vendedor. Passo 3: diretoria + devolução à fila.
@@ -569,7 +683,10 @@ async function runEngine(
       if (!ultimo) {
         if (await hasOpenTask(sb, l.id, "retomar_contato")) continue;
         await criarTarefa({
-          regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id,
+          regra,
+          lead_id: l.id,
+          lead_company: l.company,
+          owner_id: l.owner_id,
           tipo: "retomar_contato",
           titulo: withCtx(`Retomar contato: ${l.company}`, `${dias} dias sem contato`),
           descricao: `Lead em ${STAGE_LABEL[l.stage as string] ?? l.stage} há ${dias} dias sem nenhum contato registrado. Régua ${reguaOrd.join("/")} dias.`,
@@ -577,7 +694,9 @@ async function runEngine(
           prioridade: 1,
         });
         await log(sb, {
-          regra, leadId: l.id, vendedorId: l.owner_id,
+          regra,
+          leadId: l.id,
+          vendedorId: l.owner_id,
           acao: "tarefa criada",
           payload: { dias, regua: reguaOrd },
         });
@@ -594,30 +713,45 @@ async function runEngine(
 
       if (cfg.reatribuir_lead_abandonado && !l.reatribuido_abandono_em) {
         plan.push({
-          regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id,
-          tipo: "reatribuicao", titulo: "Devolver lead para a fila",
+          regra,
+          lead_id: l.id,
+          lead_company: l.company,
+          owner_id: l.owner_id,
+          tipo: "reatribuicao",
+          titulo: "Devolver lead para a fila",
           descricao: `Lead abandonado há ${dias} dias — round-robin`,
-          motivo: `3º alerta ignorado`, prioridade: 0, acao: "criar_tarefa",
+          motivo: `3º alerta ignorado`,
+          prioridade: 0,
+          acao: "criar_tarefa",
         });
         if (!dryRun) {
           const anterior = l.owner_id;
           await sb.from("leads").update({ owner_id: null }).eq("id", l.id);
-          const { data: novoDono, error: rpcErr } = await sb.rpc("atribuir_proximo_vendedor", { _lead_id: l.id });
+          const { data: novoDono, error: rpcErr } = await sb.rpc("atribuir_proximo_vendedor", {
+            _lead_id: l.id,
+          });
           if (rpcErr) {
             await sb.from("leads").update({ owner_id: anterior }).eq("id", l.id);
           } else {
-            await sb.from("leads").update({ reatribuido_abandono_em: now.toISOString() }).eq("id", l.id);
+            await sb
+              .from("leads")
+              .update({ reatribuido_abandono_em: now.toISOString() })
+              .eq("id", l.id);
             stats.d1_reatribuido++;
           }
           await log(sb, {
-            regra, leadId: l.id, vendedorId: anterior,
+            regra,
+            leadId: l.id,
+            vendedorId: anterior,
             acao: rpcErr ? "reatribuição falhou" : "lead devolvido à fila",
             payload: { dias, novo_owner: novoDono ?? null, erro: rpcErr?.message ?? null },
           });
         }
       } else {
         await log(sb, {
-          regra, leadId: l.id, vendedorId: l.owner_id,
+          regra,
+          leadId: l.id,
+          vendedorId: l.owner_id,
           acao: "diretoria notificada",
           payload: { dias, reatribuicao: false },
         });
@@ -645,15 +779,24 @@ async function runEngine(
 
       const diasSem45 = diasDesde(l.last_contact_at, now);
       await criarTarefa({
-        regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id,
+        regra,
+        lead_id: l.id,
+        lead_company: l.company,
+        owner_id: l.owner_id,
         tipo: "resgate_carteira",
-        titulo: withCtx(`Resgatar ${l.company}`, diasSem45 != null ? `sem contato há ${diasSem45} dias` : null),
+        titulo: withCtx(
+          `Resgatar ${l.company}`,
+          diasSem45 != null ? `sem contato há ${diasSem45} dias` : null,
+        ),
         descricao: `Cliente ganho sem contato há +${cfg.carteira_alerta_dias} dias.`,
         motivo: `Cliente ganho sem contato há +${cfg.carteira_alerta_dias} dias.`,
         prioridade: 3,
-        });
+      });
       await log(sb, {
-        regra, leadId: l.id, clienteId: l.id, vendedorId: l.owner_id,
+        regra,
+        leadId: l.id,
+        clienteId: l.id,
+        vendedorId: l.owner_id,
         acao: "tarefa criada",
         payload: { last_contact_at: l.last_contact_at },
       });
@@ -679,20 +822,29 @@ async function runEngine(
       if (!(await hasOpenTask(sb, l.id, "resgate_carteira"))) {
         const diasSem60 = diasDesde(l.last_contact_at, now);
         await criarTarefa({
-          regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id,
+          regra,
+          lead_id: l.id,
+          lead_company: l.company,
+          owner_id: l.owner_id,
           tipo: "resgate_carteira",
-          titulo: withCtx(`Resgatar ${l.company}`, diasSem60 != null ? `sem contato há ${diasSem60} dias` : null),
+          titulo: withCtx(
+            `Resgatar ${l.company}`,
+            diasSem60 != null ? `sem contato há ${diasSem60} dias` : null,
+          ),
           descricao: `Cliente ganho sem contato há +${cfg.carteira_critico_dias} dias (crítico).`,
           motivo: `Cliente ganho sem contato há +${cfg.carteira_critico_dias} dias (crítico).`,
           prioridade: 1,
-          });
+        });
       }
       await alertDiretoria(
         `🔴 Cliente ganho abandonado +${cfg.carteira_critico_dias}d\n\n${l.company}\n${crmLeadLink(l.id)}`,
         { regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id },
       );
       await log(sb, {
-        regra, leadId: l.id, clienteId: l.id, vendedorId: l.owner_id,
+        regra,
+        leadId: l.id,
+        clienteId: l.id,
+        vendedorId: l.owner_id,
         acao: "tarefa + diretoria",
         payload: { last_contact_at: l.last_contact_at },
       });
@@ -718,15 +870,23 @@ async function runEngine(
 
       const diasPerdido = diasDesde((l as any).etapa_changed_at ?? l.updated_at, now);
       await criarTarefa({
-        regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id,
+        regra,
+        lead_id: l.id,
+        lead_company: l.company,
+        owner_id: l.owner_id,
         tipo: "reativacao_lead",
-        titulo: withCtx(`Reativar ${l.company}`, diasPerdido != null ? `perdido há ${diasPerdido}+ dias` : null),
+        titulo: withCtx(
+          `Reativar ${l.company}`,
+          diasPerdido != null ? `perdido há ${diasPerdido}+ dias` : null,
+        ),
         descricao: `Perdido há +${cfg.reciclagem_perdidos_dias} dias. Vale nova tentativa.`,
         motivo: `Perdido há +${cfg.reciclagem_perdidos_dias} dias. Vale nova tentativa.`,
         prioridade: 4,
-        });
+      });
       await log(sb, {
-        regra, leadId: l.id, vendedorId: l.owner_id,
+        regra,
+        leadId: l.id,
+        vendedorId: l.owner_id,
         acao: "tarefa criada",
         payload: { updated_at: l.updated_at },
       });
@@ -749,9 +909,7 @@ async function runEngine(
         .limit(500);
 
       const tipo =
-        d <= 5 ? "pos_venda_confirmacao"
-        : d <= 20 ? "pos_venda_satisfacao"
-        : "pos_venda_recompra";
+        d <= 5 ? "pos_venda_confirmacao" : d <= 20 ? "pos_venda_satisfacao" : "pos_venda_recompra";
       const titulos: Record<string, string> = {
         pos_venda_confirmacao: "Confirmar recebimento",
         pos_venda_satisfacao: "Pesquisa de satisfação",
@@ -766,15 +924,24 @@ async function runEngine(
 
         const fechadoDDMM = fmtDDMM(l.etapa_changed_at);
         await criarTarefa({
-          regra, lead_id: l.id, lead_company: l.company, owner_id: l.owner_id,
+          regra,
+          lead_id: l.id,
+          lead_company: l.company,
+          owner_id: l.owner_id,
           tipo,
-          titulo: withCtx(`${prefixoPv}: ${l.company}`, fechadoDDMM ? `pedido fechado em ${fechadoDDMM}` : null),
+          titulo: withCtx(
+            `${prefixoPv}: ${l.company}`,
+            fechadoDDMM ? `pedido fechado em ${fechadoDDMM}` : null,
+          ),
           descricao: `Pós-venda D+${d}. Requer nota de conclusão. (${titulos[tipo]})`,
           motivo: `Pós-venda D+${d}. Requer nota de conclusão.`,
           prioridade: 2,
         });
         await log(sb, {
-          regra, leadId: l.id, clienteId: l.id, vendedorId: l.owner_id,
+          regra,
+          leadId: l.id,
+          clienteId: l.id,
+          vendedorId: l.owner_id,
           acao: "tarefa criada",
           payload: { d, tipo },
         });
@@ -797,10 +964,10 @@ export const Route = createFileRoute("/api/public/hooks/xerife-engine")({
           return cronJsonResponse(result);
         } catch (e) {
           console.error("[xerife-engine] error:", e);
-          return new Response(
-            JSON.stringify({ ok: false, error: "internal_error" }),
-            { status: 500, headers: { "Content-Type": "application/json" } },
-          );
+          return new Response(JSON.stringify({ ok: false, error: "internal_error" }), {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+          });
         }
       },
     },

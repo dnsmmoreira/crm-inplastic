@@ -65,11 +65,12 @@ async function runAgendaDiaria(force = false): Promise<{
   for (const v of vendedores ?? []) {
     const uid = v.user_id;
 
-
     // Tarefas de hoje (pendente/adiada) desse vendedor
     const { data: hoje } = await sb
       .from("tarefas")
-      .select("id, lead_id, tipo, title, descricao, prioridade, escalonamentos, hora_sugerida, due_date")
+      .select(
+        "id, lead_id, tipo, title, descricao, prioridade, escalonamentos, hora_sugerida, due_date",
+      )
       .eq("owner_id", uid)
       .in("status", ["pendente", "adiada"])
       .lte("due_date", endOfTodayIso())
@@ -83,7 +84,9 @@ async function runAgendaDiaria(force = false): Promise<{
       const falta = meta - lista.length;
       const { data: extras } = await sb
         .from("tarefas")
-        .select("id, lead_id, tipo, title, descricao, prioridade, escalonamentos, hora_sugerida, due_date")
+        .select(
+          "id, lead_id, tipo, title, descricao, prioridade, escalonamentos, hora_sugerida, due_date",
+        )
         .eq("owner_id", uid)
         .in("status", ["pendente", "adiada"])
         .in("tipo", ["resgate_carteira", "reativacao_lead"])
@@ -118,7 +121,10 @@ async function runAgendaDiaria(force = false): Promise<{
       return (TIPO_ORDEM[a.tipo] ?? 99) - (TIPO_ORDEM[b.tipo] ?? 99);
     });
 
-    if (!lista.length) { vendedoresSemNada++; continue; }
+    if (!lista.length) {
+      vendedoresSemNada++;
+      continue;
+    }
 
     // Buscar company dos leads
     const leadIds = Array.from(new Set(lista.map((t: any) => t.lead_id).filter(Boolean)));
@@ -130,10 +136,12 @@ async function runAgendaDiaria(force = false): Promise<{
 
     const lines: string[] = [];
     lines.push(`🤠 *Agenda Xerife* — ${new Date().toLocaleDateString("pt-BR")}`);
-    lines.push(`${lista.length} tarefa(s) para hoje${lista.length >= meta ? " ✅" : ` (meta ${meta})`}`);
+    lines.push(
+      `${lista.length} tarefa(s) para hoje${lista.length >= meta ? " ✅" : ` (meta ${meta})`}`,
+    );
     lines.push("");
     lista.slice(0, 20).forEach((t: any, i: number) => {
-      const co = t.lead_id ? companyById.get(t.lead_id) ?? "" : "";
+      const co = t.lead_id ? (companyById.get(t.lead_id) ?? "") : "";
       const flag = (t.escalonamentos ?? 0) > 0 ? "🔥 " : "";
       lines.push(`${i + 1}. ${flag}${t.title}${co && !t.title.includes(co) ? ` — ${co}` : ""}`);
       if (t.lead_id) lines.push(`   ${crmLeadLink(t.lead_id)}`);
@@ -157,7 +165,13 @@ async function runAgendaDiaria(force = false): Promise<{
   await logAction(sb, {
     regra: "agenda_diaria",
     acao: `agenda → ${vendedoresNotificados} enviada(s), ${totalTarefas} tarefa(s), ${vendedoresSemNada}/${vendedoresProcessados} sem nada`,
-    payload: { vendedoresNotificados, totalTarefas, antecipadas, vendedoresSemNada, vendedoresProcessados },
+    payload: {
+      vendedoresNotificados,
+      totalTarefas,
+      antecipadas,
+      vendedoresSemNada,
+      vendedoresProcessados,
+    },
   });
 
   return { vendedoresNotificados, totalTarefas, antecipadas };
@@ -174,8 +188,10 @@ export const Route = createFileRoute("/api/public/hooks/xerife-agenda-diaria")({
           return cronJsonResponse(r);
         } catch (e) {
           console.error("[xerife-agenda-diaria]", e);
-          return new Response(JSON.stringify({ ok: false, error: "internal_error" }),
-            { status: 500, headers: { "Content-Type": "application/json" } });
+          return new Response(JSON.stringify({ ok: false, error: "internal_error" }), {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+          });
         }
       },
     },

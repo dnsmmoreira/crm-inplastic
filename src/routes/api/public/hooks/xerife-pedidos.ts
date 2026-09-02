@@ -97,11 +97,7 @@ async function alreadyActedPedido(
 }
 
 /** Já existe tarefa pendente para este pedido com este tipo? (defesa extra) */
-async function hasOpenTaskForPedido(
-  sb: SB,
-  pedidoId: string,
-  tipo: string,
-): Promise<boolean> {
+async function hasOpenTaskForPedido(sb: SB, pedidoId: string, tipo: string): Promise<boolean> {
   const { count } = await sb
     .from("tarefas")
     .select("id", { count: "exact", head: true })
@@ -260,9 +256,7 @@ async function runXerifePedidos(
       );
       if (!ids.length) return [];
       const { data: prods } = await sb.from("produtos").select("family").in("id", ids);
-      return (prods ?? [])
-        .map((p) => (p.family ?? "").trim())
-        .filter((f) => f !== "");
+      return (prods ?? []).map((p) => (p.family ?? "").trim()).filter((f) => f !== "");
     }
 
     // Grupos resolvidos uma vez por execução (evita N+1 de permissões)
@@ -311,7 +305,7 @@ async function runXerifePedidos(
       );
       const alvos = responsaveis.length
         ? responsaveis
-        : [p.responsavel_atual_id ?? p.vendedor_proprietario_id].filter(Boolean) as string[];
+        : ([p.responsavel_atual_id ?? p.vendedor_proprietario_id].filter(Boolean) as string[]);
 
       // Uma tarefa por responsável do grupo; dedupe por (regra, pedido, dono).
       let criou = false;
@@ -505,7 +499,9 @@ async function runXerifePedidos(
 
   // ─────────────── R6: Pós-venda — confirmação de entrega ───────────────
   {
-    const alvoInicio = new Date(now.getTime() - (POS_VENDA_ENTREGA_DIAS + 1) * 86400_000).toISOString();
+    const alvoInicio = new Date(
+      now.getTime() - (POS_VENDA_ENTREGA_DIAS + 1) * 86400_000,
+    ).toISOString();
     const alvoFim = new Date(now.getTime() - POS_VENDA_ENTREGA_DIAS * 86400_000).toISOString();
     const { data: pedidos } = await sb
       .from("pedidos")
@@ -536,11 +532,15 @@ async function runXerifePedidos(
 
   // ─────────────── R7: Pós-venda — recompra (30d após concluido) ───────────────
   {
-    const alvoInicio = new Date(now.getTime() - (POS_VENDA_RECOMPRA_DIAS + 1) * 86400_000).toISOString();
+    const alvoInicio = new Date(
+      now.getTime() - (POS_VENDA_RECOMPRA_DIAS + 1) * 86400_000,
+    ).toISOString();
     const alvoFim = new Date(now.getTime() - POS_VENDA_RECOMPRA_DIAS * 86400_000).toISOString();
     const { data: pedidos } = await sb
       .from("pedidos")
-      .select("id, number, stage, updated_at, vendedor_proprietario_id, responsavel_atual_id, lead_id")
+      .select(
+        "id, number, stage, updated_at, vendedor_proprietario_id, responsavel_atual_id, lead_id",
+      )
       .eq("stage", "concluido" as any)
       .gte("updated_at", alvoInicio)
       .lt("updated_at", alvoFim)
@@ -708,10 +708,10 @@ export const Route = createFileRoute("/api/public/hooks/xerife-pedidos")({
           return cronJsonResponse(r);
         } catch (e) {
           console.error("[xerife-pedidos]", e);
-          return new Response(
-            JSON.stringify({ ok: false, error: "internal_error" }),
-            { status: 500, headers: { "Content-Type": "application/json" } },
-          );
+          return new Response(JSON.stringify({ ok: false, error: "internal_error" }), {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+          });
         }
       },
     },

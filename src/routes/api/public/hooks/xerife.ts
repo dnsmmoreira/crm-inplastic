@@ -218,7 +218,9 @@ async function runXerife(dryRun = false): Promise<{
   }
 
   // ---------- Regra 2: tarefas atrasadas ----------
-  const atrasadaLimiteIso = new Date(Date.now() - cfg.tarefa_atrasada_horas * 3600 * 1000).toISOString();
+  const atrasadaLimiteIso = new Date(
+    Date.now() - cfg.tarefa_atrasada_horas * 3600 * 1000,
+  ).toISOString();
   const { data: tarefasAtrasadas } = await supabaseAdmin
     .from("tarefas")
     .select("id, lead_id, owner_id, title, due_date")
@@ -262,7 +264,9 @@ async function runXerife(dryRun = false): Promise<{
   }
 
   // ---------- Regra 3: propostas enviadas sem resposta ----------
-  const propLimiteIso = new Date(Date.now() - cfg.proposta_enviada_dias * 86400 * 1000).toISOString();
+  const propLimiteIso = new Date(
+    Date.now() - cfg.proposta_enviada_dias * 86400 * 1000,
+  ).toISOString();
   const { data: propostas } = await supabaseAdmin
     .from("propostas")
     .select("id, lead_id, owner_id, number, sent_at, status")
@@ -322,13 +326,23 @@ async function runResumoDiario(force = false): Promise<{
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const cfg = await loadConfig();
   if (!cfg.ativo || !cfg.resumo_diario_ativo) {
-    return { ran: false, reason: "resumo desativado", vendedoresNotificados: 0, adminsNotificados: 0 };
+    return {
+      ran: false,
+      reason: "resumo desativado",
+      vendedoresNotificados: 0,
+      adminsNotificados: 0,
+    };
   }
   if (!force) {
     const spHour = nowInSaoPauloHour();
     const targetHour = parseHour(cfg.resumo_hora);
     if (spHour !== targetHour) {
-      return { ran: false, reason: `hora atual ${spHour}h ≠ resumo_hora ${targetHour}h (SP)`, vendedoresNotificados: 0, adminsNotificados: 0 };
+      return {
+        ran: false,
+        reason: `hora atual ${spHour}h ≠ resumo_hora ${targetHour}h (SP)`,
+        vendedoresNotificados: 0,
+        adminsNotificados: 0,
+      };
     }
   }
 
@@ -370,10 +384,11 @@ async function runResumoDiario(force = false): Promise<{
     perfisComGestao = new Set((chaves ?? []).map((c: any) => c.perfil_id));
   }
   const adminIds = new Set(
-    (vinculos ?? []).filter((v: any) => perfisComGestao.has(v.perfil_id)).map((v: any) => v.user_id),
+    (vinculos ?? [])
+      .filter((v: any) => perfisComGestao.has(v.perfil_id))
+      .map((v: any) => v.user_id),
   );
   const vendedorIds = new Set(allIds.filter((id) => !adminIds.has(id)));
-
 
   const { data: profiles } = await supabaseAdmin
     .from("profiles")
@@ -386,8 +401,13 @@ async function runResumoDiario(force = false): Promise<{
 
   async function statsForOwner(ownerId: string | null) {
     // null => todos (visão admin)
-    const baseLeads = supabaseAdmin.from("leads").select("id, company, stage, last_interaction_at, owner_id");
-    const baseTarefas = supabaseAdmin.from("tarefas").select("id, title, due_date, owner_id, done").eq("done", false);
+    const baseLeads = supabaseAdmin
+      .from("leads")
+      .select("id, company, stage, last_interaction_at, owner_id");
+    const baseTarefas = supabaseAdmin
+      .from("tarefas")
+      .select("id, title, due_date, owner_id, done")
+      .eq("done", false);
     const baseProp = supabaseAdmin
       .from("propostas")
       .select("id, number, sent_at, status, owner_id")
@@ -404,7 +424,9 @@ async function runResumoDiario(force = false): Promise<{
     const tarefasHoje = (tarefas ?? []).filter(
       (t: any) => t.due_date && t.due_date >= startOfDayIso && t.due_date <= endOfDayIso,
     );
-    const tarefasVencidas = (tarefas ?? []).filter((t: any) => t.due_date && t.due_date < startOfDayIso);
+    const tarefasVencidas = (tarefas ?? []).filter(
+      (t: any) => t.due_date && t.due_date < startOfDayIso,
+    );
     const leadsUrgentes = (leads ?? []).filter((l: any) => {
       const dias = cfg.dias_sem_interacao_por_etapa?.[l.stage] ?? 999;
       const last = l.last_interaction_at ? new Date(l.last_interaction_at).getTime() : 0;
@@ -425,7 +447,9 @@ async function runResumoDiario(force = false): Promise<{
     lines.push(`📌 Leads urgentes (sem interação): *${s.leadsUrgentes.length}*`);
     lines.push(`📅 Tarefas para hoje: *${s.tarefasHoje.length}*`);
     lines.push(`⏰ Tarefas vencidas: *${s.tarefasVencidas.length}*`);
-    lines.push(`📄 Propostas paradas (>${cfg.proposta_enviada_dias}d): *${s.propostasParadas.length}*`);
+    lines.push(
+      `📄 Propostas paradas (>${cfg.proposta_enviada_dias}d): *${s.propostasParadas.length}*`,
+    );
     if (s.leadsUrgentes.length) {
       lines.push("");
       lines.push("*Top leads urgentes:*");
@@ -442,7 +466,11 @@ async function runResumoDiario(force = false): Promise<{
     const phone = prof?.telefone_whatsapp?.trim();
     if (!phone) continue;
     const s = await statsForOwner(uid);
-    const total = s.leadsUrgentes.length + s.tarefasHoje.length + s.tarefasVencidas.length + s.propostasParadas.length;
+    const total =
+      s.leadsUrgentes.length +
+      s.tarefasHoje.length +
+      s.tarefasVencidas.length +
+      s.propostasParadas.length;
     if (total === 0) continue;
     const msg = formatMsg(prof?.name ?? "vendedor", false, s);
     const ok = await enviarAlertaInterno(phone, msg);
@@ -454,12 +482,16 @@ async function runResumoDiario(force = false): Promise<{
         owner_id: uid,
         type: "resumo",
         content: `Resumo diário enviado para ${prof?.name ?? uid}.`,
-        metadata: { channel: "whatsapp", role: "vendedor", counts: {
-          leadsUrgentes: s.leadsUrgentes.length,
-          tarefasHoje: s.tarefasHoje.length,
-          tarefasVencidas: s.tarefasVencidas.length,
-          propostasParadas: s.propostasParadas.length,
-        } },
+        metadata: {
+          channel: "whatsapp",
+          role: "vendedor",
+          counts: {
+            leadsUrgentes: s.leadsUrgentes.length,
+            tarefasHoje: s.tarefasHoje.length,
+            tarefasVencidas: s.tarefasVencidas.length,
+            propostasParadas: s.propostasParadas.length,
+          },
+        },
         occurred_at: nowIso,
       });
       if (insResumoVend.error) {
@@ -485,7 +517,9 @@ async function runResumoDiario(force = false): Promise<{
     if (top3.length) {
       const medals = ["🥇", "🥈", "🥉"];
       const lines = ["", "🏆 *Placar do mês*"];
-      top3.forEach((r, i) => lines.push(`${medals[i]} ${r.nome} — ${Number(r.score).toFixed(0)} pts`));
+      top3.forEach((r, i) =>
+        lines.push(`${medals[i]} ${r.nome} — ${Number(r.score).toFixed(0)} pts`),
+      );
       placarBlock = lines.join("\n");
     }
   } catch (e) {
@@ -498,7 +532,9 @@ async function runResumoDiario(force = false): Promise<{
     const prof: any = profileById.get(uid);
     const phone = prof?.telefone_whatsapp?.trim();
     if (!phone) continue;
-    const msg = formatMsg(prof?.name ?? "admin", true, consolidated) + (placarBlock ? "\n" + placarBlock : "");
+    const msg =
+      formatMsg(prof?.name ?? "admin", true, consolidated) +
+      (placarBlock ? "\n" + placarBlock : "");
     const ok = await enviarAlertaInterno(phone, msg);
     if (ok) {
       adminsNotificados++;
@@ -508,12 +544,16 @@ async function runResumoDiario(force = false): Promise<{
         owner_id: uid,
         type: "resumo",
         content: `Resumo diário consolidado enviado para ${prof?.name ?? uid}.`,
-        metadata: { channel: "whatsapp", role: "admin", counts: {
-          leadsUrgentes: consolidated.leadsUrgentes.length,
-          tarefasHoje: consolidated.tarefasHoje.length,
-          tarefasVencidas: consolidated.tarefasVencidas.length,
-          propostasParadas: consolidated.propostasParadas.length,
-        } },
+        metadata: {
+          channel: "whatsapp",
+          role: "admin",
+          counts: {
+            leadsUrgentes: consolidated.leadsUrgentes.length,
+            tarefasHoje: consolidated.tarefasHoje.length,
+            tarefasVencidas: consolidated.tarefasVencidas.length,
+            propostasParadas: consolidated.propostasParadas.length,
+          },
+        },
         occurred_at: nowIso,
       });
       if (insResumoAdmin.error) {

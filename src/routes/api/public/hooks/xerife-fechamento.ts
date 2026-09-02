@@ -9,17 +9,12 @@ import { registrarFalhaSegura } from "@/lib/guard-erros";
 import { requireXerifeCronAuth, cronJsonResponse } from "@/lib/xerife/cron-auth.server";
 import { alreadyActed, logAction } from "@/lib/xerife/dedupe.server";
 import { notifyOwner, notifyDiretoria } from "@/lib/xerife/notify.server";
-import {
-  endOfTodaySpIso,
-  startOfTodaySpIso,
-  computeRollover,
-} from "@/lib/xerife/rollover.server";
-
-
-
+import { endOfTodaySpIso, startOfTodaySpIso, computeRollover } from "@/lib/xerife/rollover.server";
 
 async function runFechamento(force = false): Promise<{
-  vendedoresNotificados: number; tarefasRoladas: number; diretoriaNotificada: boolean;
+  vendedoresNotificados: number;
+  tarefasRoladas: number;
+  diretoriaNotificada: boolean;
 }> {
   const { supabaseAdmin: sb } = await import("@/integrations/supabase/client.server");
 
@@ -66,7 +61,10 @@ async function runFechamento(force = false): Promise<{
       const patch = computeRollover(t as any, now);
       // REGISTRAR E SEGUIR: cron de fechamento; a tarefa não rolada continua
       // pendente e entra no fechamento seguinte.
-      const upRoll = await sb.from("tarefas").update(patch).eq("id", (t as any).id);
+      const upRoll = await sb
+        .from("tarefas")
+        .update(patch)
+        .eq("id", (t as any).id);
       if (upRoll?.error) {
         await registrarFalhaSegura("xerife-fechamento.rollover", upRoll.error, {
           tarefa_id: (t as any).id,
@@ -93,9 +91,9 @@ async function runFechamento(force = false): Promise<{
     if (await notifyOwner(uid, lines.join("\n"))) vendedoresNotificados++;
   }
 
-
   await logAction(sb, {
-    regra: "fechamento", acao: "rollover + placar",
+    regra: "fechamento",
+    acao: "rollover + placar",
     payload: { tarefasRoladas, vendedoresNotificados },
   });
 
@@ -118,7 +116,7 @@ async function runFechamento(force = false): Promise<{
     });
     // REGISTRAR E SEGUIR: o placar é um bloco opcional do fechamento.
     if (rankErr) await registrarFalhaSegura("xerife-fechamento.placar_vendedores", rankErr);
-    const rows = ((rankRows ?? []) as any[]);
+    const rows = (rankRows ?? []) as any[];
     const top3 = rows.filter((r) => Number(r.score) > 0).slice(0, 3);
     if (top3.length) {
       dLines.push("");
@@ -149,10 +147,14 @@ async function runFechamento(force = false): Promise<{
       const pct = Number(r.meta_pct ?? 0);
       const faltando = Math.max(0, meta - ganho);
       const emoji = faixa === 120 ? "🚀" : faixa === 100 ? "🎯" : faixa === 80 ? "🔥" : "📈";
-      const titulo = faixa === 120 ? "Superou a meta em 120%!"
-        : faixa === 100 ? "Meta batida!"
-        : faixa === 80  ? "80% da meta atingida"
-        :                 "50% da meta atingida";
+      const titulo =
+        faixa === 120
+          ? "Superou a meta em 120%!"
+          : faixa === 100
+            ? "Meta batida!"
+            : faixa === 80
+              ? "80% da meta atingida"
+              : "50% da meta atingida";
       const linhasVendedor = [
         `${emoji} *${titulo}*`,
         `Você está em *${pct.toFixed(0)}%* da meta do mês.`,
@@ -162,7 +164,12 @@ async function runFechamento(force = false): Promise<{
       await notifyOwner(r.vendedor_id, linhasVendedor.join("\n"));
       // Para o grupo/diretoria: SEM valores em R$ — só nome + faixa em %
       faixasCruzadasGrupo.push({ nome: r.nome, faixa });
-      await logAction(sb, { regra, vendedorId: r.vendedor_id, acao: "notificado", payload: { faixa, pct } });
+      await logAction(sb, {
+        regra,
+        vendedorId: r.vendedor_id,
+        acao: "notificado",
+        payload: { faixa, pct },
+      });
     }
   } catch (e) {
     console.error("[xerife-fechamento] placar_vendedores falhou:", e);
@@ -174,7 +181,8 @@ async function runFechamento(force = false): Promise<{
     faixasCruzadasGrupo
       .sort((a, b) => b.faixa - a.faixa)
       .forEach((f) => {
-        const emoji = f.faixa === 120 ? "🚀" : f.faixa === 100 ? "🎯" : f.faixa === 80 ? "🔥" : "📈";
+        const emoji =
+          f.faixa === 120 ? "🚀" : f.faixa === 100 ? "🎯" : f.faixa === 80 ? "🔥" : "📈";
         dLines.push(`${emoji} ${f.nome} — ${f.faixa}%`);
       });
   }
@@ -200,7 +208,11 @@ async function runFechamento(force = false): Promise<{
 }
 
 function brl(v: number): string {
-  return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+  return v.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    maximumFractionDigits: 0,
+  });
 }
 
 /** Último dia útil do mês (seg–sex, sem feriados). */
@@ -231,8 +243,10 @@ export const Route = createFileRoute("/api/public/hooks/xerife-fechamento")({
           return cronJsonResponse(r);
         } catch (e) {
           console.error("[xerife-fechamento]", e);
-          return new Response(JSON.stringify({ ok: false, error: "internal_error" }),
-            { status: 500, headers: { "Content-Type": "application/json" } });
+          return new Response(JSON.stringify({ ok: false, error: "internal_error" }), {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+          });
         }
       },
     },

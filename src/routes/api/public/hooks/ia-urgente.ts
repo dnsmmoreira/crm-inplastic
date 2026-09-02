@@ -76,10 +76,8 @@ export const Route = createFileRoute("/api/public/hooks/ia-urgente")({
         // Garante lead (cria se ainda não existe, mesma lógica do ia-qualificar)
         let leadId = conv.lead_id as string | null;
         if (!leadId) {
-          const company =
-            dados.empresa?.trim() || conv.name?.trim() || `WhatsApp ${conv.phone}`;
-          const contactName =
-            dados.contato?.trim() || conv.name?.trim() || "A identificar";
+          const company = dados.empresa?.trim() || conv.name?.trim() || `WhatsApp ${conv.phone}`;
+          const contactName = dados.contato?.trim() || conv.name?.trim() || "A identificar";
           const quantidade =
             typeof dados.quantidade === "string"
               ? Number(dados.quantidade.replace(/[^\d]/g, "")) || undefined
@@ -115,10 +113,10 @@ export const Route = createFileRoute("/api/public/hooks/ia-urgente")({
             .select("id")
             .single();
           if (lErr || !lead) {
-            return new Response(
-              JSON.stringify({ error: lErr?.message ?? "falha ao criar lead" }),
-              { status: 500, headers: { "Content-Type": "application/json", ...CORS } },
-            );
+            return new Response(JSON.stringify({ error: lErr?.message ?? "falha ao criar lead" }), {
+              status: 500,
+              headers: { "Content-Type": "application/json", ...CORS },
+            });
           }
           leadId = lead.id;
           // REGISTRAR E SEGUIR: o lead urgente já existe; o vínculo com a
@@ -140,7 +138,9 @@ export const Route = createFileRoute("/api/public/hooks/ia-urgente")({
         const contato = dados.contato?.trim() || conv.name?.trim() || "—";
         const produto = dados.produto?.trim() || "—";
         const quantidade =
-          dados.quantidade !== undefined && dados.quantidade !== null && String(dados.quantidade).length
+          dados.quantidade !== undefined &&
+          dados.quantidade !== null &&
+          String(dados.quantidade).length
             ? String(dados.quantidade)
             : "";
         const texto =
@@ -159,8 +159,7 @@ export const Route = createFileRoute("/api/public/hooks/ia-urgente")({
         void texto;
         console.log(`[ia-urgente] lead urgente registrado (sem alerta de grupo) lead=${leadId}`);
 
-        const descricao =
-          `Escalação URGENTE (fora do horário) registrada no CRM. ${motivo}`.trim();
+        const descricao = `Escalação URGENTE (fora do horário) registrada no CRM. ${motivo}`.trim();
 
         // ABORTAR: este INSERT É o alerta (não há mais envio para grupo). Se ele
         // some, o lead urgente fica invisível — o n8n reentrega em 5xx.

@@ -192,13 +192,13 @@ export const Route = createFileRoute("/api/public/hooks/lead-externo")({
               content: `Resumo da IA (Gabriel) — origem WhatsApp Inplastic/OPA:\n${resumo}`,
             });
             if (rErr) {
-            // REGISTRAR E SEGUIR: nota do lead é complementar.
-            console.error("[lead-externo] falha ao gravar resumo:", rErr.message);
-            await registrarFalhaSegura("lead-externo.resumoLead", rErr, {
-              lead_id: leadId,
-              protocolo_opa: body.protocolo_opa ?? null,
-            });
-          }
+              // REGISTRAR E SEGUIR: nota do lead é complementar.
+              console.error("[lead-externo] falha ao gravar resumo:", rErr.message);
+              await registrarFalhaSegura("lead-externo.resumoLead", rErr, {
+                lead_id: leadId,
+                protocolo_opa: body.protocolo_opa ?? null,
+              });
+            }
           }
 
           const { error: mErr } = await supabaseAdmin.from("whatsapp_mensagens").insert({

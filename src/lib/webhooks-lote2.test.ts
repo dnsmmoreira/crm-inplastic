@@ -80,7 +80,12 @@ describe("(a) Meta: falha de escrita após aceitar o payload", () => {
               {
                 value: {
                   messages: [
-                    { id: "wamid.TESTE1", from: "5511999999999", type: "text", text: { body: "oi" } },
+                    {
+                      id: "wamid.TESTE1",
+                      from: "5511999999999",
+                      type: "text",
+                      text: { body: "oi" },
+                    },
                   ],
                 },
               },

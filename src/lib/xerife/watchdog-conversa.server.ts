@@ -68,11 +68,7 @@ type Cfg = {
 
 async function loadCfg(): Promise<Cfg> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data } = await supabaseAdmin
-    .from("xerife_config")
-    .select("*")
-    .eq("id", 1)
-    .maybeSingle();
+  const { data } = await supabaseAdmin.from("xerife_config").select("*").eq("id", 1).maybeSingle();
   const d: any = data ?? {};
   return {
     watchdog_conversa_ativo: d.watchdog_conversa_ativo ?? false,
@@ -318,9 +314,8 @@ export async function runWatchdogConversa(
         continue;
       }
 
-      const { garantirResponsavelConversa, notificarUsuario } = await import(
-        "@/lib/xerife/handoff.server"
-      );
+      const { garantirResponsavelConversa, notificarUsuario } =
+        await import("@/lib/xerife/handoff.server");
 
       let responsavel: string | null = conv.atribuido_para ?? null;
       if (!responsavel) {

@@ -130,7 +130,6 @@ function PainelFalhas() {
     [data, origem],
   );
 
-
   return (
     <div className="space-y-6 p-4 md:p-8">
       <div className="flex items-start gap-3">

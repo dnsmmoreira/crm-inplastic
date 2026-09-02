@@ -332,8 +332,6 @@ export const updateUsuario = createServerFn({ method: "POST" })
       }
     }
 
-
-
     /* ---- Dados cadastrais ---- */
     if (data.dados) {
       const d = data.dados;
@@ -373,7 +371,6 @@ export const updateUsuario = createServerFn({ method: "POST" })
     /* ---- Acesso e segurança (papel NÃO é alterado aqui) ---- */
     if (data.acesso) {
       if (data.acesso.ativo !== (profile.ativo !== false)) {
-
         const { error } = await sb
           .from("profiles")
           .update({ ativo: data.acesso.ativo })
@@ -400,7 +397,10 @@ export const updateUsuario = createServerFn({ method: "POST" })
       if (Number(metaAtual?.meta_valor_mensal ?? 0) !== v.metaMensal) {
         const { error } = await sb
           .from("vendedor_metas")
-          .upsert({ user_id: data.userId, meta_valor_mensal: v.metaMensal }, { onConflict: "user_id" });
+          .upsert(
+            { user_id: data.userId, meta_valor_mensal: v.metaMensal },
+            { onConflict: "user_id" },
+          );
         if (error) throw new Error(error.message);
         audit.push({
           campo: "meta_mensal",
@@ -412,7 +412,6 @@ export const updateUsuario = createServerFn({ method: "POST" })
           audit.push({ campo: "meta_mensal_motivo", anterior: null, novo: motivo });
         }
       }
-
 
       const { data: filaAtual } = await sb
         .from("fila_vendedores")
@@ -529,7 +528,11 @@ export const setUsuarioAtivo = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     if (!data.ativo) await revokeSessions(sb, data.userId);
     await logAudit(sb, data.userId, context.userId, [
-      { campo: "status", anterior: data.ativo ? "inativo" : "ativo", novo: data.ativo ? "ativo" : "inativo" },
+      {
+        campo: "status",
+        anterior: data.ativo ? "inativo" : "ativo",
+        novo: data.ativo ? "ativo" : "inativo",
+      },
     ]);
     return { ok: true as const };
   });

@@ -29,7 +29,10 @@ export const painelWhatsapp = createServerFn({ method: "POST" })
     const iso = (ms: number) => new Date(agora - ms).toISOString();
 
     const [envios24h, enviosRecentes, optouts, alertas] = await Promise.all([
-      supabase.from("zapi_envios").select("canal, created_at").gte("created_at", iso(24 * 60 * 60_000)),
+      supabase
+        .from("zapi_envios")
+        .select("canal, created_at")
+        .gte("created_at", iso(24 * 60 * 60_000)),
       supabase
         .from("zapi_envios")
         .select("id, canal, phone, ctx, created_at")
@@ -71,7 +74,7 @@ export const painelWhatsapp = createServerFn({ method: "POST" })
         })),
       },
       optouts: {
-        total: optouts.count ?? (optouts.data?.length ?? 0),
+        total: optouts.count ?? optouts.data?.length ?? 0,
         recentes: (optouts.data ?? []).map((o) => ({
           phone: o.phone,
           phoneMascarado: mascararPhone(o.phone),
@@ -107,11 +110,7 @@ export const diagnosticoCanaisInternos = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     await exigirAdmin(supabase, userId);
 
-    const nomes = [
-      "TELEGRAM_BOT_TOKEN",
-      "TELEGRAM_CHAT_DIRETORIA",
-      "WHATSAPP_FINANCEIRO",
-    ] as const;
+    const nomes = ["TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_DIRETORIA", "WHATSAPP_FINANCEIRO"] as const;
 
     const variaveis = Object.fromEntries(
       nomes.map((n) => [n, ((process.env[n] ?? "") as string).trim().length > 0]),
@@ -227,7 +226,6 @@ export const testarEnvioCloud = createServerFn({ method: "POST" })
       `WA-CLOUD teste_envio http_status=${httpStatus ?? "-"} message_id=${messageId ?? "-"} erro_codigo=${erroCodigo ?? "-"} janela_ignorada=${janelaIgnorada}`,
     );
 
-
     if (ok) {
       // Persistência pelo fluxo existente: conversa + mensagem de saída.
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -298,7 +296,9 @@ export const diagnosticoCloud = createServerFn({ method: "POST" })
       r.dados && typeof r.dados === "object" && "error" in (r.dados as Record<string, unknown>)
         ? ((r.dados as { error?: { code?: number } }).error?.code ?? null)
         : null;
-    console.log(`WA-CLOUD diagnostico http_status=${r.http_status ?? "-"} erro_codigo=${codigo ?? "-"}`);
+    console.log(
+      `WA-CLOUD diagnostico http_status=${r.http_status ?? "-"} erro_codigo=${codigo ?? "-"}`,
+    );
 
     return {
       configurado: r.configurado,
@@ -330,7 +330,9 @@ export const inscreverWaba = createServerFn({ method: "POST" })
 
     const { cloudInscreverWaba } = await import("./whatsapp-cloud.server");
     const r = await cloudInscreverWaba();
-    console.log(`WA-CLOUD subscribed_apps_inscrever http_status=${r.http_status ?? "-"} ok=${r.ok}`);
+    console.log(
+      `WA-CLOUD subscribed_apps_inscrever http_status=${r.http_status ?? "-"} ok=${r.ok}`,
+    );
 
     return { ok: r.ok, http_status: r.http_status, dados_json: JSON.stringify(r.body ?? null) };
   });

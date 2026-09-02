@@ -30,7 +30,10 @@ async function registrarSinalTecnico(texto: string, contexto: Record<string, unk
     const { registrarFalhaAdmin } = await import("./falhas.server");
     await registrarFalhaAdmin("whatsapp.disjuntor", texto, contexto);
   } catch (e) {
-    console.error("[disjuntor] falha ao registrar sinal:", e instanceof Error ? e.message : String(e));
+    console.error(
+      "[disjuntor] falha ao registrar sinal:",
+      e instanceof Error ? e.message : String(e),
+    );
   }
 }
 
