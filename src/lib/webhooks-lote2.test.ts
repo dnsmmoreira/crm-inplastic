@@ -19,7 +19,7 @@ function criarSb(rota: Rota) {
   const builder = (table: string) => {
     let op = "select";
     const b: Record<string, unknown> = {};
-    const metodos = ["select", "eq", "in", "is", "limit", "order", "neq"];
+    const metodos: string[] = ["select", "eq", "in", "is", "limit", "order", "neq"];
     for (const m of metodos) b[m] = () => b;
     for (const m of ["insert", "update", "upsert", "delete"]) {
       b[m] = () => {

@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
-import { assertRpcPermissao } from "@/lib/guard-erros";
+import { assertRpcPermissao, registrarFalhaSegura } from "@/lib/guard-erros";
 
 /**
  * Criação de usuários e recuperação de senha.
