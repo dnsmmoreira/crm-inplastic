@@ -1209,8 +1209,6 @@ const ultimoRefSalvo = new Map<string, unknown>();
 const forcarColecao = new Set<string>();
 
 function precisaDiff(nome: string, ...refs: unknown[]): boolean {
-  const chave = JSON.stringify(refs.map((_, i) => i)); // só para tamanho fixo
-  void chave;
   const anterior = ultimoRefSalvo.get(nome) as unknown[] | undefined;
   const mudou =
     !anterior || anterior.length !== refs.length || refs.some((r, i) => r !== anterior[i]);
@@ -1303,7 +1301,7 @@ async function doSave() {
   }
 
   // ---- produtos (admin-only via RLS) ----
-  if (isAdmin) {
+  if (isAdmin && precisaDiff("products", state.products)) {
     await syncCollection<Product>({
       current: state.products,
       snapshot: snapshot.products,
