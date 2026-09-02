@@ -677,6 +677,13 @@ function PropostaDetalhe() {
             </Button>
           )}
 
+          <RomaneiosPosPedidoDialog
+            pedidoId={romaneioAlvo?.id ?? null}
+            pedidoNumber={romaneioAlvo?.number ?? null}
+            open={romaneioAlvo !== null}
+            onOpenChange={(o) => { if (!o) setRomaneioAlvo(null); }}
+          />
+
           <ConferenciaFinalDialog
             open={conferencia.open}
             onOpenChange={(v) => setConferencia((c) => ({ ...c, open: v }))}
