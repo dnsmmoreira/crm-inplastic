@@ -515,6 +515,7 @@ function PropostaDetalhe() {
           approvedByUserId: currentUser.id,
           approvedAt: new Date().toISOString(),
         });
+        if (r.pedido_id) setRomaneioAlvo({ id: r.pedido_id, number: r.pedido_number });
       }
       setDirty(false);
     } catch (e) {
