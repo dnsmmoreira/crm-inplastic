@@ -1208,6 +1208,14 @@ export function resyncAgora() {
 const ultimoRefSalvo = new Map<string, unknown>();
 const forcarColecao = new Set<string>();
 
+/** Falha de gravação → coleção (e o gate derivado dela) volta na próxima rodada. */
+function marcarParaReprocessar(collectionName: string) {
+  forcarColecao.add(collectionName);
+  if (collectionName === "proposalItems" || collectionName === "proposalParcelas") {
+    forcarColecao.add("proposalsFilhos");
+  }
+}
+
 function precisaDiff(nome: string, ...refs: unknown[]): boolean {
   const anterior = ultimoRefSalvo.get(nome) as unknown[] | undefined;
   const mudou =
@@ -1553,6 +1561,7 @@ async function doSave() {
       })),
     );
     if (!error) newInter.forEach((x) => snapshot.interactions.add(x.i.id));
+    else forcarColecao.add("leadsHistorico");
   }
 
   // ---- lead_ai_actions (append-only) ----
@@ -1574,6 +1583,7 @@ async function doSave() {
       })),
     );
     if (!error) newAi.forEach((x) => snapshot.aiActions.add(x.a.id));
+    else forcarColecao.add("leadsHistorico");
   }
 }
 
@@ -1635,7 +1645,7 @@ async function syncCollection<T>(opts: {
     } else {
       // Snapshot intocado de propósito: o registro segue "sujo" e é reenviado
       // no próximo ciclo de save.
-      if (collectionName) forcarColecao.add(collectionName);
+      if (collectionName) marcarParaReprocessar(collectionName);
       reportarFalhaSync(collectionName ?? "collection", "upsert", error, {
         registros: toUpsert.length,
       });
@@ -1647,7 +1657,7 @@ async function syncCollection<T>(opts: {
       toDelete.forEach((k) => snap.delete(k));
       onDeleted?.(toDelete);
     } else {
-      if (collectionName) forcarColecao.add(collectionName);
+      if (collectionName) marcarParaReprocessar(collectionName);
       reportarFalhaSync(collectionName ?? "collection", "delete", error, { ids: toDelete });
     }
   }
