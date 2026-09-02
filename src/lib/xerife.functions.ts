@@ -1,12 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
+import { assertRpcPermissao } from "@/lib/guard-erros";
 
 async function assertAdmin(context: { supabase: any; userId: string }) {
-  const { data } = await context.supabase.rpc("has_role", {
-    _user_id: context.userId,
-    _role: "admin",
-  });
+  const data = await assertRpcPermissao(
+    await context.supabase.rpc("has_role", { _user_id: context.userId, _role: "admin" }),
+    "xerife.assertAdmin/has_role",
+    { userId: context.userId },
+  );
   if (!data) throw new Error("Somente administradores.");
 }
 
