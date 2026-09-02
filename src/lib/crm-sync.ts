@@ -476,13 +476,6 @@ function rowToProposal(
     expectedDeliveryDate:
       (r as unknown as { expected_delivery_date?: string | null }).expected_delivery_date ??
       undefined,
-    omieStatus: (r as unknown as { omie_status?: Proposal["omieStatus"] }).omie_status ?? null,
-    omieNumeroPedido:
-      (r as unknown as { omie_numero_pedido?: string | null }).omie_numero_pedido ?? null,
-    omieCodigoPedido:
-      (r as unknown as { omie_codigo_pedido?: number | null }).omie_codigo_pedido ?? null,
-    omieErro: (r as unknown as { omie_erro?: string | null }).omie_erro ?? null,
-    omieEnviadoEm: (r as unknown as { omie_enviado_em?: string | null }).omie_enviado_em ?? null,
   };
 }
 function proposalToInsert(p: Proposal): ProposalInsert {
@@ -559,8 +552,9 @@ const COLS_LEADS =
   "id,company,contact_name,email,phone,product,product_id,quantity,estimated_value,stage,tags,segment,source,created_at,last_contact,last_contact_at,next_followup,notes,owner_id,cliente_id,cnpj,razao_social,nome_fantasia,inscricao_estadual,inscricao_municipal,endereco,email_financeiro,email_nf_xml,telefone_fixo,whatsapp,site,porte,cnae_principal,faturamento_estimado,num_funcionarios,decisor_nome,decisor_cargo,data_abertura,capital_social,simples_optante,socios";
 const COLS_TAREFAS = "id,lead_id,title,due_date,done";
 const COLS_PROPOSTAS =
-  "id,number,lead_id,owner_id,emitter_id,status,validity_days,payment_term_id,forma_pagamento,previsao_faturamento,discount_percent,observations,transport,approval_requested_at,approval_reason,approved_by_user_id,approved_at,order_created_at,sent_at,created_at,expected_delivery_date,numero_pedido_cliente,observacoes_pedido,tratativa_comercial,em_negociacao,edit_requested_at,edit_request_reason,edit_requested_by_user_id,edit_unlocked_at,edit_unlocked_by_user_id,omie_status,omie_numero_pedido,omie_codigo_pedido,omie_erro,omie_enviado_em";
+  "id,number,lead_id,owner_id,emitter_id,status,validity_days,payment_term_id,forma_pagamento,previsao_faturamento,discount_percent,observations,transport,approval_requested_at,approval_reason,approved_by_user_id,approved_at,order_created_at,sent_at,created_at,expected_delivery_date,numero_pedido_cliente,observacoes_pedido,tratativa_comercial,em_negociacao,edit_requested_at,edit_request_reason,edit_requested_by_user_id,edit_unlocked_at,edit_unlocked_by_user_id";
 const COLS_PITENS =
+  // `omie_codigo_produto` é legado no nome, mas vivo: é o código do produto usado na seleção.
   "id,proposta_id,position,product_id,omie_codigo_produto,description,sku,ncm,unit,quantity,unit_price";
 const COLS_PPARCELAS = "id,proposta_id,position,days,amount,notes,percentual,due_date";
 const COLS_INTERACOES = "id,lead_id,type,content,occurred_at";

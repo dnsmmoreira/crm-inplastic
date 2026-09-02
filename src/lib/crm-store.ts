@@ -530,7 +530,7 @@ const seedProducts: Product[] = [
 export type ProposalItem = {
   id: string;
   productId: string;          // DEPRECATED — mantido só p/ compat com itens antigos
-  omieCodigoProduto?: number; // Código do produto no Omie (novo campo canônico)
+  omieCodigoProduto?: number; // legado: nome enganoso, é o código do produto
   description: string; // snapshot
   sku: string;         // snapshot
   ncm?: string;        // snapshot (código fiscal do produto)
@@ -626,19 +626,13 @@ export type Proposal = {
   approvedAt?: string;
   orderCreatedAt?: string;
   sentAt?: string;          // primeira vez que a proposta foi enviada ao cliente
-  expectedDeliveryDate?: string; // yyyy-MM-dd — informa data prevista de entrega ao Omie
+  expectedDeliveryDate?: string; // yyyy-MM-dd — data prevista de entrega
   // Solicitação/liberação de alteração em pedido já fechado
   editRequestedAt?: string;
   editRequestReason?: string;
   editRequestedByUserId?: string;
   editUnlockedAt?: string;
   editUnlockedByUserId?: string;
-  // Rastreio da integração Omie (server-managed — não persistido pelo store)
-  omieStatus?: "pendente" | "enviado" | "erro" | "nao_aplicavel" | null;
-  omieNumeroPedido?: string | null;
-  omieCodigoPedido?: number | null;
-  omieErro?: string | null;
-  omieEnviadoEm?: string | null;
 };
 
 

@@ -32,8 +32,6 @@ export type InternalOrderResult = {
   pedido_id?: string;
 };
 
-export type OmieResult = InternalOrderResult;
-export type MoverParaGanhoOmieResult = InternalOrderResult;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type LooseClient = any;
@@ -52,7 +50,7 @@ export const gerarPedidoInterno = createServerFn({ method: "POST" })
       })
       .parse(input),
   )
-  .handler(async ({ data, context }): Promise<OmieResult> => {
+  .handler(async ({ data, context }): Promise<InternalOrderResult> => {
     const { supabase, userId } = context;
     const loose: LooseClient = relaxSupabase(supabase);
     const propostaId = data.proposta_id;
@@ -265,7 +263,7 @@ export const moverParaGanho = createServerFn({ method: "POST" })
   .inputValidator((input: { lead_id: string }) =>
     z.object({ lead_id: z.string().uuid() }).parse(input),
   )
-  .handler(async ({ data, context }): Promise<OmieResult> => {
+  .handler(async ({ data, context }): Promise<InternalOrderResult> => {
     const loose: LooseClient = relaxSupabase(context.supabase);
     const { data: prop, error } = await loose
       .from("propostas")

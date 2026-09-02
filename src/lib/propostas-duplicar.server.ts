@@ -4,7 +4,7 @@
  * Regras:
  * - número novo via RPC `next_proposta_number` (mesma usada em `createProposal`);
  * - status sempre `rascunho`, `owner_id` = usuário que duplicou;
- * - campos de ciclo de vida (envio/aprovação/pedido/edição/Omie) zerados;
+ * - campos de ciclo de vida (envio/aprovação/pedido/edição) zerados;
  * - itens (com `ncm`) e parcelas copiados como estão.
  */
 
@@ -118,11 +118,6 @@ export async function criarPropostaDuplicada(
       approval_reason: null,
       approved_by_user_id: null,
       order_created_at: null,
-      omie_status: null,
-      omie_numero_pedido: null,
-      omie_codigo_pedido: null,
-      omie_erro: null,
-      omie_enviado_em: null,
       edit_requested_at: null,
       edit_request_reason: null,
       edit_requested_by_user_id: null,
