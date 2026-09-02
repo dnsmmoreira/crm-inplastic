@@ -476,7 +476,11 @@ async function runResumoDiario(force = false): Promise<{
   // Top 3 do Placar de Vendedores (fonte única) — anexado ao resumo dos admins
   let placarBlock = "";
   try {
-    const { data: rankRows } = await supabaseAdmin.rpc("placar_vendedores" as any, { _periodo: "mes" });
+    const { data: rankRows, error: rankErr } = await supabaseAdmin.rpc("placar_vendedores" as any, {
+      _periodo: "mes",
+    });
+    // REGISTRAR E SEGUIR: o placar é bloco opcional do resumo diário.
+    if (rankErr) await registrarFalhaSegura("xerife.resumoDiario/placar_vendedores", rankErr);
     const top3 = ((rankRows ?? []) as any[]).filter((r) => Number(r.score) > 0).slice(0, 3);
     if (top3.length) {
       const medals = ["🥇", "🥈", "🥉"];
