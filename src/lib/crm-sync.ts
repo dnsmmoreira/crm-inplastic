@@ -16,6 +16,13 @@
 
 import { isIntentionalDelete, clearDeleteIntent, markDeleted } from "@/lib/delete-intents";
 import { reportarFalhaSync } from "@/lib/sync-falhas";
+import { ehErroColunaInexistente } from "@/lib/build-version";
+import {
+  bundleDesatualizado,
+  bloquearPorBundleDesatualizado,
+  iniciarVigiaDeVersao,
+} from "@/lib/bundle-guard";
+import { mesclarPreservandoPendentes } from "@/lib/crm-reload-merge";
 import {
   planejarEventoRealtime,
   mesclarPorId,
@@ -84,6 +91,7 @@ let realtimeChannels: Array<ReturnType<typeof supabase.channel>> = [];
 let reloadTimer: ReturnType<typeof setTimeout> | null = null;
 let resyncTimer: ReturnType<typeof setInterval> | null = null;
 let suppressSave = false; // evita loop write→realtime→reload→write
+let salvandoAgora = false; // recarga não pode atropelar um doSave em andamento
 
 // Snapshot da última versão persistida — usado para diff
 type Snapshot = {
@@ -518,6 +526,7 @@ function proposalToInsert(p: Proposal): ProposalInsert {
 // ============ Hidratação ============
 
 export async function hydrateCrmForUser(userId: string, role: "admin" | "vendedor") {
+  iniciarVigiaDeVersao();
   currentUserId = userId;
   currentRole = role;
   hydrated = false;
@@ -1086,12 +1095,56 @@ function agendarRecarga(colecao: ColecaoRealtime) {
   recargasPendentes.add(colecao);
   if (reloadTimer) clearTimeout(reloadTimer);
   reloadTimer = setTimeout(() => {
+    if (salvandoAgora) {
+      // Um save em andamento não pode ser atropelado: reagenda.
+      agendarRecarga(colecao);
+      return;
+    }
     const pendentes = Array.from(recargasPendentes);
     recargasPendentes.clear();
     void Promise.all(pendentes.map((c) => recarregarColecao(c))).catch((e) =>
       console.warn("[crm-sync] recarga de coleção:", e),
     );
   }, 800);
+}
+
+/**
+ * Proposta com alteração local ainda não gravada — inclui itens e parcelas,
+ * já que o store guarda o agregado e é exatamente aí que a corrida apagava
+ * itens recém-adicionados.
+ */
+function propostaPendente(p: Proposal): boolean {
+  if (snapshot.proposals.get(p.id) !== JSON.stringify(proposalToInsert(p))) return true;
+  const itemPendente = p.items.some((it, idx) => {
+    const json = JSON.stringify({
+      id: it.id,
+      proposta_id: p.id,
+      position: idx,
+      product_id: it.productId || null,
+      codigo_produto: it.codigoProduto ?? null,
+      description: it.description,
+      sku: it.sku,
+      ncm: it.ncm ?? null,
+      unit: it.unit,
+      quantity: it.quantity,
+      unit_price: it.unitPrice,
+    });
+    return snapshot.proposalItems.get(it.id) !== json;
+  });
+  if (itemPendente) return true;
+  return p.installments.some((pa, idx) => {
+    const json = JSON.stringify({
+      id: pa.id,
+      proposta_id: p.id,
+      position: idx,
+      days: pa.days,
+      amount: pa.amount,
+      notes: pa.notes ?? "",
+      percentual: pa.percentual ?? null,
+      due_date: pa.dueDate ?? null,
+    });
+    return snapshot.proposalParcelas.get(pa.id) !== json;
+  });
 }
 
 async function recarregarColecao(colecao: ColecaoRealtime) {
@@ -1107,16 +1160,34 @@ async function recarregarColecao(colecao: ColecaoRealtime) {
         (interRows ?? []) as unknown as InteractionRow[],
         (aiRows ?? []) as unknown as AiActionRow[],
       );
-      const leads = montarLeads((leadRows ?? []) as unknown as LeadRow[], interByLead, aiByLead);
+      const remotos = montarLeads(
+        (leadRows ?? []) as unknown as LeadRow[],
+        interByLead,
+        aiByLead,
+      );
+      const leads = mesclarPreservandoPendentes(
+        remotos,
+        useCrm.getState().leads,
+        (l) => snapshot.leads.get(l.id) !== JSON.stringify(leadToInsert(l)),
+      );
       aplicarNoStore(() => useCrm.setState({ leads }));
       return;
     }
     case "tasks": {
       const { data } = await queryTarefas();
       const leadsAtuais = useCrm.getState().leads;
-      const tasks = montarTasks(
+      const remotos = montarTasks(
         (data ?? []) as unknown as TaskRow[],
         (id) => leadsAtuais.find((l) => l.id === id)?.ownerId ?? null,
+      );
+      const tasks = mesclarPreservandoPendentes(
+        remotos,
+        useCrm.getState().tasks,
+        (t) =>
+          snapshot.tasks.get(t.id) !==
+          JSON.stringify(
+            taskToInsert(t, leadsAtuais.find((l) => l.id === t.leadId)?.ownerId ?? null),
+          ),
       );
       aplicarNoStore(() => useCrm.setState({ tasks }));
       return;
@@ -1127,10 +1198,15 @@ async function recarregarColecao(colecao: ColecaoRealtime) {
         queryItens(),
         queryParcelas(),
       ]);
-      const proposals = montarPropostas(
+      const remotos = montarPropostas(
         (propRows ?? []) as unknown as ProposalRow[],
         (itemRows ?? []) as unknown as PItemRow[],
         (parcRows ?? []) as unknown as PParcelaRow[],
+      );
+      const proposals = mesclarPreservandoPendentes(
+        remotos,
+        useCrm.getState().proposals,
+        propostaPendente,
       );
       aplicarNoStore(() => useCrm.setState({ proposals }));
       return;
@@ -1268,6 +1344,17 @@ function scheduleSave() {
 
 async function doSave() {
   if (!hydrated || !currentUserId || !currentRole) return;
+  // Aba com bundle antigo: não grava nada até recarregar (ver bundle-guard).
+  if (bundleDesatualizado()) return;
+  salvandoAgora = true;
+  try {
+    await doSaveInterno();
+  } finally {
+    salvandoAgora = false;
+  }
+}
+
+async function doSaveInterno() {
   const state = useCrm.getState();
   const userId = currentUserId;
   const isAdmin = currentRole === "admin";
@@ -1640,6 +1727,11 @@ async function syncCollection<T>(opts: {
       // Snapshot intocado de propósito: o registro segue "sujo" e é reenviado
       // no próximo ciclo de save.
       if (collectionName) marcarParaReprocessar(collectionName);
+      if (ehErroColunaInexistente(error)) {
+        bloquearPorBundleDesatualizado(
+          `A gravação de ${collectionName ?? "dados"} falhou porque esta aba usa colunas que não existem mais no banco.`,
+        );
+      }
       reportarFalhaSync(collectionName ?? "collection", "upsert", error, {
         registros: toUpsert.length,
       });
