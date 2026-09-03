@@ -1,5 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
+import {
+  DETALHE_MIN_CHARS,
+  DETALHE_OBRIGATORIO_MSG,
+  MOTIVOS_PERDA,
+  ordemMotivo,
+  recontatoDias,
+  type MotivoPerda,
+} from "@/lib/motivos-perda";
 
 export type PerdaRegistro = {
   lead_id: string;
@@ -15,6 +24,17 @@ export type MotivoPerdaAgregado = {
   valor_perdido: number;
 };
 
+/** Qualquer valor fora da lista canônica é recusado. */
+export const perdaSchema = z.object({
+  leadId: z.string().min(1, "leadId obrigatório"),
+  motivo: z.enum(MOTIVOS_PERDA),
+  observacao: z
+    .string()
+    .trim()
+    .min(DETALHE_MIN_CHARS, DETALHE_OBRIGATORIO_MSG),
+  recontatarEmDias: z.number().int().nullable().optional(),
+});
+
 /**
  * Grava o motivo da perda em colunas próprias (`leads.motivo_perda`,
  * `motivo_perda_detalhe`, `perdido_em`, `recontatar_em`). A nota de texto
@@ -23,30 +43,24 @@ export type MotivoPerdaAgregado = {
  */
 export const registrarPerdaLead = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(
-    (data: {
-      leadId: string;
-      motivo: string;
-      observacao?: string | null;
-      recontatarEmDias?: number | null;
-    }) => {
-      if (!data?.leadId) throw new Error("leadId obrigatório");
-      if (!data?.motivo?.trim()) throw new Error("motivo obrigatório");
-      return data;
-    },
-  )
+  .inputValidator((data: unknown) => perdaSchema.parse(data))
   .handler(async ({ data, context }) => {
     const { supabase } = context;
-    const dias = data.recontatarEmDias ?? 90;
-    const recontatar = new Date(Date.now() + dias * 86_400_000)
-      .toISOString()
-      .slice(0, 10);
+    const motivo = data.motivo as MotivoPerda;
+    const dias =
+      data.recontatarEmDias !== undefined
+        ? data.recontatarEmDias
+        : recontatoDias(motivo);
+    const recontatar =
+      dias === null || dias === undefined
+        ? null
+        : new Date(Date.now() + dias * 86_400_000).toISOString().slice(0, 10);
 
     const { error } = await supabase
       .from("leads")
       .update({
-        motivo_perda: data.motivo.trim(),
-        motivo_perda_detalhe: data.observacao?.trim() || null,
+        motivo_perda: motivo,
+        motivo_perda_detalhe: data.observacao.trim(),
         perdido_em: new Date().toISOString(),
         recontatar_em: recontatar,
       })
@@ -55,6 +69,7 @@ export const registrarPerdaLead = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true, recontatar_em: recontatar };
   });
+
 
 /** Motivos estruturados dos leads visíveis (para exibir na tela de Leads). */
 export const listPerdasEstruturadas = createServerFn({ method: "GET" })
