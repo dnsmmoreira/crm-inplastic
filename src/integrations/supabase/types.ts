@@ -418,48 +418,6 @@ export type Database = {
         }
         Relationships: []
       }
-      backup_produtos_omie_20260902: {
-        Row: {
-          atualizado_em: string | null
-          bloqueado: boolean | null
-          codigo: string | null
-          codigo_produto: number | null
-          descricao: string | null
-          descricao_familia: string | null
-          inativo: boolean | null
-          marca: string | null
-          ncm: string | null
-          unidade: string | null
-          valor_unitario: number | null
-        }
-        Insert: {
-          atualizado_em?: string | null
-          bloqueado?: boolean | null
-          codigo?: string | null
-          codigo_produto?: number | null
-          descricao?: string | null
-          descricao_familia?: string | null
-          inativo?: boolean | null
-          marca?: string | null
-          ncm?: string | null
-          unidade?: string | null
-          valor_unitario?: number | null
-        }
-        Update: {
-          atualizado_em?: string | null
-          bloqueado?: boolean | null
-          codigo?: string | null
-          codigo_produto?: number | null
-          descricao?: string | null
-          descricao_familia?: string | null
-          inativo?: boolean | null
-          marca?: string | null
-          ncm?: string | null
-          unidade?: string | null
-          valor_unitario?: number | null
-        }
-        Relationships: []
-      }
       cadencia_excecoes: {
         Row: {
           ativo: boolean
