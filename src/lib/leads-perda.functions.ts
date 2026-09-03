@@ -109,5 +109,8 @@ export const relatorioMotivosPerda = createServerFn({ method: "GET" })
       cur.valor_perdido += Number(r.estimated_value ?? 0);
       map.set(motivo, cur);
     }
-    return Array.from(map.values()).sort((a, b) => b.total - a.total);
+    // Ordem canônica da lista de motivos; "Não informado" (motivo nulo) por último.
+    return Array.from(map.values()).sort(
+      (a, b) => ordemMotivo(a.motivo) - ordemMotivo(b.motivo) || b.total - a.total,
+    );
   });
