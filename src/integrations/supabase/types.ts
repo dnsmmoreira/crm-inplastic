@@ -563,8 +563,6 @@ export type Database = {
           nome_fantasia: string | null
           numero: string | null
           observacao: string | null
-          omie_codigo_cliente_inplastic: number | null
-          omie_codigo_cliente_taoplast: number | null
           razao_social: string
           recorrente_manual: boolean
           regras_faturamento: string | null
@@ -602,8 +600,6 @@ export type Database = {
           nome_fantasia?: string | null
           numero?: string | null
           observacao?: string | null
-          omie_codigo_cliente_inplastic?: number | null
-          omie_codigo_cliente_taoplast?: number | null
           razao_social: string
           recorrente_manual?: boolean
           regras_faturamento?: string | null
@@ -641,8 +637,6 @@ export type Database = {
           nome_fantasia?: string | null
           numero?: string | null
           observacao?: string | null
-          omie_codigo_cliente_inplastic?: number | null
-          omie_codigo_cliente_taoplast?: number | null
           razao_social?: string
           recorrente_manual?: boolean
           regras_faturamento?: string | null
@@ -841,7 +835,6 @@ export type Database = {
           ie: string | null
           is_default: boolean
           legal_name: string
-          omie_key: string | null
           phone: string | null
           pix: string | null
           tagline: string | null
@@ -862,7 +855,6 @@ export type Database = {
           ie?: string | null
           is_default?: boolean
           legal_name: string
-          omie_key?: string | null
           phone?: string | null
           pix?: string | null
           tagline?: string | null
@@ -883,7 +875,6 @@ export type Database = {
           ie?: string | null
           is_default?: boolean
           legal_name?: string
-          omie_key?: string | null
           phone?: string | null
           pix?: string | null
           tagline?: string | null
@@ -1247,12 +1238,6 @@ export type Database = {
           numero: string | null
           observacao_cliente: string | null
           observacoes_venda: string | null
-          omie_codigo_cliente: number | null
-          omie_codigo_pedido: number | null
-          omie_enviado_em: string | null
-          omie_erro: string | null
-          omie_numero_pedido: string | null
-          omie_status: string | null
           origem: string | null
           owner_id: string | null
           perdido_em: string | null
@@ -1328,12 +1313,6 @@ export type Database = {
           numero?: string | null
           observacao_cliente?: string | null
           observacoes_venda?: string | null
-          omie_codigo_cliente?: number | null
-          omie_codigo_pedido?: number | null
-          omie_enviado_em?: string | null
-          omie_erro?: string | null
-          omie_numero_pedido?: string | null
-          omie_status?: string | null
           origem?: string | null
           owner_id?: string | null
           perdido_em?: string | null
@@ -1409,12 +1388,6 @@ export type Database = {
           numero?: string | null
           observacao_cliente?: string | null
           observacoes_venda?: string | null
-          omie_codigo_cliente?: number | null
-          omie_codigo_pedido?: number | null
-          omie_enviado_em?: string | null
-          omie_erro?: string | null
-          omie_numero_pedido?: string | null
-          omie_status?: string | null
           origem?: string | null
           owner_id?: string | null
           perdido_em?: string | null
@@ -2155,7 +2128,6 @@ export type Database = {
       produtos: {
         Row: {
           active: boolean
-          codigo_produto_omie: number | null
           created_at: string
           default_price: number
           description: string
@@ -2176,7 +2148,6 @@ export type Database = {
         }
         Insert: {
           active?: boolean
-          codigo_produto_omie?: number | null
           created_at?: string
           default_price?: number
           description?: string
@@ -2197,7 +2168,6 @@ export type Database = {
         }
         Update: {
           active?: boolean
-          codigo_produto_omie?: number | null
           created_at?: string
           default_price?: number
           description?: string
@@ -2215,48 +2185,6 @@ export type Database = {
           updated_at?: string
           weight_kg?: number
           width_cm?: number
-        }
-        Relationships: []
-      }
-      produtos_omie: {
-        Row: {
-          atualizado_em: string
-          bloqueado: boolean | null
-          codigo: string | null
-          codigo_produto: number
-          descricao: string
-          descricao_familia: string | null
-          inativo: boolean | null
-          marca: string | null
-          ncm: string | null
-          unidade: string | null
-          valor_unitario: number | null
-        }
-        Insert: {
-          atualizado_em?: string
-          bloqueado?: boolean | null
-          codigo?: string | null
-          codigo_produto: number
-          descricao: string
-          descricao_familia?: string | null
-          inativo?: boolean | null
-          marca?: string | null
-          ncm?: string | null
-          unidade?: string | null
-          valor_unitario?: number | null
-        }
-        Update: {
-          atualizado_em?: string
-          bloqueado?: boolean | null
-          codigo?: string | null
-          codigo_produto?: number
-          descricao?: string
-          descricao_familia?: string | null
-          inativo?: boolean | null
-          marca?: string | null
-          ncm?: string | null
-          unidade?: string | null
-          valor_unitario?: number | null
         }
         Relationships: []
       }
@@ -2325,10 +2253,10 @@ export type Database = {
       }
       proposta_itens: {
         Row: {
+          codigo_produto: number | null
           description: string
           id: string
           ncm: string | null
-          omie_codigo_produto: number | null
           position: number
           product_id: string | null
           proposta_id: string
@@ -2338,10 +2266,10 @@ export type Database = {
           unit_price: number
         }
         Insert: {
+          codigo_produto?: number | null
           description: string
           id?: string
           ncm?: string | null
-          omie_codigo_produto?: number | null
           position?: number
           product_id?: string | null
           proposta_id: string
@@ -2351,10 +2279,10 @@ export type Database = {
           unit_price?: number
         }
         Update: {
+          codigo_produto?: number | null
           description?: string
           id?: string
           ncm?: string | null
-          omie_codigo_produto?: number | null
           position?: number
           product_id?: string | null
           proposta_id?: string
@@ -2446,12 +2374,6 @@ export type Database = {
           numero_pedido_cliente: string | null
           observacoes_pedido: string | null
           observations: string
-          omie_codigo_cliente: number | null
-          omie_codigo_pedido: number | null
-          omie_enviado_em: string | null
-          omie_erro: string | null
-          omie_numero_pedido: string | null
-          omie_status: string | null
           order_created_at: string | null
           owner_id: string
           payment_term_id: string | null
@@ -2487,12 +2409,6 @@ export type Database = {
           numero_pedido_cliente?: string | null
           observacoes_pedido?: string | null
           observations?: string
-          omie_codigo_cliente?: number | null
-          omie_codigo_pedido?: number | null
-          omie_enviado_em?: string | null
-          omie_erro?: string | null
-          omie_numero_pedido?: string | null
-          omie_status?: string | null
           order_created_at?: string | null
           owner_id: string
           payment_term_id?: string | null
@@ -2528,12 +2444,6 @@ export type Database = {
           numero_pedido_cliente?: string | null
           observacoes_pedido?: string | null
           observations?: string
-          omie_codigo_cliente?: number | null
-          omie_codigo_pedido?: number | null
-          omie_enviado_em?: string | null
-          omie_erro?: string | null
-          omie_numero_pedido?: string | null
-          omie_status?: string | null
           order_created_at?: string | null
           owner_id?: string
           payment_term_id?: string | null
