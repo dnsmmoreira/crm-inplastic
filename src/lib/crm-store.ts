@@ -607,7 +607,7 @@ const seedProducts: Product[] = [
 export type ProposalItem = {
   id: string;
   productId: string; // DEPRECATED — mantido só p/ compat com itens antigos
-  omieCodigoProduto?: number; // legado: nome enganoso, é o código do produto
+  codigoProduto?: number; // legado: nome enganoso, é o código do produto
   description: string; // snapshot
   sku: string; // snapshot
   ncm?: string; // snapshot (código fiscal do produto)
@@ -1044,10 +1044,10 @@ type CrmState = {
   updateProposal: (id: string, patch: Partial<Proposal>) => void;
   removeProposal: (id: string) => void;
   addProposalItem: (proposalId: string, productId: string, quantity: number) => void;
-  addProposalItemFromOmie: (
+  addProposalItemFromCatalogo: (
     proposalId: string,
-    omie: {
-      omieCodigoProduto: number;
+    item: {
+      codigoProduto: number;
       description: string;
       sku: string;
       unit: string;
@@ -1483,7 +1483,7 @@ export const useCrm = create<CrmState>()((set, get) => ({
                 {
                   id: uid(),
                   productId: product.id,
-                  omieCodigoProduto: undefined,
+                  codigoProduto: undefined,
                   description: product.name,
                   sku: product.sku,
                   ncm: product.ncm || undefined,
@@ -1497,7 +1497,7 @@ export const useCrm = create<CrmState>()((set, get) => ({
       ),
     }));
   },
-  addProposalItemFromOmie: (proposalId, omie, quantity) => {
+  addProposalItemFromCatalogo: (proposalId, item, quantity) => {
     set((s) => ({
       proposals: s.proposals.map((p) =>
         p.id === proposalId
@@ -1508,12 +1508,12 @@ export const useCrm = create<CrmState>()((set, get) => ({
                 {
                   id: uid(),
                   productId: "",
-                  omieCodigoProduto: omie.omieCodigoProduto,
-                  description: omie.description,
-                  sku: omie.sku,
-                  unit: (omie.unit || "Un") as ProductUnit,
+                  codigoProduto: item.codigoProduto,
+                  description: item.description,
+                  sku: item.sku,
+                  unit: (item.unit || "Un") as ProductUnit,
                   quantity,
-                  unitPrice: omie.unitPrice,
+                  unitPrice: item.unitPrice,
                 },
               ],
             }

@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
-import { moverParaGanhoOmie } from "@/lib/pedidos-gerar.functions";
+import { moverParaGanho } from "@/lib/pedidos-gerar.functions";
 import { registrarPerdaLead } from "@/lib/leads-perda.functions";
 import { useCrm, type StageId } from "@/lib/crm-store";
 
@@ -21,13 +21,13 @@ export type LostReasonInput = {
  * - Etapas em `STAGES_REQUIRING_PROPOSAL` exigem ao menos uma proposta vinculada.
  * - Alvo "perdido" exige `lostReason`; sem ele o hook retorna
  *   `{ ok: false, reason: "needs_lost_reason" }` para o caller abrir o diálogo.
- * - Alvo "ganho" ainda passa pelo gate fiscal (`moverParaGanhoOmie`).
+ * - Alvo "ganho" ainda passa pelo gate fiscal (`moverParaGanho`).
  */
 export function useMoveLeadStage() {
   const moveLead = useCrm((s) => s.moveLead);
   const updateLead = useCrm((s) => s.updateLead);
   const addInteraction = useCrm((s) => s.addInteraction);
-  const mover = useServerFn(moverParaGanhoOmie);
+  const mover = useServerFn(moverParaGanho);
   const registrarPerda = useServerFn(registrarPerdaLead);
 
   return useCallback(

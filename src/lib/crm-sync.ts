@@ -554,8 +554,8 @@ const COLS_TAREFAS = "id,lead_id,title,due_date,done";
 const COLS_PROPOSTAS =
   "id,number,lead_id,owner_id,emitter_id,status,validity_days,payment_term_id,forma_pagamento,previsao_faturamento,discount_percent,observations,transport,approval_requested_at,approval_reason,approved_by_user_id,approved_at,order_created_at,sent_at,created_at,expected_delivery_date,numero_pedido_cliente,observacoes_pedido,tratativa_comercial,em_negociacao,edit_requested_at,edit_request_reason,edit_requested_by_user_id,edit_unlocked_at,edit_unlocked_by_user_id";
 const COLS_PITENS =
-  // `omie_codigo_produto` é legado no nome, mas vivo: é o código do produto usado na seleção.
-  "id,proposta_id,position,product_id,omie_codigo_produto,description,sku,ncm,unit,quantity,unit_price";
+  // `codigo_produto` é legado no nome, mas vivo: é o código do produto usado na seleção.
+  "id,proposta_id,position,product_id,codigo_produto,description,sku,ncm,unit,quantity,unit_price";
 const COLS_PPARCELAS = "id,proposta_id,position,days,amount,notes,percentual,due_date";
 const COLS_INTERACOES = "id,lead_id,type,content,occurred_at";
 
@@ -788,8 +788,8 @@ function itemRowJson(r: PItemRow, position: number): string {
     proposta_id: r.proposta_id,
     position,
     product_id: r.product_id || null,
-    omie_codigo_produto:
-      (r as unknown as { omie_codigo_produto?: number | null }).omie_codigo_produto ?? null,
+    codigo_produto:
+      (r as unknown as { codigo_produto?: number | null }).codigo_produto ?? null,
     description: r.description,
     sku: r.sku,
     ncm: (r as unknown as { ncm?: string | null }).ncm ?? null,
@@ -822,8 +822,8 @@ function montarPropostas(
     const item: ProposalItem = {
       id: r.id,
       productId: r.product_id ?? "",
-      omieCodigoProduto:
-        (r as unknown as { omie_codigo_produto?: number | null }).omie_codigo_produto ?? undefined,
+      codigoProduto:
+        (r as unknown as { codigo_produto?: number | null }).codigo_produto ?? undefined,
       description: r.description,
       sku: r.sku,
       ncm: (r as unknown as { ncm?: string | null }).ncm ?? undefined,
@@ -1452,7 +1452,7 @@ async function doSave() {
           proposta_id: x.propId,
           position: x.index,
           product_id: x.item.productId || null,
-          omie_codigo_produto: x.item.omieCodigoProduto ?? null,
+          codigo_produto: x.item.codigoProduto ?? null,
           description: x.item.description,
           sku: x.item.sku,
           ncm: x.item.ncm ?? null,
@@ -1467,7 +1467,7 @@ async function doSave() {
             proposta_id: x.propId,
             position: x.index,
             product_id: x.item.productId || null,
-            omie_codigo_produto: x.item.omieCodigoProduto ?? null,
+            codigo_produto: x.item.codigoProduto ?? null,
             description: x.item.description,
             sku: x.item.sku,
             ncm: x.item.ncm ?? null,

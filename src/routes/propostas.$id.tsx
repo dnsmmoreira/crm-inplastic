@@ -67,7 +67,7 @@ import {
   type PaymentInstallment,
 } from "@/lib/crm-store";
 import { calculateFreightDistance } from "@/lib/freight.functions";
-import { gerarPedidoOmie } from "@/lib/pedidos-gerar.functions";
+import { gerarPedidoInterno } from "@/lib/pedidos-gerar.functions";
 import { formatDocumentoCliente } from "@/lib/clientes";
 import {
   getVendedorDaProposta,
@@ -305,7 +305,7 @@ function PropostaDetalhe() {
   const freightConfig = useCrm((s) => s.freightConfig);
   const [freightLoading, setFreightLoading] = useState(false);
   const calcFreight = useServerFn(calculateFreightDistance);
-  const gerarPedido = useServerFn(gerarPedidoOmie);
+  const gerarPedido = useServerFn(gerarPedidoInterno);
   const [gerandoPedido, setGerandoPedido] = useState(false);
   // Gatilho opcional dos romaneios logo depois que o pedido nasce.
   const [romaneioAlvo, setRomaneioAlvo] = useState<{ id: string; number?: string } | null>(null);
