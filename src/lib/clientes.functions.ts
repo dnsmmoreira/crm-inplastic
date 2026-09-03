@@ -34,8 +34,6 @@ export type ClienteRow = {
   criado_em: string;
   atualizado_em: string;
   ativo: boolean;
-  omie_codigo_cliente_inplastic: number | null;
-  omie_codigo_cliente_taoplast: number | null;
   simples_optante: boolean | null;
   suframa_isento: boolean | null;
   suframa_numero: string | null;

@@ -18,7 +18,7 @@ import { assertNoError, registrarFalhaSegura } from "@/lib/guard-erros";
  * `moverParaGanho`:
  *   - Gate do kanban: só permite mover para ganho se houver proposta com `status='pedido'`.
  *
- * Aliases `gerarPedidoOmie` / `moverParaGanhoOmie` seguem exportados como
+ * Aliases `gerarPedidoOmie` / `moverParaGanho` seguem exportados como
  * re-export @deprecated apenas para não mexer nos call sites agora.
  */
 
@@ -305,7 +305,7 @@ export const moverParaGanho = createServerFn({ method: "POST" })
         callerId: context.userId,
       });
     } catch (e) {
-      console.error("[moverParaGanhoOmie] falha ao criar pedido operacional:", e);
+      console.error("[moverParaGanho] falha ao criar pedido operacional:", e);
     }
 
     return { ok: true, proposta_id: prop.id as string };
@@ -506,4 +506,4 @@ async function ensurePedidoFromProposta(
 /** @deprecated use `gerarPedidoInterno` — alias mantido só pelos call sites atuais. */
 export const gerarPedidoOmie = gerarPedidoInterno;
 /** @deprecated use `moverParaGanho` — alias mantido só pelos call sites atuais. */
-export const moverParaGanhoOmie = moverParaGanho;
+export const moverParaGanho = moverParaGanho;
