@@ -17,16 +17,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DETALHE_MIN_CHARS,
+  DETALHE_OBRIGATORIO_MSG,
+  MOTIVOS_PERDA,
+  MOTIVOS_PERDA_DESCRICAO,
+  detalheValido,
+  recontatoDias,
+  type MotivoPerda,
+} from "@/lib/motivos-perda";
 
-export const LOST_REASONS: { value: string; label: string }[] = [
-  { value: "preco", label: "Preço" },
-  { value: "concorrente", label: "Concorrente" },
-  { value: "sem_orcamento", label: "Sem orçamento" },
-  { value: "sem_resposta", label: "Sem resposta" },
-  { value: "prazo", label: "Prazo/entrega" },
-  { value: "lote_importado", label: "Lote importado — sem demanda" },
-  { value: "outro", label: "Outro" },
-];
+/** Lista exibida no diálogo — vem do arquivo puro `motivos-perda.ts`. */
+export const LOST_REASONS: { value: MotivoPerda; label: MotivoPerda }[] =
+  MOTIVOS_PERDA.map((m) => ({ value: m, label: m }));
 
 export type LostReasonPayload = {
   motivo: string;
@@ -62,12 +65,15 @@ export function LostReasonDialog({
     }
   }, [open]);
 
+  const detalheOk = detalheValido(observacao);
+  const podeConfirmar = !!motivo && detalheOk && !submitting;
+  const dias = motivo ? recontatoDias(motivo as MotivoPerda) : null;
+
   const handleConfirm = async () => {
-    if (!motivo) return;
-    const label = LOST_REASONS.find((r) => r.value === motivo)?.label ?? motivo;
+    if (!motivo || !detalheOk) return;
     setSubmitting(true);
     try {
-      await onConfirm({ motivo, motivoLabel: label, observacao: observacao.trim() });
+      await onConfirm({ motivo, motivoLabel: motivo, observacao: observacao.trim() });
     } finally {
       setSubmitting(false);
     }
@@ -102,44 +108,55 @@ export function LostReasonDialog({
             </div>
           ) : null}
           <div>
-
             <Label className="text-xs">Motivo *</Label>
             <Select value={motivo} onValueChange={setMotivo}>
               <SelectTrigger className="mt-1">
                 <SelectValue placeholder="Selecione o motivo" />
               </SelectTrigger>
               <SelectContent>
-                {LOST_REASONS.map((r) => (
-                  <SelectItem key={r.value} value={r.value}>
-                    {r.label}
+                {MOTIVOS_PERDA.map((m) => (
+                  <SelectItem key={m} value={m}>
+                    {m}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            {motivo ? (
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {MOTIVOS_PERDA_DESCRICAO[motivo as MotivoPerda]}
+                {dias === null
+                  ? " · sem recontato"
+                  : ` · recontato em ${dias} dias`}
+              </p>
+            ) : null}
           </div>
           <div>
-            <Label className="text-xs">Observação (opcional)</Label>
+            <Label className="text-xs">Detalhe *</Label>
             <Textarea
               className="mt-1"
               rows={3}
               value={observacao}
               onChange={(e) => setObservacao(e.target.value)}
-              placeholder="Detalhes adicionais sobre a perda..."
+              placeholder={DETALHE_OBRIGATORIO_MSG}
             />
+            {!detalheOk ? (
+              <p className="mt-1 text-[11px] text-destructive">
+                {DETALHE_OBRIGATORIO_MSG} (mínimo {DETALHE_MIN_CHARS} caracteres)
+              </p>
+            ) : null}
           </div>
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={onCancel} disabled={submitting}>
             Cancelar
           </Button>
-          <Button onClick={handleConfirm} disabled={!motivo || submitting}>
+          <Button onClick={handleConfirm} disabled={!podeConfirmar}>
             {submitting
               ? "Salvando..."
               : bulk
                 ? `Marcar ${leadLabels!.length} como Perdido`
                 : "Marcar como Perdido"}
           </Button>
-
         </DialogFooter>
       </DialogContent>
     </Dialog>
