@@ -1348,15 +1348,14 @@ async function doSave() {
   if (bundleDesatualizado()) return;
   salvandoAgora = true;
   try {
-    await doSaveInterno();
+    await doSaveInterno(currentUserId);
   } finally {
     salvandoAgora = false;
   }
 }
 
-async function doSaveInterno() {
+async function doSaveInterno(userId: string) {
   const state = useCrm.getState();
-  const userId = currentUserId;
   const isAdmin = currentRole === "admin";
 
   // ---- system_workspace (leve, admin-only via RLS) ----
