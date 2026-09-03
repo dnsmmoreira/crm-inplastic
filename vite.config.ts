@@ -11,6 +11,56 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+/**
+ * Identificador de build: publicado em `/version.json` e embutido no bundle
+ * como `import.meta.env.VITE_BUILD_ID`. O cliente compara os dois para
+ * detectar aba com bundle antigo (ver src/lib/bundle-guard.ts).
+ */
+const BUILD_ID = process.env["VITE_BUILD_ID"] ?? String(Date.now());
+const VERSION_JSON = JSON.stringify({ buildId: BUILD_ID });
+
+function buildVersionPlugin() {
+  return {
+    name: "crm-build-version",
+    config() {
+      return {
+        define: {
+          "import.meta.env.VITE_BUILD_ID": JSON.stringify(BUILD_ID),
+        },
+      };
+    },
+    configureServer(server: {
+      middlewares: {
+        use: (
+          path: string,
+          fn: (
+            req: unknown,
+            res: {
+              setHeader: (k: string, v: string) => void;
+              end: (body: string) => void;
+            },
+            next: () => void,
+          ) => void,
+        ) => void;
+      };
+    }) {
+      server.middlewares.use("/version.json", (_req, res) => {
+        res.setHeader("content-type", "application/json");
+        res.setHeader("cache-control", "no-store");
+        res.end(VERSION_JSON);
+      });
+    },
+    generateBundle(this: {
+      environment?: { name?: string };
+      emitFile: (f: { type: "asset"; fileName: string; source: string }) => void;
+    }) {
+      const env = this.environment?.name;
+      if (env && env !== "client") return;
+      this.emitFile({ type: "asset", fileName: "version.json", source: VERSION_JSON });
+    },
+  };
+}
+
 export default defineConfig({
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
@@ -18,7 +68,7 @@ export default defineConfig({
     server: { entry: "server" },
   },
   vite: {
-    plugins: [mcpPlugin()],
+    plugins: [mcpPlugin(), buildVersionPlugin()],
     resolve: {
       alias: {
         "entities/lib/decode.js": path.resolve(__dirname, "node_modules/entities/lib/decode.js"),
