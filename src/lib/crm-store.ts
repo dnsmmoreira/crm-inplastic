@@ -1046,7 +1046,7 @@ type CrmState = {
   addProposalItem: (proposalId: string, productId: string, quantity: number) => void;
   addProposalItemFromCatalogo: (
     proposalId: string,
-    omie: {
+    item: {
       codigoProduto: number;
       description: string;
       sku: string;
@@ -1497,7 +1497,7 @@ export const useCrm = create<CrmState>()((set, get) => ({
       ),
     }));
   },
-  addProposalItemFromCatalogo: (proposalId, omie, quantity) => {
+  addProposalItemFromCatalogo: (proposalId, item, quantity) => {
     set((s) => ({
       proposals: s.proposals.map((p) =>
         p.id === proposalId
@@ -1508,12 +1508,12 @@ export const useCrm = create<CrmState>()((set, get) => ({
                 {
                   id: uid(),
                   productId: "",
-                  codigoProduto: omie.codigoProduto,
-                  description: omie.description,
-                  sku: omie.sku,
-                  unit: (omie.unit || "Un") as ProductUnit,
+                  codigoProduto: item.codigoProduto,
+                  description: item.description,
+                  sku: item.sku,
+                  unit: (item.unit || "Un") as ProductUnit,
                   quantity,
-                  unitPrice: omie.unitPrice,
+                  unitPrice: item.unitPrice,
                 },
               ],
             }
