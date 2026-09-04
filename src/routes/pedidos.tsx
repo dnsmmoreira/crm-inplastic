@@ -68,6 +68,7 @@ import {
   isTransitionAllowed,
   type PedidoRow,
   type PedidoStageId,
+  podeAssumirPedido,
 } from "@/lib/pedidos.functions";
 import { PedidoDetailDrawer } from "@/components/pedidos/PedidoDetailDrawer";
 
