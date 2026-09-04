@@ -109,9 +109,9 @@ const RE_VARIAVEL = /\{\{\s*(nome|empresa|atendente)\s*\}\}/g;
  * Converte uma frase pronta em corpo de template da Meta.
  *
  * - Cada variável vira `{{n}}` pela ordem da PRIMEIRA aparição.
- * - A Meta rejeita corpo que comece ou termine com variável: prefixamos
- *   "Olá " e sufixamos "." nesses casos.
  * - Quebras de linha duplas, tabs e espaços repetidos são normalizados.
+ * - A Meta rejeita corpo que comece ou termine com variável (pontuação final
+ *   não conta). NÃO corrigimos automaticamente: use `validarParaMeta`.
  */
 export function converterParaMeta(corpo: string): ConversaoMeta {
   const mapa: VariavelFrase[] = [];
@@ -132,11 +132,28 @@ export function converterParaMeta(corpo: string): ConversaoMeta {
     .replace(/[ ]{2,}/g, " ")
     .trim();
 
-  if (/^\{\{\d+\}\}/.test(texto)) texto = `Olá ${texto}`;
-  if (/\{\{\d+\}\}$/.test(texto)) texto = `${texto}.`;
-
   return { texto, mapa, exemplos: mapa.map((v) => EXEMPLOS_VARIAVEL[v]) };
 }
+
+export const MSG_VARIAVEL_BORDA =
+  "A Meta não aceita variável no início ou no fim do texto — reescreva terminando com uma palavra";
+
+/**
+ * Problemas que fariam a Meta recusar o modelo. Pontuação e espaços em volta
+ * da variável não contam: `"...para a {{empresa}}."` continua terminando com
+ * variável aos olhos da Meta.
+ */
+export function validarParaMeta(corpo: string): string[] {
+  const { texto } = converterParaMeta(corpo);
+  const problemas: string[] = [];
+  const inicio = texto.replace(/^[\s"'“”«»(\[]+/u, "");
+  const fim = texto.replace(/[\s.,!?;:…)\]"'“”»]+$/u, "");
+  if (/^\{\{\d+\}\}/.test(inicio) || /\{\{\d+\}\}$/.test(fim)) {
+    problemas.push(MSG_VARIAVEL_BORDA);
+  }
+  return problemas;
+}
+
 
 /**
  * Nome de template válido para a Meta: minúsculas, sem acento, só
