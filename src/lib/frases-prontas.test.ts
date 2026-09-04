@@ -46,15 +46,13 @@ describe("converterParaMeta", () => {
     expect(r.exemplos).toEqual(["Carlos", "Empresa Exemplo"]);
   });
 
-  it("prefixa quando o texto começa com variável", () => {
+  it("não conserta automaticamente início/fim com variável", () => {
     expect(converterParaMeta("{{nome}}, me diga a quantidade.").texto).toBe(
-      "Olá {{1}}, me diga a quantidade.",
+      "{{1}}, me diga a quantidade.",
     );
+    expect(converterParaMeta("Falo com a {{empresa}}").texto).toBe("Falo com a {{1}}");
   });
 
-  it("sufixa quando o texto termina com variável", () => {
-    expect(converterParaMeta("Falo com a {{empresa}}").texto).toBe("Falo com a {{1}}.");
-  });
 
   it("normaliza espaços, tabs e linhas duplas", () => {
     expect(converterParaMeta("Oi  {{nome}}\t— tudo\n\nbem?").texto).toBe("Oi {{1}} — tudo\nbem?");
