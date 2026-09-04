@@ -232,7 +232,7 @@ export const getRelatorioProcesso = createServerFn({ method: "POST" })
     // ── 1ª resposta humana no WhatsApp ──────────────────────────────────────
     let qConv = sb
       .from("whatsapp_conversas")
-      .select("id, atribuido_para, created_at")
+      .select("id, atribuido_para, created_at, em_espera_desde")
       .gte("created_at", cutoff)
       .limit(1000);
     if (proprio) qConv = qConv.eq("atribuido_para", userId);
@@ -241,6 +241,7 @@ export const getRelatorioProcesso = createServerFn({ method: "POST" })
     const conversas = (convRes.data ?? []) as Array<{
       id: string;
       atribuido_para: string | null;
+      em_espera_desde: string | null;
     }>;
 
     let geralResp: number[] = [];
@@ -295,7 +296,9 @@ export const getRelatorioProcesso = createServerFn({ method: "POST" })
             geralResp.push(h);
             if (alvo) alvo.resp.push(h);
           }
-        } else if (e.teveIa) {
+        } else if (e.teveIa && !c.em_espera_desde) {
+          // Atendimento declarado "em espera" não conta como cliente
+          // largado só com a IA — o humano está aguardando o cliente.
           geralSoIa++;
           if (alvo) alvo.soIa++;
         }

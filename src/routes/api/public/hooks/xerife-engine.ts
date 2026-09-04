@@ -179,6 +179,7 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
     a2_lead_parado: 0,
     a3_sem_resposta: 0,
     a3_escalado: 0,
+    a5_espera_longa: 0,
     a4_cadencia_proposta: 0,
     b1_carteira_45: 0,
     b2_carteira_60: 0,
@@ -542,13 +543,17 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
       // vendedor já respondeu?
       if (l.ultima_msg_vendedor_at && l.ultima_msg_vendedor_at >= l.ultima_msg_cliente_at) continue;
 
-      // CRÍTICO: pular se IA (Lucas) está ativa na conversa
+      // CRÍTICO: pular se IA (Lucas) está ativa na conversa, ou se o atendente
+      // declarou espera (aguardando algo do cliente) — nesse caso não há
+      // resposta pendente do nosso lado.
       const { data: conv } = await sb
         .from("whatsapp_conversas")
-        .select("ia_ativa, status")
+        .select("ia_ativa, status, em_espera_desde")
         .eq("lead_id", l.id)
         .maybeSingle();
       if (conv?.ia_ativa === true) continue;
+      if (conv?.em_espera_desde) continue;
+
 
       const regra = "A3_sem_resposta";
       if (await alreadyActed(sb, regra, l.id, 12)) continue;
@@ -600,7 +605,59 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
     }
   }
 
+  // ─────────────── A5: atendimento em espera há tempo demais ───────────────
+  // Espera é legítima, mas não pode virar esquecimento: passadas
+  // HORAS_ESPERA_LONGA horas, o Xerife cobra uma posição do responsável.
+  // Reaviso só depois de 24h (campo `espera_alertada_em`).
+  {
+    const { HORAS_ESPERA_LONGA, deveCobrarEspera } = await import("@/lib/atendimento-espera");
+    const { notificarUsuario } = await import("@/lib/xerife/handoff.server");
+    const { data: emEspera } = await sb
+      .from("whatsapp_conversas")
+      .select("id, name, phone, lead_id, atribuido_para, em_espera_desde, espera_alertada_em")
+      .not("em_espera_desde", "is", null)
+      .limit(300);
+
+    for (const c of emEspera ?? []) {
+      if (!c.atribuido_para) continue;
+      if (
+        !deveCobrarEspera(
+          { em_espera_desde: c.em_espera_desde, ultimoAvisoEm: c.espera_alertada_em },
+          now,
+          HORAS_ESPERA_LONGA,
+        )
+      ) {
+        continue;
+      }
+      const quem = c.name?.trim() || c.phone;
+      const horas = horasDesde(c.em_espera_desde, now);
+      if (!dryRun) {
+        await notificarUsuario(sb, {
+          userId: c.atribuido_para,
+          tipo: "conversa_espera_longa",
+          titulo: `Em espera há ${horas ?? HORAS_ESPERA_LONGA}h — ${quem}. Ainda faz sentido aguardar?`,
+          conversaId: c.id,
+        });
+        await sb
+          .from("whatsapp_conversas")
+          .update({ espera_alertada_em: now.toISOString() })
+          .eq("id", c.id);
+      }
+      if (c.lead_id) {
+        await log(sb, {
+          regra: "A5_espera_longa",
+          leadId: c.lead_id,
+          vendedorId: c.atribuido_para,
+          acao: "alerta de espera longa",
+          payload: { conversa_id: c.id, em_espera_desde: c.em_espera_desde },
+        });
+      }
+      stats.a5_espera_longa = (stats.a5_espera_longa ?? 0) + 1;
+    }
+  }
+
   // ─────────────── A4: cadência de proposta enviada ───────────────
+
   {
     const { data: leads } = await sb
       .from("leads")

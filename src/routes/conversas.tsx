@@ -3,6 +3,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   MessageSquare,
   ArrowLeft,
+  ArrowRightLeft,
+  PauseCircle,
+  PlayCircle,
   Phone,
   Send,
   Loader2,
@@ -45,9 +48,17 @@ import {
   assumirConversa,
   devolverParaIA,
   encerrarConversa,
-  atribuirConversa,
-  listarVendedoresAtendimento,
+  listarAtendentesParaTransferencia,
+  colocarConversaEmEspera,
+  retomarConversa,
 } from "@/lib/atendimento.functions";
+import { TransferirConversaDialog } from "@/components/atendimento/TransferirConversaDialog";
+import {
+  estaEmEspera,
+  horasSemResposta,
+  rotuloTempo,
+  textoBolhaEspera,
+} from "@/lib/atendimento-espera";
 import { useAuth } from "@/hooks/use-auth";
 import { podeEscreverConversa } from "@/lib/permissoes";
 import { usePoll } from "@/hooks/use-poll";
@@ -162,10 +173,22 @@ function MinhasConversasPage() {
   const [naoLidas, setNaoLidas] = useState<Record<string, number>>({});
   const [ultimoAutor, setUltimoAutor] = useState<Record<string, Mensagem["autor"]>>({});
   const [busca, setBusca] = useState("");
-  const [todas, setTodas] = useState(false);
+  const [escopo, setEscopo] = useState<"minhas" | "todos">("minhas");
+  const [responsavel, setResponsavel] = useState<string>("todos");
+  const [incluirEncerradas, setIncluirEncerradas] = useState(false);
+  const [atendentes, setAtendentes] = useState<Array<{ id: string; name: string }>>([]);
   const [aba, setAba] = useState<Aba>("aguardando");
   const [fila, setFila] = useState<Fila>("todas");
   const [novoAberto, setNovoAberto] = useState(false);
+  const todas = isAdmin && escopo === "todos";
+
+  const listarAtendentes = useServerFn(listarAtendentesParaTransferencia);
+  useEffect(() => {
+    if (!isAdmin) return;
+    void listarAtendentes()
+      .then((v) => setAtendentes(v as Array<{ id: string; name: string }>))
+      .catch(() => setAtendentes([]));
+  }, [isAdmin, listarAtendentes]);
 
   const load = useCallback(async () => {
     if (!userId) return;
@@ -175,6 +198,7 @@ function MinhasConversasPage() {
       .order("last_message_at", { ascending: false, nullsFirst: false })
       .limit(200);
     if (!(isAdmin && todas)) query = query.eq("atribuido_para", userId);
+
     const { data, error } = await query;
     if (error) {
       console.error(error);
@@ -244,13 +268,29 @@ function MinhasConversasPage() {
   // fallback de polling: pausa com a aba oculta e afrouxa sem conversa aberta
   usePoll(() => void load(), 45000, selectedId === null);
 
+  // "Aguardando" = última mensagem é do cliente E a conversa não está em espera
+  // declarada (espera = já respondemos e estamos aguardando algo do cliente).
   const aguardandoIds = useMemo(() => {
     const s = new Set<string>();
-    for (const c of conversas) if (ultimoAutor[c.id] === "cliente") s.add(c.id);
+    for (const c of conversas) {
+      if (ultimoAutor[c.id] === "cliente" && !estaEmEspera(c)) s.add(c.id);
+    }
     return s;
   }, [conversas, ultimoAutor]);
 
-  const daFila = useMemo(() => conversas.filter((c) => naFila(c, fila)), [conversas, fila]);
+  const daFila = useMemo(
+    () =>
+      conversas.filter((c) => {
+        if (!naFila(c, fila)) return false;
+        if (!incluirEncerradas && fila !== "encerrado" && c.status === "encerrado") return false;
+        if (todas && responsavel !== "todos") {
+          if (responsavel === "sem_responsavel") return !c.atribuido_para;
+          if (c.atribuido_para !== responsavel) return false;
+        }
+        return true;
+      }),
+    [conversas, fila, incluirEncerradas, todas, responsavel],
+  );
 
   const contagem = useMemo(
     () => ({
@@ -269,6 +309,7 @@ function MinhasConversasPage() {
       return (c.name ?? "").toLowerCase().includes(q) || c.phone.includes(q);
     });
   }, [daFila, busca, aba, aguardandoIds]);
+
 
   const selected = useMemo(
     () => conversas.find((c) => c.id === selectedId) ?? null,
@@ -364,15 +405,43 @@ function MinhasConversasPage() {
               ))}
             </div>
             {isAdmin && (
-              <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                <input
-                  type="checkbox"
-                  checked={todas}
-                  onChange={(e) => setTodas(e.target.checked)}
-                />
-                Ver todas as conversas (admin)
-              </label>
+              <div className="flex flex-wrap items-center gap-2">
+                <Select value={escopo} onValueChange={(v) => setEscopo(v as "minhas" | "todos")}>
+                  <SelectTrigger className="h-8 w-[132px] text-xs" aria-label="Escopo das conversas">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="minhas">Minhas conversas</SelectItem>
+                    <SelectItem value="todos">Todos os atendentes</SelectItem>
+                  </SelectContent>
+                </Select>
+                {todas && (
+                  <Select value={responsavel} onValueChange={setResponsavel}>
+                    <SelectTrigger className="h-8 w-[150px] text-xs" aria-label="Filtrar por responsável">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todos os responsáveis</SelectItem>
+                      <SelectItem value="sem_responsavel">Sem responsável</SelectItem>
+                      {atendentes.map((a) => (
+                        <SelectItem key={a.id} value={a.id}>
+                          {a.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
             )}
+            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={incluirEncerradas}
+                onChange={(e) => setIncluirEncerradas(e.target.checked)}
+              />
+              Incluir conversas encerradas
+            </label>
+
           </div>
           <ul className="min-h-0 flex-1 divide-y overflow-auto">
             {filtradas.map((c) => {
@@ -380,6 +449,12 @@ function MinhasConversasPage() {
               const active = c.id === selectedId;
               const badge = naoLidas[c.id] ?? 0;
               const aguardando = aguardandoIds.has(c.id);
+              const emEspera = estaEmEspera(c);
+              const semResposta = horasSemResposta(c);
+              const responsavelNome = todas
+                ? (atendentes.find((a) => a.id === c.atribuido_para)?.name ??
+                  (c.atribuido_para ? null : "Sem responsável"))
+                : null;
               return (
                 <li key={c.id}>
                   <button
@@ -388,6 +463,7 @@ function MinhasConversasPage() {
                     className={cn(
                       "flex w-full items-center gap-3 border-l-2 px-3 py-3 text-left transition-colors",
                       aguardando ? "border-l-destructive bg-destructive/5" : "border-l-transparent",
+                      emEspera && "border-l-amber-500 bg-amber-500/5",
                       active ? "bg-primary/5" : "hover:bg-muted/50",
                     )}
                   >
@@ -425,17 +501,33 @@ function MinhasConversasPage() {
                           {limparOrigemAnuncio(c.last_message_preview ?? "").trim() ||
                             "Sem mensagens"}
                         </span>
-                        {aguardando && (
-                          <span className="shrink-0 text-[10px] font-medium text-destructive">
-                            aguardando
+                        {emEspera ? (
+                          <span className="shrink-0 rounded-full bg-amber-500/15 px-1.5 text-[10px] font-medium text-amber-700">
+                            Em espera
                           </span>
-                        )}
+                        ) : semResposta !== null ? (
+                          <span
+                            className={cn(
+                              "shrink-0 text-[10px] font-medium",
+                              semResposta >= 2 ? "text-destructive" : "text-muted-foreground",
+                            )}
+                            title="Tempo sem resposta do atendente"
+                          >
+                            {rotuloTempo(semResposta)} sem resposta
+                          </span>
+                        ) : null}
                       </span>
+                      {responsavelNome && (
+                        <span className="mt-0.5 block truncate text-[10px] text-muted-foreground">
+                          Responsável: {responsavelNome}
+                        </span>
+                      )}
                     </span>
                   </button>
                 </li>
               );
             })}
+
             {filtradas.length === 0 && (
               <li className="p-10 text-center text-sm text-muted-foreground">
                 Nenhuma conversa atribuída a você por enquanto. Assim que um lead cair no seu nome,
@@ -492,7 +584,8 @@ function ChatPanel({
   const isAdmin = user?.role === "admin";
   const [mensagens, setMensagens] = useState<Mensagem[]>([]);
   const [nomesUsuarios, setNomesUsuarios] = useState<Record<string, string>>({});
-  const [vendedores, setVendedores] = useState<Array<{ id: string; name: string }>>([]);
+  const [atendentes, setAtendentes] = useState<Array<{ id: string; name: string }>>([]);
+  const [transferirAberto, setTransferirAberto] = useState(false);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [empresaLead, setEmpresaLead] = useState<string | null>(null);
@@ -510,8 +603,9 @@ function ChatPanel({
   const assumir = useServerFn(assumirConversa);
   const devolver = useServerFn(devolverParaIA);
   const encerrar = useServerFn(encerrarConversa);
-  const transferir = useServerFn(atribuirConversa);
-  const listarVendedores = useServerFn(listarVendedoresAtendimento);
+  const porEmEspera = useServerFn(colocarConversaEmEspera);
+  const retomar = useServerFn(retomarConversa);
+  const listarAtendentes = useServerFn(listarAtendentesParaTransferencia);
   const buscarJanela = useServerFn(statusJanelaConversa);
   const verificarPosse = useServerFn(posseConversa);
 
@@ -548,11 +642,10 @@ function ChatPanel({
   }, []);
 
   useEffect(() => {
-    if (!isAdmin) return;
-    void listarVendedores()
-      .then((v) => setVendedores(v as Array<{ id: string; name: string }>))
-      .catch(() => setVendedores([]));
-  }, [isAdmin, listarVendedores]);
+    void listarAtendentes()
+      .then((v) => setAtendentes(v as Array<{ id: string; name: string }>))
+      .catch(() => setAtendentes([]));
+  }, [listarAtendentes]);
 
   useEffect(() => {
     if (!conversa) {
@@ -644,6 +737,17 @@ function ChatPanel({
   const agoraSP = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
   const dentroDaJanela =
     agoraSP.getDay() !== 0 && agoraSP.getHours() >= 7 && agoraSP.getHours() < 20;
+
+  const emEspera = estaEmEspera(conversa);
+  const donoAtual = conversa.atribuido_para ?? null;
+  const souDono = !!donoAtual && donoAtual === user?.id;
+  const podeMexerNaEspera = isAdmin || souDono;
+  const nomeQuemColocou = conversa.em_espera_por
+    ? (atendentes.find((a) => a.id === conversa.em_espera_por)?.name ?? null)
+    : null;
+  const horasSemResp = horasSemResposta(conversa);
+
+
 
   async function rodarAcao(fn: () => Promise<unknown>, ok: string) {
     setAcaoEmCurso(true);
@@ -814,6 +918,16 @@ function ChatPanel({
               <span className="rounded-full border bg-background px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
                 {STATUS_LABEL[conversa.status] ?? conversa.status}
               </span>
+              {emEspera && (
+                <span className="flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+                  <PauseCircle className="h-3 w-3" /> Em espera
+                </span>
+              )}
+              {!emEspera && horasSemResp !== null && (
+                <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                  {rotuloTempo(horasSemResp)} sem resposta
+                </span>
+              )}
               {conversa.requer_humano && (
                 <span className="flex items-center gap-1 rounded-full bg-destructive px-2 py-0.5 text-[10px] font-semibold text-destructive-foreground">
                   <AlertTriangle className="h-3 w-3" /> Requer humano
@@ -852,28 +966,44 @@ function ChatPanel({
               <Bot className="mr-1 h-3.5 w-3.5" /> Devolver para IA
             </Button>
           )}
-          {isAdmin && (
-            <Select
-              value={conversa.atribuido_para ?? undefined}
-              onValueChange={(v) =>
-                void rodarAcao(
-                  () => transferir({ data: { conversaId, vendedorId: v } }),
-                  "Conversa transferida",
-                )
-              }
+          {!encerrada && (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={acaoEmCurso}
+              onClick={() => setTransferirAberto(true)}
             >
-              <SelectTrigger className="h-8 w-[170px] text-xs" aria-label="Transferir conversa">
-                <SelectValue placeholder="Transferir para…" />
-              </SelectTrigger>
-              <SelectContent>
-                {vendedores.map((v) => (
-                  <SelectItem key={v.id} value={v.id}>
-                    {v.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              <ArrowRightLeft className="mr-1 h-3.5 w-3.5" /> Transferir
+            </Button>
           )}
+          {!encerrada &&
+            podeMexerNaEspera &&
+            (emEspera ? (
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={acaoEmCurso}
+                onClick={() =>
+                  void rodarAcao(() => retomar({ data: { conversaId } }), "Atendimento retomado")
+                }
+              >
+                <PlayCircle className="mr-1 h-3.5 w-3.5" /> Retomar
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={acaoEmCurso}
+                onClick={() =>
+                  void rodarAcao(
+                    () => porEmEspera({ data: { conversaId } }),
+                    "Atendimento em espera — aguardando o cliente",
+                  )
+                }
+              >
+                <PauseCircle className="mr-1 h-3.5 w-3.5" /> Em espera
+              </Button>
+            ))}
           {!encerrada && (
             <Button
               size="sm"
@@ -890,6 +1020,22 @@ function ChatPanel({
             </Button>
           )}
         </div>
+
+        {emEspera && (
+          <div className="mt-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-700">
+            Este atendimento está em espera — não entra nos indicadores de cliente sem resposta.
+            Assim que o cliente responder, ele volta sozinho para a fila.
+          </div>
+        )}
+
+        <TransferirConversaDialog
+          open={transferirAberto}
+          onOpenChange={setTransferirAberto}
+          conversaId={conversaId}
+          donoAtual={donoAtual}
+          onTransferido={onChanged}
+        />
+
       </div>
 
       <div className="relative flex min-h-0 flex-1 flex-col">
@@ -920,6 +1066,17 @@ function ChatPanel({
               </div>
             );
           })}
+          {emEspera && conversa.em_espera_desde && (
+            <div className="flex justify-center">
+              <span className="max-w-[85%] rounded-full bg-muted px-3 py-1 text-center text-[11px] text-muted-foreground">
+                {textoBolhaEspera({
+                  em_espera_desde: conversa.em_espera_desde,
+                  nomeQuemColocou,
+                })}
+              </span>
+            </div>
+          )}
+
           {mensagens.length === 0 && (
             <div className="py-10 text-center text-xs text-muted-foreground">
               Sem mensagens nesta conversa ainda.
