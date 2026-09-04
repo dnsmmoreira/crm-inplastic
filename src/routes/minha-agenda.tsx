@@ -15,6 +15,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { TAREFA_TIPO_LABEL } from "@/lib/tarefas-tipos";
+
 
 export const Route = createFileRoute("/minha-agenda")({
   component: MinhaAgendaPage,
@@ -28,32 +30,18 @@ export const Route = createFileRoute("/minha-agenda")({
 
 type Tarefa = Awaited<ReturnType<typeof listMinhaAgenda>>[number];
 
-const TIPO_LABEL: Record<string, string> = {
-  primeiro_contato: "1º Contato",
-  resposta_pendente: "Responder",
-  follow_up: "Follow-up",
-  cadencia_proposta: "Cadência",
-  pos_venda_confirmacao: "Pós-venda: confirmar",
-  pos_venda_satisfacao: "Pós-venda: satisfação",
-  pos_venda_recompra: "Pós-venda: recompra",
-  resgate_carteira: "Resgate carteira",
-  reativacao_lead: "Reativação",
-  prospeccao: "Prospecção",
-  aprovacao_pendente: "Liberar pedido",
-  aguardando_pagamento: "Confirmar pagamento",
-  pedido_travado: "Pedido parado",
-  nf_atrasada: "NF atrasada",
-  previsao_atrasada: "Entrega atrasada",
-  ocorrencia_aberta: "Ocorrência aberta",
-  acompanhar_producao: "Acompanhar produção",
-  pos_venda_pedido: "Pós-venda",
-};
+const TIPO_LABEL: Record<string, string> = TAREFA_TIPO_LABEL;
+
 
 const TIPO_COLOR: Record<string, string> = {
   resposta_pendente: "bg-red-500/10 text-red-700 border-red-500/30",
   primeiro_contato: "bg-orange-500/10 text-orange-700 border-orange-500/30",
   cadencia_proposta: "bg-blue-500/10 text-blue-700 border-blue-500/30",
   follow_up: "bg-slate-500/10 text-slate-700 border-slate-500/30",
+  retomar_contato: "bg-amber-500/10 text-amber-700 border-amber-500/30",
+  previsao_atrasada: "bg-red-500/10 text-red-700 border-red-500/30",
+  nf_atrasada: "bg-red-500/10 text-red-700 border-red-500/30",
+
   resgate_carteira: "bg-amber-500/10 text-amber-700 border-amber-500/30",
   reativacao_lead: "bg-violet-500/10 text-violet-700 border-violet-500/30",
   pos_venda_confirmacao: "bg-emerald-500/10 text-emerald-700 border-emerald-500/30",
