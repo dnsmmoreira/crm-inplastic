@@ -746,6 +746,11 @@ function ChatPanel({
     ? (atendentes.find((a) => a.id === conversa.em_espera_por)?.name ?? null)
     : null;
   const horasSemResp = horasSemResposta(conversa);
+  const janelaAberta = janela24h?.aberta === true;
+  // Primeiro nome do atendente logado, usado nas frases com {{atendente}}.
+  const primeiroNomeAtendente = (user?.name ?? "").trim().split(/\s+/)[0] ?? null;
+  const empresaLead = conversa.name?.trim() || null;
+
 
 
 
