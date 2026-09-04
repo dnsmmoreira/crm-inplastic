@@ -20,6 +20,7 @@ import {
   citaNomeDeEmpresa,
   converterParaMeta,
   slugMeta,
+  validarParaMeta,
   variaveisInvalidas,
 } from "@/lib/frases-prontas";
 
@@ -172,6 +173,21 @@ async function enviarUma(
     };
   }
 
+  const problemas = validarParaMeta(frase.corpo);
+  if (problemas.length > 0) {
+    const erro = problemas.join(" ");
+    const res = await supabase
+      .from("mensagem_templates")
+      .update({ meta_status: "ERRO", meta_erro: erro.slice(0, 500), updated_at: new Date().toISOString() })
+      .eq("id", frase.id);
+    if (res?.error) {
+      await registrarFalhaSegura("frases-prontas.enviarParaMeta/validacao", res.error, {
+        id: frase.id,
+      });
+    }
+    return { ok: false, erro };
+  }
+
   const { texto, mapa, exemplos } = converterParaMeta(frase.corpo);
   const nome = frase.meta_nome ?? slugMeta(frase.titulo);
   const categoria = frase.meta_categoria ?? "MARKETING";
@@ -255,9 +271,30 @@ export const enviarSugeridasParaMeta = createServerFn({ method: "POST" })
         erros.push({ titulo: f.titulo, erro: MSG_EMPRESA_PROIBIDA });
         continue;
       }
-      const r = await enviarUma(supabase, f);
-      if (r.ok) enviadas += 1;
-      else erros.push({ titulo: f.titulo, erro: r.erro ?? "Falha desconhecida." });
+      if (f.meta_nome && (f.meta_status === "APPROVED" || f.meta_status === "PENDING")) continue;
+      try {
+        const r = await enviarUma(supabase, f);
+        if (r.ok) enviadas += 1;
+        else erros.push({ titulo: f.titulo, erro: r.erro ?? "Falha desconhecida." });
+      } catch (e) {
+        // Uma frase que explode não pode interromper o lote.
+        const erro = e instanceof Error ? e.message : String(e);
+        erros.push({ titulo: f.titulo, erro });
+        const res = await supabase
+          .from("mensagem_templates")
+          .update({
+            meta_status: "ERRO",
+            meta_erro: erro.slice(0, 500),
+            meta_enviado_em: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", f.id);
+        if (res?.error) {
+          await registrarFalhaSegura("frases-prontas.enviarSugeridas/update", res.error, {
+            id: f.id,
+          });
+        }
+      }
       // A Meta limita a taxa de criação de templates; 700 ms evita o 80007.
       await new Promise((resolve) => setTimeout(resolve, 700));
     }
