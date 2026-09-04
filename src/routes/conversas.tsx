@@ -753,7 +753,7 @@ function ChatPanel({
   const janelaAberta = janela24h?.aberta === true;
   // Primeiro nome do atendente logado, usado nas frases com {{atendente}}.
   const primeiroNomeAtendente = (user?.name ?? "").trim().split(/\s+/)[0] ?? null;
-  const empresaLead = conversa.name?.trim() || null;
+  
 
 
 
