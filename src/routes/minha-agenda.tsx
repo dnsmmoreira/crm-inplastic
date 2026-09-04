@@ -38,6 +38,10 @@ const TIPO_COLOR: Record<string, string> = {
   primeiro_contato: "bg-orange-500/10 text-orange-700 border-orange-500/30",
   cadencia_proposta: "bg-blue-500/10 text-blue-700 border-blue-500/30",
   follow_up: "bg-slate-500/10 text-slate-700 border-slate-500/30",
+  retomar_contato: "bg-amber-500/10 text-amber-700 border-amber-500/30",
+  previsao_atrasada: "bg-red-500/10 text-red-700 border-red-500/30",
+  nf_atrasada: "bg-red-500/10 text-red-700 border-red-500/30",
+
   resgate_carteira: "bg-amber-500/10 text-amber-700 border-amber-500/30",
   reativacao_lead: "bg-violet-500/10 text-violet-700 border-violet-500/30",
   pos_venda_confirmacao: "bg-emerald-500/10 text-emerald-700 border-emerald-500/30",
