@@ -18,6 +18,7 @@ import {
   Boxes,
   Gavel,
   MessageSquare,
+  MessageSquareText,
   Bot,
   Package,
   FileText,
@@ -362,6 +363,12 @@ const NAV_GROUPS: NavGroup[] = [
         show: key("sistema.ver_falhas"),
       },
       {
+        to: "/frases-prontas",
+        label: "Frases prontas",
+        icon: MessageSquareText,
+        show: (c) => c.isAdmin,
+      },
+      {
         to: "/usuarios",
         label: "Usuários",
         icon: UserCog,
@@ -369,6 +376,7 @@ const NAV_GROUPS: NavGroup[] = [
       },
     ],
   },
+
   {
     id: "ia-canais",
     accent: "cyan",

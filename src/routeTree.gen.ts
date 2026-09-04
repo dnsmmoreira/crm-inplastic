@@ -24,6 +24,7 @@ import { Route as MinhaAgendaRouteImport } from './routes/minha-agenda'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as LicitacoesRouteImport } from './routes/licitacoes'
 import { Route as LeadsRouteImport } from './routes/leads'
+import { Route as FrasesProntasRouteImport } from './routes/frases-prontas'
 import { Route as FalhasRouteImport } from './routes/falhas'
 import { Route as EstoqueRouteImport } from './routes/estoque'
 import { Route as EmpresasRouteImport } from './routes/empresas'
@@ -139,6 +140,11 @@ const LicitacoesRoute = LicitacoesRouteImport.update({
 const LeadsRoute = LeadsRouteImport.update({
   id: '/leads',
   path: '/leads',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FrasesProntasRoute = FrasesProntasRouteImport.update({
+  id: '/frases-prontas',
+  path: '/frases-prontas',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FalhasRoute = FalhasRouteImport.update({
@@ -379,6 +385,7 @@ export interface FileRoutesByFullPath {
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
   '/falhas': typeof FalhasRoute
+  '/frases-prontas': typeof FrasesProntasRoute
   '/leads': typeof LeadsRoute
   '/licitacoes': typeof LicitacoesRoute
   '/mcp': typeof McpRoute
@@ -437,6 +444,7 @@ export interface FileRoutesByTo {
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
   '/falhas': typeof FalhasRoute
+  '/frases-prontas': typeof FrasesProntasRoute
   '/leads': typeof LeadsRoute
   '/licitacoes': typeof LicitacoesRoute
   '/mcp': typeof McpRoute
@@ -496,6 +504,7 @@ export interface FileRoutesById {
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
   '/falhas': typeof FalhasRoute
+  '/frases-prontas': typeof FrasesProntasRoute
   '/leads': typeof LeadsRoute
   '/licitacoes': typeof LicitacoesRoute
   '/mcp': typeof McpRoute
@@ -556,6 +565,7 @@ export interface FileRouteTypes {
     | '/empresas'
     | '/estoque'
     | '/falhas'
+    | '/frases-prontas'
     | '/leads'
     | '/licitacoes'
     | '/mcp'
@@ -614,6 +624,7 @@ export interface FileRouteTypes {
     | '/empresas'
     | '/estoque'
     | '/falhas'
+    | '/frases-prontas'
     | '/leads'
     | '/licitacoes'
     | '/mcp'
@@ -672,6 +683,7 @@ export interface FileRouteTypes {
     | '/empresas'
     | '/estoque'
     | '/falhas'
+    | '/frases-prontas'
     | '/leads'
     | '/licitacoes'
     | '/mcp'
@@ -731,6 +743,7 @@ export interface RootRouteChildren {
   EmpresasRoute: typeof EmpresasRoute
   EstoqueRoute: typeof EstoqueRoute
   FalhasRoute: typeof FalhasRoute
+  FrasesProntasRoute: typeof FrasesProntasRoute
   LeadsRoute: typeof LeadsRoute
   LicitacoesRoute: typeof LicitacoesRoute
   McpRoute: typeof McpRoute
@@ -879,6 +892,13 @@ declare module '@tanstack/react-router' {
       path: '/leads'
       fullPath: '/leads'
       preLoaderRoute: typeof LeadsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/frases-prontas': {
+      id: '/frases-prontas'
+      path: '/frases-prontas'
+      fullPath: '/frases-prontas'
+      preLoaderRoute: typeof FrasesProntasRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/falhas': {
@@ -1187,6 +1207,7 @@ const rootRouteChildren: RootRouteChildren = {
   EmpresasRoute: EmpresasRoute,
   EstoqueRoute: EstoqueRoute,
   FalhasRoute: FalhasRoute,
+  FrasesProntasRoute: FrasesProntasRoute,
   LeadsRoute: LeadsRoute,
   LicitacoesRoute: LicitacoesRoute,
   McpRoute: McpRoute,
