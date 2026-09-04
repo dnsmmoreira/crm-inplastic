@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 import { TAREFA_TIPOS, TAREFA_TIPO_LABEL, rotuloTipoTarefa, sqlCheckTarefasTipo } from "./tarefas-tipos";
-import { CADENCIA_POR_ETAPA } from "./pedidos-cadencia";
+import { CADENCIA_PEDIDO } from "./pedidos-cadencia";
 
 /**
  * Tipos que NÃO são de tarefa: são `notificacoes.tipo` (ou payloads de alerta)
@@ -48,7 +48,7 @@ describe("tipos de tarefa do Xerife", () => {
   });
 
   it("todo tipo da cadência de pedidos está na lista canônica", () => {
-    for (const cfg of Object.values(CADENCIA_POR_ETAPA)) {
+    for (const cfg of Object.values(CADENCIA_PEDIDO)) {
       expect(TAREFA_TIPOS).toContain(cfg.tipo);
     }
   });
