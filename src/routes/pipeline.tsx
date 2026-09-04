@@ -30,7 +30,6 @@ import { NewLeadDialog, LeadDrawer } from "@/components/crm/LeadDrawer";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { gerarPedidoInterno } from "@/lib/pedidos-gerar.functions";
-import { RomaneiosPosPedidoDialog } from "@/components/pedidos/RomaneiosPosPedidoDialog";
 
 type SortMode = "default" | "urgency" | "urgency-desc";
 const CARDS_PER_PAGE = 15;
@@ -92,8 +91,6 @@ function PipelinePage() {
   const updateProposal = useCrm((s) => s.updateProposal);
   const navigate = useNavigate();
   const gerarPedidoFn = useServerFn(gerarPedidoInterno);
-  // Gatilho opcional dos romaneios logo depois que o pedido nasce.
-  const [romaneioAlvo, setRomaneioAlvo] = useState<{ id: string; number?: string } | null>(null);
 
   const leadById = useMemo(() => new Map(leads.map((l) => [l.id, l])), [leads]);
 
@@ -314,12 +311,6 @@ function PipelinePage() {
 
   return (
     <div className="flex h-[calc(100dvh-4rem)] flex-col gap-4 overflow-hidden p-4 md:p-8">
-      <RomaneiosPosPedidoDialog
-        pedidoId={romaneioAlvo?.id ?? null}
-        pedidoNumber={romaneioAlvo?.number ?? null}
-        open={romaneioAlvo !== null}
-        onOpenChange={(o) => { if (!o) setRomaneioAlvo(null); }}
-      />
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
 
         <div>

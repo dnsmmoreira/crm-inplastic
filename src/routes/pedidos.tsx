@@ -517,6 +517,11 @@ function PedidoCard({
 
   const responsavel =
     pedido.responsavel_nome ?? pedido.equipe_responsavel ?? pedido.vendedor_nome ?? null;
+  // Nas etapas operacionais o dono é quem "assumiu" o pedido — sem ele, alerta.
+  const etapaOperacional = podeAssumirPedido(pedido.stage);
+  const responsavelOperacional = pedido.responsavel_nome ?? pedido.equipe_responsavel ?? null;
+  const semResponsavel = etapaOperacional && !responsavelOperacional;
+  const nomeCurto = (n: string) => n.trim().split(/\s+/)[0] ?? n;
 
   const forma = pedido.forma_atendimento?.trim() || null;
 
@@ -592,12 +597,24 @@ function PedidoCard({
         <div className="text-primary font-semibold text-sm shrink-0">{formatBRL(pedido.total)}</div>
       </div>
 
-      {responsavel && (
+      {etapaOperacional ? (
+        <div
+          className={cn(
+            "mt-2 flex items-center gap-1.5 text-xs",
+            semResponsavel ? "text-amber-600 dark:text-amber-400 font-medium" : "text-muted-foreground",
+          )}
+        >
+          <User className="h-3 w-3 shrink-0" />
+          <span className="truncate">
+            {semResponsavel ? "Sem responsável" : nomeCurto(responsavelOperacional!)}
+          </span>
+        </div>
+      ) : responsavel ? (
         <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
           <User className="h-3 w-3 shrink-0" />
           <span className="truncate">{responsavel}</span>
         </div>
-      )}
+      ) : null}
 
       <div className="mt-1 grid grid-cols-2 gap-x-2 gap-y-1 text-xs text-muted-foreground">
         <div className="flex items-center gap-1.5">
