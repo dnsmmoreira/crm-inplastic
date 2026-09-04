@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { FileText, Loader2, Send } from "lucide-react";
+import { BadgeCheck, Loader2, Send } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { enviarTemplateConversa, listarTemplatesAprovados } from "@/lib/canais.functions";
 import { aplicarVariaveis } from "@/lib/whatsapp-template";
+import { preencherParamsMeta } from "@/lib/frases-prontas";
 
 type Template = {
   name: string;
@@ -27,6 +28,8 @@ type Template = {
   exemplos: string[];
   suportado: boolean;
   motivoNaoSuportado?: string;
+  tituloCrm?: string | null;
+  metaMapa?: string[] | null;
 };
 
 type Props = {
@@ -34,6 +37,8 @@ type Props = {
   onOpenChange: (v: boolean) => void;
   conversaId: string;
   nomeSugerido?: string;
+  empresaSugerida?: string | null;
+  atendenteSugerido?: string | null;
   onEnviado: () => void;
 };
 
@@ -42,6 +47,8 @@ export function TemplateMetaDialog({
   onOpenChange,
   conversaId,
   nomeSugerido,
+  empresaSugerida,
+  atendenteSugerido,
   onEnviado,
 }: Props) {
   const listar = useServerFn(listarTemplatesAprovados);
@@ -72,15 +79,36 @@ export function TemplateMetaDialog({
 
   const filtrados = useMemo(() => {
     const q = busca.trim().toLowerCase();
-    return q ? itens.filter((t) => t.name.toLowerCase().includes(q)) : itens;
+    const base = q
+      ? itens.filter(
+          (t) =>
+            t.name.toLowerCase().includes(q) || (t.tituloCrm ?? "").toLowerCase().includes(q),
+        )
+      : itens;
+    return {
+      doCrm: base.filter((t) => t.tituloCrm),
+      outros: base.filter((t) => !t.tituloCrm),
+      total: base.length,
+    };
   }, [itens, busca]);
 
   function escolher(t: Template) {
     setSel(t);
-    const iniciais = Array.from({ length: t.variaveis }, (_, i) =>
-      i === 0 ? (nomeSugerido ?? "") : "",
+    // Modelo que nasceu de uma frase do CRM: já sabemos o que vai em cada
+    // variável, então o atendente só confere e envia.
+    if (t.metaMapa && t.metaMapa.length === t.variaveis) {
+      setParams(
+        preencherParamsMeta(t.metaMapa, {
+          nome: nomeSugerido ?? null,
+          empresa: empresaSugerida ?? null,
+          atendente: atendenteSugerido ?? null,
+        }),
+      );
+      return;
+    }
+    setParams(
+      Array.from({ length: t.variaveis }, (_, i) => (i === 0 ? (nomeSugerido ?? "") : "")),
     );
-    setParams(iniciais);
   }
 
   const preview = sel ? aplicarVariaveis(sel.bodyText, params) : "";
@@ -111,13 +139,47 @@ export function TemplateMetaDialog({
     }
   }
 
+  function cartao(t: Template) {
+    return (
+      <button
+        key={`${t.name}-${t.language}`}
+        type="button"
+        disabled={!t.suportado}
+        onClick={() => escolher(t)}
+        className={cn(
+          "w-full rounded-lg border p-3 text-left transition",
+          t.suportado ? "hover:bg-muted" : "cursor-not-allowed opacity-60",
+        )}
+      >
+        <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
+          <BadgeCheck className="h-4 w-4 text-emerald-600" />
+          {t.tituloCrm ?? t.name}
+          {t.tituloCrm && (
+            <span className="font-normal text-[11px] text-muted-foreground">{t.name}</span>
+          )}
+          <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] uppercase text-muted-foreground">
+            {t.category} · {t.language}
+          </span>
+        </div>
+        <p className="mt-1 line-clamp-3 whitespace-pre-wrap text-xs text-muted-foreground">
+          {t.bodyText}
+        </p>
+        {!t.suportado && (
+          <p className="mt-1 text-[11px] text-amber-600">
+            {t.motivoNaoSuportado ?? "Não suportado no momento."}
+          </p>
+        )}
+      </button>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Modelos aprovados</DialogTitle>
+          <DialogTitle>Modelos aprovados pela Meta</DialogTitle>
           <DialogDescription>
-            Modelos aprovados pela Meta — únicos permitidos fora da janela de 24h.
+            Únicos textos permitidos quando a janela de 24h está encerrada.
           </DialogDescription>
         </DialogHeader>
 
@@ -137,36 +199,24 @@ export function TemplateMetaDialog({
               placeholder="Buscar modelo pelo nome…"
             />
             <ScrollArea className="h-[320px] pr-3">
-              <div className="space-y-2">
-                {filtrados.map((t) => (
-                  <button
-                    key={`${t.name}-${t.language}`}
-                    type="button"
-                    disabled={!t.suportado}
-                    onClick={() => escolher(t)}
-                    className={cn(
-                      "w-full rounded-lg border p-3 text-left transition",
-                      t.suportado ? "hover:bg-muted" : "cursor-not-allowed opacity-60",
-                    )}
-                  >
-                    <div className="flex items-center gap-2 text-sm font-medium">
-                      <FileText className="h-4 w-4 text-muted-foreground" />
-                      {t.name}
-                      <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] uppercase text-muted-foreground">
-                        {t.category} · {t.language}
-                      </span>
-                    </div>
-                    <p className="mt-1 line-clamp-3 whitespace-pre-wrap text-xs text-muted-foreground">
-                      {t.bodyText}
+              <div className="space-y-4">
+                {filtrados.doCrm.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Do CRM
                     </p>
-                    {!t.suportado && (
-                      <p className="mt-1 text-[11px] text-amber-600">
-                        {t.motivoNaoSuportado ?? "Não suportado no momento."}
-                      </p>
-                    )}
-                  </button>
-                ))}
-                {filtrados.length === 0 && (
+                    {filtrados.doCrm.map(cartao)}
+                  </div>
+                )}
+                {filtrados.outros.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Outros
+                    </p>
+                    {filtrados.outros.map(cartao)}
+                  </div>
+                )}
+                {filtrados.total === 0 && (
                   <p className="py-8 text-center text-sm text-muted-foreground">
                     Nenhum modelo aprovado encontrado.
                   </p>
@@ -179,7 +229,7 @@ export function TemplateMetaDialog({
         {sel && (
           <div className="space-y-3">
             <div className="text-sm font-medium">
-              {sel.name}{" "}
+              {sel.tituloCrm ?? sel.name}{" "}
               <span className="text-xs font-normal text-muted-foreground">
                 ({sel.category} · {sel.language})
               </span>
@@ -188,7 +238,7 @@ export function TemplateMetaDialog({
             {Array.from({ length: sel.variaveis }, (_, i) => (
               <div key={i} className="space-y-1">
                 <Label htmlFor={`var-${i}`} className="text-xs">
-                  Variável {`{{${i + 1}}}`}
+                  {sel.metaMapa?.[i] ? `Variável: ${sel.metaMapa[i]}` : `Variável {{${i + 1}}}`}
                 </Label>
                 <Input
                   id={`var-${i}`}

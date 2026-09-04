@@ -1401,6 +1401,14 @@ export type Database = {
           created_at: string
           criado_por: string | null
           id: string
+          meta_categoria: string | null
+          meta_enviado_em: string | null
+          meta_erro: string | null
+          meta_id: string | null
+          meta_mapa: Json | null
+          meta_nome: string | null
+          meta_status: string | null
+          meta_sugerido: boolean
           ordem: number
           titulo: string
           updated_at: string
@@ -1412,6 +1420,14 @@ export type Database = {
           created_at?: string
           criado_por?: string | null
           id?: string
+          meta_categoria?: string | null
+          meta_enviado_em?: string | null
+          meta_erro?: string | null
+          meta_id?: string | null
+          meta_mapa?: Json | null
+          meta_nome?: string | null
+          meta_status?: string | null
+          meta_sugerido?: boolean
           ordem?: number
           titulo: string
           updated_at?: string
@@ -1423,6 +1439,14 @@ export type Database = {
           created_at?: string
           criado_por?: string | null
           id?: string
+          meta_categoria?: string | null
+          meta_enviado_em?: string | null
+          meta_erro?: string | null
+          meta_id?: string | null
+          meta_mapa?: Json | null
+          meta_nome?: string | null
+          meta_status?: string | null
+          meta_sugerido?: boolean
           ordem?: number
           titulo?: string
           updated_at?: string

@@ -460,3 +460,180 @@ export async function cloudListarTemplatesAprovados(
     clearTimeout(timer);
   }
 }
+
+/* ------------------------------------------------------------------ *
+ * (Templates) Criação / listagem completa / exclusão na Meta.
+ * Usado pela tela administrativa de "Frases prontas".
+ * ------------------------------------------------------------------ */
+
+export type CriarTemplateResult = {
+  ok: boolean;
+  id?: string;
+  status?: string;
+  category?: string;
+  erro?: string;
+};
+
+/** Extrai a mensagem de erro mais útil do corpo da Graph API. */
+function erroDaMeta(texto: string): string {
+  try {
+    const p = JSON.parse(texto) as {
+      error?: { message?: string; error_user_msg?: string; error_user_title?: string };
+    };
+    return (
+      p.error?.error_user_msg?.trim() ||
+      p.error?.error_user_title?.trim() ||
+      p.error?.message?.trim() ||
+      texto.slice(0, 300)
+    );
+  } catch {
+    return texto.slice(0, 300);
+  }
+}
+
+/** POST /{waba-id}/message_templates — envia a frase para aprovação da Meta. */
+export async function cloudCriarTemplate(input: {
+  name: string;
+  category: string;
+  bodyText: string;
+  exemplos: string[];
+}): Promise<CriarTemplateResult> {
+  const { version, wabaId, accessToken } = creds();
+  if (!wabaId || !accessToken) {
+    return { ok: false, erro: "WABA não configurada (variáveis ausentes)." };
+  }
+
+  const temVars = input.exemplos.length > 0;
+  const body = {
+    name: input.name,
+    language: "pt_BR",
+    category: input.category,
+    allow_category_change: true,
+    components: [
+      {
+        type: "BODY",
+        text: input.bodyText,
+        ...(temVars ? { example: { body_text: [input.exemplos] } } : {}),
+      },
+    ],
+  };
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  try {
+    const res = await fetch(`https://graph.facebook.com/${version}/${wabaId}/message_templates`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    const texto = await res.text();
+    if (!res.ok) {
+      console.error(`[wa-cloud:criar-template] status=${res.status} body=${texto.slice(0, 300)}`);
+      return { ok: false, erro: erroDaMeta(texto) };
+    }
+    const parsed = JSON.parse(texto) as { id?: string; status?: string; category?: string };
+    return {
+      ok: true,
+      ...(parsed.id ? { id: parsed.id } : {}),
+      ...(parsed.status ? { status: parsed.status } : {}),
+      ...(parsed.category ? { category: parsed.category } : {}),
+    };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error(`[wa-cloud:criar-template] erro: ${msg}`);
+    return { ok: false, erro: msg };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export type TemplateMeta = {
+  id: string;
+  name: string;
+  language: string;
+  status: string;
+  category: string;
+  rejected_reason?: string;
+};
+
+/** GET /{waba-id}/message_templates — todos os status, sem cache. */
+export async function cloudListarTemplatesTodos(): Promise<{
+  ok: boolean;
+  erro?: string;
+  itens: TemplateMeta[];
+}> {
+  const { version, wabaId, accessToken } = creds();
+  if (!wabaId || !accessToken) {
+    return { ok: false, erro: "WABA não configurada (variáveis ausentes).", itens: [] };
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  try {
+    const url =
+      `https://graph.facebook.com/${version}/${wabaId}/message_templates` +
+      `?limit=200&fields=name,language,status,category,rejected_reason,id`;
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      signal: controller.signal,
+    });
+    const texto = await res.text();
+    if (!res.ok) {
+      console.error(`[wa-cloud:templates-todos] status=${res.status}`);
+      return { ok: false, erro: erroDaMeta(texto), itens: [] };
+    }
+    const parsed = JSON.parse(texto) as { data?: Array<Record<string, unknown>> };
+    const itens = (parsed.data ?? []).map((t) => ({
+      id: String(t.id ?? ""),
+      name: String(t.name ?? ""),
+      language: String(t.language ?? ""),
+      status: String(t.status ?? ""),
+      category: String(t.category ?? ""),
+      ...(t.rejected_reason ? { rejected_reason: String(t.rejected_reason) } : {}),
+    }));
+    return { ok: true, itens };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error(`[wa-cloud:templates-todos] erro: ${msg}`);
+    return { ok: false, erro: msg, itens: [] };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** DELETE /{waba-id}/message_templates?name=… — remove o template da conta Meta. */
+export async function cloudExcluirTemplate(
+  name: string,
+): Promise<{ ok: boolean; erro?: string }> {
+  const { version, wabaId, accessToken } = creds();
+  if (!wabaId || !accessToken) {
+    return { ok: false, erro: "WABA não configurada (variáveis ausentes)." };
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  try {
+    const res = await fetch(
+      `https://graph.facebook.com/${version}/${wabaId}/message_templates?name=${encodeURIComponent(name)}`,
+      { method: "DELETE", headers: { Authorization: `Bearer ${accessToken}` }, signal: controller.signal },
+    );
+    const texto = await res.text();
+    if (!res.ok) {
+      console.error(`[wa-cloud:excluir-template] status=${res.status}`);
+      return { ok: false, erro: erroDaMeta(texto) };
+    }
+    return { ok: true };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error(`[wa-cloud:excluir-template] erro: ${msg}`);
+    return { ok: false, erro: msg };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Invalida o cache de aprovados (após criar/excluir template). */
+export function cloudInvalidarCacheTemplates(): void {
+  cacheTemplates = null;
+}
