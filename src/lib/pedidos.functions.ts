@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { assertNoError, registrarFalhaSegura } from "@/lib/guard-erros";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
-import { PERM_PEDIDOS_MOVIMENTAR } from "@/lib/permissoes";
+import { PERM_PEDIDOS_MOVIMENTAR, PERM_PEDIDOS_OPERAR_PRODUCAO } from "@/lib/permissoes";
 import { descreverParcelas } from "@/lib/condicoes-comerciais";
 import { resumoHistoricoCliente, soDigitos, type HistoricoCliente } from "@/lib/pedidos-historico";
 export type { HistoricoCliente, PedidoHistoricoRow } from "@/lib/pedidos-historico";
@@ -21,6 +21,7 @@ import {
   ALLOWED_FORWARD,
   isBackward,
   podeDevolverPedido,
+  podeAssumirPedido,
   stageLabel,
   type PedidoStageId,
 } from "@/lib/pedidos-stages";
@@ -31,6 +32,7 @@ export {
   PEDIDO_STAGE_CANCELADO,
   PEDIDO_STAGE_CANCELADO_LABEL,
   podeDevolverPedido,
+  podeAssumirPedido,
   PEDIDO_STAGE_REPROVADO_LABEL,
   PEDIDO_STAGE_IDS,
   ALLOWED_FORWARD,
@@ -738,6 +740,11 @@ export type PedidoDetalhes = {
   aprovacao_observacao: string | null;
   checklist_conferencia: ChecklistItem[];
   checklist_atualizado_em: string | null;
+  /** Responsável operacional atual (quem "assumiu" o pedido). */
+  responsavel_atual_id: string | null;
+  responsavel_atual_nome: string | null;
+  /** Admin ou permissão `pedidos.operar_producao` — calculado no servidor. */
+  pode_operar: boolean;
   fiscal_status: string | null;
   nf_numero: string | null;
   nf_serie: string | null;
@@ -787,7 +794,8 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
       .from("pedidos")
       .select(
         `id, number, stage, total, fiscal_status, nf_numero, lead_id, proposta_id,
-         vendedor_proprietario_id, owner_id, proposta_snapshot, ${APPROVAL_FIELDS}`,
+         vendedor_proprietario_id, owner_id, proposta_snapshot,
+         responsavel_atual_id, equipe_responsavel, ${APPROVAL_FIELDS}`,
       )
       .eq("id", data.pedido_id)
       .maybeSingle();
@@ -890,6 +898,7 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
       p.aprovacao_solicitada_por,
       p.aprovacao_decidida_por,
       p.vendedor_proprietario_id ?? p.owner_id,
+      p.responsavel_atual_id,
       ...oc.map((o) => o.criada_por),
       ...oc.map((o) => o.resolvida_por),
     ]);
@@ -907,6 +916,8 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
       vendedorId === context.userId ||
       (await isAdminOuFinanceiro(sb, context.userId)) ||
       (await temPermissao(sb, context.userId, "pedidos.aprovar_financeiro"));
+
+    const podeOperar = await podeOperarProducao(sb, context.userId);
 
     const detalhe: PedidoDetalhes = {
       id: p.id,
@@ -952,6 +963,11 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
       aprovacao_observacao: p.aprovacao_observacao,
       checklist_conferencia: checklist,
       checklist_atualizado_em: p.checklist_atualizado_em,
+      responsavel_atual_id: p.responsavel_atual_id ?? null,
+      responsavel_atual_nome: p.responsavel_atual_id
+        ? (nameById.get(p.responsavel_atual_id) ?? p.equipe_responsavel ?? null)
+        : null,
+      pode_operar: podeOperar,
       fiscal_status: p.fiscal_status,
       nf_numero: p.nf_numero,
       nf_serie: p.nf_serie,
