@@ -317,7 +317,7 @@ function ResponsavelOperacionalBlock({
 
   return (
     <section className="space-y-3">
-      <SectionTitle icon={<UserCheck className="h-4 w-4" />} title="Responsável operacional" />
+      <SectionTitle icon={<UserCheck className="h-4 w-4" />} label="Responsável operacional" />
       {nome ? (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-3">
           <span className="text-sm">
