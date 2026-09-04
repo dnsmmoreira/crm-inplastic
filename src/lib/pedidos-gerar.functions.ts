@@ -4,7 +4,9 @@ import { requireSupabaseAuth } from "@/lib/auth.middleware";
 import { garantirClienteDoLead } from "@/lib/clientes.functions";
 import { computeLeadScore } from "@/lib/lead-score";
 import { decidirAprovacaoFinanceira } from "@/lib/aprovacao-financeira";
+import { aprovacaoClienteValida, calcularPendenciasPedido } from "@/lib/pedido-pendencias";
 import { assertNoError, registrarFalhaSegura } from "@/lib/guard-erros";
+
 
 /**
  * Fluxo interno de fechamento de pedido — SEM integração externa (nenhum ERP).
@@ -42,12 +44,16 @@ export const gerarPedidoInterno = createServerFn({ method: "POST" })
       proposta_id: string;
       requer_aprovacao?: boolean;
       conferencia_confirmada?: boolean;
+      aprovacao_cliente?: { meio: string; detalhe: string } | null;
     }) =>
       z
         .object({
           proposta_id: z.string().uuid(),
           requer_aprovacao: z.boolean().optional(),
           conferencia_confirmada: z.boolean().optional(),
+          aprovacao_cliente: z
+            .object({ meio: z.string(), detalhe: z.string() })
+            .nullish(),
         })
         .parse(input),
   )
@@ -58,7 +64,9 @@ export const gerarPedidoInterno = createServerFn({ method: "POST" })
 
     const { data: proposta, error: propErr } = await loose
       .from("propostas")
-      .select("id, status, lead_id, payment_term_id")
+      .select(
+        "id, status, lead_id, payment_term_id, transport, expected_delivery_date, tratativa_comercial",
+      )
       .eq("id", propostaId)
       .maybeSingle();
     if (propErr) throw new Error(`Falha ao carregar proposta: ${propErr.message}`);
@@ -76,7 +84,7 @@ export const gerarPedidoInterno = createServerFn({ method: "POST" })
     // Valida itens mínimos
     const { data: itens, error: itErr } = await loose
       .from("proposta_itens")
-      .select("id, quantity, unit_price")
+      .select("id, description, quantity, unit_price, product_id")
       .eq("proposta_id", propostaId);
     if (itErr) throw new Error(`Falha ao carregar itens: ${itErr.message}`);
     const erros: string[] = [];
@@ -85,6 +93,7 @@ export const gerarPedidoInterno = createServerFn({ method: "POST" })
     } else if (itens.some((i: { unit_price: number }) => Number(i.unit_price) <= 0)) {
       erros.push("Todos os itens precisam de valor unitário maior que zero.");
     }
+
     // Pessoa Física: bloqueia condições a prazo/boleto (apenas à vista ou cartão).
     const { data: leadRow } = await loose
       .from("leads")
@@ -120,9 +129,92 @@ export const gerarPedidoInterno = createServerFn({ method: "POST" })
       }
     }
 
+    /**
+     * TRAVA 1 — pendências bloqueantes, recalculadas com dados do banco.
+     * Não recalcula na aprovação do admin de uma proposta já em
+     * `aguardando_aprovacao` (ela já passou por este gate ao ser solicitada).
+     */
+    const revalidarPendencias =
+      data.requer_aprovacao === true || data.conferencia_confirmada === true;
+    if (revalidarPendencias) {
+      const clienteId = (leadRow?.cliente_id as string | null) ?? null;
+      const { data: clienteRow } = clienteId
+        ? await loose
+            .from("clientes")
+            .select("id, razao_social, tipo_pessoa, cnpj, cpf, email_nf")
+            .eq("id", clienteId)
+            .maybeSingle()
+        : { data: null };
+
+      const productIds = Array.from(
+        new Set(
+          (itens ?? [])
+            .map((i: { product_id?: string | null }) => i.product_id)
+            .filter((v: string | null | undefined): v is string => Boolean(v)),
+        ),
+      );
+      const { data: produtos } = productIds.length
+        ? await loose.from("produtos").select("id, weight_kg").in("id", productIds)
+        : { data: [] };
+      const pesoPorProduto = new Map<string, number | null>(
+        ((produtos ?? []) as Array<{ id: string; weight_kg: number | null }>).map((p) => [
+          p.id,
+          p.weight_kg,
+        ]),
+      );
+
+      const transport = (proposta.transport ?? {}) as Record<string, unknown>;
+      const pendencias = calcularPendenciasPedido({
+        cliente: {
+          clienteId,
+          leadId,
+          nome: clienteRow?.razao_social ?? leadRow?.razao_social ?? null,
+          tipoPessoa: clienteRow?.tipo_pessoa ?? null,
+          cnpj: clienteRow?.cnpj ?? leadRow?.cnpj ?? null,
+          cpf: clienteRow?.cpf ?? null,
+          emailNf: clienteRow?.email_nf ?? null,
+        },
+        paymentTermId: (proposta.payment_term_id as string | null) ?? null,
+        transporte: {
+          freightPayer: (transport["freightPayer"] as string | null) ?? null,
+          carrier: (transport["carrier"] as string | null) ?? null,
+          deliveryAddress: (transport["deliveryAddress"] as string | null) ?? null,
+          deliveryCep: (transport["deliveryCep"] as string | null) ?? null,
+          retirada: (transport["retirada"] as boolean | null) ?? null,
+        },
+        expectedDeliveryDate: (proposta.expected_delivery_date as string | null) ?? null,
+        tratativa: (proposta.tratativa_comercial as string | null) ?? null,
+        itens: (itens ?? []).map(
+          (i: {
+            id: string;
+            description: string | null;
+            quantity: number;
+            unit_price: number;
+            product_id: string | null;
+          }) => ({
+            id: i.id,
+            description: i.description,
+            quantity: Number(i.quantity ?? 0),
+            unitPrice: Number(i.unit_price ?? 0),
+            productId: i.product_id,
+            pesoKg: i.product_id ? (pesoPorProduto.get(i.product_id) ?? null) : null,
+          }),
+        ),
+      });
+      for (const p of pendencias) erros.push(p.mensagem);
+    }
+
+    /** TRAVA 2 — como o cliente aprovou (só quando a conferência é do vendedor). */
+    if (data.conferencia_confirmada && !aprovacaoClienteValida(data.aprovacao_cliente)) {
+      erros.push(
+        "Informe como o cliente aprovou a proposta (meio e detalhe com pelo menos 10 caracteres).",
+      );
+    }
+
     if (erros.length > 0) {
       return { ok: false, validacao_erros: erros, proposta_id: propostaId };
     }
+
 
     // Gate + promoção automática lead → cliente (exige CNPJ/CPF válido).
     const promo = await garantirClienteDoLead(loose, userId, leadId);
@@ -176,8 +268,11 @@ export const gerarPedidoInterno = createServerFn({ method: "POST" })
         ? {
             conferencia_confirmada_em: new Date().toISOString(),
             conferencia_confirmada_por_user_id: userId,
+            aprovacao_cliente_meio: data.aprovacao_cliente?.meio ?? null,
+            aprovacao_cliente_detalhe: String(data.aprovacao_cliente?.detalhe ?? "").trim() || null,
           }
         : {};
+
 
       if (precisaAprovacao) {
         // ABORTAR: sem o status coerente, a proposta ficaria "livre" e o

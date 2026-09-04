@@ -24,6 +24,7 @@ import {
   UserCheck,
 } from "lucide-react";
 
+import { rotuloMeioAprovacao } from "@/lib/pedido-pendencias";
 import { DocumentosSection } from "@/components/documentos/DocumentosSection";
 import { RomaneiosBlock } from "@/components/pedidos/RomaneiosBlock";
 import { RomaneiosPosPedidoDialog } from "@/components/pedidos/RomaneiosPosPedidoDialog";
@@ -610,6 +611,8 @@ function Metric({ label, value }: { label: string; value: string }) {
 
 function TratativaBlock({ pedido }: { pedido: PedidoDetalhes }) {
   const texto = (pedido.tratativa_comercial ?? "").trim();
+  const meio = pedido.aprovacao_cliente_meio;
+  const detalhe = (pedido.aprovacao_cliente_detalhe ?? "").trim();
   return (
     <section className="space-y-3">
       <SectionTitle icon={<MessageSquareText className="h-4 w-4" />} label="Tratativa comercial" />
@@ -620,9 +623,21 @@ function TratativaBlock({ pedido }: { pedido: PedidoDetalhes }) {
           </span>
         )}
       </div>
+      {meio || detalhe ? (
+        <div className="rounded-lg border p-3 text-sm bg-muted/20">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+            Aprovação do cliente
+          </p>
+          <p className="mt-1">
+            <span className="font-medium">{rotuloMeioAprovacao(meio)}</span>
+            {detalhe ? ` — ${detalhe}` : ""}
+          </p>
+        </div>
+      ) : null}
     </section>
   );
 }
+
 
 /* ---------------------------- Documentos do pedido ---------------------------- */
 

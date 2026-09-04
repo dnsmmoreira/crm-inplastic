@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { CheckCircle2, ClipboardCheck, Lock } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ClipboardCheck, ExternalLink, Lock } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -10,10 +10,26 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { displayValue } from "@/lib/format";
+import {
+  DETALHE_APROVACAO_MIN_CHARS,
+  MEIOS_APROVACAO_CLIENTE,
+  MEIO_APROVACAO_LABEL,
+  aprovacaoClienteValida,
+  type MeioAprovacaoCliente,
+  type Pendencia,
+} from "@/lib/pedido-pendencias";
 import {
   acionarEntrada,
   buildConferenciaEntries,
@@ -25,6 +41,9 @@ import {
   type ConferenciaInput,
   type EstadoEntrada,
 } from "@/lib/conferencia-final";
+
+export type AprovacaoClienteForm = { meio: MeioAprovacaoCliente; detalhe: string };
+
 
 const brl = (v: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
@@ -43,6 +62,7 @@ export function ConferenciaFinalDialog({
   input,
   confirmLabel,
   busy,
+  pendencias,
   onConfirm,
 }: {
   open: boolean;
@@ -50,7 +70,9 @@ export function ConferenciaFinalDialog({
   input: ConferenciaInput;
   confirmLabel: string;
   busy?: boolean;
-  onConfirm: () => void;
+  /** Pendências bloqueantes (trava 1) — quando houver, nada pode ser conferido. */
+  pendencias?: Pendencia[];
+  onConfirm: (aprovacao: AprovacaoClienteForm) => void;
 }) {
   // O conteúdo só monta quando aberto, garantindo checklist zerado a cada abertura.
   return (
@@ -61,6 +83,7 @@ export function ConferenciaFinalDialog({
             input={input}
             confirmLabel={confirmLabel}
             busy={busy}
+            pendencias={pendencias ?? []}
             onConfirm={onConfirm}
             onCancel={() => onOpenChange(false)}
           />
@@ -80,33 +103,44 @@ function ConferenciaConteudo({
   input,
   confirmLabel,
   busy,
+  pendencias,
   onConfirm,
   onCancel,
 }: {
   input: ConferenciaInput;
   confirmLabel: string;
   busy?: boolean;
-  onConfirm: () => void;
+  pendencias: Pendencia[];
+  onConfirm: (aprovacao: AprovacaoClienteForm) => void;
   onCancel: () => void;
 }) {
   const entries = useMemo(() => buildConferenciaEntries(input), [input]);
   const [marcados, setMarcados] = useState<Record<string, boolean>>(estadoInicialConferencia);
   const [declaracao, setDeclaracao] = useState(false);
+  const [meio, setMeio] = useState<MeioAprovacaoCliente | "">("");
+  const [detalhe, setDetalhe] = useState("");
 
+  const bloqueadoPorPendencias = pendencias.length > 0;
   const itens = entries.filter((e) => e.grupo === "item");
   const gerais = entries.filter((e) => e.grupo === "geral");
   const feitos = contarConfirmados(entries, marcados);
-  const tudoOk = todosConfirmados(entries, marcados) && itens.length > 0;
-  const liberado = tudoOk && declaracao;
+  const tudoOk =
+    !bloqueadoPorPendencias && todosConfirmados(entries, marcados) && itens.length > 0;
+  const aprovacaoOk = aprovacaoClienteValida({ meio, detalhe });
+  const liberado = tudoOk && declaracao && aprovacaoOk;
   const posicao = Math.min(feitos + 1, entries.length);
 
-  const estadoDe = (e: ConferenciaEntry) =>
-    estadoDaEntrada(entries, marcados, entries.indexOf(e));
+  const estadoDe = (e: ConferenciaEntry): EstadoEntrada =>
+    bloqueadoPorPendencias
+      ? "bloqueado"
+      : estadoDaEntrada(entries, marcados, entries.indexOf(e));
 
   const acionar = (id: string) => {
+    if (bloqueadoPorPendencias) return;
     setDeclaracao(false);
     setMarcados((m) => acionarEntrada(entries, m, id));
   };
+
 
 
   const subtotal = input.items.reduce((s, it) => s + it.quantity * it.unitPrice, 0);
@@ -132,16 +166,47 @@ function ConferenciaConteudo({
         <div className="pt-2 space-y-1">
           <Progress value={entries.length ? (feitos / entries.length) * 100 : 0} />
           <p className="text-xs text-muted-foreground">
-            {tudoOk
-              ? "Todas as linhas conferidas — confirme a declaração final abaixo."
-              : `Linha ${posicao} de ${entries.length} · ${feitos} confirmada(s)`}
+            {bloqueadoPorPendencias
+              ? "Corrija as pendências abaixo para liberar a conferência."
+              : tudoOk
+                ? "Todas as linhas conferidas — confirme a declaração final abaixo."
+                : `Linha ${posicao} de ${entries.length} · ${feitos} confirmada(s)`}
           </p>
         </div>
       </DialogHeader>
 
       <ScrollArea className="max-h-[62vh]">
         <div className="space-y-6 px-6 py-5">
+          {bloqueadoPorPendencias && (
+            <section className="rounded-md border-2 border-destructive bg-destructive/10 p-4">
+              <h3 className="flex items-center gap-2 text-sm font-semibold text-destructive">
+                <AlertTriangle className="h-4 w-4" /> Pendências que impedem gerar o pedido
+              </h3>
+              <ul className="mt-3 space-y-2">
+                {pendencias.map((p, i) => (
+                  <li
+                    key={`${p.codigo}-${i}`}
+                    className="flex items-start justify-between gap-3 rounded-md border bg-background/70 p-2.5"
+                  >
+                    <span className="text-sm">{p.mensagem}</span>
+                    {p.link ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="shrink-0 gap-1"
+                        onClick={() => window.open(p.link, "_blank", "noopener")}
+                      >
+                        Corrigir <ExternalLink className="h-3.5 w-3.5" />
+                      </Button>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
           {/* Cabeçalho da folha */}
+
           <header className="rounded-md border bg-card p-4">
             <p className="text-xs uppercase tracking-widest text-muted-foreground">
               Pedido a ser gerado
@@ -305,6 +370,39 @@ function ConferenciaConteudo({
                   </span>
                 </span>
               </label>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Como o cliente aprovou esta proposta?
+                  </label>
+                  <Select value={meio} onValueChange={(v) => setMeio(v as MeioAprovacaoCliente)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o meio" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {MEIOS_APROVACAO_CLIENTE.map((m) => (
+                        <SelectItem key={m} value={m}>
+                          {MEIO_APROVACAO_LABEL[m]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Detalhe da aprovação
+                  </label>
+                  <Input
+                    value={detalhe}
+                    onChange={(e) => setDetalhe(e.target.value)}
+                    placeholder="Ex.: e-mail do comprador João em 04/09 aprovando 50 un. do HV6"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Mínimo {DETALHE_APROVACAO_MIN_CHARS} caracteres.
+                  </p>
+                </div>
+              </div>
             </section>
           )}
         </div>
@@ -312,18 +410,28 @@ function ConferenciaConteudo({
 
       <DialogFooter className="border-t px-6 py-4 sm:justify-between">
         <span className="self-center text-xs text-muted-foreground">
-          {feitos}/{entries.length} linhas conferidas
+          {bloqueadoPorPendencias
+            ? `${pendencias.length} pendência(s) bloqueando a geração do pedido`
+            : `${feitos}/${entries.length} linhas conferidas`}
           {tudoOk && !declaracao ? " · falta a declaração final" : ""}
+          {tudoOk && declaracao && !aprovacaoOk ? " · informe como o cliente aprovou" : ""}
         </span>
         <span className="flex gap-2">
           <Button variant="outline" onClick={onCancel} disabled={busy}>
             Cancelar
           </Button>
-          <Button className="gap-2" disabled={!liberado || busy} onClick={onConfirm}>
+          <Button
+            className="gap-2"
+            disabled={!liberado || busy}
+            onClick={() =>
+              liberado && onConfirm({ meio: meio as MeioAprovacaoCliente, detalhe: detalhe.trim() })
+            }
+          >
             <CheckCircle2 className="h-4 w-4" /> {confirmLabel}
           </Button>
         </span>
       </DialogFooter>
+
     </>
   );
 }
