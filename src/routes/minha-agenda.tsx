@@ -28,26 +28,8 @@ export const Route = createFileRoute("/minha-agenda")({
 
 type Tarefa = Awaited<ReturnType<typeof listMinhaAgenda>>[number];
 
-const TIPO_LABEL: Record<string, string> = {
-  primeiro_contato: "1º Contato",
-  resposta_pendente: "Responder",
-  follow_up: "Follow-up",
-  cadencia_proposta: "Cadência",
-  pos_venda_confirmacao: "Pós-venda: confirmar",
-  pos_venda_satisfacao: "Pós-venda: satisfação",
-  pos_venda_recompra: "Pós-venda: recompra",
-  resgate_carteira: "Resgate carteira",
-  reativacao_lead: "Reativação",
-  prospeccao: "Prospecção",
-  aprovacao_pendente: "Liberar pedido",
-  aguardando_pagamento: "Confirmar pagamento",
-  pedido_travado: "Pedido parado",
-  nf_atrasada: "NF atrasada",
-  previsao_atrasada: "Entrega atrasada",
-  ocorrencia_aberta: "Ocorrência aberta",
-  acompanhar_producao: "Acompanhar produção",
-  pos_venda_pedido: "Pós-venda",
-};
+const TIPO_LABEL: Record<string, string> = TAREFA_TIPO_LABEL;
+
 
 const TIPO_COLOR: Record<string, string> = {
   resposta_pendente: "bg-red-500/10 text-red-700 border-red-500/30",
