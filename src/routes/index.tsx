@@ -41,7 +41,9 @@ import {
   useLeadValueMap,
   useProposalAggregates,
 } from "@/lib/crm-store";
+import { agregarMixProdutos, truncarRotulo } from "@/lib/product-mix";
 import { PlacarWidget } from "@/components/placar/PlacarWidget";
+
 import { NewLeadDialog, LeadDrawer } from "@/components/crm/LeadDrawer";
 import { ResumoDoDia } from "@/components/dashboard/ResumoDoDia";
 import { Link } from "@tanstack/react-router";
