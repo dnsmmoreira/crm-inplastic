@@ -19,7 +19,11 @@ import {
   Paperclip,
   Mic,
   FileText,
+  Clock,
+  BadgeCheck,
+  Sparkles,
   Check,
+
 } from "lucide-react";
 import {
   Select,
