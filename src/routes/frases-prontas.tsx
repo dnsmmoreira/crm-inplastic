@@ -143,7 +143,8 @@ function corDoStatus(status: string | null): string {
 }
 
 function FrasesProntasPage() {
-  const { isAdmin } = useAuth();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
 
   if (!isAdmin) {
     return (
