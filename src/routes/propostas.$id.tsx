@@ -104,7 +104,6 @@ import {
 } from "@/lib/condicoes-comerciais";
 import { markDeleted } from "@/lib/delete-intents";
 import { ConferenciaFinalDialog } from "@/components/propostas/ConferenciaFinalDialog";
-import { RomaneiosPosPedidoDialog } from "@/components/pedidos/RomaneiosPosPedidoDialog";
 
 /** Parcelas de exibição (dias + percentual da condição) a partir do total da proposta. */
 function buildTermInstallments(term: PaymentTerm | undefined, total: number) {
@@ -307,8 +306,8 @@ function PropostaDetalhe() {
   const calcFreight = useServerFn(calculateFreightDistance);
   const gerarPedido = useServerFn(gerarPedidoInterno);
   const [gerandoPedido, setGerandoPedido] = useState(false);
-  // Gatilho opcional dos romaneios logo depois que o pedido nasce.
-  const [romaneioAlvo, setRomaneioAlvo] = useState<{ id: string; number?: string } | null>(null);
+  /** Aprovação do supervisor (admin) — sem checklist: ele revisa o resumo. */
+  const [aprovacaoOpen, setAprovacaoOpen] = useState(false);
   /** Conferência final obrigatória antes de gerar/solicitar o pedido. */
   const [conferencia, setConferencia] = useState<{ open: boolean; requerAprovacao: boolean }>({
     open: false,
@@ -611,7 +610,7 @@ function PropostaDetalhe() {
     updateItem(proposal!.id, itemId, { [field]: parsed.data } as never);
   };
 
-  async function handleGerarPedido(requerAprovacao: boolean) {
+  async function handleGerarPedido(requerAprovacao: boolean, conferenciaConfirmada = true) {
     if (!proposal) return;
     if (proposal.items.length === 0) {
       toast.error("Adicione ao menos um item antes de fechar o pedido.");
@@ -624,7 +623,7 @@ function PropostaDetalhe() {
         data: {
           proposta_id: proposal.id,
           requer_aprovacao: requerAprovacao,
-          conferencia_confirmada: true,
+          conferencia_confirmada: conferenciaConfirmada,
         },
       });
       toast.dismiss(t);
@@ -648,7 +647,6 @@ function PropostaDetalhe() {
           approvedByUserId: currentUser.id,
           approvedAt: new Date().toISOString(),
         });
-        if (r.pedido_id) setRomaneioAlvo({ id: r.pedido_id, number: r.pedido_number });
       }
       setDirty(false);
     } catch (e) {
@@ -837,20 +835,11 @@ function PropostaDetalhe() {
             <Button
               className="gap-2 bg-emerald-600 hover:bg-emerald-700"
               disabled={gerandoPedido}
-              onClick={() => setConferencia({ open: true, requerAprovacao: false })}
+              onClick={() => setAprovacaoOpen(true)}
             >
               <CheckCircle2 className="h-4 w-4" /> Aprovar liberação
             </Button>
           )}
-
-          <RomaneiosPosPedidoDialog
-            pedidoId={romaneioAlvo?.id ?? null}
-            pedidoNumber={romaneioAlvo?.number ?? null}
-            open={romaneioAlvo !== null}
-            onOpenChange={(o) => {
-              if (!o) setRomaneioAlvo(null);
-            }}
-          />
 
           <ConferenciaFinalDialog
             open={conferencia.open}
