@@ -1,11 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import { FileText, Search } from "lucide-react";
+import { MessageSquareText, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  CATEGORIA_LABEL,
+  aplicarVariaveisFrase,
+  ordemCategoria,
+} from "@/lib/frases-prontas";
 
-type Template = {
+type Frase = {
   id: string;
   titulo: string;
   categoria: string;
@@ -13,71 +18,73 @@ type Template = {
   ordem: number;
 };
 
-const CATEGORIA_LABEL: Record<string, string> = {
-  abertura: "Abertura",
-  qualificacao: "Qualificação",
-  proposta: "Proposta",
-  "follow-up": "Follow-up",
-  fechamento: "Fechamento",
-  "pos-venda": "Pós-venda",
-};
-
-/** Substitui {{nome}} e {{empresa}} com os dados do lead/conversa. */
-export function aplicarVariaveis(corpo: string, vars: { nome?: string | null; empresa?: string | null }) {
-  return corpo
-    .replaceAll("{{nome}}", (vars.nome ?? "").trim() || "tudo bem")
-    .replaceAll("{{empresa}}", (vars.empresa ?? "").trim() || "sua empresa");
-}
-
+/**
+ * Frases prontas internas: o texto é apenas COLADO no compositor para o
+ * atendente revisar. Nada é enviado automaticamente e nada passa pela Meta.
+ */
 export function TemplatesButton({
   nome,
   empresa,
+  atendente,
   onInserir,
   disabled,
+  tituloBotao,
 }: {
   nome?: string | null;
   empresa?: string | null;
+  atendente?: string | null;
   onInserir: (texto: string) => void;
   disabled?: boolean;
+  tituloBotao?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [busca, setBusca] = useState("");
-  const [templates, setTemplates] = useState<Template[]>([]);
+  const [frases, setFrases] = useState<Frase[]>([]);
 
+  // Recarrega a cada abertura para refletir edições feitas em /frases-prontas.
   useEffect(() => {
-    if (!open || templates.length > 0) return;
+    if (!open) return;
     void supabase
       .from("mensagem_templates")
       .select("id, titulo, categoria, corpo, ordem")
       .eq("ativo", true)
-      .order("categoria", { ascending: true })
       .order("ordem", { ascending: true })
-      .then(({ data }) => setTemplates((data ?? []) as Template[]));
-  }, [open, templates.length]);
+      .then(({ data }) => setFrases((data ?? []) as Frase[]));
+  }, [open]);
 
   const grupos = useMemo(() => {
     const q = busca.trim().toLowerCase();
-    const filtrados = templates.filter(
+    const filtrados = frases.filter(
       (t) =>
         !q ||
         t.titulo.toLowerCase().includes(q) ||
         t.corpo.toLowerCase().includes(q) ||
         t.categoria.toLowerCase().includes(q),
     );
-    const map = new Map<string, Template[]>();
+    const map = new Map<string, Frase[]>();
     for (const t of filtrados) {
       const arr = map.get(t.categoria) ?? [];
       arr.push(t);
       map.set(t.categoria, arr);
     }
-    return [...map.entries()];
-  }, [templates, busca]);
+    return [...map.entries()].sort((a, b) => ordemCategoria(a[0]) - ordemCategoria(b[0]));
+  }, [frases, busca]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button size="icon" variant="ghost" disabled={disabled} title="Modelos" aria-label="Modelos de mensagem">
-          <FileText className="h-4 w-4" />
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-9 gap-1"
+          disabled={disabled}
+          title={
+            tituloBotao ?? "Frases prontas — o texto é colado aqui para você revisar antes de enviar"
+          }
+          aria-label="Frases prontas"
+        >
+          <MessageSquareText className="h-4 w-4" />
+          Frases
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" side="top" className="w-80 p-0">
@@ -87,14 +94,16 @@ export function TemplatesButton({
             <Input
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
-              placeholder="Buscar modelo…"
+              placeholder="Buscar frase…"
               className="h-8 pl-7 text-xs"
             />
           </div>
         </div>
         <div className="h-72 overflow-y-auto p-2">
           {grupos.length === 0 && (
-            <p className="py-6 text-center text-xs text-muted-foreground">Nenhum modelo encontrado.</p>
+            <p className="py-6 text-center text-xs text-muted-foreground">
+              Nenhuma frase encontrada.
+            </p>
           )}
           {grupos.map(([categoria, itens]) => (
             <div key={categoria} className="mb-3">
@@ -107,14 +116,14 @@ export function TemplatesButton({
                     key={t.id}
                     type="button"
                     onClick={() => {
-                      onInserir(aplicarVariaveis(t.corpo, { nome, empresa }));
+                      onInserir(aplicarVariaveisFrase(t.corpo, { nome, empresa, atendente }));
                       setOpen(false);
                     }}
                     className="w-full rounded-md border p-2 text-left transition-colors hover:bg-muted"
                   >
                     <span className="block text-xs font-medium">{t.titulo}</span>
                     <span className="mt-0.5 block line-clamp-2 text-[11px] text-muted-foreground">
-                      {aplicarVariaveis(t.corpo, { nome, empresa })}
+                      {aplicarVariaveisFrase(t.corpo, { nome, empresa, atendente })}
                     </span>
                   </button>
                 ))}

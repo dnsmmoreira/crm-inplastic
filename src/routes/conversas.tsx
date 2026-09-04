@@ -19,7 +19,11 @@ import {
   Paperclip,
   Mic,
   FileText,
+  Clock,
+  BadgeCheck,
+  Sparkles,
   Check,
+
 } from "lucide-react";
 import {
   Select,
@@ -746,6 +750,11 @@ function ChatPanel({
     ? (atendentes.find((a) => a.id === conversa.em_espera_por)?.name ?? null)
     : null;
   const horasSemResp = horasSemResposta(conversa);
+  const janelaAberta = janela24h?.aberta === true;
+  // Primeiro nome do atendente logado, usado nas frases com {{atendente}}.
+  const primeiroNomeAtendente = (user?.name ?? "").trim().split(/\s+/)[0] ?? null;
+  
+
 
 
 
@@ -1099,30 +1108,30 @@ function ChatPanel({
           <span
             className={cn(
               "inline-flex items-center gap-1 rounded-full px-2 py-0.5",
-              dentroDaJanela
+              janelaAberta
                 ? "bg-emerald-500/10 text-emerald-600"
                 : "bg-amber-500/10 text-amber-600",
             )}
           >
-            {dentroDaJanela ? "Dentro da janela (07:00–20:00)" : "Fora da janela de envio"}
+            {janelaAberta
+              ? "Pode responder livremente"
+              : "Fora da janela de 24h — só modelo aprovado"}
           </span>
-          <span
-            className={cn(
-              "inline-flex items-center gap-1 rounded-full px-2 py-0.5",
-              temInbound ? "bg-muted text-muted-foreground" : "bg-amber-500/10 text-amber-600",
-            )}
-          >
-            {temInbound ? "Cliente já respondeu" : "Sem mensagem do cliente"}
-          </span>
+          {!temInbound && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-amber-600">
+              Sem mensagem do cliente
+            </span>
+          )}
+          {!temInbound && !dentroDaJanela && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5">
+              Sem mensagem do cliente: envio só de segunda a sábado, 07–20h
+            </span>
+          )}
+
         </div>
         {iaNoControle && (
           <div className="text-[11px] text-muted-foreground">
             A IA está atendendo. Ao enviar, você assume a conversa automaticamente.
-          </div>
-        )}
-        {janela24h?.aberta !== true && (
-          <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-700">
-            Janela de 24h encerrada. Só é possível enviar um modelo aprovado.
           </div>
         )}
         {bloqueadoPorStatus && (
@@ -1140,108 +1149,155 @@ function ChatPanel({
             onDescartar={() => setIaPreview(null)}
           />
         )}
-        <div className="flex items-end gap-2">
-          <div className="flex gap-1 pb-1">
+
+        {!janelaAberta ? (
+          <div className="space-y-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
+            <div className="flex items-start gap-2 text-sm text-amber-800">
+              <Clock className="mt-0.5 h-4 w-4 shrink-0" />
+              <p>
+                Janela de 24h encerrada — o WhatsApp só permite enviar um modelo aprovado pela
+                Meta. Quando o cliente responder, a conversa volta a aceitar texto livre.
+              </p>
+            </div>
             <Button
-              size="sm"
-              variant="outline"
-              className="h-9"
-              disabled={sending}
+              size="lg"
+              className="w-full gap-2"
+              disabled={sending || bloqueadoPorStatus}
               onClick={() => setModelosAberto(true)}
             >
-              {janela24h?.aberta !== true ? "Escolher modelo" : "Modelos"}
+              <BadgeCheck className="h-4 w-4" /> Escolher modelo aprovado
             </Button>
-            <TemplatesButton
-              nome={conversa.name}
-              empresa={empresaLead ?? conversa.name}
-              disabled={sending}
-              onInserir={(t) => setText((prev) => (prev.trim() ? `${prev.trim()}\n${t}` : t))}
-            />
-            <IAButton
-              disabled={sending}
-              loading={iaLoading}
-              onAcao={(modo) => void handleIA(modo)}
-            />
-            <input
-              ref={fileInputRef}
-              type="file"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                e.target.value = "";
-                if (f) void handleAnexo(f);
+            <div className="flex gap-1">
+              <TemplatesButton
+                nome={conversa.name}
+                empresa={empresaLead ?? conversa.name}
+                atendente={primeiroNomeAtendente}
+                disabled
+                tituloBotao="Frases prontas indisponíveis fora da janela de 24h"
+                onInserir={() => undefined}
+              />
+              <Button
+                size="icon"
+                variant="ghost"
+                disabled
+                title="Janela de 24h encerrada — anexos indisponíveis"
+                aria-label="Anexar arquivo"
+              >
+                <Paperclip className="h-4 w-4" />
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                disabled
+                title="Janela de 24h encerrada — sugestões da IA indisponíveis"
+                aria-label="Assistente de redação"
+              >
+                <Sparkles className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-end gap-2">
+            <div className="flex gap-1 pb-1">
+              <TemplatesButton
+                nome={conversa.name}
+                empresa={empresaLead ?? conversa.name}
+                atendente={primeiroNomeAtendente}
+                disabled={sending}
+                onInserir={(t) => setText((prev) => (prev.trim() ? `${prev.trim()}\n${t}` : t))}
+              />
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-9 gap-1"
+                disabled={sending}
+                title="Modelos aprovados pela Meta — obrigatórios fora da janela de 24h"
+                onClick={() => setModelosAberto(true)}
+              >
+                <BadgeCheck className="h-4 w-4" />
+                Modelo Meta
+              </Button>
+              <IAButton
+                disabled={sending}
+                loading={iaLoading}
+                onAcao={(modo) => void handleIA(modo)}
+              />
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  e.target.value = "";
+                  if (f) void handleAnexo(f);
+                }}
+              />
+              <Button
+                size="icon"
+                variant="ghost"
+                disabled={sending || enviandoAnexo || bloqueadoPorStatus}
+                title="Anexar arquivo"
+                aria-label="Anexar arquivo"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {enviandoAnexo ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Paperclip className="h-4 w-4" />
+                )}
+              </Button>
+
+              <Button
+                size="icon"
+                variant="ghost"
+                disabled
+                title="Áudio — em breve"
+                aria-label="Áudio (em breve)"
+              >
+                <Mic className="h-4 w-4" />
+              </Button>
+            </div>
+            <Textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder={
+                bloqueadoPorStatus
+                  ? "Somente leitura — assuma o atendimento para responder"
+                  : "Escreva uma mensagem…"
+              }
+              rows={2}
+              disabled={sending || bloqueadoPorStatus}
+              className="resize-none"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  void handleSend();
+                }
               }}
             />
             <Button
-              size="icon"
-              variant="ghost"
-              disabled={
-                sending || enviandoAnexo || bloqueadoPorStatus || janela24h?.aberta !== true
-              }
-              title={
-                janela24h?.aberta !== true
-                  ? "Janela de 24h encerrada — anexos indisponíveis"
-                  : "Anexar arquivo"
-              }
-              aria-label="Anexar arquivo"
-              onClick={() => fileInputRef.current?.click()}
+              onClick={handleSend}
+              disabled={sending || bloqueadoPorStatus || !text.trim()}
+              className="gap-1"
             >
-              {enviandoAnexo ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Paperclip className="h-4 w-4" />
-              )}
-            </Button>
-
-            <Button
-              size="icon"
-              variant="ghost"
-              disabled
-              title="Áudio — em breve"
-              aria-label="Áudio (em breve)"
-            >
-              <Mic className="h-4 w-4" />
+              <Send className="h-4 w-4" /> Enviar
             </Button>
           </div>
-          <Textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder={
-              bloqueadoPorStatus
-                ? "Somente leitura — assuma o atendimento para responder"
-                : janela24h?.aberta !== true
-                  ? "Janela de 24h encerrada — envie um modelo aprovado"
-                  : "Escreva uma mensagem…"
-            }
-            rows={2}
-            disabled={sending || bloqueadoPorStatus || janela24h?.aberta !== true}
-            className="resize-none"
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                void handleSend();
-              }
-            }}
-          />
-          <Button
-            onClick={handleSend}
-            disabled={sending || bloqueadoPorStatus || !text.trim() || janela24h?.aberta !== true}
-            className="gap-1"
-          >
-            <Send className="h-4 w-4" /> Enviar
-          </Button>
-        </div>
+        )}
         <TemplateMetaDialog
           open={modelosAberto}
           onOpenChange={setModelosAberto}
           conversaId={conversa.id}
           nomeSugerido={janela24h?.nome}
+          empresaSugerida={empresaLead ?? conversa.name}
+          atendenteSugerido={primeiroNomeAtendente}
           onEnviado={() => {
             void loadMensagens(conversa.id);
             onChanged();
           }}
         />
       </div>
+
     </div>
   );
 }

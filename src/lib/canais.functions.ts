@@ -605,14 +605,45 @@ export const iniciarConversaCliente = createServerFn({ method: "POST" })
  * Templates aprovados da Meta (envio fora da janela de 24h)
  * ------------------------------------------------------------------ */
 
-/** Lista os templates APROVADOS da WABA (cache curto no servidor). */
+/**
+ * Lista os templates APROVADOS da WABA (cache curto no servidor), já cruzados
+ * com o catálogo de frases prontas: quando o template nasceu de uma frase do
+ * CRM, devolvemos o título legível e o mapa de variáveis para o chat
+ * pré-preencher os campos sozinho.
+ */
 export const listarTemplatesAprovados = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data) => z.object({ forcar: z.boolean().optional() }).parse(data ?? {}))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const { cloudListarTemplatesAprovados } = await import("./whatsapp-cloud.server");
-    return cloudListarTemplatesAprovados(data.forcar === true);
+    const base = await cloudListarTemplatesAprovados(data.forcar === true);
+
+    const { data: frases } = await context.supabase
+      .from("mensagem_templates")
+      .select("titulo, meta_nome, meta_mapa")
+      .not("meta_nome", "is", null);
+
+    const porNome = new Map(
+      (frases ?? []).map((f: { meta_nome: string; titulo: string; meta_mapa: unknown }) => [
+        f.meta_nome,
+        f,
+      ]),
+    );
+
+    const itens = base.itens.map((t) => {
+      const f = porNome.get(t.name) as
+        | { titulo: string; meta_mapa: string[] | null }
+        | undefined;
+      return {
+        ...t,
+        tituloCrm: f?.titulo ?? null,
+        metaMapa: (f?.meta_mapa ?? null) as string[] | null,
+      };
+    });
+
+    return { ...base, itens };
   });
+
 
 /** Status da janela de 24h desta conversa (última mensagem do cliente). */
 export const statusJanelaConversa = createServerFn({ method: "POST" })
