@@ -21,10 +21,22 @@ import {
   MessageSquareText,
   Copy,
   FileText,
+  UserCheck,
 } from "lucide-react";
 
 import { DocumentosSection } from "@/components/documentos/DocumentosSection";
 import { RomaneiosBlock } from "@/components/pedidos/RomaneiosBlock";
+import { RomaneiosPosPedidoDialog } from "@/components/pedidos/RomaneiosPosPedidoDialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 
 import {
@@ -60,6 +72,9 @@ import {
   reprovarPedidoFinanceiro,
   devolverPedidoOperacional,
   podeDevolverPedido,
+  podeAssumirPedido,
+  assumirPedidoOperacional,
+  liberarPedidoOperacional,
 
   updatePedidoStage,
   salvarChecklistConferencia,
@@ -221,6 +236,7 @@ function PedidoDetailBody({
           ) : (
 
             <>
+              <ResponsavelOperacionalBlock pedido={pedido} onChanged={onChanged} />
               <ItensBlock pedido={pedido} comValores={podeVerValores} />
               {podeVerValores && <HistoricoClienteBlock pedido={pedido} />}
               {podeVerValores && <TratativaBlock pedido={pedido} />}
@@ -245,6 +261,132 @@ function PedidoDetailBody({
   );
 }
 
+
+
+/* -------------------------- Responsável operacional ------------------------- */
+
+function ResponsavelOperacionalBlock({
+  pedido,
+  onChanged,
+}: {
+  pedido: PedidoDetalhes;
+  onChanged: () => void;
+}) {
+  const assumir = useServerFn(assumirPedidoOperacional);
+  const liberar = useServerFn(liberarPedidoOperacional);
+  const [busy, setBusy] = useState(false);
+  const [conflito, setConflito] = useState<string | null>(null);
+  const [romaneios, setRomaneios] = useState(false);
+
+  if (!podeAssumirPedido(pedido.stage) && !pedido.responsavel_atual_nome) return null;
+
+  const podeOperar = pedido.pode_operar && podeAssumirPedido(pedido.stage);
+  const nome = pedido.responsavel_atual_nome;
+
+  async function executarAssumir(forcar: boolean) {
+    setBusy(true);
+    try {
+      const r = await assumir({ data: { pedido_id: pedido.id, forcar } });
+      if (!r.ok) {
+        setConflito(r.responsavel_atual_nome ?? "outra pessoa");
+        return;
+      }
+      setConflito(null);
+      toast.success("Pedido assumido");
+      onChanged();
+      setRomaneios(true);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao assumir o pedido");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function executarLiberar() {
+    setBusy(true);
+    try {
+      await liberar({ data: { pedido_id: pedido.id } });
+      toast.success("Pedido liberado");
+      onChanged();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao liberar o pedido");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="space-y-3">
+      <SectionTitle icon={<UserCheck className="h-4 w-4" />} title="Responsável operacional" />
+      {nome ? (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-3">
+          <span className="text-sm">
+            Responsável: <span className="font-medium">{nome}</span>
+          </span>
+          {podeOperar && (
+            <span className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={busy}
+                onClick={() => void executarAssumir(false)}
+              >
+                Assumir para mim
+              </Button>
+              <Button variant="ghost" size="sm" disabled={busy} onClick={() => void executarLiberar()}>
+                Liberar
+              </Button>
+            </span>
+          )}
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-500/60 bg-amber-500/10 p-3">
+          <span className="text-sm text-amber-800 dark:text-amber-300">
+            Este pedido ainda não tem responsável operacional
+          </span>
+          {podeOperar && (
+            <Button size="sm" disabled={busy} onClick={() => void executarAssumir(false)}>
+              Assumir pedido
+            </Button>
+          )}
+        </div>
+      )}
+
+      <AlertDialog open={conflito !== null} onOpenChange={(o) => !o && setConflito(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Assumir mesmo assim?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Este pedido está com {conflito}. Assumir mesmo assim?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={busy}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={busy}
+              onClick={(e) => {
+                e.preventDefault();
+                setConflito(null);
+                void executarAssumir(true);
+              }}
+            >
+              Assumir mesmo assim
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <RomaneiosPosPedidoDialog
+        pedidoId={romaneios ? pedido.id : null}
+        pedidoNumber={pedido.number}
+        open={romaneios}
+        onOpenChange={setRomaneios}
+        titulo="Pedido assumido"
+        descricao="Gere agora os documentos operacionais deste pedido."
+      />
+    </section>
+  );
+}
 
 /* ----------------------------------- Itens ---------------------------------- */
 
