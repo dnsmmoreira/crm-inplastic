@@ -37,7 +37,16 @@ async function assertAdmin(context: Ctx) {
 const CAMPOS =
   "id, titulo, categoria, corpo, ativo, ordem, meta_nome, meta_id, meta_status, meta_categoria, meta_mapa, meta_enviado_em, meta_erro, meta_sugerido, updated_at";
 
+/** Nome do template usado pelos envios automáticos (nunca expõe o token). */
+export const nomeTemplateAutomatico = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context as Ctx);
+    return { nome: (process.env["META_TEMPLATE_NAME"] ?? "").trim() || null };
+  });
+
 /** Lista TODAS as frases (inclusive inativas) para a tela de administração. */
+
 export const listarFrasesAdmin = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
