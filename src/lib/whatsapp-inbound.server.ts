@@ -160,6 +160,25 @@ export async function processarEntradaWhatsapp(
     }
   }
 
+  // 5-espera) Retomada automática: mensagem do cliente encerra a espera.
+  // REGISTRAR E SEGUIR: a mensagem já foi gravada; sair da espera é estado
+  // derivado e pode ser reconciliado pelo Xerife.
+  {
+    const saiuDaEspera = await supabaseAdmin
+      .from("whatsapp_conversas")
+      .update({ em_espera_desde: null, em_espera_por: null, espera_alertada_em: null })
+      .eq("id", conversaId)
+      .not("em_espera_desde", "is", null);
+    if (saiuDaEspera?.error) {
+      const { registrarFalhaSegura } = await import("@/lib/guard-erros");
+      await registrarFalhaSegura("whatsapp-inbound/sair-da-espera", saiuDaEspera.error, {
+        conversa_id: conversaId,
+      });
+    }
+  }
+
+
+
   // 5a) Opt-out pedido pelo contato ("sair", "parar", ...).
   {
     const { normalizarTexto } = await import("@/lib/whatsapp-send.server");

@@ -17,6 +17,7 @@ const TIPOS_DE_NOTIFICACAO = new Set([
   "atribuir_vendedor",
   "reatribuicao",
   "conversa_sem_resposta",
+  "conversa_espera_longa",
   "conversa_sem_responsavel",
   "handoff_sem_dono",
   "alerta_nao_entregue",

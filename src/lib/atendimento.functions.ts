@@ -2,6 +2,11 @@ import { createServerFn } from "@tanstack/react-start";
 import { registrarFalhaSegura } from "@/lib/guard-erros";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
+import { PERM_WHATSAPP_ATENDER } from "@/lib/atendimento-espera";
+
+/** Client Supabase autenticado do contexto (tipagem local, sem acoplar ao gerado). */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SupabaseLike = any;
 
 /**
  * Marca a conversa como "humano_atendendo", desliga a IA, garante a atribuição
@@ -281,4 +286,206 @@ export const atribuirConversasEmLote = createServerFn({ method: "POST" })
       else ignoradas += 1;
     }
     return { atribuidas, ignoradas };
+  });
+
+// ───────────────────────── Transferência e espera ──────────────────────────
+
+/**
+ * Candidatos a receber uma transferência de conversa: quem tem a permissão
+ * granular `whatsapp.atender`. Sem ninguém com a chave (projeto sem perfis
+ * configurados), cai para os usuários ativos com papel de vendedor ou admin,
+ * para o seletor nunca aparecer vazio.
+ */
+export const listarAtendentesParaTransferencia = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { usuariosComPermissao } = await import("@/lib/pedidos-fluxo.server");
+
+    let ids = await usuariosComPermissao(supabaseAdmin, PERM_WHATSAPP_ATENDER);
+    if (ids.length === 0) {
+      const { data: roles } = await supabaseAdmin
+        .from("user_roles")
+        .select("user_id, role")
+        .in("role", ["vendedor", "admin"]);
+      ids = [...new Set((roles ?? []).map((r) => r.user_id))];
+    }
+    if (ids.length === 0) return [] as Array<{ id: string; name: string }>;
+
+    const perfisRes = await supabaseAdmin
+      .from("profiles")
+      .select("id, name")
+      .in("id", ids)
+      .eq("ativo", true)
+      .is("deleted_at", null)
+      .order("name");
+    if (perfisRes.error) {
+      await registrarFalhaSegura("atendimento/listar-atendentes", perfisRes.error, {
+        user_id: userId,
+      });
+      return [] as Array<{ id: string; name: string }>;
+    }
+    void supabase;
+    return (perfisRes.data ?? []).map((p) => ({ id: p.id, name: p.name as string }));
+  });
+
+/** Contexto de autorização do ator para as ações de conversa. */
+async function contextoAtor(
+  supabase: SupabaseLike,
+  userId: string,
+): Promise<{ isAdmin: boolean; podeAtender: boolean }> {
+  const { data: isAdmin, error: e1 } = await supabase.rpc("has_role", {
+    _user_id: userId,
+    _role: "admin",
+  });
+  if (e1) await registrarFalhaSegura("atendimento/has_role", e1, { user_id: userId });
+  const { data: podeAtender, error: e2 } = await supabase.rpc("tem_permissao", {
+    _user_id: userId,
+    _chave: PERM_WHATSAPP_ATENDER,
+  });
+  if (e2) await registrarFalhaSegura("atendimento/tem_permissao", e2, { user_id: userId });
+  return { isAdmin: isAdmin === true, podeAtender: podeAtender === true };
+}
+
+/**
+ * Transfere a conversa para outro atendente, com motivo obrigatório.
+ * Pode transferir: admin, o responsável atual, ou um atendente quando a
+ * conversa está sem dono. A transferência tira a conversa da espera — quem
+ * recebe precisa decidir o próximo passo.
+ */
+export const transferirConversa = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) =>
+    z
+      .object({
+        conversaId: z.string().uuid(),
+        paraUserId: z.string().uuid(),
+        motivo: z.string().trim().min(3, "Descreva o motivo da transferência."),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { podeTransferirConversa } = await import("@/lib/atendimento-espera");
+
+    const { data: conversa, error: cErr } = await supabase
+      .from("whatsapp_conversas")
+      .select("id, atribuido_para, name, phone")
+      .eq("id", data.conversaId)
+      .maybeSingle();
+    if (cErr || !conversa) throw new Error("Conversa não encontrada ou sem permissão.");
+
+    const ator = await contextoAtor(supabase, userId);
+    const donoAtual = conversa.atribuido_para ?? null;
+    if (!podeTransferirConversa({ ...ator, userId, donoAtual })) {
+      throw new Error(
+        "Somente o responsável atual, um atendente (conversa sem dono) ou um administrador pode transferir.",
+      );
+    }
+    if (donoAtual === data.paraUserId) {
+      throw new Error("Esta conversa já está com o atendente escolhido.");
+    }
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: destino } = await supabaseAdmin
+      .from("profiles")
+      .select("id, name, ativo, deleted_at")
+      .eq("id", data.paraUserId)
+      .maybeSingle();
+    if (!destino || destino.ativo !== true || destino.deleted_at) {
+      throw new Error("O atendente escolhido não está ativo.");
+    }
+
+    // O gatilho do banco cria a notificação com aceite obrigatório.
+    const { error } = await supabaseAdmin
+      .from("whatsapp_conversas")
+      .update({
+        atribuido_para: data.paraUserId,
+        em_espera_desde: null,
+        em_espera_por: null,
+        espera_alertada_em: null,
+      })
+      .eq("id", data.conversaId);
+    if (error) throw new Error(error.message);
+
+    // REGISTRAR E SEGUIR: o rastro é posterior à transferência já efetivada.
+    const audit = await supabaseAdmin.from("user_audit_log").insert({
+      alvo_user_id: data.paraUserId,
+      ator_user_id: userId,
+      campo: "conversa_transferida",
+      valor_anterior: donoAtual,
+      valor_novo: `${data.paraUserId} — ${data.motivo}`,
+    });
+    if (audit?.error) {
+      await registrarFalhaSegura("atendimento/transferir-auditoria", audit.error, {
+        conversa_id: data.conversaId,
+      });
+    }
+
+    return { ok: true, para: destino.name as string };
+  });
+
+/**
+ * Coloca o atendimento em espera (aguardando algo do cliente). Enquanto em
+ * espera, a conversa some dos indicadores de "cliente sem resposta".
+ */
+export const colocarConversaEmEspera = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) => z.object({ conversaId: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { podeGerenciarEspera } = await import("@/lib/atendimento-espera");
+
+    const { data: conversa, error: cErr } = await supabase
+      .from("whatsapp_conversas")
+      .select("id, atribuido_para, status")
+      .eq("id", data.conversaId)
+      .maybeSingle();
+    if (cErr || !conversa) throw new Error("Conversa não encontrada ou sem permissão.");
+    if (conversa.status === "encerrado") {
+      throw new Error("Conversa encerrada não pode entrar em espera.");
+    }
+    const ator = await contextoAtor(supabase, userId);
+    if (!podeGerenciarEspera({ isAdmin: ator.isAdmin, userId, donoAtual: conversa.atribuido_para })) {
+      throw new Error("Só o responsável pela conversa (ou um administrador) pode colocá-la em espera.");
+    }
+
+    const { error } = await supabase
+      .from("whatsapp_conversas")
+      .update({
+        em_espera_desde: new Date().toISOString(),
+        em_espera_por: userId,
+        espera_alertada_em: null,
+      })
+      .eq("id", data.conversaId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/** Retoma o atendimento: sai da espera e volta a contar tempo sem resposta. */
+export const retomarConversa = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) => z.object({ conversaId: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { podeGerenciarEspera } = await import("@/lib/atendimento-espera");
+
+    const { data: conversa, error: cErr } = await supabase
+      .from("whatsapp_conversas")
+      .select("id, atribuido_para")
+      .eq("id", data.conversaId)
+      .maybeSingle();
+    if (cErr || !conversa) throw new Error("Conversa não encontrada ou sem permissão.");
+    const ator = await contextoAtor(supabase, userId);
+    if (!podeGerenciarEspera({ isAdmin: ator.isAdmin, userId, donoAtual: conversa.atribuido_para })) {
+      throw new Error("Só o responsável pela conversa (ou um administrador) pode retomá-la.");
+    }
+
+    const { error } = await supabase
+      .from("whatsapp_conversas")
+      .update({ em_espera_desde: null, em_espera_por: null, espera_alertada_em: null })
+      .eq("id", data.conversaId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });

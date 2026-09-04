@@ -2804,6 +2804,9 @@ export type Database = {
           atribuido_em: string | null
           atribuido_para: string | null
           created_at: string
+          em_espera_desde: string | null
+          em_espera_por: string | null
+          espera_alertada_em: string | null
           handoff_alertado_em: string | null
           handoff_realertado_em: string | null
           ia_ativa: boolean
@@ -2822,6 +2825,9 @@ export type Database = {
           atribuido_em?: string | null
           atribuido_para?: string | null
           created_at?: string
+          em_espera_desde?: string | null
+          em_espera_por?: string | null
+          espera_alertada_em?: string | null
           handoff_alertado_em?: string | null
           handoff_realertado_em?: string | null
           ia_ativa?: boolean
@@ -2840,6 +2846,9 @@ export type Database = {
           atribuido_em?: string | null
           atribuido_para?: string | null
           created_at?: string
+          em_espera_desde?: string | null
+          em_espera_por?: string | null
+          espera_alertada_em?: string | null
           handoff_alertado_em?: string | null
           handoff_realertado_em?: string | null
           ia_ativa?: boolean
@@ -2855,6 +2864,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "whatsapp_conversas_em_espera_por_fkey"
+            columns: ["em_espera_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "whatsapp_conversas_lead_id_fkey"
             columns: ["lead_id"]
