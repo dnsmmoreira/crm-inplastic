@@ -120,13 +120,18 @@ function DashboardPage() {
     return months;
   }, [leads]);
 
-  const productMix = useMemo(() => {
-    const map = new Map<string, number>();
-    leads.forEach((l) =>
-      map.set(l.product, (map.get(l.product) || 0) + leadValue(l.id, l.estimatedValue)),
-    );
-    return Array.from(map, ([name, value]) => ({ name, value }));
-  }, [leads, leadValueMap]);
+  const productMix = useMemo(
+    () =>
+      agregarMixProdutos(
+        leads.map((l) => ({
+          product: l.product,
+          productId: l.productId,
+          valor: leadValue(l.id, l.estimatedValue),
+        })),
+      ),
+    [leads, leadValueMap],
+  );
+  const productMixTotal = productMix.reduce((s, f) => s + f.value, 0);
 
   const PIE_COLORS = [
     "var(--chart-1)",
@@ -134,7 +139,10 @@ function DashboardPage() {
     "var(--chart-3)",
     "var(--chart-4)",
     "var(--chart-5)",
+    "var(--chart-1)",
+    "var(--muted-foreground)",
   ];
+
 
   const todayTasks = tasks
     .filter((t) => !t.done && isToday(new Date(t.dueDate)))
