@@ -6,6 +6,7 @@ import {
   ordemCategoria,
   preencherParamsMeta,
   slugMeta,
+  validarParaMeta,
   variaveisInvalidas,
 } from "./frases-prontas";
 
@@ -62,6 +63,20 @@ describe("converterParaMeta", () => {
     const r = converterParaMeta("Bom dia, seguimos à disposição.");
     expect(r.mapa).toEqual([]);
     expect(r.exemplos).toEqual([]);
+  });
+});
+
+describe("validarParaMeta", () => {
+  it("recusa variável no fim mesmo com pontuação depois", () => {
+    expect(validarParaMeta("Podemos seguir com a proposta para a {{empresa}}.")).toHaveLength(1);
+  });
+
+  it("recusa variável no início", () => {
+    expect(validarParaMeta("{{nome}}, tudo bem?")).toHaveLength(1);
+  });
+
+  it("aceita quando termina em palavra", () => {
+    expect(validarParaMeta("Olá, falo com a {{empresa}} agora?")).toEqual([]);
   });
 });
 
