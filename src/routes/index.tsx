@@ -41,7 +41,9 @@ import {
   useLeadValueMap,
   useProposalAggregates,
 } from "@/lib/crm-store";
+import { agregarMixProdutos, truncarRotulo } from "@/lib/product-mix";
 import { PlacarWidget } from "@/components/placar/PlacarWidget";
+
 import { NewLeadDialog, LeadDrawer } from "@/components/crm/LeadDrawer";
 import { ResumoDoDia } from "@/components/dashboard/ResumoDoDia";
 import { Link } from "@tanstack/react-router";
@@ -120,13 +122,18 @@ function DashboardPage() {
     return months;
   }, [leads]);
 
-  const productMix = useMemo(() => {
-    const map = new Map<string, number>();
-    leads.forEach((l) =>
-      map.set(l.product, (map.get(l.product) || 0) + leadValue(l.id, l.estimatedValue)),
-    );
-    return Array.from(map, ([name, value]) => ({ name, value }));
-  }, [leads, leadValueMap]);
+  const productMix = useMemo(
+    () =>
+      agregarMixProdutos(
+        leads.map((l) => ({
+          product: l.product,
+          productId: l.productId,
+          valor: leadValue(l.id, l.estimatedValue),
+        })),
+      ),
+    [leads, leadValueMap],
+  );
+  const productMixTotal = productMix.reduce((s, f) => s + f.value, 0);
 
   const PIE_COLORS = [
     "var(--chart-1)",
@@ -134,7 +141,10 @@ function DashboardPage() {
     "var(--chart-3)",
     "var(--chart-4)",
     "var(--chart-5)",
+    "var(--chart-1)",
+    "var(--muted-foreground)",
   ];
+
 
   const todayTasks = tasks
     .filter((t) => !t.done && isToday(new Date(t.dueDate)))
@@ -227,39 +237,71 @@ function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="overflow-hidden">
           <CardHeader>
             <CardTitle>Mix de produtos</CardTitle>
-            <CardDescription>Distribuição de valor</CardDescription>
+            <CardDescription>Distribuição de valor · top 6 + outros</CardDescription>
           </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={280}>
-              <PieChart>
-                <Pie
-                  data={productMix}
-                  dataKey="value"
-                  nameKey="name"
-                  innerRadius={45}
-                  outerRadius={80}
-                  paddingAngle={2}
-                >
-                  {productMix.map((_, i) => (
-                    <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  formatter={(v: number) => formatBRL(v)}
-                  contentStyle={{
-                    background: "var(--popover)",
-                    border: "1px solid var(--border)",
-                    borderRadius: 8,
-                  }}
-                />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-              </PieChart>
-            </ResponsiveContainer>
+          <CardContent className="overflow-hidden">
+            {productMix.length === 0 ? (
+              <p className="text-sm text-muted-foreground italic">
+                Sem dados de produto no período
+              </p>
+            ) : (
+              <>
+                <div className="overflow-hidden">
+                  <ResponsiveContainer width="100%" height={260}>
+                    <PieChart>
+                      <Pie
+                        data={productMix}
+                        dataKey="value"
+                        nameKey="name"
+                        innerRadius={45}
+                        outerRadius={80}
+                        paddingAngle={2}
+                        isAnimationActive={false}
+                      >
+                        {productMix.map((f, i) => (
+                          <Cell key={f.key} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(v: number, name: string) => [formatBRL(v), name]}
+                        contentStyle={{
+                          background: "var(--popover)",
+                          border: "1px solid var(--border)",
+                          borderRadius: 8,
+                          maxWidth: 280,
+                          whiteSpace: "normal",
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <ul className="mt-3 space-y-1.5">
+                  {productMix.map((f, i) => {
+                    const pct = productMixTotal ? (f.value / productMixTotal) * 100 : 0;
+                    return (
+                      <li key={f.key} className="flex items-center gap-2 text-xs">
+                        <span
+                          className="h-2.5 w-2.5 shrink-0 rounded-sm"
+                          style={{ background: PIE_COLORS[i % PIE_COLORS.length] }}
+                        />
+                        <span className="min-w-0 flex-1 truncate" title={f.name}>
+                          {truncarRotulo(f.name)}
+                        </span>
+                        <span className="shrink-0 tabular-nums text-muted-foreground">
+                          {pct.toFixed(0)}% · {formatBRL(f.value)}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </>
+            )}
           </CardContent>
         </Card>
+
       </div>
 
       <Card>
