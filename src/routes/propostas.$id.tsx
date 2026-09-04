@@ -104,7 +104,6 @@ import {
 } from "@/lib/condicoes-comerciais";
 import { markDeleted } from "@/lib/delete-intents";
 import { ConferenciaFinalDialog } from "@/components/propostas/ConferenciaFinalDialog";
-import { RomaneiosPosPedidoDialog } from "@/components/pedidos/RomaneiosPosPedidoDialog";
 
 /** Parcelas de exibição (dias + percentual da condição) a partir do total da proposta. */
 function buildTermInstallments(term: PaymentTerm | undefined, total: number) {
@@ -307,8 +306,8 @@ function PropostaDetalhe() {
   const calcFreight = useServerFn(calculateFreightDistance);
   const gerarPedido = useServerFn(gerarPedidoInterno);
   const [gerandoPedido, setGerandoPedido] = useState(false);
-  // Gatilho opcional dos romaneios logo depois que o pedido nasce.
-  const [romaneioAlvo, setRomaneioAlvo] = useState<{ id: string; number?: string } | null>(null);
+  /** Aprovação do supervisor (admin) — sem checklist: ele revisa o resumo. */
+  const [aprovacaoOpen, setAprovacaoOpen] = useState(false);
   /** Conferência final obrigatória antes de gerar/solicitar o pedido. */
   const [conferencia, setConferencia] = useState<{ open: boolean; requerAprovacao: boolean }>({
     open: false,
@@ -348,6 +347,40 @@ function PropostaDetalhe() {
       }),
   });
   const vendedor = vendedorQ.data ?? null;
+
+  /**
+   * Registro da conferência feita pelo VENDEDOR ao solicitar o pedido.
+   * O admin vê quem conferiu (ou o aviso de ausência) antes de liberar.
+   */
+  const conferenciaQ = useQuery<{ em: string | null; por: string | null }>({
+    queryKey: ["proposta-conferencia", proposal?.id ?? null],
+    enabled: !!proposal?.id && proposal?.status === "aguardando_aprovacao",
+    staleTime: 60 * 1000,
+    queryFn: async () => {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data } = await supabase
+        .from("propostas")
+        .select("conferencia_confirmada_em, conferencia_confirmada_por_user_id")
+        .eq("id", proposal!.id)
+        .maybeSingle();
+      const em = data?.conferencia_confirmada_em ?? null;
+      const userId = data?.conferencia_confirmada_por_user_id ?? null;
+      let por: string | null = null;
+      if (userId) {
+        const { data: prof } = await supabase
+          .from("profiles")
+          .select("name")
+          .eq("id", userId)
+          .maybeSingle();
+        por = prof?.name ?? null;
+      }
+      return { em, por };
+    },
+  });
+  const conferencia_ = conferenciaQ.data ?? null;
+  const conferenciaTexto = conferencia_?.em
+    ? `Conferido por ${conferencia_.por ?? "vendedor"} em ${new Date(conferencia_.em).toLocaleString("pt-BR")}`
+    : null;
 
   // Dados cadastrais do cliente (CNPJ + endereço) para o bloco "Para" da impressão.
   const clienteId = (lead as { clienteId?: string | null } | undefined)?.clienteId ?? null;
@@ -611,7 +644,7 @@ function PropostaDetalhe() {
     updateItem(proposal!.id, itemId, { [field]: parsed.data } as never);
   };
 
-  async function handleGerarPedido(requerAprovacao: boolean) {
+  async function handleGerarPedido(requerAprovacao: boolean, conferenciaConfirmada = true) {
     if (!proposal) return;
     if (proposal.items.length === 0) {
       toast.error("Adicione ao menos um item antes de fechar o pedido.");
@@ -624,7 +657,7 @@ function PropostaDetalhe() {
         data: {
           proposta_id: proposal.id,
           requer_aprovacao: requerAprovacao,
-          conferencia_confirmada: true,
+          conferencia_confirmada: conferenciaConfirmada,
         },
       });
       toast.dismiss(t);
@@ -648,7 +681,6 @@ function PropostaDetalhe() {
           approvedByUserId: currentUser.id,
           approvedAt: new Date().toISOString(),
         });
-        if (r.pedido_id) setRomaneioAlvo({ id: r.pedido_id, number: r.pedido_number });
       }
       setDirty(false);
     } catch (e) {
@@ -832,25 +864,77 @@ function PropostaDetalhe() {
             </div>
           )}
 
+          {proposal.status === "aguardando_aprovacao" && (
+            <div
+              className={cn(
+                "self-center rounded-md border px-3 py-2 text-xs",
+                conferenciaTexto
+                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300"
+                  : "border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300",
+              )}
+            >
+              {conferenciaTexto ?? "Esta proposta foi solicitada sem a conferência do vendedor"}
+            </div>
+          )}
+
           {/* ADM libera pedidos aguardando aprovação — geração no ato. */}
           {proposal.status === "aguardando_aprovacao" && isAdmin && (
             <Button
               className="gap-2 bg-emerald-600 hover:bg-emerald-700"
               disabled={gerandoPedido}
-              onClick={() => setConferencia({ open: true, requerAprovacao: false })}
+              onClick={() => setAprovacaoOpen(true)}
             >
               <CheckCircle2 className="h-4 w-4" /> Aprovar liberação
             </Button>
           )}
 
-          <RomaneiosPosPedidoDialog
-            pedidoId={romaneioAlvo?.id ?? null}
-            pedidoNumber={romaneioAlvo?.number ?? null}
-            open={romaneioAlvo !== null}
-            onOpenChange={(o) => {
-              if (!o) setRomaneioAlvo(null);
-            }}
-          />
+          <AlertDialog open={aprovacaoOpen} onOpenChange={setAprovacaoOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Aprovar liberação do pedido?</AlertDialogTitle>
+                <AlertDialogDescription asChild>
+                  <div className="space-y-1 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Cliente: </span>
+                      {clienteRow?.razao_social ?? lead?.company ?? "não identificado"}
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Total: </span>
+                      {formatBRL(proposalTotals(proposal, selectedTerm?.acrescimoPercent ?? 0).total)}
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Condição de pagamento: </span>
+                      {selectedTerm?.label ?? "não informada"}
+                    </div>
+                  </div>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <div
+                className={cn(
+                  "rounded-md border px-3 py-2 text-xs",
+                  conferenciaTexto
+                    ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300"
+                    : "border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300",
+                )}
+              >
+                {conferenciaTexto ?? "Esta proposta foi solicitada sem a conferência do vendedor"}
+              </div>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={gerandoPedido}>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  disabled={gerandoPedido}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setAprovacaoOpen(false);
+                    // NUNCA sobrescreve a conferência do vendedor.
+                    void handleGerarPedido(false, false);
+                  }}
+                >
+                  Aprovar e gerar pedido
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
 
           <ConferenciaFinalDialog
             open={conferencia.open}

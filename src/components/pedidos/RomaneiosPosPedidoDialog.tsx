@@ -27,11 +27,16 @@ export function RomaneiosPosPedidoDialog({
   pedidoNumber,
   open,
   onOpenChange,
+  titulo,
+  descricao,
 }: {
   pedidoId: string | null;
   pedidoNumber?: string | null;
   open: boolean;
   onOpenChange: (o: boolean) => void;
+  /** Texto do cabeçalho — o padrão é o do momento em que o pedido nasce. */
+  titulo?: string;
+  descricao?: string;
 }) {
   const gerarFn = useServerFn(gerarRomaneio);
   const [busy, setBusy] = useState<RomaneioTipo | null>(null);
@@ -57,11 +62,11 @@ export function RomaneiosPosPedidoDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Pedido gerado!</DialogTitle>
+          <DialogTitle>{titulo ?? "Pedido gerado!"}</DialogTitle>
           <DialogDescription>
             {pedidoNumber ? `Pedido ${pedidoNumber}. ` : ""}
-            Quer gerar algum documento operacional agora? É opcional — dá pra gerar depois pelo
-            pedido.
+            {descricao ??
+              "Quer gerar algum documento operacional agora? É opcional — dá pra gerar depois pelo pedido."}
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-2">

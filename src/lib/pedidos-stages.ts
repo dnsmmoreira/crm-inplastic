@@ -44,6 +44,17 @@ export function podeDevolverPedido(stage: string): boolean {
   return (PEDIDO_STAGES_DEVOLVIVEIS as readonly string[]).includes(stage);
 }
 
+/**
+ * Etapas em que o operacional pode ASSUMIR o pedido (virar responsável).
+ * Antes de `programacao` o pedido ainda é do comercial/financeiro; depois de
+ * `faturado_em_rota` a operação já terminou.
+ */
+export const PEDIDO_STAGES_ASSUMIVEIS = ["programacao", "em_producao", "pronto"] as const;
+
+export function podeAssumirPedido(stage: string): boolean {
+  return (PEDIDO_STAGES_ASSUMIVEIS as readonly string[]).includes(stage);
+}
+
 export type PedidoStageVisivel = (typeof PEDIDO_STAGES)[number]["id"];
 export type PedidoStageId =
   | PedidoStageVisivel

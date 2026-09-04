@@ -53,3 +53,5 @@ export function podeEditarEmpresa(ator: Ator): boolean {
 export function relatorioEscopoProprio(ator: Ator): boolean {
   return !tem(ator, PERM_PEDIDOS_VER_TODOS);
 }
+
+export const PERM_PEDIDOS_OPERAR_PRODUCAO = "pedidos.operar_producao";

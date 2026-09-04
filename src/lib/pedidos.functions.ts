@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { assertNoError, registrarFalhaSegura } from "@/lib/guard-erros";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
-import { PERM_PEDIDOS_MOVIMENTAR } from "@/lib/permissoes";
+import { PERM_PEDIDOS_MOVIMENTAR, PERM_PEDIDOS_OPERAR_PRODUCAO } from "@/lib/permissoes";
 import { descreverParcelas } from "@/lib/condicoes-comerciais";
 import { resumoHistoricoCliente, soDigitos, type HistoricoCliente } from "@/lib/pedidos-historico";
 export type { HistoricoCliente, PedidoHistoricoRow } from "@/lib/pedidos-historico";
@@ -21,6 +21,7 @@ import {
   ALLOWED_FORWARD,
   isBackward,
   podeDevolverPedido,
+  podeAssumirPedido,
   stageLabel,
   type PedidoStageId,
 } from "@/lib/pedidos-stages";
@@ -31,6 +32,7 @@ export {
   PEDIDO_STAGE_CANCELADO,
   PEDIDO_STAGE_CANCELADO_LABEL,
   podeDevolverPedido,
+  podeAssumirPedido,
   PEDIDO_STAGE_REPROVADO_LABEL,
   PEDIDO_STAGE_IDS,
   ALLOWED_FORWARD,
@@ -738,6 +740,11 @@ export type PedidoDetalhes = {
   aprovacao_observacao: string | null;
   checklist_conferencia: ChecklistItem[];
   checklist_atualizado_em: string | null;
+  /** Responsável operacional atual (quem "assumiu" o pedido). */
+  responsavel_atual_id: string | null;
+  responsavel_atual_nome: string | null;
+  /** Admin ou permissão `pedidos.operar_producao` — calculado no servidor. */
+  pode_operar: boolean;
   fiscal_status: string | null;
   nf_numero: string | null;
   nf_serie: string | null;
@@ -787,7 +794,8 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
       .from("pedidos")
       .select(
         `id, number, stage, total, fiscal_status, nf_numero, lead_id, proposta_id,
-         vendedor_proprietario_id, owner_id, proposta_snapshot, ${APPROVAL_FIELDS}`,
+         vendedor_proprietario_id, owner_id, proposta_snapshot,
+         responsavel_atual_id, equipe_responsavel, ${APPROVAL_FIELDS}`,
       )
       .eq("id", data.pedido_id)
       .maybeSingle();
@@ -890,6 +898,7 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
       p.aprovacao_solicitada_por,
       p.aprovacao_decidida_por,
       p.vendedor_proprietario_id ?? p.owner_id,
+      p.responsavel_atual_id,
       ...oc.map((o) => o.criada_por),
       ...oc.map((o) => o.resolvida_por),
     ]);
@@ -907,6 +916,8 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
       vendedorId === context.userId ||
       (await isAdminOuFinanceiro(sb, context.userId)) ||
       (await temPermissao(sb, context.userId, "pedidos.aprovar_financeiro"));
+
+    const podeOperar = await podeOperarProducao(sb, context.userId);
 
     const detalhe: PedidoDetalhes = {
       id: p.id,
@@ -952,6 +963,11 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
       aprovacao_observacao: p.aprovacao_observacao,
       checklist_conferencia: checklist,
       checklist_atualizado_em: p.checklist_atualizado_em,
+      responsavel_atual_id: p.responsavel_atual_id ?? null,
+      responsavel_atual_nome: p.responsavel_atual_id
+        ? (nameById.get(p.responsavel_atual_id) ?? p.equipe_responsavel ?? null)
+        : null,
+      pode_operar: podeOperar,
       fiscal_status: p.fiscal_status,
       nf_numero: p.nf_numero,
       nf_serie: p.nf_serie,
@@ -1652,5 +1668,159 @@ export const setModalidadeEntrega = createServerFn({ method: "POST" })
       .maybeSingle();
     if (error) throw new Error(`Falha ao atualizar modalidade: ${error.message}`);
     if (!row) throw new Error(NENHUMA_LINHA);
+    return { ok: true as const };
+  });
+
+/* ---------------------------------------------------------------------------
+ * Responsável operacional — "assumir pedido".
+ * Quem opera produção (ou admin) assume o pedido e, na tela, é convidado a
+ * gerar os romaneios. Nada aqui muda a etapa do pedido.
+ * -------------------------------------------------------------------------*/
+
+async function isAdminUser(sb: LooseClient, userId: string): Promise<boolean> {
+  const { data } = await sb
+    .from("user_roles")
+    .select("user_id")
+    .eq("user_id", userId)
+    .eq("role", "admin")
+    .maybeSingle();
+  return !!data;
+}
+
+/** Gate fail-closed: admin OU permissão granular de operar produção. */
+async function podeOperarProducao(sb: LooseClient, userId: string): Promise<boolean> {
+  if (await temPermissao(sb, userId, PERM_PEDIDOS_OPERAR_PRODUCAO)) return true;
+  return isAdminUser(sb, userId);
+}
+
+/** Nome do perfil vinculado ao usuário (fallback "Operacional"). */
+async function nomeDoPerfil(sb: LooseClient, userId: string): Promise<string> {
+  const { data } = await sb
+    .from("user_perfis")
+    .select("perfis:perfil_id(nome)")
+    .eq("user_id", userId)
+    .limit(1)
+    .maybeSingle();
+  const nome = (data as { perfis?: { nome?: string | null } | null } | null)?.perfis?.nome;
+  return typeof nome === "string" && nome.trim() ? nome.trim() : "Operacional";
+}
+
+export const assumirPedidoOperacional = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { pedido_id: string; forcar?: boolean }) =>
+    z.object({ pedido_id: z.string().uuid(), forcar: z.boolean().optional() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const sb: LooseClient = context.supabase;
+    const userId = context.userId;
+
+    if (!(await podeOperarProducao(sb, userId))) {
+      throw new Error("Você não tem permissão para assumir pedidos da operação.");
+    }
+
+    const { data: p, error } = await sb
+      .from("pedidos")
+      .select("id, number, stage, responsavel_atual_id")
+      .eq("id", data.pedido_id)
+      .maybeSingle();
+    if (error) throw new Error(`Falha ao carregar pedido: ${error.message}`);
+    if (!p) throw new Error("Pedido não encontrado");
+
+    if (!podeAssumirPedido(p.stage)) {
+      throw new Error(
+        `Este pedido está em "${stageLabel(p.stage)}" — só é possível assumir em Liberado, Em Produção ou Coleta / Entrega.`,
+      );
+    }
+
+    if (p.responsavel_atual_id && p.responsavel_atual_id !== userId && !data.forcar) {
+      const nomes = await resolveNames(sb, [p.responsavel_atual_id]);
+      return {
+        ok: false as const,
+        conflito: true as const,
+        responsavel_atual_nome: nomes.get(p.responsavel_atual_id) ?? null,
+      };
+    }
+
+    const equipe = await nomeDoPerfil(sb, userId);
+    const meuNome = (await resolveNames(sb, [userId])).get(userId) ?? equipe;
+
+    const up = await sb
+      .from("pedidos")
+      .update({ responsavel_atual_id: userId, equipe_responsavel: equipe })
+      .eq("id", data.pedido_id);
+    await assertNoError(
+      up,
+      "pedidos.assumirPedidoOperacional/update",
+      { pedido_id: data.pedido_id },
+      "Não foi possível assumir o pedido. Tente novamente.",
+    );
+
+    // Rastro (não aborta a operação já concluída).
+    const hist = await sb.from("pedido_stage_history").insert({
+      pedido_id: data.pedido_id,
+      from_stage: p.stage,
+      to_stage: p.stage,
+      is_backward: false,
+      motivo: `Pedido assumido por ${meuNome}`,
+      moved_by: userId,
+    });
+    if (hist.error)
+      await registrarFalhaSegura("pedidos.assumirPedidoOperacional/historico", hist.error, {
+        pedido_id: data.pedido_id,
+      });
+
+    const audit = await sb.from("user_audit_log").insert({
+      ator_user_id: userId,
+      alvo_user_id: userId,
+      campo: "pedido_assumido",
+      valor_anterior: p.responsavel_atual_id,
+      valor_novo: data.pedido_id,
+    });
+    if (audit.error)
+      await registrarFalhaSegura("pedidos.assumirPedidoOperacional/auditoria", audit.error, {
+        pedido_id: data.pedido_id,
+      });
+
+    return {
+      ok: true as const,
+      conflito: false as const,
+      pedido_number: p.number as string,
+      responsavel_atual_nome: meuNome,
+    };
+  });
+
+export const liberarPedidoOperacional = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { pedido_id: string }) =>
+    z.object({ pedido_id: z.string().uuid() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const sb: LooseClient = context.supabase;
+    const userId = context.userId;
+
+    const { data: p, error } = await sb
+      .from("pedidos")
+      .select("id, stage, responsavel_atual_id")
+      .eq("id", data.pedido_id)
+      .maybeSingle();
+    if (error) throw new Error(`Falha ao carregar pedido: ${error.message}`);
+    if (!p) throw new Error("Pedido não encontrado");
+    if (!p.responsavel_atual_id) return { ok: true as const };
+
+    const souEu = p.responsavel_atual_id === userId;
+    if (!souEu && !(await isAdminUser(sb, userId))) {
+      throw new Error("Só o responsável atual ou um administrador pode liberar este pedido.");
+    }
+
+    const up = await sb
+      .from("pedidos")
+      .update({ responsavel_atual_id: null, equipe_responsavel: null })
+      .eq("id", data.pedido_id);
+    await assertNoError(
+      up,
+      "pedidos.liberarPedidoOperacional/update",
+      { pedido_id: data.pedido_id },
+      "Não foi possível liberar o pedido. Tente novamente.",
+    );
     return { ok: true as const };
   });
