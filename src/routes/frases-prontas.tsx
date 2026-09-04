@@ -69,6 +69,7 @@ import {
   aplicarVariaveisFrase,
   citaNomeDeEmpresa,
   ordemCategoria,
+  validarParaMeta,
   variaveisInvalidas,
 } from "@/lib/frases-prontas";
 import {
@@ -699,6 +700,8 @@ function FraseDialog({
     atendente: EXEMPLOS_VARIAVEL.atendente,
   });
 
+  const problemasMeta = sugerido ? validarParaMeta(corpo) : [];
+
   function submeter() {
     if (titulo.trim().length < 3) {
       toast.error("O título precisa de pelo menos 3 caracteres.");
@@ -717,6 +720,10 @@ function FraseDialog({
       toast.error(
         `Variáveis não permitidas: ${invalidas.map((v) => `{{${v}}}`).join(", ")}. Use apenas {{nome}}, {{empresa}} e {{atendente}}.`,
       );
+      return;
+    }
+    if (problemasMeta.length > 0) {
+      toast.error(problemasMeta.join(" "));
       return;
     }
     onSave({
@@ -795,6 +802,12 @@ function FraseDialog({
             </p>
             <p className="whitespace-pre-wrap text-sm">{previa || "—"}</p>
           </div>
+
+          {problemasMeta.length > 0 ? (
+            <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+              {problemasMeta.join(" ")}
+            </div>
+          ) : null}
 
           <div className="flex flex-wrap items-center gap-4">
             <label className="flex items-center gap-2 text-sm">
