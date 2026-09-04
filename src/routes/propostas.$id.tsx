@@ -104,6 +104,8 @@ import {
 } from "@/lib/condicoes-comerciais";
 import { markDeleted } from "@/lib/delete-intents";
 import { ConferenciaFinalDialog } from "@/components/propostas/ConferenciaFinalDialog";
+import { calcularPendenciasPedido, rotuloMeioAprovacao } from "@/lib/pedido-pendencias";
+
 
 /** Parcelas de exibição (dias + percentual da condição) a partir do total da proposta. */
 function buildTermInstallments(term: PaymentTerm | undefined, total: number) {
@@ -352,7 +354,12 @@ function PropostaDetalhe() {
    * Registro da conferência feita pelo VENDEDOR ao solicitar o pedido.
    * O admin vê quem conferiu (ou o aviso de ausência) antes de liberar.
    */
-  const conferenciaQ = useQuery<{ em: string | null; por: string | null }>({
+  const conferenciaQ = useQuery<{
+    em: string | null;
+    por: string | null;
+    meio: string | null;
+    detalhe: string | null;
+  }>({
     queryKey: ["proposta-conferencia", proposal?.id ?? null],
     enabled: !!proposal?.id && proposal?.status === "aguardando_aprovacao",
     staleTime: 60 * 1000,
@@ -360,7 +367,9 @@ function PropostaDetalhe() {
       const { supabase } = await import("@/integrations/supabase/client");
       const { data } = await supabase
         .from("propostas")
-        .select("conferencia_confirmada_em, conferencia_confirmada_por_user_id")
+        .select(
+          "conferencia_confirmada_em, conferencia_confirmada_por_user_id, aprovacao_cliente_meio, aprovacao_cliente_detalhe",
+        )
         .eq("id", proposal!.id)
         .maybeSingle();
       const em = data?.conferencia_confirmada_em ?? null;
@@ -374,13 +383,22 @@ function PropostaDetalhe() {
           .maybeSingle();
         por = prof?.name ?? null;
       }
-      return { em, por };
+      return {
+        em,
+        por,
+        meio: data?.aprovacao_cliente_meio ?? null,
+        detalhe: data?.aprovacao_cliente_detalhe ?? null,
+      };
     },
   });
   const conferencia_ = conferenciaQ.data ?? null;
   const conferenciaTexto = conferencia_?.em
-    ? `Conferido por ${conferencia_.por ?? "vendedor"} em ${new Date(conferencia_.em).toLocaleString("pt-BR")}`
+    ? `Conferido por ${conferencia_.por ?? "vendedor"} em ${new Date(conferencia_.em).toLocaleString("pt-BR")}` +
+      (conferencia_.meio
+        ? ` · Aprovação do cliente: ${rotuloMeioAprovacao(conferencia_.meio)} — ${conferencia_.detalhe ?? ""}`
+        : "")
     : null;
+
 
   // Dados cadastrais do cliente (CNPJ + endereço) para o bloco "Para" da impressão.
   const clienteId = (lead as { clienteId?: string | null } | undefined)?.clienteId ?? null;
@@ -644,7 +662,45 @@ function PropostaDetalhe() {
     updateItem(proposal!.id, itemId, { [field]: parsed.data } as never);
   };
 
-  async function handleGerarPedido(requerAprovacao: boolean, conferenciaConfirmada = true) {
+  /** TRAVA 1 — pendências que impedem gerar o pedido (mesma lógica do servidor). */
+  const pendenciasPedido = useMemo(() => {
+    if (!proposal) return [];
+    return calcularPendenciasPedido({
+      cliente: {
+        clienteId,
+        leadId: lead?.id ?? null,
+        nome: clienteRow?.razao_social ?? lead?.company ?? null,
+        tipoPessoa: clienteRow?.tipo_pessoa ?? null,
+        cnpj: clienteRow?.cnpj ?? (lead as { cnpj?: string | null } | undefined)?.cnpj ?? null,
+        cpf: (clienteRow as { cpf?: string | null } | null)?.cpf ?? null,
+        emailNf: (clienteRow as { email_nf?: string | null } | null)?.email_nf ?? null,
+      },
+      paymentTermId: proposal.paymentTermId ?? null,
+      transporte: {
+        freightPayer: proposal.transport.freightPayer ?? null,
+        carrier: proposal.transport.carrier ?? null,
+        deliveryAddress: proposal.transport.deliveryAddress ?? null,
+        deliveryCep: proposal.transport.deliveryCep ?? null,
+      },
+      expectedDeliveryDate: proposal.expectedDeliveryDate ?? null,
+      tratativa: proposal.tratativaComercial ?? null,
+      itens: proposal.items.map((it) => ({
+        id: it.id,
+        description: it.description,
+        quantity: it.quantity,
+        unitPrice: it.unitPrice,
+        productId: it.productId || null,
+        pesoKg: products.find((p) => p.id === it.productId)?.weightKg ?? null,
+      })),
+    });
+  }, [proposal, products, clienteRow, clienteId, lead]);
+
+  async function handleGerarPedido(
+    requerAprovacao: boolean,
+    conferenciaConfirmada = true,
+    aprovacaoCliente?: { meio: string; detalhe: string },
+  ) {
+
     if (!proposal) return;
     if (proposal.items.length === 0) {
       toast.error("Adicione ao menos um item antes de fechar o pedido.");
@@ -658,8 +714,10 @@ function PropostaDetalhe() {
           proposta_id: proposal.id,
           requer_aprovacao: requerAprovacao,
           conferencia_confirmada: conferenciaConfirmada,
+          aprovacao_cliente: aprovacaoCliente ?? null,
         },
       });
+
       toast.dismiss(t);
       if (!r.ok) {
         toast.error("Pendências antes de gerar o pedido", {
@@ -974,10 +1032,12 @@ function PropostaDetalhe() {
               descontoPercent: proposal.discountPercent,
               validadeDias: proposal.validityDays,
             }}
-            onConfirm={() => {
+            pendencias={pendenciasPedido}
+            onConfirm={(aprovacao) => {
               setConferencia((c) => ({ ...c, open: false }));
-              void handleGerarPedido(conferencia.requerAprovacao);
+              void handleGerarPedido(conferencia.requerAprovacao, true, aprovacao);
             }}
+
           />
 
           {proposal.status === "aguardando_aprovacao" && !isAdmin && (

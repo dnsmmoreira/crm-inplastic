@@ -2337,6 +2337,8 @@ export type Database = {
           approval_requested_at: string | null
           approved_at: string | null
           approved_by_user_id: string | null
+          aprovacao_cliente_detalhe: string | null
+          aprovacao_cliente_meio: string | null
           conferencia_confirmada_em: string | null
           conferencia_confirmada_por_user_id: string | null
           created_at: string
@@ -2372,6 +2374,8 @@ export type Database = {
           approval_requested_at?: string | null
           approved_at?: string | null
           approved_by_user_id?: string | null
+          aprovacao_cliente_detalhe?: string | null
+          aprovacao_cliente_meio?: string | null
           conferencia_confirmada_em?: string | null
           conferencia_confirmada_por_user_id?: string | null
           created_at?: string
@@ -2407,6 +2411,8 @@ export type Database = {
           approval_requested_at?: string | null
           approved_at?: string | null
           approved_by_user_id?: string | null
+          aprovacao_cliente_detalhe?: string | null
+          aprovacao_cliente_meio?: string | null
           conferencia_confirmada_em?: string | null
           conferencia_confirmada_por_user_id?: string | null
           created_at?: string

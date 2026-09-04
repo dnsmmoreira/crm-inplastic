@@ -725,6 +725,8 @@ export type PedidoDetalhes = {
   previsao_faturamento: string | null;
   parcelas: PedidoParcelaDetalhe[];
   tratativa_comercial: string | null;
+  aprovacao_cliente_meio: string | null;
+  aprovacao_cliente_detalhe: string | null;
   proposta_observacoes: string | null;
   proposta_numero_pedido_cliente: string | null;
   proposta_observacoes_pedido: string | null;
@@ -831,7 +833,7 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
         ? sb
             .from("propostas")
             .select(
-              "id, tratativa_comercial, observations, numero_pedido_cliente, observacoes_pedido",
+              "id, tratativa_comercial, observations, numero_pedido_cliente, observacoes_pedido, aprovacao_cliente_meio, aprovacao_cliente_detalhe",
             )
             .eq("id", p.proposta_id)
             .maybeSingle()
@@ -881,6 +883,8 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
       observations?: string | null;
       numero_pedido_cliente?: string | null;
       observacoes_pedido?: string | null;
+      aprovacao_cliente_meio?: string | null;
+      aprovacao_cliente_detalhe?: string | null;
     } | null;
     const tratativa =
       propostaRow?.tratativa_comercial ??
@@ -937,6 +941,14 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
       previsao_faturamento: (snapProposta.previsao_faturamento as string | null) ?? null,
       parcelas,
       tratativa_comercial: tratativa,
+      aprovacao_cliente_meio:
+        propostaRow?.aprovacao_cliente_meio ??
+        (snapProposta.aprovacao_cliente_meio as string | null) ??
+        null,
+      aprovacao_cliente_detalhe:
+        propostaRow?.aprovacao_cliente_detalhe ??
+        (snapProposta.aprovacao_cliente_detalhe as string | null) ??
+        null,
       proposta_observacoes:
         propostaRow?.observations ?? (snapProposta.observations as string | null) ?? null,
       proposta_numero_pedido_cliente:
