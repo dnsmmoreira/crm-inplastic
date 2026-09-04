@@ -1122,11 +1122,12 @@ function ChatPanel({
               Sem mensagem do cliente
             </span>
           )}
-          {!dentroDaJanela && (
+          {!temInbound && !dentroDaJanela && (
             <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5">
-              Fora do horário de envio automático (07–20h)
+              Sem mensagem do cliente: envio só de segunda a sábado, 07–20h
             </span>
           )}
+
         </div>
         {iaNoControle && (
           <div className="text-[11px] text-muted-foreground">
