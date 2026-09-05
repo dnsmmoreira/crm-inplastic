@@ -81,26 +81,28 @@ export function gerarParcelasCartao(n: number): ParcelaCondicao[] {
 }
 
 /** A condição de pagamento é um cartão parcelável? */
-export function ehCondicaoCartao(cond: {
-  method?: string | null;
-  maxParcelas?: number | null;
-  jurosCompostos?: boolean | null;
-} | null | undefined): boolean {
-  if (!cond) return false;
-  if (cond.method !== "Cartão") return false;
-  return (
-    (Number(cond.maxParcelas) || 0) > 0 ||
-    cond.jurosCompostos === true ||
-    cond.jurosCompostos === false
-  );
+export function ehCondicaoCartao(
+  cond:
+    | { method?: string | null; maxParcelas?: number | null; jurosCompostos?: boolean | null }
+    | null
+    | undefined,
+): boolean {
+  if (!cond || cond.method !== "Cartão") return false;
+  return (Number(cond.maxParcelas) || 0) > 1;
 }
 
-/** Acréscimo que vale para a proposta: o gravado nela vence o da condição. */
+/**
+ * Acréscimo que vale para a proposta. Em cartão manda o que foi gravado na
+ * proposta (a simulação escolhida — 1x é legitimamente 0%); nas demais
+ * condições vale a taxa do catálogo.
+ */
 export function acrescimoEfetivo(
   propostaPercent: number | null | undefined,
   condicaoPercent: number | null | undefined,
+  ehCartao = false,
 ): number {
-  const daProposta = Number(propostaPercent) || 0;
+  const daProposta = Math.max(0, Number(propostaPercent) || 0);
+  if (ehCartao) return daProposta;
   if (daProposta > 0) return daProposta;
   return Math.max(0, Number(condicaoPercent) || 0);
 }
