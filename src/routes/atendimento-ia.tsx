@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Radio, Phone, Bot, User as UserIcon, MessageSquare, RotateCcw } from "lucide-react";
+import { Radio, Phone, Bot, User as UserIcon, MessageSquare, RotateCcw, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LeadDrawer } from "@/components/crm/LeadDrawer";
@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { usePoll } from "@/hooks/use-poll";
 import { limparOrigemAnuncio } from "@/lib/mensagem-display";
+import { carregarEmpresaPorConversa, type DadosLeadConversa } from "@/lib/empresa-conversas";
+import { rotuloContato } from "@/lib/rotulo-contato";
 import { useServerFn } from "@tanstack/react-start";
 import {
   devolverParaIA,
@@ -82,6 +84,7 @@ function StatusChip({ status }: { status: Status }) {
 function AtendimentoIAPage() {
   const { user } = useAuth();
   const [conversas, setConversas] = useState<Conversa[]>([]);
+  const [dadosLead, setDadosLead] = useState<Record<string, DadosLeadConversa>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [openLead, setOpenLead] = useState<string | null>(null);
 
@@ -111,7 +114,16 @@ function AtendimentoIAPage() {
       console.error(error);
       return;
     }
-    setConversas(data ?? []);
+    const lista = data ?? [];
+    setConversas(lista);
+    // Empresa do lead/cliente em lote — falha não pode quebrar a lista.
+    try {
+      setDadosLead(
+        await carregarEmpresaPorConversa(lista.map((c) => ({ id: c.id, lead_id: c.lead_id }))),
+      );
+    } catch (e) {
+      console.error("[atendimento-ia] rótulo de empresa indisponível", e);
+    }
   }, [isVendedor, userId]);
 
   useEffect(() => {
@@ -173,7 +185,12 @@ function AtendimentoIAPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[380px,1fr]">
-        <ConversationList conversas={conversas} selectedId={selectedId} onSelect={setSelectedId} />
+        <ConversationList
+          conversas={conversas}
+          dadosLead={dadosLead}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+        />
         <ConversationPanel
           conversa={selected}
           onOpenLead={(id) => setOpenLead(id)}
@@ -201,10 +218,12 @@ function StatCard({ label, value, tone }: { label: string; value: number; tone?:
 
 function ConversationList({
   conversas,
+  dadosLead,
   selectedId,
   onSelect,
 }: {
   conversas: Conversa[];
+  dadosLead: Record<string, DadosLeadConversa>;
   selectedId: string | null;
   onSelect: (id: string) => void;
 }) {
@@ -216,7 +235,12 @@ function ConversationList({
       <ul className="divide-y max-h-[720px] overflow-auto">
         {conversas.map((c) => {
           const active = c.id === selectedId;
-          const label = c.name?.trim() || c.phone;
+          const rotulo = rotuloContato({
+            contato: c.name ?? dadosLead[c.id]?.contato ?? null,
+            empresa: dadosLead[c.id]?.empresa ?? null,
+            telefone: c.phone,
+          });
+          const label = rotulo.principal || c.phone;
           const since = c.last_message_at
             ? formatDistanceToNow(new Date(c.last_message_at), { locale: ptBR, addSuffix: true })
             : "sem mensagens";
@@ -234,6 +258,12 @@ function ConversationList({
                   <span className="font-medium text-sm truncate">{label}</span>
                   <StatusChip status={c.status} />
                 </div>
+                {rotulo.secundario && (
+                  <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                    <Building2 className="h-3 w-3 shrink-0" />
+                    <span className="truncate">{rotulo.secundario}</span>
+                  </div>
+                )}
                 <div className="text-xs text-muted-foreground truncate">
                   {limparOrigemAnuncio(c.last_message_preview ?? "").trim() || "—"}
                 </div>
