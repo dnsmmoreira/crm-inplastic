@@ -439,6 +439,9 @@ function PainelFrases() {
               <div className="divide-y rounded-lg border">
                 {g.itens.map((f, i) => {
                   const bloqueado = f.meta_status === "APPROVED" || f.meta_status === "PENDING";
+                  const textoMeta = converterParaMeta(f.corpo).texto;
+                  const prefixado = textoMeta.startsWith("Olá ") && !f.corpo.startsWith("Olá ");
+
                   return (
                     <div key={f.id} className="flex flex-col gap-2 p-3 md:flex-row md:items-start">
                       <div className="min-w-0 flex-1">
