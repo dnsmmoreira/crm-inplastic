@@ -14,7 +14,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { requireXerifeCronAuth, cronJsonResponse } from "@/lib/xerife/cron-auth.server";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { logAction } from "@/lib/xerife/dedupe.server";
+import { hasOpenTask, logAction } from "@/lib/xerife/dedupe.server";
 import { notifyDiretoria } from "@/lib/xerife/notify.server";
 import {
   etapasComCadencia,
