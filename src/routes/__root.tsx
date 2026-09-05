@@ -363,12 +363,6 @@ const NAV_GROUPS: NavGroup[] = [
         show: key("sistema.ver_falhas"),
       },
       {
-        to: "/frases-prontas",
-        label: "Frases prontas",
-        icon: MessageSquareText,
-        show: (c) => c.isAdmin,
-      },
-      {
         to: "/usuarios",
         label: "Usuários",
         icon: UserCog,
