@@ -174,6 +174,27 @@ async function runXerifePedidos(
 
   const now = new Date();
 
+  // Usuários isentos de cobrança do Xerife (lançam pedidos, mas não decidem o
+  // andamento). As tarefas deles vão para o grupo operacional.
+  const { data: isentosRows } = await sb.from("profiles").select("id").eq("xerife_isento", true);
+  const isentos = new Set<string>(((isentosRows ?? []) as Array<{ id: string }>).map((r) => r.id));
+
+  // Grupo operacional resolvido uma única vez por execução (reusado no R1 e no
+  // redirecionamento de donos isentos).
+  let operacional: string[] | null = null;
+  const getOperacional = async (): Promise<string[]> =>
+    (operacional ??= await destinatariosOperacional(sb));
+
+  /**
+   * Dono efetivo da cobrança: mantém o owner quando ele não é isento; quando é,
+   * devolve o primeiro usuário do grupo operacional (null se o grupo estiver vazio).
+   */
+  async function donoEfetivo(ownerId: string | null): Promise<string | null> {
+    if (!ownerId || !isentos.has(ownerId)) return ownerId;
+    const grupo = await getOperacional();
+    return grupo[0] ?? null;
+  }
+
   async function criarTarefa(t: CriarTarefaArgs): Promise<boolean> {
     if (await alreadyActedPedido(sb, t.regra, t.pedidoId, t.janelaHoras ?? DEDUPE_HORAS_PADRAO)) {
       stats.skipped_dedupe++;
