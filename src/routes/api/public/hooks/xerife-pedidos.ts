@@ -337,9 +337,11 @@ async function runXerifePedidos(
         passo.grupo,
         p.responsavel_atual_id ?? p.vendedor_proprietario_id ?? null,
       );
-      const alvos = responsaveis.length
-        ? responsaveis
-        : ([p.responsavel_atual_id ?? p.vendedor_proprietario_id].filter(Boolean) as string[]);
+      const alvos = (
+        responsaveis.length
+          ? responsaveis
+          : ([p.responsavel_atual_id ?? p.vendedor_proprietario_id].filter(Boolean) as string[])
+      ).filter((id) => !isentos.has(id));
 
       // Uma tarefa por responsável do grupo; dedupe por (regra, pedido, dono).
       let criou = false;
