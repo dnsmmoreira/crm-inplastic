@@ -104,6 +104,13 @@ import {
 } from "@/lib/condicoes-comerciais";
 import { markDeleted } from "@/lib/delete-intents";
 import { ConferenciaFinalDialog } from "@/components/propostas/ConferenciaFinalDialog";
+import { SimulacaoCartaoDialog } from "@/components/propostas/SimulacaoCartaoDialog";
+import {
+  acrescimoEfetivo,
+  ehCondicaoCartao,
+  gerarParcelasCartao,
+  type SimulacaoLinha,
+} from "@/lib/cartao-simulacao";
 import { calcularPendenciasPedido, rotuloMeioAprovacao } from "@/lib/pedido-pendencias";
 
 
