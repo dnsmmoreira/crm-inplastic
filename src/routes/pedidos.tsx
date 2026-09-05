@@ -75,9 +75,8 @@ import { PedidoDetailDrawer } from "@/components/pedidos/PedidoDetailDrawer";
 export const Route = createFileRoute("/pedidos")({
   component: PedidosKanbanPage,
   // Deep-link vindo de /pendencias: abre o pedido direto no drawer.
-  validateSearch: (search: Record<string, unknown>) => ({
-    pedido: typeof search["pedido"] === "string" ? (search["pedido"] as string) : undefined,
-  }),
+  validateSearch: (search: Record<string, unknown>): { pedido?: string } =>
+    typeof search["pedido"] === "string" ? { pedido: search["pedido"] as string } : {},
   head: () => ({
     meta: [
       { title: "Funil Operacional — INPLASTIC - CRM" },
