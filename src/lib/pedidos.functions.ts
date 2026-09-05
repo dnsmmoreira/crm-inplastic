@@ -724,6 +724,8 @@ export type PedidoDetalhes = {
   itens: PedidoItemDetalhe[];
   subtotal: number;
   desconto_percent: number;
+  acrescimo_percent: number;
+  cartao_parcelas: number | null;
   forma_pagamento: string | null;
   condicao_label: string | null;
   previsao_faturamento: string | null;
@@ -953,6 +955,9 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
       itens,
       subtotal,
       desconto_percent: Number(snapProposta.discount_percent ?? 0),
+      acrescimo_percent: Number(snapProposta.acrescimo_percent ?? 0),
+      cartao_parcelas:
+        snapProposta.cartao_parcelas != null ? Number(snapProposta.cartao_parcelas) : null,
       forma_pagamento: (snapProposta.forma_pagamento as string | null) ?? null,
       condicao_label: condicaoLabel,
       previsao_faturamento: (snapProposta.previsao_faturamento as string | null) ?? null,
@@ -1030,6 +1035,8 @@ function redigirValores(d: PedidoDetalhes): PedidoDetalhes {
     total: 0,
     subtotal: 0,
     desconto_percent: 0,
+    acrescimo_percent: 0,
+    cartao_parcelas: null,
     nf_valor: null,
     itens: d.itens.map((i) => ({ ...i, unit_price: 0 })),
     parcelas: d.parcelas.map((p) => ({ ...p, amount: 0 })),

@@ -467,7 +467,13 @@ async function ensurePedidoFromProposta(
     0,
   );
   const descontoPct = Number(proposta.discount_percent ?? 0);
-  const total = subtotal * (1 - descontoPct / 100);
+  // Acréscimo do cartão parcelado entra no total do pedido (mesma conta da proposta).
+  const acrescimoPct = Math.max(
+    0,
+    Number((proposta as { acrescimo_percent?: number | null }).acrescimo_percent ?? 0),
+  );
+  const aposDesconto = subtotal * (1 - descontoPct / 100);
+  const total = +(aposDesconto * (1 + acrescimoPct / 100)).toFixed(2);
 
   // 4) Número do pedido
   const ano = new Date().getFullYear();

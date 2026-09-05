@@ -141,7 +141,7 @@ export const listarPendenciasCadastro = createServerFn({ method: "GET" })
     const corte = new Date(agora - 7 * 86_400_000).toISOString();
     const propostasRes = await sb
       .from("propostas")
-      .select("id, number, lead_id, owner_id, updated_at, discount_percent", { count: "exact" })
+      .select("id, number, lead_id, owner_id, updated_at, discount_percent, acrescimo_percent", { count: "exact" })
       .eq("status", "rascunho")
       .lt("updated_at", corte)
       .order("updated_at", { ascending: true })
@@ -154,6 +154,7 @@ export const listarPendenciasCadastro = createServerFn({ method: "GET" })
       owner_id: string | null;
       updated_at: string;
       discount_percent: number | null;
+      acrescimo_percent: number | null;
     }[];
 
     // 2) Produtos ativos sem peso/dimensões — só admin edita produto.
@@ -281,13 +282,17 @@ export const listarPendenciasCadastro = createServerFn({ method: "GET" })
       itens: propostasRaw.map<PendenciaProposta>((p) => {
         const bruto = totalPorProposta.get(p.id) ?? 0;
         const desconto = Number(p.discount_percent ?? 0);
+        const acrescimo = Math.max(0, Number(p.acrescimo_percent ?? 0));
         return {
           id: p.id,
           number: p.number,
           cliente: (p.lead_id && clientePorLead.get(p.lead_id)) || null,
           owner: (p.owner_id && nomes.get(p.owner_id)) || null,
           dias_parada: diasParado(p.updated_at, agora),
-          total: bruto * (1 - (Number.isFinite(desconto) ? desconto : 0) / 100),
+          total:
+            bruto *
+            (1 - (Number.isFinite(desconto) ? desconto : 0) / 100) *
+            (1 + acrescimo / 100),
         };
       }),
     };
