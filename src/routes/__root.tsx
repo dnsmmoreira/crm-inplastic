@@ -383,6 +383,12 @@ const NAV_GROUPS: NavGroup[] = [
         icon: Radio,
         show: key("agente_ia.editar_prompt"),
       },
+      {
+        to: "/frases-prontas",
+        label: "Frases prontas",
+        icon: MessageSquareText,
+        show: (c) => c.isAdmin,
+      },
       { to: "/agente-ia", label: "Agente IA", icon: Bot, show: key("agente_ia.editar_prompt") },
       {
         to: "/cadencia-simulador",
