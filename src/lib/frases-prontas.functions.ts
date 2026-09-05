@@ -428,7 +428,7 @@ export const sincronizarStatusMeta = createServerFn({ method: "POST" })
       atualizadas += 1;
     }
 
-    const nomesCrm = new Set((frases ?? []).map((f: { meta_nome: string }) => f.meta_nome));
+    
     return {
       atualizadas,
       metaTodos: lista.itens,
