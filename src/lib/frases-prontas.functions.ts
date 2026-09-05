@@ -167,7 +167,7 @@ async function enviarUma(
     meta_status: string | null;
     meta_categoria: string | null;
   },
-): Promise<{ ok: boolean; erro?: string; status?: string }> {
+): Promise<{ ok: boolean; erro?: string; status?: string; adotado?: boolean }> {
   if (frase.meta_nome && (frase.meta_status === "APPROVED" || frase.meta_status === "PENDING")) {
     return {
       ok: false,
@@ -200,6 +200,10 @@ async function enviarUma(
   const r = await cloudCriarTemplate({ name: nome, category: categoria, bodyText: texto, exemplos });
   cloudInvalidarCacheTemplates();
 
+  // A Meta pode ter criado o template numa tentativa anterior cuja resposta
+  // não chegou até nós. Nesse caso ADOTAMOS o template existente.
+  const adotado = !r.ok && ehErroTemplateJaExiste(r.erro);
+
   const patch = r.ok
     ? {
         meta_nome: nome,
@@ -211,13 +215,23 @@ async function enviarUma(
         meta_erro: null,
         updated_at: new Date().toISOString(),
       }
-    : {
-        meta_status: "ERRO",
-        meta_erro: (r.erro ?? "Falha desconhecida na Meta.").slice(0, 500),
-        meta_mapa: mapa,
-        meta_enviado_em: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
+    : adotado
+      ? {
+          meta_nome: nome,
+          meta_status: "PENDING",
+          meta_categoria: categoria,
+          meta_mapa: mapa,
+          meta_enviado_em: new Date().toISOString(),
+          meta_erro: null,
+          updated_at: new Date().toISOString(),
+        }
+      : {
+          meta_status: "ERRO",
+          meta_erro: (r.erro ?? "Falha desconhecida na Meta.").slice(0, 500),
+          meta_mapa: mapa,
+          meta_enviado_em: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
 
   const res = await supabase.from("mensagem_templates").update(patch).eq("id", frase.id);
   if (res?.error) {
@@ -226,9 +240,47 @@ async function enviarUma(
     });
   }
 
+  if (adotado) {
+    // REGISTRAR E SEGUIR: já adotamos como PENDING; ler o status real é bônus.
+    const statusReal = await sincronizarUmNome(supabase, frase.id, nome);
+    return { ok: true, adotado: true, status: statusReal ?? "PENDING" };
+  }
+
   return r.ok
     ? { ok: true, status: (r.status ?? "PENDING") as string }
     : { ok: false, erro: r.erro ?? "Falha desconhecida na Meta." };
+}
+
+/** Relê na Meta o status de UM template e grava na frase. Nunca lança. */
+async function sincronizarUmNome(
+  supabase: any,
+  fraseId: string,
+  nome: string,
+): Promise<string | null> {
+  try {
+    const { cloudListarTemplatesTodos } = await import("./whatsapp-cloud.server");
+    const lista = await cloudListarTemplatesTodos();
+    if (!lista.ok) return null;
+    const t = lista.itens.find((x) => x.name === nome && (x.language === "pt_BR" || !x.language));
+    if (!t) return null;
+    const res = await supabase
+      .from("mensagem_templates")
+      .update({
+        meta_status: t.status,
+        meta_id: t.id,
+        meta_categoria: t.category || null,
+        meta_erro: t.status === "REJECTED" ? motivoRejeicaoLegivel(t.rejected_reason) : null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", fraseId);
+    if (res?.error) {
+      await registrarFalhaSegura("frases-prontas.sincronizarUmNome", res.error, { id: fraseId });
+      return null;
+    }
+    return t.status;
+  } catch {
+    return null;
+  }
 }
 
 /** Envia uma frase para aprovação da Meta. */
