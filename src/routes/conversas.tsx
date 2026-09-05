@@ -612,10 +612,13 @@ function diaLabel(iso: string) {
 
 function ChatPanel({
   conversa,
+  empresa,
   onChanged,
   onVoltar,
 }: {
   conversa: Conversa | null;
+  /** Empresa já resolvida em lote pela lista (cliente vinculado → lead). */
+  empresa?: string | null;
   onChanged: () => void;
   onVoltar?: () => void;
 }) {
