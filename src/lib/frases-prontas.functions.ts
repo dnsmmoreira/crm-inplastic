@@ -302,33 +302,48 @@ export const enviarFraseParaMeta = createServerFn({ method: "POST" })
     return enviarUma(supabase, frase);
   });
 
-/** Envia, uma a uma, todas as frases marcadas como sugeridas e ainda não aprovadas. */
+/**
+ * Envia, em PARTES, as frases sugeridas ainda não enviadas.
+ *
+ * O lote inteiro numa única chamada estourava o tempo da requisição e deixava
+ * frases sem status; a tela chama em loop enquanto `restantes > 0`.
+ * Frases REJECTED não entram aqui — exigem edição e o botão "Reenviar".
+ */
 export const enviarSugeridasParaMeta = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .inputValidator((data) => z.object({ limite: z.number().int().min(1).max(20).optional() }).parse(data ?? {}))
+  .handler(async ({ data, context }) => {
     const { supabase } = context as Ctx;
     await assertAdmin(context as Ctx);
+    const limite = data.limite ?? 6;
 
     const { data: frases, error } = await supabase
       .from("mensagem_templates")
       .select("id, titulo, corpo, meta_nome, meta_status, meta_categoria")
       .eq("meta_sugerido", true)
       .eq("ativo", true)
-      .or("meta_status.is.null,meta_status.eq.REJECTED,meta_status.eq.ERRO")
+      .or("meta_status.is.null,meta_status.eq.ERRO")
       .order("ordem", { ascending: true });
     if (error) throw new Error(error.message);
 
+    const fila = (frases ?? []).filter(
+      (f: { meta_nome: string | null; meta_status: string | null }) =>
+        !(f.meta_nome && (f.meta_status === "APPROVED" || f.meta_status === "PENDING")),
+    );
+    const lote = fila.slice(0, limite);
+
     let enviadas = 0;
+    let adotadas = 0;
     const erros: Array<{ titulo: string; erro: string }> = [];
-    for (const f of frases ?? []) {
+    for (const f of lote) {
       if (citaNomeDeEmpresa(f.corpo)) {
         erros.push({ titulo: f.titulo, erro: MSG_EMPRESA_PROIBIDA });
         continue;
       }
-      if (f.meta_nome && (f.meta_status === "APPROVED" || f.meta_status === "PENDING")) continue;
       try {
         const r = await enviarUma(supabase, f);
-        if (r.ok) enviadas += 1;
+        if (r.ok && r.adotado) adotadas += 1;
+        else if (r.ok) enviadas += 1;
         else erros.push({ titulo: f.titulo, erro: r.erro ?? "Falha desconhecida." });
       } catch (e) {
         // Uma frase que explode não pode interromper o lote.
@@ -352,7 +367,10 @@ export const enviarSugeridasParaMeta = createServerFn({ method: "POST" })
       // A Meta limita a taxa de criação de templates; 700 ms evita o 80007.
       await new Promise((resolve) => setTimeout(resolve, 700));
     }
-    return { enviadas, erros };
+    // Frases que falharam continuam em ERRO e sairiam de novo no próximo lote:
+    // descontamos as processadas para o loop da tela terminar.
+    const restantes = Math.max(0, fila.length - lote.length);
+    return { enviadas, adotadas, erros, restantes };
   });
 
 /** Relê os status na Meta e atualiza as frases correspondentes. */
@@ -369,10 +387,11 @@ export const sincronizarStatusMeta = createServerFn({ method: "POST" })
     if (!lista.ok) throw new Error(lista.erro ?? "Não foi possível consultar a Meta.");
     cloudInvalidarCacheTemplates();
 
+    // Inclui frases sem meta_nome: o template pode existir na Meta com o slug
+    // do título (1ª tentativa que deu timeout do nosso lado).
     const { data: frases, error } = await supabase
       .from("mensagem_templates")
-      .select("id, meta_nome")
-      .not("meta_nome", "is", null);
+      .select("id, titulo, corpo, meta_nome, meta_categoria");
     if (error) throw new Error(error.message);
 
     const porNome = new Map(
@@ -380,20 +399,28 @@ export const sincronizarStatusMeta = createServerFn({ method: "POST" })
     );
 
     let atualizadas = 0;
+    const nomesCrm = new Set<string>();
     for (const f of frases ?? []) {
-      const t = porNome.get(f.meta_nome as string);
-      if (!t) continue;
+      const nome = (f.meta_nome as string | null) ?? slugMeta(f.titulo as string);
+      const t = porNome.get(nome);
+      if (!t) {
+        if (f.meta_nome) nomesCrm.add(f.meta_nome as string);
+        continue;
+      }
+      nomesCrm.add(nome);
+      const patch: Record<string, unknown> = {
+        meta_status: t.status,
+        meta_id: t.id,
+        meta_categoria: t.category || f.meta_categoria || null,
+        meta_erro: t.status === "REJECTED" ? motivoRejeicaoLegivel(t.rejected_reason) : null,
+        updated_at: new Date().toISOString(),
+      };
+      if (!f.meta_nome) {
+        patch["meta_nome"] = nome;
+        patch["meta_mapa"] = converterParaMeta(f.corpo as string).mapa;
+      }
       // REGISTRAR E SEGUIR: sincronizar é informativo, não bloqueia a tela.
-      const res = await supabase
-        .from("mensagem_templates")
-        .update({
-          meta_status: t.status,
-          meta_id: t.id,
-          meta_categoria: t.category || null,
-          meta_erro: t.rejected_reason ?? null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", f.id);
+      const res = await supabase.from("mensagem_templates").update(patch).eq("id", f.id);
       if (res?.error) {
         await registrarFalhaSegura("frases-prontas.sincronizarStatusMeta", res.error, { id: f.id });
         continue;
