@@ -256,19 +256,33 @@ function PipelinePage() {
 
   const onDragEnd = (e: DragEndEvent) => {
     setActiveId(null);
-    if (!e.over) return;
-    const rawId = String(e.active.id);
-    const stage = String(e.over.id) as StageId;
+    // Ignora qualquer alvo que não seja uma coluna visível do quadro.
+    const stage = resolverColunaAlvo(e.over?.id, BOARD_STAGE_IDS);
+    if (!stage) return;
+    const card = identificarCard(e.active.id);
 
-    if (rawId.startsWith("prop:")) {
-      const proposal = proposals.find((p) => p.id === rawId.slice(5));
-      if (proposal && stage === "ganho" && proposal.status !== "pedido") {
-        void fecharProposta(proposal);
+    if (card.tipo === "proposta") {
+      const proposal = proposals.find((p) => p.id === card.id);
+      if (!proposal) return;
+      if (stage === "ganho") {
+        if (proposal.status !== "pedido") void fecharProposta(proposal);
+        return;
       }
+      if (stage === "perdido") {
+        const lead = leadById.get(proposal.leadId);
+        setLostTarget({
+          leadId: proposal.leadId,
+          company: lead?.company ?? proposal.number,
+          propostaId: proposal.id,
+        });
+        return;
+      }
+      if (stage === "proposta") return;
+      toast.info("Uma proposta não volta para as etapas de lead — cancele ou marque como perdida.");
       return;
     }
 
-    const leadId = rawId;
+    const leadId = card.id;
     const lead = leads.find((l) => l.id === leadId);
     if (lead && lead.stage !== stage) {
       if (PROPOSAL_STAGES.includes(stage)) {
