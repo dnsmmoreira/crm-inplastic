@@ -234,7 +234,13 @@ function AgendaGroup({
                 )}
                 {t.lead && (
                   <div className="text-xs text-muted-foreground mt-1">
-                    Cliente: <span className="font-medium">{t.lead.company}</span>
+                    Cliente:{" "}
+                    <span className="font-medium">
+                      {rotuloLinha({
+                        contato: t.lead.contato,
+                        empresa: t.lead.empresa ?? t.lead.company,
+                      })}
+                    </span>
                     {" · "}etapa: {t.lead.stage}
                   </div>
                 )}
