@@ -503,6 +503,19 @@ function PainelFrases() {
                             </TooltipContent>
                           ) : null}
                         </Tooltip>
+                        {prefixado ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="max-w-[180px] truncate text-[11px] text-muted-foreground">
+                                Meta: {textoMeta}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs">
+                              Enviado à Meta como: {textoMeta}
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : null}
+
                         <Button
                           size="icon"
                           variant="ghost"
