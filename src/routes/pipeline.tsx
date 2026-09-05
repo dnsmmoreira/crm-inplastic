@@ -442,7 +442,13 @@ function PipelinePage() {
         </div>
       </div>
 
-      <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={detectarColuna}
+        measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
+        onDragStart={onDragStart}
+        onDragEnd={onDragEnd}
+      >
         <div className="-mx-4 min-h-0 flex-1 overflow-auto px-4 md:-mx-8 md:px-8">
           <div className="flex gap-4 pb-4">
             {BOARD_STAGES.map((stage) =>
@@ -515,8 +521,10 @@ function PipelinePage() {
         onCancel={() => setLostTarget(null)}
         onConfirm={async (payload) => {
           if (!lostTarget) return;
-          const { leadId, company } = lostTarget;
+          const { leadId, company, propostaId } = lostTarget;
           setLostTarget(null);
+          // Card de proposta: a proposta em si passa a "recusada".
+          if (propostaId) updateProposal(propostaId, { status: "recusada" });
           runMove(leadId, "perdido", company, payload);
         }}
       />
