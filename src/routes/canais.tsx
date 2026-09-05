@@ -1033,15 +1033,30 @@ function PainelSaudeWhatsapp() {
         <div className="text-xs font-medium">Alertas (48h)</div>
 
         <ul className="max-h-40 overflow-y-auto divide-y text-[11px]">
-          {data.alertas48h.map((a) => (
-            <li key={a.id} className="py-1 flex items-center justify-between gap-2">
-              <span className="text-destructive">{a.tipo}</span>
-              <span className="text-muted-foreground">{a.canal}</span>
-              <span className="text-muted-foreground shrink-0">
-                {format(new Date(a.created_at), "dd/MM HH:mm")}
-              </span>
-            </li>
-          ))}
+          {data.alertas48h.map((a) => {
+            const semTelegram = /^Usuário (.+) sem Telegram vinculado$/.exec(a.detalhe ?? "");
+            return (
+              <li key={a.id} className="py-1 flex items-center justify-between gap-2">
+                <span className="text-destructive shrink-0">{a.tipo}</span>
+                <span className="text-muted-foreground truncate flex-1">
+                  {a.detalhe || "—"}
+                  {semTelegram && (
+                    <a
+                      className="ml-1 underline"
+                      href={`/usuarios?busca=${encodeURIComponent(semTelegram[1] ?? "")}`}
+                    >
+                      Vincular
+                    </a>
+                  )}
+                </span>
+                <span className="text-muted-foreground">{a.canal}</span>
+                <span className="text-muted-foreground shrink-0">
+                  {format(new Date(a.created_at), "dd/MM HH:mm")}
+                </span>
+              </li>
+            );
+          })}
+
           {data.alertas48h.length === 0 && (
             <li className="py-2 text-muted-foreground">Nenhum alerta nas últimas 48h.</li>
           )}
