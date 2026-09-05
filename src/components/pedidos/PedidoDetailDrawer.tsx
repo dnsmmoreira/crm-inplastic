@@ -400,6 +400,10 @@ function ItensBlock({ pedido, comValores }: { pedido: PedidoDetalhes; comValores
     pedido.desconto_percent > 0
       ? +(pedido.subtotal * (pedido.desconto_percent / 100)).toFixed(2)
       : 0;
+  const acrescimo =
+    pedido.acrescimo_percent > 0
+      ? +((pedido.subtotal - desconto) * (pedido.acrescimo_percent / 100)).toFixed(2)
+      : 0;
 
   return (
     <section className="space-y-3">
@@ -462,6 +466,16 @@ function ItensBlock({ pedido, comValores }: { pedido: PedidoDetalhes; comValores
                       Desconto ({pedido.desconto_percent}%)
                     </td>
                     <td className="p-2 text-right tabular-nums">− {formatBRL(desconto)}</td>
+                  </tr>
+                )}
+                {acrescimo > 0 && (
+                  <tr>
+                    <td className="p-2 text-right" colSpan={4}>
+                      Acréscimo cartão
+                      {pedido.cartao_parcelas ? ` (${pedido.cartao_parcelas}x)` : ""} +
+                      {String(pedido.acrescimo_percent).replace(".", ",")}%
+                    </td>
+                    <td className="p-2 text-right tabular-nums">+ {formatBRL(acrescimo)}</td>
                   </tr>
                 )}
                 <tr className="font-semibold">
