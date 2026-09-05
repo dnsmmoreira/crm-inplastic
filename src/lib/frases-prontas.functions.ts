@@ -180,7 +180,11 @@ async function enviarUma(
     const erro = problemas.join(" ");
     const res = await supabase
       .from("mensagem_templates")
-      .update({ meta_status: "ERRO", meta_erro: erro.slice(0, 500), updated_at: new Date().toISOString() })
+      .update({
+        meta_status: "ERRO",
+        meta_erro: erro.slice(0, 500),
+        updated_at: new Date().toISOString(),
+      })
       .eq("id", frase.id);
     if (res?.error) {
       await registrarFalhaSegura("frases-prontas.enviarParaMeta/validacao", res.error, {
@@ -194,10 +198,14 @@ async function enviarUma(
   const nome = frase.meta_nome ?? slugMeta(frase.titulo);
   const categoria = frase.meta_categoria ?? "MARKETING";
 
-  const { cloudCriarTemplate, cloudInvalidarCacheTemplates } = await import(
-    "./whatsapp-cloud.server"
-  );
-  const r = await cloudCriarTemplate({ name: nome, category: categoria, bodyText: texto, exemplos });
+  const { cloudCriarTemplate, cloudInvalidarCacheTemplates } =
+    await import("./whatsapp-cloud.server");
+  const r = await cloudCriarTemplate({
+    name: nome,
+    category: categoria,
+    bodyText: texto,
+    exemplos,
+  });
   cloudInvalidarCacheTemplates();
 
   // A Meta pode ter criado o template numa tentativa anterior cuja resposta
@@ -311,7 +319,9 @@ export const enviarFraseParaMeta = createServerFn({ method: "POST" })
  */
 export const enviarSugeridasParaMeta = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data) => z.object({ limite: z.number().int().min(1).max(20).optional() }).parse(data ?? {}))
+  .inputValidator((data) =>
+    z.object({ limite: z.number().int().min(1).max(20).optional() }).parse(data ?? {}),
+  )
   .handler(async ({ data, context }) => {
     const { supabase } = context as Ctx;
     await assertAdmin(context as Ctx);
@@ -380,9 +390,8 @@ export const sincronizarStatusMeta = createServerFn({ method: "POST" })
     const { supabase } = context as Ctx;
     await assertAdmin(context as Ctx);
 
-    const { cloudListarTemplatesTodos, cloudInvalidarCacheTemplates } = await import(
-      "./whatsapp-cloud.server"
-    );
+    const { cloudListarTemplatesTodos, cloudInvalidarCacheTemplates } =
+      await import("./whatsapp-cloud.server");
     const lista = await cloudListarTemplatesTodos();
     if (!lista.ok) throw new Error(lista.erro ?? "Não foi possível consultar a Meta.");
     cloudInvalidarCacheTemplates();
@@ -428,7 +437,6 @@ export const sincronizarStatusMeta = createServerFn({ method: "POST" })
       atualizadas += 1;
     }
 
-    
     return {
       atualizadas,
       metaTodos: lista.itens,
@@ -452,9 +460,8 @@ export const excluirTemplateNaMeta = createServerFn({ method: "POST" })
       );
     }
 
-    const { cloudExcluirTemplate, cloudInvalidarCacheTemplates } = await import(
-      "./whatsapp-cloud.server"
-    );
+    const { cloudExcluirTemplate, cloudInvalidarCacheTemplates } =
+      await import("./whatsapp-cloud.server");
     const r = await cloudExcluirTemplate(data.name);
     if (!r.ok) throw new Error(r.erro ?? "Não foi possível excluir o modelo na Meta.");
     cloudInvalidarCacheTemplates();
@@ -486,9 +493,13 @@ export const excluirTemplateNaMeta = createServerFn({ method: "POST" })
       valor_novo: null,
     });
     if (auditoria?.error) {
-      await registrarFalhaSegura("frases-prontas.excluirTemplateNaMeta/auditoria", auditoria.error, {
-        name: data.name,
-      });
+      await registrarFalhaSegura(
+        "frases-prontas.excluirTemplateNaMeta/auditoria",
+        auditoria.error,
+        {
+          name: data.name,
+        },
+      );
     }
 
     return { ok: true };
