@@ -65,7 +65,7 @@ async function runFechamento(force = false): Promise<{
 
     const nomeDono =
       (await sb.from("profiles").select("name").eq("id", uid).maybeSingle()).data?.name ??
-      "sem dono";
+      "vendedor";
 
     for (const t of pendentes) {
       if (atingiuTeto(t as any)) {
