@@ -37,6 +37,7 @@ export type UsuarioRow = {
   avatarColor: string;
   cargo: string | null;
   telefoneWhatsapp: string | null;
+  telegramVinculado: boolean;
   fusoHorario: string;
   ativo: boolean;
   deletedAt: string | null;
