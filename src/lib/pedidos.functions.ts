@@ -73,6 +73,8 @@ export type PedidoRow = {
   proposta_number: string | null;
   modalidade_entrega: string | null;
   entrega_confirmada: string | null;
+  /** Fonte da verdade da comprovação com anexos (foto + documento). */
+  entrega_comprovada_em: string | null;
   encerrado_em: string | null;
   aprovacao_rota: string | null;
   reprovacao_motivo: string | null;
@@ -119,7 +121,7 @@ export const listPedidos = createServerFn({ method: "GET" })
           "equipe_responsavel, responsavel_atual_id, fiscal_status, nf_numero",
           "forma_atendimento, prioridade, ocorrencia",
           "vendedor_proprietario_id, proposta_id, lead_id",
-          "modalidade_entrega, entrega_confirmada, encerrado_em, aprovacao_rota, reprovacao_motivo",
+          "modalidade_entrega, entrega_confirmada, entrega_comprovada_em, encerrado_em, aprovacao_rota, reprovacao_motivo",
           "propostas:proposta_id(number)",
         ].join(", "),
       )
@@ -234,6 +236,7 @@ export const listPedidos = createServerFn({ method: "GET" })
 
         modalidade_entrega: string | null;
         entrega_confirmada: string | null;
+        entrega_comprovada_em: string | null;
         encerrado_em: string | null;
         aprovacao_rota: string | null;
         reprovacao_motivo: string | null;
@@ -266,6 +269,7 @@ export const listPedidos = createServerFn({ method: "GET" })
         proposta_number: r.propostas?.number ?? null,
         modalidade_entrega: r.modalidade_entrega ?? "coleta",
         entrega_confirmada: r.entrega_confirmada,
+        entrega_comprovada_em: r.entrega_comprovada_em ?? null,
         encerrado_em: r.encerrado_em,
         aprovacao_rota: r.aprovacao_rota,
         reprovacao_motivo: r.reprovacao_motivo,
@@ -747,6 +751,14 @@ export type PedidoDetalhes = {
   responsavel_atual_nome: string | null;
   /** Admin ou permissão `pedidos.operar_producao` — calculado no servidor. */
   pode_operar: boolean;
+  /* Comprovação de entrega (pós-venda) */
+  entrega_comprovada_em: string | null;
+  entregue_em: string | null;
+  entrega_recebida_por: string | null;
+  entrega_observacao: string | null;
+  entrega_confirmada_por_nome: string | null;
+  /** Admin, `pedidos.operar_producao` ou `pedidos.movimentar`. */
+  pode_comprovar_entrega: boolean;
   fiscal_status: string | null;
   nf_numero: string | null;
   nf_serie: string | null;
@@ -797,7 +809,9 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
       .select(
         `id, number, stage, total, fiscal_status, nf_numero, lead_id, proposta_id,
          vendedor_proprietario_id, owner_id, proposta_snapshot,
-         responsavel_atual_id, equipe_responsavel, ${APPROVAL_FIELDS}`,
+         responsavel_atual_id, equipe_responsavel,
+         entrega_comprovada_em, entregue_em, entrega_recebida_por,
+         entrega_observacao, entrega_confirmada_por, ${APPROVAL_FIELDS}`,
       )
       .eq("id", data.pedido_id)
       .maybeSingle();
@@ -903,6 +917,7 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
       p.aprovacao_decidida_por,
       p.vendedor_proprietario_id ?? p.owner_id,
       p.responsavel_atual_id,
+      p.entrega_confirmada_por,
       ...oc.map((o) => o.criada_por),
       ...oc.map((o) => o.resolvida_por),
     ]);
@@ -922,6 +937,8 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
       (await temPermissao(sb, context.userId, "pedidos.aprovar_financeiro"));
 
     const podeOperar = await podeOperarProducao(sb, context.userId);
+    const podeComprovarEntrega =
+      podeOperar || (await temPermissao(sb, context.userId, PERM_PEDIDOS_MOVIMENTAR));
 
     const detalhe: PedidoDetalhes = {
       id: p.id,
@@ -980,6 +997,14 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
         ? (nameById.get(p.responsavel_atual_id) ?? p.equipe_responsavel ?? null)
         : null,
       pode_operar: podeOperar,
+      entrega_comprovada_em: p.entrega_comprovada_em ?? null,
+      entregue_em: p.entregue_em ?? null,
+      entrega_recebida_por: p.entrega_recebida_por ?? null,
+      entrega_observacao: p.entrega_observacao ?? null,
+      entrega_confirmada_por_nome: p.entrega_confirmada_por
+        ? (nameById.get(p.entrega_confirmada_por) ?? null)
+        : null,
+      pode_comprovar_entrega: podeComprovarEntrega,
       fiscal_status: p.fiscal_status,
       nf_numero: p.nf_numero,
       nf_serie: p.nf_serie,
