@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -74,6 +74,10 @@ import { PedidoDetailDrawer } from "@/components/pedidos/PedidoDetailDrawer";
 
 export const Route = createFileRoute("/pedidos")({
   component: PedidosKanbanPage,
+  // Deep-link vindo de /pendencias: abre o pedido direto no drawer.
+  validateSearch: (search: Record<string, unknown>) => ({
+    pedido: typeof search["pedido"] === "string" ? (search["pedido"] as string) : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Funil Operacional — INPLASTIC - CRM" },
@@ -101,7 +105,11 @@ function PedidosKanbanPage() {
   const [search, setSearch] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [pendingBackward, setPendingBackward] = useState<PendingBackward | null>(null);
-  const [openPedidoId, setOpenPedidoId] = useState<string | null>(null);
+  const { pedido: pedidoDaUrl } = Route.useSearch();
+  const [openPedidoId, setOpenPedidoId] = useState<string | null>(pedidoDaUrl ?? null);
+  useEffect(() => {
+    if (pedidoDaUrl) setOpenPedidoId(pedidoDaUrl);
+  }, [pedidoDaUrl]);
   const [fVendedor, setFVendedor] = useState<string>("all");
   const [fResponsavel, setFResponsavel] = useState<string>("all");
   const [fStage, setFStage] = useState<string>("all");
