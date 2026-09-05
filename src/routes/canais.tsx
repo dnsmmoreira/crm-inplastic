@@ -31,7 +31,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { usePoll } from "@/hooks/use-poll";
 import { limparOrigemAnuncio } from "@/lib/mensagem-display";
 import { useServerFn } from "@tanstack/react-start";
-import { sendConversaMessage, createLeadFromConversa, posseConversa } from "@/lib/canais.functions";
+import {
+  sendConversaMessage,
+  createLeadFromConversa,
+  posseConversa,
+  contarMidiasPendentesCloud,
+  reprocessarMidiasCloud,
+} from "@/lib/canais.functions";
 import {
   painelWhatsapp,
   removerOptout,
@@ -784,6 +790,8 @@ function PainelSaudeWhatsapp() {
         </Button>
       </div>
 
+      <MidiasPendentesCard />
+
       <div className="grid grid-cols-2 gap-2 text-xs">
         <div className="rounded-md border p-2">
           <div className="text-muted-foreground">Últimas 24h</div>
@@ -1051,6 +1059,80 @@ function PainelSaudeWhatsapp() {
           )}
         </ul>
       </div>
+    </div>
+  );
+}
+
+/** Anexos recebidos que ficaram só no log de eventos (admin). */
+function MidiasPendentesCard() {
+  const contar = useServerFn(contarMidiasPendentesCloud);
+  const recuperar = useServerFn(reprocessarMidiasCloud);
+  const [info, setInfo] = useState<{ total: number; porTipo: Record<string, number> } | null>(null);
+  const [rodando, setRodando] = useState(false);
+  const [resumo, setResumo] = useState<string | null>(null);
+
+  const carregar = useCallback(async () => {
+    try {
+      const r = await contar();
+      setInfo({ total: r.total, porTipo: r.porTipo });
+    } catch {
+      setInfo(null);
+    }
+  }, [contar]);
+
+  useEffect(() => {
+    void carregar();
+  }, [carregar]);
+
+  if (!info) return null;
+
+  async function handleRecuperar() {
+    setRodando(true);
+    setResumo(null);
+    try {
+      const r = await recuperar({ data: { limite: 50 } });
+      setResumo(
+        `${r.processados} recuperado(s)` +
+          (r.falhas.length ? ` · ${r.falhas.length} sem sucesso` : ""),
+      );
+      if (r.processados > 0) toast.success(`${r.processados} anexo(s) recuperado(s)`);
+      else if (r.falhas.length) toast.error("Nenhum anexo pôde ser recuperado");
+      await carregar();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setResumo(`Falhou — ${msg}`);
+      toast.error("Recuperação falhou", { description: msg });
+    } finally {
+      setRodando(false);
+    }
+  }
+
+  return (
+    <div
+      className={cn(
+        "rounded-md border p-3 text-xs",
+        info.total > 0 ? "border-amber-500/40 bg-amber-500/10" : "",
+      )}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <div className="font-medium">Anexos recebidos não importados</div>
+          <div className="text-muted-foreground">
+            {info.total === 0
+              ? "Nenhum pendente."
+              : Object.entries(info.porTipo)
+                  .map(([t, n]) => `${t.replace("mensagem_", "")}: ${n}`)
+                  .join(" · ")}
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-lg font-semibold">{info.total}</span>
+          <Button size="sm" disabled={rodando || info.total === 0} onClick={() => void handleRecuperar()}>
+            {rodando ? "Recuperando..." : "Recuperar agora"}
+          </Button>
+        </div>
+      </div>
+      {resumo && <div className="mt-2 text-muted-foreground">{resumo}</div>}
     </div>
   );
 }

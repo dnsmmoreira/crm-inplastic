@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { usePoll } from "@/hooks/use-poll";
 import { limparOrigemAnuncio } from "@/lib/mensagem-display";
+import { BolhaMensagem } from "@/components/atendimento/BolhaMensagem";
 import { carregarEmpresaPorConversa, type DadosLeadConversa } from "@/lib/empresa-conversas";
 import { rotuloContato } from "@/lib/rotulo-contato";
 import { useServerFn } from "@tanstack/react-start";
@@ -421,7 +422,7 @@ function ConversationPanel({
           className="flex-1 overflow-auto p-4 space-y-2 bg-background"
         >
           {mensagens.map((m) => (
-            <MessageBubble key={m.id} m={m} />
+            <BolhaMensagem key={m.id} m={m} />
           ))}
           {mensagens.length === 0 && (
             <div className="text-center text-xs text-muted-foreground py-10">
@@ -448,36 +449,6 @@ function ConversationPanel({
   );
 }
 
-function MessageBubble({ m }: { m: Mensagem }) {
-  const isCliente = m.autor === "cliente";
-  const isIA = m.autor === "ia";
-  const align = isCliente ? "justify-start" : "justify-end";
-  const tone = isCliente
-    ? "bg-muted text-foreground"
-    : isIA
-      ? "bg-blue-500/10 text-blue-900 dark:text-blue-100 border border-blue-500/20"
-      : "bg-primary text-primary-foreground";
-  const Icon = isCliente ? UserIcon : isIA ? Bot : UserIcon;
-  const authorLabel = isCliente ? "Cliente" : isIA ? "IA" : "Vendedor";
-  return (
-    <div className={cn("flex", align)}>
-      <div className={cn("max-w-[75%] rounded-lg px-3 py-2 text-sm", tone)}>
-        <div className="flex items-center gap-1 text-[10px] uppercase tracking-wide opacity-75 mb-0.5">
-          <Icon className="h-3 w-3" /> {authorLabel}
-        </div>
-        <div className="whitespace-pre-wrap break-words">
-          {limparOrigemAnuncio(m.conteudo ?? "")}
-        </div>
-        <div className="mt-1 text-[10px] opacity-60">
-          {new Date(m.created_at).toLocaleTimeString("pt-BR", {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function AtribuirSelect({ conversa, onChanged }: { conversa: Conversa; onChanged: () => void }) {
   const { user } = useAuth();

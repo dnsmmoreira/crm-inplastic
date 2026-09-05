@@ -30,7 +30,15 @@ export type EntradaWhatsapp = {
   midia: unknown | null;
   /** Prefixo de log, ex.: "zapi-webhook" ou "wa-cloud-webhook". */
   tag: string;
+  /**
+   * Só grava a mensagem e atualiza a conversa: sem IA/fila, sem handoff,
+   * sem notificação e sem alerta (reações e reprocessamento de backlog).
+   */
+  silencioso?: boolean;
+  /** Data original da mensagem (reprocessamento). Padrão: agora. */
+  criadoEm?: string;
 };
+
 
 /**
  * Gatilhos de opt-out (lista inalterada). A correspondência é por PALAVRA
@@ -56,7 +64,7 @@ export type ResultadoEntrada = Record<string, unknown>;
 export async function processarEntradaWhatsapp(
   entrada: EntradaWhatsapp,
 ): Promise<ResultadoEntrada> {
-  const { phone, message, name, externalId, tipo, midia, tag } = entrada;
+  const { phone, message, name, externalId, tipo, midia, tag, silencioso, criadoEm } = entrada;
 
   const { TIPOS_COM_RESPOSTA_AUTOMATICA, TIPOS_COM_HANDOFF } = await import("@/lib/zapi-normalize");
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -149,6 +157,7 @@ export async function processarEntradaWhatsapp(
       tipo,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       midia: (midia ?? null) as any,
+      ...(criadoEm ? { created_at: criadoEm } : {}),
     });
     if (msgErr) {
       // 23505 = violação de unicidade no índice parcial → reentrega, não erro.
@@ -159,6 +168,11 @@ export async function processarEntradaWhatsapp(
       console.error("whatsapp_mensagens insert failed:", msgErr);
     }
   }
+
+  // Modo silencioso: reações e reprocessamento histórico só entram no
+  // histórico — nada de IA, handoff, notificação ou alerta.
+  if (silencioso) return { ok: true, conversaId, tipo, silencioso: true };
+
 
   // 5-espera) Retomada automática: mensagem do cliente encerra a espera.
   // REGISTRAR E SEGUIR: a mensagem já foi gravada; sair da espera é estado

@@ -270,35 +270,33 @@ export const Route = createFileRoute("/api/public/hooks/whatsapp-cloud")({
                   });
                 }
 
-                if (tipoBruto !== "text") {
-                  console.warn(
-                    `[wa-cloud-webhook] tipo=${tipoBruto} apenas registrado phone=${mascararTelefoneLog(phone)}`,
-                  );
-                  continue;
-                }
+                if (!phone) continue;
 
-                const texto = String(
-                  (msg["text"] as { body?: string } | undefined)?.body ?? "",
-                ).trim();
-                if (!phone || !texto) continue;
-
-                const { processarEntradaWhatsapp } = await import("@/lib/whatsapp-inbound.server");
+                const { processarMensagemCloud } = await import(
+                  "@/lib/whatsapp-cloud-entrada.server"
+                );
                 try {
-                  await processarEntradaWhatsapp({
+                  const r = await processarMensagemCloud({
+                    msg,
                     phone,
-                    message: texto,
-                    name: nomeContato,
-                    externalId: waId,
-                    tipo: "texto",
-                    midia: null,
+                    nomeContato,
+                    waMessageId: waId,
                     tag: "wa-cloud-webhook",
                   });
+                  console.warn(
+                    `[wa-cloud-webhook] tipo=${tipoBruto}→${r.tipo} midia_ok=${r.midiaOk} phone=${mascararTelefoneLog(phone)}`,
+                  );
                   if (waId) {
                     // REGISTRAR E SEGUIR: a mensagem já foi processada; a marca
-                    // de "processado" é só idempotência.
+                    // de "processado" é só idempotência. Mídia que não baixou
+                    // fica pendente para o reprocessamento do backlog.
                     const marcado = await supabaseAdmin
                       .from("wa_cloud_eventos")
-                      .update({ processado: true })
+                      .update(
+                        r.midiaOk
+                          ? { processado: true }
+                          : { processado: false, erro: (r.erro ?? "download_falhou").slice(0, 500) },
+                      )
                       .eq("wa_message_id", waId);
                     if (marcado.error) {
                       await registrarFalhaSegura(
@@ -310,6 +308,7 @@ export const Route = createFileRoute("/api/public/hooks/whatsapp-cloud")({
                       );
                     }
                   }
+
                 } catch (e) {
                   const m = e instanceof Error ? e.message : String(e);
                   console.error(`[wa-cloud-webhook] pipeline falhou: ${m}`);

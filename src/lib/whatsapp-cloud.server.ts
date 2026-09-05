@@ -637,3 +637,68 @@ export async function cloudExcluirTemplate(
 export function cloudInvalidarCacheTemplates(): void {
   cacheTemplates = null;
 }
+
+/** Resultado do download de mídia recebida (nunca lança). */
+export type CloudMidiaDownload =
+  | { ok: true; bytes: ArrayBuffer; mimeType: string; tamanho: number; sha256?: string }
+  | { ok: false; erro: string; status?: number };
+
+const MIDIA_TIMEOUT_MS = 20_000;
+const MIDIA_MAX_BYTES = 100 * 1024 * 1024;
+
+/**
+ * Baixa uma mídia recebida da Meta em 2 passos (metadados + binário).
+ * A URL do payload do webhook NÃO serve: expira em minutos e exige o Bearer.
+ */
+export async function cloudBaixarMidia(mediaId: string): Promise<CloudMidiaDownload> {
+  const { version, accessToken } = creds();
+  if (!accessToken) return { ok: false, erro: "META_ACCESS_TOKEN ausente." };
+  if (!mediaId) return { ok: false, erro: "mediaId ausente." };
+
+  const auth = { Authorization: `Bearer ${accessToken}` };
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), MIDIA_TIMEOUT_MS);
+  try {
+    const metaRes = await fetch(`https://graph.facebook.com/${version}/${mediaId}`, {
+      headers: auth,
+      signal: controller.signal,
+    });
+    const metaTexto = await metaRes.text();
+    if (!metaRes.ok) {
+      return { ok: false, status: metaRes.status, erro: metaTexto.slice(0, 300) };
+    }
+    let meta: { url?: string; mime_type?: string; file_size?: number; sha256?: string };
+    try {
+      meta = JSON.parse(metaTexto);
+    } catch {
+      return { ok: false, status: metaRes.status, erro: "Metadados da mídia não são JSON." };
+    }
+    if (!meta.url) return { ok: false, erro: "Metadados sem URL de download." };
+    if (typeof meta.file_size === "number" && meta.file_size > MIDIA_MAX_BYTES) {
+      return { ok: false, erro: `Arquivo maior que o limite (${meta.file_size} bytes).` };
+    }
+
+    const binRes = await fetch(meta.url, { headers: auth, signal: controller.signal });
+    if (!binRes.ok) {
+      const t = await binRes.text().catch(() => "");
+      return { ok: false, status: binRes.status, erro: t.slice(0, 300) || "Falha ao baixar." };
+    }
+    const bytes = await binRes.arrayBuffer();
+    if (bytes.byteLength > MIDIA_MAX_BYTES) {
+      return { ok: false, erro: "Arquivo maior que o limite de 100 MB." };
+    }
+    return {
+      ok: true,
+      bytes,
+      mimeType: meta.mime_type || binRes.headers.get("content-type") || "application/octet-stream",
+      tamanho: bytes.byteLength,
+      ...(meta.sha256 ? { sha256: meta.sha256 } : {}),
+    };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return { ok: false, erro: msg };
+  } finally {
+    clearTimeout(timer);
+  }
+}
