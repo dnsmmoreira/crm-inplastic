@@ -410,7 +410,8 @@ async function runXerifePedidos(
     for (const p of pedidos ?? []) {
       const horas = horasDesde(p.aprovacao_solicitada_em, now) ?? 0;
       if (horas < APROVACAO_SLA_HORAS) continue;
-      const owner = p.responsavel_atual_id ?? p.vendedor_proprietario_id;
+      const owner = await donoEfetivo(p.responsavel_atual_id ?? p.vendedor_proprietario_id);
+      if (!owner) continue;
       const ok = await criarTarefa({
         regra: "pedido_aprovacao_pendente",
         pedidoId: p.id,
@@ -441,7 +442,8 @@ async function runXerifePedidos(
     for (const p of pedidos ?? []) {
       const dias = diasDesde(p.updated_at, now) ?? 0;
       if (dias < NF_ATRASO_DIAS) continue;
-      const owner = p.responsavel_atual_id ?? p.vendedor_proprietario_id;
+      const owner = await donoEfetivo(p.responsavel_atual_id ?? p.vendedor_proprietario_id);
+      if (!owner) continue;
       const ok = await criarTarefa({
         regra: "pedido_nf_atrasada",
         pedidoId: p.id,
@@ -474,7 +476,8 @@ async function runXerifePedidos(
 
     for (const p of pedidos ?? []) {
       const dias = diasDesde(p.previsao_entrega, now) ?? 0;
-      const owner = p.responsavel_atual_id ?? p.vendedor_proprietario_id;
+      const owner = await donoEfetivo(p.responsavel_atual_id ?? p.vendedor_proprietario_id);
+      if (!owner) continue;
       const ok = await criarTarefa({
         regra: "pedido_previsao_atrasada",
         pedidoId: p.id,
@@ -516,7 +519,8 @@ async function runXerifePedidos(
       const p = pedidoMap.get(o.pedido_id);
       if (!p) continue;
       const horas = horasDesde(o.created_at, now) ?? 0;
-      const owner = p.responsavel_atual_id ?? p.vendedor_proprietario_id;
+      const owner = await donoEfetivo(p.responsavel_atual_id ?? p.vendedor_proprietario_id);
+      if (!owner) continue;
       const ok = await criarTarefa({
         regra: `pedido_ocorrencia_aberta:${o.id}`,
         pedidoId: p.id,
@@ -555,7 +559,8 @@ async function runXerifePedidos(
         stats.skipped_dedupe++;
         continue;
       }
-      const owner = p.vendedor_proprietario_id ?? p.responsavel_atual_id;
+      const owner = await donoEfetivo(p.vendedor_proprietario_id ?? p.responsavel_atual_id);
+      if (!owner) continue;
       const ok = await criarTarefa({
         regra: "pos_venda_pedido_entregue",
         pedidoId: p.id,
@@ -626,8 +631,9 @@ async function runXerifePedidos(
     }
 
     for (const p of pedidos ?? []) {
-      const owner: string | null =
-        p.responsavel_atual_id ?? (await donoOperacional()) ?? p.vendedor_proprietario_id ?? null;
+      const owner: string | null = await donoEfetivo(
+        p.responsavel_atual_id ?? (await donoOperacional()) ?? p.vendedor_proprietario_id ?? null,
+      );
       if (!owner) continue;
       const horas =
         horasDesde(entradaPorPedido.get(p.id) ?? null, now) ?? COMPROVACAO_ENTREGA_HORAS;
@@ -666,7 +672,8 @@ async function runXerifePedidos(
       .limit(500);
 
     for (const p of pedidos ?? []) {
-      const owner = p.vendedor_proprietario_id ?? p.responsavel_atual_id;
+      const owner = await donoEfetivo(p.vendedor_proprietario_id ?? p.responsavel_atual_id);
+      if (!owner) continue;
       const ok = await criarTarefa({
         regra: "pos_venda_pedido_recompra",
         pedidoId: p.id,
