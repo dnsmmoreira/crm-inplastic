@@ -1861,3 +1861,158 @@ export const liberarPedidoOperacional = createServerFn({ method: "POST" })
     );
     return { ok: true as const };
   });
+
+/* ---------------------------------------------------------------------------
+ * Comprovação de entrega (pós-venda).
+ *
+ * Não existia função `confirmarEntrega` para reaproveitar: o registro de
+ * entrega era um efeito automático de `aoEntrarNaEtapa` em
+ * pedidos-fluxo.server.ts, que grava `entrega_confirmada` ('entregue' |
+ * 'coletado') sem nenhuma prova. Por isso a comprovação tem coluna própria
+ * (`entrega_comprovada_em`) — a antiga NÃO é sinal de entrega comprovada.
+ * -------------------------------------------------------------------------*/
+
+export const confirmarEntregaComprovada = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (input: {
+      pedido_id: string;
+      entregue_em: string;
+      entrega_recebida_por: string;
+      observacao?: string | null;
+    }) =>
+      z
+        .object({
+          pedido_id: z.string().uuid(),
+          entregue_em: z.string().min(1),
+          entrega_recebida_por: z.string(),
+          observacao: z.string().max(2000).nullish(),
+        })
+        .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const sb: LooseClient = context.supabase;
+    const userId = context.userId;
+
+    const {
+      comprovacaoCompleta,
+      dataEntregaValida,
+      recebidoPorValido,
+      POS_VENDA_STATUS_ENTREGA_COMPROVADA,
+    } = await import("@/lib/entrega-comprovacao");
+
+    // Gate fail-closed: operação, movimentação de pedidos ou admin.
+    const autorizado =
+      (await podeOperarProducao(sb, userId)) ||
+      (await temPermissao(sb, userId, PERM_PEDIDOS_MOVIMENTAR));
+    if (!autorizado) {
+      return {
+        ok: false as const,
+        message: "Você não tem permissão para confirmar a entrega deste pedido.",
+      };
+    }
+
+    if (!recebidoPorValido(data.entrega_recebida_por)) {
+      return {
+        ok: false as const,
+        message: "Informe quem recebeu a entrega (mínimo de 3 caracteres).",
+      };
+    }
+    if (!dataEntregaValida(data.entregue_em)) {
+      return {
+        ok: false as const,
+        message: "Informe uma data de entrega válida — ela não pode estar no futuro.",
+      };
+    }
+
+    const { data: p, error } = await sb
+      .from("pedidos")
+      .select("id, number, stage, modalidade_entrega, entrega_confirmada, entrega_comprovada_em")
+      .eq("id", data.pedido_id)
+      .maybeSingle();
+    if (error) throw new Error(`Falha ao carregar pedido: ${error.message}`);
+    if (!p) throw new Error("Pedido não encontrado");
+
+    if (p.stage !== "pos_venda") {
+      return {
+        ok: false as const,
+        message: `A comprovação de entrega só é registrada no Pós-venda — este pedido está em "${stageLabel(p.stage)}".`,
+      };
+    }
+    if (p.entrega_comprovada_em) {
+      return { ok: false as const, message: "A entrega deste pedido já foi comprovada." };
+    }
+
+    // Validação REAL no servidor: a tela não é fonte de verdade dos anexos.
+    const { data: docs, error: docsErr } = await sb
+      .from("documentos")
+      .select("categoria, removido_em")
+      .eq("entidade_tipo", "pedido")
+      .eq("entidade_id", data.pedido_id)
+      .is("removido_em", null);
+    if (docsErr) throw new Error(`Falha ao carregar anexos do pedido: ${docsErr.message}`);
+
+    const completa = comprovacaoCompleta(
+      (docs ?? []) as Array<{ categoria: string; removido_em: string | null }>,
+    );
+    if (!completa.ok) {
+      return {
+        ok: false as const,
+        message: `Faltam anexos para comprovar a entrega: ${completa.faltando.join(" e ")}.`,
+      };
+    }
+
+    const recebidoPor = data.entrega_recebida_por.trim();
+    const observacao = (data.observacao ?? "").trim() || null;
+    const agoraIso = new Date().toISOString();
+
+    const up = await sb
+      .from("pedidos")
+      .update({
+        entrega_comprovada_em: agoraIso,
+        entregue_em: new Date(data.entregue_em).toISOString(),
+        entrega_recebida_por: recebidoPor,
+        entrega_observacao: observacao,
+        entrega_confirmada_por: userId,
+        entrega_confirmada:
+          p.entrega_confirmada ??
+          (p.modalidade_entrega === "entrega_propria" ? "entregue" : "coletado"),
+        pos_venda_status: POS_VENDA_STATUS_ENTREGA_COMPROVADA,
+      })
+      .eq("id", data.pedido_id);
+    await assertNoError(
+      up,
+      "pedidos.confirmarEntregaComprovada/update",
+      { pedido_id: data.pedido_id },
+      "Não foi possível registrar a comprovação de entrega. Tente novamente.",
+    );
+
+    const meuNome = (await resolveNames(sb, [userId])).get(userId) ?? "usuário";
+
+    const hist = await sb.from("pedido_stage_history").insert({
+      pedido_id: data.pedido_id,
+      from_stage: "pos_venda",
+      to_stage: "pos_venda",
+      is_backward: false,
+      motivo: `Entrega comprovada por ${meuNome} — recebida por ${recebidoPor}`,
+      moved_by: userId,
+    });
+    if (hist.error)
+      await registrarFalhaSegura("pedidos.confirmarEntregaComprovada/historico", hist.error, {
+        pedido_id: data.pedido_id,
+      });
+
+    const audit = await sb.from("user_audit_log").insert({
+      ator_user_id: userId,
+      alvo_user_id: userId,
+      campo: "entrega_comprovada",
+      valor_anterior: null,
+      valor_novo: data.pedido_id,
+    });
+    if (audit.error)
+      await registrarFalhaSegura("pedidos.confirmarEntregaComprovada/auditoria", audit.error, {
+        pedido_id: data.pedido_id,
+      });
+
+    return { ok: true as const, pedido_number: p.number as string, entrega_comprovada_em: agoraIso };
+  });
