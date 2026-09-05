@@ -178,6 +178,7 @@ function MinhasConversasPage() {
   const isAdmin = user?.role === "admin";
 
   const [conversas, setConversas] = useState<Conversa[]>([]);
+  const [dadosLead, setDadosLead] = useState<Record<string, DadosLeadConversa>>({});
   const [naoLidas, setNaoLidas] = useState<Record<string, number>>({});
   const [ultimoAutor, setUltimoAutor] = useState<Record<string, Mensagem["autor"]>>({});
   const [busca, setBusca] = useState("");
