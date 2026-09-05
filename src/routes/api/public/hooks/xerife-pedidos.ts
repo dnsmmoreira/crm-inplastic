@@ -544,16 +544,32 @@ async function runXerifePedidos(
   // ────── R6b: Pós-venda sem comprovação de entrega (foto + documento) ──────
   {
     const limite = new Date(now.getTime() - COMPROVACAO_ENTREGA_HORAS * 3600_000).toISOString();
-    // `stage_changed_at` é a entrada na etapa atual (pos_venda) — mesma data
-    // registrada em pedido_stage_history, sem o custo do join.
-    const { data: pedidos } = await sb
-      .from("pedidos")
-      .select("id, number, stage_changed_at, responsavel_atual_id, vendedor_proprietario_id, lead_id")
-      .eq("stage", "pos_venda")
-      .is("entrega_comprovada_em", null)
-      .gte("stage_changed_at", COMPROVACAO_VIGENTE_DESDE)
-      .lt("stage_changed_at", limite)
+    // A entrada em pós-venda vem do histórico de etapas (pedidos não guarda a data).
+    const { data: entradas } = await sb
+      .from("pedido_stage_history")
+      .select("pedido_id, created_at")
+      .eq("to_stage", "pos_venda")
+      .gte("created_at", COMPROVACAO_VIGENTE_DESDE)
+      .lt("created_at", limite)
+      .order("created_at", { ascending: false })
       .limit(500);
+
+    const entradaPorPedido = new Map<string, string>();
+    for (const h of (entradas ?? []) as any[]) {
+      if (!entradaPorPedido.has(h.pedido_id)) entradaPorPedido.set(h.pedido_id, h.created_at);
+    }
+
+    const idsEntrada = [...entradaPorPedido.keys()];
+    const pedidos = idsEntrada.length
+      ? (
+          await sb
+            .from("pedidos")
+            .select("id, number, responsavel_atual_id, vendedor_proprietario_id, lead_id")
+            .eq("stage", "pos_venda")
+            .is("entrega_comprovada_em", null)
+            .in("id", idsEntrada)
+        ).data
+      : [];
 
     let fallbackOperacional: string | null | undefined;
     async function donoOperacional(): Promise<string | null> {
@@ -571,9 +587,11 @@ async function runXerifePedidos(
     }
 
     for (const p of pedidos ?? []) {
-      const owner = p.responsavel_atual_id ?? (await donoOperacional()) ?? p.vendedor_proprietario_id;
+      const owner: string | null =
+        p.responsavel_atual_id ?? (await donoOperacional()) ?? p.vendedor_proprietario_id ?? null;
       if (!owner) continue;
-      const horas = horasDesde(p.stage_changed_at, now) ?? COMPROVACAO_ENTREGA_HORAS;
+      const horas =
+        horasDesde(entradaPorPedido.get(p.id) ?? null, now) ?? COMPROVACAO_ENTREGA_HORAS;
       const ok = await criarTarefa({
         regra: "pedido_sem_comprovacao_entrega",
         pedidoId: p.id,
