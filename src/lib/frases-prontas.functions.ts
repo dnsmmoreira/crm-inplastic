@@ -19,6 +19,8 @@ import {
   MSG_EMPRESA_PROIBIDA,
   citaNomeDeEmpresa,
   converterParaMeta,
+  ehErroTemplateJaExiste,
+  motivoRejeicaoLegivel,
   slugMeta,
   validarParaMeta,
   variaveisInvalidas,
