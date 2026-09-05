@@ -2205,6 +2205,7 @@ export type Database = {
           telegram_vinculo_codigo: string | null
           ultimo_acesso_em: string | null
           updated_at: string
+          xerife_isento: boolean
         }
         Insert: {
           ativo?: boolean
@@ -2225,6 +2226,7 @@ export type Database = {
           telegram_vinculo_codigo?: string | null
           ultimo_acesso_em?: string | null
           updated_at?: string
+          xerife_isento?: boolean
         }
         Update: {
           ativo?: boolean
@@ -2245,6 +2247,7 @@ export type Database = {
           telegram_vinculo_codigo?: string | null
           ultimo_acesso_em?: string | null
           updated_at?: string
+          xerife_isento?: boolean
         }
         Relationships: []
       }
