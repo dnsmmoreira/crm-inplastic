@@ -101,6 +101,7 @@ import {
   formatDateBr,
   intervaloPredominante,
   valoresPorPercentual,
+  type ParcelaCondicao,
 } from "@/lib/condicoes-comerciais";
 import { markDeleted } from "@/lib/delete-intents";
 import { ConferenciaFinalDialog } from "@/components/propostas/ConferenciaFinalDialog";
