@@ -1048,6 +1048,53 @@ function PropostaDetalhe() {
             </AlertDialogContent>
           </AlertDialog>
 
+          {simulacao.termId && (
+
+            <SimulacaoCartaoDialog
+
+              open={simulacao.open}
+
+              onOpenChange={(v) => setSimulacao((prev) => ({ ...prev, open: v }))}
+
+              valorBase={totals?.subtotalAfterDiscount ?? 0}
+
+              taxaPercent={
+
+                paymentTerms.find((t: PaymentTerm) => t.id === simulacao.termId)?.acrescimoPercent ?? 0
+
+              }
+
+              maxParcelas={
+
+                paymentTerms.find((t: PaymentTerm) => t.id === simulacao.termId)?.maxParcelas ?? 12
+
+              }
+
+              compostos={
+
+                paymentTerms.find((t: PaymentTerm) => t.id === simulacao.termId)?.jurosCompostos !== false
+
+              }
+
+              parcelasAtuais={proposal.cartaoParcelas ?? null}
+
+              onEscolher={escolherSimulacao}
+
+              onCancelar={() => {
+
+                const anterior = simulacao.anterior;
+
+                if (anterior && anterior !== proposal.paymentTermId) aplicarCondicao(anterior);
+
+                setSimulacao({ open: false, termId: null, anterior: null });
+
+              }}
+
+            />
+
+          )}
+
+
           <ConferenciaFinalDialog
             open={conferencia.open}
             onOpenChange={(v) => setConferencia((c) => ({ ...c, open: v }))}
@@ -2128,6 +2175,30 @@ function PropostaDetalhe() {
                     ))}
                   </SelectContent>
                 </Select>
+                {cartaoAtivo && (
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <span className="rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+                      Cartão {proposal.cartaoParcelas ?? 1}x · +
+                      {String(+(acrescimoPercentAtual || 0).toFixed(2)).replace(".", ",")}%
+                    </span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-6 px-2 text-[11px]"
+                      disabled={readOnly}
+                      onClick={() =>
+                        setSimulacao({
+                          open: true,
+                          termId: proposal.paymentTermId ?? null,
+                          anterior: proposal.paymentTermId ?? null,
+                        })
+                      }
+                    >
+                      Simular novamente
+                    </Button>
+                  </div>
+                )}
                 <p className="text-[11px] text-muted-foreground mt-1">
                   {isClientePf
                     ? "Cliente Pessoa Física: apenas condições à vista ou cartão (com acréscimo)."
