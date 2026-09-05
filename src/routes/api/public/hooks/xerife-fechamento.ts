@@ -90,8 +90,7 @@ async function runFechamento(force = false): Promise<{
     totalRoladasEquipe += nRoladas;
     totalFeitasEquipe += nFeitas;
 
-    const { data: prof } = await sb.from("profiles").select("name").eq("id", uid).maybeSingle();
-    placarPorVendedor.push({ name: prof?.name ?? "vendedor", feitas: nFeitas, roladas: nRoladas });
+    placarPorVendedor.push({ name: nomeDono, feitas: nFeitas, roladas: nRoladas });
 
     if (nFeitas === 0 && nRoladas === 0) continue;
 
