@@ -134,3 +134,23 @@ describe("validações", () => {
     expect(ordemCategoria("inexistente")).toBe(9);
   });
 });
+
+describe("respostas da Meta", () => {
+  it("reconhece template já existente", () => {
+    expect(ehErroTemplateJaExiste("Já existe conteúdo em Portuguese (BR) para esse modelo")).toBe(
+      true,
+    );
+    expect(ehErroTemplateJaExiste("template already exists")).toBe(true);
+    expect(ehErroTemplateJaExiste("(#100) subcode 2388023")).toBe(true);
+    expect(ehErroTemplateJaExiste("Formato inválido")).toBe(false);
+    expect(ehErroTemplateJaExiste(null)).toBe(false);
+  });
+
+  it("traduz motivos de rejeição", () => {
+    expect(motivoRejeicaoLegivel("INVALID_FORMAT")).toBe("Formato inválido (INVALID_FORMAT)");
+    expect(motivoRejeicaoLegivel("TAG_CONTENT_MISMATCH")).toContain("UTILITY/MARKETING");
+    expect(motivoRejeicaoLegivel("NONE")).toContain("Sem motivo");
+    expect(motivoRejeicaoLegivel("ALGO_NOVO")).toBe("ALGO_NOVO");
+    expect(motivoRejeicaoLegivel(null)).toBeNull();
+  });
+});

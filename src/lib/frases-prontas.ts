@@ -207,3 +207,45 @@ export function variaveisInvalidas(corpo: string): string[] {
   );
   return [...new Set(achadas.filter((v) => !(VARIAVEIS as readonly string[]).includes(v)))];
 }
+
+/* ------------------------------------------------------------------ *
+ * Respostas da Meta
+ * ------------------------------------------------------------------ */
+
+/**
+ * True quando a Meta recusou a criação porque o template JÁ EXISTE na conta.
+ * Acontece quando a 1ª tentativa criou o template mas a resposta não chegou
+ * até nós (timeout): nesse caso adotamos o template existente em vez de
+ * marcar erro.
+ */
+export function ehErroTemplateJaExiste(erro: string | null | undefined): boolean {
+  const t = String(erro ?? "").toLowerCase();
+  if (!t) return false;
+  return (
+    t.includes("já existe") ||
+    t.includes("ja existe") ||
+    t.includes("already exists") ||
+    t.includes("2388023") ||
+    (t.includes("existing") && t.includes("template"))
+  );
+}
+
+/** Tradução dos motivos de rejeição mais comuns da Meta. */
+export const REJEICAO_LABEL: Record<string, string> = {
+  NONE: "Sem motivo informado pela Meta",
+  INVALID_FORMAT: "Formato inválido",
+  ABUSIVE_CONTENT: "Conteúdo considerado abusivo",
+  TAG_CONTENT_MISMATCH: "Conteúdo não condiz com a categoria — tente UTILITY/MARKETING",
+  SCAM: "Conteúdo suspeito de fraude",
+  PROMOTIONAL: "Conteúdo promocional em categoria não promocional",
+  INCORRECT_CATEGORY: "Categoria incorreta — tente UTILITY/MARKETING",
+};
+
+/** Texto legível do motivo de rejeição (null quando não há motivo). */
+export function motivoRejeicaoLegivel(code: string | null | undefined): string | null {
+  const bruto = String(code ?? "").trim();
+  if (!bruto) return null;
+  const chave = bruto.toUpperCase();
+  const label = REJEICAO_LABEL[chave];
+  return label ? `${label} (${chave})` : bruto;
+}
