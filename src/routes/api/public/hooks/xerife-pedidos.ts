@@ -293,15 +293,17 @@ async function runXerifePedidos(
 
     // Grupos resolvidos uma vez por execução (evita N+1 de permissões)
     let financeiro: string[] | null = null;
-    let operacional: string[] | null = null;
     const grupoDe = async (grupo: string, fallbackOwner: string | null): Promise<string[]> => {
       if (grupo === "financeiro") {
         financeiro ??= await destinatariosFinanceiro(sb);
         return financeiro;
       }
       if (grupo === "operacional") {
-        operacional ??= await destinatariosOperacional(sb);
-        return operacional;
+        return await getOperacional();
+      }
+      // Dono isento não é cobrado: a cadência do "vendedor" vai para o operacional.
+      if (grupo === "vendedor" && fallbackOwner && isentos.has(fallbackOwner)) {
+        return await getOperacional();
       }
       return fallbackOwner ? [fallbackOwner] : [];
     };
