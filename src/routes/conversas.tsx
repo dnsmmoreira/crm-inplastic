@@ -23,6 +23,7 @@ import {
   BadgeCheck,
   Sparkles,
   Check,
+  Building2,
 
 } from "lucide-react";
 import {
