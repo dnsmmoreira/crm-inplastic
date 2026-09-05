@@ -695,6 +695,10 @@ export type Proposal = {
   emNegociacao: boolean; // toggle "em negociação" exibido no funil
   emitterId: string; // qual CNPJ do grupo emite esta proposta
   discountPercent: number; // % de desconto aplicado sobre o subtotal (limite gerido pelo ADM)
+  /** % de acréscimo gravado na proposta (cartão parcelado). */
+  acrescimoPercent?: number;
+  /** Nº de parcelas escolhido na simulação do cartão. */
+  cartaoParcelas?: number | null;
   approvalRequestedAt?: string;
   approvalReason?: string;
   approvedByUserId?: string;
@@ -727,6 +731,10 @@ export type PaymentTerm = {
   active: boolean; // ADM toggle — only active terms show in seller dropdown
   permitePf?: boolean; // liberada para cliente Pessoa Física (à vista ou cartão)
   acrescimoPercent?: number; // % de acréscimo aplicado ao subtotal
+  /** Cartão: nº máximo de parcelas oferecido ao cliente. */
+  maxParcelas?: number | null;
+  /** Cartão: acréscimo por parcela adicional é composto (juros sobre juros). */
+  jurosCompostos?: boolean;
   ordem?: number; // posição na lista de prazos (menor primeiro)
 };
 
@@ -1423,6 +1431,8 @@ export const useCrm = create<CrmState>()((set, get) => ({
         "Proposta comercial válida por 10 dias. Preços em reais, impostos inclusos conforme legislação vigente. Prazo de entrega a combinar após aprovação.",
 
       discountPercent: 0,
+      acrescimoPercent: 0,
+      cartaoParcelas: null,
     };
 
     // Persistência direta e síncrona: cria no banco AGORA, com erro visível.
@@ -1712,7 +1722,7 @@ export const useVisibleProposals = () => {
   );
 };
 
-export const proposalTotals = (p: Proposal, surchargePercent = 0) => {
+export const proposalTotals = (p: Proposal, surchargePercent = Number(p?.acrescimoPercent) || 0) => {
   const items = Array.isArray(p?.items) ? p.items : [];
   const transport = p?.transport ?? ({} as Proposal["transport"]);
   const subtotal = items.reduce(
@@ -1733,6 +1743,9 @@ export const proposalTotals = (p: Proposal, surchargePercent = 0) => {
     subtotalAfterDiscount,
     surchargePercent: surchargePct,
     surchargeAmount,
+    // Aliases em português usados nas telas/relatórios.
+    acrescimoPercent: surchargePct,
+    acrescimo: surchargeAmount,
     total,
     qty,
     count: items.length,

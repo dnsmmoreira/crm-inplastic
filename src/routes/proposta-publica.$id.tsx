@@ -166,7 +166,11 @@ function Conteudo({ p }: { p: PropostaPublica }) {
         )}
         {p.totais.acrescimo_valor > 0 && (
           <Linha
-            label={`Acréscimo (${String(p.totais.acrescimo_percent).replace(".", ",")}%)`}
+            label={
+              p.totais.cartao_parcelas
+                ? `Acréscimo cartão de crédito (${p.totais.cartao_parcelas}x)`
+                : `Acréscimo (${String(p.totais.acrescimo_percent).replace(".", ",")}%)`
+            }
             valor={`+ ${brl(p.totais.acrescimo_valor)}`}
           />
         )}
@@ -187,6 +191,11 @@ function Conteudo({ p }: { p: PropostaPublica }) {
         </div>
         {p.condicao?.notes && (
           <div className="text-[11px] text-slate-500">{p.condicao.notes}</div>
+        )}
+        {p.totais.cartao_parcelas && p.parcelas.length > 0 && (
+          <div className="mt-1 text-[12px] font-medium text-slate-900">
+            {p.totais.cartao_parcelas}x de {brl(p.parcelas[0].amount)}
+          </div>
         )}
         {p.parcelas.length > 0 && (
           <table className="mt-2 w-full border-collapse text-[11px]">

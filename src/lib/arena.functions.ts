@@ -788,7 +788,7 @@ export const avaliarMargemProposta = createServerFn({ method: "POST" })
 
     const { data: prop, error } = await supabase
       .from("propostas")
-      .select("id, number, discount_percent, payment_term_id")
+      .select("id, number, discount_percent, acrescimo_percent, payment_term_id")
       .eq("id", data.propostaId)
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -812,6 +812,10 @@ export const avaliarMargemProposta = createServerFn({ method: "POST" })
         .eq("id", prop.payment_term_id)
         .maybeSingle();
       acrescimoPct = Number(cond?.acrescimo_percent ?? 0);
+    }
+    if (Number(prop.acrescimo_percent ?? 0) > 0) {
+      // O acréscimo gravado na proposta (cartão simulado) manda no da condição.
+      acrescimoPct = Number(prop.acrescimo_percent);
     }
 
     const comissoesPct = Number(cfg?.comissao_logiscal_pct ?? 0) + Number(cfg?.comissao_kelly_pct ?? 0);

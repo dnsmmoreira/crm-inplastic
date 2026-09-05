@@ -24,7 +24,7 @@ export async function enviarPropostaEmailImpl(
   const { data: proposta, error: pErr } = await supabase
     .from("propostas")
     .select(
-      "id, number, lead_id, sent_at, validity_days, discount_percent, payment_term_id, emitter_id, transport, tratativa_comercial",
+      "id, number, lead_id, sent_at, validity_days, discount_percent, acrescimo_percent, payment_term_id, emitter_id, transport, tratativa_comercial",
     )
     .eq("id", propostaId)
     .maybeSingle();
@@ -63,7 +63,7 @@ export async function enviarPropostaEmailImpl(
     proposta.payment_term_id
       ? supabase
           .from("condicoes_pagamento")
-          .select("acrescimo_percent")
+          .select("acrescimo_percent, method, max_parcelas")
           .eq("id", proposta.payment_term_id)
           .maybeSingle()
       : Promise.resolve({ data: null }),
@@ -79,9 +79,17 @@ export async function enviarPropostaEmailImpl(
   );
   const descontoPct = Math.max(0, Math.min(100, Number(proposta.discount_percent) || 0));
   const aposDesconto = subtotal - subtotal * (descontoPct / 100);
-  const acrescimoPct = Math.max(
-    0,
-    Math.min(100, Number((condRes.data as { acrescimo_percent?: number } | null)?.acrescimo_percent) || 0),
+  const cond = condRes.data as
+    | { acrescimo_percent?: number | null; method?: string | null; max_parcelas?: number | null }
+    | null;
+  const { acrescimoEfetivo, ehCondicaoCartao } = await import("@/lib/cartao-simulacao");
+  const acrescimoPct = Math.min(
+    100,
+    acrescimoEfetivo(
+      (proposta as { acrescimo_percent?: number | null }).acrescimo_percent,
+      cond?.acrescimo_percent,
+      ehCondicaoCartao({ method: cond?.method ?? null, maxParcelas: cond?.max_parcelas ?? null }),
+    ),
   );
   const transport = (proposta.transport ?? {}) as { freightValue?: number };
   const total = aposDesconto + aposDesconto * (acrescimoPct / 100) + (Number(transport.freightValue) || 0);

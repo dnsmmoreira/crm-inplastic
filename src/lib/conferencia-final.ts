@@ -29,6 +29,10 @@ export type ConferenciaInput = {
   condicao: { label?: string | null; parcelas?: string | null };
   transporte: { freightPayer: string; carrier?: string | null; endereco?: string | null };
   descontoPercent: number;
+  /** % de acréscimo do cartão parcelado (0 quando não houver). */
+  acrescimoPercent?: number;
+  /** Nº de parcelas do cartão, quando a condição for cartão. */
+  cartaoParcelas?: number | null;
   validadeDias: number;
 };
 
@@ -93,6 +97,17 @@ export function buildConferenciaEntries(input: ConferenciaInput): ConferenciaEnt
         input.descontoPercent > 0
           ? `${String(input.descontoPercent).replace(".", ",")}% sobre o subtotal`
           : "Sem desconto",
+    },
+    {
+      id: "geral:acrescimo",
+      grupo: "geral",
+      label: "Acréscimo do cartão",
+      detail:
+        (input.acrescimoPercent ?? 0) > 0
+          ? `${input.cartaoParcelas ? `${input.cartaoParcelas}x · ` : ""}+${String(
+              input.acrescimoPercent,
+            ).replace(".", ",")}% sobre o valor com desconto`
+          : "Sem acréscimo",
     },
     {
       id: "geral:validade",

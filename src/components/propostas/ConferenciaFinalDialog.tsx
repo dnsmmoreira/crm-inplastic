@@ -145,6 +145,9 @@ function ConferenciaConteudo({
 
   const subtotal = input.items.reduce((s, it) => s + it.quantity * it.unitPrice, 0);
   const desconto = subtotal * (input.descontoPercent / 100);
+  const acrescimoPercent = Math.max(0, Number(input.acrescimoPercent) || 0);
+  const acrescimo = +((subtotal - desconto) * (acrescimoPercent / 100)).toFixed(2);
+  const totalConferencia = subtotal - desconto + acrescimo;
 
   const CheckLinha = ({ estado }: { estado: EstadoEntrada }) =>
     estado === "bloqueado" ? (
@@ -300,12 +303,22 @@ function ConferenciaConteudo({
                         <td className="px-3 py-1.5 text-right tabular-nums">- {brl(desconto)}</td>
                       </tr>
                     )}
+                    {acrescimoPercent > 0 && (
+                      <tr>
+                        <td colSpan={5} className="px-3 py-1.5 text-right text-muted-foreground">
+                          Acréscimo cartão
+                          {input.cartaoParcelas ? ` (${input.cartaoParcelas}x)` : ""} +
+                          {String(acrescimoPercent).replace(".", ",")}%
+                        </td>
+                        <td className="px-3 py-1.5 text-right tabular-nums">+ {brl(acrescimo)}</td>
+                      </tr>
+                    )}
                     <tr className="border-t">
                       <td colSpan={5} className="px-3 py-2 text-right font-semibold">
                         Total
                       </td>
                       <td className="px-3 py-2 text-right font-semibold tabular-nums">
-                        {brl(subtotal - desconto)}
+                        {brl(totalConferencia)}
                       </td>
                     </tr>
                   </tfoot>

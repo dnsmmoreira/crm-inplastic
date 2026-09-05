@@ -119,7 +119,7 @@ export const getRelatorioProcesso = createServerFn({ method: "POST" })
     // ── Propostas do período ────────────────────────────────────────────────
     let qProp = sb
       .from("propostas")
-      .select("id, number, lead_id, owner_id, status, sent_at, created_at, discount_percent")
+      .select("id, number, lead_id, owner_id, status, sent_at, created_at, discount_percent, acrescimo_percent")
       .gte("created_at", cutoff)
       .limit(3000);
     if (proprio) qProp = qProp.eq("owner_id", userId);
@@ -134,6 +134,7 @@ export const getRelatorioProcesso = createServerFn({ method: "POST" })
       sent_at: string | null;
       created_at: string;
       discount_percent: number;
+      acrescimo_percent: number | null;
     }>;
 
     // ── Pedidos do período ──────────────────────────────────────────────────
@@ -404,7 +405,9 @@ export const getRelatorioProcesso = createServerFn({ method: "POST" })
           valor: (() => {
             const bruto = valorPorProposta.get(p.id) ?? 0;
             const desc = Math.max(0, Math.min(100, Number(p.discount_percent) || 0));
-            return +(bruto - bruto * (desc / 100)).toFixed(2);
+            const acr = Math.max(0, Math.min(100, Number(p.acrescimo_percent) || 0));
+            const liquido = bruto - bruto * (desc / 100);
+            return +(liquido * (1 + acr / 100)).toFixed(2);
           })(),
         }))
         .sort((a, b) => b.dias - a.dias),

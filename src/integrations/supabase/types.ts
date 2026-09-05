@@ -623,7 +623,9 @@ export type Database = {
           active: boolean
           created_at: string
           id: string
+          juros_compostos: boolean
           label: string
+          max_parcelas: number | null
           method: string
           notes: string | null
           ordem: number
@@ -637,7 +639,9 @@ export type Database = {
           active?: boolean
           created_at?: string
           id: string
+          juros_compostos?: boolean
           label: string
+          max_parcelas?: number | null
           method: string
           notes?: string | null
           ordem?: number
@@ -651,7 +655,9 @@ export type Database = {
           active?: boolean
           created_at?: string
           id?: string
+          juros_compostos?: boolean
           label?: string
+          max_parcelas?: number | null
           method?: string
           notes?: string | null
           ordem?: number
@@ -2342,12 +2348,14 @@ export type Database = {
       }
       propostas: {
         Row: {
+          acrescimo_percent: number
           approval_reason: string | null
           approval_requested_at: string | null
           approved_at: string | null
           approved_by_user_id: string | null
           aprovacao_cliente_detalhe: string | null
           aprovacao_cliente_meio: string | null
+          cartao_parcelas: number | null
           conferencia_confirmada_em: string | null
           conferencia_confirmada_por_user_id: string | null
           created_at: string
@@ -2379,12 +2387,14 @@ export type Database = {
           validity_days: number
         }
         Insert: {
+          acrescimo_percent?: number
           approval_reason?: string | null
           approval_requested_at?: string | null
           approved_at?: string | null
           approved_by_user_id?: string | null
           aprovacao_cliente_detalhe?: string | null
           aprovacao_cliente_meio?: string | null
+          cartao_parcelas?: number | null
           conferencia_confirmada_em?: string | null
           conferencia_confirmada_por_user_id?: string | null
           created_at?: string
@@ -2416,12 +2426,14 @@ export type Database = {
           validity_days?: number
         }
         Update: {
+          acrescimo_percent?: number
           approval_reason?: string | null
           approval_requested_at?: string | null
           approved_at?: string | null
           approved_by_user_id?: string | null
           aprovacao_cliente_detalhe?: string | null
           aprovacao_cliente_meio?: string | null
+          cartao_parcelas?: number | null
           conferencia_confirmada_em?: string | null
           conferencia_confirmada_por_user_id?: string | null
           created_at?: string

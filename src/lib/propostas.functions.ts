@@ -70,6 +70,8 @@ export type PropostaPublica = {
     desconto_valor: number;
     acrescimo_percent: number;
     acrescimo_valor: number;
+    /** Nº de parcelas do cartão, quando houver. */
+    cartao_parcelas: number | null;
     total: number;
     quantidade: number;
     itens: number;
@@ -85,7 +87,7 @@ export const getPropostaPublica = createServerFn({ method: "POST" })
     const { data: p } = await supabaseAdmin
       .from("propostas")
       .select(
-        "id, number, created_at, validity_days, discount_percent, observations, forma_pagamento, payment_term_id, emitter_id, transport, lead_id",
+        "id, number, created_at, validity_days, discount_percent, acrescimo_percent, cartao_parcelas, observations, forma_pagamento, payment_term_id, emitter_id, transport, lead_id",
       )
       .eq("id", data.id)
       .maybeSingle();
@@ -114,7 +116,7 @@ export const getPropostaPublica = createServerFn({ method: "POST" })
       p.payment_term_id
         ? supabaseAdmin
             .from("condicoes_pagamento")
-            .select("label, notes, acrescimo_percent")
+            .select("label, notes, acrescimo_percent, method, max_parcelas")
             .eq("id", p.payment_term_id)
             .maybeSingle()
         : Promise.resolve({ data: null }),
@@ -156,7 +158,13 @@ export const getPropostaPublica = createServerFn({ method: "POST" })
       nomeCliente = cli?.razao_social ?? cli?.nome_fantasia ?? nomeCliente;
     }
 
-    const cond = condRes.data as { label?: string | null; notes?: string | null; acrescimo_percent?: number | null } | null;
+    const cond = condRes.data as {
+      label?: string | null;
+      notes?: string | null;
+      acrescimo_percent?: number | null;
+      method?: string | null;
+      max_parcelas?: number | null;
+    } | null;
     const transport = (p.transport ?? {}) as {
       freightValue?: number;
       freightPayer?: string | null;
@@ -167,7 +175,15 @@ export const getPropostaPublica = createServerFn({ method: "POST" })
     const descontoPct = Math.max(0, Math.min(100, Number(p.discount_percent) || 0));
     const descontoValor = +(subtotal * (descontoPct / 100)).toFixed(2);
     const aposDesconto = +(subtotal - descontoValor).toFixed(2);
-    const acrescimoPct = Math.max(0, Math.min(100, Number(cond?.acrescimo_percent) || 0));
+    const { acrescimoEfetivo, ehCondicaoCartao } = await import("@/lib/cartao-simulacao");
+    const ehCartao = ehCondicaoCartao({
+      method: cond?.method ?? null,
+      maxParcelas: cond?.max_parcelas ?? null,
+    });
+    const acrescimoPct = Math.min(
+      100,
+      acrescimoEfetivo(p.acrescimo_percent, cond?.acrescimo_percent, ehCartao),
+    );
     const acrescimoValor = +(aposDesconto * (acrescimoPct / 100)).toFixed(2);
     const frete = Number(transport.freightValue) || 0;
 
@@ -194,6 +210,7 @@ export const getPropostaPublica = createServerFn({ method: "POST" })
         desconto_valor: descontoValor,
         acrescimo_percent: acrescimoPct,
         acrescimo_valor: acrescimoValor,
+        cartao_parcelas: ehCartao ? (p.cartao_parcelas ?? null) : null,
         total: aposDesconto + acrescimoValor + frete,
         quantidade: itens.reduce((s, i) => s + i.quantity, 0),
         itens: itens.length,
