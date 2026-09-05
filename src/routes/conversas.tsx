@@ -528,6 +528,12 @@ function MinhasConversasPage() {
                           {horaCurta(c.last_message_at)}
                         </span>
                       </span>
+                      {empresa && (
+                        <span className="mt-0.5 flex items-center gap-1 truncate text-[11px] text-muted-foreground">
+                          <Building2 className="h-3 w-3 shrink-0" />
+                          <span className="truncate">{empresa}</span>
+                        </span>
+                      )}
                       <span className="mt-0.5 flex items-center justify-between gap-2">
                         <span className="truncate text-xs text-muted-foreground">
                           {limparOrigemAnuncio(c.last_message_preview ?? "").trim() ||
