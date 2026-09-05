@@ -47,10 +47,17 @@ describe("converterParaMeta", () => {
     expect(r.exemplos).toEqual(["Carlos", "Empresa Exemplo"]);
   });
 
-  it("não conserta automaticamente início/fim com variável", () => {
-    expect(converterParaMeta("{{nome}}, me diga a quantidade.").texto).toBe(
-      "{{1}}, me diga a quantidade.",
+  it("prefixa 'Olá ' quando começa com variável", () => {
+    expect(converterParaMeta("{{nome}}, uma informação importante.").texto).toBe(
+      "Olá {{1}}, uma informação importante.",
     );
+  });
+
+  it("não mexe quando já começa com palavra", () => {
+    expect(converterParaMeta("Oi {{nome}}, tudo bem?").texto).toBe("Oi {{1}}, tudo bem?");
+  });
+
+  it("não conserta automaticamente o fim com variável", () => {
     expect(converterParaMeta("Falo com a {{empresa}}").texto).toBe("Falo com a {{1}}");
   });
 
@@ -71,14 +78,15 @@ describe("validarParaMeta", () => {
     expect(validarParaMeta("Podemos seguir com a proposta para a {{empresa}}.")).toHaveLength(1);
   });
 
-  it("recusa variável no início", () => {
-    expect(validarParaMeta("{{nome}}, tudo bem?")).toHaveLength(1);
+  it("aceita variável no início (prefixo automático resolve)", () => {
+    expect(validarParaMeta("{{nome}}, tudo bem?")).toEqual([]);
   });
 
   it("aceita quando termina em palavra", () => {
     expect(validarParaMeta("Olá, falo com a {{empresa}} agora?")).toEqual([]);
   });
 });
+
 
 describe("slugMeta", () => {
   it("remove acentos, hífens e pontuação", () => {
