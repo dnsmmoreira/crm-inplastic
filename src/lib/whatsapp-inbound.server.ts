@@ -157,6 +157,7 @@ export async function processarEntradaWhatsapp(
       tipo,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       midia: (midia ?? null) as any,
+      ...(criadoEm ? { created_at: criadoEm } : {}),
     });
     if (msgErr) {
       // 23505 = violação de unicidade no índice parcial → reentrega, não erro.
@@ -167,6 +168,11 @@ export async function processarEntradaWhatsapp(
       console.error("whatsapp_mensagens insert failed:", msgErr);
     }
   }
+
+  // Modo silencioso: reações e reprocessamento histórico só entram no
+  // histórico — nada de IA, handoff, notificação ou alerta.
+  if (silencioso) return { ok: true, conversaId, tipo, silencioso: true };
+
 
   // 5-espera) Retomada automática: mensagem do cliente encerra a espera.
   // REGISTRAR E SEGUIR: a mensagem já foi gravada; sair da espera é estado
