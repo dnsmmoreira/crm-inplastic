@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -16,23 +16,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { supabase } from "@/integrations/supabase/client";
 import {
   CATEGORIAS_DOCUMENTO,
   categoriaLabel,
-  caminhoStorage,
   ehDocumentoVencido,
   formatarTamanho,
   validarCategoria,
   type EntidadeDocumento,
 } from "@/lib/documentos";
+import { CATEGORIAS_COMPROVACAO } from "@/lib/entrega-comprovacao";
 import {
-  BUCKET_DOCUMENTOS,
   listarDocumentos,
-  registrarDocumento,
   obterUrlDownload,
   arquivarDocumento,
 } from "@/lib/documentos.functions";
+import { chaveDocumentos, useUploadDocumento } from "@/components/documentos/useUploadDocumento";
 
 type Props = {
   entidadeTipo: EntidadeDocumento;
@@ -40,22 +38,30 @@ type Props = {
   readOnly?: boolean;
 };
 
-const MAX_BYTES = 25 * 1024 * 1024;
-
 export function DocumentosSection({ entidadeTipo, entidadeId, readOnly }: Props) {
   const qc = useQueryClient();
   const listFn = useServerFn(listarDocumentos);
-  const registrarFn = useServerFn(registrarDocumento);
   const downloadFn = useServerFn(obterUrlDownload);
   const arquivarFn = useServerFn(arquivarDocumento);
+  const { enviando, enviar } = useUploadDocumento(entidadeTipo, entidadeId);
 
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [categoria, setCategoria] = useState<string>("contrato_social");
   const [categoriaOutro, setCategoriaOutro] = useState("");
-  const [enviando, setEnviando] = useState(false);
   const [baixandoId, setBaixandoId] = useState<string | null>(null);
 
-  const key = ["documentos", entidadeTipo, entidadeId];
+  // Categorias de comprovação de entrega só fazem sentido em pedido.
+  const categorias = useMemo(
+    () =>
+      CATEGORIAS_DOCUMENTO.filter(
+        (c) =>
+          entidadeTipo === "pedido" ||
+          !(CATEGORIAS_COMPROVACAO as readonly string[]).includes(c.value),
+      ),
+    [entidadeTipo],
+  );
+
+  const key = chaveDocumentos(entidadeTipo, entidadeId);
   const q = useQuery({
     queryKey: key,
     queryFn: () => listFn({ data: { entidadeTipo, entidadeId } }),
@@ -70,41 +76,14 @@ export function DocumentosSection({ entidadeTipo, entidadeId, readOnly }: Props)
       toast.error(erro);
       return;
     }
-    if (file.size > MAX_BYTES) {
-      toast.error("Arquivo muito grande", { description: "Limite de 25 MB por arquivo." });
-      return;
-    }
-    setEnviando(true);
     try {
-      const uid =
-        typeof crypto !== "undefined" && "randomUUID" in crypto
-          ? crypto.randomUUID()
-          : `${Date.now()}${Math.random().toString(36).slice(2, 8)}`;
-      const path = caminhoStorage(entidadeTipo, entidadeId, file.name, uid);
-      const { error: upErr } = await supabase.storage
-        .from(BUCKET_DOCUMENTOS)
-        .upload(path, file, { contentType: file.type || "application/octet-stream", upsert: false });
-      if (upErr) throw new Error(upErr.message);
-
-      await registrarFn({
-        data: {
-          entidadeTipo,
-          entidadeId,
-          categoria,
-          categoriaOutro: categoria === "outro" ? categoriaOutro.trim() : null,
-          nomeArquivo: file.name,
-          storagePath: path,
-          tamanhoBytes: file.size,
-          contentType: file.type || null,
-        },
-      });
+      await enviar(file, categoria, categoriaOutro);
       toast.success("Documento anexado");
       setCategoriaOutro("");
       await refetch();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Falha ao enviar documento");
     } finally {
-      setEnviando(false);
       if (inputRef.current) inputRef.current.value = "";
     }
   };
@@ -146,7 +125,7 @@ export function DocumentosSection({ entidadeTipo, entidadeId, readOnly }: Props)
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {CATEGORIAS_DOCUMENTO.map((c) => (
+                {categorias.map((c) => (
                   <SelectItem key={c.value} value={c.value}>
                     {c.label}
                   </SelectItem>

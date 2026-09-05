@@ -73,6 +73,8 @@ export type PedidoRow = {
   proposta_number: string | null;
   modalidade_entrega: string | null;
   entrega_confirmada: string | null;
+  /** Fonte da verdade da comprovação com anexos (foto + documento). */
+  entrega_comprovada_em: string | null;
   encerrado_em: string | null;
   aprovacao_rota: string | null;
   reprovacao_motivo: string | null;
@@ -119,7 +121,7 @@ export const listPedidos = createServerFn({ method: "GET" })
           "equipe_responsavel, responsavel_atual_id, fiscal_status, nf_numero",
           "forma_atendimento, prioridade, ocorrencia",
           "vendedor_proprietario_id, proposta_id, lead_id",
-          "modalidade_entrega, entrega_confirmada, encerrado_em, aprovacao_rota, reprovacao_motivo",
+          "modalidade_entrega, entrega_confirmada, entrega_comprovada_em, encerrado_em, aprovacao_rota, reprovacao_motivo",
           "propostas:proposta_id(number)",
         ].join(", "),
       )
@@ -234,6 +236,7 @@ export const listPedidos = createServerFn({ method: "GET" })
 
         modalidade_entrega: string | null;
         entrega_confirmada: string | null;
+        entrega_comprovada_em: string | null;
         encerrado_em: string | null;
         aprovacao_rota: string | null;
         reprovacao_motivo: string | null;
@@ -266,6 +269,7 @@ export const listPedidos = createServerFn({ method: "GET" })
         proposta_number: r.propostas?.number ?? null,
         modalidade_entrega: r.modalidade_entrega ?? "coleta",
         entrega_confirmada: r.entrega_confirmada,
+        entrega_comprovada_em: r.entrega_comprovada_em ?? null,
         encerrado_em: r.encerrado_em,
         aprovacao_rota: r.aprovacao_rota,
         reprovacao_motivo: r.reprovacao_motivo,
@@ -747,6 +751,14 @@ export type PedidoDetalhes = {
   responsavel_atual_nome: string | null;
   /** Admin ou permissão `pedidos.operar_producao` — calculado no servidor. */
   pode_operar: boolean;
+  /* Comprovação de entrega (pós-venda) */
+  entrega_comprovada_em: string | null;
+  entregue_em: string | null;
+  entrega_recebida_por: string | null;
+  entrega_observacao: string | null;
+  entrega_confirmada_por_nome: string | null;
+  /** Admin, `pedidos.operar_producao` ou `pedidos.movimentar`. */
+  pode_comprovar_entrega: boolean;
   fiscal_status: string | null;
   nf_numero: string | null;
   nf_serie: string | null;
@@ -797,7 +809,9 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
       .select(
         `id, number, stage, total, fiscal_status, nf_numero, lead_id, proposta_id,
          vendedor_proprietario_id, owner_id, proposta_snapshot,
-         responsavel_atual_id, equipe_responsavel, ${APPROVAL_FIELDS}`,
+         responsavel_atual_id, equipe_responsavel,
+         entrega_comprovada_em, entregue_em, entrega_recebida_por,
+         entrega_observacao, entrega_confirmada_por, ${APPROVAL_FIELDS}`,
       )
       .eq("id", data.pedido_id)
       .maybeSingle();
@@ -903,6 +917,7 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
       p.aprovacao_decidida_por,
       p.vendedor_proprietario_id ?? p.owner_id,
       p.responsavel_atual_id,
+      p.entrega_confirmada_por,
       ...oc.map((o) => o.criada_por),
       ...oc.map((o) => o.resolvida_por),
     ]);
@@ -922,6 +937,8 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
       (await temPermissao(sb, context.userId, "pedidos.aprovar_financeiro"));
 
     const podeOperar = await podeOperarProducao(sb, context.userId);
+    const podeComprovarEntrega =
+      podeOperar || (await temPermissao(sb, context.userId, PERM_PEDIDOS_MOVIMENTAR));
 
     const detalhe: PedidoDetalhes = {
       id: p.id,
@@ -980,6 +997,14 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
         ? (nameById.get(p.responsavel_atual_id) ?? p.equipe_responsavel ?? null)
         : null,
       pode_operar: podeOperar,
+      entrega_comprovada_em: p.entrega_comprovada_em ?? null,
+      entregue_em: p.entregue_em ?? null,
+      entrega_recebida_por: p.entrega_recebida_por ?? null,
+      entrega_observacao: p.entrega_observacao ?? null,
+      entrega_confirmada_por_nome: p.entrega_confirmada_por
+        ? (nameById.get(p.entrega_confirmada_por) ?? null)
+        : null,
+      pode_comprovar_entrega: podeComprovarEntrega,
       fiscal_status: p.fiscal_status,
       nf_numero: p.nf_numero,
       nf_serie: p.nf_serie,
@@ -1835,4 +1860,159 @@ export const liberarPedidoOperacional = createServerFn({ method: "POST" })
       "Não foi possível liberar o pedido. Tente novamente.",
     );
     return { ok: true as const };
+  });
+
+/* ---------------------------------------------------------------------------
+ * Comprovação de entrega (pós-venda).
+ *
+ * Não existia função `confirmarEntrega` para reaproveitar: o registro de
+ * entrega era um efeito automático de `aoEntrarNaEtapa` em
+ * pedidos-fluxo.server.ts, que grava `entrega_confirmada` ('entregue' |
+ * 'coletado') sem nenhuma prova. Por isso a comprovação tem coluna própria
+ * (`entrega_comprovada_em`) — a antiga NÃO é sinal de entrega comprovada.
+ * -------------------------------------------------------------------------*/
+
+export const confirmarEntregaComprovada = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (input: {
+      pedido_id: string;
+      entregue_em: string;
+      entrega_recebida_por: string;
+      observacao?: string | null;
+    }) =>
+      z
+        .object({
+          pedido_id: z.string().uuid(),
+          entregue_em: z.string().min(1),
+          entrega_recebida_por: z.string(),
+          observacao: z.string().max(2000).nullish(),
+        })
+        .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const sb: LooseClient = context.supabase;
+    const userId = context.userId;
+
+    const {
+      comprovacaoCompleta,
+      dataEntregaValida,
+      recebidoPorValido,
+      POS_VENDA_STATUS_ENTREGA_COMPROVADA,
+    } = await import("@/lib/entrega-comprovacao");
+
+    // Gate fail-closed: operação, movimentação de pedidos ou admin.
+    const autorizado =
+      (await podeOperarProducao(sb, userId)) ||
+      (await temPermissao(sb, userId, PERM_PEDIDOS_MOVIMENTAR));
+    if (!autorizado) {
+      return {
+        ok: false as const,
+        message: "Você não tem permissão para confirmar a entrega deste pedido.",
+      };
+    }
+
+    if (!recebidoPorValido(data.entrega_recebida_por)) {
+      return {
+        ok: false as const,
+        message: "Informe quem recebeu a entrega (mínimo de 3 caracteres).",
+      };
+    }
+    if (!dataEntregaValida(data.entregue_em)) {
+      return {
+        ok: false as const,
+        message: "Informe uma data de entrega válida — ela não pode estar no futuro.",
+      };
+    }
+
+    const { data: p, error } = await sb
+      .from("pedidos")
+      .select("id, number, stage, modalidade_entrega, entrega_confirmada, entrega_comprovada_em")
+      .eq("id", data.pedido_id)
+      .maybeSingle();
+    if (error) throw new Error(`Falha ao carregar pedido: ${error.message}`);
+    if (!p) throw new Error("Pedido não encontrado");
+
+    if (p.stage !== "pos_venda") {
+      return {
+        ok: false as const,
+        message: `A comprovação de entrega só é registrada no Pós-venda — este pedido está em "${stageLabel(p.stage)}".`,
+      };
+    }
+    if (p.entrega_comprovada_em) {
+      return { ok: false as const, message: "A entrega deste pedido já foi comprovada." };
+    }
+
+    // Validação REAL no servidor: a tela não é fonte de verdade dos anexos.
+    const { data: docs, error: docsErr } = await sb
+      .from("documentos")
+      .select("categoria, removido_em")
+      .eq("entidade_tipo", "pedido")
+      .eq("entidade_id", data.pedido_id)
+      .is("removido_em", null);
+    if (docsErr) throw new Error(`Falha ao carregar anexos do pedido: ${docsErr.message}`);
+
+    const completa = comprovacaoCompleta(
+      (docs ?? []) as Array<{ categoria: string; removido_em: string | null }>,
+    );
+    if (!completa.ok) {
+      return {
+        ok: false as const,
+        message: `Faltam anexos para comprovar a entrega: ${completa.faltando.join(" e ")}.`,
+      };
+    }
+
+    const recebidoPor = data.entrega_recebida_por.trim();
+    const observacao = (data.observacao ?? "").trim() || null;
+    const agoraIso = new Date().toISOString();
+
+    const up = await sb
+      .from("pedidos")
+      .update({
+        entrega_comprovada_em: agoraIso,
+        entregue_em: new Date(data.entregue_em).toISOString(),
+        entrega_recebida_por: recebidoPor,
+        entrega_observacao: observacao,
+        entrega_confirmada_por: userId,
+        entrega_confirmada:
+          p.entrega_confirmada ??
+          (p.modalidade_entrega === "entrega_propria" ? "entregue" : "coletado"),
+        pos_venda_status: POS_VENDA_STATUS_ENTREGA_COMPROVADA,
+      })
+      .eq("id", data.pedido_id);
+    await assertNoError(
+      up,
+      "pedidos.confirmarEntregaComprovada/update",
+      { pedido_id: data.pedido_id },
+      "Não foi possível registrar a comprovação de entrega. Tente novamente.",
+    );
+
+    const meuNome = (await resolveNames(sb, [userId])).get(userId) ?? "usuário";
+
+    const hist = await sb.from("pedido_stage_history").insert({
+      pedido_id: data.pedido_id,
+      from_stage: "pos_venda",
+      to_stage: "pos_venda",
+      is_backward: false,
+      motivo: `Entrega comprovada por ${meuNome} — recebida por ${recebidoPor}`,
+      moved_by: userId,
+    });
+    if (hist.error)
+      await registrarFalhaSegura("pedidos.confirmarEntregaComprovada/historico", hist.error, {
+        pedido_id: data.pedido_id,
+      });
+
+    const audit = await sb.from("user_audit_log").insert({
+      ator_user_id: userId,
+      alvo_user_id: userId,
+      campo: "entrega_comprovada",
+      valor_anterior: null,
+      valor_novo: data.pedido_id,
+    });
+    if (audit.error)
+      await registrarFalhaSegura("pedidos.confirmarEntregaComprovada/auditoria", audit.error, {
+        pedido_id: data.pedido_id,
+      });
+
+    return { ok: true as const, pedido_number: p.number as string, entrega_comprovada_em: agoraIso };
   });

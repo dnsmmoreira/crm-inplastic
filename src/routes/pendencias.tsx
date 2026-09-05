@@ -89,6 +89,7 @@ function PendenciasPage() {
   const [qProdutos, setQProdutos] = useState("");
   const [qClientes, setQClientes] = useState("");
   const [qPropostas, setQPropostas] = useState("");
+  const [qEntregas, setQEntregas] = useState("");
 
   const refs = useRef<Record<string, HTMLDivElement | null>>({});
   const rolar = (id: string) =>
@@ -133,11 +134,20 @@ function PendenciasPage() {
     [data, qPropostas, soMeus, meuNome],
   );
 
+  const entregas = useMemo(
+    () =>
+      (data?.entregas.itens ?? []).filter(
+        (p) => busca(`${p.number} ${p.cliente ?? ""} ${p.responsavel ?? ""}`, qEntregas),
+      ),
+    [data, qEntregas],
+  );
+
   const cards = [
     { id: "sec-leads", label: "Leads sem CNPJ/cliente", valor: data?.resumo.leads ?? 0 },
     { id: "sec-produtos", label: "Produtos sem peso/dimensões", valor: data?.resumo.produtos ?? 0 },
     { id: "sec-clientes", label: "Clientes sem e-mail de NF", valor: data?.resumo.clientes ?? 0 },
     { id: "sec-propostas", label: "Rascunhos parados", valor: data?.resumo.propostas ?? 0 },
+    { id: "sec-entregas", label: "Entregas sem comprovação", valor: data?.resumo.entregas ?? 0 },
   ];
 
   const setRef = (id: string) => (el: HTMLDivElement | null) => {
@@ -350,6 +360,47 @@ function PendenciasPage() {
                   <Link to="/propostas/$id" params={{ id: p.id }}>
                     <Button size="sm" variant="ghost" className="gap-1">
                       Corrigir <ExternalLink className="h-3.5 w-3.5" />
+                    </Button>
+                  </Link>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Secao>
+
+      <Secao
+        id="sec-entregas"
+        innerRef={setRef("sec-entregas")}
+        titulo={`Pedidos em pós-venda sem comprovação de entrega (${entregas.length})`}
+        vazio={entregas.length === 0}
+      >
+        <BuscaInput
+          value={qEntregas}
+          onChange={setQEntregas}
+          placeholder="Buscar pedido, cliente ou responsável..."
+        />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Pedido</TableHead>
+              <TableHead>Cliente</TableHead>
+              <TableHead>Responsável</TableHead>
+              <TableHead className="text-right">Dias em pós-venda</TableHead>
+              <TableHead />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {entregas.map((p) => (
+              <TableRow key={p.id}>
+                <TableCell className="font-mono text-xs">{p.number}</TableCell>
+                <TableCell className="font-medium">{displayValue(p.cliente)}</TableCell>
+                <TableCell>{displayValue(p.responsavel)}</TableCell>
+                <TableCell className="text-right">{p.dias_em_pos_venda}</TableCell>
+                <TableCell className="text-right">
+                  <Link to="/pedidos" search={{ pedido: p.id }}>
+                    <Button size="sm" variant="ghost" className="gap-1">
+                      Abrir pedido <ExternalLink className="h-3.5 w-3.5" />
                     </Button>
                   </Link>
                 </TableCell>

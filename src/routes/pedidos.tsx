@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -74,6 +74,9 @@ import { PedidoDetailDrawer } from "@/components/pedidos/PedidoDetailDrawer";
 
 export const Route = createFileRoute("/pedidos")({
   component: PedidosKanbanPage,
+  // Deep-link vindo de /pendencias: abre o pedido direto no drawer.
+  validateSearch: (search: Record<string, unknown>): { pedido?: string } =>
+    typeof search["pedido"] === "string" ? { pedido: search["pedido"] as string } : {},
   head: () => ({
     meta: [
       { title: "Funil Operacional — INPLASTIC - CRM" },
@@ -101,7 +104,11 @@ function PedidosKanbanPage() {
   const [search, setSearch] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [pendingBackward, setPendingBackward] = useState<PendingBackward | null>(null);
-  const [openPedidoId, setOpenPedidoId] = useState<string | null>(null);
+  const { pedido: pedidoDaUrl } = Route.useSearch();
+  const [openPedidoId, setOpenPedidoId] = useState<string | null>(pedidoDaUrl ?? null);
+  useEffect(() => {
+    if (pedidoDaUrl) setOpenPedidoId(pedidoDaUrl);
+  }, [pedidoDaUrl]);
   const [fVendedor, setFVendedor] = useState<string>("all");
   const [fResponsavel, setFResponsavel] = useState<string>("all");
   const [fStage, setFStage] = useState<string>("all");
@@ -135,7 +142,7 @@ function PedidosKanbanPage() {
       if (ctx?.prev) qc.setQueryData(["pedidos", "kanban"], ctx.prev);
       toast.error("Falha ao mover pedido");
     },
-    onSuccess: (res) => {
+    onSuccess: (res, vars) => {
       if (res && "ok" in res && !res.ok) {
         toast.error(res.message);
         void qc.invalidateQueries({ queryKey: ["pedidos", "kanban"] });
@@ -143,6 +150,8 @@ function PedidosKanbanPage() {
       }
       void qc.invalidateQueries({ queryKey: ["pedidos", "kanban"] });
       void qc.invalidateQueries({ queryKey: ["pipeline", "leads-com-pedido"] });
+      // Entrou no Pós-venda: abre o pedido para comprovar a entrega na hora.
+      if (vars.stage === "pos_venda") setOpenPedidoId(vars.pedido_id);
     },
   });
 
@@ -672,6 +681,16 @@ function PedidoCard({
             <AlertTriangle className="h-2.5 w-2.5 mr-1" /> Atrasado
           </Badge>
         )}
+        {pedido.stage === "pos_venda" &&
+          (pedido.entrega_comprovada_em ? (
+            <Badge className="text-[10px] px-1.5 py-0 bg-emerald-500/15 text-emerald-700 border-emerald-500/30">
+              Entrega comprovada
+            </Badge>
+          ) : (
+            <Badge className="text-[10px] px-1.5 py-0 bg-amber-500/15 text-amber-700 border-amber-500/30">
+              Sem comprovante
+            </Badge>
+          ))}
         {pendencias.map((p) => (
           <Badge
             key={p}

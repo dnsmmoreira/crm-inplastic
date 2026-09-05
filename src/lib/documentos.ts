@@ -8,6 +8,9 @@ export const CATEGORIAS_DOCUMENTO = [
   { value: "balanco", label: "Balanço" },
   { value: "cartao_cnpj", label: "Cartão CNPJ" },
   { value: "margem_compra", label: "Margem de Compra" },
+  { value: "foto_entrega", label: "Foto da entrega" },
+  { value: "canhoto_nf", label: "Canhoto da NF assinado" },
+  { value: "comprovante_entrega", label: "Comprovante / recibo" },
   { value: "outro", label: "Outro" },
 ] as const;
 

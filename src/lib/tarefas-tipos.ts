@@ -32,6 +32,7 @@ export const TAREFA_TIPOS = [
   "nf_atrasada",
   "previsao_atrasada",
   "ocorrencia_aberta",
+  "comprovacao_entrega",
   // Cadência por etapa do pedido (src/lib/pedidos-cadencia.ts)
   "cadencia_analise_financeira",
   "cadencia_aguardando_pagamento",
@@ -68,6 +69,7 @@ export const TAREFA_TIPO_LABEL: Record<TarefaTipo, string> = {
   nf_atrasada: "NF atrasada",
   previsao_atrasada: "Entrega atrasada",
   ocorrencia_aberta: "Ocorrência aberta",
+  comprovacao_entrega: "Comprovar entrega",
   cadencia_analise_financeira: "Cadência: análise financeira",
   cadencia_aguardando_pagamento: "Cadência: aguardando pagamento",
   cadencia_liberado: "Cadência: liberado",

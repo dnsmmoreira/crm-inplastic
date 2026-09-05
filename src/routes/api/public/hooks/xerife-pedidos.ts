@@ -62,6 +62,15 @@ const APROVACAO_SLA_HORAS = 24;
 const NF_ATRASO_DIAS = 2;
 const OCORRENCIA_SLA_HORAS = 24;
 const POS_VENDA_ENTREGA_DIAS = 3;
+/** Horas em pós-venda sem comprovação de entrega antes de cobrar. */
+const COMPROVACAO_ENTREGA_HORAS = 48;
+/** Dedupe da cobrança de comprovação: no máximo 1 a cada 3 dias por pedido. */
+const COMPROVACAO_DEDUPE_HORAS = 72;
+/**
+ * A exigência de comprovação vale só para quem ENTROU em pós-venda depois da
+ * migration — senão os ~50 pedidos antigos gerariam tarefa de uma vez.
+ */
+const COMPROVACAO_VIGENTE_DESDE = "2026-09-05T00:00:00.000Z";
 const POS_VENDA_RECOMPRA_DIAS = 30;
 
 // Janela de dedupe em xerife_log (horas) para não recriar a mesma tarefa
@@ -136,6 +145,7 @@ type Stats = {
   ocorrencia_aberta: number;
   pos_venda_entrega: number;
   pos_venda_recompra: number;
+  comprovacao_entrega: number;
   financeiro_escalado: number;
   skipped_dedupe: number;
 };
@@ -157,6 +167,7 @@ async function runXerifePedidos(
     ocorrencia_aberta: 0,
     pos_venda_entrega: 0,
     pos_venda_recompra: 0,
+    comprovacao_entrega: 0,
     financeiro_escalado: 0,
     skipped_dedupe: 0,
   };
@@ -527,6 +538,82 @@ async function runXerifePedidos(
         janelaHoras: 24 * 30,
       });
       if (ok) stats.pos_venda_entrega++;
+    }
+  }
+
+  // ────── R6b: Pós-venda sem comprovação de entrega (foto + documento) ──────
+  {
+    const limite = new Date(now.getTime() - COMPROVACAO_ENTREGA_HORAS * 3600_000).toISOString();
+    // A entrada em pós-venda vem do histórico de etapas (pedidos não guarda a data).
+    const { data: entradas } = await sb
+      .from("pedido_stage_history")
+      .select("pedido_id, created_at")
+      .eq("to_stage", "pos_venda")
+      .gte("created_at", COMPROVACAO_VIGENTE_DESDE)
+      .lt("created_at", limite)
+      .order("created_at", { ascending: false })
+      .limit(500);
+
+    const entradaPorPedido = new Map<string, string>();
+    for (const h of (entradas ?? []) as any[]) {
+      if (!entradaPorPedido.has(h.pedido_id)) entradaPorPedido.set(h.pedido_id, h.created_at);
+    }
+
+    const idsEntrada = [...entradaPorPedido.keys()];
+    const pedidos = idsEntrada.length
+      ? (
+          await sb
+            .from("pedidos")
+            .select("id, number, responsavel_atual_id, vendedor_proprietario_id, lead_id")
+            .eq("stage", "pos_venda")
+            .is("entrega_comprovada_em", null)
+            .in("id", idsEntrada)
+        ).data
+      : [];
+
+    let fallbackOperacional: string | null | undefined;
+    async function donoOperacional(): Promise<string | null> {
+      if (fallbackOperacional !== undefined) return fallbackOperacional;
+      const { data: perfis } = await sb
+        .from("perfil_permissoes")
+        .select("perfil_id")
+        .eq("permissao_chave", "pedidos.operar_producao")
+        .limit(50);
+      const perfilIds = (perfis ?? []).map((r: any) => r.perfil_id as string);
+      if (perfilIds.length === 0) {
+        fallbackOperacional = null;
+        return null;
+      }
+      const { data: usuarios } = await sb
+        .from("user_perfis")
+        .select("user_id")
+        .in("perfil_id", perfilIds)
+        .limit(1);
+      fallbackOperacional = ((usuarios ?? [])[0] as any)?.user_id ?? null;
+      return fallbackOperacional ?? null;
+    }
+
+    for (const p of pedidos ?? []) {
+      const owner: string | null =
+        p.responsavel_atual_id ?? (await donoOperacional()) ?? p.vendedor_proprietario_id ?? null;
+      if (!owner) continue;
+      const horas =
+        horasDesde(entradaPorPedido.get(p.id) ?? null, now) ?? COMPROVACAO_ENTREGA_HORAS;
+      const ok = await criarTarefa({
+        regra: "pedido_sem_comprovacao_entrega",
+        pedidoId: p.id,
+        pedidoNumber: p.number,
+        leadId: p.lead_id ?? null,
+        ownerId: owner,
+        tipo: "comprovacao_entrega",
+        titulo: `Comprovar entrega — Pedido ${p.number}`,
+        descricao:
+          "Anexe a foto da entrega e o canhoto da NF (ou comprovante) e confirme a entrega no pedido.",
+        motivo: `Em pós-venda há ${horas}h sem comprovação`,
+        prioridade: 2,
+        janelaHoras: COMPROVACAO_DEDUPE_HORAS,
+      });
+      if (ok) stats.comprovacao_entrega++;
     }
   }
 
