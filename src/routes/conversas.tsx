@@ -470,7 +470,14 @@ function MinhasConversasPage() {
           </div>
           <ul className="min-h-0 flex-1 divide-y overflow-auto">
             {filtradas.map((c) => {
-              const nome = c.name?.trim() || c.phone;
+              const info = dadosLead[c.id];
+              const rotulo = rotuloContato({
+                contato: c.name ?? info?.contato ?? null,
+                empresa: info?.empresa ?? null,
+                telefone: c.phone,
+              });
+              const nome = rotulo.principal || c.phone;
+              const empresa = rotulo.secundario;
               const active = c.id === selectedId;
               const badge = naoLidas[c.id] ?? 0;
               const aguardando = aguardandoIds.has(c.id);
