@@ -43,13 +43,29 @@ export type PendenciaProposta = {
   total: number;
 };
 
+export type PendenciaEntrega = {
+  id: string;
+  number: string;
+  cliente: string | null;
+  responsavel: string | null;
+  dias_em_pos_venda: number;
+};
+
 export type PendenciasCadastro = {
   isAdmin: boolean;
   leads: { total: number; itens: PendenciaLead[] };
   produtos: { total: number; itens: PendenciaProduto[] };
   clientes: { total: number; itens: PendenciaCliente[] };
   propostas: { total: number; itens: PendenciaProposta[] };
-  resumo: { leads: number; produtos: number; clientes: number; propostas: number; total: number };
+  entregas: { total: number; itens: PendenciaEntrega[] };
+  resumo: {
+    leads: number;
+    produtos: number;
+    clientes: number;
+    propostas: number;
+    entregas: number;
+    total: number;
+  };
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -168,11 +184,32 @@ export const listarPendenciasCadastro = createServerFn({ method: "GET" })
         .map(({ p, faltando }) => ({ id: p.id, sku: p.sku, name: p.name, faltando }));
     }
 
+    // 5) Pedidos em pós-venda sem comprovação de entrega (foto + documento).
+    const entregasRes = await sb
+      .from("pedidos")
+      .select("id, number, lead_company, responsavel_atual_id, equipe_responsavel, stage_changed_at", {
+        count: "exact",
+      })
+      .eq("stage", "pos_venda")
+      .is("entrega_comprovada_em", null)
+      .order("stage_changed_at", { ascending: true })
+      .limit(LIMITE);
+    await assertNoError(entregasRes, "pendencias.entregas");
+    const entregasRaw = (entregasRes.data ?? []) as {
+      id: string;
+      number: string;
+      lead_company: string | null;
+      responsavel_atual_id: string | null;
+      equipe_responsavel: string | null;
+      stage_changed_at: string | null;
+    }[];
+
     // Nomes (owner/vendedor) e dados auxiliares das propostas.
     const nomes = await nomesPorId(sb, [
       ...leadsRaw.map((l) => l.owner_id ?? ""),
       ...clientesRaw.map((c) => c.vendedor_id ?? ""),
       ...propostasRaw.map((p) => p.owner_id ?? ""),
+      ...entregasRaw.map((p) => p.responsavel_atual_id ?? ""),
     ]);
 
     const leadIds = [...new Set(propostasRaw.map((p) => p.lead_id).filter(Boolean))] as string[];
@@ -249,6 +286,20 @@ export const listarPendenciasCadastro = createServerFn({ method: "GET" })
       }),
     };
 
+    const entregas = {
+      total: (entregasRes.count as number | null) ?? entregasRaw.length,
+      itens: entregasRaw.map<PendenciaEntrega>((p) => ({
+        id: p.id,
+        number: p.number,
+        cliente: p.lead_company,
+        responsavel:
+          (p.responsavel_atual_id && nomes.get(p.responsavel_atual_id)) ||
+          p.equipe_responsavel ||
+          null,
+        dias_em_pos_venda: diasParado(p.stage_changed_at, agora),
+      })),
+    };
+
     const produtos = { total: produtosTotal, itens: produtosItens };
 
     return {
@@ -257,12 +308,15 @@ export const listarPendenciasCadastro = createServerFn({ method: "GET" })
       produtos,
       clientes,
       propostas,
+      entregas,
       resumo: {
         leads: leads.total,
         produtos: produtos.total,
         clientes: clientes.total,
         propostas: propostas.total,
-        total: leads.total + produtos.total + clientes.total + propostas.total,
+        entregas: entregas.total,
+        total:
+          leads.total + produtos.total + clientes.total + propostas.total + entregas.total,
       },
     };
   });
