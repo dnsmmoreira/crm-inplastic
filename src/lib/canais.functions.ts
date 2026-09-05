@@ -789,3 +789,131 @@ export const enviarTemplateConversa = createServerFn({ method: "POST" })
 
     return { ok: true, texto: textoFinal };
   });
+
+/** Tipos de evento da Meta que geram mensagem no chat. */
+const TIPOS_EVENTO_MENSAGEM = [
+  "mensagem_image",
+  "mensagem_document",
+  "mensagem_audio",
+  "mensagem_video",
+  "mensagem_sticker",
+  "mensagem_button",
+  "mensagem_interactive",
+  "mensagem_reaction",
+  "mensagem_location",
+  "mensagem_contacts",
+  "mensagem_unsupported",
+] as const;
+
+async function exigirAdminCanais(supabase: { rpc: Function }, userId: string) {
+  // Fail-closed: qualquer erro ou valor não-verdadeiro bloqueia.
+  let isAdmin = false;
+  try {
+    const { data, error } = await (supabase as any).rpc("has_role", {
+      _user_id: userId,
+      _role: "admin",
+    });
+    if (error) await registrarFalhaSegura("canais.has_role", error, { user_id: userId });
+    isAdmin = data === true;
+  } catch {
+    isAdmin = false;
+  }
+  if (!isAdmin) throw new Error("Acesso restrito a administradores.");
+}
+
+/** Quantos anexos recebidos ainda não viraram mensagem no chat (admin). */
+export const contarMidiasPendentesCloud = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    await exigirAdminCanais(supabase, userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin
+      .from("wa_cloud_eventos")
+      .select("tipo, recebido_em")
+      .eq("processado", false)
+      .in("tipo", TIPOS_EVENTO_MENSAGEM as unknown as string[])
+      .order("recebido_em", { ascending: true })
+      .limit(1000);
+    if (error) throw new Error(error.message);
+    const linhas = data ?? [];
+    const porTipo: Record<string, number> = {};
+    for (const l of linhas) porTipo[l.tipo] = (porTipo[l.tipo] ?? 0) + 1;
+    return {
+      total: linhas.length,
+      porTipo,
+      maisAntigo: linhas[0]?.recebido_em ?? null,
+    };
+  });
+
+/**
+ * Recupera o backlog de mensagens recebidas que ficaram só no log de eventos.
+ * Silencioso e com a data original: nada de IA, notificação ou alerta.
+ */
+export const reprocessarMidiasCloud = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) => z.object({ limite: z.number().int().min(1).max(200).optional() }).parse(data ?? {}))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await exigirAdminCanais(supabase, userId);
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: eventos, error } = await supabaseAdmin
+      .from("wa_cloud_eventos")
+      .select("id, tipo, phone, wa_message_id, payload, recebido_em")
+      .eq("processado", false)
+      .in("tipo", TIPOS_EVENTO_MENSAGEM as unknown as string[])
+      .order("recebido_em", { ascending: true })
+      .limit(data.limite ?? 50);
+    if (error) throw new Error(error.message);
+
+    const { processarMensagemCloud } = await import("@/lib/whatsapp-cloud-entrada.server");
+    let processados = 0;
+    const falhas: Array<{ id: string; tipo: string; erro: string }> = [];
+
+    for (const ev of eventos ?? []) {
+      const msg = (ev.payload ?? {}) as Record<string, unknown>;
+      const phone = onlyDigits(String(ev.phone ?? msg["from"] ?? ""));
+      const ts = Number(msg["timestamp"] ?? 0);
+      const criadoEm =
+        Number.isFinite(ts) && ts > 0
+          ? new Date(ts * 1000).toISOString()
+          : (ev.recebido_em ?? new Date().toISOString());
+      try {
+        const r = await processarMensagemCloud({
+          msg,
+          phone,
+          nomeContato: null,
+          waMessageId: ev.wa_message_id,
+          tag: "wa-cloud-reprocesso",
+          silencioso: true,
+          criadoEm,
+          atualizarExistente: true,
+        });
+        const marcado = await supabaseAdmin
+          .from("wa_cloud_eventos")
+          .update({
+            processado: r.gravado,
+            erro: r.midiaOk ? null : (r.erro ?? "download_falhou").slice(0, 500),
+          })
+          .eq("id", ev.id);
+        if (marcado.error) {
+          await registrarFalhaSegura("canais.reprocessarMidias.marcar", marcado.error, {
+            evento_id: ev.id,
+          });
+        }
+        if (r.gravado) processados += 1;
+        else falhas.push({ id: ev.id, tipo: ev.tipo, erro: r.erro ?? "não gravado" });
+      } catch (e) {
+        const m = e instanceof Error ? e.message : String(e);
+        falhas.push({ id: ev.id, tipo: ev.tipo, erro: m });
+        await registrarFalhaSegura("canais.reprocessarMidias", e, { evento_id: ev.id });
+        await supabaseAdmin
+          .from("wa_cloud_eventos")
+          .update({ erro: m.slice(0, 500) })
+          .eq("id", ev.id);
+      }
+    }
+
+    return { processados, falhas };
+  });
