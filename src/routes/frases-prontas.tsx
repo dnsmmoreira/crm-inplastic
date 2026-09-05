@@ -68,7 +68,9 @@ import {
   VARIAVEIS,
   aplicarVariaveisFrase,
   citaNomeDeEmpresa,
+  converterParaMeta,
   ordemCategoria,
+
   validarParaMeta,
   variaveisInvalidas,
 } from "@/lib/frases-prontas";
@@ -437,6 +439,9 @@ function PainelFrases() {
               <div className="divide-y rounded-lg border">
                 {g.itens.map((f, i) => {
                   const bloqueado = f.meta_status === "APPROVED" || f.meta_status === "PENDING";
+                  const textoMeta = converterParaMeta(f.corpo).texto;
+                  const prefixado = textoMeta.startsWith("Olá ") && !f.corpo.startsWith("Olá ");
+
                   return (
                     <div key={f.id} className="flex flex-col gap-2 p-3 md:flex-row md:items-start">
                       <div className="min-w-0 flex-1">
@@ -498,6 +503,19 @@ function PainelFrases() {
                             </TooltipContent>
                           ) : null}
                         </Tooltip>
+                        {prefixado ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="max-w-[180px] truncate text-[11px] text-muted-foreground">
+                                Meta: {textoMeta}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs">
+                              Enviado à Meta como: {textoMeta}
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : null}
+
                         <Button
                           size="icon"
                           variant="ghost"
