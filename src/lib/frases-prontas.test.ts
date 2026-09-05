@@ -3,6 +3,8 @@ import {
   aplicarVariaveisFrase,
   citaNomeDeEmpresa,
   converterParaMeta,
+  ehErroTemplateJaExiste,
+  motivoRejeicaoLegivel,
   ordemCategoria,
   preencherParamsMeta,
   slugMeta,
