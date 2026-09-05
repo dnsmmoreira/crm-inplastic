@@ -574,16 +574,23 @@ async function runXerifePedidos(
     let fallbackOperacional: string | null | undefined;
     async function donoOperacional(): Promise<string | null> {
       if (fallbackOperacional !== undefined) return fallbackOperacional;
-      const { data } = await sb
+      const { data: perfis } = await sb
         .from("perfil_permissoes")
-        .select("perfil_id, user_perfis(user_id)")
+        .select("perfil_id")
         .eq("permissao_chave", "pedidos.operar_producao")
         .limit(50);
-      const ids = (data ?? []).flatMap((r: any) =>
-        (r.user_perfis ?? []).map((u: any) => u.user_id as string),
-      );
-      fallbackOperacional = ids[0] ?? null;
-      return fallbackOperacional;
+      const perfilIds = (perfis ?? []).map((r: any) => r.perfil_id as string);
+      if (perfilIds.length === 0) {
+        fallbackOperacional = null;
+        return null;
+      }
+      const { data: usuarios } = await sb
+        .from("user_perfis")
+        .select("user_id")
+        .in("perfil_id", perfilIds)
+        .limit(1);
+      fallbackOperacional = ((usuarios ?? [])[0] as any)?.user_id ?? null;
+      return fallbackOperacional ?? null;
     }
 
     for (const p of pedidos ?? []) {
