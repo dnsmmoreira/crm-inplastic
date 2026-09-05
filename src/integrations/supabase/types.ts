@@ -1865,7 +1865,10 @@ export type Database = {
           created_at: string
           despachado_em: string | null
           encerrado_em: string | null
+          entrega_comprovada_em: string | null
           entrega_confirmada: string | null
+          entrega_confirmada_por: string | null
+          entrega_observacao: string | null
           entrega_recebida_por: string | null
           entregue_em: string | null
           equipe_responsavel: string | null
@@ -1916,7 +1919,10 @@ export type Database = {
           created_at?: string
           despachado_em?: string | null
           encerrado_em?: string | null
+          entrega_comprovada_em?: string | null
           entrega_confirmada?: string | null
+          entrega_confirmada_por?: string | null
+          entrega_observacao?: string | null
           entrega_recebida_por?: string | null
           entregue_em?: string | null
           equipe_responsavel?: string | null
@@ -1967,7 +1973,10 @@ export type Database = {
           created_at?: string
           despachado_em?: string | null
           encerrado_em?: string | null
+          entrega_comprovada_em?: string | null
           entrega_confirmada?: string | null
+          entrega_confirmada_por?: string | null
+          entrega_observacao?: string | null
           entrega_recebida_por?: string | null
           entregue_em?: string | null
           equipe_responsavel?: string | null
