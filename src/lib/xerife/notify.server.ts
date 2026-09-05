@@ -14,7 +14,7 @@ const telegramChatCache = new Map<string, string | null>();
 const nomeCache = new Map<string, string | null>();
 
 export type DestinatarioInterno = {
-  tipo: "usuario" | "diretoria" | "financeiro";
+  escopo: "usuario" | "diretoria" | "financeiro";
   userId?: string;
   nome?: string;
 };
@@ -62,7 +62,7 @@ function detalheNaoEntregue(
   destinatario?: DestinatarioInterno | null,
 ): string {
   if (motivo === "token") return "TELEGRAM_BOT_TOKEN ausente";
-  switch (destinatario?.tipo) {
+  switch (destinatario?.escopo) {
     case "usuario":
       return `Usuário ${destinatario.nome?.trim() || destinatario.userId || "desconhecido"} sem Telegram vinculado`;
     case "financeiro":
@@ -207,7 +207,7 @@ export async function notifyOwner(ownerId: string | null, msg: string): Promise<
     if (!phone && !chatId) return false;
     const r = await enviarNotificacaoInterna(phone, msg, "xerife", {
       telegramChatId: chatId,
-      destinatario: { tipo: "usuario", userId: ownerId, nome: nome ?? undefined },
+      destinatario: { escopo: "usuario", userId: ownerId, nome: nome ?? undefined },
     });
     return r.enviado;
   } catch (e) {
@@ -223,7 +223,7 @@ export async function notifyDiretoria(msg: string): Promise<boolean> {
   const chatId = (process.env.TELEGRAM_CHAT_DIRETORIA ?? "").trim() || null;
   const r = await enviarNotificacaoInterna(phone, msg, "xerife-diretoria", {
     telegramChatId: chatId,
-    destinatario: { tipo: "diretoria" },
+    destinatario: { escopo: "diretoria" },
   });
   return r.enviado;
 }
@@ -235,7 +235,7 @@ export async function notifyFinanceiro(msg: string): Promise<boolean> {
   const chatId = (process.env.TELEGRAM_CHAT_FINANCEIRO ?? "").trim() || null;
   const r = await enviarNotificacaoInterna(phone, msg, "xerife-financeiro", {
     telegramChatId: chatId,
-    destinatario: { tipo: "financeiro" },
+    destinatario: { escopo: "financeiro" },
   });
   return r.enviado;
 }
