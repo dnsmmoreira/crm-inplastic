@@ -5,6 +5,8 @@ import {
   startOfTodaySpIso,
   nextBusinessDay9amIso,
   computeRollover,
+  atingiuTeto,
+  TETO_ESCALONAMENTOS,
 } from "@/lib/xerife/rollover.server";
 
 /** Constrói um instante UTC. */
@@ -85,6 +87,33 @@ describe("D3 — computeRollover", () => {
     const patch = computeRollover({ prioridade: null, escalonamentos: null }, fri);
     expect(patch.prioridade).toBe(2); // default 3 → 2
     expect(patch.escalonamentos).toBe(1);
+  });
+});
+
+describe("D3 — teto de escalonamentos", () => {
+  const fri = U("2026-07-10T21:00:00.000Z");
+
+  it("abaixo do teto continua escalando", () => {
+    expect(atingiuTeto({ prioridade: 2, escalonamentos: 4 })).toBe(false);
+    const patch = computeRollover({ prioridade: 2, escalonamentos: 4 }, fri);
+    expect(patch.escalonamentos).toBe(5);
+    expect(patch.prioridade).toBe(1);
+  });
+
+  it("no teto congela escalonamentos e prioridade, mas ainda rola a data", () => {
+    expect(atingiuTeto({ prioridade: 1, escalonamentos: TETO_ESCALONAMENTOS })).toBe(true);
+    const patch = computeRollover({ prioridade: 1, escalonamentos: 29 }, fri);
+    expect(patch).toEqual({
+      due_date: "2026-07-13T12:00:00.000Z",
+      escalonamentos: TETO_ESCALONAMENTOS,
+      prioridade: 1,
+      status: "pendente",
+    });
+  });
+
+  it("no teto não baixa mais a prioridade já existente", () => {
+    const patch = computeRollover({ prioridade: 3, escalonamentos: 7 }, fri);
+    expect(patch.prioridade).toBe(3);
   });
 });
 

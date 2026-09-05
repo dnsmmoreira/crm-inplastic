@@ -53,14 +53,32 @@ export type RolloverPatch = {
   status: "pendente";
 };
 
+/** Teto de escalonamentos: acima disso a tarefa para de subir de prioridade. */
+export const TETO_ESCALONAMENTOS = 5;
+
+/** True quando a tarefa já bateu o teto e não deve escalar mais. */
+export function atingiuTeto(task: RolloverInput): boolean {
+  return (task.escalonamentos ?? 0) >= TETO_ESCALONAMENTOS;
+}
+
 /**
  * Calcula patch para uma tarefa rolada pelo fechamento diário.
  * Regra D3: escalonamentos+1, prioridade elevada (menor número = mais alta),
  *           mínimo 1, due_date = próximo dia útil 09:00 SP.
+ * No teto: continua rolando a data, mas congela escalonamentos e prioridade —
+ * marcar tudo como urgente destrói a capacidade de priorizar a agenda.
  */
 export function computeRollover(task: RolloverInput, now: Date = new Date()): RolloverPatch {
   const prio = task.prioridade ?? 3;
   const esc = task.escalonamentos ?? 0;
+  if (atingiuTeto(task)) {
+    return {
+      due_date: nextBusinessDay9amIso(now),
+      escalonamentos: TETO_ESCALONAMENTOS,
+      prioridade: prio,
+      status: "pendente",
+    };
+  }
   return {
     due_date: nextBusinessDay9amIso(now),
     escalonamentos: esc + 1,
