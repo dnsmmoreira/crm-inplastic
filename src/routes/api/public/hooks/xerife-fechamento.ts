@@ -34,7 +34,7 @@ async function runFechamento(force = false): Promise<{
 
   const { data: pendentesAll } = await sb
     .from("tarefas")
-    .select("id, owner_id, titulo, prioridade, escalonamentos")
+    .select("id, owner_id, title, prioridade, escalonamentos")
     .in("status", ["pendente", "adiada"])
     .lte("due_date", endToday)
     .not("owner_id", "is", null);
@@ -69,7 +69,7 @@ async function runFechamento(force = false): Promise<{
 
     for (const t of pendentes) {
       if (atingiuTeto(t as any)) {
-        travadas.push({ titulo: (t as any).titulo ?? "(sem título)", dono: nomeDono });
+        travadas.push({ titulo: (t as any).title ?? "(sem título)", dono: nomeDono });
       }
       const patch = computeRollover(t as any, now);
       // REGISTRAR E SEGUIR: cron de fechamento; a tarefa não rolada continua
