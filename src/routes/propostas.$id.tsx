@@ -338,10 +338,24 @@ function PropostaDetalhe() {
     () => paymentTerms.find((t: PaymentTerm) => t.id === proposal?.paymentTermId) ?? null,
     [paymentTerms, proposal?.paymentTermId],
   );
-  const totals = useMemo(
-    () => (proposal ? proposalTotals(proposal, selectedTerm?.acrescimoPercent ?? 0) : null),
-    [proposal, selectedTerm],
+  /** A condição escolhida é cartão parcelável? */
+  const cartaoAtivo = ehCondicaoCartao(selectedTerm);
+  /** % de acréscimo que vale para esta proposta (cartão manda no que foi simulado). */
+  const acrescimoPercentAtual = acrescimoEfetivo(
+    proposal?.acrescimoPercent,
+    selectedTerm?.acrescimoPercent,
+    cartaoAtivo,
   );
+  const totals = useMemo(
+    () => (proposal ? proposalTotals(proposal, acrescimoPercentAtual) : null),
+    [proposal, acrescimoPercentAtual],
+  );
+  /** Simulação do cartão: condição pendente de escolha + condição anterior p/ cancelar. */
+  const [simulacao, setSimulacao] = useState<{
+    open: boolean;
+    termId: string | null;
+    anterior: string | null;
+  }>({ open: false, termId: null, anterior: null });
   const owner = proposal ? USERS.find((u) => u.id === proposal.ownerId) : null;
 
   // Vendedor real (tabela de usuários) — vinculado ao cliente da proposta.
@@ -622,20 +636,29 @@ function PropostaDetalhe() {
    * como exclusão intencional para o sync apagar no banco) e recria a partir dos
    * percentuais da nova condição, quando já houver previsão de faturamento.
    */
-  const trocarCondicao = (termId: string) => {
+  const aplicarCondicao = (
+    termId: string,
+    opts?: { parcelas?: ParcelaCondicao[]; acrescimoPercent?: number; cartaoParcelas?: number | null },
+  ) => {
     if (!proposal) return;
     const antigas = proposal.installments ?? [];
     if (antigas.length > 0) markDeleted("proposalParcelas", ...antigas.map((p) => p.id));
     const novo = paymentTerms.find((t: PaymentTerm) => t.id === termId) ?? null;
+    const ehCartao = ehCondicaoCartao(novo);
     const base = proposal.billingForecastDate;
-    const parcelasCond = novo ? termParcelas(novo) : [];
-    const totalAtual = proposalTotals(proposal, novo?.acrescimoPercent ?? 0).total;
+    const parcelasCond = opts?.parcelas ?? (novo ? termParcelas(novo) : []);
+    const acrescimoPct = ehCartao
+      ? (opts?.acrescimoPercent ?? 0)
+      : acrescimoEfetivo(0, novo?.acrescimoPercent, false);
+    const totalAtual = proposalTotals(proposal, acrescimoPct).total;
     const valores = valoresPorPercentual(
       totalAtual,
       parcelasCond.map((p) => p.percentual),
     );
     updateProposal(proposal.id, {
       paymentTermId: termId,
+      acrescimoPercent: ehCartao ? acrescimoPct : 0,
+      cartaoParcelas: ehCartao ? (opts?.cartaoParcelas ?? null) : null,
       installments:
         base && parcelasCond.length > 0
           ? parcelasCond.map((p, i) => ({
@@ -648,6 +671,29 @@ function PropostaDetalhe() {
             }))
           : [],
     });
+  };
+
+  /** Troca no select: cartão abre a simulação antes de aplicar. */
+  const trocarCondicao = (termId: string) => {
+    if (!proposal) return;
+    const novo = paymentTerms.find((t: PaymentTerm) => t.id === termId) ?? null;
+    if (ehCondicaoCartao(novo)) {
+      setSimulacao({ open: true, termId, anterior: proposal.paymentTermId ?? null });
+      return;
+    }
+    aplicarCondicao(termId);
+  };
+
+  /** Linha escolhida na simulação → parcelas do cartão + acréscimo gravado. */
+  const escolherSimulacao = (linha: SimulacaoLinha) => {
+    const termId = simulacao.termId;
+    if (!termId) return;
+    aplicarCondicao(termId, {
+      parcelas: gerarParcelasCartao(linha.parcelas),
+      acrescimoPercent: linha.acrescimoPercent,
+      cartaoParcelas: linha.parcelas,
+    });
+    setSimulacao({ open: false, termId: null, anterior: null });
   };
 
   const validateAndUpdateItem = (
@@ -965,7 +1011,7 @@ function PropostaDetalhe() {
                     </div>
                     <div>
                       <span className="text-muted-foreground">Total: </span>
-                      {formatBRL(proposalTotals(proposal, selectedTerm?.acrescimoPercent ?? 0).total)}
+                      {formatBRL(proposalTotals(proposal, acrescimoPercentAtual).total)}
                     </div>
                     <div>
                       <span className="text-muted-foreground">Condição de pagamento: </span>
