@@ -579,6 +579,7 @@ function MinhasConversasPage() {
         <div className={cn("min-h-0 flex-col md:flex", selectedId ? "flex" : "hidden")}>
           <ChatPanel
             conversa={selected}
+            empresa={selected ? (dadosLead[selected.id]?.empresa ?? null) : null}
             onChanged={load}
             onVoltar={() => void navigate({ search: {} })}
           />
