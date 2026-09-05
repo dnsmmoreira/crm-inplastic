@@ -972,17 +972,16 @@ function PainelSaudeWhatsapp() {
         <div className="space-y-2 rounded-md border p-3">
           <div className="text-xs font-medium">Canais de alerta interno</div>
           <div className="flex flex-wrap items-center gap-2 text-[11px]">
-            <span className="text-muted-foreground">WhatsApp interno</span>
-            <Badge variant={diag.canais.interno_whatsapp.pronto ? "default" : "destructive"}>
-              {diag.canais.interno_whatsapp.pronto ? "Configurado" : "NÃO configurado"}
-            </Badge>
+            <span className="text-muted-foreground">
+              WhatsApp interno: desativado — alertas vão por Telegram
+            </span>
             <span className="ml-2 text-muted-foreground">Telegram diretoria</span>
             <Badge variant={diag.canais.telegram_diretoria.pronto ? "default" : "destructive"}>
               {diag.canais.telegram_diretoria.pronto ? "Configurado" : "NÃO configurado"}
             </Badge>
           </div>
 
-          {!diag.canais.interno_whatsapp.pronto && !diag.canais.telegram_diretoria.pronto && (
+          {!diag.canais.telegram_diretoria.pronto && (
             <div className="rounded-md border border-destructive/40 bg-destructive/5 p-2 text-[11px] text-destructive">
               <div className="flex items-start gap-1.5">
                 <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
@@ -992,24 +991,13 @@ function PainelSaudeWhatsapp() {
                     ninguém.
                   </div>
                   <div className="mt-1 font-mono">
-                    Variáveis ausentes: {diag.faltantes.join(", ") || "—"}
+                    Variáveis ausentes: {diag.canais.telegram_diretoria.faltantes.join(", ") || "—"}
                   </div>
                 </div>
               </div>
             </div>
           )}
 
-          {diag.canais.telegram_diretoria.pronto && !diag.canais.interno_whatsapp.pronto && (
-            <div className="rounded-md border bg-muted/40 p-2 text-[11px] text-muted-foreground">
-              <div>
-                Alertas serão entregues via Telegram. O canal WhatsApp interno é opcional e está
-                desativado.
-              </div>
-              <div className="mt-1 font-mono">
-                Variáveis ausentes: {diag.faltantes.join(", ") || "—"}
-              </div>
-            </div>
-          )}
 
           <div className="flex items-center gap-2">
             <TooltipProvider>
@@ -1045,15 +1033,30 @@ function PainelSaudeWhatsapp() {
         <div className="text-xs font-medium">Alertas (48h)</div>
 
         <ul className="max-h-40 overflow-y-auto divide-y text-[11px]">
-          {data.alertas48h.map((a) => (
-            <li key={a.id} className="py-1 flex items-center justify-between gap-2">
-              <span className="text-destructive">{a.tipo}</span>
-              <span className="text-muted-foreground">{a.canal}</span>
-              <span className="text-muted-foreground shrink-0">
-                {format(new Date(a.created_at), "dd/MM HH:mm")}
-              </span>
-            </li>
-          ))}
+          {data.alertas48h.map((a) => {
+            const semTelegram = /^Usuário (.+) sem Telegram vinculado$/.exec(a.detalhe ?? "");
+            return (
+              <li key={a.id} className="py-1 flex items-center justify-between gap-2">
+                <span className="text-destructive shrink-0">{a.tipo}</span>
+                <span className="text-muted-foreground truncate flex-1">
+                  {a.detalhe || "—"}
+                  {semTelegram && (
+                    <a
+                      className="ml-1 underline"
+                      href={`/usuarios?busca=${encodeURIComponent(semTelegram[1] ?? "")}`}
+                    >
+                      Vincular
+                    </a>
+                  )}
+                </span>
+                <span className="text-muted-foreground">{a.canal}</span>
+                <span className="text-muted-foreground shrink-0">
+                  {format(new Date(a.created_at), "dd/MM HH:mm")}
+                </span>
+              </li>
+            );
+          })}
+
           {data.alertas48h.length === 0 && (
             <li className="py-2 text-muted-foreground">Nenhum alerta nas últimas 48h.</li>
           )}

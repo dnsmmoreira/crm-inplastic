@@ -48,6 +48,12 @@ function UsuariosPage() {
 
   const [rows, setRows] = useState<UsuarioRow[] | null>(null);
   const [busca, setBusca] = useState("");
+
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("busca");
+    if (q) setBusca(q);
+  }, []);
+
   const [filtroPapel, setFiltroPapel] = useState<"todos" | AppRole>("todos");
   const [filtroStatus, setFiltroStatus] = useState<"todos" | "ativos" | "inativos" | "excluidos">("ativos");
   const [sort, setSort] = useState<SortKey>("nome");
@@ -221,6 +227,15 @@ function UsuariosPage() {
                       ) : !r.ativo ? (
                         <Badge variant="secondary" className="text-[10px]">inativo</Badge>
                       ) : null}
+                      {!r.deletedAt && r.ativo && !r.telegramVinculado && (
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] border-amber-500 text-amber-600"
+                          title="Este usuário não recebe alertas do Xerife"
+                        >
+                          Sem Telegram
+                        </Badge>
+                      )}
                       {r.naFila && <Badge variant="outline" className="text-[10px]">fila #{r.filaPosicao}</Badge>}
                     </div>
                     <div className="text-xs text-muted-foreground truncate">
