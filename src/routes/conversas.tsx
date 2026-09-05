@@ -23,6 +23,7 @@ import {
   BadgeCheck,
   Sparkles,
   Check,
+  Building2,
 
 } from "lucide-react";
 import {
@@ -71,6 +72,9 @@ import { TemplatesButton } from "@/components/atendimento/TemplatesButton";
 import { TemplateMetaDialog } from "@/components/atendimento/TemplateMetaDialog";
 import { IAButton, IAPreview, type ModoIA } from "@/components/atendimento/IAAssistButton";
 import { assistenteRedacao } from "@/lib/assistente-redacao.functions";
+import { carregarEmpresaPorConversa, type DadosLeadConversa } from "@/lib/empresa-conversas";
+import { rotuloContato } from "@/lib/rotulo-contato";
+
 
 import type { Database } from "@/integrations/supabase/types";
 
@@ -174,6 +178,7 @@ function MinhasConversasPage() {
   const isAdmin = user?.role === "admin";
 
   const [conversas, setConversas] = useState<Conversa[]>([]);
+  const [dadosLead, setDadosLead] = useState<Record<string, DadosLeadConversa>>({});
   const [naoLidas, setNaoLidas] = useState<Record<string, number>>({});
   const [ultimoAutor, setUltimoAutor] = useState<Record<string, Mensagem["autor"]>>({});
   const [busca, setBusca] = useState("");
@@ -210,6 +215,17 @@ function MinhasConversasPage() {
     }
     const lista = data ?? [];
     setConversas(lista);
+
+    // Empresa/contato do lead (e do cliente vinculado) em lote — falha não quebra a lista.
+    try {
+      setDadosLead(
+        await carregarEmpresaPorConversa(lista.map((c) => ({ id: c.id, lead_id: c.lead_id }))),
+      );
+    } catch (e) {
+      console.error("[conversas] rótulo de empresa indisponível", e);
+    }
+
+
 
     const { data: notifs } = await supabase
       .from("notificacoes")
@@ -310,9 +326,14 @@ function MinhasConversasPage() {
       const naAba = aba === "aguardando" ? aguardandoIds.has(c.id) : !aguardandoIds.has(c.id);
       if (!naAba) return false;
       if (!q) return true;
-      return (c.name ?? "").toLowerCase().includes(q) || c.phone.includes(q);
+      const empresa = dadosLead[c.id]?.empresa ?? "";
+      return (
+        (c.name ?? "").toLowerCase().includes(q) ||
+        empresa.toLowerCase().includes(q) ||
+        c.phone.includes(q)
+      );
     });
-  }, [daFila, busca, aba, aguardandoIds]);
+  }, [daFila, busca, aba, aguardandoIds, dadosLead]);
 
 
   const selected = useMemo(
@@ -364,7 +385,7 @@ function MinhasConversasPage() {
                 <Input
                   value={busca}
                   onChange={(e) => setBusca(e.target.value)}
-                  placeholder="Buscar contato ou telefone"
+                  placeholder="Buscar contato, empresa ou telefone"
                   className="pl-8"
                 />
               </div>
@@ -449,7 +470,14 @@ function MinhasConversasPage() {
           </div>
           <ul className="min-h-0 flex-1 divide-y overflow-auto">
             {filtradas.map((c) => {
-              const nome = c.name?.trim() || c.phone;
+              const info = dadosLead[c.id];
+              const rotulo = rotuloContato({
+                contato: c.name ?? info?.contato ?? null,
+                empresa: info?.empresa ?? null,
+                telefone: c.phone,
+              });
+              const nome = rotulo.principal || c.phone;
+              const empresa = rotulo.secundario;
               const active = c.id === selectedId;
               const badge = naoLidas[c.id] ?? 0;
               const aguardando = aguardandoIds.has(c.id);
@@ -500,6 +528,12 @@ function MinhasConversasPage() {
                           {horaCurta(c.last_message_at)}
                         </span>
                       </span>
+                      {empresa && (
+                        <span className="mt-0.5 flex items-center gap-1 truncate text-[11px] text-muted-foreground">
+                          <Building2 className="h-3 w-3 shrink-0" />
+                          <span className="truncate">{empresa}</span>
+                        </span>
+                      )}
                       <span className="mt-0.5 flex items-center justify-between gap-2">
                         <span className="truncate text-xs text-muted-foreground">
                           {limparOrigemAnuncio(c.last_message_preview ?? "").trim() ||
@@ -545,6 +579,7 @@ function MinhasConversasPage() {
         <div className={cn("min-h-0 flex-col md:flex", selectedId ? "flex" : "hidden")}>
           <ChatPanel
             conversa={selected}
+            empresa={selected ? (dadosLead[selected.id]?.empresa ?? null) : null}
             onChanged={load}
             onVoltar={() => void navigate({ search: {} })}
           />
@@ -577,10 +612,13 @@ function diaLabel(iso: string) {
 
 function ChatPanel({
   conversa,
+  empresa,
   onChanged,
   onVoltar,
 }: {
   conversa: Conversa | null;
+  /** Empresa já resolvida em lote pela lista (cliente vinculado → lead). */
+  empresa?: string | null;
   onChanged: () => void;
   onVoltar?: () => void;
 }) {
@@ -688,6 +726,11 @@ function ChatPanel({
   );
 
   useEffect(() => {
+    // A lista já resolve empresa (cliente vinculado → lead) em lote; só busca se faltar.
+    if (empresa) {
+      setEmpresaLead(empresa);
+      return;
+    }
     const leadId = conversa?.lead_id ?? null;
     if (!leadId) {
       setEmpresaLead(null);
@@ -698,8 +741,15 @@ function ChatPanel({
       .select("company, contact_name")
       .eq("id", leadId)
       .maybeSingle()
-      .then(({ data }) => setEmpresaLead(data?.company ?? null));
-  }, [conversa?.lead_id]);
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("[conversas] empresa do lead indisponível", error);
+          setEmpresaLead(null);
+          return;
+        }
+        setEmpresaLead(data?.company ?? null);
+      });
+  }, [conversa?.lead_id, empresa]);
 
   useEffect(() => {
     const id = conversa?.id;
@@ -943,9 +993,18 @@ function ChatPanel({
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Phone className="h-3 w-3" />
-              {conversa.phone}
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <Phone className="h-3 w-3" />
+                {conversa.phone}
+              </span>
+              {empresaLead && empresaLead.trim().toLocaleLowerCase("pt-BR") !==
+                nome.trim().toLocaleLowerCase("pt-BR") && (
+                <span className="flex min-w-0 items-center gap-1">
+                  <Building2 className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{empresaLead}</span>
+                </span>
+              )}
             </div>
           </div>
         </div>

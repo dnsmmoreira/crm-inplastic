@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
+import { empresaPreferida } from "@/lib/rotulo-contato";
 
 /** Converte YYYY-MM-DD (input date) para ISO ancorado ao meio-dia UTC,
  *  preservando o dia escolhido em qualquer TZ (evita shift para o dia anterior). */
@@ -30,14 +31,42 @@ export const listMinhaAgenda = createServerFn({ method: "GET" })
     if (error) throw new Error(error.message);
 
     const leadIds = Array.from(new Set((tarefas ?? []).map((t: any) => t.lead_id).filter(Boolean)));
-    let leadsById: Record<string, { company: string; stage: string; whatsapp: string | null }> = {};
+    let leadsById: Record<
+      string,
+      { company: string; contato: string | null; empresa: string | null; stage: string; whatsapp: string | null }
+    > = {};
     if (leadIds.length) {
-      const { data: leads } = await supabase
+      const { data: leads, error: erroLeads } = await supabase
         .from("leads")
-        .select("id, company, stage, telefone_whatsapp")
+        .select("id, company, contact_name, cliente_id, stage, telefone_whatsapp")
         .in("id", leadIds);
+      if (erroLeads) throw new Error(erroLeads.message);
+
+      // Empresa preferida vem do cliente vinculado (razão social) — busca em lote.
+      const clienteIds = Array.from(
+        new Set((leads ?? []).map((l: any) => l.cliente_id).filter(Boolean)),
+      );
+      const clientesById: Record<string, { razao_social: string | null; nome_fantasia: string | null }> = {};
+      if (clienteIds.length) {
+        const { data: clientes, error: erroClientes } = await supabase
+          .from("clientes")
+          .select("id, razao_social, nome_fantasia")
+          .in("id", clienteIds);
+        if (erroClientes) throw new Error(erroClientes.message);
+        for (const c of clientes ?? []) {
+          clientesById[(c as any).id] = {
+            razao_social: (c as any).razao_social,
+            nome_fantasia: (c as any).nome_fantasia,
+          };
+        }
+      }
+
       leadsById = Object.fromEntries((leads ?? []).map((l: any) => [l.id, {
-        company: l.company, stage: l.stage, whatsapp: l.telefone_whatsapp,
+        company: l.company,
+        contato: l.contact_name ?? null,
+        empresa: empresaPreferida(l.cliente_id ? clientesById[l.cliente_id] : null, l.company),
+        stage: l.stage,
+        whatsapp: l.telefone_whatsapp,
       }]));
     }
     return (tarefas ?? []).map((t: any) => ({

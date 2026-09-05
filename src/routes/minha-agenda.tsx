@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { TAREFA_TIPO_LABEL } from "@/lib/tarefas-tipos";
+import { rotuloLinha } from "@/lib/rotulo-contato";
 
 
 export const Route = createFileRoute("/minha-agenda")({
@@ -234,7 +235,13 @@ function AgendaGroup({
                 )}
                 {t.lead && (
                   <div className="text-xs text-muted-foreground mt-1">
-                    Cliente: <span className="font-medium">{t.lead.company}</span>
+                    Cliente:{" "}
+                    <span className="font-medium">
+                      {rotuloLinha({
+                        contato: t.lead.contato,
+                        empresa: t.lead.empresa ?? t.lead.company,
+                      })}
+                    </span>
                     {" · "}etapa: {t.lead.stage}
                   </div>
                 )}
