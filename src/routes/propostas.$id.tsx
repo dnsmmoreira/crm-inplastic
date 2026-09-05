@@ -1131,6 +1131,8 @@ function PropostaDetalhe() {
                     : null),
               },
               descontoPercent: proposal.discountPercent,
+              acrescimoPercent: acrescimoPercentAtual,
+              cartaoParcelas: cartaoAtivo ? (proposal.cartaoParcelas ?? null) : null,
               validadeDias: proposal.validityDays,
             }}
             pendencias={pendenciasPedido}
