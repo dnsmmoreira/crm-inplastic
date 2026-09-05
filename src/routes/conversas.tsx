@@ -216,6 +216,17 @@ function MinhasConversasPage() {
     const lista = data ?? [];
     setConversas(lista);
 
+    // Empresa/contato do lead (e do cliente vinculado) em lote — falha não quebra a lista.
+    try {
+      setDadosLead(
+        await carregarEmpresaPorConversa(lista.map((c) => ({ id: c.id, lead_id: c.lead_id }))),
+      );
+    } catch (e) {
+      console.error("[conversas] rótulo de empresa indisponível", e);
+    }
+
+
+
     const { data: notifs } = await supabase
       .from("notificacoes")
       .select("conversa_id")
