@@ -221,6 +221,15 @@ function UsuariosPage() {
                       ) : !r.ativo ? (
                         <Badge variant="secondary" className="text-[10px]">inativo</Badge>
                       ) : null}
+                      {!r.deletedAt && r.ativo && !r.telegramVinculado && (
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] border-amber-500 text-amber-600"
+                          title="Este usuário não recebe alertas do Xerife"
+                        >
+                          Sem Telegram
+                        </Badge>
+                      )}
                       {r.naFila && <Badge variant="outline" className="text-[10px]">fila #{r.filaPosicao}</Badge>}
                     </div>
                     <div className="text-xs text-muted-foreground truncate">
