@@ -235,6 +235,7 @@ export async function notifyFinanceiro(msg: string): Promise<boolean> {
   const chatId = (process.env.TELEGRAM_CHAT_FINANCEIRO ?? "").trim() || null;
   const r = await enviarNotificacaoInterna(phone, msg, "xerife-financeiro", {
     telegramChatId: chatId,
+    destinatario: { tipo: "financeiro" },
   });
   return r.enviado;
 }
