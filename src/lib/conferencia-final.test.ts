@@ -32,6 +32,7 @@ describe("conferência final da proposta", () => {
       "geral:condicao",
       "geral:transporte",
       "geral:desconto",
+      "geral:acrescimo",
       "geral:validade",
     ]);
   });
