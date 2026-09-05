@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { usePoll } from "@/hooks/use-poll";
+import { limparOrigemAnuncio } from "@/lib/mensagem-display";
 import { BolhaMensagem } from "@/components/atendimento/BolhaMensagem";
 import { carregarEmpresaPorConversa, type DadosLeadConversa } from "@/lib/empresa-conversas";
 import { rotuloContato } from "@/lib/rotulo-contato";
