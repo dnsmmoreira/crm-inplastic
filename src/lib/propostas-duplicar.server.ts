@@ -19,6 +19,8 @@ export type PropostaBase = {
   payment_term_id: string | null;
   forma_pagamento: string | null;
   discount_percent: number;
+  acrescimo_percent?: number | null;
+  cartao_parcelas?: number | null;
   transport: unknown;
   observations: string;
   validity_days: number;
@@ -104,6 +106,8 @@ export async function criarPropostaDuplicada(
       payment_term_id: base.payment_term_id ?? null,
       forma_pagamento: base.forma_pagamento ?? null,
       discount_percent: num(base.discount_percent),
+      acrescimo_percent: num(base.acrescimo_percent),
+      cartao_parcelas: base.cartao_parcelas ?? null,
       transport: base.transport ?? {},
       observations: base.observations ?? "",
       validity_days: num(base.validity_days, 15),
@@ -162,7 +166,7 @@ export async function duplicarPropostaImpl(
     sb
       .from("propostas")
       .select(
-        "id, lead_id, emitter_id, payment_term_id, forma_pagamento, discount_percent, transport, observations, validity_days",
+        "id, lead_id, emitter_id, payment_term_id, forma_pagamento, discount_percent, acrescimo_percent, cartao_parcelas, transport, observations, validity_days",
       )
       .eq("id", propostaId)
       .maybeSingle(),
@@ -229,6 +233,8 @@ export async function duplicarPedidoImpl(
     payment_term_id: (p["payment_term_id"] as string | null) ?? null,
     forma_pagamento: (p["forma_pagamento"] as string | null) ?? null,
     discount_percent: num(p["discount_percent"]),
+    acrescimo_percent: num(p["acrescimo_percent"]),
+    cartao_parcelas: p["cartao_parcelas"] != null ? Number(p["cartao_parcelas"]) : null,
     transport: p["transport"] ?? {},
     observations: str(p["observations"]),
     validity_days: num(p["validity_days"], 15),
