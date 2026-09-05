@@ -89,7 +89,11 @@ export function ComprovacaoEntregaBlock({
       const res = await confirmarFn({
         data: {
           pedido_id: pedido.id,
-          entregue_em: new Date(`${entregueEm}T12:00:00`).toISOString(),
+          entregue_em: (() => {
+            const d = new Date(`${entregueEm}T12:00:00`);
+            const agora = new Date();
+            return (d > agora ? agora : d).toISOString();
+          })(),
           entrega_recebida_por: recebidoPor.trim(),
           observacao: observacao.trim() || null,
         },
