@@ -22,6 +22,8 @@ export async function processarMensagemCloud(input: {
   tag: string;
   silencioso?: boolean;
   criadoEm?: string;
+  /** Reprocessamento: se a mensagem já existe, atualiza tipo/texto/mídia. */
+  atualizarExistente?: boolean;
 }): Promise<ResultadoMensagemCloud> {
   const { msg, phone, nomeContato, waMessageId, tag } = input;
   const mapeado = mapearMensagemCloud(msg);
@@ -67,6 +69,34 @@ export async function processarMensagemCloud(input: {
     }
   } else if (mapeado.extra && mapeado.tipo !== "texto") {
     midia = { ...mapeado.extra };
+  }
+
+  if (input.atualizarExistente && waMessageId) {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: existente } = await supabaseAdmin
+      .from("whatsapp_mensagens")
+      .select("id")
+      .eq("external_id", waMessageId)
+      .maybeSingle();
+    if (existente?.id) {
+      const { error: upErr } = await supabaseAdmin
+        .from("whatsapp_mensagens")
+        .update({
+          conteudo: texto,
+          tipo: mapeado.tipo,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          midia: midia as any,
+        })
+        .eq("id", existente.id);
+      if (upErr) {
+        const { registrarFalhaSegura } = await import("@/lib/guard-erros");
+        await registrarFalhaSegura("whatsapp-cloud.reprocessar", upErr, {
+          wa_message_id: waMessageId,
+        });
+        return { gravado: false, tipo: mapeado.tipo, midiaOk, erro: upErr.message };
+      }
+      return { gravado: true, tipo: mapeado.tipo, midiaOk, ...(erro ? { erro } : {}) };
+    }
   }
 
   const { processarEntradaWhatsapp } = await import("@/lib/whatsapp-inbound.server");
