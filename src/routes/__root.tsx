@@ -363,12 +363,6 @@ const NAV_GROUPS: NavGroup[] = [
         show: key("sistema.ver_falhas"),
       },
       {
-        to: "/frases-prontas",
-        label: "Frases prontas",
-        icon: MessageSquareText,
-        show: (c) => c.isAdmin,
-      },
-      {
         to: "/usuarios",
         label: "Usuários",
         icon: UserCog,
@@ -388,6 +382,12 @@ const NAV_GROUPS: NavGroup[] = [
         label: "Atendimento IA",
         icon: Radio,
         show: key("agente_ia.editar_prompt"),
+      },
+      {
+        to: "/frases-prontas",
+        label: "Frases prontas",
+        icon: MessageSquareText,
+        show: (c) => c.isAdmin,
       },
       { to: "/agente-ia", label: "Agente IA", icon: Bot, show: key("agente_ia.editar_prompt") },
       {
