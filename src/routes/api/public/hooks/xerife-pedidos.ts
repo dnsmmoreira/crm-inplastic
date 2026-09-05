@@ -14,7 +14,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { requireXerifeCronAuth, cronJsonResponse } from "@/lib/xerife/cron-auth.server";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { logAction } from "@/lib/xerife/dedupe.server";
+import { hasOpenTask, logAction } from "@/lib/xerife/dedupe.server";
 import { notifyDiretoria } from "@/lib/xerife/notify.server";
 import {
   etapasComCadencia,
@@ -524,6 +524,12 @@ async function runXerifePedidos(
       .limit(500);
 
     for (const p of pedidos ?? []) {
+      // O motor comercial (bloco C) cria a mesma tarefa por lead em D+3 do ganho.
+      // Respeitamos a chave dele (lead_id, tipo) para não duplicar no mesmo cliente.
+      if (p.lead_id && (await hasOpenTask(sb, p.lead_id, "pos_venda_confirmacao"))) {
+        stats.skipped_dedupe++;
+        continue;
+      }
       const owner = p.vendedor_proprietario_id ?? p.responsavel_atual_id;
       const ok = await criarTarefa({
         regra: "pos_venda_pedido_entregue",
