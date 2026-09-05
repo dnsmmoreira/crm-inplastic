@@ -192,6 +192,11 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
 
   const plan: XerifePlanItem[] = [];
 
+  // Usuários isentos de cobrança do Xerife: entram no plano (simulador), mas
+  // não recebem tarefa.
+  const { data: isentosRows } = await sb.from("profiles").select("id").eq("xerife_isento", true);
+  const isentos = new Set<string>(((isentosRows ?? []) as Array<{ id: string }>).map((r) => r.id));
+
   async function criarTarefa(t: {
     lead_id: string;
     lead_company: string | null;
@@ -218,6 +223,8 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
       acao: "criar_tarefa",
     });
     if (dryRun) return;
+    // Dono isento não é cobrado pelo Xerife — nada a criar.
+    if (t.owner_id && isentos.has(t.owner_id)) return;
     // REGISTRAR E SEGUIR: cron; uma tarefa perdida é recriada na próxima
     // rodada, mas a falha precisa ficar visível em /falhas.
     const insTarefa = await sb.from("tarefas").insert({
