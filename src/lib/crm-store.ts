@@ -30,7 +30,7 @@ export const STAGES: { id: StageId; label: string; color: string }[] = [
   { id: "qualificacao", label: "Qualificação", color: "var(--stage-qualif)" },
   { id: "proposta", label: "Proposta Enviada", color: "var(--stage-proposta)" },
   { id: "negociacao", label: "Negociação", color: "var(--stage-negoc)" },
-  { id: "ganho", label: "Fechado / Ganho", color: "var(--stage-ganho)" },
+  { id: "ganho", label: "Ganho", color: "var(--stage-ganho)" },
   { id: "perdido", label: "Perdido", color: "var(--stage-perdido)" },
 ];
 
