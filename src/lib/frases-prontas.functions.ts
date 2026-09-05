@@ -19,6 +19,8 @@ import {
   MSG_EMPRESA_PROIBIDA,
   citaNomeDeEmpresa,
   converterParaMeta,
+  ehErroTemplateJaExiste,
+  motivoRejeicaoLegivel,
   slugMeta,
   validarParaMeta,
   variaveisInvalidas,
@@ -165,7 +167,7 @@ async function enviarUma(
     meta_status: string | null;
     meta_categoria: string | null;
   },
-): Promise<{ ok: boolean; erro?: string; status?: string }> {
+): Promise<{ ok: boolean; erro?: string; status?: string; adotado?: boolean }> {
   if (frase.meta_nome && (frase.meta_status === "APPROVED" || frase.meta_status === "PENDING")) {
     return {
       ok: false,
@@ -178,7 +180,11 @@ async function enviarUma(
     const erro = problemas.join(" ");
     const res = await supabase
       .from("mensagem_templates")
-      .update({ meta_status: "ERRO", meta_erro: erro.slice(0, 500), updated_at: new Date().toISOString() })
+      .update({
+        meta_status: "ERRO",
+        meta_erro: erro.slice(0, 500),
+        updated_at: new Date().toISOString(),
+      })
       .eq("id", frase.id);
     if (res?.error) {
       await registrarFalhaSegura("frases-prontas.enviarParaMeta/validacao", res.error, {
@@ -192,11 +198,19 @@ async function enviarUma(
   const nome = frase.meta_nome ?? slugMeta(frase.titulo);
   const categoria = frase.meta_categoria ?? "MARKETING";
 
-  const { cloudCriarTemplate, cloudInvalidarCacheTemplates } = await import(
-    "./whatsapp-cloud.server"
-  );
-  const r = await cloudCriarTemplate({ name: nome, category: categoria, bodyText: texto, exemplos });
+  const { cloudCriarTemplate, cloudInvalidarCacheTemplates } =
+    await import("./whatsapp-cloud.server");
+  const r = await cloudCriarTemplate({
+    name: nome,
+    category: categoria,
+    bodyText: texto,
+    exemplos,
+  });
   cloudInvalidarCacheTemplates();
+
+  // A Meta pode ter criado o template numa tentativa anterior cuja resposta
+  // não chegou até nós. Nesse caso ADOTAMOS o template existente.
+  const adotado = !r.ok && ehErroTemplateJaExiste(r.erro);
 
   const patch = r.ok
     ? {
@@ -209,13 +223,23 @@ async function enviarUma(
         meta_erro: null,
         updated_at: new Date().toISOString(),
       }
-    : {
-        meta_status: "ERRO",
-        meta_erro: (r.erro ?? "Falha desconhecida na Meta.").slice(0, 500),
-        meta_mapa: mapa,
-        meta_enviado_em: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
+    : adotado
+      ? {
+          meta_nome: nome,
+          meta_status: "PENDING",
+          meta_categoria: categoria,
+          meta_mapa: mapa,
+          meta_enviado_em: new Date().toISOString(),
+          meta_erro: null,
+          updated_at: new Date().toISOString(),
+        }
+      : {
+          meta_status: "ERRO",
+          meta_erro: (r.erro ?? "Falha desconhecida na Meta.").slice(0, 500),
+          meta_mapa: mapa,
+          meta_enviado_em: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
 
   const res = await supabase.from("mensagem_templates").update(patch).eq("id", frase.id);
   if (res?.error) {
@@ -224,9 +248,47 @@ async function enviarUma(
     });
   }
 
+  if (adotado) {
+    // REGISTRAR E SEGUIR: já adotamos como PENDING; ler o status real é bônus.
+    const statusReal = await sincronizarUmNome(supabase, frase.id, nome);
+    return { ok: true, adotado: true, status: statusReal ?? "PENDING" };
+  }
+
   return r.ok
     ? { ok: true, status: (r.status ?? "PENDING") as string }
     : { ok: false, erro: r.erro ?? "Falha desconhecida na Meta." };
+}
+
+/** Relê na Meta o status de UM template e grava na frase. Nunca lança. */
+async function sincronizarUmNome(
+  supabase: any,
+  fraseId: string,
+  nome: string,
+): Promise<string | null> {
+  try {
+    const { cloudListarTemplatesTodos } = await import("./whatsapp-cloud.server");
+    const lista = await cloudListarTemplatesTodos();
+    if (!lista.ok) return null;
+    const t = lista.itens.find((x) => x.name === nome && (x.language === "pt_BR" || !x.language));
+    if (!t) return null;
+    const res = await supabase
+      .from("mensagem_templates")
+      .update({
+        meta_status: t.status,
+        meta_id: t.id,
+        meta_categoria: t.category || null,
+        meta_erro: t.status === "REJECTED" ? motivoRejeicaoLegivel(t.rejected_reason) : null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", fraseId);
+    if (res?.error) {
+      await registrarFalhaSegura("frases-prontas.sincronizarUmNome", res.error, { id: fraseId });
+      return null;
+    }
+    return t.status;
+  } catch {
+    return null;
+  }
 }
 
 /** Envia uma frase para aprovação da Meta. */
@@ -248,33 +310,50 @@ export const enviarFraseParaMeta = createServerFn({ method: "POST" })
     return enviarUma(supabase, frase);
   });
 
-/** Envia, uma a uma, todas as frases marcadas como sugeridas e ainda não aprovadas. */
+/**
+ * Envia, em PARTES, as frases sugeridas ainda não enviadas.
+ *
+ * O lote inteiro numa única chamada estourava o tempo da requisição e deixava
+ * frases sem status; a tela chama em loop enquanto `restantes > 0`.
+ * Frases REJECTED não entram aqui — exigem edição e o botão "Reenviar".
+ */
 export const enviarSugeridasParaMeta = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .inputValidator((data) =>
+    z.object({ limite: z.number().int().min(1).max(20).optional() }).parse(data ?? {}),
+  )
+  .handler(async ({ data, context }) => {
     const { supabase } = context as Ctx;
     await assertAdmin(context as Ctx);
+    const limite = data.limite ?? 6;
 
     const { data: frases, error } = await supabase
       .from("mensagem_templates")
       .select("id, titulo, corpo, meta_nome, meta_status, meta_categoria")
       .eq("meta_sugerido", true)
       .eq("ativo", true)
-      .or("meta_status.is.null,meta_status.eq.REJECTED,meta_status.eq.ERRO")
+      .or("meta_status.is.null,meta_status.eq.ERRO")
       .order("ordem", { ascending: true });
     if (error) throw new Error(error.message);
 
+    const fila = (frases ?? []).filter(
+      (f: { meta_nome: string | null; meta_status: string | null }) =>
+        !(f.meta_nome && (f.meta_status === "APPROVED" || f.meta_status === "PENDING")),
+    );
+    const lote = fila.slice(0, limite);
+
     let enviadas = 0;
+    let adotadas = 0;
     const erros: Array<{ titulo: string; erro: string }> = [];
-    for (const f of frases ?? []) {
+    for (const f of lote) {
       if (citaNomeDeEmpresa(f.corpo)) {
         erros.push({ titulo: f.titulo, erro: MSG_EMPRESA_PROIBIDA });
         continue;
       }
-      if (f.meta_nome && (f.meta_status === "APPROVED" || f.meta_status === "PENDING")) continue;
       try {
         const r = await enviarUma(supabase, f);
-        if (r.ok) enviadas += 1;
+        if (r.ok && r.adotado) adotadas += 1;
+        else if (r.ok) enviadas += 1;
         else erros.push({ titulo: f.titulo, erro: r.erro ?? "Falha desconhecida." });
       } catch (e) {
         // Uma frase que explode não pode interromper o lote.
@@ -298,7 +377,10 @@ export const enviarSugeridasParaMeta = createServerFn({ method: "POST" })
       // A Meta limita a taxa de criação de templates; 700 ms evita o 80007.
       await new Promise((resolve) => setTimeout(resolve, 700));
     }
-    return { enviadas, erros };
+    // Frases que falharam continuam em ERRO e sairiam de novo no próximo lote:
+    // descontamos as processadas para o loop da tela terminar.
+    const restantes = Math.max(0, fila.length - lote.length);
+    return { enviadas, adotadas, erros, restantes };
   });
 
 /** Relê os status na Meta e atualiza as frases correspondentes. */
@@ -308,17 +390,17 @@ export const sincronizarStatusMeta = createServerFn({ method: "POST" })
     const { supabase } = context as Ctx;
     await assertAdmin(context as Ctx);
 
-    const { cloudListarTemplatesTodos, cloudInvalidarCacheTemplates } = await import(
-      "./whatsapp-cloud.server"
-    );
+    const { cloudListarTemplatesTodos, cloudInvalidarCacheTemplates } =
+      await import("./whatsapp-cloud.server");
     const lista = await cloudListarTemplatesTodos();
     if (!lista.ok) throw new Error(lista.erro ?? "Não foi possível consultar a Meta.");
     cloudInvalidarCacheTemplates();
 
+    // Inclui frases sem meta_nome: o template pode existir na Meta com o slug
+    // do título (1ª tentativa que deu timeout do nosso lado).
     const { data: frases, error } = await supabase
       .from("mensagem_templates")
-      .select("id, meta_nome")
-      .not("meta_nome", "is", null);
+      .select("id, titulo, corpo, meta_nome, meta_categoria");
     if (error) throw new Error(error.message);
 
     const porNome = new Map(
@@ -326,20 +408,28 @@ export const sincronizarStatusMeta = createServerFn({ method: "POST" })
     );
 
     let atualizadas = 0;
+    const nomesCrm = new Set<string>();
     for (const f of frases ?? []) {
-      const t = porNome.get(f.meta_nome as string);
-      if (!t) continue;
+      const nome = (f.meta_nome as string | null) ?? slugMeta(f.titulo as string);
+      const t = porNome.get(nome);
+      if (!t) {
+        if (f.meta_nome) nomesCrm.add(f.meta_nome as string);
+        continue;
+      }
+      nomesCrm.add(nome);
+      const patch: Record<string, unknown> = {
+        meta_status: t.status,
+        meta_id: t.id,
+        meta_categoria: t.category || f.meta_categoria || null,
+        meta_erro: t.status === "REJECTED" ? motivoRejeicaoLegivel(t.rejected_reason) : null,
+        updated_at: new Date().toISOString(),
+      };
+      if (!f.meta_nome) {
+        patch["meta_nome"] = nome;
+        patch["meta_mapa"] = converterParaMeta(f.corpo as string).mapa;
+      }
       // REGISTRAR E SEGUIR: sincronizar é informativo, não bloqueia a tela.
-      const res = await supabase
-        .from("mensagem_templates")
-        .update({
-          meta_status: t.status,
-          meta_id: t.id,
-          meta_categoria: t.category || null,
-          meta_erro: t.rejected_reason ?? null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", f.id);
+      const res = await supabase.from("mensagem_templates").update(patch).eq("id", f.id);
       if (res?.error) {
         await registrarFalhaSegura("frases-prontas.sincronizarStatusMeta", res.error, { id: f.id });
         continue;
@@ -347,7 +437,6 @@ export const sincronizarStatusMeta = createServerFn({ method: "POST" })
       atualizadas += 1;
     }
 
-    const nomesCrm = new Set((frases ?? []).map((f: { meta_nome: string }) => f.meta_nome));
     return {
       atualizadas,
       metaTodos: lista.itens,
@@ -371,9 +460,8 @@ export const excluirTemplateNaMeta = createServerFn({ method: "POST" })
       );
     }
 
-    const { cloudExcluirTemplate, cloudInvalidarCacheTemplates } = await import(
-      "./whatsapp-cloud.server"
-    );
+    const { cloudExcluirTemplate, cloudInvalidarCacheTemplates } =
+      await import("./whatsapp-cloud.server");
     const r = await cloudExcluirTemplate(data.name);
     if (!r.ok) throw new Error(r.erro ?? "Não foi possível excluir o modelo na Meta.");
     cloudInvalidarCacheTemplates();
@@ -405,9 +493,13 @@ export const excluirTemplateNaMeta = createServerFn({ method: "POST" })
       valor_novo: null,
     });
     if (auditoria?.error) {
-      await registrarFalhaSegura("frases-prontas.excluirTemplateNaMeta/auditoria", auditoria.error, {
-        name: data.name,
-      });
+      await registrarFalhaSegura(
+        "frases-prontas.excluirTemplateNaMeta/auditoria",
+        auditoria.error,
+        {
+          name: data.name,
+        },
+      );
     }
 
     return { ok: true };

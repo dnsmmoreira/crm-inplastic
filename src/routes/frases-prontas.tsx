@@ -70,7 +70,6 @@ import {
   citaNomeDeEmpresa,
   converterParaMeta,
   ordemCategoria,
-
   validarParaMeta,
   variaveisInvalidas,
 } from "@/lib/frases-prontas";
@@ -183,6 +182,7 @@ function PainelFrases() {
   const excluirMeta = useServerFn(excluirTemplateNaMeta);
 
   const [edicao, setEdicao] = useState<Partial<Frase> | null>(null);
+  const [progresso, setProgresso] = useState<string | null>(null);
   const [confirmar, setConfirmar] = useState<
     | { tipo: "excluir-frase"; id: string; titulo: string }
     | { tipo: "enviar-sugeridas"; total: number }
@@ -266,7 +266,12 @@ function PainelFrases() {
   const mEnviarUma = useMutation({
     mutationFn: (id: string) => enviarUma({ data: { id } }),
     onSuccess: (r) => {
-      if (r.ok) toast.success(`Enviado para aprovação (${STATUS_LABEL[r.status ?? ""] ?? "Pendente"})`);
+      if (r.ok && r.adotado)
+        toast.success(
+          `Modelo já existia na Meta e foi adotado (${STATUS_LABEL[r.status ?? ""] ?? "Pendente"})`,
+        );
+      else if (r.ok)
+        toast.success(`Enviado para aprovação (${STATUS_LABEL[r.status ?? ""] ?? "Pendente"})`);
       else toast.error(r.erro ?? "Falha ao enviar.");
       invalidar();
     },
@@ -274,13 +279,37 @@ function PainelFrases() {
   });
 
   const mEnviarSugeridas = useMutation({
-    mutationFn: () => enviarSugeridas({}),
+    // O lote inteiro numa chamada só estourava o tempo: enviamos em partes.
+    mutationFn: async () => {
+      let enviadas = 0;
+      let adotadas = 0;
+      const erros: Array<{ titulo: string; erro: string }> = [];
+      let total = 0;
+      let feitas = 0;
+      for (let volta = 0; volta < 40; volta += 1) {
+        const r = await enviarSugeridas({ data: { limite: 6 } });
+        enviadas += r.enviadas;
+        adotadas += r.adotadas;
+        erros.push(...r.erros);
+        feitas = enviadas + adotadas + erros.length;
+        total = Math.max(total, feitas + r.restantes);
+        if (r.restantes <= 0) break;
+        setProgresso(`Enviando ${Math.min(feitas + 1, total)} de ${total}…`);
+      }
+      setProgresso(null);
+      return { enviadas, adotadas, erros };
+    },
     onSuccess: (r) => {
-      toast.success(`${r.enviadas} frase(s) enviada(s) para aprovação`);
+      const partes = [`${r.enviadas} enviada(s)`];
+      if (r.adotadas > 0) partes.push(`${r.adotadas} já existente(s) adotada(s)`);
+      toast.success(`Modelos: ${partes.join(", ")}`);
       for (const e of r.erros) toast.error(`${e.titulo}: ${e.erro}`);
       invalidar();
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      setProgresso(null);
+      toast.error(e.message);
+    },
   });
 
   const mSincronizar = useMutation({
@@ -314,11 +343,9 @@ function PainelFrases() {
     return c;
   }, [frases]);
 
+  // REJECTED fica de fora: exige edição e o botão "Reenviar" individual.
   const sugeridasPendentes = frases.filter(
-    (f) =>
-      f.meta_sugerido &&
-      f.ativo &&
-      (!f.meta_status || f.meta_status === "REJECTED" || f.meta_status === "ERRO"),
+    (f) => f.meta_sugerido && f.ativo && (!f.meta_status || f.meta_status === "ERRO"),
   ).length;
 
   const grupos = useMemo(() => {
@@ -398,7 +425,8 @@ function PainelFrases() {
             disabled={sugeridasPendentes === 0 || mEnviarSugeridas.isPending}
             onClick={() => setConfirmar({ tipo: "enviar-sugeridas", total: sugeridasPendentes })}
           >
-            <Send className="mr-1.5 h-4 w-4" /> Enviar todas as sugeridas ({sugeridasPendentes})
+            <Send className="mr-1.5 h-4 w-4" />
+            {progresso ?? `Enviar todas as sugeridas (${sugeridasPendentes})`}
           </Button>
           <Button
             size="sm"
@@ -406,7 +434,9 @@ function PainelFrases() {
             disabled={mSincronizar.isPending}
             onClick={() => mSincronizar.mutate()}
           >
-            <RefreshCw className={`mr-1.5 h-4 w-4 ${mSincronizar.isPending ? "animate-spin" : ""}`} />
+            <RefreshCw
+              className={`mr-1.5 h-4 w-4 ${mSincronizar.isPending ? "animate-spin" : ""}`}
+            />
             Atualizar status na Meta
           </Button>
           <div className="ml-auto flex flex-wrap gap-2 text-xs">
@@ -426,9 +456,7 @@ function PainelFrases() {
         </div>
 
         {isLoading ? <p className="text-sm text-muted-foreground">Carregando frases…</p> : null}
-        {error ? (
-          <p className="text-sm text-destructive">{(error as Error).message}</p>
-        ) : null}
+        {error ? <p className="text-sm text-destructive">{(error as Error).message}</p> : null}
 
         <div className="space-y-6">
           {grupos.map((g) => (
@@ -498,8 +526,8 @@ function PainelFrases() {
                           </TooltipTrigger>
                           {bloqueado ? (
                             <TooltipContent>
-                              Já existe na Meta ({STATUS_LABEL[f.meta_status ?? ""]}). Exclua na Meta
-                              antes de reenviar.
+                              Já existe na Meta ({STATUS_LABEL[f.meta_status ?? ""]}). Exclua na
+                              Meta antes de reenviar.
                             </TooltipContent>
                           ) : null}
                         </Tooltip>
@@ -568,7 +596,10 @@ function PainelFrases() {
                     <Badge variant="outline" className="text-[10px]">
                       {t.language ?? "—"}
                     </Badge>
-                    <Badge variant="outline" className={`text-[10px] ${corDoStatus(t.status ?? null)}`}>
+                    <Badge
+                      variant="outline"
+                      className={`text-[10px] ${corDoStatus(t.status ?? null)}`}
+                    >
                       {STATUS_LABEL[t.status ?? ""] ?? t.status ?? "—"}
                     </Badge>
                     <Badge variant="outline" className="text-[10px]">
@@ -642,7 +673,9 @@ function PainelFrases() {
                 setConfirmar(null);
               }}
             >
-              {confirmar?.tipo === "excluir-meta" && confirmar.etapa === 1 ? "Continuar" : "Confirmar"}
+              {confirmar?.tipo === "excluir-meta" && confirmar.etapa === 1
+                ? "Continuar"
+                : "Confirmar"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -807,7 +840,13 @@ function FraseDialog({
             />
             <div className="flex flex-wrap gap-1.5 pt-1">
               {VARIAVEIS.map((v) => (
-                <Button key={v} type="button" size="sm" variant="secondary" onClick={() => inserir(v)}>
+                <Button
+                  key={v}
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => inserir(v)}
+                >
                   {`{{${v}}}`}
                 </Button>
               ))}
@@ -834,11 +873,7 @@ function FraseDialog({
             </label>
             <div className="flex items-center gap-2">
               <Label className="text-sm">Categoria na Meta</Label>
-              <Select
-                value={metaCategoria}
-                onValueChange={setMetaCategoria}
-                disabled={!sugerido}
-              >
+              <Select value={metaCategoria} onValueChange={setMetaCategoria} disabled={!sugerido}>
                 <SelectTrigger className="w-40">
                   <SelectValue />
                 </SelectTrigger>

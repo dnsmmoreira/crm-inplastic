@@ -497,6 +497,8 @@ export async function cloudCriarTemplate(input: {
   category: string;
   bodyText: string;
   exemplos: string[];
+  /** Criação de template é mais lenta que o envio comum; padrão 20 s. */
+  timeoutMs?: number;
 }): Promise<CriarTemplateResult> {
   const { version, wabaId, accessToken } = creds();
   if (!wabaId || !accessToken) {
@@ -519,7 +521,7 @@ export async function cloudCriarTemplate(input: {
   };
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), input.timeoutMs ?? 20_000);
   try {
     const res = await fetch(`https://graph.facebook.com/${version}/${wabaId}/message_templates`, {
       method: "POST",
