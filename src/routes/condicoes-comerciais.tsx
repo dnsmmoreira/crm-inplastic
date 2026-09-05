@@ -84,7 +84,12 @@ const formSchema = z.object({
     .regex(/^\d{1,3}([.,]\d{1,2})?$/, "Use um percentual válido (ex: 3 ou 3,5)"),
 });
 
-type FormValues = z.infer<typeof formSchema> & { parcelas: ParcelaCondicao[] };
+type FormValues = z.infer<typeof formSchema> & {
+  parcelas: ParcelaCondicao[];
+  /** Só usado quando a condição é de cartão. */
+  maxParcelasRaw: string;
+  jurosCompostos: boolean;
+};
 
 const emptyForm: FormValues = {
   label: "",
@@ -94,6 +99,8 @@ const emptyForm: FormValues = {
   permitePf: false,
   acrescimoRaw: "0",
   parcelas: [{ dias: 0, percentual: 100 }],
+  maxParcelasRaw: "12",
+  jurosCompostos: true,
 };
 
 const parsePercent = (v: string) => Math.max(0, Math.min(100, Number(String(v).replace(",", ".")) || 0));
@@ -157,6 +164,8 @@ function CondicoesComerciais() {
       permitePf: !!t.permitePf,
       acrescimoRaw: String(t.acrescimoPercent ?? 0).replace(".", ","),
       parcelas: termParcelas(t),
+      maxParcelasRaw: String(t.maxParcelas ?? 12),
+      jurosCompostos: t.jurosCompostos ?? true,
     });
     setErrors({});
     setDialogOpen(true);
@@ -191,6 +200,9 @@ function CondicoesComerciais() {
       return { ...f, parcelas: f.parcelas.map((p, i) => ({ ...p, percentual: pcts[i] })) };
     });
 
+  // Campos exclusivos de cartão: a taxa vira "por parcela adicional".
+  const ehCartao = (editing?.method ?? "Boleto") === "Cartão";
+
   const submit = () => {
     const parsed = formSchema.safeParse(form);
     if (!parsed.success) {
@@ -219,6 +231,12 @@ function CondicoesComerciais() {
       active: parsed.data.active,
       permitePf: parsed.data.permitePf,
       acrescimoPercent: parsePercent(parsed.data.acrescimoRaw),
+      ...(ehCartao
+        ? {
+            maxParcelas: Math.max(1, Math.min(24, Number(form.maxParcelasRaw) || 1)),
+            jurosCompostos: form.jurosCompostos,
+          }
+        : {}),
     };
     if (editing) {
       updateTerm(editing.id, payload);
@@ -536,7 +554,7 @@ function CondicoesComerciais() {
               {errors.notes && <p className="text-xs text-destructive mt-1">{errors.notes}</p>}
             </div>
             <div>
-              <Label>Acréscimo (%)</Label>
+              <Label>{ehCartao ? "Taxa por parcela adicional (%)" : "Acréscimo (%)"}</Label>
               <Input
                 value={form.acrescimoRaw}
                 onChange={(e) => setForm((f) => ({ ...f, acrescimoRaw: e.target.value }))}
@@ -544,9 +562,37 @@ function CondicoesComerciais() {
               />
               {errors.acrescimoRaw && <p className="text-xs text-destructive mt-1">{errors.acrescimoRaw}</p>}
               <p className="text-[11px] text-muted-foreground mt-1">
-                Aplicado sobre o subtotal (após desconto) da proposta.
+                {ehCartao
+                  ? "Cobrada a cada parcela adicional na simulação do cartão."
+                  : "Aplicado sobre o subtotal (após desconto) da proposta."}
               </p>
             </div>
+            {ehCartao && (
+              <>
+                <div>
+                  <Label>Máximo de parcelas</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={24}
+                    value={form.maxParcelasRaw}
+                    onChange={(e) => setForm((f) => ({ ...f, maxParcelasRaw: e.target.value }))}
+                  />
+                </div>
+                <div className="flex items-center justify-between rounded-md border p-3">
+                  <div>
+                    <div className="text-sm font-medium">Juros compostos</div>
+                    <div className="text-xs text-muted-foreground">
+                      Desligado, a taxa é somada de forma simples a cada parcela.
+                    </div>
+                  </div>
+                  <Switch
+                    checked={form.jurosCompostos}
+                    onCheckedChange={(v) => setForm((f) => ({ ...f, jurosCompostos: v }))}
+                  />
+                </div>
+              </>
+            )}
             <div className="flex items-center justify-between rounded-md border p-3">
               <div>
                 <div className="text-sm font-medium">Permitir para Pessoa Física</div>
