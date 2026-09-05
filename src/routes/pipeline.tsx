@@ -34,6 +34,7 @@ import { NewLeadDialog, LeadDrawer } from "@/components/crm/LeadDrawer";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { gerarPedidoInterno } from "@/lib/pedidos-gerar.functions";
+import { identificarCard, resolverColunaAlvo } from "@/lib/pipeline-drop";
 
 type SortMode = "default" | "urgency" | "urgency-desc";
 const CARDS_PER_PAGE = 15;
@@ -44,9 +45,22 @@ const CARDS_PER_PAGE = 15;
  */
 const HIDDEN_STAGES: StageId[] = ["qualificacao", "negociacao"];
 const BOARD_STAGES = STAGES.filter((s) => !HIDDEN_STAGES.includes(s.id));
+const BOARD_STAGE_IDS = BOARD_STAGES.map((s) => s.id);
 /** Colunas cujos cards são PROPOSTAS (não leads). */
 const PROPOSAL_STAGES: StageId[] = ["proposta", "ganho"];
 const PROPOSTA_COLUMN_STATUSES = ["enviada", "aguardando_aprovacao", "aprovada"] as const;
+
+/**
+ * O quadro rola na horizontal; a detecção padrão (`rectIntersection`) fica
+ * defasada durante o auto-scroll e acaba entregando a coluna vizinha.
+ * `pointerWithin` segue o ponteiro; `closestCenter` é o plano B quando o
+ * ponteiro está fora de qualquer coluna (ex.: teclado ou toque nas bordas).
+ */
+const detectarColuna: CollisionDetection = (args) => {
+  const porPonteiro = pointerWithin(args);
+  return porPonteiro.length > 0 ? porPonteiro : closestCenter(args);
+};
+
 
 const AGENDA_FILTERS: { level: FollowupLevel; label: string; emoji: string }[] = [
   { level: "urgent", label: "Urgente", emoji: "🔥" },
