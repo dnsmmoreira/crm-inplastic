@@ -9,7 +9,12 @@ import { registrarFalhaSegura } from "@/lib/guard-erros";
 import { requireXerifeCronAuth, cronJsonResponse } from "@/lib/xerife/cron-auth.server";
 import { alreadyActed, logAction } from "@/lib/xerife/dedupe.server";
 import { notifyOwner, notifyDiretoria } from "@/lib/xerife/notify.server";
-import { endOfTodaySpIso, startOfTodaySpIso, computeRollover } from "@/lib/xerife/rollover.server";
+import {
+  endOfTodaySpIso,
+  startOfTodaySpIso,
+  computeRollover,
+  atingiuTeto,
+} from "@/lib/xerife/rollover.server";
 
 async function runFechamento(force = false): Promise<{
   vendedoresNotificados: number;
@@ -29,7 +34,7 @@ async function runFechamento(force = false): Promise<{
 
   const { data: pendentesAll } = await sb
     .from("tarefas")
-    .select("id, owner_id, prioridade, escalonamentos")
+    .select("id, owner_id, titulo, prioridade, escalonamentos")
     .in("status", ["pendente", "adiada"])
     .lte("due_date", endToday)
     .not("owner_id", "is", null);
@@ -50,6 +55,7 @@ async function runFechamento(force = false): Promise<{
   let totalFeitasEquipe = 0;
   let totalRoladasEquipe = 0;
   const placarPorVendedor: { name: string; feitas: number; roladas: number }[] = [];
+  const travadas: { titulo: string; dono: string }[] = [];
   const now = new Date();
 
   for (const uid of ownersSet) {
@@ -57,7 +63,14 @@ async function runFechamento(force = false): Promise<{
     const nFeitas = (feitasAll ?? []).filter((t: any) => t.owner_id === uid).length;
     const nRoladas = pendentes.length;
 
+    const nomeDono =
+      (await sb.from("profiles").select("name").eq("id", uid).maybeSingle()).data?.name ??
+      "vendedor";
+
     for (const t of pendentes) {
+      if (atingiuTeto(t as any)) {
+        travadas.push({ titulo: (t as any).titulo ?? "(sem título)", dono: nomeDono });
+      }
       const patch = computeRollover(t as any, now);
       // REGISTRAR E SEGUIR: cron de fechamento; a tarefa não rolada continua
       // pendente e entra no fechamento seguinte.
@@ -77,8 +90,7 @@ async function runFechamento(force = false): Promise<{
     totalRoladasEquipe += nRoladas;
     totalFeitasEquipe += nFeitas;
 
-    const { data: prof } = await sb.from("profiles").select("name").eq("id", uid).maybeSingle();
-    placarPorVendedor.push({ name: prof?.name ?? "vendedor", feitas: nFeitas, roladas: nRoladas });
+    placarPorVendedor.push({ name: nomeDono, feitas: nFeitas, roladas: nRoladas });
 
     if (nFeitas === 0 && nRoladas === 0) continue;
 
@@ -200,6 +212,14 @@ async function runFechamento(force = false): Promise<{
     }
   } catch (e) {
     console.error("[xerife-fechamento] snapshot_metas_mes falhou:", e);
+  }
+
+  if (travadas.length) {
+    dLines.push("");
+    dLines.push(`⛔ *Travadas — não rolam mais (${travadas.length})*`);
+    travadas.slice(0, 10).forEach((t) => {
+      dLines.push(`• ${t.titulo} — ${t.dono}`);
+    });
   }
 
   if (placarPorVendedor.length) diretoriaNotificada = await notifyDiretoria(dLines.join("\n"));
