@@ -187,7 +187,7 @@ export const listarPendenciasCadastro = createServerFn({ method: "GET" })
     // 5) Pedidos em pós-venda sem comprovação de entrega (foto + documento).
     const entregasRes = await sb
       .from("pedidos")
-      .select("id, number, lead_company, responsavel_atual_id, equipe_responsavel, stage_changed_at", {
+      .select("id, number, lead_id, responsavel_atual_id, equipe_responsavel, stage_changed_at", {
         count: "exact",
       })
       .eq("stage", "pos_venda")
@@ -198,7 +198,7 @@ export const listarPendenciasCadastro = createServerFn({ method: "GET" })
     const entregasRaw = (entregasRes.data ?? []) as {
       id: string;
       number: string;
-      lead_company: string | null;
+      lead_id: string | null;
       responsavel_atual_id: string | null;
       equipe_responsavel: string | null;
       stage_changed_at: string | null;
@@ -212,7 +212,13 @@ export const listarPendenciasCadastro = createServerFn({ method: "GET" })
       ...entregasRaw.map((p) => p.responsavel_atual_id ?? ""),
     ]);
 
-    const leadIds = [...new Set(propostasRaw.map((p) => p.lead_id).filter(Boolean))] as string[];
+    const leadIds = [
+      ...new Set(
+        [...propostasRaw.map((p) => p.lead_id), ...entregasRaw.map((p) => p.lead_id)].filter(
+          Boolean,
+        ),
+      ),
+    ] as string[];
     const clientePorLead = new Map<string, string>();
     if (leadIds.length > 0) {
       const res = await sb.from("leads").select("id, company, razao_social").in("id", leadIds);
@@ -291,7 +297,7 @@ export const listarPendenciasCadastro = createServerFn({ method: "GET" })
       itens: entregasRaw.map<PendenciaEntrega>((p) => ({
         id: p.id,
         number: p.number,
-        cliente: p.lead_company,
+        cliente: (p.lead_id && clientePorLead.get(p.lead_id)) || null,
         responsavel:
           (p.responsavel_atual_id && nomes.get(p.responsavel_atual_id)) ||
           p.equipe_responsavel ||
