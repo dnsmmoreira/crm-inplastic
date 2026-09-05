@@ -972,17 +972,16 @@ function PainelSaudeWhatsapp() {
         <div className="space-y-2 rounded-md border p-3">
           <div className="text-xs font-medium">Canais de alerta interno</div>
           <div className="flex flex-wrap items-center gap-2 text-[11px]">
-            <span className="text-muted-foreground">WhatsApp interno</span>
-            <Badge variant={diag.canais.interno_whatsapp.pronto ? "default" : "destructive"}>
-              {diag.canais.interno_whatsapp.pronto ? "Configurado" : "NÃO configurado"}
-            </Badge>
+            <span className="text-muted-foreground">
+              WhatsApp interno: desativado — alertas vão por Telegram
+            </span>
             <span className="ml-2 text-muted-foreground">Telegram diretoria</span>
             <Badge variant={diag.canais.telegram_diretoria.pronto ? "default" : "destructive"}>
               {diag.canais.telegram_diretoria.pronto ? "Configurado" : "NÃO configurado"}
             </Badge>
           </div>
 
-          {!diag.canais.interno_whatsapp.pronto && !diag.canais.telegram_diretoria.pronto && (
+          {!diag.canais.telegram_diretoria.pronto && (
             <div className="rounded-md border border-destructive/40 bg-destructive/5 p-2 text-[11px] text-destructive">
               <div className="flex items-start gap-1.5">
                 <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
@@ -992,24 +991,13 @@ function PainelSaudeWhatsapp() {
                     ninguém.
                   </div>
                   <div className="mt-1 font-mono">
-                    Variáveis ausentes: {diag.faltantes.join(", ") || "—"}
+                    Variáveis ausentes: {diag.canais.telegram_diretoria.faltantes.join(", ") || "—"}
                   </div>
                 </div>
               </div>
             </div>
           )}
 
-          {diag.canais.telegram_diretoria.pronto && !diag.canais.interno_whatsapp.pronto && (
-            <div className="rounded-md border bg-muted/40 p-2 text-[11px] text-muted-foreground">
-              <div>
-                Alertas serão entregues via Telegram. O canal WhatsApp interno é opcional e está
-                desativado.
-              </div>
-              <div className="mt-1 font-mono">
-                Variáveis ausentes: {diag.faltantes.join(", ") || "—"}
-              </div>
-            </div>
-          )}
 
           <div className="flex items-center gap-2">
             <TooltipProvider>
