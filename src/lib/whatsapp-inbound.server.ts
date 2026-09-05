@@ -64,7 +64,7 @@ export type ResultadoEntrada = Record<string, unknown>;
 export async function processarEntradaWhatsapp(
   entrada: EntradaWhatsapp,
 ): Promise<ResultadoEntrada> {
-  const { phone, message, name, externalId, tipo, midia, tag } = entrada;
+  const { phone, message, name, externalId, tipo, midia, tag, silencioso, criadoEm } = entrada;
 
   const { TIPOS_COM_RESPOSTA_AUTOMATICA, TIPOS_COM_HANDOFF } = await import("@/lib/zapi-normalize");
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
