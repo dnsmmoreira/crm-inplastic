@@ -30,7 +30,15 @@ export type EntradaWhatsapp = {
   midia: unknown | null;
   /** Prefixo de log, ex.: "zapi-webhook" ou "wa-cloud-webhook". */
   tag: string;
+  /**
+   * Só grava a mensagem e atualiza a conversa: sem IA/fila, sem handoff,
+   * sem notificação e sem alerta (reações e reprocessamento de backlog).
+   */
+  silencioso?: boolean;
+  /** Data original da mensagem (reprocessamento). Padrão: agora. */
+  criadoEm?: string;
 };
+
 
 /**
  * Gatilhos de opt-out (lista inalterada). A correspondência é por PALAVRA
