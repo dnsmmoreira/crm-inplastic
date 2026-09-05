@@ -385,7 +385,7 @@ function MinhasConversasPage() {
                 <Input
                   value={busca}
                   onChange={(e) => setBusca(e.target.value)}
-                  placeholder="Buscar contato ou telefone"
+                  placeholder="Buscar contato, empresa ou telefone"
                   className="pl-8"
                 />
               </div>
