@@ -48,6 +48,12 @@ function UsuariosPage() {
 
   const [rows, setRows] = useState<UsuarioRow[] | null>(null);
   const [busca, setBusca] = useState("");
+
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("busca");
+    if (q) setBusca(q);
+  }, []);
+
   const [filtroPapel, setFiltroPapel] = useState<"todos" | AppRole>("todos");
   const [filtroStatus, setFiltroStatus] = useState<"todos" | "ativos" | "inativos" | "excluidos">("ativos");
   const [sort, setSort] = useState<SortKey>("nome");
