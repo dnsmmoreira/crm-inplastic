@@ -326,9 +326,14 @@ function MinhasConversasPage() {
       const naAba = aba === "aguardando" ? aguardandoIds.has(c.id) : !aguardandoIds.has(c.id);
       if (!naAba) return false;
       if (!q) return true;
-      return (c.name ?? "").toLowerCase().includes(q) || c.phone.includes(q);
+      const empresa = dadosLead[c.id]?.empresa ?? "";
+      return (
+        (c.name ?? "").toLowerCase().includes(q) ||
+        empresa.toLowerCase().includes(q) ||
+        c.phone.includes(q)
+      );
     });
-  }, [daFila, busca, aba, aguardandoIds]);
+  }, [daFila, busca, aba, aguardandoIds, dadosLead]);
 
 
   const selected = useMemo(
