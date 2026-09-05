@@ -4,11 +4,15 @@ import { useServerFn } from "@tanstack/react-start";
 import {
   DndContext,
   DragOverlay,
+  MeasuringStrategy,
   PointerSensor,
+  closestCenter,
+  pointerWithin,
   useSensor,
   useSensors,
   useDraggable,
   useDroppable,
+  type CollisionDetection,
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
@@ -30,6 +34,7 @@ import { NewLeadDialog, LeadDrawer } from "@/components/crm/LeadDrawer";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { gerarPedidoInterno } from "@/lib/pedidos-gerar.functions";
+import { identificarCard, resolverColunaAlvo } from "@/lib/pipeline-drop";
 
 type SortMode = "default" | "urgency" | "urgency-desc";
 const CARDS_PER_PAGE = 15;
@@ -40,9 +45,22 @@ const CARDS_PER_PAGE = 15;
  */
 const HIDDEN_STAGES: StageId[] = ["qualificacao", "negociacao"];
 const BOARD_STAGES = STAGES.filter((s) => !HIDDEN_STAGES.includes(s.id));
+const BOARD_STAGE_IDS = BOARD_STAGES.map((s) => s.id);
 /** Colunas cujos cards são PROPOSTAS (não leads). */
 const PROPOSAL_STAGES: StageId[] = ["proposta", "ganho"];
 const PROPOSTA_COLUMN_STATUSES = ["enviada", "aguardando_aprovacao", "aprovada"] as const;
+
+/**
+ * O quadro rola na horizontal; a detecção padrão (`rectIntersection`) fica
+ * defasada durante o auto-scroll e acaba entregando a coluna vizinha.
+ * `pointerWithin` segue o ponteiro; `closestCenter` é o plano B quando o
+ * ponteiro está fora de qualquer coluna (ex.: teclado ou toque nas bordas).
+ */
+const detectarColuna: CollisionDetection = (args) => {
+  const porPonteiro = pointerWithin(args);
+  return porPonteiro.length > 0 ? porPonteiro : closestCenter(args);
+};
+
 
 const AGENDA_FILTERS: { level: FollowupLevel; label: string; emoji: string }[] = [
   { level: "urgent", label: "Urgente", emoji: "🔥" },
@@ -63,7 +81,11 @@ function PipelinePage() {
   const [openLead, setOpenLead] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [lostTarget, setLostTarget] = useState<{ leadId: string; company: string } | null>(null);
+  // `propostaId` presente = a perda veio de um card de PROPOSTA arrastado
+  // para "Perdido": além de mover o lead, a proposta vira "recusada".
+  const [lostTarget, setLostTarget] = useState<
+    { leadId: string; company: string; propostaId?: string } | null
+  >(null);
   // Fase 3: por padrão, oculta ganhos que já viraram pedido operacional (não deleta nada).
   const [mostrarGanhosCompletos, setMostrarGanhosCompletos] = useState(false);
   // Coluna Perdido volta ao quadro, oculta por padrão para não poluir.
@@ -234,19 +256,33 @@ function PipelinePage() {
 
   const onDragEnd = (e: DragEndEvent) => {
     setActiveId(null);
-    if (!e.over) return;
-    const rawId = String(e.active.id);
-    const stage = String(e.over.id) as StageId;
+    // Ignora qualquer alvo que não seja uma coluna visível do quadro.
+    const stage = resolverColunaAlvo(e.over?.id, BOARD_STAGE_IDS);
+    if (!stage) return;
+    const card = identificarCard(e.active.id);
 
-    if (rawId.startsWith("prop:")) {
-      const proposal = proposals.find((p) => p.id === rawId.slice(5));
-      if (proposal && stage === "ganho" && proposal.status !== "pedido") {
-        void fecharProposta(proposal);
+    if (card.tipo === "proposta") {
+      const proposal = proposals.find((p) => p.id === card.id);
+      if (!proposal) return;
+      if (stage === "ganho") {
+        if (proposal.status !== "pedido") void fecharProposta(proposal);
+        return;
       }
+      if (stage === "perdido") {
+        const lead = leadById.get(proposal.leadId);
+        setLostTarget({
+          leadId: proposal.leadId,
+          company: lead?.company ?? proposal.number,
+          propostaId: proposal.id,
+        });
+        return;
+      }
+      if (stage === "proposta") return;
+      toast.info("Uma proposta não volta para as etapas de lead — cancele ou marque como perdida.");
       return;
     }
 
-    const leadId = rawId;
+    const leadId = card.id;
     const lead = leads.find((l) => l.id === leadId);
     if (lead && lead.stage !== stage) {
       if (PROPOSAL_STAGES.includes(stage)) {
@@ -406,7 +442,13 @@ function PipelinePage() {
         </div>
       </div>
 
-      <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={detectarColuna}
+        measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
+        onDragStart={onDragStart}
+        onDragEnd={onDragEnd}
+      >
         <div className="-mx-4 min-h-0 flex-1 overflow-auto px-4 md:-mx-8 md:px-8">
           <div className="flex gap-4 pb-4">
             {BOARD_STAGES.map((stage) =>
@@ -479,8 +521,10 @@ function PipelinePage() {
         onCancel={() => setLostTarget(null)}
         onConfirm={async (payload) => {
           if (!lostTarget) return;
-          const { leadId, company } = lostTarget;
+          const { leadId, company, propostaId } = lostTarget;
           setLostTarget(null);
+          // Card de proposta: a proposta em si passa a "recusada".
+          if (propostaId) updateProposal(propostaId, { status: "recusada" });
           runMove(leadId, "perdido", company, payload);
         }}
       />
