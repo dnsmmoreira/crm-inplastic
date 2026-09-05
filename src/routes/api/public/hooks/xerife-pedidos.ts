@@ -434,6 +434,7 @@ async function runXerifePedidos(
   }
 
   // ─────────────── R4: Previsão de entrega estourada ───────────────
+  // Dedupe de 168h: cobrança semanal enquanto o atraso persistir, em vez de diária.
   {
     const hojeIso = now.toISOString();
     const { data: pedidos } = await sb
@@ -460,7 +461,7 @@ async function runXerifePedidos(
         descricao: `Previsão de entrega estourada em ${dias}d. Etapa atual: ${p.stage}. Realinhe cliente e transporte.`,
         motivo: `Previsão < hoje, stage ${p.stage}`,
         prioridade: 1,
-        janelaHoras: 24,
+        janelaHoras: 168,
       });
       if (ok) stats.previsao_atrasada++;
     }
