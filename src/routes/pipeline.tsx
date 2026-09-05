@@ -81,7 +81,11 @@ function PipelinePage() {
   const [openLead, setOpenLead] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [lostTarget, setLostTarget] = useState<{ leadId: string; company: string } | null>(null);
+  // `propostaId` presente = a perda veio de um card de PROPOSTA arrastado
+  // para "Perdido": além de mover o lead, a proposta vira "recusada".
+  const [lostTarget, setLostTarget] = useState<
+    { leadId: string; company: string; propostaId?: string } | null
+  >(null);
   // Fase 3: por padrão, oculta ganhos que já viraram pedido operacional (não deleta nada).
   const [mostrarGanhosCompletos, setMostrarGanhosCompletos] = useState(false);
   // Coluna Perdido volta ao quadro, oculta por padrão para não poluir.
