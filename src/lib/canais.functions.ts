@@ -838,7 +838,10 @@ export const contarMidiasPendentesCloud = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     const linhas = data ?? [];
     const porTipo: Record<string, number> = {};
-    for (const l of linhas) porTipo[l.tipo] = (porTipo[l.tipo] ?? 0) + 1;
+    for (const l of linhas) {
+      const t = String(l.tipo ?? "desconhecido");
+      porTipo[t] = (porTipo[t] ?? 0) + 1;
+    }
     return {
       total: linhas.length,
       porTipo,
@@ -903,10 +906,10 @@ export const reprocessarMidiasCloud = createServerFn({ method: "POST" })
           });
         }
         if (r.gravado) processados += 1;
-        else falhas.push({ id: ev.id, tipo: ev.tipo, erro: r.erro ?? "não gravado" });
+        else falhas.push({ id: String(ev.id), tipo: String(ev.tipo ?? "?"), erro: r.erro ?? "não gravado" });
       } catch (e) {
         const m = e instanceof Error ? e.message : String(e);
-        falhas.push({ id: ev.id, tipo: ev.tipo, erro: m });
+        falhas.push({ id: String(ev.id), tipo: String(ev.tipo ?? "?"), erro: m });
         await registrarFalhaSegura("canais.reprocessarMidias", e, { evento_id: ev.id });
         await supabaseAdmin
           .from("wa_cloud_eventos")
