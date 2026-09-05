@@ -68,7 +68,9 @@ import {
   VARIAVEIS,
   aplicarVariaveisFrase,
   citaNomeDeEmpresa,
+  converterParaMeta,
   ordemCategoria,
+
   validarParaMeta,
   variaveisInvalidas,
 } from "@/lib/frases-prontas";
