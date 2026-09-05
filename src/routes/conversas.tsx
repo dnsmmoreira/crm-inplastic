@@ -72,6 +72,9 @@ import { TemplatesButton } from "@/components/atendimento/TemplatesButton";
 import { TemplateMetaDialog } from "@/components/atendimento/TemplateMetaDialog";
 import { IAButton, IAPreview, type ModoIA } from "@/components/atendimento/IAAssistButton";
 import { assistenteRedacao } from "@/lib/assistente-redacao.functions";
+import { carregarEmpresaPorConversa, type DadosLeadConversa } from "@/lib/empresa-conversas";
+import { rotuloContato } from "@/lib/rotulo-contato";
+
 
 import type { Database } from "@/integrations/supabase/types";
 
