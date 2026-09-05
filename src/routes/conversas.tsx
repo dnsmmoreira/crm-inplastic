@@ -726,6 +726,11 @@ function ChatPanel({
   );
 
   useEffect(() => {
+    // A lista já resolve empresa (cliente vinculado → lead) em lote; só busca se faltar.
+    if (empresa) {
+      setEmpresaLead(empresa);
+      return;
+    }
     const leadId = conversa?.lead_id ?? null;
     if (!leadId) {
       setEmpresaLead(null);
@@ -736,8 +741,15 @@ function ChatPanel({
       .select("company, contact_name")
       .eq("id", leadId)
       .maybeSingle()
-      .then(({ data }) => setEmpresaLead(data?.company ?? null));
-  }, [conversa?.lead_id]);
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("[conversas] empresa do lead indisponível", error);
+          setEmpresaLead(null);
+          return;
+        }
+        setEmpresaLead(data?.company ?? null);
+      });
+  }, [conversa?.lead_id, empresa]);
 
   useEffect(() => {
     const id = conversa?.id;
