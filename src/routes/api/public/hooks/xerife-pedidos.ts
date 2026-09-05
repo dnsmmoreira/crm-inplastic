@@ -174,6 +174,27 @@ async function runXerifePedidos(
 
   const now = new Date();
 
+  // Usuários isentos de cobrança do Xerife (lançam pedidos, mas não decidem o
+  // andamento). As tarefas deles vão para o grupo operacional.
+  const { data: isentosRows } = await sb.from("profiles").select("id").eq("xerife_isento", true);
+  const isentos = new Set<string>(((isentosRows ?? []) as Array<{ id: string }>).map((r) => r.id));
+
+  // Grupo operacional resolvido uma única vez por execução (reusado no R1 e no
+  // redirecionamento de donos isentos).
+  let operacional: string[] | null = null;
+  const getOperacional = async (): Promise<string[]> =>
+    (operacional ??= await destinatariosOperacional(sb));
+
+  /**
+   * Dono efetivo da cobrança: mantém o owner quando ele não é isento; quando é,
+   * devolve o primeiro usuário do grupo operacional (null se o grupo estiver vazio).
+   */
+  async function donoEfetivo(ownerId: string | null): Promise<string | null> {
+    if (!ownerId || !isentos.has(ownerId)) return ownerId;
+    const grupo = await getOperacional();
+    return grupo[0] ?? null;
+  }
+
   async function criarTarefa(t: CriarTarefaArgs): Promise<boolean> {
     if (await alreadyActedPedido(sb, t.regra, t.pedidoId, t.janelaHoras ?? DEDUPE_HORAS_PADRAO)) {
       stats.skipped_dedupe++;
@@ -272,15 +293,17 @@ async function runXerifePedidos(
 
     // Grupos resolvidos uma vez por execução (evita N+1 de permissões)
     let financeiro: string[] | null = null;
-    let operacional: string[] | null = null;
     const grupoDe = async (grupo: string, fallbackOwner: string | null): Promise<string[]> => {
       if (grupo === "financeiro") {
         financeiro ??= await destinatariosFinanceiro(sb);
         return financeiro;
       }
       if (grupo === "operacional") {
-        operacional ??= await destinatariosOperacional(sb);
-        return operacional;
+        return await getOperacional();
+      }
+      // Dono isento não é cobrado: a cadência do "vendedor" vai para o operacional.
+      if (grupo === "vendedor" && fallbackOwner && isentos.has(fallbackOwner)) {
+        return await getOperacional();
       }
       return fallbackOwner ? [fallbackOwner] : [];
     };
@@ -314,9 +337,11 @@ async function runXerifePedidos(
         passo.grupo,
         p.responsavel_atual_id ?? p.vendedor_proprietario_id ?? null,
       );
-      const alvos = responsaveis.length
-        ? responsaveis
-        : ([p.responsavel_atual_id ?? p.vendedor_proprietario_id].filter(Boolean) as string[]);
+      const alvos = (
+        responsaveis.length
+          ? responsaveis
+          : ([p.responsavel_atual_id ?? p.vendedor_proprietario_id].filter(Boolean) as string[])
+      ).filter((id) => !isentos.has(id));
 
       // Uma tarefa por responsável do grupo; dedupe por (regra, pedido, dono).
       let criou = false;
@@ -385,7 +410,8 @@ async function runXerifePedidos(
     for (const p of pedidos ?? []) {
       const horas = horasDesde(p.aprovacao_solicitada_em, now) ?? 0;
       if (horas < APROVACAO_SLA_HORAS) continue;
-      const owner = p.responsavel_atual_id ?? p.vendedor_proprietario_id;
+      const owner = await donoEfetivo(p.responsavel_atual_id ?? p.vendedor_proprietario_id);
+      if (!owner) continue;
       const ok = await criarTarefa({
         regra: "pedido_aprovacao_pendente",
         pedidoId: p.id,
@@ -416,7 +442,8 @@ async function runXerifePedidos(
     for (const p of pedidos ?? []) {
       const dias = diasDesde(p.updated_at, now) ?? 0;
       if (dias < NF_ATRASO_DIAS) continue;
-      const owner = p.responsavel_atual_id ?? p.vendedor_proprietario_id;
+      const owner = await donoEfetivo(p.responsavel_atual_id ?? p.vendedor_proprietario_id);
+      if (!owner) continue;
       const ok = await criarTarefa({
         regra: "pedido_nf_atrasada",
         pedidoId: p.id,
@@ -449,7 +476,8 @@ async function runXerifePedidos(
 
     for (const p of pedidos ?? []) {
       const dias = diasDesde(p.previsao_entrega, now) ?? 0;
-      const owner = p.responsavel_atual_id ?? p.vendedor_proprietario_id;
+      const owner = await donoEfetivo(p.responsavel_atual_id ?? p.vendedor_proprietario_id);
+      if (!owner) continue;
       const ok = await criarTarefa({
         regra: "pedido_previsao_atrasada",
         pedidoId: p.id,
@@ -491,7 +519,8 @@ async function runXerifePedidos(
       const p = pedidoMap.get(o.pedido_id);
       if (!p) continue;
       const horas = horasDesde(o.created_at, now) ?? 0;
-      const owner = p.responsavel_atual_id ?? p.vendedor_proprietario_id;
+      const owner = await donoEfetivo(p.responsavel_atual_id ?? p.vendedor_proprietario_id);
+      if (!owner) continue;
       const ok = await criarTarefa({
         regra: `pedido_ocorrencia_aberta:${o.id}`,
         pedidoId: p.id,
@@ -530,7 +559,8 @@ async function runXerifePedidos(
         stats.skipped_dedupe++;
         continue;
       }
-      const owner = p.vendedor_proprietario_id ?? p.responsavel_atual_id;
+      const owner = await donoEfetivo(p.vendedor_proprietario_id ?? p.responsavel_atual_id);
+      if (!owner) continue;
       const ok = await criarTarefa({
         regra: "pos_venda_pedido_entregue",
         pedidoId: p.id,
@@ -601,8 +631,9 @@ async function runXerifePedidos(
     }
 
     for (const p of pedidos ?? []) {
-      const owner: string | null =
-        p.responsavel_atual_id ?? (await donoOperacional()) ?? p.vendedor_proprietario_id ?? null;
+      const owner: string | null = await donoEfetivo(
+        p.responsavel_atual_id ?? (await donoOperacional()) ?? p.vendedor_proprietario_id ?? null,
+      );
       if (!owner) continue;
       const horas =
         horasDesde(entradaPorPedido.get(p.id) ?? null, now) ?? COMPROVACAO_ENTREGA_HORAS;
@@ -641,7 +672,8 @@ async function runXerifePedidos(
       .limit(500);
 
     for (const p of pedidos ?? []) {
-      const owner = p.vendedor_proprietario_id ?? p.responsavel_atual_id;
+      const owner = await donoEfetivo(p.vendedor_proprietario_id ?? p.responsavel_atual_id);
+      if (!owner) continue;
       const ok = await criarTarefa({
         regra: "pos_venda_pedido_recompra",
         pedidoId: p.id,
