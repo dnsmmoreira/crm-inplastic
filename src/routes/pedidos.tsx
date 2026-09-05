@@ -135,7 +135,7 @@ function PedidosKanbanPage() {
       if (ctx?.prev) qc.setQueryData(["pedidos", "kanban"], ctx.prev);
       toast.error("Falha ao mover pedido");
     },
-    onSuccess: (res) => {
+    onSuccess: (res, vars) => {
       if (res && "ok" in res && !res.ok) {
         toast.error(res.message);
         void qc.invalidateQueries({ queryKey: ["pedidos", "kanban"] });
@@ -143,6 +143,8 @@ function PedidosKanbanPage() {
       }
       void qc.invalidateQueries({ queryKey: ["pedidos", "kanban"] });
       void qc.invalidateQueries({ queryKey: ["pipeline", "leads-com-pedido"] });
+      // Entrou no Pós-venda: abre o pedido para comprovar a entrega na hora.
+      if (vars.stage === "pos_venda") setOpenPedidoId(vars.pedido_id);
     },
   });
 
@@ -672,6 +674,16 @@ function PedidoCard({
             <AlertTriangle className="h-2.5 w-2.5 mr-1" /> Atrasado
           </Badge>
         )}
+        {pedido.stage === "pos_venda" &&
+          (pedido.entrega_comprovada_em ? (
+            <Badge className="text-[10px] px-1.5 py-0 bg-emerald-500/15 text-emerald-700 border-emerald-500/30">
+              Entrega comprovada
+            </Badge>
+          ) : (
+            <Badge className="text-[10px] px-1.5 py-0 bg-amber-500/15 text-amber-700 border-amber-500/30">
+              Sem comprovante
+            </Badge>
+          ))}
         {pendencias.map((p) => (
           <Badge
             key={p}
