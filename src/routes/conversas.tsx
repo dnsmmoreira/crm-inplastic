@@ -993,9 +993,18 @@ function ChatPanel({
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Phone className="h-3 w-3" />
-              {conversa.phone}
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <Phone className="h-3 w-3" />
+                {conversa.phone}
+              </span>
+              {empresaLead && empresaLead.trim().toLocaleLowerCase("pt-BR") !==
+                nome.trim().toLocaleLowerCase("pt-BR") && (
+                <span className="flex min-w-0 items-center gap-1">
+                  <Building2 className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{empresaLead}</span>
+                </span>
+              )}
             </div>
           </div>
         </div>
