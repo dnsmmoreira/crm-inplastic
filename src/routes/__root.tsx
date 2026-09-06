@@ -771,6 +771,18 @@ function AppShell({ children }: { children: ReactNode }) {
                   <BookOpen className="h-4 w-4 shrink-0" />
                   Manual do CRM
                 </a>
+
+                <a
+                  href="/apresentacao.html"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setDrawerOpen(false)}
+                  className="flex min-h-11 items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent"
+                >
+                  <Trophy className="h-4 w-4 shrink-0" />
+                  ARENA
+                </a>
+
               </nav>
 
               <UserBadge />
