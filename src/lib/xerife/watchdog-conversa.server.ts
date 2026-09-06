@@ -277,6 +277,9 @@ export async function runWatchdogConversa(
     .from("whatsapp_conversas")
     .select("id, phone, name, lead_id, atribuido_para, last_message_at, created_at")
     .eq("ia_ativa", false)
+    // Conversa encerrada não gera cobrança: como o dedupe do xerife_log é de
+    // apenas 24h, sem este filtro o alerta se repetiria todo dia, para sempre.
+    .neq("status", "encerrado")
     .lt("last_message_at", friaThresholdIso)
     .order("last_message_at", { ascending: true })
     .limit(LOTE);
