@@ -52,6 +52,11 @@ function RomaneioCard({ pedidoId, tipo }: { pedidoId: string; tipo: RomaneioTipo
   const { data: romaneio, isLoading } = useQuery<RomaneioRow | null>({
     queryKey,
     queryFn: () => carregar({ data: { pedido_id: pedidoId, tipo } }),
+    // Conferência é preenchida à mão: nada de refetch ao voltar o foco da
+    // janela/aba, para não sobrescrever marcações ainda não salvas.
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    staleTime: 5 * 60_000,
   });
 
   const [marcados, setMarcados] = useState<Record<string, boolean>>({});
