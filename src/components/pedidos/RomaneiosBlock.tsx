@@ -56,14 +56,18 @@ function RomaneioCard({ pedidoId, tipo }: { pedidoId: string; tipo: RomaneioTipo
 
   const [marcados, setMarcados] = useState<Record<string, boolean>>({});
   const [busy, setBusy] = useState(false);
+  // Marcações ainda não salvas não podem ser apagadas por um refetch
+  // (voltar de outra aba refaz a query e traz um novo objeto).
+  const [sujo, setSujo] = useState(false);
 
   useEffect(() => {
+    if (sujo) return;
     const mapa: Record<string, boolean> = {};
     for (const c of (romaneio?.itens_conferidos ?? []) as RomaneioConferido[]) {
       mapa[c.item_key] = c.conferido;
     }
     setMarcados(mapa);
-  }, [romaneio]);
+  }, [romaneio, sujo]);
 
   const itens = useMemo(() => romaneio?.itens ?? [], [romaneio]);
   const conferidos = itens.filter((i) => marcados[i.item_key]).length;
