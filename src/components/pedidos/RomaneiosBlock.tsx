@@ -84,6 +84,7 @@ function RomaneioCard({ pedidoId, tipo }: { pedidoId: string; tipo: RomaneioTipo
       } else {
         toast.success(`${ROMANEIO_LABELS[tipo]} gerado`);
       }
+      setSujo(false);
       await qc.invalidateQueries({ queryKey });
       window.open(`/romaneio/${pedidoId}/${tipo}`, "_blank", "noopener");
     } catch (e) {
@@ -107,6 +108,7 @@ function RomaneioCard({ pedidoId, tipo }: { pedidoId: string; tipo: RomaneioTipo
         },
       });
       toast.success("Conferência salva");
+      setSujo(false);
       await qc.invalidateQueries({ queryKey });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Falha ao salvar conferência");
@@ -131,6 +133,7 @@ function RomaneioCard({ pedidoId, tipo }: { pedidoId: string; tipo: RomaneioTipo
       });
       await concluirFn({ data: { pedido_id: pedidoId, tipo } });
       toast.success("Romaneio concluído");
+      setSujo(false);
       await qc.invalidateQueries({ queryKey });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Falha ao concluir romaneio");
@@ -188,7 +191,10 @@ function RomaneioCard({ pedidoId, tipo }: { pedidoId: string; tipo: RomaneioTipo
                   id={id}
                   checked={marcado}
                   onCheckedChange={(v) =>
-                    setMarcados((m) => ({ ...m, [i.item_key]: v === true }))
+                    setMarcados((m) => {
+                      setSujo(true);
+                      return { ...m, [i.item_key]: v === true };
+                    })
                   }
                 />
                 <label
