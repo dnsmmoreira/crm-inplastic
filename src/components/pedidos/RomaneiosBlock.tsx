@@ -203,12 +203,19 @@ function RomaneioCard({ pedidoId, tipo }: { pedidoId: string; tipo: RomaneioTipo
 
       {romaneio && itens.length > 0 && (
         <div className="space-y-2">
+          {sujo && (
+            <div className="flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-700 dark:text-amber-400">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+              Alterações não salvas nesta conferência — clique em "Salvar conferência".
+            </div>
+          )}
           <div className="flex items-center justify-between">
             <span className="text-xs text-muted-foreground">
               {conferidos}/{itens.length} conferido(s)
             </span>
             {romaneio.concluido_em && <Badge variant="secondary">Concluído</Badge>}
           </div>
+
           {itens.map((i) => {
             const id = `rom-${tipo}-${i.item_key}`;
             const marcado = !!marcados[i.item_key];
