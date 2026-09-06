@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useBlocker } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
@@ -30,11 +30,85 @@ import {
   type RomaneioTipo,
 } from "@/lib/pedido-romaneios.functions";
 
+type Marcacoes = Record<string, boolean>;
+
+/** Handlers que cada cartão publica para o aviso de saída da seção. */
+type CardHandle = {
+  label: string;
+  salvar: () => Promise<boolean>;
+  descartar: () => void;
+};
+
+function mesmasMarcacoes(a: Marcacoes, b: Marcacoes): boolean {
+  const chaves = new Set([...Object.keys(a), ...Object.keys(b)]);
+  for (const k of chaves) if (!!a[k] !== !!b[k]) return false;
+  return true;
+}
+
 /**
  * Seção "Romaneios" do pedido — independente do `checklist_conferencia`.
  * Disponível em qualquer etapa: gerar, reimprimir e conferir item a item.
+ *
+ * O aviso de "alterações não salvas" vive aqui (um único diálogo para a
+ * seção inteira), para nunca empilhar três confirmações na mesma saída.
  */
 export function RomaneiosBlock({ pedidoId }: { pedidoId: string }) {
+  const cards = useRef(new Map<RomaneioTipo, CardHandle>());
+  const [sujos, setSujos] = useState<RomaneioTipo[]>([]);
+  const [salvando, setSalvando] = useState(false);
+
+  const registrar = useCallback(
+    (tipo: RomaneioTipo, handle: CardHandle | null, sujo: boolean) => {
+      if (handle) cards.current.set(tipo, handle);
+      else cards.current.delete(tipo);
+      setSujos((atual) => {
+        const tem = atual.includes(tipo);
+        if (sujo && handle) return tem ? atual : [...atual, tipo];
+        if (!tem) return atual;
+        return atual.filter((t) => t !== tipo);
+      });
+    },
+    [],
+  );
+
+  const temPendencia = sujos.length > 0;
+
+  // Fechar/recarregar a aba com conferência pendente pede confirmação.
+  useEffect(() => {
+    if (!temPendencia) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [temPendencia]);
+
+  // Navegação dentro do CRM abre o diálogo com Salvar / Descartar.
+  const blocker = useBlocker({
+    shouldBlockFn: () => cards.current.size > 0 && temPendencia,
+    withResolver: true,
+    enableBeforeUnload: false,
+  });
+
+  async function salvarTudoESair() {
+    setSalvando(true);
+    try {
+      for (const tipo of [...sujos]) {
+        const ok = await cards.current.get(tipo)?.salvar();
+        if (!ok) return; // erro já avisado pelo cartão; segura a navegação
+      }
+      blocker.proceed?.();
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  function descartarTudoESair() {
+    for (const tipo of [...sujos]) cards.current.get(tipo)?.descartar();
+    blocker.proceed?.();
+  }
+
   return (
     <section className="space-y-3">
       <div className="flex items-center gap-2">
@@ -43,14 +117,49 @@ export function RomaneiosBlock({ pedidoId }: { pedidoId: string }) {
       </div>
       <div className="space-y-3">
         {ROMANEIO_TIPOS.map((tipo) => (
-          <RomaneioCard key={tipo} pedidoId={pedidoId} tipo={tipo} />
+          <RomaneioCard key={tipo} pedidoId={pedidoId} tipo={tipo} onRegistrar={registrar} />
         ))}
       </div>
+
+      <AlertDialog open={blocker.status === "blocked"}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Alterações não salvas</AlertDialogTitle>
+            <AlertDialogDescription>
+              {sujos.length === 1
+                ? `A conferência do ${ROMANEIO_LABELS[sujos[0]!]} tem marcações que ainda não foram salvas.`
+                : `${sujos.length} conferências têm marcações que ainda não foram salvas (${sujos
+                    .map((t) => ROMANEIO_LABELS[t])
+                    .join(", ")}).`}{" "}
+              O que você quer fazer antes de sair?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-2">
+            <Button variant="ghost" disabled={salvando} onClick={() => blocker.reset?.()}>
+              Continuar editando
+            </Button>
+            <Button variant="outline" disabled={salvando} onClick={descartarTudoESair}>
+              Descartar
+            </Button>
+            <Button disabled={salvando} onClick={() => void salvarTudoESair()}>
+              {salvando ? "Salvando…" : "Salvar e sair"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 }
 
-function RomaneioCard({ pedidoId, tipo }: { pedidoId: string; tipo: RomaneioTipo }) {
+function RomaneioCard({
+  pedidoId,
+  tipo,
+  onRegistrar,
+}: {
+  pedidoId: string;
+  tipo: RomaneioTipo;
+  onRegistrar: (tipo: RomaneioTipo, handle: CardHandle | null, sujo: boolean) => void;
+}) {
   const qc = useQueryClient();
   const carregar = useServerFn(getRomaneio);
   const gerarFn = useServerFn(gerarRomaneio);
@@ -68,80 +177,37 @@ function RomaneioCard({ pedidoId, tipo }: { pedidoId: string; tipo: RomaneioTipo
     staleTime: 5 * 60_000,
   });
 
-  const [marcados, setMarcados] = useState<Record<string, boolean>>({});
   const [busy, setBusy] = useState(false);
-  // Marcações ainda não salvas não podem ser apagadas por um refetch
-  // (voltar de outra aba refaz a query e traz um novo objeto).
-  const [sujo, setSujo] = useState(false);
+  // `rascunho` só existe enquanto o usuário mexe; sem rascunho, a tela mostra
+  // exatamente o que está gravado — assim nenhum refetch apaga trabalho.
+  const [rascunho, setRascunho] = useState<Marcacoes | null>(null);
 
-  useEffect(() => {
-    if (sujo) return;
-    const mapa: Record<string, boolean> = {};
+  const salvos = useMemo<Marcacoes>(() => {
+    const mapa: Marcacoes = {};
     for (const c of (romaneio?.itens_conferidos ?? []) as RomaneioConferido[]) {
       mapa[c.item_key] = c.conferido;
     }
-    setMarcados(mapa);
-  }, [romaneio, sujo]);
+    return mapa;
+  }, [romaneio]);
 
-  // Aviso do navegador ao fechar/recarregar a aba com conferência não salva.
-  useEffect(() => {
-    if (!sujo) return;
-    const handler = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = "";
-    };
-    window.addEventListener("beforeunload", handler);
-    return () => window.removeEventListener("beforeunload", handler);
-  }, [sujo]);
-
-  // Confirmação ao navegar dentro do CRM com conferência não salva.
-  const blocker = useBlocker({
-    shouldBlockFn: () => sujo,
-    withResolver: true,
-    enableBeforeUnload: false,
-  });
-
+  const marcados = rascunho ?? salvos;
+  const sujo = rascunho !== null && !mesmasMarcacoes(rascunho, salvos);
 
   const itens = useMemo(() => romaneio?.itens ?? [], [romaneio]);
   const conferidos = itens.filter((i) => marcados[i.item_key]).length;
   const tudoConferido = itens.length > 0 && conferidos === itens.length;
 
-  async function gerar() {
-    setBusy(true);
-    try {
-      const r = await gerarFn({ data: { pedido_id: pedidoId, tipo } });
-      if (r.estavaConcluido) {
-        toast.warning(
-          "Este romaneio já tinha sido concluído — gerar de novo reinicia a conferência",
-        );
-      } else {
-        toast.success(`${ROMANEIO_LABELS[tipo]} gerado`);
-      }
-      setSujo(false);
-      await qc.invalidateQueries({ queryKey });
-      window.open(`/romaneio/${pedidoId}/${tipo}`, "_blank", "noopener");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Falha ao gerar romaneio");
-    } finally {
-      setBusy(false);
-    }
-  }
+  const itensConferidos = () =>
+    itens.map((i) => ({ item_key: i.item_key, conferido: !!marcados[i.item_key] }));
 
   async function salvarConferencia(): Promise<boolean> {
     setBusy(true);
     try {
       await salvarFn({
-        data: {
-          pedido_id: pedidoId,
-          tipo,
-          itens_conferidos: itens.map((i) => ({
-            item_key: i.item_key,
-            conferido: !!marcados[i.item_key],
-          })),
-        },
+        data: { pedido_id: pedidoId, tipo, itens_conferidos: itensConferidos() },
       });
-      toast.success("Conferência salva");
-      setSujo(false);
+      toast.success(`Conferência do ${ROMANEIO_LABELS[tipo]} salva`);
+      setRascunho(null);
       await qc.invalidateQueries({ queryKey });
       return true;
     } catch (e) {
@@ -152,40 +218,55 @@ function RomaneioCard({ pedidoId, tipo }: { pedidoId: string; tipo: RomaneioTipo
     }
   }
 
-  /** "Salvar e sair" do aviso de saída. */
-  async function salvarESair() {
-    if (await salvarConferencia()) blocker.proceed?.();
-  }
+  /** Descarta o rascunho: a tela volta ao que está gravado. */
+  const descartar = useCallback(() => setRascunho(null), []);
 
-  /** "Descartar e sair": volta ao que está gravado e libera a navegação. */
-  function descartarESair() {
-    const mapa: Record<string, boolean> = {};
-    for (const c of (romaneio?.itens_conferidos ?? []) as RomaneioConferido[]) {
-      mapa[c.item_key] = c.conferido;
+  // Publica os handlers e o estado "sujo" para o aviso de saída da seção.
+  const salvarRef = useRef(salvarConferencia);
+  salvarRef.current = salvarConferencia;
+  useEffect(() => {
+    onRegistrar(
+      tipo,
+      { label: ROMANEIO_LABELS[tipo], salvar: () => salvarRef.current(), descartar },
+      sujo,
+    );
+    return () => onRegistrar(tipo, null, false);
+  }, [tipo, sujo, descartar, onRegistrar]);
+
+  async function gerar() {
+    if (sujo && !window.confirm("Há marcações não salvas — gerar de novo descarta a conferência atual. Continuar?")) {
+      return;
     }
-    setMarcados(mapa);
-    setSujo(false);
-    blocker.proceed?.();
+    setBusy(true);
+    try {
+      const r = await gerarFn({ data: { pedido_id: pedidoId, tipo } });
+      if (r.estavaConcluido) {
+        toast.warning(
+          "Este romaneio já tinha sido concluído — gerar de novo reinicia a conferência",
+        );
+      } else {
+        toast.success(`${ROMANEIO_LABELS[tipo]} gerado`);
+      }
+      setRascunho(null);
+      await qc.invalidateQueries({ queryKey });
+      window.open(`/romaneio/${pedidoId}/${tipo}`, "_blank", "noopener");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao gerar romaneio");
+    } finally {
+      setBusy(false);
+    }
   }
-
 
   async function concluir() {
     setBusy(true);
     try {
       // Conclusão só depois de persistir o que está marcado na tela.
       await salvarFn({
-        data: {
-          pedido_id: pedidoId,
-          tipo,
-          itens_conferidos: itens.map((i) => ({
-            item_key: i.item_key,
-            conferido: !!marcados[i.item_key],
-          })),
-        },
+        data: { pedido_id: pedidoId, tipo, itens_conferidos: itensConferidos() },
       });
       await concluirFn({ data: { pedido_id: pedidoId, tipo } });
       toast.success("Romaneio concluído");
-      setSujo(false);
+      setRascunho(null);
       await qc.invalidateQueries({ queryKey });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Falha ao concluir romaneio");
@@ -250,10 +331,7 @@ function RomaneioCard({ pedidoId, tipo }: { pedidoId: string; tipo: RomaneioTipo
                   id={id}
                   checked={marcado}
                   onCheckedChange={(v) =>
-                    {
-                      setSujo(true);
-                      setMarcados((m) => ({ ...m, [i.item_key]: v === true }));
-                    }
+                    setRascunho((m) => ({ ...(m ?? salvos), [i.item_key]: v === true }))
                   }
                 />
                 <label
@@ -275,39 +353,25 @@ function RomaneioCard({ pedidoId, tipo }: { pedidoId: string; tipo: RomaneioTipo
             );
           })}
           <div className="flex flex-wrap gap-2 pt-1">
-            <Button size="sm" variant="outline" disabled={busy} onClick={() => void salvarConferencia()}>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busy || !sujo}
+              onClick={() => void salvarConferencia()}
+            >
               Salvar conferência
             </Button>
+            {sujo && (
+              <Button size="sm" variant="ghost" disabled={busy} onClick={descartar}>
+                Descartar
+              </Button>
+            )}
             <Button size="sm" disabled={busy || !tudoConferido} onClick={() => void concluir()}>
               Concluir romaneio
             </Button>
           </div>
         </div>
       )}
-
-      <AlertDialog open={blocker.status === "blocked"}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Alterações não salvas</AlertDialogTitle>
-            <AlertDialogDescription>
-              A conferência do {ROMANEIO_LABELS[tipo]} tem marcações que ainda não foram
-              salvas. O que você quer fazer antes de sair?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2 sm:gap-2">
-            <Button variant="ghost" disabled={busy} onClick={() => blocker.reset?.()}>
-              Continuar editando
-            </Button>
-            <Button variant="outline" disabled={busy} onClick={descartarESair}>
-              Descartar
-            </Button>
-            <Button disabled={busy} onClick={() => void salvarESair()}>
-              {busy ? "Salvando…" : "Salvar"}
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
-
 }
