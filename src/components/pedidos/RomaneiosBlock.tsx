@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useBlocker } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ExternalLink, ClipboardList } from "lucide-react";
+import { ExternalLink, ClipboardList, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -73,6 +74,27 @@ function RomaneioCard({ pedidoId, tipo }: { pedidoId: string; tipo: RomaneioTipo
     }
     setMarcados(mapa);
   }, [romaneio, sujo]);
+
+  // Aviso do navegador ao fechar/recarregar a aba com conferência não salva.
+  useEffect(() => {
+    if (!sujo) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [sujo]);
+
+  // Confirmação ao navegar dentro do CRM com conferência não salva.
+  useBlocker({
+    shouldBlockFn: () =>
+      sujo &&
+      !window.confirm(
+        `A conferência do ${ROMANEIO_LABELS[tipo]} tem marcações não salvas. Sair mesmo assim?`,
+      ),
+    enableBeforeUnload: false,
+  });
 
   const itens = useMemo(() => romaneio?.itens ?? [], [romaneio]);
   const conferidos = itens.filter((i) => marcados[i.item_key]).length;
@@ -181,12 +203,19 @@ function RomaneioCard({ pedidoId, tipo }: { pedidoId: string; tipo: RomaneioTipo
 
       {romaneio && itens.length > 0 && (
         <div className="space-y-2">
+          {sujo && (
+            <div className="flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-700 dark:text-amber-400">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+              Alterações não salvas nesta conferência — clique em "Salvar conferência".
+            </div>
+          )}
           <div className="flex items-center justify-between">
             <span className="text-xs text-muted-foreground">
               {conferidos}/{itens.length} conferido(s)
             </span>
             {romaneio.concluido_em && <Badge variant="secondary">Concluído</Badge>}
           </div>
+
           {itens.map((i) => {
             const id = `rom-${tipo}-${i.item_key}`;
             const marcado = !!marcados[i.item_key];
