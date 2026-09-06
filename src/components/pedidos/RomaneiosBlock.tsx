@@ -276,6 +276,30 @@ function RomaneioCard({ pedidoId, tipo }: { pedidoId: string; tipo: RomaneioTipo
           </div>
         </div>
       )}
+
+      <AlertDialog open={blocker.status === "blocked"}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Alterações não salvas</AlertDialogTitle>
+            <AlertDialogDescription>
+              A conferência do {ROMANEIO_LABELS[tipo]} tem marcações que ainda não foram
+              salvas. O que você quer fazer antes de sair?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-2">
+            <Button variant="ghost" disabled={busy} onClick={() => blocker.reset?.()}>
+              Continuar editando
+            </Button>
+            <Button variant="outline" disabled={busy} onClick={descartarESair}>
+              Descartar
+            </Button>
+            <Button disabled={busy} onClick={() => void salvarESair()}>
+              {busy ? "Salvando…" : "Salvar"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
+
 }
