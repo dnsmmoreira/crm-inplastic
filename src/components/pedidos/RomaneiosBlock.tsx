@@ -119,7 +119,7 @@ function RomaneioCard({ pedidoId, tipo }: { pedidoId: string; tipo: RomaneioTipo
     }
   }
 
-  async function salvarConferencia() {
+  async function salvarConferencia(): Promise<boolean> {
     setBusy(true);
     try {
       await salvarFn({
@@ -135,12 +135,31 @@ function RomaneioCard({ pedidoId, tipo }: { pedidoId: string; tipo: RomaneioTipo
       toast.success("Conferência salva");
       setSujo(false);
       await qc.invalidateQueries({ queryKey });
+      return true;
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Falha ao salvar conferência");
+      return false;
     } finally {
       setBusy(false);
     }
   }
+
+  /** "Salvar e sair" do aviso de saída. */
+  async function salvarESair() {
+    if (await salvarConferencia()) blocker.proceed?.();
+  }
+
+  /** "Descartar e sair": volta ao que está gravado e libera a navegação. */
+  function descartarESair() {
+    const mapa: Record<string, boolean> = {};
+    for (const c of (romaneio?.itens_conferidos ?? []) as RomaneioConferido[]) {
+      mapa[c.item_key] = c.conferido;
+    }
+    setMarcados(mapa);
+    setSujo(false);
+    blocker.proceed?.();
+  }
+
 
   async function concluir() {
     setBusy(true);
