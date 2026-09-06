@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ARENA — a inteligência comercial da Inplastic</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:ital,wght@0,400;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --azul:#1B5FBF; --azul-escuro:#12315C; --papel:#F2F7FC;
+    --amarelo:#FFC833; --verde:#2FA84F; --vermelho:#E4553F;
+    --cinza:#5B77A0; --borda:#DCE9F7; --branco:#fff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--papel);color:var(--azul-escuro);
+    font-family:'Nunito',sans-serif;font-size:17px;line-height:1.65}
+  h1,h2,h3{font-family:'Baloo 2',cursive;font-weight:800;margin:0;line-height:1.2}
+  p{margin:0}
+  .page{max-width:880px;margin:0 auto;padding:0 18px}
+
+  #progresso{position:fixed;top:0;left:0;height:6px;width:0;background:var(--amarelo);z-index:99}
+
+  /* ---------- CAPA ---------- */
+  header{background:linear-gradient(160deg,#12315C 0%,#1B5FBF 60%,#2E77D8 100%);
+    color:#fff;text-align:center;padding:54px 18px 60px;position:relative;overflow:hidden}
+  header .eyebrow{display:inline-block;background:var(--amarelo);color:#5c4300;
+    font-family:'Baloo 2',cursive;font-weight:800;font-size:14px;letter-spacing:.5px;
+    padding:6px 18px;border-radius:999px;margin-bottom:16px}
+  header h1{font-size:clamp(38px,7.6vw,68px);letter-spacing:2px;margin-bottom:6px}
+  header .institucional{max-width:640px;margin:10px auto 0;font-size:clamp(16px,2.2vw,19px);opacity:.95}
+  header .sigla-capa{font-family:'Baloo 2',cursive;font-weight:700;font-size:clamp(15px,2.4vw,19px);
+    color:var(--amarelo);letter-spacing:.5px;margin-top:4px}
+  .estrela{position:absolute;animation:brilha 2.6s infinite}
+  @keyframes brilha{0%,100%{opacity:.25;transform:scale(.85)}50%{opacity:1;transform:scale(1.1)}}
+  .dupla{display:flex;justify-content:center;align-items:flex-end;gap:4px;margin-top:22px;flex-wrap:wrap}
+  .flutua{display:inline-block;animation:flutua 3s ease-in-out infinite}
+  .flutua.atraso{animation-delay:.6s}
+  @keyframes flutua{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+  .p-olho,.mini-olho{transform-origin:center;transform-box:fill-box;animation:pisca-olho 4s infinite}
+  @keyframes pisca-olho{0%,90%,100%{transform:scaleY(1)}94%{transform:scaleY(.08)}}
+  .cta{display:inline-block;margin-top:22px;background:var(--amarelo);color:#5c4300;
+    font-family:'Baloo 2',cursive;font-weight:800;font-size:19px;text-decoration:none;
+    padding:14px 30px;border-radius:999px;box-shadow:0 5px 0 #b8860b}
+  .cta:active{transform:translateY(5px);box-shadow:none}
+
+  /* ---------- CAPÍTULOS ---------- */
+  .chapter{background:var(--branco);border:3px solid var(--borda);border-radius:28px;
+    padding:28px 26px 30px;margin:26px 0;box-shadow:0 6px 0 rgba(18,49,92,.10)}
+  html.js .chapter{opacity:0;transform:translateY(36px);transition:opacity .5s,transform .5s}
+  html.js .chapter.visivel{opacity:1;transform:translateY(0)}
+  .chapter-head{display:flex;gap:16px;align-items:center;margin-bottom:18px}
+  .badge{flex-shrink:0;width:58px;height:58px;border-radius:18px;background:var(--amarelo);
+    color:#5c4300;font-family:'Baloo 2',cursive;font-weight:800;font-size:30px;
+    display:flex;align-items:center;justify-content:center}
+  .chapter.visivel .badge{animation:badge-pula .6s cubic-bezier(.34,1.56,.64,1)}
+  @keyframes badge-pula{0%{transform:scale(0) rotate(-30deg)}100%{transform:scale(1) rotate(0)}}
+  .chapter-head h2{font-size:clamp(22px,3.4vw,30px)}
+  .chapter-head h2 small{display:block;font-family:'Nunito',sans-serif;font-weight:800;
+    font-size:12.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--azul);margin-top:3px}
+  .chapter p+p,.chapter p+.kid,.chapter p+ul,.chapter p+.tab,.chapter p+.score,
+  .chapter p+.ciclos,.chapter p+.dia,.chapter ul+p,.chapter .tab+p,.chapter p+.premios{margin-top:16px}
+
+  /* ---------- A PERGUNTA DA LETRA ---------- */
+  .pergunta{background:#EAF2FD;border-left:8px solid var(--azul);border-radius:0 16px 16px 0;
+    padding:14px 20px;margin:18px 0;font-family:'Baloo 2',cursive;font-weight:700;font-size:19px;color:var(--azul-escuro)}
+  .pergunta small{display:block;font-family:'Nunito',sans-serif;font-weight:800;font-size:11.5px;
+    letter-spacing:1.2px;text-transform:uppercase;color:var(--azul);margin-bottom:3px}
+
+  /* ---------- SELO DE STATUS ---------- */
+  .status{display:inline-block;font-family:'Baloo 2',cursive;font-weight:700;font-size:13px;
+    padding:3px 13px;border-radius:999px;vertical-align:middle;margin-left:6px}
+  .status.ok{background:#EAF8EE;color:#1D7A38;border:2px solid #BFE7CB}
+  .status.vem{background:#FFF3CF;color:#8a6400;border:2px solid var(--amarelo)}
+
+  /* ---------- ESCADA DAS LETRAS ---------- */
+  .letras{display:flex;flex-direction:column;gap:10px;margin-top:20px}
+  .letra-item{display:flex;gap:16px;align-items:center;background:#FBFDFF;border:3px solid var(--borda);
+    border-radius:18px;padding:13px 18px}
+  .letra-item .l{flex-shrink:0;width:46px;height:46px;border-radius:14px;background:var(--azul);color:#fff;
+    font-family:'Baloo 2',cursive;font-weight:800;font-size:26px;display:flex;align-items:center;justify-content:center}
+  .letra-item b{font-family:'Baloo 2',cursive;font-size:20px;display:block}
+  .letra-item span{font-weight:600;color:#31527f;font-size:15.5px}
+
+  .fluxo{text-align:center;font-family:'Baloo 2',cursive;font-weight:800;
+    font-size:clamp(15px,2.6vw,21px);color:var(--azul);margin-top:20px;line-height:1.9}
+  .fluxo em{font-style:normal;color:var(--cinza)}
+
+  /* ---------- PALETINHO ---------- */
+  .kid{display:flex;gap:14px;align-items:flex-start;background:#FFF6DC;
+    border:3px dashed var(--amarelo);border-radius:20px;padding:16px 18px;margin-top:20px}
+  .kid svg{flex-shrink:0;margin-top:2px}
+  .kid p{margin:0;font-weight:600}
+  .kid p strong{color:#8a6400}
+
+  .rule{background:var(--azul-escuro);color:#fff;border-radius:20px;padding:18px 22px;
+    text-align:center;font-family:'Baloo 2',cursive;font-weight:700;font-size:20px;margin-top:22px}
+  .rule span{color:var(--amarelo)}
+
+  /* ---------- GANHA x PERDE ---------- */
+  .score{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}
+  .score>div{border-radius:20px;padding:18px 20px;border:3px solid}
+  .win{background:#EAF8EE;border-color:#BFE7CB}
+  .lose{background:#FCEEEA;border-color:#F2C9C0}
+  .score h3{font-size:19px;margin-bottom:10px}
+  .win h3{color:#1D7A38} .lose h3{color:#B54B3A}
+  .score ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px;font-weight:600}
+  .pt{font-family:'Baloo 2',cursive;font-weight:800}
+  .pt.mais{color:#1D7A38} .pt.menos{color:#B54B3A}
+
+  /* ---------- TABELAS ---------- */
+  .tab{overflow-x:auto;margin-top:18px}
+  table{border-collapse:collapse;width:100%;font-size:16px}
+  th,td{text-align:left;padding:12px 14px;border-bottom:2px solid var(--borda);vertical-align:top}
+  thead th{background:var(--azul);color:#fff;font-family:'Baloo 2',cursive;font-weight:700;font-size:15px}
+  th:first-child{border-radius:14px 0 0 0} th:last-child{border-radius:0 14px 0 0}
+  tbody tr:last-child td{border-bottom:none}
+  td.quando{white-space:nowrap;font-weight:700;color:var(--azul)}
+
+  /* ---------- CICLOS E PRÊMIOS ---------- */
+  .ciclos{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:14px;margin-top:18px}
+  .ciclo{border:3px solid var(--borda);border-radius:20px;padding:18px;text-align:center;background:#FBFDFF}
+  .ciclo .tempo{display:inline-block;background:var(--amarelo);color:#5c4300;font-family:'Baloo 2',cursive;
+    font-weight:800;font-size:13px;padding:4px 14px;border-radius:999px;margin-bottom:8px}
+  .ciclo h3{font-size:21px;margin-bottom:6px}
+  .ciclo p{font-size:15.5px;color:#31527f;font-weight:600}
+  .premios{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-top:18px}
+  .premio{background:#FFF9E8;border:3px solid var(--amarelo);border-radius:20px;padding:18px;text-align:center}
+  .premio .ico{font-size:34px;line-height:1}
+  .premio b{display:block;font-family:'Baloo 2',cursive;font-size:19px;margin:6px 0 4px}
+  .premio span{font-size:15px;font-weight:600;color:#8a6400}
+
+  /* ---------- ROTINA ---------- */
+  .dia{margin-top:18px;display:flex;flex-direction:column;gap:12px}
+  .hora{display:flex;gap:16px;align-items:flex-start;background:#FBFDFF;
+    border:3px solid var(--borda);border-radius:18px;padding:15px 18px}
+  .hora .h{flex-shrink:0;background:var(--azul);color:#fff;font-family:'Baloo 2',cursive;font-weight:800;
+    font-size:15px;padding:5px 13px;border-radius:999px;margin-top:2px}
+  .hora b{display:block;font-family:'Baloo 2',cursive;font-size:19px}
+  .hora span{font-weight:600;color:#31527f}
+
+  /* ---------- FAQ ---------- */
+  .faq-item{border-top:2px solid var(--borda);padding:16px 0}
+  .faq-item:first-of-type{border-top:none}
+  .faq-item h3{color:var(--azul);font-size:19px;margin-bottom:5px}
+  .faq-item p{font-weight:600;color:#31527f}
+
+  ul.simple{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:9px;font-weight:600}
+  ul.simple li::marker{color:var(--azul)}
+
+  /* ---------- FINAL ---------- */
+  .final{background:linear-gradient(160deg,#1B5FBF,#12315C);color:#fff;border:none;
+    text-align:center;position:relative;overflow:hidden}
+  .final h2{font-size:clamp(24px,4vw,34px);margin-bottom:10px}
+  .final p{font-size:18px;opacity:.95;max-width:580px;margin:0 auto}
+  .final .frase{font-family:'Baloo 2',cursive;font-weight:700;color:var(--amarelo);font-size:20px;margin-top:16px}
+  .btn-festa{margin-top:20px;background:var(--amarelo);color:#5c4300;border:none;cursor:pointer;
+    font-family:'Baloo 2',cursive;font-weight:800;font-size:18px;padding:13px 28px;
+    border-radius:999px;box-shadow:0 5px 0 #b8860b}
+  .btn-festa:active{transform:translateY(5px);box-shadow:none}
+  .confete{position:absolute;width:9px;height:14px;z-index:44;border-radius:2px;animation:cai 1.6s ease-in forwards}
+  @keyframes cai{0%{transform:translateY(0) rotate(0)}100%{transform:translateY(560px) rotate(540deg);opacity:.2}}
+
+  footer{text-align:center;color:var(--cinza);font-weight:600;font-size:14.5px;padding:8px 18px 44px}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    .chapter{padding:22px 18px 24px;border-radius:22px}
+    .score{grid-template-columns:1fr}
+    .badge{width:50px;height:50px;font-size:25px;border-radius:14px}
+    .letra-item{gap:12px;padding:12px 14px}
+  }
+  @media (prefers-reduced-motion: reduce){
+    *,*::before,*::after{animation-duration:.001s !important;animation-iteration-count:1 !important;transition-duration:.001s !important}
+  }
+</style>
+</head>
+<body>
+<div id="progresso"></div>
+
+<header>
+  <svg class="estrela" style="left:8%;top:15%" width="20" height="20" viewBox="0 0 20 20"><path d="M10 0l2.5 7.5H20l-6 4.5 2.3 7L10 14.6 3.7 19l2.3-7-6-4.5h7.5z" fill="#FFC833"/></svg>
+  <svg class="estrela" style="right:11%;top:10%;animation-delay:.7s" width="14" height="14" viewBox="0 0 20 20"><path d="M10 0l2.5 7.5H20l-6 4.5 2.3 7L10 14.6 3.7 19l2.3-7-6-4.5h7.5z" fill="#FFC833"/></svg>
+  <svg class="estrela" style="left:15%;bottom:22%;animation-delay:1.3s" width="16" height="16" viewBox="0 0 20 20"><path d="M10 0l2.5 7.5H20l-6 4.5 2.3 7L10 14.6 3.7 19l2.3-7-6-4.5h7.5z" fill="#FFC833"/></svg>
+  <svg class="estrela" style="right:7%;bottom:28%;animation-delay:1.9s" width="22" height="22" viewBox="0 0 20 20"><path d="M10 0l2.5 7.5H20l-6 4.5 2.3 7L10 14.6 3.7 19l2.3-7-6-4.5h7.5z" fill="#FFC833"/></svg>
+
+  <span class="eyebrow">Time comercial · Setembro 2026</span>
+  <h1>ARENA</h1>
+  <p class="sigla-capa">Avaliação · Roteamento · Execução · Negociação · Acompanhamento</p>
+  <p class="institucional">A inteligência comercial da Inplastic, do primeiro contato até a próxima venda. E o <strong>Xerife</strong> 🤠 é quem cuida para que nada, em nenhuma dessas etapas, fique pelo caminho.</p>
+
+  <div class="dupla">
+    <span class="flutua">
+      <svg width="170" height="134" viewBox="0 0 300 230" role="img" aria-label="Paletinho, o mascote pallet, sorrindo e piscando">
+        <ellipse cx="150" cy="215" rx="88" ry="11" fill="#0E2748" opacity=".35"/>
+        <rect x="70" y="178" width="30" height="30" rx="6" fill="#0F4494"/>
+        <rect x="135" y="178" width="30" height="30" rx="6" fill="#0F4494"/>
+        <rect x="200" y="178" width="30" height="30" rx="6" fill="#0F4494"/>
+        <rect x="55" y="106" width="190" height="24" rx="8" fill="#3E86E8" stroke="#0F4494" stroke-width="4"/>
+        <rect x="55" y="136" width="190" height="24" rx="8" fill="#3E86E8" stroke="#0F4494" stroke-width="4"/>
+        <rect x="55" y="166" width="190" height="18" rx="8" fill="#3E86E8" stroke="#0F4494" stroke-width="4"/>
+        <rect x="88" y="40" width="124" height="72" rx="20" fill="#5C9CF0" stroke="#0F4494" stroke-width="4"/>
+        <g class="p-olho"><circle cx="126" cy="72" r="9" fill="#12315C"/><circle cx="129" cy="69" r="3" fill="#fff"/></g>
+        <g class="p-olho"><circle cx="174" cy="72" r="9" fill="#12315C"/><circle cx="177" cy="69" r="3" fill="#fff"/></g>
+        <path d="M132 90 Q150 104 168 90" stroke="#12315C" stroke-width="5" fill="none" stroke-linecap="round"/>
+        <circle cx="106" cy="86" r="6" fill="#FFC833" opacity=".8"/>
+        <circle cx="194" cy="86" r="6" fill="#FFC833" opacity=".8"/>
+      </svg>
+    </span>
+    <span class="flutua atraso">
+      <svg width="170" height="134" viewBox="0 0 300 230" role="img" aria-label="Xerife, irmão do Paletinho, com chapéu marrom e estrela de xerife no peito">
+        <ellipse cx="150" cy="215" rx="88" ry="11" fill="#0E2748" opacity=".35"/>
+        <rect x="70" y="178" width="30" height="30" rx="6" fill="#0F4494"/>
+        <rect x="135" y="178" width="30" height="30" rx="6" fill="#0F4494"/>
+        <rect x="200" y="178" width="30" height="30" rx="6" fill="#0F4494"/>
+        <rect x="55" y="106" width="190" height="24" rx="8" fill="#3E86E8" stroke="#0F4494" stroke-width="4"/>
+        <rect x="55" y="136" width="190" height="24" rx="8" fill="#3E86E8" stroke="#0F4494" stroke-width="4"/>
+        <rect x="55" y="166" width="190" height="18" rx="8" fill="#3E86E8" stroke="#0F4494" stroke-width="4"/>
+        <path d="M150 118l4.6 9.4 10.4 1.5-7.5 7.3 1.8 10.3-9.3-4.9-9.3 4.9 1.8-10.3-7.5-7.3 10.4-1.5z" fill="#FFC833" stroke="#0F4494" stroke-width="2.5"/>
+        <rect x="88" y="40" width="124" height="72" rx="20" fill="#5C9CF0" stroke="#0F4494" stroke-width="4"/>
+        <g class="p-olho"><circle cx="126" cy="76" r="9" fill="#12315C"/><circle cx="129" cy="73" r="3" fill="#fff"/></g>
+        <g class="p-olho"><circle cx="174" cy="76" r="9" fill="#12315C"/><circle cx="177" cy="73" r="3" fill="#fff"/></g>
+        <path d="M132 94 Q150 106 168 94" stroke="#12315C" stroke-width="5" fill="none" stroke-linecap="round"/>
+        <ellipse cx="150" cy="40" rx="86" ry="13" fill="#8A5A2B" stroke="#5A3A1B" stroke-width="4"/>
+        <path d="M110 40 q0-34 40-34 q40 0 40 34z" fill="#A06A33" stroke="#5A3A1B" stroke-width="4"/>
+        <rect x="110" y="26" width="80" height="10" fill="#5A3A1B"/>
+      </svg>
+    </span>
+  </div>
+
+  <a class="cta" href="#historia">🏁 Bora entender!</a>
+</header>
+
+<main class="page">
+
+  <!-- ★ HISTORINHA -->
+  <section class="chapter" id="historia">
+    <div class="chapter-head">
+      <div class="badge">★</div>
+      <h2>Uma historinha rápida<small>Antes das regras · 1 minuto de leitura</small></h2>
+    </div>
+    <p>Imagine dois vendedores. Trabalham igual, chegam na mesma hora, falam com o mesmo tanto de cliente.</p>
+    <p>No fim do mês, um vendeu bem mais que o outro. Por quê?</p>
+    <p>Não foi sorte. Um <strong>respondeu rápido</strong>, <strong>voltou na proposta</strong> antes do cliente esfriar e <strong>ligou para quem já tinha comprado</strong>. O outro fez tudo isso também… só que <em>às vezes</em>. E "às vezes" é o que separa um mês bom de um mês ruim.</p>
+    <p>Esse caminho — do primeiro "oi" no WhatsApp até a próxima compra do mesmo cliente — tem nome aqui na Inplastic: <strong>ARENA</strong>. 🏟️</p>
+    <div class="kid">
+      <svg width="40" height="40" viewBox="0 0 40 40"><rect x="4" y="14" width="32" height="8" rx="3" fill="#3E86E8" stroke="#0F4494" stroke-width="2.5"/><rect x="4" y="24" width="32" height="8" rx="3" fill="#3E86E8" stroke="#0F4494" stroke-width="2.5"/><rect x="10" y="2" width="20" height="11" rx="5" fill="#5C9CF0" stroke="#0F4494" stroke-width="2.5"/><g class="mini-olho"><circle cx="16" cy="7" r="1.8" fill="#12315C"/></g><g class="mini-olho"><circle cx="24" cy="7" r="1.8" fill="#12315C"/></g><path d="M16.5 10 Q20 12.5 23.5 10" stroke="#12315C" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>
+      <p><strong>Paletinho explica:</strong> pensa numa fábrica. O plástico entra, passa pela injetora, sai o pallet, vai pro caminhão e chega no cliente. Cada máquina tem um trabalho. A ARENA é a mesma coisa — só que a matéria-prima é o cliente que te chamou. 🏭</p>
+    </div>
+  </section>
+
+  <!-- 1 O QUE SIGNIFICA -->
+  <section class="chapter">
+    <div class="chapter-head">
+      <div class="badge">?</div>
+      <h2>O que significa ARENA<small>Cinco letras · cinco etapas</small></h2>
+    </div>
+    <p>ARENA não é o nome do placar nem de uma campanha. É a <strong>arquitetura comercial da Inplastic</strong> — e cada letra é uma etapa do caminho que todo cliente percorre:</p>
+
+    <div class="letras">
+      <div class="letra-item"><span class="l">A</span><span><b>Avaliação</b><span>Entender que oportunidade é essa</span></span></div>
+      <div class="letra-item"><span class="l">R</span><span><b>Roteamento</b><span>Levar para a pessoa certa</span></span></div>
+      <div class="letra-item"><span class="l">E</span><span><b>Execução</b><span>Fazer o trabalho comercial acontecer</span></span></div>
+      <div class="letra-item"><span class="l">N</span><span><b>Negociação</b><span>Transformar em negócio saudável</span></span></div>
+      <div class="letra-item"><span class="l">A</span><span><b>Acompanhamento</b><span>Cuidar do depois — e recomeçar</span></span></div>
+    </div>
+
+    <div class="fluxo">AVALIA <em>→</em> ROTEIA <em>→</em> EXECUTA <em>→</em> NEGOCIA <em>→</em> ACOMPANHA</div>
+
+    <div class="rule">ARENA é o ciclo <span>do primeiro contato até a próxima venda</span>.</div>
+
+    <p style="margin-top:20px">Nas próximas páginas a gente passeia por cada letra: o que acontece nela, quem faz o quê — e onde entra o Xerife 🤠, que é o fiscal desse ciclo inteiro.</p>
+  </section>
+
+  <!-- A - AVALIAÇÃO -->
+  <section class="chapter">
+    <div class="chapter-head">
+      <div class="badge">A</div>
+      <h2>Avaliação<small>Primeira letra · o que está entrando</small></h2>
+    </div>
+    <p>Tudo começa quando alguém chama a gente. E a primeira coisa que o sistema faz é <strong>entender quem é essa pessoa e o que ela precisa</strong>.</p>
+    <p>Quem faz esse trabalho hoje é o <strong>Gabriel</strong> 💬 <span class="status ok">já no ar</span>, nosso atendente do WhatsApp. Ele recebe quem chega, pergunta o produto, a quantidade, a aplicação e o prazo, e entrega o lead para você já com o resumo pronto. Quando cai na sua mão, boa parte da conversa inicial já aconteceu.</p>
+    <p>Está sendo construído em cima disso o <strong>ARENA Score</strong> <span class="status vem">em construção</span>: uma nota de prioridade para cada oportunidade, olhando perfil da empresa, produto, quantidade, prazo e o quanto a informação é confiável. Assim as oportunidades mais quentes ficam visíveis primeiro.</p>
+    <div class="pergunta"><small>A pergunta desta letra</small>"Que oportunidade é essa, e quanta atenção ela merece?"</div>
+  </section>
+
+  <!-- R - ROTEAMENTO -->
+  <section class="chapter">
+    <div class="chapter-head">
+      <div class="badge">R</div>
+      <h2>Roteamento<small>Segunda letra · quem vai atender</small></h2>
+    </div>
+    <p>Entendida a oportunidade, alguém precisa assumir. E rápido — porque lead novo é pão quente, esfria depressa. 🥖</p>
+    <p>Hoje o CRM distribui pela <strong>fila em rodízio</strong> <span class="status ok">já no ar</span>: cada lead novo vai para o próximo vendedor da vez, na ordem, sem ninguém precisar escolher. É simples e é justo.</p>
+    <p>O <strong>ARENA Distribuição</strong> <span class="status vem">em construção</span> vai deixar isso mais inteligente: além da ordem da fila, considerar disponibilidade, carga de trabalho, tamanho da carteira e especialização. A ideia não é dar mais lead para uns e menos para outros — é que cada oportunidade caia na mão de quem tem condição de atender bem <em>naquele momento</em>.</p>
+    <div class="kid">
+      <svg width="40" height="40" viewBox="0 0 40 40"><rect x="4" y="14" width="32" height="8" rx="3" fill="#3E86E8" stroke="#0F4494" stroke-width="2.5"/><rect x="4" y="24" width="32" height="8" rx="3" fill="#3E86E8" stroke="#0F4494" stroke-width="2.5"/><rect x="10" y="2" width="20" height="11" rx="5" fill="#5C9CF0" stroke="#0F4494" stroke-width="2.5"/><g class="mini-olho"><circle cx="16" cy="7" r="1.8" fill="#12315C"/></g><g class="mini-olho"><circle cx="24" cy="7" r="1.8" fill="#12315C"/></g><path d="M16.5 10 Q20 12.5 23.5 10" stroke="#12315C" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>
+      <p><strong>Paletinho explica:</strong> é a fila do parquinho. Cada um na sua vez, ninguém fura — e o Xerife 🤠 fica de olho para não sobrar criança sem brincar. Se um lead ficar 15 minutos sem dono, ele mesmo chama o próximo da fila.</p>
+    </div>
+    <div class="pergunta"><small>A pergunta desta letra</small>"Quem é a pessoa mais adequada e disponível para assumir isso agora?"</div>
+  </section>
+
+  <!-- E - EXECUÇÃO -->
+  <section class="chapter">
+    <div class="chapter-head">
+      <div class="badge">E</div>
+      <h2>Execução<small>Terceira letra · a casa do Xerife</small></h2>
+    </div>
+    <p>Aqui o lead já tem dono e começa o trabalho de verdade: primeiro contato, respostas, follow-up, proposta, próximo passo. É a letra onde você passa o dia — e é a casa do <strong>Xerife</strong> 🤠 <span class="status ok">já no ar</span>.</p>
+    <p>Ele tem uma missão só, e leva a sério:</p>
+    <div class="rule">Nada fica sem <span>responsável</span>, sem <span>prazo</span> e sem <span>próximo passo</span>.</div>
+
+    <p style="margin-top:22px"><strong>Os prazos que ele cobra.</strong> Fique tranquilo: o relógio dele só anda em horário comercial. Lead que chega às 17h55 não vira cobrança às 18h10 — o cronômetro continua na manhã seguinte. ⏰</p>
+
+    <div class="tab">
+      <table>
+        <thead><tr><th>Quando isso acontece…</th><th>Prazo</th><th>…o Xerife faz isto</th></tr></thead>
+        <tbody>
+          <tr><td>✨ Lead novo e ninguém falou com ele</td><td class="quando">15 minutos</td><td>Cria a tarefa de primeiro contato</td></tr>
+          <tr><td>💬 Cliente mandou mensagem e ficou sem resposta</td><td class="quando">2 horas</td><td>Cria tarefa de resposta pendente</td></tr>
+          <tr><td>🧊 Lead parado na mesma etapa</td><td class="quando">1 a 5 dias</td><td>Tarefa para destravar e marca o lead como esfriando</td></tr>
+          <tr><td>📄 Proposta enviada e nenhum retorno</td><td class="quando">2, 5, 10 e 15 dias</td><td>Follow-up a cada passo. No 15º: retomar ou marcar perdido</td></tr>
+          <tr><td>😴 Lead sem nenhum contato registrado</td><td class="quando">2, 5 e 10 dias</td><td>Dois lembretes; no terceiro o lead volta para a fila</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p style="margin-top:20px"><strong>E o seu dia com ele</strong> — três mensagens no Telegram, todo dia útil:</p>
+    <div class="dia">
+      <div class="hora">
+        <span class="h">07:30</span>
+        <span><b>🤠 Agenda do dia</b><span>Sua lista já na ordem certa: quem está esperando resposta vem antes do follow-up, que vem antes do resgate de carteira. Você não precisa decidir por onde começar — a lista já decidiu.</span></span>
+      </div>
+      <div class="hora">
+        <span class="h">13:00</span>
+        <span><b>⏱️ Checkpoint</b><span>Quanto já foi feito, o que falta e o que é urgente. A hora de perceber que aquela ligação ainda não saiu.</span></span>
+      </div>
+      <div class="hora">
+        <span class="h">18:00</span>
+        <span><b>🏁 Fechamento</b><span>O resumo do dia. Zerou tudo? Você recebe "Dia limpo!" ✨</span></span>
+      </div>
+    </div>
+
+    <p style="margin-top:18px">📲 Essas mensagens chegam no seu <strong>Telegram</strong>. Se o seu ainda não está vinculado, peça o link — sem isso o Xerife fala sozinho.</p>
+
+    <p style="margin-top:18px">🆕 <strong>Novidade:</strong> tarefa não fica te cobrando para sempre. Se rolar cinco dias seguidos sem ser feita, ele para de aumentar a prioridade e leva o caso para a gestão. Chegou aí, o problema não é falta de aviso — é que aquela tarefa precisa de uma decisão. ✋</p>
+
+    <div class="kid">
+      <svg width="40" height="40" viewBox="0 0 40 40"><rect x="4" y="14" width="32" height="8" rx="3" fill="#3E86E8" stroke="#0F4494" stroke-width="2.5"/><rect x="4" y="24" width="32" height="8" rx="3" fill="#3E86E8" stroke="#0F4494" stroke-width="2.5"/><rect x="10" y="2" width="20" height="11" rx="5" fill="#5C9CF0" stroke="#0F4494" stroke-width="2.5"/><g class="mini-olho"><circle cx="16" cy="7" r="1.8" fill="#12315C"/></g><g class="mini-olho"><circle cx="24" cy="7" r="1.8" fill="#12315C"/></g><path d="M16.5 10 Q20 12.5 23.5 10" stroke="#12315C" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>
+      <p><strong>Paletinho explica:</strong> o Xerife nunca fala com cliente — nenhuma mensagem dele sai pra fora. Ele cutuca só a gente aqui dentro: "ô, você não ia ligar pro seu Ivan hoje?". Chato? Um pouquinho. Mas é ele que segura a venda que ia escorrer pelo ralo. 😉</p>
+    </div>
+
+    <div class="pergunta"><small>A pergunta desta letra</small>"O que precisa ser feito agora — e o processo está sendo cumprido?"</div>
+  </section>
+
+  <!-- N - NEGOCIAÇÃO -->
+  <section class="chapter">
+    <div class="chapter-head">
+      <div class="badge">N</div>
+      <h2>Negociação<small>Quarta letra · virar negócio</small></h2>
+    </div>
+    <p>A oportunidade amadureceu e agora é hora de fechar. Proposta, revisão, desconto, condição de pagamento, objeção, concorrente, aprovação — tudo isso mora aqui. <span class="status ok">já no ar</span></p>
+    <p>E tem uma palavra que faz toda a diferença nesta letra: o negócio precisa ser <strong>saudável</strong>. Não basta vender — o CRM olha preço, desconto e margem, porque venda com margem apertada demais dá trabalho igual e deixa menos para todo mundo. Quando o desconto passa do limite, a proposta vai para aprovação. Não é desconfiança: é a conta fechando.</p>
+    <p>⚠️ <strong>Uma dica que vale pontos:</strong> a proposta só entra no placar quando ela passa pelo status <strong>Enviada</strong>. Se pular do rascunho direto para pedido, o sistema não registra o envio — você perde os pontos <em>e</em> não recebe os lembretes de follow-up. Confira o status antes de mandar para o cliente. 📄</p>
+    <div class="pergunta"><small>A pergunta desta letra</small>"O que falta para isso virar um negócio saudável para a empresa?"</div>
+  </section>
+
+  <!-- A - ACOMPANHAMENTO -->
+  <section class="chapter">
+    <div class="chapter-head">
+      <div class="badge">A</div>
+      <h2>Acompanhamento<small>Quinta letra · o depois — e o recomeço</small></h2>
+    </div>
+    <p>A venda não termina no "Ganho". Esta letra fecha o ciclo e já começa o próximo: entrega, satisfação, carteira viva, recompra, reativação. <span class="status ok">já no ar</span></p>
+
+    <div class="tab">
+      <table>
+        <thead><tr><th>Depois da venda…</th><th>Quando</th><th>O que o Xerife pede</th></tr></thead>
+        <tbody>
+          <tr><td>🎁 Cliente acabou de comprar</td><td class="quando">3, 15 e 45 dias</td><td>Confirmar entrega, ver satisfação, sondar recompra</td></tr>
+          <tr><td>🤝 Cliente da carteira sumiu</td><td class="quando">45 e 60 dias</td><td>Tarefa de resgate — aos 60 a diretoria fica sabendo</td></tr>
+          <tr><td>❌ Cliente perdido lá atrás</td><td class="quando">90 dias</td><td>Tarefa de reativação: já dá para tentar de novo</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p style="margin-top:22px">É também aqui que entra a parte que todo mundo quer saber: <strong>o placar</strong>. 🏆</p>
+    <p>O <strong>ARENA Performance</strong> transforma tudo o que aconteceu no mês em pontos. Ele soma o que constrói venda e desconta o que deixa cliente na mão:</p>
+
+    <div class="score">
+      <div class="win">
+        <h3>💰 O que você GANHA</h3>
+        <ul>
+          <li>🎉 Venda ganha — <span class="pt mais">+10</span></li>
+          <li>📄 Proposta enviada — <span class="pt mais">+3</span></li>
+          <li>🎁 Pós-venda no prazo — <span class="pt mais">+2</span></li>
+          <li>✅ Tarefa concluída — <span class="pt mais">+1</span></li>
+          <li>🎯 Meta do mês batida — <span class="pt mais">+20</span><br><small style="font-weight:700;color:#1D7A38">bateu 120%? vira +30 🔥</small></li>
+        </ul>
+      </div>
+      <div class="lose">
+        <h3>💸 O que você PERDE</h3>
+        <ul>
+          <li>⏰ Deixou o prazo estourar — <span class="pt menos">−5</span></li>
+          <li>🧊 Cliente da carteira 60 dias sem contato — <span class="pt menos">−3</span></li>
+        </ul>
+        <p style="margin-top:14px;font-weight:700;color:#B54B3A;font-size:15.5px">Só isso tira ponto. Não concluir uma tarefa não desconta nada — apenas deixa de somar.</p>
+      </div>
+    </div>
+
+    <div class="kid">
+      <svg width="40" height="40" viewBox="0 0 40 40"><rect x="4" y="14" width="32" height="8" rx="3" fill="#3E86E8" stroke="#0F4494" stroke-width="2.5"/><rect x="4" y="24" width="32" height="8" rx="3" fill="#3E86E8" stroke="#0F4494" stroke-width="2.5"/><rect x="10" y="2" width="20" height="11" rx="5" fill="#5C9CF0" stroke="#0F4494" stroke-width="2.5"/><g class="mini-olho"><circle cx="16" cy="7" r="1.8" fill="#12315C"/></g><g class="mini-olho"><circle cx="24" cy="7" r="1.8" fill="#12315C"/></g><path d="M16.5 10 Q20 12.5 23.5 10" stroke="#12315C" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>
+      <p><strong>Paletinho explica:</strong> repare que um prazo estourado (−5) apaga <strong>cinco tarefas</strong> que você fez. Cliente esperando dói mais no placar do que qualquer outra coisa — e isso é de propósito. ⏰</p>
+    </div>
+
+    <p style="margin-top:22px">E em cima do placar roda a <strong>ARENA Premiação</strong>, com três disputas ao mesmo tempo. Dá para ir bem em uma sem ter ganhado a outra: quem começou devagar tem chance na quinzena seguinte, quem é constante brilha no trimestre. 🏁</p>
+
+    <div class="ciclos">
+      <div class="ciclo"><span class="tempo">A cada 15 dias</span><h3>⚡ Quinzenal</h3><p>A disputa curta, para o ritmo não cair. Dá pra virar o jogo rápido.</p></div>
+      <div class="ciclo"><span class="tempo">Todo mês</span><h3>🎯 Mensal</h3><p>A principal, ligada à meta do mês e ao placar completo.</p></div>
+      <div class="ciclo"><span class="tempo">A cada 3 meses</span><h3>👑 Trimestral</h3><p>A de maior peso. Aqui não adianta um mês bom — vale quem se manteve.</p></div>
+    </div>
+
+    <p style="margin-top:20px"><strong>E o que dá para ganhar?</strong></p>
+    <div class="premios">
+      <div class="premio"><span class="ico">🎁</span><b>Prêmio surpresa</b><span>Você só descobre na hora</span></div>
+      <div class="premio"><span class="ico">💵</span><b>Dinheiro</b><span>Premiação direta no bolso</span></div>
+      <div class="premio"><span class="ico">✈️</span><b>Viagem</b><span>O grande prêmio da temporada</span></div>
+    </div>
+    <p style="margin-top:16px;font-weight:600;color:#31527f">O que vale em cada ciclo é anunciado pela diretoria — e aparece aqui assim que estiver definido. 📢</p>
+    <p style="margin-top:16px">Participam os <strong>vendedores internos</strong>. As vendas de canal e de licitação continuam contando para a Inplastic e aparecem no CRM, mas correm fora do placar — porque o ritmo delas não depende de quem registra o pedido.</p>
+
+    <div class="pergunta"><small>A pergunta desta letra</small>"O que aconteceu depois — e o que a gente aprende com isso?"</div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="chapter">
+    <div class="chapter-head">
+      <div class="badge">?</div>
+      <h2>Perguntas rápidas<small>As que todo mundo faz</small></h2>
+    </div>
+
+    <div class="faq-item">
+      <h3>🤔 Se eu não concluir a tarefa, perco ponto?</h3>
+      <p>Não. Tarefa concluída soma +1; não concluir só deixa de somar. O que tira ponto é deixar cliente esperando além do prazo, ou abandonar cliente da carteira.</p>
+    </div>
+    <div class="faq-item">
+      <h3>🤔 Meu cliente pediu para responder só semana que vem. Vou ser cobrado?</h3>
+      <p>Não, se você marcar a conversa como <strong>em espera</strong>. O Xerife respeita e para de cobrar. Depois de algumas horas ele pergunta uma vez se ainda faz sentido aguardar — para espera não virar esquecimento.</p>
+    </div>
+    <div class="faq-item">
+      <h3>🤔 O que acontece se eu ficar dez dias sem tocar num lead?</h3>
+      <p>Antes disso você recebe dois lembretes: no segundo e no quinto dia. No terceiro aviso o lead volta para a fila e pode ir para outra pessoa. Não é castigo — é para o cliente não ficar esperando alguém lembrar dele.</p>
+    </div>
+    <div class="faq-item">
+      <h3>🤔 Apareceram várias tarefas de uma vez. É erro?</h3>
+      <p>Normal! Cada lead tem seus prazos e vários podem estourar no mesmo dia — principalmente depois de feriado. Comece pelas de primeiro contato e resposta pendente: são as mais quentes. 🔥</p>
+    </div>
+    <div class="faq-item">
+      <h3>🤔 Por que o pós-venda exige uma nota para concluir?</h3>
+      <p>Porque pós-venda sem registro não serve para nada. A nota é o que o <em>próximo</em> atendimento vai ler para saber o que já foi conversado — mesmo que seja outra pessoa atendendo.</p>
+    </div>
+    <div class="faq-item">
+      <h3>🤔 Aquelas conversas do WhatsApp que não viraram nada, e agora?</h3>
+      <p>Agora o Xerife cuida delas também. Quando alguém escreve, o Gabriel responde e a pessoa some, a conversa vira lead sozinha depois de 15 minutos e cai para alguém da fila. Quando ligamos isso, apareceram <strong>16 conversas de agosto</strong> esquecidas — gente pedindo orçamento, com quantidade e tudo. 😮</p>
+    </div>
+  </section>
+
+  <!-- FINAL -->
+  <section class="chapter final" id="final">
+    <h2>É isso! 🎉</h2>
+    <p>O Gabriel avalia. A fila roteia. Você e o Xerife executam. A negociação vira negócio saudável. E o acompanhamento traz o cliente de volta — começando tudo de novo.</p>
+    <p class="frase">ARENA — a inteligência comercial da Inplastic,<br>do primeiro contato à próxima venda.</p>
+    <div style="margin-top:18px" class="flutua">
+      <svg width="140" height="112" viewBox="0 0 300 230" role="img" aria-label="Paletinho comemorando com os braços para cima">
+        <ellipse cx="150" cy="215" rx="82" ry="10" fill="#0E2748" opacity=".3"/>
+        <rect x="70" y="178" width="30" height="30" rx="6" fill="#0F4494"/>
+        <rect x="135" y="178" width="30" height="30" rx="6" fill="#0F4494"/>
+        <rect x="200" y="178" width="30" height="30" rx="6" fill="#0F4494"/>
+        <rect x="34" y="60" width="14" height="52" rx="7" fill="#3E86E8" stroke="#0F4494" stroke-width="4" transform="rotate(28 41 64)"/>
+        <rect x="252" y="60" width="14" height="52" rx="7" fill="#3E86E8" stroke="#0F4494" stroke-width="4" transform="rotate(-28 259 64)"/>
+        <rect x="55" y="106" width="190" height="24" rx="8" fill="#3E86E8" stroke="#0F4494" stroke-width="4"/>
+        <rect x="55" y="136" width="190" height="24" rx="8" fill="#3E86E8" stroke="#0F4494" stroke-width="4"/>
+        <rect x="55" y="166" width="190" height="18" rx="8" fill="#3E86E8" stroke="#0F4494" stroke-width="4"/>
+        <rect x="88" y="40" width="124" height="72" rx="20" fill="#5C9CF0" stroke="#0F4494" stroke-width="4"/>
+        <g class="p-olho"><circle cx="126" cy="72" r="9" fill="#12315C"/><circle cx="129" cy="69" r="3" fill="#fff"/></g>
+        <g class="p-olho"><circle cx="174" cy="72" r="9" fill="#12315C"/><circle cx="177" cy="69" r="3" fill="#fff"/></g>
+        <path d="M130 88 Q150 106 170 88" stroke="#12315C" stroke-width="5" fill="none" stroke-linecap="round"/>
+        <circle cx="106" cy="86" r="6" fill="#FFC833" opacity=".8"/>
+        <circle cx="194" cy="86" r="6" fill="#FFC833" opacity=".8"/>
+      </svg>
+    </div>
+    <div><button class="btn-festa" id="btn-festa">Bora pra ARENA! 🏆</button></div>
+  </section>
+
+</main>
+
+<footer>ARENA · Setembro/2026 · Inplastic — crm.inplastic.com.br</footer>
+
+<script>
+  document.documentElement.className += ' js';
+  const $ = s => document.querySelector(s);
+
+  window.addEventListener('scroll', () => {
+    const h = document.documentElement;
+    const p = h.scrollTop / (h.scrollHeight - h.clientHeight) * 100;
+    $('#progresso').style.width = p + '%';
+  }, {passive:true});
+
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting) { e.target.classList.add('visivel'); io.unobserve(e.target); }
+  }), {threshold:.12});
+  document.querySelectorAll('.chapter').forEach(c => io.observe(c));
+
+  function confetti(alvo){
+    const cores = ['#FFC833','#2FA84F','#1B5FBF','#E4553F','#5C9CF0'];
+    const largura = alvo.clientWidth;
+    for (let i = 0; i < 40; i++){
+      const c = document.createElement('div');
+      c.className = 'confete';
+      c.style.left = (Math.random() * largura) + 'px';
+      c.style.top = '-20px';
+      c.style.background = cores[i % cores.length];
+      c.style.animationDelay = (Math.random() * .5) + 's';
+      alvo.appendChild(c);
+      setTimeout(() => c.remove(), 2400);
+    }
+  }
+  $('#btn-festa').addEventListener('click', () => confetti($('#final')));
+</script>
+</body>
+</html>
