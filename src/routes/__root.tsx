@@ -30,6 +30,7 @@ import {
   Radio,
   ClipboardList,
   Trophy,
+  Presentation,
   BookOpen,
   BarChart3,
   Tags,
@@ -621,15 +622,15 @@ function AppShell({ children }: { children: ReactNode }) {
             href="/apresentacao.html"
             target="_blank"
             rel="noopener noreferrer"
-            title={collapsed ? "ARENA" : undefined}
+            title={collapsed ? "Apresentação ARENA" : undefined}
             className={cn(
               "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
               collapsed && "justify-center px-2",
               "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
             )}
           >
-            <Trophy className="h-4 w-4 shrink-0" />
-            {!collapsed && "ARENA"}
+            <Presentation className="h-4 w-4 shrink-0" />
+            {!collapsed && "Apresentação ARENA"}
           </a>
         </nav>
 
@@ -779,8 +780,8 @@ function AppShell({ children }: { children: ReactNode }) {
                   onClick={() => setDrawerOpen(false)}
                   className="flex min-h-11 items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent"
                 >
-                  <Trophy className="h-4 w-4 shrink-0" />
-                  ARENA
+                  <Presentation className="h-4 w-4 shrink-0" />
+                  Apresentação ARENA
                 </a>
 
               </nav>
