@@ -148,6 +148,9 @@ function ClienteDetailPage() {
           email_nf: form.email_nf ?? null,
           regras_faturamento: form.regras_faturamento ?? null,
           aceite_desconto_duplicata: !!form.aceite_desconto_duplicata,
+          simples_optante: form.simples_optante ?? null,
+          suframa_isento: form.suframa_isento ?? null,
+          suframa_numero: form.suframa_numero ?? null,
           ...(isAdmin ? { vendedor_id: form.vendedor_id } : {}),
 
         },

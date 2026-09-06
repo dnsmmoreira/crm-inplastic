@@ -56,14 +56,18 @@ function RomaneioCard({ pedidoId, tipo }: { pedidoId: string; tipo: RomaneioTipo
 
   const [marcados, setMarcados] = useState<Record<string, boolean>>({});
   const [busy, setBusy] = useState(false);
+  // Marcações ainda não salvas não podem ser apagadas por um refetch
+  // (voltar de outra aba refaz a query e traz um novo objeto).
+  const [sujo, setSujo] = useState(false);
 
   useEffect(() => {
+    if (sujo) return;
     const mapa: Record<string, boolean> = {};
     for (const c of (romaneio?.itens_conferidos ?? []) as RomaneioConferido[]) {
       mapa[c.item_key] = c.conferido;
     }
     setMarcados(mapa);
-  }, [romaneio]);
+  }, [romaneio, sujo]);
 
   const itens = useMemo(() => romaneio?.itens ?? [], [romaneio]);
   const conferidos = itens.filter((i) => marcados[i.item_key]).length;
@@ -80,6 +84,7 @@ function RomaneioCard({ pedidoId, tipo }: { pedidoId: string; tipo: RomaneioTipo
       } else {
         toast.success(`${ROMANEIO_LABELS[tipo]} gerado`);
       }
+      setSujo(false);
       await qc.invalidateQueries({ queryKey });
       window.open(`/romaneio/${pedidoId}/${tipo}`, "_blank", "noopener");
     } catch (e) {
@@ -103,6 +108,7 @@ function RomaneioCard({ pedidoId, tipo }: { pedidoId: string; tipo: RomaneioTipo
         },
       });
       toast.success("Conferência salva");
+      setSujo(false);
       await qc.invalidateQueries({ queryKey });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Falha ao salvar conferência");
@@ -127,6 +133,7 @@ function RomaneioCard({ pedidoId, tipo }: { pedidoId: string; tipo: RomaneioTipo
       });
       await concluirFn({ data: { pedido_id: pedidoId, tipo } });
       toast.success("Romaneio concluído");
+      setSujo(false);
       await qc.invalidateQueries({ queryKey });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Falha ao concluir romaneio");
@@ -184,7 +191,10 @@ function RomaneioCard({ pedidoId, tipo }: { pedidoId: string; tipo: RomaneioTipo
                   id={id}
                   checked={marcado}
                   onCheckedChange={(v) =>
-                    setMarcados((m) => ({ ...m, [i.item_key]: v === true }))
+                    {
+                      setSujo(true);
+                      setMarcados((m) => ({ ...m, [i.item_key]: v === true }));
+                    }
                   }
                 />
                 <label
