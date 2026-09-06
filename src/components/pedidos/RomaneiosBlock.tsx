@@ -87,14 +87,12 @@ function RomaneioCard({ pedidoId, tipo }: { pedidoId: string; tipo: RomaneioTipo
   }, [sujo]);
 
   // Confirmação ao navegar dentro do CRM com conferência não salva.
-  useBlocker({
-    shouldBlockFn: () =>
-      sujo &&
-      !window.confirm(
-        `A conferência do ${ROMANEIO_LABELS[tipo]} tem marcações não salvas. Sair mesmo assim?`,
-      ),
+  const blocker = useBlocker({
+    shouldBlockFn: () => sujo,
+    withResolver: true,
     enableBeforeUnload: false,
   });
+
 
   const itens = useMemo(() => romaneio?.itens ?? [], [romaneio]);
   const conferidos = itens.filter((i) => marcados[i.item_key]).length;
