@@ -191,10 +191,10 @@ function RomaneioCard({ pedidoId, tipo }: { pedidoId: string; tipo: RomaneioTipo
                   id={id}
                   checked={marcado}
                   onCheckedChange={(v) =>
-                    setMarcados((m) => {
+                    {
                       setSujo(true);
-                      return { ...m, [i.item_key]: v === true };
-                    })
+                      setMarcados((m) => ({ ...m, [i.item_key]: v === true }));
+                    }
                   }
                 />
                 <label
