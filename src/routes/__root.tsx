@@ -616,7 +616,23 @@ function AppShell({ children }: { children: ReactNode }) {
             <BookOpen className="h-4 w-4 shrink-0" />
             {!collapsed && "Manual do CRM"}
           </a>
+
+          <a
+            href="/apresentacao.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            title={collapsed ? "ARENA" : undefined}
+            className={cn(
+              "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+              collapsed && "justify-center px-2",
+              "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+            )}
+          >
+            <Trophy className="h-4 w-4 shrink-0" />
+            {!collapsed && "ARENA"}
+          </a>
         </nav>
+
 
         <UserBadge collapsed={collapsed} />
         {!collapsed && (
