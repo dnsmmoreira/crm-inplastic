@@ -75,6 +75,27 @@ function RomaneioCard({ pedidoId, tipo }: { pedidoId: string; tipo: RomaneioTipo
     setMarcados(mapa);
   }, [romaneio, sujo]);
 
+  // Aviso do navegador ao fechar/recarregar a aba com conferência não salva.
+  useEffect(() => {
+    if (!sujo) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [sujo]);
+
+  // Confirmação ao navegar dentro do CRM com conferência não salva.
+  useBlocker({
+    shouldBlockFn: () =>
+      sujo &&
+      !window.confirm(
+        `A conferência do ${ROMANEIO_LABELS[tipo]} tem marcações não salvas. Sair mesmo assim?`,
+      ),
+    enableBeforeUnload: false,
+  });
+
   const itens = useMemo(() => romaneio?.itens ?? [], [romaneio]);
   const conferidos = itens.filter((i) => marcados[i.item_key]).length;
   const tudoConferido = itens.length > 0 && conferidos === itens.length;
