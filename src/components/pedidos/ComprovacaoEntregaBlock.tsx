@@ -156,15 +156,46 @@ export function ComprovacaoEntregaBlock({
   }
 
   /* ------------------------------ a comprovar ------------------------------ */
+  const dispensada = !!pedido.comprovacao_dispensada_em;
   return (
     <section id="comprovacao-entrega" className="space-y-3 scroll-mt-4">
-      <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 space-y-4">
+      <div
+        className={cn(
+          "rounded-lg border p-4 space-y-4",
+          dispensada ? "border-muted-foreground/30 bg-muted/40" : "border-amber-500/40 bg-amber-500/10",
+        )}
+      >
         <div className="flex items-start gap-2">
-          <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
-          <div className="text-sm font-medium text-amber-700 dark:text-amber-300">
-            Anexe a foto e o documento que comprovam a entrega para encerrar este pedido.
-          </div>
+          <AlertTriangle
+            className={cn(
+              "h-4 w-4 mt-0.5 shrink-0",
+              dispensada ? "text-muted-foreground" : "text-amber-600 dark:text-amber-400",
+            )}
+          />
+          {dispensada ? (
+            <div className="text-sm">
+              <div className="font-medium">Comprovação dispensada</div>
+              <div className="text-xs text-muted-foreground">
+                {pedido.comprovacao_dispensa_motivo ?? "Sem motivo registrado"}
+                {pedido.comprovacao_dispensada_por_nome
+                  ? ` · por ${pedido.comprovacao_dispensada_por_nome}`
+                  : ""}
+                {pedido.comprovacao_dispensada_em
+                  ? ` em ${format(new Date(pedido.comprovacao_dispensada_em), "dd/MM/yyyy", { locale: ptBR })}`
+                  : ""}
+              </div>
+              <div className="mt-1 text-xs text-muted-foreground">
+                Mesmo dispensado, você ainda pode anexar a foto e o documento e confirmar a
+                entrega.
+              </div>
+            </div>
+          ) : (
+            <div className="text-sm font-medium text-amber-700 dark:text-amber-300">
+              Anexe a foto e o documento que comprovam a entrega para encerrar este pedido.
+            </div>
+          )}
         </div>
+
 
         <div className="grid gap-2 sm:grid-cols-3">
           {CATEGORIAS_COMPROVACAO.map((cat) => (
