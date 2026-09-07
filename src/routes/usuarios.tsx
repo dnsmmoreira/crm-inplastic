@@ -71,7 +71,24 @@ function UsuariosPage() {
     }
   }, [listar]);
 
-  useEffect(() => { if (user?.role === "admin") void load(); }, [user, load]);
+  const podeGerenciar = hasPerm(user, "usuarios.gerenciar");
+
+  useEffect(() => { if (podeGerenciar) void load(); }, [podeGerenciar, load]);
+
+  /** Nome do gestor responsável e quantos representantes cada gestor tem. */
+  const nomePorId = useMemo(
+    () => new Map((rows ?? []).map((r) => [r.id, r.name])),
+    [rows],
+  );
+  const representantesPorGestor = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const r of rows ?? []) {
+      if (r.deletedAt || !r.gestorId) continue;
+      m.set(r.gestorId, (m.get(r.gestorId) ?? 0) + 1);
+    }
+    return m;
+  }, [rows]);
+
 
   const filtrados = useMemo(() => {
     const q = busca.trim().toLowerCase();
