@@ -193,6 +193,9 @@ export const listUsuarios = createServerFn({ method: "POST" })
           email: auth?.email ?? p.email_cache ?? "",
           avatarColor: p.avatar_color ?? "#64748b",
           cargo: p.cargo ?? null,
+          cargoId: p.cargo_id ?? null,
+          gestorId: p.gestor_id ?? null,
+
           telefoneWhatsapp: p.telefone_whatsapp ?? null,
           telegramVinculado: !!String(p.telegram_chat_id ?? "").trim(),
           fusoHorario: p.fuso_horario ?? "America/Sao_Paulo",
