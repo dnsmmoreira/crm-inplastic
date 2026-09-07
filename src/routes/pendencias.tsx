@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ListChecks, Search, ExternalLink } from "lucide-react";
+import { ListChecks, Search, ExternalLink, AlertTriangle, RefreshCw } from "lucide-react";
 import { listarPendenciasCadastro } from "@/lib/pendencias-cadastro.functions";
 import { PENDENCIAS_QUERY_KEY, PENDENCIAS_STALE_MS } from "@/lib/pendencias-cadastro.query";
 import { formatBRL } from "@/lib/crm-store";
@@ -48,12 +48,14 @@ function Secao({
   id,
   titulo,
   vazio,
+  erro,
   children,
   innerRef,
 }: {
   id: string;
   titulo: string;
   vazio: boolean;
+  erro?: string | null;
   children: React.ReactNode;
   innerRef: (el: HTMLDivElement | null) => void;
 }) {
@@ -63,7 +65,15 @@ function Secao({
         <CardTitle className="text-base">{titulo}</CardTitle>
       </CardHeader>
       <CardContent className="overflow-x-auto">
-        {vazio ? (
+        {erro ? (
+          <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
+            <div className="flex items-center gap-2 font-medium">
+              <AlertTriangle className="h-4 w-4 text-amber-600" /> Esta seção não pôde ser
+              carregada
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">{erro}</p>
+          </div>
+        ) : vazio ? (
           <p className="py-6 text-center text-sm text-muted-foreground">
             Nenhuma pendência — tudo certo por aqui.
           </p>
@@ -75,10 +85,11 @@ function Secao({
   );
 }
 
+
 function PendenciasPage() {
   const fetchPendencias = useServerFn(listarPendenciasCadastro);
   const { user } = useAuth();
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: PENDENCIAS_QUERY_KEY,
     queryFn: () => fetchPendencias(),
     staleTime: PENDENCIAS_STALE_MS,
@@ -143,11 +154,36 @@ function PendenciasPage() {
   );
 
   const cards = [
-    { id: "sec-leads", label: "Leads sem CNPJ/cliente", valor: data?.resumo.leads ?? 0 },
-    { id: "sec-produtos", label: "Produtos sem peso/dimensões", valor: data?.resumo.produtos ?? 0 },
-    { id: "sec-clientes", label: "Clientes sem e-mail de NF", valor: data?.resumo.clientes ?? 0 },
-    { id: "sec-propostas", label: "Rascunhos parados", valor: data?.resumo.propostas ?? 0 },
-    { id: "sec-entregas", label: "Entregas sem comprovação", valor: data?.resumo.entregas ?? 0 },
+    {
+      id: "sec-leads",
+      label: "Leads sem CNPJ/cliente",
+      valor: data?.resumo.leads ?? 0,
+      erro: data?.leads.erro ?? null,
+    },
+    {
+      id: "sec-produtos",
+      label: "Produtos sem peso/dimensões",
+      valor: data?.resumo.produtos ?? 0,
+      erro: data?.produtos.erro ?? null,
+    },
+    {
+      id: "sec-clientes",
+      label: "Clientes sem e-mail de NF",
+      valor: data?.resumo.clientes ?? 0,
+      erro: data?.clientes.erro ?? null,
+    },
+    {
+      id: "sec-propostas",
+      label: "Rascunhos parados",
+      valor: data?.resumo.propostas ?? 0,
+      erro: data?.propostas.erro ?? null,
+    },
+    {
+      id: "sec-entregas",
+      label: "Entregas sem comprovação",
+      valor: data?.resumo.entregas ?? 0,
+      erro: data?.entregas.erro ?? null,
+    },
   ];
 
   const setRef = (id: string) => (el: HTMLDivElement | null) => {
@@ -185,6 +221,25 @@ function PendenciasPage() {
         )}
       </div>
 
+      {isError && (
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
+          <div className="flex items-center gap-2 font-medium">
+            <AlertTriangle className="h-4 w-4 text-amber-600" /> Não foi possível carregar as
+            pendências agora.
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-3 gap-1"
+            disabled={isFetching}
+            onClick={() => refetch()}
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} /> Tentar
+            novamente
+          </Button>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {cards.map((c) => (
           <button
@@ -193,7 +248,9 @@ function PendenciasPage() {
             onClick={() => rolar(c.id)}
             className="rounded-lg border bg-card p-4 text-left transition-colors hover:bg-accent"
           >
-            <div className="text-2xl font-semibold">{isLoading ? "…" : c.valor}</div>
+            <div className="text-2xl font-semibold">
+              {isLoading ? "…" : c.erro ? "—" : c.valor}
+            </div>
             <div className="text-xs text-muted-foreground">{c.label}</div>
           </button>
         ))}
@@ -202,6 +259,7 @@ function PendenciasPage() {
       <Secao
         id="sec-leads"
         innerRef={setRef("sec-leads")}
+        erro={data?.leads.erro}
         titulo={`Leads sem CNPJ/cliente (${leads.length})`}
         vazio={leads.length === 0}
       >
@@ -244,6 +302,7 @@ function PendenciasPage() {
         <Secao
           id="sec-produtos"
           innerRef={setRef("sec-produtos")}
+        erro={data?.produtos.erro}
           titulo={`Produtos sem peso/dimensões (${produtos.length})`}
           vazio={produtos.length === 0}
         >
@@ -290,6 +349,7 @@ function PendenciasPage() {
       <Secao
         id="sec-clientes"
         innerRef={setRef("sec-clientes")}
+        erro={data?.clientes.erro}
         titulo={`Clientes sem e-mail de NF (${clientes.length})`}
         vazio={clientes.length === 0}
       >
@@ -329,6 +389,7 @@ function PendenciasPage() {
       <Secao
         id="sec-propostas"
         innerRef={setRef("sec-propostas")}
+        erro={data?.propostas.erro}
         titulo={`Rascunhos parados há mais de 7 dias (${propostas.length})`}
         vazio={propostas.length === 0}
       >
@@ -372,6 +433,7 @@ function PendenciasPage() {
       <Secao
         id="sec-entregas"
         innerRef={setRef("sec-entregas")}
+        erro={data?.entregas.erro}
         titulo={`Pedidos em pós-venda sem comprovação de entrega (${entregas.length})`}
         vazio={entregas.length === 0}
       >
