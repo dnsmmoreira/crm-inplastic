@@ -380,9 +380,45 @@ export const updateUsuario = createServerFn({ method: "POST" })
         audit.push({ campo: "email", anterior: atual.email, novo: emailNovo });
       }
 
+      // Cargo do catálogo manda no texto: `profiles.cargo` fica sempre em
+      // sincronia com `cargos.nome`. O cargo é informativo — não dá acesso.
+      let cargoTexto = d.cargo;
+      const cargoId = d.cargoId ?? null;
+      if (cargoId) {
+        const { data: cargoRow, error: cErr } = await sb
+          .from("cargos")
+          .select("id, nome, ativo")
+          .eq("id", cargoId)
+          .maybeSingle();
+        if (cErr) throw new Error(cErr.message);
+        if (!cargoRow) throw new Error("Cargo inválido.");
+        cargoTexto = cargoRow.nome;
+      }
+
+      // Representante precisa de gestor responsável (só para cópia de alertas).
+      const gestorId = d.gestorId ?? null;
+      const ehRepresentante = (cargoTexto ?? "").trim().toLowerCase() === "representante";
+      if (ehRepresentante && !gestorId) {
+        throw new Error("Escolha o gestor responsável por este representante.");
+      }
+      if (gestorId) {
+        if (gestorId === data.userId) throw new Error("O gestor precisa ser outra pessoa.");
+        const { data: gestor, error: gErr } = await sb
+          .from("profiles")
+          .select("id, deleted_at, ativo")
+          .eq("id", gestorId)
+          .maybeSingle();
+        if (gErr) throw new Error(gErr.message);
+        if (!gestor || gestor.deleted_at || gestor.ativo === false) {
+          throw new Error("O gestor escolhido é inválido.");
+        }
+      }
+
       const patch = {
         name: d.name,
-        cargo: d.cargo,
+        cargo: cargoTexto,
+        cargo_id: cargoId,
+        gestor_id: gestorId,
         telefone_whatsapp: d.telefoneWhatsapp,
         fuso_horario: d.fusoHorario,
         avatar_color: d.avatarColor,
@@ -390,13 +426,15 @@ export const updateUsuario = createServerFn({ method: "POST" })
       };
       audit.push(
         { campo: "nome", anterior: profile.name, novo: d.name },
-        { campo: "cargo", anterior: profile.cargo, novo: d.cargo },
+        { campo: "cargo", anterior: profile.cargo, novo: cargoTexto },
+        { campo: "gestor", anterior: profile.gestor_id, novo: gestorId },
         { campo: "telefone", anterior: profile.telefone_whatsapp, novo: d.telefoneWhatsapp },
         { campo: "fuso_horario", anterior: profile.fuso_horario, novo: d.fusoHorario },
         { campo: "avatar_color", anterior: profile.avatar_color, novo: d.avatarColor },
       );
       const { error } = await sb.from("profiles").update(patch).eq("id", data.userId);
       if (error) throw new Error(error.message);
+
     }
 
     /* ---- Acesso e segurança (papel NÃO é alterado aqui) ---- */
