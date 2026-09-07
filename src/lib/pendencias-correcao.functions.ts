@@ -8,6 +8,7 @@ import {
   normalizarPeso,
   soDigitos,
 } from "@/lib/pendencias-correcao";
+import { isValidCnpj, isValidCpf } from "@/lib/cnpj";
 
 /**
  * Correção INLINE da tela /pendencias: uma escrita pequena por linha.
@@ -138,9 +139,18 @@ export const definirDocumentoLead = createServerFn({ method: "POST" })
       if (!tipo) return { ok: false, mensagem: "CNPJ/CPF inválido." };
       const digitos = soDigitos(data.documento);
 
+      // Dígitos verificadores: mesma validação do cadastro de clientes.
+      if (tipo === "cnpj" && !isValidCnpj(digitos)) {
+        return { ok: false, mensagem: "CNPJ inválido (dígitos verificadores)." };
+      }
+      if (tipo === "cpf" && !isValidCpf(digitos)) {
+        return { ok: false, mensagem: "CPF inválido (dígitos verificadores)." };
+      }
+
       const up = await sb
         .from("leads")
-        .update(tipo === "cnpj" ? { cnpj: digitos } : { cnpj: digitos, cpf: digitos })
+        // `leads` não tem coluna `cpf`: CNPJ (14) ou CPF (11) moram em `cnpj`.
+        .update({ cnpj: digitos })
         .eq("id", data.lead_id)
         .select("id");
       await assertNoError(
