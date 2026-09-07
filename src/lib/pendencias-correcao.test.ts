@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   documentoValido,
+  documentoValidoCompleto,
   emailValido,
   mascararDocumento,
   normalizarPeso,
@@ -40,6 +41,14 @@ describe("documento", () => {
     expect(documentoValido("11.222.333/0001-81")).toBe("cnpj");
     expect(documentoValido("529.982.247-25")).toBe("cpf");
     expect(documentoValido("123")).toBeNull();
+  });
+  it("confere dígitos verificadores antes de gravar", () => {
+    expect(documentoValidoCompleto("11.222.333/0001-81")).toBe("cnpj");
+    expect(documentoValidoCompleto("11.111.111/1111-11")).toBeNull();
+    expect(documentoValidoCompleto("529.982.247-25")).toBe("cpf");
+    expect(documentoValidoCompleto("111.111.111-11")).toBeNull();
+    // o tamanho sozinho continua aceitando (feedback enquanto digita)
+    expect(documentoValido("11.111.111/1111-11")).toBe("cnpj");
   });
   it("mascara conforme digita", () => {
     expect(soDigitos("11.222.333/0001-81")).toBe("11222333000181");
