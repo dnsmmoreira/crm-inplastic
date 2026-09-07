@@ -119,6 +119,9 @@ export function UsuarioEditDialog({
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [cargo, setCargo] = useState("");
+  const [cargoId, setCargoId] = useState("");
+  const [gestorId, setGestorId] = useState("");
+
   const [telefone, setTelefone] = useState("");
   const [fuso, setFuso] = useState("America/Sao_Paulo");
   const [avatarColor, setAvatarColor] = useState("#64748b");
