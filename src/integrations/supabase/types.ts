@@ -3016,6 +3016,8 @@ export type Database = {
           id: number
           max_dias_etapa: Json
           meta_atividades_dia: number
+          meta_template_automatico: string | null
+          meta_template_automatico_lang: string
           placar_dias_sem_proposta_limite: number
           placar_peso_carteira_60: number
           placar_peso_ganho: number
@@ -3059,6 +3061,8 @@ export type Database = {
           id?: number
           max_dias_etapa?: Json
           meta_atividades_dia?: number
+          meta_template_automatico?: string | null
+          meta_template_automatico_lang?: string
           placar_dias_sem_proposta_limite?: number
           placar_peso_carteira_60?: number
           placar_peso_ganho?: number
@@ -3102,6 +3106,8 @@ export type Database = {
           id?: number
           max_dias_etapa?: Json
           meta_atividades_dia?: number
+          meta_template_automatico?: string | null
+          meta_template_automatico_lang?: string
           placar_dias_sem_proposta_limite?: number
           placar_peso_carteira_60?: number
           placar_peso_ganho?: number
