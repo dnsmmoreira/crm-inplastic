@@ -75,6 +75,9 @@ export type PedidoRow = {
   entrega_confirmada: string | null;
   /** Fonte da verdade da comprovação com anexos (foto + documento). */
   entrega_comprovada_em: string | null;
+  /** Dispensa (pedidos legados): quando e por quê a comprovação foi dispensada. */
+  comprovacao_dispensada_em: string | null;
+  comprovacao_dispensa_motivo: string | null;
   encerrado_em: string | null;
   aprovacao_rota: string | null;
   reprovacao_motivo: string | null;
@@ -122,6 +125,7 @@ export const listPedidos = createServerFn({ method: "GET" })
           "forma_atendimento, prioridade, ocorrencia",
           "vendedor_proprietario_id, proposta_id, lead_id",
           "modalidade_entrega, entrega_confirmada, entrega_comprovada_em, encerrado_em, aprovacao_rota, reprovacao_motivo",
+          "comprovacao_dispensada_em, comprovacao_dispensa_motivo",
           "propostas:proposta_id(number)",
         ].join(", "),
       )
@@ -237,6 +241,8 @@ export const listPedidos = createServerFn({ method: "GET" })
         modalidade_entrega: string | null;
         entrega_confirmada: string | null;
         entrega_comprovada_em: string | null;
+        comprovacao_dispensada_em: string | null;
+        comprovacao_dispensa_motivo: string | null;
         encerrado_em: string | null;
         aprovacao_rota: string | null;
         reprovacao_motivo: string | null;
@@ -270,6 +276,8 @@ export const listPedidos = createServerFn({ method: "GET" })
         modalidade_entrega: r.modalidade_entrega ?? "coleta",
         entrega_confirmada: r.entrega_confirmada,
         entrega_comprovada_em: r.entrega_comprovada_em ?? null,
+        comprovacao_dispensada_em: r.comprovacao_dispensada_em ?? null,
+        comprovacao_dispensa_motivo: r.comprovacao_dispensa_motivo ?? null,
         encerrado_em: r.encerrado_em,
         aprovacao_rota: r.aprovacao_rota,
         reprovacao_motivo: r.reprovacao_motivo,
@@ -759,6 +767,9 @@ export type PedidoDetalhes = {
   entrega_recebida_por: string | null;
   entrega_observacao: string | null;
   entrega_confirmada_por_nome: string | null;
+  comprovacao_dispensada_em: string | null;
+  comprovacao_dispensa_motivo: string | null;
+  comprovacao_dispensada_por_nome: string | null;
   /** Admin, `pedidos.operar_producao` ou `pedidos.movimentar`. */
   pode_comprovar_entrega: boolean;
   fiscal_status: string | null;
@@ -813,7 +824,9 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
          vendedor_proprietario_id, owner_id, proposta_snapshot,
          responsavel_atual_id, equipe_responsavel,
          entrega_comprovada_em, entregue_em, entrega_recebida_por,
-         entrega_observacao, entrega_confirmada_por, ${APPROVAL_FIELDS}`,
+         entrega_observacao, entrega_confirmada_por,
+         comprovacao_dispensada_em, comprovacao_dispensada_por, comprovacao_dispensa_motivo,
+         ${APPROVAL_FIELDS}`,
       )
       .eq("id", data.pedido_id)
       .maybeSingle();
@@ -920,6 +933,7 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
       p.vendedor_proprietario_id ?? p.owner_id,
       p.responsavel_atual_id,
       p.entrega_confirmada_por,
+      p.comprovacao_dispensada_por,
       ...oc.map((o) => o.criada_por),
       ...oc.map((o) => o.resolvida_por),
     ]);
@@ -1008,6 +1022,11 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
       entrega_observacao: p.entrega_observacao ?? null,
       entrega_confirmada_por_nome: p.entrega_confirmada_por
         ? (nameById.get(p.entrega_confirmada_por) ?? null)
+        : null,
+      comprovacao_dispensada_em: p.comprovacao_dispensada_em ?? null,
+      comprovacao_dispensa_motivo: p.comprovacao_dispensa_motivo ?? null,
+      comprovacao_dispensada_por_nome: p.comprovacao_dispensada_por
+        ? (nameById.get(p.comprovacao_dispensada_por) ?? null)
         : null,
       pode_comprovar_entrega: podeComprovarEntrega,
       fiscal_status: p.fiscal_status,
@@ -2022,4 +2041,173 @@ export const confirmarEntregaComprovada = createServerFn({ method: "POST" })
       });
 
     return { ok: true as const, pedido_number: p.number as string, entrega_comprovada_em: agoraIso };
+  });
+
+/* ---------------------------------------------------------------------------
+ * Dispensa da comprovação de entrega.
+ *
+ * Pedidos que entraram em pós-venda antes de a comprovação existir não têm
+ * como apresentar foto/canhoto retroativos. A dispensa é registrada em colunas
+ * próprias (nunca apaga nada) e sempre com motivo + auditoria.
+ * -------------------------------------------------------------------------*/
+
+async function podeDispensarComprovacao(sb: LooseClient, userId: string): Promise<boolean> {
+  if (await isAdminUser(sb, userId)) return true;
+  return temPermissao(sb, userId, PERM_PEDIDOS_MOVIMENTAR);
+}
+
+/** Data de entrada em pós-venda por pedido (histórico de etapas). */
+async function entradaEmPosVenda(
+  sb: LooseClient,
+  ids: string[],
+): Promise<Map<string, string>> {
+  const mapa = new Map<string, string>();
+  if (ids.length === 0) return mapa;
+  const { data } = await sb
+    .from("pedido_stage_history")
+    .select("pedido_id, created_at")
+    .in("pedido_id", ids)
+    .eq("to_stage", "pos_venda")
+    .order("created_at", { ascending: false });
+  for (const h of (data ?? []) as Array<{ pedido_id: string; created_at: string }>) {
+    if (!mapa.has(h.pedido_id)) mapa.set(h.pedido_id, h.created_at);
+  }
+  return mapa;
+}
+
+async function auditarDispensa(sb: LooseClient, userId: string, pedidoId: string, motivo: string) {
+  const audit = await sb.from("user_audit_log").insert({
+    ator_user_id: userId,
+    alvo_user_id: userId,
+    campo: "comprovacao_entrega_dispensada",
+    valor_anterior: pedidoId,
+    valor_novo: motivo,
+  });
+  if (audit.error)
+    await registrarFalhaSegura("pedidos.dispensarComprovacao/auditoria", audit.error, {
+      pedido_id: pedidoId,
+    });
+}
+
+export const dispensarComprovacaoEntrega = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { pedido_id: string; motivo: string }) =>
+    z.object({ pedido_id: z.string().uuid(), motivo: z.string().max(500) }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const sb: LooseClient = context.supabase;
+    const userId = context.userId as string;
+    const { motivoDispensaValido } = await import("@/lib/entrega-comprovacao");
+
+    if (!(await podeDispensarComprovacao(sb, userId))) {
+      return {
+        ok: false as const,
+        message: "Você não tem permissão para dispensar a comprovação de entrega.",
+      };
+    }
+    const motivo = data.motivo.trim();
+    if (!motivoDispensaValido(motivo)) {
+      return { ok: false as const, message: "Explique o motivo da dispensa (mínimo de 5 caracteres)." };
+    }
+
+    const { data: p, error } = await sb
+      .from("pedidos")
+      .select("id, number, stage, entrega_comprovada_em, comprovacao_dispensada_em")
+      .eq("id", data.pedido_id)
+      .maybeSingle();
+    if (error) throw new Error(`Falha ao carregar pedido: ${error.message}`);
+    if (!p) return { ok: false as const, message: "Pedido não encontrado." };
+    if (p.stage !== "pos_venda") {
+      return {
+        ok: false as const,
+        message: `A dispensa só vale no Pós-venda — este pedido está em "${stageLabel(p.stage)}".`,
+      };
+    }
+    if (p.entrega_comprovada_em) {
+      return { ok: false as const, message: "A entrega deste pedido já foi comprovada." };
+    }
+    if (p.comprovacao_dispensada_em) {
+      return { ok: false as const, message: "A comprovação deste pedido já foi dispensada." };
+    }
+
+    const up = await sb
+      .from("pedidos")
+      .update({
+        comprovacao_dispensada_em: new Date().toISOString(),
+        comprovacao_dispensada_por: userId,
+        comprovacao_dispensa_motivo: motivo,
+      })
+      .eq("id", data.pedido_id);
+    await assertNoError(
+      up,
+      "pedidos.dispensarComprovacaoEntrega/update",
+      { pedido_id: data.pedido_id },
+      "Não foi possível dispensar a comprovação. Tente novamente.",
+    );
+    await auditarDispensa(sb, userId, data.pedido_id, motivo);
+    return { ok: true as const, pedido_number: p.number as string };
+  });
+
+/** Dispensa em lote os pós-vendas anteriores à existência da comprovação. */
+export const dispensarComprovacaoLegado = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const sb: LooseClient = context.supabase;
+    const userId = context.userId as string;
+    const { MOTIVO_DISPENSA_LEGADO, COMPROVACAO_LEGADO_ANTES_DE } = await import(
+      "@/lib/entrega-comprovacao"
+    );
+
+    if (!(await isAdminUser(sb, userId))) {
+      return {
+        ok: false as const,
+        message: "Somente administradores podem dispensar os pedidos legados.",
+        total: 0,
+      };
+    }
+
+    const { data: pedidos, error } = await sb
+      .from("pedidos")
+      .select("id, created_at, updated_at")
+      .eq("stage", "pos_venda")
+      .is("entrega_comprovada_em", null)
+      .is("comprovacao_dispensada_em", null)
+      .limit(500);
+    if (error) throw new Error(`Falha ao listar pedidos: ${error.message}`);
+
+    const base = (pedidos ?? []) as Array<{
+      id: string;
+      created_at: string;
+      updated_at: string | null;
+    }>;
+    const entradas = await entradaEmPosVenda(
+      sb,
+      base.map((p) => p.id),
+    );
+    const corte = new Date(COMPROVACAO_LEGADO_ANTES_DE).getTime();
+    const alvos = base.filter((p) => {
+      const quando = entradas.get(p.id) ?? p.updated_at ?? p.created_at;
+      return new Date(quando).getTime() < corte;
+    });
+    if (alvos.length === 0) return { ok: true as const, total: 0 };
+
+    const up = await sb
+      .from("pedidos")
+      .update({
+        comprovacao_dispensada_em: new Date().toISOString(),
+        comprovacao_dispensada_por: userId,
+        comprovacao_dispensa_motivo: MOTIVO_DISPENSA_LEGADO,
+      })
+      .in(
+        "id",
+        alvos.map((p) => p.id),
+      );
+    await assertNoError(
+      up,
+      "pedidos.dispensarComprovacaoLegado/update",
+      { total: alvos.length },
+      "Não foi possível dispensar os pedidos legados. Tente novamente.",
+    );
+    for (const p of alvos) await auditarDispensa(sb, userId, p.id, MOTIVO_DISPENSA_LEGADO);
+    return { ok: true as const, total: alvos.length };
   });
