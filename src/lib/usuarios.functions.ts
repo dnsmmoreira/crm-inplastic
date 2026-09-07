@@ -699,7 +699,9 @@ export const hardDeleteUsuario = createServerFn({ method: "POST" })
       .parse(data),
   )
   .handler(async ({ data, context }) => {
-    await assertGerenciarUsuarios(context.supabase, context.userId);
+    // Exclusão DEFINITIVA continua restrita ao papel admin real.
+    await assertAdmin(context.supabase, context.userId);
+
     if (data.userId === context.userId) throw new Error("Você não pode excluir a própria conta.");
     if (data.userId === data.reatribuirParaUserId) {
       throw new Error("Escolha outro usuário para receber os registros.");
