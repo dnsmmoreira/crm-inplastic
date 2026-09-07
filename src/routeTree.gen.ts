@@ -66,6 +66,7 @@ import { Route as ApiPublicHooksIaResponderRouteImport } from './routes/api/publ
 import { Route as ApiPublicHooksIaQualificarRouteImport } from './routes/api/public/hooks/ia-qualificar'
 import { Route as ApiPublicHooksIaHandoffRouteImport } from './routes/api/public/hooks/ia-handoff'
 import { Route as ApiPublicHooksIaFilaEnvioRouteImport } from './routes/api/public/hooks/ia-fila-envio'
+import { Route as ApiPublicHooksDocumentosExpurgoRouteImport } from './routes/api/public/hooks/documentos-expurgo'
 
 const UsuariosRoute = UsuariosRouteImport.update({
   id: '/usuarios',
@@ -368,6 +369,12 @@ const ApiPublicHooksIaFilaEnvioRoute =
     path: '/api/public/hooks/ia-fila-envio',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksDocumentosExpurgoRoute =
+  ApiPublicHooksDocumentosExpurgoRouteImport.update({
+    id: '/api/public/hooks/documentos-expurgo',
+    path: '/api/public/hooks/documentos-expurgo',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -411,6 +418,7 @@ export interface FileRoutesByFullPath {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/romaneio/$pedidoId/$tipo': typeof RomaneioPedidoIdTipoRoute
+  '/api/public/hooks/documentos-expurgo': typeof ApiPublicHooksDocumentosExpurgoRoute
   '/api/public/hooks/ia-fila-envio': typeof ApiPublicHooksIaFilaEnvioRoute
   '/api/public/hooks/ia-handoff': typeof ApiPublicHooksIaHandoffRoute
   '/api/public/hooks/ia-qualificar': typeof ApiPublicHooksIaQualificarRoute
@@ -470,6 +478,7 @@ export interface FileRoutesByTo {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/romaneio/$pedidoId/$tipo': typeof RomaneioPedidoIdTipoRoute
+  '/api/public/hooks/documentos-expurgo': typeof ApiPublicHooksDocumentosExpurgoRoute
   '/api/public/hooks/ia-fila-envio': typeof ApiPublicHooksIaFilaEnvioRoute
   '/api/public/hooks/ia-handoff': typeof ApiPublicHooksIaHandoffRoute
   '/api/public/hooks/ia-qualificar': typeof ApiPublicHooksIaQualificarRoute
@@ -530,6 +539,7 @@ export interface FileRoutesById {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/romaneio/$pedidoId/$tipo': typeof RomaneioPedidoIdTipoRoute
+  '/api/public/hooks/documentos-expurgo': typeof ApiPublicHooksDocumentosExpurgoRoute
   '/api/public/hooks/ia-fila-envio': typeof ApiPublicHooksIaFilaEnvioRoute
   '/api/public/hooks/ia-handoff': typeof ApiPublicHooksIaHandoffRoute
   '/api/public/hooks/ia-qualificar': typeof ApiPublicHooksIaQualificarRoute
@@ -591,6 +601,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/romaneio/$pedidoId/$tipo'
+    | '/api/public/hooks/documentos-expurgo'
     | '/api/public/hooks/ia-fila-envio'
     | '/api/public/hooks/ia-handoff'
     | '/api/public/hooks/ia-qualificar'
@@ -650,6 +661,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/romaneio/$pedidoId/$tipo'
+    | '/api/public/hooks/documentos-expurgo'
     | '/api/public/hooks/ia-fila-envio'
     | '/api/public/hooks/ia-handoff'
     | '/api/public/hooks/ia-qualificar'
@@ -709,6 +721,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/romaneio/$pedidoId/$tipo'
+    | '/api/public/hooks/documentos-expurgo'
     | '/api/public/hooks/ia-fila-envio'
     | '/api/public/hooks/ia-handoff'
     | '/api/public/hooks/ia-qualificar'
@@ -769,6 +782,7 @@ export interface RootRouteChildren {
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   RomaneioPedidoIdTipoRoute: typeof RomaneioPedidoIdTipoRoute
+  ApiPublicHooksDocumentosExpurgoRoute: typeof ApiPublicHooksDocumentosExpurgoRoute
   ApiPublicHooksIaFilaEnvioRoute: typeof ApiPublicHooksIaFilaEnvioRoute
   ApiPublicHooksIaHandoffRoute: typeof ApiPublicHooksIaHandoffRoute
   ApiPublicHooksIaQualificarRoute: typeof ApiPublicHooksIaQualificarRoute
@@ -1188,6 +1202,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksIaFilaEnvioRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/documentos-expurgo': {
+      id: '/api/public/hooks/documentos-expurgo'
+      path: '/api/public/hooks/documentos-expurgo'
+      fullPath: '/api/public/hooks/documentos-expurgo'
+      preLoaderRoute: typeof ApiPublicHooksDocumentosExpurgoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -1234,6 +1255,7 @@ const rootRouteChildren: RootRouteChildren = {
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   RomaneioPedidoIdTipoRoute: RomaneioPedidoIdTipoRoute,
+  ApiPublicHooksDocumentosExpurgoRoute: ApiPublicHooksDocumentosExpurgoRoute,
   ApiPublicHooksIaFilaEnvioRoute: ApiPublicHooksIaFilaEnvioRoute,
   ApiPublicHooksIaHandoffRoute: ApiPublicHooksIaHandoffRoute,
   ApiPublicHooksIaQualificarRoute: ApiPublicHooksIaQualificarRoute,
