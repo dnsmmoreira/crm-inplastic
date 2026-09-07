@@ -153,7 +153,7 @@ export const listUsuarios = createServerFn({ method: "POST" })
     z.object({ incluirExcluidos: z.boolean().optional() }).parse(data ?? {}),
   )
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.supabase, context.userId);
+    await assertGerenciarUsuarios(context.supabase, context.userId);
     const sb = await admin();
 
     const [profilesRes, rolesRes, permsRes, filaRes, metasRes, authMap] = await Promise.all([
@@ -220,7 +220,7 @@ export const listAuditoriaUsuario = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data) => z.object({ userId: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.supabase, context.userId);
+    await assertGerenciarUsuarios(context.supabase, context.userId);
     const sb = await admin();
     const { data: rows, error } = await sb
       .from("user_audit_log")
@@ -255,7 +255,7 @@ export const checkEmailDuplicado = createServerFn({ method: "POST" })
     z.object({ email: z.string().email(), ignoreUserId: z.string().uuid().optional() }).parse(data),
   )
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.supabase, context.userId);
+    await assertGerenciarUsuarios(context.supabase, context.userId);
     const sb = await admin();
     const map = await listAuthUsers(sb);
     const alvo = data.email.trim().toLowerCase();
@@ -317,7 +317,7 @@ export const updateUsuario = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data) => updateSchema.parse(data))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.supabase, context.userId);
+    await assertGerenciarUsuarios(context.supabase, context.userId);
     const sb = await admin();
     const ator = context.userId;
     const isSelf = ator === data.userId;
@@ -523,7 +523,7 @@ export const setUsuarioAtivo = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data) => z.object({ userId: z.string().uuid(), ativo: z.boolean() }).parse(data))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.supabase, context.userId);
+    await assertGerenciarUsuarios(context.supabase, context.userId);
     if (data.userId === context.userId && !data.ativo) {
       throw new Error("Você não pode desativar a própria conta.");
     }
@@ -563,7 +563,7 @@ export const forcarRedefinicaoSenha = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data) => z.object({ userId: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.supabase, context.userId);
+    await assertGerenciarUsuarios(context.supabase, context.userId);
     const sb = await admin();
 
     // Zera a senha para um valor aleatório inacessível e marca o fluxo de primeiro acesso.
@@ -588,7 +588,7 @@ export const encerrarSessoes = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data) => z.object({ userId: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.supabase, context.userId);
+    await assertGerenciarUsuarios(context.supabase, context.userId);
     const sb = await admin();
     const ok = await revokeSessions(sb, data.userId);
     if (!ok) throw new Error("Não foi possível encerrar as sessões deste usuário.");
@@ -628,7 +628,7 @@ export const softDeleteUsuario = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data) => z.object({ userId: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.supabase, context.userId);
+    await assertGerenciarUsuarios(context.supabase, context.userId);
     if (data.userId === context.userId) throw new Error("Você não pode excluir a própria conta.");
     const sb = await admin();
 
@@ -674,7 +674,7 @@ export const restaurarUsuario = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data) => z.object({ userId: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.supabase, context.userId);
+    await assertGerenciarUsuarios(context.supabase, context.userId);
     const sb = await admin();
     const { error } = await sb
       .from("profiles")
@@ -699,7 +699,7 @@ export const hardDeleteUsuario = createServerFn({ method: "POST" })
       .parse(data),
   )
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.supabase, context.userId);
+    await assertGerenciarUsuarios(context.supabase, context.userId);
     if (data.userId === context.userId) throw new Error("Você não pode excluir a própria conta.");
     if (data.userId === data.reatribuirParaUserId) {
       throw new Error("Escolha outro usuário para receber os registros.");
@@ -797,7 +797,7 @@ export const definirSenhaUsuario = createServerFn({ method: "POST" })
     z.object({ userId: z.string().uuid(), password: senhaForte }).parse(data),
   )
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.supabase, context.userId);
+    await assertGerenciarUsuarios(context.supabase, context.userId);
     const sb = await admin();
 
     const { error: aErr } = await sb.auth.admin.updateUserById(data.userId, {
