@@ -2374,6 +2374,7 @@ export type Database = {
           forma_pagamento: string | null
           id: string
           lead_id: string
+          motivo_recusa: string | null
           number: string
           numero_pedido_cliente: string | null
           observacoes_pedido: string | null
@@ -2382,6 +2383,10 @@ export type Database = {
           owner_id: string
           payment_term_id: string | null
           previsao_faturamento: string | null
+          reaberta_em: string | null
+          recusa_detalhe: string | null
+          recusada_em: string | null
+          recusada_por: string | null
           sent_at: string | null
           status: Database["public"]["Enums"]["proposal_status"]
           transport: Json
@@ -2413,6 +2418,7 @@ export type Database = {
           forma_pagamento?: string | null
           id?: string
           lead_id: string
+          motivo_recusa?: string | null
           number: string
           numero_pedido_cliente?: string | null
           observacoes_pedido?: string | null
@@ -2421,6 +2427,10 @@ export type Database = {
           owner_id: string
           payment_term_id?: string | null
           previsao_faturamento?: string | null
+          reaberta_em?: string | null
+          recusa_detalhe?: string | null
+          recusada_em?: string | null
+          recusada_por?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["proposal_status"]
           transport?: Json
@@ -2452,6 +2462,7 @@ export type Database = {
           forma_pagamento?: string | null
           id?: string
           lead_id?: string
+          motivo_recusa?: string | null
           number?: string
           numero_pedido_cliente?: string | null
           observacoes_pedido?: string | null
@@ -2460,6 +2471,10 @@ export type Database = {
           owner_id?: string
           payment_term_id?: string | null
           previsao_faturamento?: string | null
+          reaberta_em?: string | null
+          recusa_detalhe?: string | null
+          recusada_em?: string | null
+          recusada_por?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["proposal_status"]
           transport?: Json
