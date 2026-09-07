@@ -35,6 +35,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { gerarPedidoInterno } from "@/lib/pedidos-gerar.functions";
 import { identificarCard, resolverColunaAlvo } from "@/lib/pipeline-drop";
+import { reabrirProposta, recusarProposta } from "@/lib/propostas-perda.functions";
 
 type SortMode = "default" | "urgency" | "urgency-desc";
 const CARDS_PER_PAGE = 15;
@@ -113,6 +114,8 @@ function PipelinePage() {
   const updateProposal = useCrm((s) => s.updateProposal);
   const navigate = useNavigate();
   const gerarPedidoFn = useServerFn(gerarPedidoInterno);
+  const recusarPropostaFn = useServerFn(recusarProposta);
+  const reabrirPropostaFn = useServerFn(reabrirProposta);
 
   const leadById = useMemo(() => new Map(leads.map((l) => [l.id, l])), [leads]);
 
@@ -141,6 +144,18 @@ function PipelinePage() {
       (p) =>
         (PROPOSTA_COLUMN_STATUSES as readonly string[]).includes(p.status) && matchProposal(p, q),
     );
+  }, [proposals, search, matchProposal]);
+
+  /** Propostas recusadas aparecem na coluna Perdido, mais recentes primeiro. */
+  const propostasRecusadas = useMemo(() => {
+    const q = search.toLowerCase();
+    return proposals
+      .filter((p) => p.status === "recusada" && matchProposal(p, q))
+      .sort(
+        (a, b) =>
+          new Date(b.recusadaEm ?? b.createdAt).getTime() -
+          new Date(a.recusadaEm ?? a.createdAt).getTime(),
+      );
   }, [proposals, search, matchProposal]);
 
   const propostasGanhas = useMemo(() => {
@@ -254,6 +269,31 @@ function PipelinePage() {
     }
   };
 
+  /** Reabre uma proposta recusada (confirmação explícita). */
+  const reabrirPropostaCard = async (proposal: Proposal) => {
+    const lead = leadById.get(proposal.leadId);
+    const label = lead?.company ?? proposal.number;
+    if (!window.confirm(`Reabrir a proposta ${proposal.number} de ${label}?`)) return;
+    const t = toast.loading("Reabrindo proposta...");
+    try {
+      const r = await reabrirPropostaFn({ data: { propostaId: proposal.id } });
+      updateProposal(proposal.id, {
+        status: "enviada",
+        motivoRecusa: null,
+        recusaDetalhe: null,
+        recusadaEm: null,
+      });
+      if (r.leadReaberto) moveLead(proposal.leadId, "proposta");
+      toast.dismiss(t);
+      toast.success(`Proposta ${proposal.number} reaberta`);
+    } catch (err) {
+      toast.dismiss(t);
+      toast.error("Não foi possível reabrir a proposta", {
+        description: err instanceof Error ? err.message : String(err),
+      });
+    }
+  };
+
   const onDragEnd = (e: DragEndEvent) => {
     setActiveId(null);
     // Ignora qualquer alvo que não seja uma coluna visível do quadro.
@@ -277,7 +317,10 @@ function PipelinePage() {
         });
         return;
       }
-      if (stage === "proposta") return;
+      if (stage === "proposta") {
+        if (proposal.status === "recusada") void reabrirPropostaCard(proposal);
+        return;
+      }
       toast.info("Uma proposta não volta para as etapas de lead — cancele ou marque como perdida.");
       return;
     }
@@ -473,6 +516,9 @@ function PipelinePage() {
                   key={stage.id}
                   stage={stage}
                   leads={byStage[stage.id]}
+                  propostasRecusadas={stage.id === "perdido" ? propostasRecusadas : undefined}
+                  leadById={leadById}
+                  onOpenProposta={(id) => navigate({ to: "/propostas/$id", params: { id } })}
                   onOpen={setOpenLead}
                   selectMode={selectMode}
                   selected={selected}
@@ -517,14 +563,46 @@ function PipelinePage() {
       <LeadDrawer leadId={openLead} open={!!openLead} onOpenChange={(o) => !o && setOpenLead(null)} />
       <LostReasonDialog
         open={!!lostTarget}
+        alvo={lostTarget?.propostaId ? "proposta" : "lead"}
         leadLabel={lostTarget?.company}
         onCancel={() => setLostTarget(null)}
         onConfirm={async (payload) => {
           if (!lostTarget) return;
           const { leadId, company, propostaId } = lostTarget;
           setLostTarget(null);
-          // Card de proposta: a proposta em si passa a "recusada".
-          if (propostaId) updateProposal(propostaId, { status: "recusada" });
+          // Card de proposta: quem decide tudo é o servidor — a proposta vira
+          // "recusada" e o lead só cai para Perdido se não sobrar proposta viva.
+          if (propostaId) {
+            const t = toast.loading("Registrando a recusa...");
+            try {
+              const r = await recusarPropostaFn({
+                data: {
+                  propostaId,
+                  motivo: payload.motivoLabel as never,
+                  observacao: payload.observacao,
+                },
+              });
+              updateProposal(propostaId, {
+                status: "recusada",
+                motivoRecusa: payload.motivoLabel,
+                recusaDetalhe: payload.observacao,
+                recusadaEm: new Date().toISOString(),
+              });
+              if (r.leadPerdido) moveLead(leadId, "perdido");
+              toast.dismiss(t);
+              toast.success(
+                r.leadPerdido
+                  ? `Proposta recusada — ${company} → Perdido`
+                  : "Proposta recusada — o lead segue com outra proposta em aberto",
+              );
+            } catch (err) {
+              toast.dismiss(t);
+              toast.error("Não foi possível registrar a recusa", {
+                description: err instanceof Error ? err.message : String(err),
+              });
+            }
+            return;
+          }
           runMove(leadId, "perdido", company, payload);
         }}
       />
@@ -549,6 +627,9 @@ function Column({
   selected,
   onToggleSelect,
   onSelectMany,
+  propostasRecusadas,
+  leadById,
+  onOpenProposta,
 }: {
   stage: (typeof STAGES)[number];
   leads: Lead[];
@@ -557,11 +638,18 @@ function Column({
   selected: Set<string>;
   onToggleSelect: (id: string) => void;
   onSelectMany: (ids: string[], on: boolean) => void;
+  /** Coluna Perdido também mostra as propostas recusadas. */
+  propostasRecusadas?: Proposal[];
+  leadById?: Map<string, Lead>;
+  onOpenProposta?: (propostaId: string) => void;
 }) {
 
   const { setNodeRef, isOver } = useDroppable({ id: stage.id });
   const valueMap = useLeadValueMap();
-  const total = leads.reduce((s, l) => s + (valueMap.get(l.id) ?? l.estimatedValue), 0);
+  const recusadas = propostasRecusadas ?? [];
+  const total =
+    leads.reduce((s, l) => s + (valueMap.get(l.id) ?? l.estimatedValue), 0) +
+    recusadas.reduce((s, p) => s + proposalTotals(p).total, 0);
 
   const [page, setPage] = useState(0);
   const pageCount = Math.max(1, Math.ceil(leads.length / CARDS_PER_PAGE));
@@ -586,7 +674,7 @@ function Column({
           )}
           <span className="stage-dot" style={{ background: stage.color }} />
           <span className="font-medium text-sm">{stage.label}</span>
-          <Badge variant="secondary" className="text-xs">{leads.length}</Badge>
+          <Badge variant="secondary" className="text-xs">{leads.length + recusadas.length}</Badge>
         </div>
         <span className="text-xs text-muted-foreground">{formatBRL(total)}</span>
       </div>
@@ -608,7 +696,18 @@ function Column({
           />
         ))}
 
-        {leads.length === 0 && (
+        {recusadas.map((p) => (
+          <ProposalCard
+            key={p.id}
+            proposal={p}
+            lead={leadById?.get(p.leadId)}
+            onOpen={(id) => onOpenProposta?.(id)}
+            onToggleNegociacao={() => {}}
+            recusada
+          />
+        ))}
+
+        {leads.length + recusadas.length === 0 && (
           <div className="text-xs text-muted-foreground text-center py-8 italic">Solte aqui</div>
         )}
         {leads.length > CARDS_PER_PAGE && (
@@ -835,12 +934,15 @@ function ProposalCard({
   onOpen,
   onToggleNegociacao,
   dragging = false,
+  recusada = false,
 }: {
   proposal: Proposal;
   lead?: Lead;
   onOpen: (propostaId: string) => void;
   onToggleNegociacao: (p: Proposal) => void;
   dragging?: boolean;
+  /** Card cinza na coluna Perdido. */
+  recusada?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: `prop:${proposal.id}` });
   const totals = proposalTotals(proposal);
@@ -859,7 +961,11 @@ function ProposalCard({
       }}
       className={cn(
         "group rounded-lg border bg-card p-3 shadow-sm hover:shadow-md hover:border-primary/50 transition-all cursor-grab active:cursor-grabbing border-l-4",
-        proposal.emNegociacao ? "border-l-orange-500" : "border-l-sky-500",
+        recusada
+          ? "border-l-muted-foreground/40 bg-muted/40 opacity-90"
+          : proposal.emNegociacao
+            ? "border-l-orange-500"
+            : "border-l-sky-500",
         isDragging && "opacity-30",
         dragging && "shadow-xl rotate-2",
       )}
@@ -880,6 +986,15 @@ function ProposalCard({
         <span>Proposta {proposal.number} · {dias}d</span>
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-1">
+        {recusada ? (
+          <Badge
+            variant="outline"
+            className="text-[10px] px-1.5 py-0 text-muted-foreground"
+            title={proposal.recusaDetalhe ?? undefined}
+          >
+            Recusada{proposal.motivoRecusa ? ` · ${proposal.motivoRecusa}` : ""}
+          </Badge>
+        ) : (
         <Badge
           variant="outline"
           role="button"
@@ -900,6 +1015,7 @@ function ProposalCard({
           <span className="mr-1">🔥</span>
           {proposal.emNegociacao ? "Negociação" : "Marcar negociação"}
         </Badge>
+        )}
       </div>
     </div>
   );
