@@ -48,12 +48,14 @@ function Secao({
   id,
   titulo,
   vazio,
+  erro,
   children,
   innerRef,
 }: {
   id: string;
   titulo: string;
   vazio: boolean;
+  erro?: string | null;
   children: React.ReactNode;
   innerRef: (el: HTMLDivElement | null) => void;
 }) {
@@ -63,7 +65,15 @@ function Secao({
         <CardTitle className="text-base">{titulo}</CardTitle>
       </CardHeader>
       <CardContent className="overflow-x-auto">
-        {vazio ? (
+        {erro ? (
+          <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
+            <div className="flex items-center gap-2 font-medium">
+              <AlertTriangle className="h-4 w-4 text-amber-600" /> Esta seção não pôde ser
+              carregada
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">{erro}</p>
+          </div>
+        ) : vazio ? (
           <p className="py-6 text-center text-sm text-muted-foreground">
             Nenhuma pendência — tudo certo por aqui.
           </p>
@@ -74,6 +84,7 @@ function Secao({
     </Card>
   );
 }
+
 
 function PendenciasPage() {
   const fetchPendencias = useServerFn(listarPendenciasCadastro);
