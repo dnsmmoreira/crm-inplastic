@@ -361,14 +361,16 @@ export const listarPendenciasCadastro = createServerFn({ method: "GET" })
     });
 
     // 5) Pedidos em pós-venda sem comprovação de entrega (foto + documento).
-    // `pedidos` não tem coluna stage_changed_at: a data da última troca de etapa
-    // vem de `pedido_stage_history` (mesma derivação usada em pedidos.functions.ts).
+    // `pedidos` não tem coluna stage_changed_at: a entrada em pós-venda vem da
+    // última linha de `pedido_stage_history` com to_stage = 'pos_venda'
+    // (fallback: `pedidos.updated_at`).
     const entregasP = secaoSegura<PendenciaEntrega>("pendencias.entregas", async () => {
       const res = await sb
         .from("pedidos")
-        .select("id, number, lead_id, responsavel_atual_id, equipe_responsavel, created_at", {
-          count: "exact",
-        })
+        .select(
+          "id, number, lead_id, responsavel_atual_id, equipe_responsavel, created_at, updated_at",
+          { count: "exact" },
+        )
         .eq("stage", "pos_venda")
         .is("entrega_comprovada_em", null)
         .order("created_at", { ascending: true })
@@ -381,6 +383,7 @@ export const listarPendenciasCadastro = createServerFn({ method: "GET" })
         responsavel_atual_id: string | null;
         equipe_responsavel: string | null;
         created_at: string;
+        updated_at: string;
       }[];
 
       const ultimaTrocaPorPedido = new Map<string, string>();
@@ -392,6 +395,7 @@ export const listarPendenciasCadastro = createServerFn({ method: "GET" })
             "pedido_id",
             base.map((p) => p.id),
           )
+          .eq("to_stage", "pos_venda")
           .order("created_at", { ascending: false });
         await assertNoError(histRes, "pendencias.entregas/historico");
         for (const h of (histRes.data ?? []) as { pedido_id: string; created_at: string }[]) {
@@ -400,6 +404,7 @@ export const listarPendenciasCadastro = createServerFn({ method: "GET" })
           }
         }
       }
+
 
       const nomes = await nomesPorId(
         sb,
@@ -421,9 +426,10 @@ export const listarPendenciasCadastro = createServerFn({ method: "GET" })
             p.equipe_responsavel ||
             null,
           dias_em_pos_venda: diasParado(
-            ultimaTrocaPorPedido.get(p.id) ?? p.created_at,
+            ultimaTrocaPorPedido.get(p.id) ?? p.updated_at ?? p.created_at,
             agora,
           ),
+
         })),
       };
     });
