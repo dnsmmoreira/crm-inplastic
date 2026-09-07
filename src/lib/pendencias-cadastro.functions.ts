@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
 import { assertNoError, assertRpcPermissao, registrarFalhaSegura } from "@/lib/guard-erros";
 import { diasParado, faltasDoProduto, type CampoFaltandoProduto } from "@/lib/pendencias-cadastro";
+import { COMPROVACAO_LEGADO_ANTES_DE } from "@/lib/entrega-comprovacao";
 
 /**
  * Faxina de cadastro: leitura pura com o client do usuário — o RLS decide o
@@ -13,6 +14,9 @@ import { diasParado, faltasDoProduto, type CampoFaltandoProduto } from "@/lib/pe
  */
 
 const LIMITE = 200;
+
+/** Pedidos que entraram em pós-venda antes disto são legados (sem comprovação). */
+const CORTE_LEGADO = new Date(COMPROVACAO_LEGADO_ANTES_DE).getTime();
 
 export type PendenciaLead = {
   id: string;
@@ -36,6 +40,8 @@ export type PendenciaCliente = {
   razao_social: string | null;
   cnpj: string | null;
   vendedor: string | null;
+  /** E-mail do último lead vinculado — sugestão para o campo de NF. */
+  email_sugerido: string | null;
 };
 
 export type PendenciaProposta = {
@@ -53,6 +59,8 @@ export type PendenciaEntrega = {
   cliente: string | null;
   responsavel: string | null;
   dias_em_pos_venda: number;
+  /** Entrou em pós-venda antes de a comprovação existir (pedido legado). */
+  legado: boolean;
 };
 
 export type PendenciaLeadProduto = {
@@ -79,6 +87,8 @@ export type PendenciasCadastro = {
     clientes: number;
     propostas: number;
     entregas: number;
+    /** Entregas pendentes que são legadas (podem ser dispensadas em lote). */
+    entregasLegadas: number;
     total: number;
   };
 };
@@ -272,6 +282,31 @@ export const listarPendenciasCadastro = createServerFn({ method: "GET" })
         sb,
         raw.map((c) => c.vendedor_id ?? ""),
       );
+
+      // Sugestão de e-mail: o do lead mais recente vinculado ao cliente.
+      const emailPorCliente = new Map<string, string>();
+      if (raw.length > 0) {
+        const leadsRes = await sb
+          .from("leads")
+          .select("cliente_id, email, created_at")
+          .in(
+            "cliente_id",
+            raw.map((c) => c.id),
+          )
+          .not("email", "is", null)
+          .neq("email", "")
+          .order("created_at", { ascending: false });
+        await assertNoError(leadsRes, "pendencias.clientes/emailSugerido");
+        for (const l of (leadsRes.data ?? []) as {
+          cliente_id: string | null;
+          email: string | null;
+        }[]) {
+          if (l.cliente_id && l.email && !emailPorCliente.has(l.cliente_id)) {
+            emailPorCliente.set(l.cliente_id, l.email.trim());
+          }
+        }
+      }
+
       return {
         total: (res.count as number | null) ?? raw.length,
         itens: raw.map<PendenciaCliente>((c) => ({
@@ -279,6 +314,7 @@ export const listarPendenciasCadastro = createServerFn({ method: "GET" })
           razao_social: c.razao_social,
           cnpj: c.cnpj,
           vendedor: (c.vendedor_id && nomes.get(c.vendedor_id)) || null,
+          email_sugerido: emailPorCliente.get(c.id) ?? null,
         })),
       };
     });
@@ -373,6 +409,7 @@ export const listarPendenciasCadastro = createServerFn({ method: "GET" })
         )
         .eq("stage", "pos_venda")
         .is("entrega_comprovada_em", null)
+        .is("comprovacao_dispensada_em", null)
         .order("created_at", { ascending: true })
         .limit(LIMITE);
       await assertNoError(res, "pendencias.entregas");
@@ -417,20 +454,20 @@ export const listarPendenciasCadastro = createServerFn({ method: "GET" })
 
       return {
         total: (res.count as number | null) ?? base.length,
-        itens: base.map<PendenciaEntrega>((p) => ({
-          id: p.id,
-          number: p.number,
-          cliente: (p.lead_id && clientePorLead.get(p.lead_id)) || null,
-          responsavel:
-            (p.responsavel_atual_id && nomes.get(p.responsavel_atual_id)) ||
-            p.equipe_responsavel ||
-            null,
-          dias_em_pos_venda: diasParado(
-            ultimaTrocaPorPedido.get(p.id) ?? p.updated_at ?? p.created_at,
-            agora,
-          ),
-
-        })),
+        itens: base.map<PendenciaEntrega>((p) => {
+          const entrada = ultimaTrocaPorPedido.get(p.id) ?? p.updated_at ?? p.created_at;
+          return {
+            id: p.id,
+            number: p.number,
+            cliente: (p.lead_id && clientePorLead.get(p.lead_id)) || null,
+            responsavel:
+              (p.responsavel_atual_id && nomes.get(p.responsavel_atual_id)) ||
+              p.equipe_responsavel ||
+              null,
+            dias_em_pos_venda: diasParado(entrada, agora),
+            legado: new Date(entrada).getTime() < CORTE_LEGADO,
+          };
+        }),
       };
     });
 
@@ -458,6 +495,7 @@ export const listarPendenciasCadastro = createServerFn({ method: "GET" })
         clientes: clientes.total,
         propostas: propostas.total,
         entregas: entregas.total,
+        entregasLegadas: entregas.itens.filter((e) => e.legado).length,
         total:
           leads.total + leadsProduto.total + produtos.total + clientes.total + propostas.total + entregas.total,
       },
