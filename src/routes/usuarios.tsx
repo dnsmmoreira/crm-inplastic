@@ -261,7 +261,16 @@ function UsuariosPage() {
                       {r.ultimoAcesso
                         ? `último acesso ${new Date(r.ultimoAcesso).toLocaleDateString("pt-BR")}`
                         : "nunca acessou"}
+                      {r.gestorId && nomePorId.get(r.gestorId)
+                        ? ` · Gestor: ${nomePorId.get(r.gestorId)}`
+                        : ""}
+                      {representantesPorGestor.get(r.id)
+                        ? ` · ${representantesPorGestor.get(r.id)} representante${
+                            representantesPorGestor.get(r.id) === 1 ? "" : "s"
+                          }`
+                        : ""}
                     </div>
+
                   </div>
                   <Badge variant={r.role === "admin" ? "default" : "secondary"} className="gap-1">
                     {r.role === "admin" ? <Shield className="h-3 w-3" /> : <UserIcon className="h-3 w-3" />}
