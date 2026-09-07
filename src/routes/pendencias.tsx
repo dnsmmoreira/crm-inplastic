@@ -28,7 +28,7 @@ import {
   dispensarComprovacaoLegado,
 } from "@/lib/pedidos.functions";
 import {
-  documentoValido,
+  documentoValidoCompleto,
   emailValido,
   mascararDocumento,
   pesoValido,
@@ -491,7 +491,7 @@ function PendenciasPage() {
                       value={valor}
                       onChange={(v) => setRascunho(`lead-doc-${l.id}`, mascararDocumento(v))}
                       placeholder="00.000.000/0000-00"
-                      valido={!!documentoValido(valor)}
+                      valido={!!documentoValidoCompleto(valor)}
                       salvando={salvandoId === l.id}
                       className="h-8 w-44"
                       onSave={() =>

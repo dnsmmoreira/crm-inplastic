@@ -31,8 +31,19 @@ export function soDigitos(v: string | null | undefined): string {
 
 export type TipoDocumento = "cnpj" | "cpf";
 
-/** Documento aceito: CNPJ (14) ou CPF (11) com dígitos verificadores válidos. */
+/**
+ * Tipo do documento apenas pelo tamanho — feedback visual enquanto se digita.
+ * NÃO garante que o número existe; para gravar use `documentoValidoCompleto`.
+ */
 export function documentoValido(v: string | null | undefined): TipoDocumento | null {
+  const d = soDigitos(v);
+  if (d.length === 14) return "cnpj";
+  if (d.length === 11) return "cpf";
+  return null;
+}
+
+/** Tamanho E dígitos verificadores — é esta que libera a gravação. */
+export function documentoValidoCompleto(v: string | null | undefined): TipoDocumento | null {
   const d = soDigitos(v);
   if (d.length === 14) return isValidCnpj(d) ? "cnpj" : null;
   if (d.length === 11) return isValidCpf(d) ? "cpf" : null;
