@@ -302,6 +302,8 @@ function UsuariosPage() {
         usuario={editando}
         currentUserId={user.id}
         isAdmin={user.role === "admin"}
+        usuarios={rows ?? []}
+
 
         open={!!editando}
         onOpenChange={(v) => { if (!v) setEditando(null); }}
