@@ -2194,11 +2194,13 @@ export type Database = {
           avatar_color: string
           canais_entrada: string[]
           cargo: string | null
+          cargo_id: string | null
           created_at: string
           deleted_at: string | null
           deleted_by: string | null
           email_cache: string | null
           fuso_horario: string
+          gestor_id: string | null
           id: string
           limite_leads_simultaneos: number | null
           name: string
@@ -2215,11 +2217,13 @@ export type Database = {
           avatar_color?: string
           canais_entrada?: string[]
           cargo?: string | null
+          cargo_id?: string | null
           created_at?: string
           deleted_at?: string | null
           deleted_by?: string | null
           email_cache?: string | null
           fuso_horario?: string
+          gestor_id?: string | null
           id: string
           limite_leads_simultaneos?: number | null
           name?: string
@@ -2236,11 +2240,13 @@ export type Database = {
           avatar_color?: string
           canais_entrada?: string[]
           cargo?: string | null
+          cargo_id?: string | null
           created_at?: string
           deleted_at?: string | null
           deleted_by?: string | null
           email_cache?: string | null
           fuso_horario?: string
+          gestor_id?: string | null
           id?: string
           limite_leads_simultaneos?: number | null
           name?: string
@@ -2252,7 +2258,22 @@ export type Database = {
           updated_at?: string
           xerife_isento?: boolean
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_cargo_id_fkey"
+            columns: ["cargo_id"]
+            isOneToOne: false
+            referencedRelation: "cargos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_gestor_id_fkey"
+            columns: ["gestor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       proposta_itens: {
         Row: {
