@@ -604,6 +604,7 @@ async function runXerifePedidos(
             .select("id, number, responsavel_atual_id, vendedor_proprietario_id, lead_id")
             .eq("stage", "pos_venda")
             .is("entrega_comprovada_em", null)
+            .is("comprovacao_dispensada_em", null)
             .in("id", idsEntrada)
         ).data
       : [];

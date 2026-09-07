@@ -1868,6 +1868,9 @@ export type Database = {
           checklist_atualizado_em: string | null
           checklist_atualizado_por: string | null
           checklist_conferencia: Json
+          comprovacao_dispensa_motivo: string | null
+          comprovacao_dispensada_em: string | null
+          comprovacao_dispensada_por: string | null
           created_at: string
           despachado_em: string | null
           encerrado_em: string | null
@@ -1922,6 +1925,9 @@ export type Database = {
           checklist_atualizado_em?: string | null
           checklist_atualizado_por?: string | null
           checklist_conferencia?: Json
+          comprovacao_dispensa_motivo?: string | null
+          comprovacao_dispensada_em?: string | null
+          comprovacao_dispensada_por?: string | null
           created_at?: string
           despachado_em?: string | null
           encerrado_em?: string | null
@@ -1976,6 +1982,9 @@ export type Database = {
           checklist_atualizado_em?: string | null
           checklist_atualizado_por?: string | null
           checklist_conferencia?: Json
+          comprovacao_dispensa_motivo?: string | null
+          comprovacao_dispensada_em?: string | null
+          comprovacao_dispensada_por?: string | null
           created_at?: string
           despachado_em?: string | null
           encerrado_em?: string | null

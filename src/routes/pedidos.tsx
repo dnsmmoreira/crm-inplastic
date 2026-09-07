@@ -686,6 +686,14 @@ function PedidoCard({
             <Badge className="text-[10px] px-1.5 py-0 bg-emerald-500/15 text-emerald-700 border-emerald-500/30">
               Entrega comprovada
             </Badge>
+          ) : pedido.comprovacao_dispensada_em ? (
+            <Badge
+              variant="outline"
+              className="text-[10px] px-1.5 py-0 bg-muted text-muted-foreground"
+              title={pedido.comprovacao_dispensa_motivo ?? "Comprovação dispensada"}
+            >
+              Comprovação dispensada
+            </Badge>
           ) : (
             <Badge className="text-[10px] px-1.5 py-0 bg-amber-500/15 text-amber-700 border-amber-500/30">
               Sem comprovante

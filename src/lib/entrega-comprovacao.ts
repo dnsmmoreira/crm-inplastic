@@ -58,13 +58,43 @@ export function comprovacaoCompleta(docs: readonly DocLike[] | null | undefined)
   return { ok: faltando.length === 0, faltando };
 }
 
-/** Pedido no Pós-venda que ainda não teve a entrega comprovada. */
-export function precisaComprovacao(
-  pedido: { stage?: string | null; entrega_comprovada_em?: string | null } | null | undefined,
-): boolean {
-  if (!pedido) return false;
-  return pedido.stage === "pos_venda" && !pedido.entrega_comprovada_em;
+/* ------------------------- dispensa da comprovação ------------------------ */
+
+/**
+ * Pedidos que entraram em pós-venda ANTES desta data são "legados": a
+ * comprovação não existia, logo não dá para exigir foto/canhoto retroativos.
+ */
+export const COMPROVACAO_LEGADO_ANTES_DE = "2026-09-05T00:00:00.000Z";
+
+export const MOTIVO_DISPENSA_LEGADO =
+  "Pedido anterior à comprovação de entrega (legado)";
+
+/** Motivo da dispensa precisa ser explicado (mínimo de 5 caracteres). */
+export function motivoDispensaValido(motivo: string | null | undefined): boolean {
+  return (motivo ?? "").trim().length >= 5;
 }
+
+type PedidoComprovacao = {
+  stage?: string | null;
+  entrega_comprovada_em?: string | null;
+  comprovacao_dispensada_em?: string | null;
+};
+
+export function comprovacaoDispensada(
+  pedido: PedidoComprovacao | null | undefined,
+): boolean {
+  return Boolean(pedido?.comprovacao_dispensada_em);
+}
+
+/** Pedido no Pós-venda que ainda não teve a entrega comprovada nem dispensada. */
+export function precisaComprovacao(pedido: PedidoComprovacao | null | undefined): boolean {
+  if (!pedido) return false;
+  if (pedido.stage !== "pos_venda") return false;
+  if (pedido.entrega_comprovada_em) return false;
+  if (comprovacaoDispensada(pedido)) return false;
+  return true;
+}
+
 
 export function recebidoPorValido(nome: string | null | undefined): boolean {
   return (nome ?? "").trim().length >= 3;
