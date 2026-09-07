@@ -132,7 +132,7 @@ function UsuariosPage() {
   if (loading) {
     return <div className="p-8 text-sm text-muted-foreground">Carregando…</div>;
   }
-  if (!user || user.role !== "admin") {
+  if (!user || !podeGerenciar) {
     return (
       <div className="p-8">
         <Card className="max-w-md">
@@ -141,7 +141,8 @@ function UsuariosPage() {
             <CardTitle>Acesso restrito</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground space-y-3">
-            <p>Somente administradores podem gerenciar usuários.</p>
+            <p>Você não tem permissão para gerenciar usuários.</p>
+
             <Button asChild variant="outline"><Link to="/">Voltar ao Dashboard</Link></Button>
           </CardContent>
         </Card>
