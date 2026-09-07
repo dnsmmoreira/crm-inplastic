@@ -33,10 +33,16 @@ export type AvisoSemAceite = {
   mais_antigo_em: string | null;
 };
 
+export type ExpurgoDocumentos = {
+  ultima_execucao_em: string | null;
+  removidos_na_ultima: number;
+};
+
 export type PainelFalhas = {
   falhas: FalhaRow[];
   filas: FilaTravada[];
   avisos: AvisoSemAceite[];
+  expurgo: ExpurgoDocumentos;
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -148,7 +154,26 @@ export const listarPainelFalhas = createServerFn({ method: "GET" })
       contexto: f.contexto == null ? null : JSON.stringify(f.contexto, null, 2),
     }));
 
-    return { falhas, filas, avisos };
+    // Bloco 4 — expurgo de documentos vencidos (última execução)
+    const { data: expurgoRows } = await sb
+      .from("user_audit_log")
+      .select("criado_em")
+      .eq("campo", "documento_expurgado")
+      .order("criado_em", { ascending: false })
+      .limit(500);
+    const linhas = (expurgoRows ?? []) as Array<{ criado_em: string }>;
+    const ultima = linhas[0]?.criado_em ?? null;
+    // Uma execução = as linhas gravadas no mesmo minuto da mais recente.
+    const removidosNaUltima = ultima
+      ? linhas.filter((l) => l.criado_em.slice(0, 16) === ultima.slice(0, 16)).length
+      : 0;
+
+    return {
+      falhas,
+      filas,
+      avisos,
+      expurgo: { ultima_execucao_em: ultima, removidos_na_ultima: removidosNaUltima },
+    };
   });
 
 export const resolverFalha = createServerFn({ method: "POST" })
