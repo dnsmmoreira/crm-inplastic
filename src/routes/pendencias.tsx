@@ -314,6 +314,46 @@ function PendenciasPage() {
         </Table>
       </Secao>
 
+      <Secao
+        id="sec-leads-produto"
+        innerRef={setRef("sec-leads-produto")}
+        erro={data?.leadsProduto.erro}
+        titulo={`Leads com produto fora do catálogo (${leadsProduto.length})`}
+        vazio={leadsProduto.length === 0}
+      >
+        <BuscaInput
+          value={qLeadsProduto}
+          onChange={setQLeadsProduto}
+          placeholder="Buscar empresa, produto..."
+        />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Empresa</TableHead>
+              <TableHead>Produto informado</TableHead>
+              <TableHead>Responsável</TableHead>
+              <TableHead />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {leadsProduto.map((l) => (
+              <TableRow key={l.id}>
+                <TableCell className="font-medium">{displayValue(l.company)}</TableCell>
+                <TableCell>{displayValue(l.product)}</TableCell>
+                <TableCell>{displayValue(l.owner)}</TableCell>
+                <TableCell className="text-right">
+                  <Link to="/leads" search={{ lead: l.id }}>
+                    <Button size="sm" variant="ghost" className="gap-1">
+                      Vincular <ExternalLink className="h-3.5 w-3.5" />
+                    </Button>
+                  </Link>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Secao>
+
       {data?.isAdmin && (
         <Secao
           id="sec-produtos"
