@@ -136,3 +136,104 @@ describe("registrarFalha", () => {
     expect((calls.update[0] as { ocorrencias: number }).ocorrencias).toBe(4);
   });
 });
+
+/**
+ * `registrarFalhaAdmin` — cobre o caminho pelo client de serviço, sempre
+ * mockado (vi.mock no topo do arquivo). NENHUM teste desta suíte fala com o
+ * banco real: o único ponto que criaria conexão é `@/integrations/supabase/
+ * client.server`, substituído pelo mock acima.
+ */
+describe("registrarFalhaAdmin", () => {
+  it("grava origem, mensagem e contexto redigido pelo client de serviço", async () => {
+    const gravados: Array<Record<string, unknown>> = [];
+    vi.resetModules();
+    vi.doMock("@/integrations/supabase/client.server", () => ({
+      supabaseAdmin: {
+        from: () => ({
+          select: () => {
+            const chain = {
+              eq: () => chain,
+              is: () => chain,
+              limit: () => chain,
+              maybeSingle: async () => ({ data: null }),
+            };
+            return chain;
+          },
+          insert: async (row: Record<string, unknown>) => {
+            gravados.push(row);
+            return { error: null };
+          },
+        }),
+      },
+    }));
+    const mod = await import("./falhas.server");
+    await expect(
+      mod.registrarFalhaAdmin("documentos.expurgo", new Error("boom"), {
+        id: "1",
+        authorization: "Bearer segredo",
+      }),
+    ).resolves.toBe(true);
+    expect(gravados).toHaveLength(1);
+    expect(gravados[0]!.origem).toBe("documentos.expurgo");
+    expect(gravados[0]!.mensagem).toBe("boom");
+    expect((gravados[0]!.contexto as Record<string, unknown>).authorization).toBe("[redigido]");
+    expect((gravados[0]!.contexto as Record<string, unknown>).id).toBe("1");
+    vi.doUnmock("@/integrations/supabase/client.server");
+    vi.resetModules();
+  });
+
+  it("não lança quando o insert do client de serviço falha", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.resetModules();
+    vi.doMock("@/integrations/supabase/client.server", () => ({
+      supabaseAdmin: {
+        from: () => ({
+          select: () => {
+            const chain = {
+              eq: () => chain,
+              is: () => chain,
+              limit: () => chain,
+              maybeSingle: async () => ({ data: null }),
+            };
+            return chain;
+          },
+          insert: async () => ({ error: { message: "permission denied" } }),
+        }),
+      },
+    }));
+    const mod = await import("./falhas.server");
+    await expect(mod.registrarFalhaAdmin("documentos.expurgo", "falhou")).resolves.toBe(false);
+    vi.doUnmock("@/integrations/supabase/client.server");
+    vi.resetModules();
+    spy.mockRestore();
+  });
+
+  it("incrementa ocorrências quando a mesma falha já está aberta", async () => {
+    const updates: Array<Record<string, unknown>> = [];
+    vi.resetModules();
+    vi.doMock("@/integrations/supabase/client.server", () => ({
+      supabaseAdmin: {
+        from: () => ({
+          select: () => {
+            const chain = {
+              eq: () => chain,
+              is: () => chain,
+              limit: () => chain,
+              maybeSingle: async () => ({ data: { id: "f1", ocorrencias: 2 } }),
+            };
+            return chain;
+          },
+          update: (row: Record<string, unknown>) => {
+            updates.push(row);
+            return { eq: async () => ({ error: null }) };
+          },
+        }),
+      },
+    }));
+    const mod = await import("./falhas.server");
+    await expect(mod.registrarFalhaAdmin("documentos.expurgo", "boom")).resolves.toBe(true);
+    expect(updates[0]!.ocorrencias).toBe(3);
+    vi.doUnmock("@/integrations/supabase/client.server");
+    vi.resetModules();
+  });
+});
