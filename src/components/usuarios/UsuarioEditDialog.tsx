@@ -373,22 +373,48 @@ export function UsuarioEditDialog({
                 */}
                 <select
                   id="ue-cargo"
-                  value={cargo}
-                  onChange={(e) => setCargo(e.target.value)}
+                  value={cargoId}
+                  onChange={(e) => setCargoId(e.target.value)}
                   className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
                 >
                   <option value="">— não definido —</option>
                   {cargos.map((c) => (
-                    <option key={c.id} value={c.nome}>{c.nome}</option>
+                    <option key={c.id} value={c.id}>{c.nome}</option>
                   ))}
-                  {cargo !== "" && !cargos.some((c) => c.nome === cargo) && (
-                    <option value={cargo}>{cargo} (fora do catálogo)</option>
+                  {cargoId === "" && cargo !== "" && (
+                    <option value="">{cargo} (fora do catálogo)</option>
                   )}
                 </select>
                 <p className="text-xs text-muted-foreground">
                   Informativo apenas — não influencia permissões.
                 </p>
               </div>
+              <div className="space-y-1">
+                <Label htmlFor="ue-gestor">
+                  Gestor responsável{exigeGestor ? " *" : ""}
+                </Label>
+                <select
+                  id="ue-gestor"
+                  value={gestorId}
+                  onChange={(e) => setGestorId(e.target.value)}
+                  aria-invalid={exigeGestor && !gestorId}
+                  className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                >
+                  <option value="">— sem gestor —</option>
+                  {opcoesGestor.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name}
+                      {u.cargo ? ` — ${u.cargo}` : ""}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground">
+                  {exigeGestor
+                    ? "Obrigatório para representantes: o gestor recebe cópia informativa dos alertas."
+                    : "Opcional. O gestor recebe cópia informativa dos alertas desta pessoa."}
+                </p>
+              </div>
+
               <div className="space-y-1">
                 <Label htmlFor="ue-fuso">Fuso horário</Label>
                 <select
