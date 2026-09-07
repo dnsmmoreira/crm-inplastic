@@ -33,6 +33,10 @@ export type PlacarVendedor = {
   dias_sem_proposta: number | null;
   /** Limite configurado para alertar (B2B). */
   dias_sem_proposta_limite: number;
+  /** Fase 2 do funil — métricas por PROPOSTA no período. */
+  propostas_enviadas: number;
+  conversao_proposta_pct: number | null;
+  valor_recusado: number;
   score: number;
   score_periodo_anterior: number;
   posicao: number;
@@ -54,6 +58,23 @@ export type MetaHistoricoRow = {
 const inputSchema = z.object({
   periodo: z.enum(["semana", "mes", "trimestre"]).default("mes"),
 });
+
+/** Início do período do placar, no mesmo recorte usado pela RPC. */
+function inicioDoPeriodo(periodo: PlacarPeriodo): string {
+  const hoje = new Date();
+  if (periodo === "semana") {
+    const d = new Date(hoje);
+    const diaSemana = (d.getDay() + 6) % 7; // segunda = 0
+    d.setDate(d.getDate() - diaSemana);
+    d.setHours(0, 0, 0, 0);
+    return d.toISOString();
+  }
+  if (periodo === "trimestre") {
+    const tri = Math.floor(hoje.getMonth() / 3) * 3;
+    return new Date(hoje.getFullYear(), tri, 1).toISOString();
+  }
+  return new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString();
+}
 
 /** Fonte única do Placar. Meta é filtrada por role: admin vê todas, vendedor só a própria. */
 export const getPlacar = createServerFn({ method: "GET" })
@@ -96,11 +117,66 @@ export const getPlacar = createServerFn({ method: "GET" })
           r.meta_pace_esperado_pct == null ? null : Number(r.meta_pace_esperado_pct),
         dias_sem_proposta: r.dias_sem_proposta == null ? null : Number(r.dias_sem_proposta),
         dias_sem_proposta_limite: Number(r.dias_sem_proposta_limite ?? 14),
+        propostas_enviadas: 0,
+        conversao_proposta_pct: null,
+        valor_recusado: 0,
         score: Number(r.score ?? 0),
         score_periodo_anterior: Number(r.score_periodo_anterior ?? 0),
         posicao: Number(r.posicao ?? 0),
       } as PlacarVendedor;
     });
+
+    // Métricas por proposta (enviadas, conversão e valor recusado) no mesmo período.
+    try {
+      const inicio = inicioDoPeriodo(data.periodo);
+      const propRes = await supabase
+        .from("propostas")
+        .select("id, owner_id, status, sent_at, discount_percent, acrescimo_percent")
+        .gte("created_at", inicio);
+      if (!propRes.error) {
+        const props = propRes.data ?? [];
+        const ids = props.map((p) => p.id);
+        const subtotais = new Map<string, number>();
+        if (ids.length > 0) {
+          const itensRes = await supabase
+            .from("proposta_itens")
+            .select("proposta_id, quantity, unit_price")
+            .in("proposta_id", ids);
+          for (const it of itensRes.data ?? []) {
+            subtotais.set(
+              it.proposta_id,
+              (subtotais.get(it.proposta_id) ?? 0) +
+                Number(it.quantity ?? 0) * Number(it.unit_price ?? 0),
+            );
+          }
+        }
+        const agg = new Map<string, { enviadas: number; pedido: number; recusada: number; valorRecusado: number }>();
+        for (const p of props) {
+          const cur = agg.get(p.owner_id) ?? { enviadas: 0, pedido: 0, recusada: 0, valorRecusado: 0 };
+          if (p.sent_at) cur.enviadas += 1;
+          if (p.status === "pedido") cur.pedido += 1;
+          if (p.status === "recusada") {
+            cur.recusada += 1;
+            const sub = subtotais.get(p.id) ?? 0;
+            const desc = Math.max(0, Math.min(100, Number(p.discount_percent) || 0));
+            const acre = Math.max(0, Number(p.acrescimo_percent) || 0);
+            cur.valorRecusado += +(sub * (1 - desc / 100) * (1 + acre / 100)).toFixed(2);
+          }
+          agg.set(p.owner_id, cur);
+        }
+        for (const v of vendedores) {
+          const a = agg.get(v.vendedor_id);
+          if (!a) continue;
+          v.propostas_enviadas = a.enviadas;
+          v.valor_recusado = a.valorRecusado;
+          const decididas = a.pedido + a.recusada;
+          v.conversao_proposta_pct = decididas > 0 ? (a.pedido / decididas) * 100 : null;
+        }
+      }
+    } catch (e) {
+      // Métrica complementar: nunca derruba o placar.
+      console.error("placar/propostas", e);
+    }
 
     return {
       periodo: data.periodo,
