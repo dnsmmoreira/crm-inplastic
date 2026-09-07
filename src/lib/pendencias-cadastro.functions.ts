@@ -186,24 +186,49 @@ export const listarPendenciasCadastro = createServerFn({ method: "GET" })
     }
 
     // 5) Pedidos em pós-venda sem comprovação de entrega (foto + documento).
+    // `pedidos` não tem coluna stage_changed_at: a data da última troca de etapa
+    // vem de `pedido_stage_history` (mesma derivação usada em pedidos.functions.ts).
     const entregasRes = await sb
       .from("pedidos")
-      .select("id, number, lead_id, responsavel_atual_id, equipe_responsavel, stage_changed_at", {
+      .select("id, number, lead_id, responsavel_atual_id, equipe_responsavel, created_at", {
         count: "exact",
       })
       .eq("stage", "pos_venda")
       .is("entrega_comprovada_em", null)
-      .order("stage_changed_at", { ascending: true })
+      .order("created_at", { ascending: true })
       .limit(LIMITE);
     await assertNoError(entregasRes, "pendencias.entregas");
-    const entregasRaw = (entregasRes.data ?? []) as {
+    const entregasBase = (entregasRes.data ?? []) as {
       id: string;
       number: string;
       lead_id: string | null;
       responsavel_atual_id: string | null;
       equipe_responsavel: string | null;
-      stage_changed_at: string | null;
+      created_at: string;
     }[];
+
+    const ultimaTrocaPorPedido = new Map<string, string>();
+    if (entregasBase.length > 0) {
+      const histRes = await sb
+        .from("pedido_stage_history")
+        .select("pedido_id, created_at")
+        .in(
+          "pedido_id",
+          entregasBase.map((p) => p.id),
+        )
+        .order("created_at", { ascending: false });
+      await assertNoError(histRes, "pendencias.entregas/historico");
+      for (const h of (histRes.data ?? []) as { pedido_id: string; created_at: string }[]) {
+        if (!ultimaTrocaPorPedido.has(h.pedido_id)) {
+          ultimaTrocaPorPedido.set(h.pedido_id, h.created_at);
+        }
+      }
+    }
+
+    const entregasRaw = entregasBase.map((p) => ({
+      ...p,
+      stage_changed_at: ultimaTrocaPorPedido.get(p.id) ?? p.created_at,
+    }));
 
     // Nomes (owner/vendedor) e dados auxiliares das propostas.
     const nomes = await nomesPorId(sb, [
