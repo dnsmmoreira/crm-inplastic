@@ -710,6 +710,16 @@ function LeadProposals({ leadId }: { leadId: string }) {
                   {t.count} {t.count === 1 ? "item" : "itens"}
                   {t.qty > 0 ? ` · ${t.qty.toLocaleString("pt-BR")} un` : ""}
                 </div>
+                {p.status === "recusada" && p.motivoRecusa ? (
+                  <div className="mt-1 text-xs text-destructive">
+                    Recusada
+                    {p.recusadaEm
+                      ? ` em ${format(new Date(p.recusadaEm), "dd MMM yyyy", { locale: ptBR })}`
+                      : ""}
+                    {` — ${p.motivoRecusa}`}
+                    {p.recusaDetalhe ? `: ${p.recusaDetalhe}` : ""}
+                  </div>
+                ) : null}
               </div>
               <div className="text-right shrink-0">
                 <Badge variant="outline" className={`text-[10px] ${meta.className}`}>
