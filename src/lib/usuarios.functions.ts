@@ -284,6 +284,9 @@ const updateSchema = z.object({
       name: z.string().trim().min(1).max(120),
       email: z.string().trim().email().max(255),
       cargo: z.string().trim().max(120).nullable(),
+      cargoId: z.string().uuid().nullable().optional(),
+      gestorId: z.string().uuid().nullable().optional(),
+
       telefoneWhatsapp: z.string().trim().max(30).nullable(),
       fusoHorario: z.string().trim().max(64),
       avatarColor: z.string().trim().max(20),
