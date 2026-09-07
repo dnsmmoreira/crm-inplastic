@@ -217,11 +217,34 @@ export function UsuarioEditDialog({
 
   const emailValido = useMemo(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()), [email]);
 
+  const cargoNome = useMemo(
+    () => cargos.find((c) => c.id === cargoId)?.nome ?? (cargoId ? cargo : ""),
+    [cargos, cargoId, cargo],
+  );
+  const exigeGestor = cargoNome.trim().toLowerCase() === "representante";
+  const opcoesGestor = useMemo(
+    () =>
+      usuarios
+        .filter((u) => u.id !== usuario?.id && u.ativo && !u.deletedAt)
+        .filter(
+          (u) =>
+            u.role === "admin" ||
+            /gestor/i.test(u.cargo ?? "") ||
+            /diretor/i.test(u.cargo ?? ""),
+        )
+        .sort((a, b) => a.name.localeCompare(b.name, "pt-BR")),
+    [usuarios, usuario?.id],
+  );
+
   if (!usuario || !perms) return null;
 
   const handleSave = async () => {
     if (!name.trim()) { toast.error("Informe o nome."); return; }
     if (!emailValido) { toast.error("E-mail inválido."); return; }
+    if (exigeGestor && !gestorId) {
+      toast.error("Escolha o gestor responsável por este representante.");
+      return;
+    }
     setBusy("save");
     try {
       await save({
@@ -230,7 +253,10 @@ export function UsuarioEditDialog({
           dados: {
             name: name.trim(),
             email: email.trim(),
-            cargo: cargo.trim() || null,
+            cargo: cargoNome.trim() || null,
+            cargoId: cargoId || null,
+            gestorId: gestorId || null,
+
             telefoneWhatsapp: telefone.trim() || null,
             fusoHorario: fuso,
             avatarColor,
