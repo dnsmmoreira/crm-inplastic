@@ -42,11 +42,57 @@ export function ehDocumentoVencido(
   return agora.getTime() > exp.getTime();
 }
 
-/** Data de expiração = envio + 12 meses. */
-export function calcularExpiracao(enviadoEm: Date = new Date()): Date {
+/**
+ * Comprovantes de entrega são prova fiscal/legal: NUNCA expiram e nunca
+ * entram no expurgo automático.
+ */
+export const CATEGORIAS_SEM_EXPIRACAO = [
+  "foto_entrega",
+  "canhoto_nf",
+  "comprovante_entrega",
+] as const;
+
+/** `false` para as categorias que são prova fiscal/legal. */
+export function categoriaExpira(categoria: string): boolean {
+  return !(CATEGORIAS_SEM_EXPIRACAO as readonly string[]).includes(categoria);
+}
+
+/**
+ * Data de expiração = envio + 12 meses.
+ * Retorna `null` para categorias que não expiram (comprovantes de entrega).
+ */
+export function calcularExpiracao(
+  enviadoEm: Date = new Date(),
+  categoria?: string,
+): Date | null {
+  if (categoria && !categoriaExpira(categoria)) return null;
   const d = new Date(enviadoEm.getTime());
   d.setMonth(d.getMonth() + MESES_VALIDADE_DOCUMENTO);
   return d;
+}
+
+export type DocumentoExpuravel = {
+  id: string;
+  categoria: string;
+  expira_em: string | null;
+  removido_em?: string | null;
+  storage_path?: string | null;
+};
+
+/**
+ * Seleciona os documentos que o expurgo pode remover: já vencidos, ainda não
+ * removidos e de categoria que expira. `expira_em` nulo NUNCA entra.
+ */
+export function documentosExpirados<T extends DocumentoExpuravel>(
+  lista: T[],
+  agora: Date = new Date(),
+): T[] {
+  return (lista ?? []).filter((d) => {
+    if (!d) return false;
+    if (d.removido_em) return false;
+    if (!categoriaExpira(d.categoria)) return false;
+    return ehDocumentoVencido(d.expira_em, agora);
+  });
 }
 
 /**
