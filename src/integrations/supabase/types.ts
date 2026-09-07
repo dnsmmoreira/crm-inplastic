@@ -2664,7 +2664,7 @@ export type Database = {
       }
       user_audit_log: {
         Row: {
-          alvo_user_id: string
+          alvo_user_id: string | null
           ator_user_id: string | null
           campo: string
           criado_em: string
@@ -2673,7 +2673,7 @@ export type Database = {
           valor_novo: string | null
         }
         Insert: {
-          alvo_user_id: string
+          alvo_user_id?: string | null
           ator_user_id?: string | null
           campo: string
           criado_em?: string
@@ -2682,7 +2682,7 @@ export type Database = {
           valor_novo?: string | null
         }
         Update: {
-          alvo_user_id?: string
+          alvo_user_id?: string | null
           ator_user_id?: string | null
           campo?: string
           criado_em?: string
