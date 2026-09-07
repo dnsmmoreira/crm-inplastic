@@ -68,6 +68,8 @@ import {
 } from "@/lib/crm-store";
 import { calculateFreightDistance } from "@/lib/freight.functions";
 import { gerarPedidoInterno } from "@/lib/pedidos-gerar.functions";
+import { reabrirProposta, recusarProposta } from "@/lib/propostas-perda.functions";
+import { LostReasonDialog } from "@/components/crm/LostReasonDialog";
 import { formatDocumentoCliente } from "@/lib/clientes";
 import {
   getVendedorDaProposta,
@@ -315,6 +317,10 @@ function PropostaDetalhe() {
   const [freightLoading, setFreightLoading] = useState(false);
   const calcFreight = useServerFn(calculateFreightDistance);
   const gerarPedido = useServerFn(gerarPedidoInterno);
+  const recusarPropostaFn = useServerFn(recusarProposta);
+  const reabrirPropostaFn = useServerFn(reabrirProposta);
+  const [recusaOpen, setRecusaOpen] = useState(false);
+  const [reabrindo, setReabrindo] = useState(false);
   const [gerandoPedido, setGerandoPedido] = useState(false);
   /** Aprovação do supervisor (admin) — sem checklist: ele revisa o resumo. */
   const [aprovacaoOpen, setAprovacaoOpen] = useState(false);
@@ -963,6 +969,15 @@ function PropostaDetalhe() {
               onClick={() => setConferencia({ open: true, requerAprovacao: !isAdmin })}
             >
               <CheckCircle2 className="h-4 w-4" /> {isAdmin ? "Gerar pedido" : "Solicitar pedido"}
+            </Button>
+          )}
+
+          {/* Perda por proposta: o servidor decide se o lead cai para Perdido. */}
+          {(proposal.status === "enviada" ||
+            proposal.status === "aguardando_aprovacao" ||
+            proposal.status === "rascunho") && (
+            <Button variant="outline" className="gap-2" onClick={() => setRecusaOpen(true)}>
+              <XCircle className="h-4 w-4" /> Marcar como recusada
             </Button>
           )}
 
