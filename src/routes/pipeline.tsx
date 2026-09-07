@@ -112,6 +112,7 @@ function PipelinePage() {
 
   const proposals = useVisibleProposals();
   const updateProposal = useCrm((s) => s.updateProposal);
+  const moveLead = useCrm((s) => s.moveLead);
   const navigate = useNavigate();
   const gerarPedidoFn = useServerFn(gerarPedidoInterno);
   const recusarPropostaFn = useServerFn(recusarProposta);
