@@ -79,6 +79,7 @@ import {
   excluirFrase,
   excluirTemplateNaMeta,
   listarFrasesAdmin,
+  definirTemplateAutomatico,
   nomeTemplateAutomatico,
   reordenarFrases,
   salvarFrase,
@@ -180,8 +181,10 @@ function PainelFrases() {
   const sincronizar = useServerFn(sincronizarStatusMeta);
   const nomeAutomatico = useServerFn(nomeTemplateAutomatico);
   const excluirMeta = useServerFn(excluirTemplateNaMeta);
+  const definirAutomatico = useServerFn(definirTemplateAutomatico);
 
   const [edicao, setEdicao] = useState<Partial<Frase> | null>(null);
+  const [escolhaAutomatico, setEscolhaAutomatico] = useState<string | null>(null);
   const [progresso, setProgresso] = useState<string | null>(null);
   const [confirmar, setConfirmar] = useState<
     | { tipo: "excluir-frase"; id: string; titulo: string }
@@ -323,6 +326,16 @@ function PainelFrases() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const mDefinirAutomatico = useMutation({
+    mutationFn: (metaNome: string) => definirAutomatico({ data: { metaNome } }),
+    onSuccess: () => {
+      toast.success("Modelo dos envios automáticos atualizado");
+      setEscolhaAutomatico(null);
+      qc.invalidateQueries({ queryKey: ["frases-prontas", "template-automatico"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const mExcluirMeta = useMutation({
     mutationFn: (name: string) => excluirMeta({ data: { name } }),
     onSuccess: () => {
@@ -331,6 +344,20 @@ function PainelFrases() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const aprovadas = useMemo(
+    () => frases.filter((f) => f.meta_status === "APPROVED" && !!f.meta_nome),
+    [frases],
+  );
+  const nomeAtualAutomatico = escolhaAutomatico ?? automatico?.nome ?? null;
+  const fraseAutomatica = aprovadas.find((f) => f.meta_nome === nomeAtualAutomatico) ?? null;
+  const previaAutomatica = fraseAutomatica
+    ? aplicarVariaveisFrase(fraseAutomatica.corpo, {
+        nome: EXEMPLOS_VARIAVEL.nome,
+        empresa: EXEMPLOS_VARIAVEL.empresa,
+        atendente: EXEMPLOS_VARIAVEL.atendente,
+      })
+    : "";
 
   const contadores = useMemo(() => {
     const c = { aprovados: 0, pendentes: 0, rejeitados: 0, naoEnviados: 0 };
@@ -573,6 +600,66 @@ function PainelFrases() {
 
         <Card>
           <CardHeader className="pb-2">
+            <CardTitle className="text-base">
+              Modelo dos envios automáticos (fora da janela de 24h)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            {aprovadas.length === 0 ? (
+              <p className="text-muted-foreground">
+                Nenhuma frase aprovada pela Meta ainda. Envie uma frase e aguarde a aprovação.
+              </p>
+            ) : (
+              <>
+                <div className="flex flex-wrap items-end gap-2">
+                  <div className="min-w-[260px] flex-1 space-y-1">
+                    <Label>Frase usada nos envios automáticos</Label>
+                    <Select
+                      value={escolhaAutomatico ?? automatico?.nome ?? ""}
+                      onValueChange={(v) => setEscolhaAutomatico(v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Escolha uma frase aprovada" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {aprovadas.map((f) => (
+                          <SelectItem key={f.id} value={f.meta_nome as string}>
+                            {f.titulo} · {f.meta_nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button
+                    onClick={() =>
+                      mDefinirAutomatico.mutate(
+                        (escolhaAutomatico ?? automatico?.nome ?? "") as string,
+                      )
+                    }
+                    disabled={
+                      mDefinirAutomatico.isPending ||
+                      !(escolhaAutomatico ?? automatico?.nome) ||
+                      escolhaAutomatico === automatico?.nome
+                    }
+                  >
+                    Salvar
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Fallback quando nada estiver escolhido: {automatico?.fallback}
+                </p>
+                {fraseAutomatica ? (
+                  <p className="rounded-md border bg-muted/40 p-2 text-xs text-muted-foreground">
+                    Prévia: {previaAutomatica}
+                  </p>
+                ) : null}
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
             <CardTitle className="text-base">Modelos na Meta que não vieram do CRM</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
@@ -586,7 +673,8 @@ function PainelFrases() {
               </p>
             ) : (
               foraDoCrm.map((t) => {
-                const usado = automatico?.nome && automatico.nome === t.name;
+                const emUso = automatico?.nome || automatico?.fallback || null;
+                const usado = !!emUso && emUso === t.name;
                 return (
                   <div
                     key={t.name}

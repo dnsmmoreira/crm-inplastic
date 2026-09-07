@@ -210,6 +210,98 @@ export async function resolverPrimeiroNomeContato(phone: string): Promise<string
   return NOME_FALLBACK;
 }
 
+/** Modelo automático configurado no banco (null quando não definido). */
+async function lerTemplateAutomatico(): Promise<{ nome: string; lang: string } | null> {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin
+      .from("xerife_config")
+      .select("meta_template_automatico, meta_template_automatico_lang")
+      .eq("id", 1)
+      .maybeSingle();
+    if (error) {
+      console.warn(`[wa] falha ao ler template automatico: ${error.message}`);
+      return null;
+    }
+    const nome = (data?.meta_template_automatico ?? "").trim();
+    if (!nome) return null;
+    return { nome, lang: (data?.meta_template_automatico_lang ?? "pt_BR").trim() || "pt_BR" };
+  } catch (e) {
+    console.warn(`[wa] falha ao ler template automatico: ${e instanceof Error ? e.message : e}`);
+    return null;
+  }
+}
+
+/**
+ * Parâmetros do envio automático. Quando o template é uma frase do CRM
+ * aprovada, respeita o `meta_mapa` (nome/empresa/atendente); caso contrário,
+ * mantém o comportamento antigo de mandar só o primeiro nome em {{1}}.
+ */
+async function paramsAutomaticos(phone: string, templateName: string): Promise<string[]> {
+  const { montarParamsPorMapa } = await import("./whatsapp-template");
+  const nome = await resolverPrimeiroNomeContato(phone);
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: frase, error } = await supabaseAdmin
+      .from("mensagem_templates")
+      .select("meta_mapa")
+      .eq("meta_nome", templateName)
+      .eq("meta_status", "APPROVED")
+      .maybeSingle();
+    if (error) {
+      console.warn(`[wa] falha ao ler mapa do template: ${error.message}`);
+      return [nome];
+    }
+    const mapa = (frase?.meta_mapa ?? null) as string[] | null;
+    if (!mapa) return [nome];
+
+    let empresa: string | null = null;
+    let atendente: string | null = null;
+    const { data: conversa } = await supabaseAdmin
+      .from("whatsapp_conversas")
+      .select("lead_id, atribuido_para")
+      .eq("phone", phone)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    let donoId: string | null = conversa?.atribuido_para ?? null;
+    if (conversa?.lead_id) {
+      const { data: lead } = await supabaseAdmin
+        .from("leads")
+        .select("company, cliente_id, owner_id")
+        .eq("id", conversa.lead_id)
+        .maybeSingle();
+      donoId = donoId ?? lead?.owner_id ?? null;
+      if (lead?.cliente_id) {
+        const { data: cliente } = await supabaseAdmin
+          .from("clientes")
+          .select("razao_social, nome_fantasia")
+          .eq("id", lead.cliente_id)
+          .maybeSingle();
+        empresa = cliente?.razao_social || cliente?.nome_fantasia || null;
+      }
+      empresa = empresa || lead?.company || null;
+    }
+
+    if (donoId) {
+      const { data: perfil } = await supabaseAdmin
+        .from("profiles")
+        .select("name")
+        .eq("id", donoId)
+        .maybeSingle();
+      const { primeiroNome, NOME_FALLBACK } = await import("./whatsapp-template");
+      const p = primeiroNome(perfil?.name ?? null);
+      atendente = p === NOME_FALLBACK ? null : p;
+    }
+
+    return montarParamsPorMapa(mapa, { nome, empresa, atendente });
+  } catch (e) {
+    console.warn(`[wa] falha ao montar params do template: ${e instanceof Error ? e.message : e}`);
+    return [nome];
+  }
+}
+
 export async function sendWhatsappText(
   phoneRaw: string,
   message: string,
@@ -376,11 +468,17 @@ export async function sendWhatsappText(
   const { montarComponenteBody, TEMPLATES_PROIBIDOS_PRODUCAO } =
     await import("./whatsapp-template");
 
+  // Ordem de resolução do template automático: configuração no banco →
+  // META_TEMPLATE_NAME → padrão do código.
+  const configAutomatico = override || !usarTemplate ? null : await lerTemplateAutomatico();
   const templateName =
     override?.name ??
-    ((process.env.META_TEMPLATE_NAME ?? "").trim() || "retomada_atendimento");
+    (configAutomatico?.nome ||
+      (process.env.META_TEMPLATE_NAME ?? "").trim() ||
+      "retomada_atendimento");
   const templateLang =
-    override?.lang ?? ((process.env.META_TEMPLATE_LANG ?? "pt_BR").trim() || "pt_BR");
+    override?.lang ??
+    (configAutomatico?.lang || (process.env.META_TEMPLATE_LANG ?? "pt_BR").trim() || "pt_BR");
   if (usarTemplate && !templateName) {
     bloquear(tag, "fora_janela_24h_sem_template", phone);
     throw new Error(
@@ -391,18 +489,19 @@ export async function sendWhatsappText(
   if (usarTemplate && !override && TEMPLATES_PROIBIDOS_PRODUCAO.has(templateName)) {
     bloquear(tag, "template_proibido_producao", phone);
     throw new Error(
-      `Template "${templateName}" nao pode ser usado em producao. Configure META_TEMPLATE_NAME com um template aprovado em pt_BR.`,
+      `Template "${templateName}" nao pode ser usado em producao. Configure o modelo automatico em Frases prontas com um template aprovado em pt_BR.`,
     );
   }
 
-  // Componente BODY: {{1}} = primeiro nome do contato (automático) ou os
-  // parâmetros explícitos informados pelo teste administrativo.
+  // Componente BODY: template do CRM → parâmetros na ordem do `meta_mapa`;
+  // demais templates → {{1}} = primeiro nome do contato; teste admin → params.
   let componentes: unknown[] = [];
   if (usarTemplate) {
     componentes = override
       ? montarComponenteBody(override.params ?? [])
-      : montarComponenteBody([await resolverPrimeiroNomeContato(phone)]);
+      : montarComponenteBody(await paramsAutomaticos(phone, templateName));
   }
+
 
 
   /** (8) Idempotência: já existe registro deste phone+hash nos últimos 60s? */
