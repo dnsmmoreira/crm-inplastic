@@ -115,6 +115,27 @@ async function clienteDeEfeitos(sb: SB): Promise<SB> {
 }
 
 /** Notifica de forma idempotente por (pedido_id, tipo, user_id). */
+/**
+ * Gestores responsáveis pelos usuários informados (`profiles.gestor_id`).
+ * Usado só para CÓPIA INFORMATIVA — nunca concede permissão nem vira dono.
+ */
+export async function gestoresDe(sb: SB, userIds: string[]): Promise<string[]> {
+  const ids = Array.from(new Set(userIds.filter(Boolean)));
+  if (ids.length === 0) return [];
+  const { data } = await sb.from("profiles").select("id, gestor_id").in("id", ids);
+  const perfis = ((data ?? []) as Array<{ id: string; gestor_id: string | null }>).map((p) => ({
+    id: p.id,
+    gestorId: p.gestor_id,
+  }));
+  const { gestorDe } = await import("@/lib/gestor");
+  const out = new Set<string>();
+  for (const id of ids) {
+    const g = gestorDe(id, perfis);
+    if (g && !ids.includes(g)) out.add(g);
+  }
+  return Array.from(out);
+}
+
 export async function notificarUsuarios(
   sb: SB,
   userIds: string[],
@@ -123,18 +144,23 @@ export async function notificarUsuarios(
   const alvos = Array.from(new Set(userIds.filter(Boolean)));
   if (alvos.length === 0) return 0;
 
+  // Cópia informativa para o gestor responsável (ex.: representantes → gestora).
+  const copias = await gestoresDe(sb, alvos);
+  const todos = [...alvos, ...copias];
+
   const { data: jaExistem } = await sb
     .from("notificacoes")
     .select("user_id")
     .eq("pedido_id", args.pedidoId)
     .eq("tipo", args.tipo)
-    .in("user_id", alvos);
+    .in("user_id", todos);
   const existentes = new Set(
     ((jaExistem ?? []) as Array<{ user_id: string }>).map((r) => r.user_id),
   );
-  const novos = alvos.filter((u) => !existentes.has(u));
+  const novos = todos.filter((u) => !existentes.has(u));
   if (novos.length === 0) return 0;
 
+  const exigeAceite = args.exigeAceite ?? args.tipo.startsWith("pedido_");
   const { error } = await sb.from("notificacoes").insert(
     novos.map((user_id) => ({
       user_id,
@@ -142,7 +168,8 @@ export async function notificarUsuarios(
       titulo: args.titulo.slice(0, 300),
       pedido_id: args.pedidoId,
       // Alertas de pedido exigem aceite explícito do destinatário (default true).
-      exige_aceite: args.exigeAceite ?? args.tipo.startsWith("pedido_"),
+      // A cópia do gestor é sempre informativa: nunca exige aceite.
+      exige_aceite: copias.includes(user_id) ? false : exigeAceite,
     })),
   );
   if (error) {
@@ -157,6 +184,7 @@ export async function notificarUsuarios(
   }
   return novos.length;
 }
+
 
 /* ------------------------------------------------------------------ */
 /* Tarefas automáticas                                                 */
