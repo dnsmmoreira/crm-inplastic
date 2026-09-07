@@ -90,6 +90,7 @@ export function UsuarioEditDialog({
   usuario,
   currentUserId,
   isAdmin = false,
+  usuarios = [],
   open,
   onOpenChange,
   onSaved,
@@ -97,6 +98,9 @@ export function UsuarioEditDialog({
   usuario: UsuarioRow | null;
   currentUserId: string;
   isAdmin?: boolean;
+  /** Equipe carregada na tela — usada para escolher o gestor responsável. */
+  usuarios?: UsuarioRow[];
+
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onSaved: () => Promise<void> | void;
