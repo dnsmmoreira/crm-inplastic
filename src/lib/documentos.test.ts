@@ -9,7 +9,7 @@ import {
 
 describe("ehDocumentoVencido", () => {
   const envio = new Date("2026-01-10T12:00:00.000Z");
-  const expira = calcularExpiracao(envio);
+  const expira = calcularExpiracao(envio)!;
 
   it("não está vencido logo após o envio", () => {
     expect(ehDocumentoVencido(expira, envio)).toBe(false);
@@ -37,7 +37,7 @@ describe("ehDocumentoVencido", () => {
   });
 
   it("expiração é exatamente 12 meses após o envio", () => {
-    expect(calcularExpiracao(envio).toISOString()).toBe("2027-01-10T12:00:00.000Z");
+    expect(calcularExpiracao(envio)!.toISOString()).toBe("2027-01-10T12:00:00.000Z");
   });
 });
 
