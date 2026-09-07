@@ -58,12 +58,32 @@ export type UsuarioRow = {
 /* Helpers                                                             */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Gate de GESTÃO DE USUÁRIOS.
+ *
+ * Passou a ser a permissão granular `usuarios.gerenciar` (não mais o papel
+ * admin), para que perfis como Diretor Administrativo administrem a equipe.
+ * As proteções de "último administrador" e a alteração de papel continuam
+ * amarradas ao papel admin real (ver `assertAdmin`).
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function assertGerenciarUsuarios(supabase: any, userId: string) {
+  const ok = await assertRpcPermissao(
+    await supabase.rpc("tem_permissao", { _user_id: userId, _chave: "usuarios.gerenciar" }),
+    "usuarios/tem_permissao",
+    { userId },
+  );
+  if (!ok) throw new Error("Você não tem permissão para gerenciar usuários.");
+}
+
+/** Só para operações reservadas ao papel admin real. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function assertAdmin(supabase: any, userId: string) {
   const { data, error } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
   if (error) throw new Error(error.message);
-  if (!data) throw new Error("Apenas administradores podem gerenciar usuários.");
+  if (!data) throw new Error("Apenas administradores podem executar esta ação.");
 }
+
 
 async function admin() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
