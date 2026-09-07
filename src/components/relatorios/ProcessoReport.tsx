@@ -153,8 +153,14 @@ export function ProcessoReport() {
 
           {/* Propostas paradas */}
           <div className="rounded-lg border bg-card overflow-x-auto">
-            <div className="px-3 py-2 border-b text-sm font-medium">
-              Propostas enviadas paradas há mais de 15 dias
+            <div className="px-3 py-2 border-b">
+              <div className="text-sm font-medium">Propostas enviadas paradas há mais de 15 dias</div>
+              {/* Regra equivalente já existe no Xerife (cadência D+2/5/10/15, tarefa
+                  "cadencia_proposta" para o dono) — não foi duplicada aqui. */}
+              <div className="text-xs text-muted-foreground">
+                O Xerife já cobra o dono automaticamente na cadência de follow-up (2, 5, 10 e 15 dias)
+                — sem resposta, registre a recusa com o motivo.
+              </div>
             </div>
             <table className="w-full text-sm">
               <thead className="bg-muted/50 text-left">
