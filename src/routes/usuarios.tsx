@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { useAuth, type AppRole } from "@/hooks/use-auth";
+import { useAuth, hasPerm, type AppRole } from "@/hooks/use-auth";
 import { createUser } from "@/lib/invites.functions";
 import { listFila, addFilaMember, removeFilaMember, toggleFilaAtivo, reorderFila } from "@/lib/fila.functions";
 import {
@@ -24,6 +24,7 @@ import { UsuarioEditDialog } from "@/components/usuarios/UsuarioEditDialog";
 import { ExcluirUsuarioDialog } from "@/components/usuarios/ExcluirUsuarioDialog";
 import { TelegramVinculoButton } from "@/components/usuarios/TelegramVinculoButton";
 import { PerfisPermissoesPanel } from "@/components/usuarios/PerfisPermissoesPanel";
+import { CargosPanel } from "@/components/usuarios/CargosPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export const Route = createFileRoute("/usuarios")({
@@ -71,7 +72,24 @@ function UsuariosPage() {
     }
   }, [listar]);
 
-  useEffect(() => { if (user?.role === "admin") void load(); }, [user, load]);
+  const podeGerenciar = hasPerm(user, "usuarios.gerenciar");
+
+  useEffect(() => { if (podeGerenciar) void load(); }, [podeGerenciar, load]);
+
+  /** Nome do gestor responsável e quantos representantes cada gestor tem. */
+  const nomePorId = useMemo(
+    () => new Map((rows ?? []).map((r) => [r.id, r.name])),
+    [rows],
+  );
+  const representantesPorGestor = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const r of rows ?? []) {
+      if (r.deletedAt || !r.gestorId) continue;
+      m.set(r.gestorId, (m.get(r.gestorId) ?? 0) + 1);
+    }
+    return m;
+  }, [rows]);
+
 
   const filtrados = useMemo(() => {
     const q = busca.trim().toLowerCase();
@@ -115,7 +133,7 @@ function UsuariosPage() {
   if (loading) {
     return <div className="p-8 text-sm text-muted-foreground">Carregando…</div>;
   }
-  if (!user || user.role !== "admin") {
+  if (!user || !podeGerenciar) {
     return (
       <div className="p-8">
         <Card className="max-w-md">
@@ -124,7 +142,8 @@ function UsuariosPage() {
             <CardTitle>Acesso restrito</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground space-y-3">
-            <p>Somente administradores podem gerenciar usuários.</p>
+            <p>Você não tem permissão para gerenciar usuários.</p>
+
             <Button asChild variant="outline"><Link to="/">Voltar ao Dashboard</Link></Button>
           </CardContent>
         </Card>
@@ -148,11 +167,17 @@ function UsuariosPage() {
         <TabsList>
           <TabsTrigger value="equipe">Equipe</TabsTrigger>
           <TabsTrigger value="perfis">Perfis e Permissões</TabsTrigger>
+          <TabsTrigger value="cargos">Cargos</TabsTrigger>
         </TabsList>
 
         <TabsContent value="perfis" className="pt-4">
           <PerfisPermissoesPanel />
         </TabsContent>
+
+        <TabsContent value="cargos" className="pt-4">
+          <CargosPanel />
+        </TabsContent>
+
 
         <TabsContent value="equipe" className="pt-4">
       <CreateUserCard onCreated={load} />
@@ -243,7 +268,16 @@ function UsuariosPage() {
                       {r.ultimoAcesso
                         ? `último acesso ${new Date(r.ultimoAcesso).toLocaleDateString("pt-BR")}`
                         : "nunca acessou"}
+                      {r.gestorId && nomePorId.get(r.gestorId)
+                        ? ` · Gestor: ${nomePorId.get(r.gestorId)}`
+                        : ""}
+                      {representantesPorGestor.get(r.id)
+                        ? ` · ${representantesPorGestor.get(r.id)} representante${
+                            representantesPorGestor.get(r.id) === 1 ? "" : "s"
+                          }`
+                        : ""}
                     </div>
+
                   </div>
                   <Badge variant={r.role === "admin" ? "default" : "secondary"} className="gap-1">
                     {r.role === "admin" ? <Shield className="h-3 w-3" /> : <UserIcon className="h-3 w-3" />}
@@ -302,6 +336,8 @@ function UsuariosPage() {
         usuario={editando}
         currentUserId={user.id}
         isAdmin={user.role === "admin"}
+        usuarios={rows ?? []}
+
 
         open={!!editando}
         onOpenChange={(v) => { if (!v) setEditando(null); }}

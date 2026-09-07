@@ -36,6 +36,9 @@ export type UsuarioRow = {
   email: string;
   avatarColor: string;
   cargo: string | null;
+  cargoId: string | null;
+  gestorId: string | null;
+
   telefoneWhatsapp: string | null;
   telegramVinculado: boolean;
   fusoHorario: string;
@@ -58,12 +61,32 @@ export type UsuarioRow = {
 /* Helpers                                                             */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Gate de GESTÃO DE USUÁRIOS.
+ *
+ * Passou a ser a permissão granular `usuarios.gerenciar` (não mais o papel
+ * admin), para que perfis como Diretor Administrativo administrem a equipe.
+ * As proteções de "último administrador" e a alteração de papel continuam
+ * amarradas ao papel admin real (ver `assertAdmin`).
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function assertGerenciarUsuarios(supabase: any, userId: string) {
+  const ok = await assertRpcPermissao(
+    await supabase.rpc("tem_permissao", { _user_id: userId, _chave: "usuarios.gerenciar" }),
+    "usuarios/tem_permissao",
+    { userId },
+  );
+  if (!ok) throw new Error("Você não tem permissão para gerenciar usuários.");
+}
+
+/** Só para operações reservadas ao papel admin real. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function assertAdmin(supabase: any, userId: string) {
   const { data, error } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
   if (error) throw new Error(error.message);
-  if (!data) throw new Error("Apenas administradores podem gerenciar usuários.");
+  if (!data) throw new Error("Apenas administradores podem executar esta ação.");
 }
+
 
 async function admin() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -133,7 +156,7 @@ export const listUsuarios = createServerFn({ method: "POST" })
     z.object({ incluirExcluidos: z.boolean().optional() }).parse(data ?? {}),
   )
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.supabase, context.userId);
+    await assertGerenciarUsuarios(context.supabase, context.userId);
     const sb = await admin();
 
     const [profilesRes, rolesRes, permsRes, filaRes, metasRes, authMap] = await Promise.all([
@@ -170,6 +193,9 @@ export const listUsuarios = createServerFn({ method: "POST" })
           email: auth?.email ?? p.email_cache ?? "",
           avatarColor: p.avatar_color ?? "#64748b",
           cargo: p.cargo ?? null,
+          cargoId: p.cargo_id ?? null,
+          gestorId: p.gestor_id ?? null,
+
           telefoneWhatsapp: p.telefone_whatsapp ?? null,
           telegramVinculado: !!String(p.telegram_chat_id ?? "").trim(),
           fusoHorario: p.fuso_horario ?? "America/Sao_Paulo",
@@ -200,7 +226,7 @@ export const listAuditoriaUsuario = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data) => z.object({ userId: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.supabase, context.userId);
+    await assertGerenciarUsuarios(context.supabase, context.userId);
     const sb = await admin();
     const { data: rows, error } = await sb
       .from("user_audit_log")
@@ -235,7 +261,7 @@ export const checkEmailDuplicado = createServerFn({ method: "POST" })
     z.object({ email: z.string().email(), ignoreUserId: z.string().uuid().optional() }).parse(data),
   )
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.supabase, context.userId);
+    await assertGerenciarUsuarios(context.supabase, context.userId);
     const sb = await admin();
     const map = await listAuthUsers(sb);
     const alvo = data.email.trim().toLowerCase();
@@ -258,6 +284,9 @@ const updateSchema = z.object({
       name: z.string().trim().min(1).max(120),
       email: z.string().trim().email().max(255),
       cargo: z.string().trim().max(120).nullable(),
+      cargoId: z.string().uuid().nullable().optional(),
+      gestorId: z.string().uuid().nullable().optional(),
+
       telefoneWhatsapp: z.string().trim().max(30).nullable(),
       fusoHorario: z.string().trim().max(64),
       avatarColor: z.string().trim().max(20),
@@ -297,7 +326,7 @@ export const updateUsuario = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data) => updateSchema.parse(data))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.supabase, context.userId);
+    await assertGerenciarUsuarios(context.supabase, context.userId);
     const sb = await admin();
     const ator = context.userId;
     const isSelf = ator === data.userId;
@@ -351,9 +380,45 @@ export const updateUsuario = createServerFn({ method: "POST" })
         audit.push({ campo: "email", anterior: atual.email, novo: emailNovo });
       }
 
+      // Cargo do catálogo manda no texto: `profiles.cargo` fica sempre em
+      // sincronia com `cargos.nome`. O cargo é informativo — não dá acesso.
+      let cargoTexto = d.cargo;
+      const cargoId = d.cargoId ?? null;
+      if (cargoId) {
+        const { data: cargoRow, error: cErr } = await sb
+          .from("cargos")
+          .select("id, nome, ativo")
+          .eq("id", cargoId)
+          .maybeSingle();
+        if (cErr) throw new Error(cErr.message);
+        if (!cargoRow) throw new Error("Cargo inválido.");
+        cargoTexto = cargoRow.nome;
+      }
+
+      // Representante precisa de gestor responsável (só para cópia de alertas).
+      const gestorId = d.gestorId ?? null;
+      const ehRepresentante = (cargoTexto ?? "").trim().toLowerCase() === "representante";
+      if (ehRepresentante && !gestorId) {
+        throw new Error("Escolha o gestor responsável por este representante.");
+      }
+      if (gestorId) {
+        if (gestorId === data.userId) throw new Error("O gestor precisa ser outra pessoa.");
+        const { data: gestor, error: gErr } = await sb
+          .from("profiles")
+          .select("id, deleted_at, ativo")
+          .eq("id", gestorId)
+          .maybeSingle();
+        if (gErr) throw new Error(gErr.message);
+        if (!gestor || gestor.deleted_at || gestor.ativo === false) {
+          throw new Error("O gestor escolhido é inválido.");
+        }
+      }
+
       const patch = {
         name: d.name,
-        cargo: d.cargo,
+        cargo: cargoTexto,
+        cargo_id: cargoId,
+        gestor_id: gestorId,
         telefone_whatsapp: d.telefoneWhatsapp,
         fuso_horario: d.fusoHorario,
         avatar_color: d.avatarColor,
@@ -361,13 +426,15 @@ export const updateUsuario = createServerFn({ method: "POST" })
       };
       audit.push(
         { campo: "nome", anterior: profile.name, novo: d.name },
-        { campo: "cargo", anterior: profile.cargo, novo: d.cargo },
+        { campo: "cargo", anterior: profile.cargo, novo: cargoTexto },
+        { campo: "gestor", anterior: profile.gestor_id, novo: gestorId },
         { campo: "telefone", anterior: profile.telefone_whatsapp, novo: d.telefoneWhatsapp },
         { campo: "fuso_horario", anterior: profile.fuso_horario, novo: d.fusoHorario },
         { campo: "avatar_color", anterior: profile.avatar_color, novo: d.avatarColor },
       );
       const { error } = await sb.from("profiles").update(patch).eq("id", data.userId);
       if (error) throw new Error(error.message);
+
     }
 
     /* ---- Acesso e segurança (papel NÃO é alterado aqui) ---- */
@@ -503,7 +570,7 @@ export const setUsuarioAtivo = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data) => z.object({ userId: z.string().uuid(), ativo: z.boolean() }).parse(data))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.supabase, context.userId);
+    await assertGerenciarUsuarios(context.supabase, context.userId);
     if (data.userId === context.userId && !data.ativo) {
       throw new Error("Você não pode desativar a própria conta.");
     }
@@ -543,7 +610,7 @@ export const forcarRedefinicaoSenha = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data) => z.object({ userId: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.supabase, context.userId);
+    await assertGerenciarUsuarios(context.supabase, context.userId);
     const sb = await admin();
 
     // Zera a senha para um valor aleatório inacessível e marca o fluxo de primeiro acesso.
@@ -568,7 +635,7 @@ export const encerrarSessoes = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data) => z.object({ userId: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.supabase, context.userId);
+    await assertGerenciarUsuarios(context.supabase, context.userId);
     const sb = await admin();
     const ok = await revokeSessions(sb, data.userId);
     if (!ok) throw new Error("Não foi possível encerrar as sessões deste usuário.");
@@ -608,7 +675,7 @@ export const softDeleteUsuario = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data) => z.object({ userId: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.supabase, context.userId);
+    await assertGerenciarUsuarios(context.supabase, context.userId);
     if (data.userId === context.userId) throw new Error("Você não pode excluir a própria conta.");
     const sb = await admin();
 
@@ -654,7 +721,7 @@ export const restaurarUsuario = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data) => z.object({ userId: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.supabase, context.userId);
+    await assertGerenciarUsuarios(context.supabase, context.userId);
     const sb = await admin();
     const { error } = await sb
       .from("profiles")
@@ -679,7 +746,9 @@ export const hardDeleteUsuario = createServerFn({ method: "POST" })
       .parse(data),
   )
   .handler(async ({ data, context }) => {
+    // Exclusão DEFINITIVA continua restrita ao papel admin real.
     await assertAdmin(context.supabase, context.userId);
+
     if (data.userId === context.userId) throw new Error("Você não pode excluir a própria conta.");
     if (data.userId === data.reatribuirParaUserId) {
       throw new Error("Escolha outro usuário para receber os registros.");
@@ -777,7 +846,7 @@ export const definirSenhaUsuario = createServerFn({ method: "POST" })
     z.object({ userId: z.string().uuid(), password: senhaForte }).parse(data),
   )
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.supabase, context.userId);
+    await assertGerenciarUsuarios(context.supabase, context.userId);
     const sb = await admin();
 
     const { error: aErr } = await sb.auth.admin.updateUserById(data.userId, {

@@ -90,6 +90,7 @@ export function UsuarioEditDialog({
   usuario,
   currentUserId,
   isAdmin = false,
+  usuarios = [],
   open,
   onOpenChange,
   onSaved,
@@ -97,6 +98,9 @@ export function UsuarioEditDialog({
   usuario: UsuarioRow | null;
   currentUserId: string;
   isAdmin?: boolean;
+  /** Equipe carregada na tela — usada para escolher o gestor responsável. */
+  usuarios?: UsuarioRow[];
+
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onSaved: () => Promise<void> | void;
@@ -115,6 +119,9 @@ export function UsuarioEditDialog({
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [cargo, setCargo] = useState("");
+  const [cargoId, setCargoId] = useState("");
+  const [gestorId, setGestorId] = useState("");
+
   const [telefone, setTelefone] = useState("");
   const [fuso, setFuso] = useState("America/Sao_Paulo");
   const [avatarColor, setAvatarColor] = useState("#64748b");
@@ -144,6 +151,9 @@ export function UsuarioEditDialog({
     setName(usuario.name);
     setEmail(usuario.email);
     setCargo(usuario.cargo ?? "");
+    setCargoId(usuario.cargoId ?? "");
+    setGestorId(usuario.gestorId ?? "");
+
     setTelefone(usuario.telefoneWhatsapp ?? "");
     setFuso(usuario.fusoHorario);
     setAvatarColor(usuario.avatarColor);
@@ -207,11 +217,34 @@ export function UsuarioEditDialog({
 
   const emailValido = useMemo(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()), [email]);
 
+  const cargoNome = useMemo(
+    () => cargos.find((c) => c.id === cargoId)?.nome ?? (cargoId ? cargo : ""),
+    [cargos, cargoId, cargo],
+  );
+  const exigeGestor = cargoNome.trim().toLowerCase() === "representante";
+  const opcoesGestor = useMemo(
+    () =>
+      usuarios
+        .filter((u) => u.id !== usuario?.id && u.ativo && !u.deletedAt)
+        .filter(
+          (u) =>
+            u.role === "admin" ||
+            /gestor/i.test(u.cargo ?? "") ||
+            /diretor/i.test(u.cargo ?? ""),
+        )
+        .sort((a, b) => a.name.localeCompare(b.name, "pt-BR")),
+    [usuarios, usuario?.id],
+  );
+
   if (!usuario || !perms) return null;
 
   const handleSave = async () => {
     if (!name.trim()) { toast.error("Informe o nome."); return; }
     if (!emailValido) { toast.error("E-mail inválido."); return; }
+    if (exigeGestor && !gestorId) {
+      toast.error("Escolha o gestor responsável por este representante.");
+      return;
+    }
     setBusy("save");
     try {
       await save({
@@ -220,7 +253,10 @@ export function UsuarioEditDialog({
           dados: {
             name: name.trim(),
             email: email.trim(),
-            cargo: cargo.trim() || null,
+            cargo: cargoNome.trim() || null,
+            cargoId: cargoId || null,
+            gestorId: gestorId || null,
+
             telefoneWhatsapp: telefone.trim() || null,
             fusoHorario: fuso,
             avatarColor,
@@ -337,22 +373,48 @@ export function UsuarioEditDialog({
                 */}
                 <select
                   id="ue-cargo"
-                  value={cargo}
-                  onChange={(e) => setCargo(e.target.value)}
+                  value={cargoId}
+                  onChange={(e) => setCargoId(e.target.value)}
                   className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
                 >
                   <option value="">— não definido —</option>
                   {cargos.map((c) => (
-                    <option key={c.id} value={c.nome}>{c.nome}</option>
+                    <option key={c.id} value={c.id}>{c.nome}</option>
                   ))}
-                  {cargo !== "" && !cargos.some((c) => c.nome === cargo) && (
-                    <option value={cargo}>{cargo} (fora do catálogo)</option>
+                  {cargoId === "" && cargo !== "" && (
+                    <option value="">{cargo} (fora do catálogo)</option>
                   )}
                 </select>
                 <p className="text-xs text-muted-foreground">
                   Informativo apenas — não influencia permissões.
                 </p>
               </div>
+              <div className="space-y-1">
+                <Label htmlFor="ue-gestor">
+                  Gestor responsável{exigeGestor ? " *" : ""}
+                </Label>
+                <select
+                  id="ue-gestor"
+                  value={gestorId}
+                  onChange={(e) => setGestorId(e.target.value)}
+                  aria-invalid={exigeGestor && !gestorId}
+                  className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                >
+                  <option value="">— sem gestor —</option>
+                  {opcoesGestor.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name}
+                      {u.cargo ? ` — ${u.cargo}` : ""}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground">
+                  {exigeGestor
+                    ? "Obrigatório para representantes: o gestor recebe cópia informativa dos alertas."
+                    : "Opcional. O gestor recebe cópia informativa dos alertas desta pessoa."}
+                </p>
+              </div>
+
               <div className="space-y-1">
                 <Label htmlFor="ue-fuso">Fuso horário</Label>
                 <select
