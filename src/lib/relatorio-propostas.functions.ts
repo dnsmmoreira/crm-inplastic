@@ -61,7 +61,7 @@ export const getRelatorioPropostas = createServerFn({ method: "GET" })
     else if (data.vendedorId) q = q.eq("owner_id", data.vendedorId);
 
     const propRes = await q;
-    assertNoError(propRes, "relatorio-propostas/propostas");
+    await assertNoError(propRes, "relatorio-propostas/propostas");
     const props = propRes.data ?? [];
     const ids = props.map((p) => p.id);
 
@@ -71,7 +71,7 @@ export const getRelatorioPropostas = createServerFn({ method: "GET" })
         .from("proposta_itens")
         .select("proposta_id, quantity, unit_price")
         .in("proposta_id", ids);
-      assertNoError(itensRes, "relatorio-propostas/itens");
+      await assertNoError(itensRes, "relatorio-propostas/itens");
       for (const it of itensRes.data ?? []) {
         const atual = totalPorProposta.get(it.proposta_id) ?? 0;
         totalPorProposta.set(
@@ -106,7 +106,7 @@ export const getRelatorioPropostas = createServerFn({ method: "GET" })
         .from("profiles")
         .select("id, name")
         .in("id", porVendedor.map((v) => v.owner_id));
-      assertNoError(profRes, "relatorio-propostas/profiles");
+      await assertNoError(profRes, "relatorio-propostas/profiles");
       for (const p of profRes.data ?? []) nomes.set(p.id, p.name ?? "Vendedor");
     }
 
