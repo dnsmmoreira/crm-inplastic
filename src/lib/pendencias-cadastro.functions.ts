@@ -426,9 +426,10 @@ export const listarPendenciasCadastro = createServerFn({ method: "GET" })
             p.equipe_responsavel ||
             null,
           dias_em_pos_venda: diasParado(
-            ultimaTrocaPorPedido.get(p.id) ?? p.created_at,
+            ultimaTrocaPorPedido.get(p.id) ?? p.updated_at ?? p.created_at,
             agora,
           ),
+
         })),
       };
     });
