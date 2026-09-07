@@ -39,12 +39,15 @@ export type LostReasonPayload = {
 
 export function LostReasonDialog({
   open,
+  alvo = "lead",
   leadLabel,
   leadLabels,
   onCancel,
   onConfirm,
 }: {
   open: boolean;
+  /** "proposta" muda os textos para a recusa de uma proposta. */
+  alvo?: "lead" | "proposta";
   leadLabel?: string;
   /** Modo em lote: lista de nomes dos leads selecionados. */
   leadLabels?: string[];
@@ -88,9 +91,15 @@ export function LostReasonDialog({
     >
       <DialogContent className="sm:max-w-[460px]">
         <DialogHeader>
-          <DialogTitle>Motivo da perda</DialogTitle>
+          <DialogTitle>
+            {alvo === "proposta" ? "Marcar proposta como recusada" : "Motivo da perda"}
+          </DialogTitle>
           <DialogDescription>
-            {bulk
+            {alvo === "proposta"
+              ? leadLabel
+                ? `Informe o motivo da recusa da proposta de "${leadLabel}".`
+                : "Informe o motivo da recusa desta proposta."
+              : bulk
               ? `Informe o motivo para marcar ${leadLabels!.length} lead${leadLabels!.length > 1 ? "s" : ""} como Perdido.`
               : leadLabel
                 ? `Informe o motivo antes de mover "${leadLabel}" para Perdido.`
@@ -153,6 +162,8 @@ export function LostReasonDialog({
           <Button onClick={handleConfirm} disabled={!podeConfirmar}>
             {submitting
               ? "Salvando..."
+              : alvo === "proposta"
+                ? "Marcar como recusada"
               : bulk
                 ? `Marcar ${leadLabels!.length} como Perdido`
                 : "Marcar como Perdido"}

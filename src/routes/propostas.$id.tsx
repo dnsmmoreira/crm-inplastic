@@ -68,6 +68,8 @@ import {
 } from "@/lib/crm-store";
 import { calculateFreightDistance } from "@/lib/freight.functions";
 import { gerarPedidoInterno } from "@/lib/pedidos-gerar.functions";
+import { reabrirProposta, recusarProposta } from "@/lib/propostas-perda.functions";
+import { LostReasonDialog } from "@/components/crm/LostReasonDialog";
 import { formatDocumentoCliente } from "@/lib/clientes";
 import {
   getVendedorDaProposta,
@@ -304,6 +306,7 @@ function PropostaDetalhe() {
   const _removeItem = useCrm((s) => s.removeProposalItem);
   const _updateProposal = useCrm((s) => s.updateProposal);
   const _setStatus = useCrm((s) => s.setProposalStatus);
+  const moveLeadStore = useCrm((s) => s.moveLead);
   const [productPickerOpen, setProductPickerOpen] = useState(false);
   const [productPickerId, setProductPickerId] = useState<string>("");
   const [productPickerQty, setProductPickerQty] = useState<number>(1);
@@ -315,6 +318,10 @@ function PropostaDetalhe() {
   const [freightLoading, setFreightLoading] = useState(false);
   const calcFreight = useServerFn(calculateFreightDistance);
   const gerarPedido = useServerFn(gerarPedidoInterno);
+  const recusarPropostaFn = useServerFn(recusarProposta);
+  const reabrirPropostaFn = useServerFn(reabrirProposta);
+  const [recusaOpen, setRecusaOpen] = useState(false);
+  const [reabrindo, setReabrindo] = useState(false);
   const [gerandoPedido, setGerandoPedido] = useState(false);
   /** Aprovação do supervisor (admin) — sem checklist: ele revisa o resumo. */
   const [aprovacaoOpen, setAprovacaoOpen] = useState(false);
@@ -966,6 +973,15 @@ function PropostaDetalhe() {
             </Button>
           )}
 
+          {/* Perda por proposta: o servidor decide se o lead cai para Perdido. */}
+          {(proposal.status === "enviada" ||
+            proposal.status === "aguardando_aprovacao" ||
+            proposal.status === "rascunho") && (
+            <Button variant="outline" className="gap-2" onClick={() => setRecusaOpen(true)}>
+              <XCircle className="h-4 w-4" /> Marcar como recusada
+            </Button>
+          )}
+
           {/* Motivo calculado pelas regras de aprovação financeira. */}
           {proposal.status === "aguardando_aprovacao" && proposal.approvalReason && (
             <div className="flex items-start gap-2 self-center rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-300 max-w-md">
@@ -999,6 +1015,89 @@ function PropostaDetalhe() {
               <CheckCircle2 className="h-4 w-4" /> Aprovar liberação
             </Button>
           )}
+
+          {proposal.status === "recusada" && (
+            <div className="flex w-full flex-wrap items-center gap-3 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>
+                Recusada
+                {proposal.recusadaEm
+                  ? ` em ${format(new Date(proposal.recusadaEm), "dd/MM/yyyy", { locale: ptBR })}`
+                  : ""}
+                {proposal.motivoRecusa ? ` — ${proposal.motivoRecusa}` : ""}
+                {proposal.recusaDetalhe ? `: ${proposal.recusaDetalhe}` : ""}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="ml-auto gap-2"
+                disabled={reabrindo}
+                onClick={async () => {
+                  setReabrindo(true);
+                  const t = toast.loading("Reabrindo proposta...");
+                  try {
+                    const r = await reabrirPropostaFn({ data: { propostaId: proposal.id } });
+                    _updateProposal(proposal.id, {
+                      status: "enviada",
+                      motivoRecusa: null,
+                      recusaDetalhe: null,
+                      recusadaEm: null,
+                    });
+                    if (r.leadReaberto && proposal.leadId) moveLeadStore(proposal.leadId, "proposta");
+                    toast.dismiss(t);
+                    toast.success("Proposta reaberta");
+                  } catch (err) {
+                    toast.dismiss(t);
+                    toast.error("Não foi possível reabrir a proposta", {
+                      description: err instanceof Error ? err.message : String(err),
+                    });
+                  } finally {
+                    setReabrindo(false);
+                  }
+                }}
+              >
+                <RefreshCw className="h-4 w-4" /> {reabrindo ? "Reabrindo..." : "Reabrir proposta"}
+              </Button>
+            </div>
+          )}
+
+          <LostReasonDialog
+            open={recusaOpen}
+            alvo="proposta"
+            leadLabel={lead?.company}
+            onCancel={() => setRecusaOpen(false)}
+            onConfirm={async (payload) => {
+              setRecusaOpen(false);
+              const t = toast.loading("Registrando a recusa...");
+              try {
+                const r = await recusarPropostaFn({
+                  data: {
+                    propostaId: proposal.id,
+                    motivo: payload.motivoLabel as never,
+                    observacao: payload.observacao,
+                  },
+                });
+                _updateProposal(proposal.id, {
+                  status: "recusada",
+                  motivoRecusa: payload.motivoLabel,
+                  recusaDetalhe: payload.observacao,
+                  recusadaEm: new Date().toISOString(),
+                });
+                if (r.leadPerdido && proposal.leadId) moveLeadStore(proposal.leadId, "perdido");
+                toast.dismiss(t);
+                toast.success(
+                  r.leadPerdido
+                    ? "Proposta recusada — lead marcado como perdido"
+                    : "Proposta recusada — o lead segue com outra proposta em aberto",
+                );
+              } catch (err) {
+                toast.dismiss(t);
+                toast.error("Não foi possível registrar a recusa", {
+                  description: err instanceof Error ? err.message : String(err),
+                });
+              }
+            }}
+          />
 
           <AlertDialog open={aprovacaoOpen} onOpenChange={setAprovacaoOpen}>
             <AlertDialogContent>

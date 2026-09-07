@@ -160,7 +160,7 @@ function PlacarPage() {
                   </th>
                   <th
                     className="px-3 py-1.5 text-left text-[10px] font-semibold text-primary border-l"
-                    colSpan={showMetaCol ? 10 : 9}
+                    colSpan={showMetaCol ? 13 : 12}
                   >
                     ARENA Performance
                   </th>
@@ -175,6 +175,9 @@ function PlacarPage() {
                   <Th className="text-right">Propostas</Th>
                   <Th className="text-right">Conv.</Th>
                   <Th className="text-right">Perdas</Th>
+                  <Th className="text-right">Enviadas</Th>
+                  <Th className="text-right">Conv. proposta</Th>
+                  <Th className="text-right">Valor recusado</Th>
                   <Th className="text-right">Sem proposta</Th>
                   <Th className="text-right">1ª resp.</Th>
                   <Th className="text-right">SLAs</Th>
@@ -397,6 +400,13 @@ function Row({
         {v.conversao === null ? "—" : `${v.conversao.toFixed(1)}%`}
       </Td>
       <Td className="text-right">{v.perdas_qtd}</Td>
+      <Td className="text-right">{v.propostas_enviadas}</Td>
+      <Td className="text-right">
+        {v.conversao_proposta_pct === null ? "—" : `${v.conversao_proposta_pct.toFixed(1)}%`}
+      </Td>
+      <Td className="text-right whitespace-nowrap">
+        {v.valor_recusado > 0 ? formatBRL(v.valor_recusado) : "—"}
+      </Td>
       <Td className={cn("text-right whitespace-nowrap", dspCls)}>
         {dsp == null ? "—" : (
           <span className="inline-flex items-center gap-1">

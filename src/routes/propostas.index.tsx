@@ -343,6 +343,11 @@ function PropostasPage() {
                     <TableCell>
                       <div className="flex flex-wrap items-center gap-1">
                         <Badge variant={s.variant} title={p.status === "aguardando_aprovacao" ? (p.approvalReason ?? undefined) : undefined}>{s.label}</Badge>
+                        {p.status === "recusada" && p.motivoRecusa && (
+                          <Badge variant="outline" className="text-[10px]" title={p.recusaDetalhe ?? undefined}>
+                            {p.motivoRecusa}
+                          </Badge>
+                        )}
                         {p.status === "aguardando_aprovacao" && p.approvalReason && (
                           <span className="text-[10px] text-muted-foreground max-w-[220px] truncate" title={p.approvalReason}>
                             {p.approvalReason}

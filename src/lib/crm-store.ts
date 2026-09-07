@@ -693,6 +693,10 @@ export type Proposal = {
   billingForecastDate?: string; // previsão de faturamento (yyyy-MM-dd)
 
   emNegociacao: boolean; // toggle "em negociação" exibido no funil
+  /** Recusa por proposta (Fase 2 do funil) — somente leitura no cliente. */
+  motivoRecusa?: string | null;
+  recusaDetalhe?: string | null;
+  recusadaEm?: string | null;
   emitterId: string; // qual CNPJ do grupo emite esta proposta
   discountPercent: number; // % de desconto aplicado sobre o subtotal (limite gerido pelo ADM)
   /** % de acréscimo gravado na proposta (cartão parcelado). */

@@ -43,6 +43,7 @@ import {
 } from "@/lib/crm-store";
 import { agregarMixProdutos, truncarRotulo } from "@/lib/product-mix";
 import { PlacarWidget } from "@/components/placar/PlacarWidget";
+import { MotivosRecusaCard } from "@/components/dashboard/MotivosRecusaCard";
 
 import { NewLeadDialog, LeadDrawer } from "@/components/crm/LeadDrawer";
 import { ResumoDoDia } from "@/components/dashboard/ResumoDoDia";
@@ -176,6 +177,8 @@ function DashboardPage() {
       </div>
 
       <PlacarWidget />
+
+      {isAdmin && <MotivosRecusaCard />}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Kpi
