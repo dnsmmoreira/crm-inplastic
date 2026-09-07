@@ -42,6 +42,7 @@ import {
   useProposalAggregates,
 } from "@/lib/crm-store";
 import { agregarMixProdutos, truncarRotulo } from "@/lib/product-mix";
+import { useFamiliaPorProduto } from "@/hooks/use-familias-produto";
 import { PlacarWidget } from "@/components/placar/PlacarWidget";
 import { MotivosRecusaCard } from "@/components/dashboard/MotivosRecusaCard";
 
@@ -123,16 +124,22 @@ function DashboardPage() {
     return months;
   }, [leads]);
 
+  const familiaPorProduto = useFamiliaPorProduto();
   const productMix = useMemo(
     () =>
       agregarMixProdutos(
-        leads.map((l) => ({
-          product: l.product,
-          productId: l.productId,
-          valor: leadValue(l.id, l.estimatedValue),
-        })),
+        leads.map((l) => {
+          const fam = l.productId ? familiaPorProduto.get(l.productId) : undefined;
+          return {
+            product: l.product,
+            productId: l.productId,
+            familia: fam?.familia ?? null,
+            familiaRotulo: fam?.rotulo ?? null,
+            valor: leadValue(l.id, l.estimatedValue),
+          };
+        }),
       ),
-    [leads, leadValueMap],
+    [leads, leadValueMap, familiaPorProduto],
   );
   const productMixTotal = productMix.reduce((s, f) => s + f.value, 0);
 

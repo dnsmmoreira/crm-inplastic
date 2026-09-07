@@ -55,17 +55,26 @@ export type PendenciaEntrega = {
   dias_em_pos_venda: number;
 };
 
+export type PendenciaLeadProduto = {
+  id: string;
+  company: string | null;
+  product: string | null;
+  owner: string | null;
+};
+
 export type Secao<T> = { total: number; itens: T[]; erro: string | null };
 
 export type PendenciasCadastro = {
   isAdmin: boolean;
   leads: Secao<PendenciaLead>;
+  leadsProduto: Secao<PendenciaLeadProduto>;
   produtos: Secao<PendenciaProduto>;
   clientes: Secao<PendenciaCliente>;
   propostas: Secao<PendenciaProposta>;
   entregas: Secao<PendenciaEntrega>;
   resumo: {
     leads: number;
+    leadsProduto: number;
     produtos: number;
     clientes: number;
     propostas: number;
@@ -177,6 +186,39 @@ export const listarPendenciasCadastro = createServerFn({ method: "GET" })
           owner: (l.owner_id && nomes.get(l.owner_id)) || null,
           created_at: l.created_at,
           dias_parado: diasParado(l.etapa_changed_at ?? l.created_at, agora),
+        })),
+      };
+    });
+
+    // 1b) Leads abertos cujo produto de interesse não está ligado ao catálogo.
+    const leadsProdutoP = secaoSegura<PendenciaLeadProduto>("pendencias.leadsProduto", async () => {
+      const res = await sb
+        .from("leads")
+        .select("id, company, product, owner_id, created_at", { count: "exact" })
+        .not("stage", "in", "(ganho,perdido)")
+        .is("product_id", null)
+        .not("product", "is", null)
+        .neq("product", "")
+        .order("created_at", { ascending: true })
+        .limit(LIMITE);
+      await assertNoError(res, "pendencias.leadsProduto");
+      const raw = (res.data ?? []) as {
+        id: string;
+        company: string | null;
+        product: string | null;
+        owner_id: string | null;
+      }[];
+      const nomes = await nomesPorId(
+        sb,
+        raw.map((l) => l.owner_id ?? ""),
+      );
+      return {
+        total: (res.count as number | null) ?? raw.length,
+        itens: raw.map<PendenciaLeadProduto>((l) => ({
+          id: l.id,
+          company: l.company,
+          product: l.product,
+          owner: (l.owner_id && nomes.get(l.owner_id)) || null,
         })),
       };
     });
@@ -386,8 +428,9 @@ export const listarPendenciasCadastro = createServerFn({ method: "GET" })
       };
     });
 
-    const [leads, produtos, clientes, propostas, entregas] = await Promise.all([
+    const [leads, leadsProduto, produtos, clientes, propostas, entregas] = await Promise.all([
       leadsP,
+      leadsProdutoP,
       produtosP,
       clientesP,
       propostasP,
@@ -397,18 +440,20 @@ export const listarPendenciasCadastro = createServerFn({ method: "GET" })
     return {
       isAdmin,
       leads,
+      leadsProduto,
       produtos,
       clientes,
       propostas,
       entregas,
       resumo: {
         leads: leads.total,
+        leadsProduto: leadsProduto.total,
         produtos: produtos.total,
         clientes: clientes.total,
         propostas: propostas.total,
         entregas: entregas.total,
         total:
-          leads.total + produtos.total + clientes.total + propostas.total + entregas.total,
+          leads.total + leadsProduto.total + produtos.total + clientes.total + propostas.total + entregas.total,
       },
     };
   });

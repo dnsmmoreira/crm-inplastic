@@ -735,6 +735,7 @@ function PropostaDetalhe() {
         cnpj: clienteRow?.cnpj ?? (lead as { cnpj?: string | null } | undefined)?.cnpj ?? null,
         cpf: (clienteRow as { cpf?: string | null } | null)?.cpf ?? null,
         emailNf: (clienteRow as { email_nf?: string | null } | null)?.email_nf ?? null,
+        emailLead: lead?.email ?? null,
       },
       paymentTermId: proposal.paymentTermId ?? null,
       transporte: {

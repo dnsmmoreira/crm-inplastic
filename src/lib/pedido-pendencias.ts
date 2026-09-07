@@ -47,6 +47,8 @@ export type PendenciaInput = {
     cnpj?: string | null;
     cpf?: string | null;
     emailNf?: string | null;
+    /** E-mail do lead — usado quando ainda não há cliente vinculado. */
+    emailLead?: string | null;
   };
   paymentTermId?: string | null;
   transporte?: {
@@ -111,6 +113,16 @@ export function calcularPendenciasPedido(input: PendenciaInput): Pendencia[] {
       add(
         "cliente_sem_email_nf",
         "Cliente sem e-mail válido para envio da nota fiscal.",
+        linkCliente,
+      );
+    }
+  } else {
+    // Sem cliente vinculado ainda: o e-mail da nota vem do lead.
+    const emailLead = txt(input.cliente.emailLead);
+    if (!emailLead || !emailValido(emailLead)) {
+      add(
+        "cliente_sem_email_nf",
+        "Informe o e-mail do lead para envio da nota fiscal.",
         linkCliente,
       );
     }

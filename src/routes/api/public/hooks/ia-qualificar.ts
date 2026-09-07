@@ -103,6 +103,10 @@ export const Route = createFileRoute("/api/public/hooks/ia-qualificar")({
           if (conv.last_message_preview)
             notesLines.push(`Última mensagem: "${conv.last_message_preview}"`);
 
+          // Tenta ligar o produto do texto livre a uma família do catálogo.
+          const { resolverProdutoIdPorTexto } = await import("@/lib/produto-familia.server");
+          const produtoIdInferido = await resolverProdutoIdPorTexto(supabaseAdmin, dados.produto ?? null);
+
           const { data: lead, error: lErr } = await supabaseAdmin
             .from("leads")
             .insert({
@@ -112,6 +116,7 @@ export const Route = createFileRoute("/api/public/hooks/ia-qualificar")({
               phone: conv.phone,
               telefone_whatsapp: conv.phone,
               product: dados.produto ?? null,
+              product_id: produtoIdInferido,
               quantity: quantidade,
               segment: dados.segmento ?? null,
               stage: "novo",

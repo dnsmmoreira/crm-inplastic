@@ -98,7 +98,7 @@ export const gerarPedidoInterno = createServerFn({ method: "POST" })
     const { data: leadRow } = await loose
       .from("leads")
       .select(
-        "cliente_id, data_abertura, capital_social, porte, simples_optante, inscricao_estadual, socios, cnpj, razao_social",
+        "cliente_id, data_abertura, capital_social, porte, simples_optante, inscricao_estadual, socios, cnpj, razao_social, email",
       )
       .eq("id", leadId)
       .maybeSingle();
@@ -173,6 +173,7 @@ export const gerarPedidoInterno = createServerFn({ method: "POST" })
           cnpj: clienteRow?.cnpj ?? leadRow?.cnpj ?? null,
           cpf: clienteRow?.cpf ?? null,
           emailNf: clienteRow?.email_nf ?? null,
+          emailLead: (leadRow?.email as string | null) ?? null,
         },
         paymentTermId: (proposta.payment_term_id as string | null) ?? null,
         transporte: {

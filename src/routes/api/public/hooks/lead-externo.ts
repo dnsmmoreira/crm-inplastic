@@ -135,6 +135,10 @@ export const Route = createFileRoute("/api/public/hooks/lead-externo")({
           if (body.cidade_uf) notesLines.push(`Cidade/UF: ${body.cidade_uf}`);
           if (body.protocolo_opa) notesLines.push(`Protocolo OPA: ${body.protocolo_opa}`);
 
+          // Tenta ligar o produto do texto livre a uma família do catálogo.
+          const { resolverProdutoIdPorTexto } = await import("@/lib/produto-familia.server");
+          const produtoIdInferido = await resolverProdutoIdPorTexto(supabaseAdmin, body.produto ?? null);
+
           const { data: lead, error: lErr } = await supabaseAdmin
             .from("leads")
             .insert({
@@ -144,6 +148,7 @@ export const Route = createFileRoute("/api/public/hooks/lead-externo")({
               phone: telefone,
               telefone_whatsapp: telefone,
               product: body.produto ?? null,
+              product_id: produtoIdInferido,
               quantity: quantidade,
               segment: body.segmento ?? null,
               stage: "novo",

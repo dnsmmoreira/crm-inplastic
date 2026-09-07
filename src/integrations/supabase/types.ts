@@ -2129,6 +2129,7 @@ export type Database = {
           default_price: number
           description: string
           estoque_atual: number
+          familia: string | null
           family: string | null
           height_cm: number
           id: string
@@ -2149,6 +2150,7 @@ export type Database = {
           default_price?: number
           description?: string
           estoque_atual?: number
+          familia?: string | null
           family?: string | null
           height_cm?: number
           id?: string
@@ -2169,6 +2171,7 @@ export type Database = {
           default_price?: number
           description?: string
           estoque_atual?: number
+          familia?: string | null
           family?: string | null
           height_cm?: number
           id?: string

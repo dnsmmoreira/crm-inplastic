@@ -97,6 +97,7 @@ function PendenciasPage() {
 
   const [escopo, setEscopo] = useState<Escopo>("todos");
   const [qLeads, setQLeads] = useState("");
+  const [qLeadsProduto, setQLeadsProduto] = useState("");
   const [qProdutos, setQProdutos] = useState("");
   const [qClientes, setQClientes] = useState("");
   const [qPropostas, setQPropostas] = useState("");
@@ -121,6 +122,15 @@ function PendenciasPage() {
           busca(`${l.company ?? ""} ${l.contact_name ?? ""} ${l.owner ?? ""}`, qLeads),
       ),
     [data, qLeads, soMeus, meuNome],
+  );
+  const leadsProduto = useMemo(
+    () =>
+      (data?.leadsProduto.itens ?? []).filter(
+        (l) =>
+          filtroDono(l.owner) &&
+          busca(`${l.company ?? ""} ${l.product ?? ""} ${l.owner ?? ""}`, qLeadsProduto),
+      ),
+    [data, qLeadsProduto, soMeus, meuNome],
   );
   const produtos = useMemo(
     () => (data?.produtos.itens ?? []).filter((p) => busca(`${p.sku} ${p.name}`, qProdutos)),
@@ -159,6 +169,12 @@ function PendenciasPage() {
       label: "Leads sem CNPJ/cliente",
       valor: data?.resumo.leads ?? 0,
       erro: data?.leads.erro ?? null,
+    },
+    {
+      id: "sec-leads-produto",
+      label: "Leads com produto fora do catálogo",
+      valor: data?.resumo.leadsProduto ?? 0,
+      erro: data?.leadsProduto.erro ?? null,
     },
     {
       id: "sec-produtos",
@@ -289,6 +305,46 @@ function PendenciasPage() {
                   <Link to="/leads" search={{ lead: l.id }}>
                     <Button size="sm" variant="ghost" className="gap-1">
                       Corrigir <ExternalLink className="h-3.5 w-3.5" />
+                    </Button>
+                  </Link>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Secao>
+
+      <Secao
+        id="sec-leads-produto"
+        innerRef={setRef("sec-leads-produto")}
+        erro={data?.leadsProduto.erro}
+        titulo={`Leads com produto fora do catálogo (${leadsProduto.length})`}
+        vazio={leadsProduto.length === 0}
+      >
+        <BuscaInput
+          value={qLeadsProduto}
+          onChange={setQLeadsProduto}
+          placeholder="Buscar empresa, produto..."
+        />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Empresa</TableHead>
+              <TableHead>Produto informado</TableHead>
+              <TableHead>Responsável</TableHead>
+              <TableHead />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {leadsProduto.map((l) => (
+              <TableRow key={l.id}>
+                <TableCell className="font-medium">{displayValue(l.company)}</TableCell>
+                <TableCell>{displayValue(l.product)}</TableCell>
+                <TableCell>{displayValue(l.owner)}</TableCell>
+                <TableCell className="text-right">
+                  <Link to="/leads" search={{ lead: l.id }}>
+                    <Button size="sm" variant="ghost" className="gap-1">
+                      Vincular <ExternalLink className="h-3.5 w-3.5" />
                     </Button>
                   </Link>
                 </TableCell>

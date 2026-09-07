@@ -9,6 +9,10 @@ export const OUTROS_LABEL = "Outros";
 export type MixEntradaProduto = {
   product?: string | null;
   productId?: string | null;
+  /** Família/modelo do catálogo — agrupa as cores num único item. */
+  familia?: string | null;
+  /** Rótulo da família ("PALLET ESTRADO ED5050"). */
+  familiaRotulo?: string | null;
   valor: number;
 };
 
@@ -34,12 +38,18 @@ export function agregarMixProdutos(entradas: MixEntradaProduto[], topN = 6): Mix
     const nome = (e.product ?? "").trim().replace(/\s+/g, " ");
     const norm = normalizarNomeProduto(e.product);
     const id = (e.productId ?? "").trim();
-    if (!id && !norm) continue;
-    const key = id || norm;
+    const fam = (e.familia ?? "").trim().toUpperCase();
+    if (!fam && !id && !norm) continue;
+    const key = fam ? `fam:${fam}` : id || norm;
     const valor = Number.isFinite(e.valor) ? e.valor : 0;
     const atual = map.get(key);
     if (atual) atual.value += valor;
-    else map.set(key, { key, name: nome || id, value: valor });
+    else
+      map.set(key, {
+        key,
+        name: (fam ? (e.familiaRotulo ?? "").trim() || fam : "") || nome || id,
+        value: valor,
+      });
   }
 
   const todos = Array.from(map.values()).sort(

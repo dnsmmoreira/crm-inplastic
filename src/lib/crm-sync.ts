@@ -167,6 +167,7 @@ function rowToProduct(r: ProductRow): Product {
       return Number.isFinite(n) && n > 0 ? n : null;
     })(),
     family: (r as unknown as { family?: string | null }).family ?? undefined,
+    familia: (r as unknown as { familia?: string | null }).familia ?? null,
   };
 }
 function productToInsert(p: Product): ProductInsert {
@@ -568,7 +569,7 @@ export async function hydrateCrmForUser(userId: string, role: "admin" | "vendedo
 // ---- colunas explícitas (evita `select("*")` puxando colunas que nenhum
 // `rowTo*` lê — menos bytes por hidratação/recarga de coleção) ----
 const COLS_PRODUTOS =
-  "id,sku,name,description,unit,weight_kg,height_cm,width_cm,length_cm,ncm,default_price,active,pecas_por_coluna,stack_height_cm,family,created_at";
+  "id,sku,name,description,unit,weight_kg,height_cm,width_cm,length_cm,ncm,default_price,active,pecas_por_coluna,stack_height_cm,family,familia,created_at";
 const COLS_EMITTERS =
   "id,brand,tagline,legal_name,cnpj,ie,address,phone,whatsapp,email,website,is_default,banco,agencia,conta,pix";
 const COLS_TERMOS =
