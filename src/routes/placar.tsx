@@ -160,7 +160,7 @@ function PlacarPage() {
                   </th>
                   <th
                     className="px-3 py-1.5 text-left text-[10px] font-semibold text-primary border-l"
-                    colSpan={showMetaCol ? 10 : 9}
+                    colSpan={showMetaCol ? 13 : 12}
                   >
                     ARENA Performance
                   </th>
