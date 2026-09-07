@@ -376,11 +376,17 @@ export async function sendWhatsappText(
   const { montarComponenteBody, TEMPLATES_PROIBIDOS_PRODUCAO } =
     await import("./whatsapp-template");
 
+  // Ordem de resolução do template automático: configuração no banco →
+  // META_TEMPLATE_NAME → padrão do código.
+  const configAutomatico = override || !usarTemplate ? null : await lerTemplateAutomatico();
   const templateName =
     override?.name ??
-    ((process.env.META_TEMPLATE_NAME ?? "").trim() || "retomada_atendimento");
+    (configAutomatico?.nome ||
+      (process.env.META_TEMPLATE_NAME ?? "").trim() ||
+      "retomada_atendimento");
   const templateLang =
-    override?.lang ?? ((process.env.META_TEMPLATE_LANG ?? "pt_BR").trim() || "pt_BR");
+    override?.lang ??
+    (configAutomatico?.lang || (process.env.META_TEMPLATE_LANG ?? "pt_BR").trim() || "pt_BR");
   if (usarTemplate && !templateName) {
     bloquear(tag, "fora_janela_24h_sem_template", phone);
     throw new Error(
@@ -391,18 +397,19 @@ export async function sendWhatsappText(
   if (usarTemplate && !override && TEMPLATES_PROIBIDOS_PRODUCAO.has(templateName)) {
     bloquear(tag, "template_proibido_producao", phone);
     throw new Error(
-      `Template "${templateName}" nao pode ser usado em producao. Configure META_TEMPLATE_NAME com um template aprovado em pt_BR.`,
+      `Template "${templateName}" nao pode ser usado em producao. Configure o modelo automatico em Frases prontas com um template aprovado em pt_BR.`,
     );
   }
 
-  // Componente BODY: {{1}} = primeiro nome do contato (automático) ou os
-  // parâmetros explícitos informados pelo teste administrativo.
+  // Componente BODY: template do CRM → parâmetros na ordem do `meta_mapa`;
+  // demais templates → {{1}} = primeiro nome do contato; teste admin → params.
   let componentes: unknown[] = [];
   if (usarTemplate) {
     componentes = override
       ? montarComponenteBody(override.params ?? [])
-      : montarComponenteBody([await resolverPrimeiroNomeContato(phone)]);
+      : montarComponenteBody(await paramsAutomaticos(phone, templateName));
   }
+
 
 
   /** (8) Idempotência: já existe registro deste phone+hash nos últimos 60s? */
