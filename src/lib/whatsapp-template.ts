@@ -72,3 +72,31 @@ export function aplicarVariaveis(body: string, params: Array<string | null | und
     return limpo || m;
   });
 }
+
+/** Fallbacks dos parâmetros das frases do CRM enviadas como template. */
+export const EMPRESA_FALLBACK = "sua empresa";
+/** Sem nome do atendente a frase fica "aqui é da equipe comercial". */
+export const ATENDENTE_FALLBACK = "da equipe comercial";
+
+export type ValoresMapa = {
+  nome?: string | null;
+  empresa?: string | null;
+  atendente?: string | null;
+};
+
+/**
+ * Parâmetros posicionais de um template do CRM, na ordem do `meta_mapa`
+ * gravado quando a frase foi enviada à Meta (`["nome","atendente",…]`).
+ * Puro e testável: quem resolve os valores é o chamador.
+ */
+export function montarParamsPorMapa(
+  mapa: Array<string | null | undefined> | null | undefined,
+  valores: ValoresMapa,
+): string[] {
+  const fonte: Record<string, string> = {
+    nome: sanitizarParametro(valores.nome ?? "") || NOME_FALLBACK,
+    empresa: sanitizarParametro(valores.empresa ?? "") || EMPRESA_FALLBACK,
+    atendente: sanitizarParametro(valores.atendente ?? "") || ATENDENTE_FALLBACK,
+  };
+  return (mapa ?? []).map((v) => fonte[String(v ?? "")] ?? "");
+}

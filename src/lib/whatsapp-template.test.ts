@@ -6,6 +6,9 @@ import {
   aplicarVariaveis,
   contarVariaveis,
   sanitizarParametro,
+  montarParamsPorMapa,
+  ATENDENTE_FALLBACK,
+  EMPRESA_FALLBACK,
 } from "./whatsapp-template";
 
 describe("primeiroNome", () => {
@@ -50,5 +53,30 @@ describe("contarVariaveis / aplicarVariaveis", () => {
   it("aplica os parâmetros e mantém placeholders vazios", () => {
     expect(aplicarVariaveis("Olá {{1}}!", ["Maria"])).toBe("Olá Maria!");
     expect(aplicarVariaveis("Olá {{1}} e {{2}}", ["Maria"])).toBe("Olá Maria e {{2}}");
+  });
+});
+
+describe("montarParamsPorMapa", () => {
+  it("respeita a ordem do mapa", () => {
+    expect(
+      montarParamsPorMapa(["nome", "atendente", "empresa"], {
+        nome: "Maria",
+        atendente: "Beatriz",
+        empresa: "ACME",
+      }),
+    ).toEqual(["Maria", "Beatriz", "ACME"]);
+  });
+
+  it("usa fallbacks quando o valor falta", () => {
+    expect(montarParamsPorMapa(["nome", "atendente", "empresa"], {})).toEqual([
+      NOME_FALLBACK,
+      ATENDENTE_FALLBACK,
+      EMPRESA_FALLBACK,
+    ]);
+  });
+
+  it("mapa vazio ou ausente devolve lista vazia", () => {
+    expect(montarParamsPorMapa([], { nome: "Maria" })).toEqual([]);
+    expect(montarParamsPorMapa(null, { nome: "Maria" })).toEqual([]);
   });
 });
