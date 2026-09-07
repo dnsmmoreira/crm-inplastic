@@ -204,6 +204,8 @@ export async function notifyOwner(ownerId: string | null, msg: string): Promise<
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const phone = await getOwnerPhone(supabaseAdmin, ownerId);
     const { chatId, nome } = await getOwnerTelegram(supabaseAdmin, ownerId);
+    // Cópia informativa para o gestor responsável (ex.: representante → gestora).
+    void notifyGestorCopia(ownerId, nome, msg);
     if (!phone && !chatId) return false;
     const r = await enviarNotificacaoInterna(phone, msg, "xerife", {
       telegramChatId: chatId,
@@ -217,6 +219,42 @@ export async function notifyOwner(ownerId: string | null, msg: string): Promise<
     return false;
   }
 }
+
+/**
+ * Manda a MESMA mensagem, marcada como cópia, ao gestor responsável do dono.
+ * Nunca lança: a cópia jamais pode derrubar o alerta principal.
+ */
+async function notifyGestorCopia(
+  ownerId: string,
+  nomeDono: string | null,
+  msg: string,
+): Promise<void> {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data } = await supabaseAdmin
+      .from("profiles")
+      .select("gestor_id")
+      .eq("id", ownerId)
+      .maybeSingle();
+    const gestorId = ((data?.gestor_id ?? null) as string | null) ?? null;
+    if (!gestorId || gestorId === ownerId) return;
+    const { chatId, nome } = await getOwnerTelegram(supabaseAdmin, gestorId);
+    if (!chatId) return;
+    const phone = await getOwnerPhone(supabaseAdmin, gestorId);
+    await enviarNotificacaoInterna(
+      phone,
+      `📋 Cópia (${nomeDono ?? "representante"}):\n${msg}`,
+      "xerife-gestor",
+      {
+        telegramChatId: chatId,
+        destinatario: { escopo: "usuario", userId: gestorId, nome: nome ?? undefined },
+      },
+    );
+  } catch (e) {
+    console.error("[xerife/notify] cópia gestor:", e instanceof Error ? e.message : String(e));
+  }
+}
+
 
 export async function notifyDiretoria(msg: string): Promise<boolean> {
   const phone = (process.env.WHATSAPP_DIRETORIA ?? "").trim();
