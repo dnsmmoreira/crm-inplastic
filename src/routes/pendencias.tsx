@@ -97,6 +97,7 @@ function PendenciasPage() {
 
   const [escopo, setEscopo] = useState<Escopo>("todos");
   const [qLeads, setQLeads] = useState("");
+  const [qLeadsProduto, setQLeadsProduto] = useState("");
   const [qProdutos, setQProdutos] = useState("");
   const [qClientes, setQClientes] = useState("");
   const [qPropostas, setQPropostas] = useState("");
@@ -121,6 +122,15 @@ function PendenciasPage() {
           busca(`${l.company ?? ""} ${l.contact_name ?? ""} ${l.owner ?? ""}`, qLeads),
       ),
     [data, qLeads, soMeus, meuNome],
+  );
+  const leadsProduto = useMemo(
+    () =>
+      (data?.leadsProduto.itens ?? []).filter(
+        (l) =>
+          filtroDono(l.owner) &&
+          busca(`${l.company ?? ""} ${l.product ?? ""} ${l.owner ?? ""}`, qLeadsProduto),
+      ),
+    [data, qLeadsProduto, soMeus, meuNome],
   );
   const produtos = useMemo(
     () => (data?.produtos.itens ?? []).filter((p) => busca(`${p.sku} ${p.name}`, qProdutos)),
@@ -159,6 +169,12 @@ function PendenciasPage() {
       label: "Leads sem CNPJ/cliente",
       valor: data?.resumo.leads ?? 0,
       erro: data?.leads.erro ?? null,
+    },
+    {
+      id: "sec-leads-produto",
+      label: "Leads com produto fora do catálogo",
+      valor: data?.resumo.leadsProduto ?? 0,
+      erro: data?.leadsProduto.erro ?? null,
     },
     {
       id: "sec-produtos",

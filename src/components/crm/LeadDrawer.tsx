@@ -4,6 +4,7 @@ import { lookupCnpj } from "@/lib/cnpj.functions";
 import { isValidCnpj, friendlyCnpjError } from "@/lib/cnpj";
 import { useAuth } from "@/hooks/use-auth";
 import { dateInputToISO } from "@/lib/format";
+import { ProdutoFamiliaField } from "@/components/crm/ProdutoFamiliaField";
 
 
 import {
@@ -228,7 +229,24 @@ export function LeadDrawer({
                 updateLead(lead.id, { phone: t });
               }}
             />
-            <InfoRow icon={Package} label="Produto" value={lead.product} />
+            <div className="flex items-start gap-2 text-sm">
+              <Package className="mt-2 h-4 w-4 shrink-0 text-muted-foreground" />
+              <div className="min-w-0 flex-1">
+                <Label className="text-xs text-muted-foreground">Produto</Label>
+                <div className="mt-1">
+                  <ProdutoFamiliaField
+                    key={lead.id}
+                    product={lead.product}
+                    productId={lead.productId ?? null}
+                    onChange={(v) => {
+                      if (v.product === lead.product && (v.productId ?? undefined) === lead.productId)
+                        return;
+                      updateLead(lead.id, { product: v.product, productId: v.productId ?? undefined });
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
             <InfoRow icon={Calendar} label="Último contato" value={format(new Date(lead.lastContact), "dd/MM/yyyy")} />
             {lead.emailNfXml && <InfoRow icon={Mail} label="E-mail NF (XML)" value={lead.emailNfXml} />}
           </div>
@@ -821,6 +839,7 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
     uf: "",
     // Comercial
     productId: "",
+    product: "",
     quantity: 0,
     estimatedValue: 0,
     stage: "novo" as Lead["stage"],
@@ -1202,8 +1221,20 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
               <Label>Observações</Label>
               <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
             </div>
+            <div className="col-span-2">
+              <Label>Produto de interesse</Label>
+              <div className="mt-1">
+                <ProdutoFamiliaField
+                  product={form.product}
+                  productId={form.productId || null}
+                  onChange={(v) =>
+                    setForm((f) => ({ ...f, product: v.product, productId: v.productId ?? "" }))
+                  }
+                />
+              </div>
+            </div>
             <p className="col-span-2 text-[11px] text-muted-foreground">
-              Produto, quantidade e valor são registrados na proposta comercial após a qualificação — não no cadastro do lead.
+              Quantidade e valor são registrados na proposta comercial após a qualificação — no lead fica só o modelo de interesse.
             </p>
           </div>
         </div>
@@ -1220,8 +1251,8 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
                   contactName: form.contactName.trim(),
                   email: form.email.trim(),
                   phone: form.phone,
-                  product: selectedProduct ? selectedProduct.name : "",
-                  productId: selectedProduct?.id,
+                  product: form.product.trim() || (selectedProduct ? selectedProduct.name : ""),
+                  productId: form.productId || undefined,
                   quantity: form.quantity,
                   estimatedValue: form.estimatedValue,
                   stage: form.stage,

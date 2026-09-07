@@ -903,6 +903,9 @@ export async function garantirClienteDoLead(
 
     contato: (lead.contact_name as string | null) ?? null,
     email: (lead.email as string | null) ?? null,
+    // O e-mail do lead também vira o e-mail de envio da nota fiscal — sem isso
+    // o cliente nasce sem destino de NF e trava a conferência final do pedido.
+    email_nf: (lead.email as string | null) ?? null,
     telefone: (lead.phone as string | null) ?? (lead.telefone_whatsapp as string | null) ?? null,
     telefone2: (lead.telefone2 as string | null) ?? null,
     empresa_padrao: empresaPadrao,

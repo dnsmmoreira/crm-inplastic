@@ -533,6 +533,7 @@ export type Product = {
   pecasPorColuna: number; // logística: quantas peças empilham por coluna
   stackHeightCm?: number | null; // altura real do volume empilhado (cm) — usada quando o produto é aninhável
   family?: string; // agrupador opcional (ex.: "HV", "Container Bin")
+  familia?: string | null; // família/modelo derivada do SKU (sem a cor)
 };
 
 const seedProducts: Product[] = [

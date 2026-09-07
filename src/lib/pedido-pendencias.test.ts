@@ -66,6 +66,23 @@ describe("calcularPendenciasPedido", () => {
     );
   });
 
+  it("lead ainda sem cliente: exige e-mail do lead para a nota", () => {
+    const semCliente = {
+      ...ok,
+      cliente: { leadId: "l9", nome: "ACME", cnpj: "11.222.333/0001-81", emailLead: "" },
+    };
+    const p = calcularPendenciasPedido(semCliente);
+    expect(p.map((x) => x.codigo)).toContain("cliente_sem_email_nf");
+    expect(p[0].mensagem).toContain("e-mail do lead");
+    expect(p[0].link).toBe("/leads?lead=l9");
+    expect(
+      codigos({ ...semCliente, cliente: { ...semCliente.cliente, emailLead: "fiscal@acme" } }),
+    ).toContain("cliente_sem_email_nf");
+    expect(
+      codigos({ ...semCliente, cliente: { ...semCliente.cliente, emailLead: "fiscal@acme.com.br" } }),
+    ).not.toContain("cliente_sem_email_nf");
+  });
+
   it("condição de pagamento obrigatória", () => {
     expect(codigos({ ...ok, paymentTermId: null })).toContain("sem_condicao_pagamento");
   });
