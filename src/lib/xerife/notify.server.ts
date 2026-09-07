@@ -236,7 +236,10 @@ async function notifyGestorCopia(
       .select("gestor_id")
       .eq("id", ownerId)
       .maybeSingle();
-    const gestorId = ((data?.gestor_id ?? null) as string | null) ?? null;
+    // `gestor_id` é recente; os tipos gerados ainda podem não conhecê-lo.
+    const gestorId =
+      ((data as { gestor_id?: string | null } | null)?.gestor_id ?? null) as string | null;
+
     if (!gestorId || gestorId === ownerId) return;
     const { chatId, nome } = await getOwnerTelegram(supabaseAdmin, gestorId);
     if (!chatId) return;
