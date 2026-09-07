@@ -151,6 +151,9 @@ export function UsuarioEditDialog({
     setName(usuario.name);
     setEmail(usuario.email);
     setCargo(usuario.cargo ?? "");
+    setCargoId(usuario.cargoId ?? "");
+    setGestorId(usuario.gestorId ?? "");
+
     setTelefone(usuario.telefoneWhatsapp ?? "");
     setFuso(usuario.fusoHorario);
     setAvatarColor(usuario.avatarColor);
