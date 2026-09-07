@@ -36,6 +36,9 @@ export type UsuarioRow = {
   email: string;
   avatarColor: string;
   cargo: string | null;
+  cargoId: string | null;
+  gestorId: string | null;
+
   telefoneWhatsapp: string | null;
   telegramVinculado: boolean;
   fusoHorario: string;
