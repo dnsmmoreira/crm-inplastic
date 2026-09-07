@@ -221,6 +221,25 @@ function PendenciasPage() {
         )}
       </div>
 
+      {isError && (
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
+          <div className="flex items-center gap-2 font-medium">
+            <AlertTriangle className="h-4 w-4 text-amber-600" /> Não foi possível carregar as
+            pendências agora.
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-3 gap-1"
+            disabled={isFetching}
+            onClick={() => refetch()}
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} /> Tentar
+            novamente
+          </Button>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {cards.map((c) => (
           <button
