@@ -246,7 +246,14 @@ function PainelFalhas() {
             );
           })}
         </CardContent>
+        <CardContent className="pt-0 text-xs text-muted-foreground">
+          Expurgo de documentos:{" "}
+          {data?.expurgo?.ultima_execucao_em
+            ? `última execução ${new Date(data.expurgo.ultima_execucao_em).toLocaleString("pt-BR")} · ${data.expurgo.removidos_na_ultima} removido${data.expurgo.removidos_na_ultima === 1 ? "" : "s"}`
+            : "ainda não executou"}
+        </CardContent>
       </Card>
+
 
       {/* Bloco 3 */}
       <Card>

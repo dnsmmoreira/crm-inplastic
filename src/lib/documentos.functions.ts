@@ -111,7 +111,9 @@ export const registrarDocumento = createServerFn({ method: "POST" })
         content_type: data.contentType,
         enviado_por: context.userId,
         enviado_em: enviadoEm.toISOString(),
-        expira_em: calcularExpiracao(enviadoEm).toISOString(),
+        // Comprovante de entrega é prova fiscal/legal: expira_em fica nulo.
+        expira_em: calcularExpiracao(enviadoEm, data.categoria)?.toISOString() ?? null,
+
       })
       .select(SELECT_COLS)
       .single();
