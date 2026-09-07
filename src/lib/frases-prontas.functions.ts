@@ -40,12 +40,76 @@ async function assertAdmin(context: Ctx) {
 const CAMPOS =
   "id, titulo, categoria, corpo, ativo, ordem, meta_nome, meta_id, meta_status, meta_categoria, meta_mapa, meta_enviado_em, meta_erro, meta_sugerido, updated_at";
 
+const FALLBACK_TEMPLATE_AUTOMATICO = "retomada_atendimento";
+
+/** Fallback quando não há modelo configurado no banco (nunca expõe o token). */
+function fallbackTemplateAutomatico(): string {
+  return (process.env["META_TEMPLATE_NAME"] ?? "").trim() || FALLBACK_TEMPLATE_AUTOMATICO;
+}
+
+/** Modelo configurado no banco para os envios automáticos (null quando vazio). */
+async function lerTemplateAutomatico(supabase: any): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("xerife_config")
+    .select("meta_template_automatico")
+    .eq("id", 1)
+    .maybeSingle();
+  assertNoError(error, "frases-prontas.lerTemplateAutomatico");
+  return (data?.meta_template_automatico ?? "").trim() || null;
+}
+
 /** Nome do template usado pelos envios automáticos (nunca expõe o token). */
 export const nomeTemplateAutomatico = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    const { supabase } = context as Ctx;
     await assertAdmin(context as Ctx);
-    return { nome: (process.env["META_TEMPLATE_NAME"] ?? "").trim() || null };
+    return {
+      nome: await lerTemplateAutomatico(supabase),
+      fallback: fallbackTemplateAutomatico(),
+    };
+  });
+
+/** Define qual frase aprovada do CRM é usada nos envios automáticos. */
+export const definirTemplateAutomatico = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) => z.object({ metaNome: z.string().trim().min(1).max(80) }).parse(data))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context as Ctx;
+    await assertAdmin(context as Ctx);
+
+    const { data: frase, error } = await supabase
+      .from("mensagem_templates")
+      .select("id, meta_nome, meta_status")
+      .eq("meta_nome", data.metaNome)
+      .eq("meta_status", "APPROVED")
+      .maybeSingle();
+    assertNoError(error, "frases-prontas.definirTemplateAutomatico/busca");
+    if (!frase) throw new Error("Escolha uma frase já aprovada pela Meta.");
+
+    const anterior = await lerTemplateAutomatico(supabase);
+    const upd = await supabase
+      .from("xerife_config")
+      .update({ meta_template_automatico: data.metaNome, meta_template_automatico_lang: "pt_BR" })
+      .eq("id", 1);
+    assertNoError(upd?.error, "frases-prontas.definirTemplateAutomatico/update");
+
+    const auditoria = await supabase.from("user_audit_log").insert({
+      alvo_user_id: userId,
+      ator_user_id: userId,
+      campo: "template_automatico_whatsapp",
+      valor_anterior: anterior,
+      valor_novo: data.metaNome,
+    });
+    if (auditoria?.error) {
+      await registrarFalhaSegura(
+        "frases-prontas.definirTemplateAutomatico/auditoria",
+        auditoria.error,
+        { metaNome: data.metaNome },
+      );
+    }
+
+    return { ok: true, nome: data.metaNome };
   });
 
 /** Lista TODAS as frases (inclusive inativas) para a tela de administração. */
@@ -441,7 +505,7 @@ export const sincronizarStatusMeta = createServerFn({ method: "POST" })
       atualizadas,
       metaTodos: lista.itens,
       foraDoCrm: lista.itens.filter((t) => !nomesCrm.has(t.name)),
-      templateAutomatico: (process.env["META_TEMPLATE_NAME"] ?? "").trim() || null,
+      templateAutomatico: (await lerTemplateAutomatico(supabase)) ?? fallbackTemplateAutomatico(),
     };
   });
 
@@ -453,7 +517,8 @@ export const excluirTemplateNaMeta = createServerFn({ method: "POST" })
     const { supabase, userId } = context as Ctx;
     await assertAdmin(context as Ctx);
 
-    const automatico = (process.env["META_TEMPLATE_NAME"] ?? "").trim();
+    // Bloqueia o modelo em uso pelos envios automáticos (banco ou fallback).
+    const automatico = (await lerTemplateAutomatico(supabase)) ?? fallbackTemplateAutomatico();
     if (automatico && automatico === data.name) {
       throw new Error(
         "Este modelo é usado pelos envios automáticos do sistema e não pode ser excluído.",

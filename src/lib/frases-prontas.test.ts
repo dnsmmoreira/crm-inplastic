@@ -115,7 +115,7 @@ describe("preencherParamsMeta", () => {
     expect(preencherParamsMeta(["nome", "empresa", "atendente"], {})).toEqual([
       "cliente",
       "sua empresa",
-      "equipe comercial",
+      "da equipe comercial",
     ]);
   });
 });

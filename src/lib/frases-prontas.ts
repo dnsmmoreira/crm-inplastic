@@ -184,7 +184,7 @@ export function preencherParamsMeta(
 ): string[] {
   const nome = (vars.nome ?? "").trim() || "cliente";
   const empresa = (vars.empresa ?? "").trim() || "sua empresa";
-  const atendente = (vars.atendente ?? "").trim() || "equipe comercial";
+  const atendente = (vars.atendente ?? "").trim() || "da equipe comercial";
   const fonte: Record<string, string> = { nome, empresa, atendente };
   return (mapa ?? []).map((v) => fonte[String(v ?? "")] ?? "");
 }
