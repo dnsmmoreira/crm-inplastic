@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ListChecks, Search, ExternalLink } from "lucide-react";
+import { ListChecks, Search, ExternalLink, AlertTriangle, RefreshCw } from "lucide-react";
 import { listarPendenciasCadastro } from "@/lib/pendencias-cadastro.functions";
 import { PENDENCIAS_QUERY_KEY, PENDENCIAS_STALE_MS } from "@/lib/pendencias-cadastro.query";
 import { formatBRL } from "@/lib/crm-store";
@@ -89,7 +89,7 @@ function Secao({
 function PendenciasPage() {
   const fetchPendencias = useServerFn(listarPendenciasCadastro);
   const { user } = useAuth();
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: PENDENCIAS_QUERY_KEY,
     queryFn: () => fetchPendencias(),
     staleTime: PENDENCIAS_STALE_MS,
@@ -154,11 +154,36 @@ function PendenciasPage() {
   );
 
   const cards = [
-    { id: "sec-leads", label: "Leads sem CNPJ/cliente", valor: data?.resumo.leads ?? 0 },
-    { id: "sec-produtos", label: "Produtos sem peso/dimensões", valor: data?.resumo.produtos ?? 0 },
-    { id: "sec-clientes", label: "Clientes sem e-mail de NF", valor: data?.resumo.clientes ?? 0 },
-    { id: "sec-propostas", label: "Rascunhos parados", valor: data?.resumo.propostas ?? 0 },
-    { id: "sec-entregas", label: "Entregas sem comprovação", valor: data?.resumo.entregas ?? 0 },
+    {
+      id: "sec-leads",
+      label: "Leads sem CNPJ/cliente",
+      valor: data?.resumo.leads ?? 0,
+      erro: data?.leads.erro ?? null,
+    },
+    {
+      id: "sec-produtos",
+      label: "Produtos sem peso/dimensões",
+      valor: data?.resumo.produtos ?? 0,
+      erro: data?.produtos.erro ?? null,
+    },
+    {
+      id: "sec-clientes",
+      label: "Clientes sem e-mail de NF",
+      valor: data?.resumo.clientes ?? 0,
+      erro: data?.clientes.erro ?? null,
+    },
+    {
+      id: "sec-propostas",
+      label: "Rascunhos parados",
+      valor: data?.resumo.propostas ?? 0,
+      erro: data?.propostas.erro ?? null,
+    },
+    {
+      id: "sec-entregas",
+      label: "Entregas sem comprovação",
+      valor: data?.resumo.entregas ?? 0,
+      erro: data?.entregas.erro ?? null,
+    },
   ];
 
   const setRef = (id: string) => (el: HTMLDivElement | null) => {
@@ -204,7 +229,9 @@ function PendenciasPage() {
             onClick={() => rolar(c.id)}
             className="rounded-lg border bg-card p-4 text-left transition-colors hover:bg-accent"
           >
-            <div className="text-2xl font-semibold">{isLoading ? "…" : c.valor}</div>
+            <div className="text-2xl font-semibold">
+              {isLoading ? "…" : c.erro ? "—" : c.valor}
+            </div>
             <div className="text-xs text-muted-foreground">{c.label}</div>
           </button>
         ))}
@@ -213,6 +240,7 @@ function PendenciasPage() {
       <Secao
         id="sec-leads"
         innerRef={setRef("sec-leads")}
+        erro={data?.leads.erro}
         titulo={`Leads sem CNPJ/cliente (${leads.length})`}
         vazio={leads.length === 0}
       >
@@ -255,6 +283,7 @@ function PendenciasPage() {
         <Secao
           id="sec-produtos"
           innerRef={setRef("sec-produtos")}
+        erro={data?.produtos.erro}
           titulo={`Produtos sem peso/dimensões (${produtos.length})`}
           vazio={produtos.length === 0}
         >
@@ -301,6 +330,7 @@ function PendenciasPage() {
       <Secao
         id="sec-clientes"
         innerRef={setRef("sec-clientes")}
+        erro={data?.clientes.erro}
         titulo={`Clientes sem e-mail de NF (${clientes.length})`}
         vazio={clientes.length === 0}
       >
@@ -340,6 +370,7 @@ function PendenciasPage() {
       <Secao
         id="sec-propostas"
         innerRef={setRef("sec-propostas")}
+        erro={data?.propostas.erro}
         titulo={`Rascunhos parados há mais de 7 dias (${propostas.length})`}
         vazio={propostas.length === 0}
       >
@@ -383,6 +414,7 @@ function PendenciasPage() {
       <Secao
         id="sec-entregas"
         innerRef={setRef("sec-entregas")}
+        erro={data?.entregas.erro}
         titulo={`Pedidos em pós-venda sem comprovação de entrega (${entregas.length})`}
         vazio={entregas.length === 0}
       >
