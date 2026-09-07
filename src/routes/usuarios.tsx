@@ -166,11 +166,17 @@ function UsuariosPage() {
         <TabsList>
           <TabsTrigger value="equipe">Equipe</TabsTrigger>
           <TabsTrigger value="perfis">Perfis e Permissões</TabsTrigger>
+          <TabsTrigger value="cargos">Cargos</TabsTrigger>
         </TabsList>
 
         <TabsContent value="perfis" className="pt-4">
           <PerfisPermissoesPanel />
         </TabsContent>
+
+        <TabsContent value="cargos" className="pt-4">
+          <CargosPanel />
+        </TabsContent>
+
 
         <TabsContent value="equipe" className="pt-4">
       <CreateUserCard onCreated={load} />
