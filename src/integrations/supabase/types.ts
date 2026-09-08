@@ -2563,9 +2563,12 @@ export type Database = {
       tarefas: {
         Row: {
           auto_generated: boolean
+          cobranca_n: number
           concluida_at: string | null
           created_at: string
           descricao: string | null
+          desfecho: string | null
+          desfecho_detalhe: string | null
           done: boolean
           due_date: string
           escalonamentos: number
@@ -2586,9 +2589,12 @@ export type Database = {
         }
         Insert: {
           auto_generated?: boolean
+          cobranca_n?: number
           concluida_at?: string | null
           created_at?: string
           descricao?: string | null
+          desfecho?: string | null
+          desfecho_detalhe?: string | null
           done?: boolean
           due_date: string
           escalonamentos?: number
@@ -2609,9 +2615,12 @@ export type Database = {
         }
         Update: {
           auto_generated?: boolean
+          cobranca_n?: number
           concluida_at?: string | null
           created_at?: string
           descricao?: string | null
+          desfecho?: string | null
+          desfecho_detalhe?: string | null
           done?: boolean
           due_date?: string
           escalonamentos?: number
