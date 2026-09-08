@@ -86,7 +86,7 @@ export function DesfechoTarefaDialog({
         </DialogHeader>
 
         <div className="space-y-2">
-          {DESFECHOS.map((d) => (
+          {opcoes.map((d) => (
             <button
               key={d.tipo}
               type="button"
@@ -102,9 +102,12 @@ export function DesfechoTarefaDialog({
           ))}
         </div>
 
-        {tipo === "retorno_agendado" && (
+        {(tipo === "retorno_agendado" || tipo === "em_espera") && (
           <div className="space-y-2">
-            <Label>Data do retorno <span className="text-destructive">*</span></Label>
+            <Label>
+              {tipo === "em_espera" ? "Aguardar o cliente até" : "Data do retorno"}{" "}
+              <span className="text-destructive">*</span>
+            </Label>
             <Input type="date" min={minData} value={data} onChange={(e) => setData(e.target.value)} />
             <div className="flex gap-2 flex-wrap">
               <Button type="button" size="sm" variant="outline" onClick={() => setData(proximoDiaUtil())}>Amanhã</Button>
@@ -114,6 +117,15 @@ export function DesfechoTarefaDialog({
             </div>
           </div>
         )}
+
+        {tipo === "encerrar_conversa" && (
+          <div className="space-y-2">
+            <Label>Motivo do encerramento <span className="text-destructive">*</span></Label>
+            <Textarea rows={2} value={detalhe} onChange={(e) => setDetalhe(e.target.value)}
+              placeholder="Ex: cliente comprou com outro fornecedor; assunto resolvido" />
+          </div>
+        )}
+
 
         {tipo === "avancou_etapa" && (
           <div className="space-y-2">
