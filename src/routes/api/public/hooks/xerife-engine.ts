@@ -192,7 +192,9 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
     a6_ia_abandonada: 0,
     a7_conversa_parada: 0,
     p1_rascunho_parado: 0,
+    p1_auto_recusado: 0,
     p2_proposta_vencida: 0,
+
   };
 
   const plan: XerifePlanItem[] = [];
@@ -798,14 +800,76 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
       return false;
     }
 
-    async function stageDoLead(leadId: string | null): Promise<string | null> {
-      if (!leadId) return null;
-      const { data, error } = await sb.from("leads").select("stage").eq("id", leadId).maybeSingle();
+    const cacheLead = new Map<string, { stage: string | null; company: string | null }>();
+    async function infoDoLead(
+      leadId: string | null,
+    ): Promise<{ stage: string | null; company: string | null }> {
+      if (!leadId) return { stage: null, company: null };
+      const hit = cacheLead.get(leadId);
+      if (hit) return hit;
+      const { data, error } = await sb
+        .from("leads")
+        .select("stage, company")
+        .eq("id", leadId)
+        .maybeSingle();
       if (error) {
         await registrarFalhaSegura("xerife-engine.proposta.lead", error, { lead_id: leadId });
-        return null;
+        return { stage: null, company: null };
       }
-      return (data?.stage as string | null) ?? null;
+      const info = {
+        stage: (data?.stage as string | null) ?? null,
+        company: (data?.company as string | null) ?? null,
+      };
+      cacheLead.set(leadId, info);
+      return info;
+    }
+
+    const comEmpresa = (base: string, company: string | null) =>
+      company ? `${base} — ${company}` : base;
+
+    /** Recusa automática de rascunho morto: update direto, sem tarefa e sem tocar no lead. */
+    async function autoRecusarRascunho(
+      prop: any,
+      motivo: string,
+      detalhe: string,
+    ): Promise<void> {
+      if (!dryRun) {
+        const up = await sb
+          .from("propostas")
+          .update({
+            status: "recusada",
+            motivo_recusa: motivo,
+            recusa_detalhe: detalhe,
+            recusada_em: now.toISOString(),
+          })
+          .eq("id", prop.id);
+        if (up?.error) {
+          await registrarFalhaSegura("xerife-engine.p1.auto_recusa", up.error, {
+            proposta_id: prop.id,
+          });
+          return;
+        }
+      }
+      await log(sb, {
+        regra: "P1_rascunho_auto_recusado",
+        leadId: prop.lead_id ?? null,
+        vendedorId: prop.owner_id ?? null,
+        acao: "proposta recusada automaticamente",
+        payload: { proposta_id: prop.id, motivo, detalhe },
+      });
+      stats.p1_auto_recusado++;
+    }
+
+    async function rascunhoSemItens(propostaId: string): Promise<boolean> {
+      const { count, error } = await sb
+        .from("proposta_itens")
+        .select("id", { count: "exact", head: true })
+        .eq("proposta_id", propostaId);
+      if (error) {
+        await registrarFalhaSegura("xerife-engine.p1.itens", error, { proposta_id: propostaId });
+        return false; // fail-closed: não recusa se não sabemos
+      }
+      return (count ?? 0) === 0;
     }
 
     const limiteRascunho = subtractBusinessHours(P1_HORAS_RASCUNHO, win, now).getTime();
@@ -820,8 +884,28 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
 
     for (const prop of (rascunhos ?? []) as any[]) {
       if (!rascunhoParado(prop, limiteRascunho)) continue;
-      const stage = await stageDoLead(prop.lead_id ?? null);
-      if (stage === "ganho" || stage === "perdido") continue;
+      const { stage, company } = await infoDoLead(prop.lead_id ?? null);
+
+      // Lead já ganho/perdido: rascunho morto → recusa automática, sem tarefa.
+      if (stage === "ganho" || stage === "perdido") {
+        await autoRecusarRascunho(
+          prop,
+          stage === "ganho" ? "Duplicidade" : "Demanda cancelada ou adiada",
+          "encerrada automaticamente: lead já ganho/perdido",
+        );
+        continue;
+      }
+
+      // Rascunho vazio parado: nada a cobrar, encerra sozinho.
+      if (await rascunhoSemItens(prop.id)) {
+        await autoRecusarRascunho(
+          prop,
+          "Lead inválido",
+          "rascunho vazio, encerrado automaticamente",
+        );
+        continue;
+      }
+
       if (!dryRun && (await jaCobrada(prop.id, "proposta_rascunho_parada", carenciaHorasUteis("proposta_rascunho_parada"))))
         continue;
 
@@ -830,11 +914,14 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
       await criarTarefa({
         regra,
         lead_id: prop.lead_id ?? null,
-        lead_company: null,
+        lead_company: company,
         owner_id: prop.owner_id ?? null,
         proposta_id: prop.id,
         tipo: "proposta_rascunho_parada",
-        titulo: `Rascunho parado há ${dias} dias — proposta ${prop.number ?? ""}`.trim(),
+        titulo: comEmpresa(
+          `Rascunho parado há ${dias} dias: ${prop.number ?? ""}`.trim(),
+          company,
+        ),
         descricao: `A proposta ${prop.number ?? ""} está em rascunho e não foi enviada. Envie, recuse ou exclua.`,
         motivo: `rascunho parado há ${dias} dias`,
         prioridade: 2,
@@ -852,14 +939,15 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
     // ── P2: proposta vencida
     const { data: enviadas, error: erroEnv } = await sb
       .from("propostas")
-      .select("id, number, status, owner_id, lead_id, sent_at, validity_days, prorrogada_ate, vencida_em")
+      .select("id, number, status, owner_id, lead_id, sent_at, validity_days, prorrogada_ate, vencida_em, reemitida_como")
       .in("status", ["enviada", "aguardando_aprovacao"])
       .limit(300);
     if (erroEnv) await registrarFalhaSegura("xerife-engine.p2.select", erroEnv, {});
 
     for (const prop of (enviadas ?? []) as any[]) {
+      if (prop.reemitida_como) continue; // já substituída por uma nova proposta
       if (!propostaVencida(prop, now)) continue;
-      const stage = await stageDoLead(prop.lead_id ?? null);
+      const { stage, company } = await infoDoLead(prop.lead_id ?? null);
       if (stage === "ganho" || stage === "perdido") continue;
 
       if (!dryRun && !prop.vencida_em) {
@@ -883,11 +971,14 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
       await criarTarefa({
         regra,
         lead_id: prop.lead_id ?? null,
-        lead_company: null,
+        lead_company: company,
         owner_id: prop.owner_id ?? null,
         proposta_id: prop.id,
         tipo: "proposta_vencida",
-        titulo: `Proposta ${prop.number ?? ""} vencida há ${dias} dias`.trim(),
+        titulo: comEmpresa(
+          `Proposta ${prop.number ?? ""} vencida há ${dias} dias`.trim(),
+          company,
+        ),
         descricao: `A validade${ate ? ` (${ate})` : ""} passou. Prorrogue, reemita com preço atual ou recuse.`,
         motivo: `proposta vencida há ${dias} dias`,
         prioridade: 1,
@@ -902,6 +993,7 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
       stats.p2_proposta_vencida++;
     }
   }
+
 
   // ─────────────── D1: lead ativo sem contato (régua 2/5/10 dias) ───────────────
   // Passo 1 e 2: tarefa para o vendedor. Passo 3: diretoria + devolução à fila.

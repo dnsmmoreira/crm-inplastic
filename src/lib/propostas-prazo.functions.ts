@@ -73,11 +73,22 @@ export const reemitirProposta = createServerFn({ method: "POST" })
     await assertPodeAlterarStatus(sb, context.userId, prop.owner_id);
 
     const nova = await duplicarPropostaImpl(sb as never, data.propostaId, context.userId);
+    // A antiga não pode seguir "enviada": vira recusada por duplicidade.
+    // Update direto (sem `recusarProposta`) para NÃO avaliar perda do lead — a nova está aberta.
     const up = await sb
       .from("propostas")
-      .update({ reemitida_como: nova.id, vencida_em: new Date().toISOString() })
+      .update({
+        reemitida_como: nova.id,
+        vencida_em: new Date().toISOString(),
+        status: "recusada",
+        motivo_recusa: "Duplicidade",
+        recusa_detalhe: `reemitida como ${nova.number}`,
+        recusada_em: new Date().toISOString(),
+        recusada_por: context.userId,
+      })
       .eq("id", data.propostaId);
     await assertNoError(up, "propostas-prazo.reemitir", { proposta_id: data.propostaId });
+
     await auditarProposta(
       sb,
       context.userId,
