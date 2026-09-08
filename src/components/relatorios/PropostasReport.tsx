@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { useCrm } from "@/lib/crm-store";
+import { propostaVencida } from "@/lib/proposta-prazo";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Download } from "lucide-react";
@@ -94,6 +96,21 @@ export function PropostasReport() {
   const vendedores = useMemo(() => data?.vendedores ?? [], [data]);
   const resumo: ResumoPropostas | undefined = data?.resumo;
 
+  /** Vencidas em aberto: estado derivado (não existe status "vencida"). */
+  const propostasStore = useCrm((st) => st.proposals);
+  const vencidasEmAberto = useMemo(
+    () =>
+      propostasStore.filter((p) =>
+        propostaVencida({
+          status: p.status,
+          sent_at: p.sentAt ?? null,
+          validity_days: p.validityDays,
+          prorrogada_ate: p.prorrogadaAte ?? null,
+        }),
+      ).length,
+    [propostasStore],
+  );
+
   function exportCSV() {
     if (!data) return;
     const header = [
@@ -139,6 +156,14 @@ export function PropostasReport() {
       <div className="flex flex-wrap items-center justify-between gap-3 no-print">
         <p className="text-sm text-muted-foreground">
           Desempenho por proposta: envio, conversão em pedido e motivos de recusa.
+          {vencidasEmAberto > 0 && (
+            <>
+              {" "}
+              <span className="font-medium text-destructive">
+                {vencidasEmAberto} proposta(s) em aberto passaram da validade.
+              </span>
+            </>
+          )}
         </p>
         <div className="flex flex-wrap items-center gap-2">
           <Select value={periodo} onValueChange={(v) => setPeriodo(v as PeriodoPropostas)}>
