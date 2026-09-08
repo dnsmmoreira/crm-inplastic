@@ -335,6 +335,10 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
   };
 
   const now = new Date();
+  const nowIso = now.toISOString();
+  /** "Xerife silenciado até": retorno combinado com o cliente (leads.next_followup). */
+  const silenciado = (l: { next_followup?: string | null }) =>
+    !!l.next_followup && l.next_followup > nowIso;
 
   // ─────────────── A0: lead órfão (sem vendedor atribuído) ───────────────
   {
@@ -425,7 +429,7 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
     const { data: leads } = await sb
       .from("leads")
       .select(
-        "id, company, owner_id, created_at, last_contact_at, last_interaction_at, origem, source",
+        "id, company, owner_id, created_at, last_contact_at, last_interaction_at, origem, source, next_followup",
       )
       .in("stage", ["novo", "qualificacao"] as any)
       .lt("created_at", thresholdIso)
@@ -436,6 +440,7 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
     for (const l of leads ?? []) {
       // ainda que trigger não tenha rodado, dupla checagem: sem last_interaction_at também
       if (l.last_interaction_at || l.last_contact_at) continue;
+      if (silenciado(l)) continue;
       const regra = "A1_primeiro_contato";
       if (await alreadyActed(sb, regra, l.id, 24)) continue;
       if (await temTarefaAbertaOuRecente(sb, l.id, "primeiro_contato", carenciaHorasUteis("primeiro_contato"), win, now)) continue;
@@ -495,13 +500,14 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
       const thresholdIso = new Date(now.getTime() - maxDias * 86400_000).toISOString();
       const { data: leads } = await sb
         .from("leads")
-        .select("id, company, owner_id, etapa_changed_at, stage")
+        .select("id, company, owner_id, etapa_changed_at, stage, next_followup")
         .eq("stage", stage as any)
         .lt("etapa_changed_at", thresholdIso)
         .not("owner_id", "is", null)
         .limit(500);
 
       for (const l of leads ?? []) {
+        if (silenciado(l)) continue;
         const regra = `A2_lead_parado_${stage}`;
         if (await alreadyActed(sb, regra, l.id, 24)) continue;
         if (await temTarefaAbertaOuRecente(sb, l.id, "follow_up", carenciaHorasUteis("follow_up"), win, now)) continue;
@@ -737,13 +743,14 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
 
     const { data: leads } = await sb
       .from("leads")
-      .select("id, company, owner_id, stage, last_contact_at, created_at, reatribuido_abandono_em")
+      .select("id, company, owner_id, stage, last_contact_at, created_at, reatribuido_abandono_em, next_followup")
       .in("stage", ["novo", "atendimento", "qualificacao", "proposta", "negociacao"] as any)
       .not("owner_id", "is", null)
       .or(`last_contact_at.lt.${limiteIso},last_contact_at.is.null`)
       .limit(500);
 
     for (const l of leads ?? []) {
+      if (silenciado(l)) continue;
       const ref = l.last_contact_at ?? l.created_at;
       const dias = diasDesde(ref, now);
       if (dias == null) continue;
@@ -841,7 +848,7 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
     const iso60 = new Date(now.getTime() - cfg.carteira_critico_dias * 86400_000).toISOString();
     const { data: leads } = await sb
       .from("leads")
-      .select("id, company, owner_id, last_contact_at")
+      .select("id, company, owner_id, last_contact_at, next_followup")
       .eq("stage", "ganho" as any)
       .not("owner_id", "is", null)
       .lt("last_contact_at", iso45)
@@ -849,6 +856,7 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
       .limit(500);
 
     for (const l of leads ?? []) {
+      if (silenciado(l)) continue;
       const regra = "B1_carteira_45";
       if (await alreadyActed(sb, regra, l.id, 7 * 24)) continue;
       if (await temTarefaAbertaOuRecente(sb, l.id, "resgate_carteira", carenciaHorasUteis("resgate_carteira"), win, now)) continue;
@@ -885,13 +893,14 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
     const iso60 = new Date(now.getTime() - cfg.carteira_critico_dias * 86400_000).toISOString();
     const { data: leads } = await sb
       .from("leads")
-      .select("id, company, owner_id, last_contact_at")
+      .select("id, company, owner_id, last_contact_at, next_followup")
       .eq("stage", "ganho" as any)
       .not("owner_id", "is", null)
       .lt("last_contact_at", iso60)
       .limit(500);
 
     for (const l of leads ?? []) {
+      if (silenciado(l)) continue;
       const regra = "B2_carteira_60";
       if (await alreadyActed(sb, regra, l.id, 7 * 24)) continue;
 
@@ -933,13 +942,14 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
     const isoLim = new Date(now.getTime() - cfg.reciclagem_perdidos_dias * 86400_000).toISOString();
     const { data: leads } = await sb
       .from("leads")
-      .select("id, company, owner_id, updated_at, etapa_changed_at")
+      .select("id, company, owner_id, updated_at, etapa_changed_at, next_followup")
       .eq("stage", "perdido" as any)
       .lt("updated_at", isoLim)
       .not("owner_id", "is", null)
       .limit(500);
 
     for (const l of leads ?? []) {
+      if (silenciado(l)) continue;
       const regra = "B3_reciclagem";
       if (await alreadyActed(sb, regra, l.id, 30 * 24)) continue;
       if (await temTarefaAbertaOuRecente(sb, l.id, "reativacao_lead", carenciaHorasUteis("reativacao_lead"), win, now)) continue;
@@ -977,7 +987,7 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
       const alvoFim = new Date(now.getTime() - d * 86400_000).toISOString();
       const { data: leads } = await sb
         .from("leads")
-        .select("id, company, owner_id, etapa_changed_at")
+        .select("id, company, owner_id, etapa_changed_at, next_followup")
         .eq("stage", "ganho" as any)
         .gte("etapa_changed_at", alvoInicio)
         .lt("etapa_changed_at", alvoFim)
@@ -994,6 +1004,7 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
       const prefixoPv = `Pós-venda D+${d}`;
 
       for (const l of leads ?? []) {
+        if (silenciado(l)) continue;
         const regra = `C_pos_venda_D${d}`;
         if (await alreadyActed(sb, regra, l.id, 30 * 24)) continue;
         if (await temTarefaAbertaOuRecente(sb, l.id, tipo, carenciaHorasUteis(tipo), win, now)) continue;
