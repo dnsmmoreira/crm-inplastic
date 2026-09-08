@@ -33,9 +33,9 @@ describe("cadência substitui o toque anterior", () => {
   });
 
   it("o encerramento usa update filtrado por pedido, dono, tipo e situação", async () => {
-    const calls: Record<string, unknown[][]> = { eq: [], in: [], update: [], filter: [] };
+    const calls: Record<string, unknown[][]> = { eq: [], in: [], update: [], filter: [], is: [], not: [] };
     const q: Record<string, (...a: unknown[]) => unknown> = {};
-    for (const m of ["update", "eq", "in", "filter"]) {
+    for (const m of ["update", "eq", "in", "filter", "is", "not"]) {
       q[m] = (...a: unknown[]) => {
         (calls[m] ??= []).push(a);
         return q;
@@ -54,7 +54,13 @@ describe("cadência substitui o toque anterior", () => {
       { ownerId: "u1" },
     );
 
-    expect(n).toBe(1);
+    // Duas passadas (com e sem nota) → duas linhas encontradas no mock.
+    expect(n).toBe(2);
+    expect(calls.is).toContainEqual(["nota_conclusao", null]);
+    expect((calls.update[0]![0] as Record<string, unknown>).nota_conclusao).toBe(
+      "substituída pelo toque 2",
+    );
+
     const patch = calls.update[0]![0] as Record<string, unknown>;
     expect(patch.status).toBe("concluida");
     expect(patch.desfecho).toBe("automatico");
