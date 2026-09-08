@@ -192,7 +192,9 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
     a6_ia_abandonada: 0,
     a7_conversa_parada: 0,
     p1_rascunho_parado: 0,
+    p1_auto_recusado: 0,
     p2_proposta_vencida: 0,
+
   };
 
   const plan: XerifePlanItem[] = [];
