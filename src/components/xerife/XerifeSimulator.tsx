@@ -23,6 +23,8 @@ const TIPO_LABEL: Record<string, string> = {
   cadencia_proposta: "Cadência proposta",
   resgate_carteira: "Resgate carteira",
   reativacao_lead: "Reativação",
+  retomar_contato: "Retomar contato",
+  conversa_parada: "Conversa parada",
   pos_venda_confirmacao: "Pós-venda D+3",
   pos_venda_satisfacao: "Pós-venda D+15",
   pos_venda_recompra: "Recompra D+45",
