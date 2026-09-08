@@ -63,6 +63,16 @@ export const DESFECHOS = [
     descricao: "Encerra o lead com motivo estruturado (entra no relatório de perdas).",
   },
   {
+    tipo: "em_espera",
+    rotulo: "Coloquei o atendimento em espera até [data]",
+    descricao: "A conversa fica aguardando o cliente e o Xerife só volta a cobrar na data.",
+  },
+  {
+    tipo: "encerrar_conversa",
+    rotulo: "Encerrar a conversa",
+    descricao: "Fecha o atendimento no WhatsApp com o motivo registrado.",
+  },
+  {
     tipo: "sem_pendencia",
     rotulo: "Sem pendência (a tarefa não fazia mais sentido)",
     descricao: "Fecha a tarefa com uma justificativa curta, sem mudar o lead.",
@@ -84,6 +94,37 @@ export type DesfechoRegistrado = DesfechoTipo | (typeof DESFECHOS_SISTEMA)[numbe
 export function isDesfechoTipo(v: unknown): v is DesfechoTipo {
   return typeof v === "string" && DESFECHOS.some((d) => d.tipo === v);
 }
+
+/**
+ * Quais desfechos a tarefa oferece.
+ *  - `conversa_parada`: retorno, espera, encerrar a conversa, perdido (só com
+ *    lead) e sem pendência — avançar etapa não faz sentido aqui;
+ *  - demais tipos: o conjunto clássico do funil.
+ */
+export function desfechosParaTipo(
+  tipoTarefa: string | null | undefined,
+  opts: { temLead?: boolean } = {},
+): typeof DESFECHOS[number][] {
+  const temLead = opts.temLead !== false;
+  if (tipoTarefa === "conversa_parada") {
+    const permitidos = ["retorno_agendado", "em_espera", "encerrar_conversa", "sem_pendencia"];
+    if (temLead) permitidos.splice(3, 0, "perdido");
+    return DESFECHOS.filter((d) => permitidos.includes(d.tipo));
+  }
+  return DESFECHOS.filter(
+    (d) => d.tipo !== "em_espera" && d.tipo !== "encerrar_conversa",
+  ) as typeof DESFECHOS[number][];
+}
+
+/** O desfecho escolhido é válido para o tipo da tarefa? (gate fail-closed) */
+export function desfechoPermitido(
+  tipoTarefa: string | null | undefined,
+  desfecho: string,
+  opts: { temLead?: boolean } = {},
+): boolean {
+  return desfechosParaTipo(tipoTarefa, opts).some((d) => d.tipo === desfecho);
+}
+
 
 // ─────────────── Etapas ───────────────
 
