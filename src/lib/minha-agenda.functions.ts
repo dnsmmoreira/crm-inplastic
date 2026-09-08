@@ -143,17 +143,28 @@ export const concluirTarefa = createServerFn({ method: "POST" })
       return { ok: false as const, message: "Escolha o desfecho desta tarefa." };
     }
 
-    const leadId = tarefa.lead_id as string;
-    const { data: lead, error: erroLead } = await supabase
-      .from("leads")
-      .select("id, company, contact_name, stage")
-      .eq("id", leadId)
-      .maybeSingle();
-    if (erroLead) throw new Error(erroLead.message);
-    if (!lead) throw new Error("Lead da tarefa não encontrado.");
+    const leadId = (tarefa.lead_id as string | null) ?? null;
+    let lead: { id: string; company: string | null; contact_name: string | null; stage: string } | null = null;
+    if (leadId) {
+      const { data: l, error: erroLead } = await supabase
+        .from("leads")
+        .select("id, company, contact_name, stage")
+        .eq("id", leadId)
+        .maybeSingle();
+      if (erroLead) throw new Error(erroLead.message);
+      if (!l) throw new Error("Lead da tarefa não encontrado.");
+      lead = l as any;
+    } else if (tarefa.tipo !== "conversa_parada") {
+      throw new Error("Lead da tarefa não encontrado.");
+    }
 
-    const valid = validarDesfecho(desfecho as any, { stageAtual: lead.stage as string });
+    const valid = validarDesfecho(desfecho as any, {
+      stageAtual: lead?.stage ?? null,
+      tipoTarefa: tarefa.tipo as string | null,
+      temLead: !!leadId,
+    });
     if (!valid.ok) return { ok: false as const, message: valid.erro };
+
 
     let mensagem = "Tarefa concluída.";
     let aviso: string | undefined;
