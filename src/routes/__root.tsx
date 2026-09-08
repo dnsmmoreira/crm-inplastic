@@ -504,7 +504,7 @@ function AppShell({ children }: { children: ReactNode }) {
     <div className="flex min-h-screen bg-background text-foreground">
       <aside
         className={cn(
-          "hidden md:flex shrink-0 flex-col bg-sidebar text-sidebar-foreground transition-[width] duration-200",
+          "hidden md:flex shrink-0 self-start sticky top-0 h-screen supports-[height:100dvh]:h-dvh overflow-hidden flex-col bg-sidebar text-sidebar-foreground transition-[width] duration-200",
           collapsed ? "w-16" : "w-64",
         )}
       >
