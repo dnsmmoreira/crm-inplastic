@@ -219,7 +219,7 @@ function AgendaGroup({
   /** Tarefa de pedido leva ao Funil Operacional; tarefa de lead mantém o funil de vendas. */
   const abrir = (t: Tarefa) => {
     const pedidoId = (t as { pedido_id?: string | null }).pedido_id;
-    if (pedidoId) void navigate({ to: "/pedidos", search: { pedido: pedidoId } as never });
+    if (pedidoId) void navigate({ to: "/pedidos" });
     else if (t.lead_id) void navigate({ to: "/leads", search: { lead: t.lead_id } as never });
   };
   return (
