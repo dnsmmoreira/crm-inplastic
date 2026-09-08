@@ -15,6 +15,7 @@ import {
   DESFECHO_AUTOMATICO,
   motivoEncerramento,
   tiposParaEncerrarNaTransicao,
+  todosTiposPedido,
 } from "@/lib/tarefas-encerramento";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -598,8 +599,22 @@ export async function aoEntrarNaEtapa(
         titulo: texto,
         pedidoId,
       });
+      // Próximo ato: alguém precisa combinar a data com o cliente.
+      const operacionalPronto = await destinatariosOperacional(sb);
+      await criarTarefaPedido(sb, {
+        pedidoId,
+        leadId: p.lead_id,
+        ownerId: p.vendedor_proprietario_id ?? operacionalPronto[0] ?? null,
+        tipo: "combinar_coleta",
+        titulo: `Combinar coleta/entrega com o cliente — Pedido ${p.number} — ${p.cliente}`,
+        descricao:
+          "Combine com o cliente a data da coleta/entrega e registre a data no desfecho da tarefa.",
+        dueDate: addDiasUteis(new Date(), 1),
+        prioridade: 1,
+      });
       return;
     }
+
 
     if (stage === "pos_venda") {
       // registra Entregue/Coletado conforme a modalidade, se ainda não registrado
@@ -702,20 +717,62 @@ export async function encerrarTarefasDoPedido(
 }
 
 
-/** Concluir a tarefa de pós-venda encerra o pedido. */
-export async function encerrarPedidoPorTarefa(sb: SB, tarefaId: string): Promise<void> {
+export const AVISO_POS_VENDA_SEM_COMPROVACAO =
+  "Contato registrado. O pedido encerra quando a comprovação de entrega for anexada.";
+
+/**
+ * Concluir a tarefa de pós-venda registra o CONTATO e, se a entrega já estiver
+ * comprovada (ou dispensada), encerra o pedido. Sem comprovação o pedido fica
+ * aberto — é a prova que fecha o ciclo, não o clique.
+ */
+export async function encerrarPedidoPorTarefa(
+  sb: SB,
+  tarefaId: string,
+): Promise<{ encerrado: boolean; aviso?: string }> {
   try {
     const { data: t } = await sb
       .from("tarefas")
       .select("pedido_id, tipo")
       .eq("id", tarefaId)
       .maybeSingle();
-    if (!t?.pedido_id || t.tipo !== TAREFA_TIPO_POS_VENDA_PEDIDO) return;
+    if (!t?.pedido_id || t.tipo !== TAREFA_TIPO_POS_VENDA_PEDIDO) return { encerrado: false };
+
+    const { data: ped, error: erroPed } = await sb
+      .from("pedidos")
+      .select(
+        "id, encerrado_em, pos_venda_contato_em, entrega_comprovada_em, comprovacao_dispensada_em",
+      )
+      .eq("id", t.pedido_id)
+      .maybeSingle();
+    if (erroPed) throw new Error(erroPed.message);
+    if (!ped) return { encerrado: false };
+
+    const agora = new Date().toISOString();
+    if (!ped.pos_venda_contato_em) {
+      const upContato = await sb
+        .from("pedidos")
+        .update({ pos_venda_contato_em: agora })
+        .eq("id", t.pedido_id);
+      if (upContato?.error) {
+        throw new Error(`Não foi possível registrar o contato de pós-venda: ${upContato.error.message}`);
+      }
+    }
+    if (ped.encerrado_em) return { encerrado: true };
+
+    const { comprovacaoOk } = await import("@/lib/pedido-avanco");
+    if (!comprovacaoOk(ped)) {
+      return { encerrado: false, aviso: AVISO_POS_VENDA_SEM_COMPROVACAO };
+    }
+
     // ABORTAR: o fechamento do pós-venda é o efeito principal — se falhar,
     // o pedido ficaria eternamente aberto sem ninguém saber.
     const upEncerrar = await sb
       .from("pedidos")
-      .update({ encerrado_em: new Date().toISOString(), pos_venda_status: "concluido" })
+      .update({
+        encerrado_em: agora,
+        pos_venda_status: "concluido",
+        encerrado_motivo: "contato de pós-venda e comprovação de entrega registrados",
+      })
       .eq("id", t.pedido_id)
       .is("encerrado_em", null);
     if (upEncerrar?.error) {
@@ -723,6 +780,13 @@ export async function encerrarPedidoPorTarefa(sb: SB, tarefaId: string): Promise
         `Não foi possível encerrar o pedido no pós-venda: ${upEncerrar.error.message}`,
       );
     }
+    await encerrarTarefasDoPedido(
+      sb,
+      t.pedido_id,
+      todosTiposPedido(),
+      motivoEncerramento({ causa: "pedido_encerrado" }),
+    );
+    return { encerrado: true };
   } catch (e) {
     console.error("[pedidos-fluxo] encerrarPedidoPorTarefa falhou:", e);
     const { registrarFalhaAdmin } = await import("@/lib/falhas.server");
@@ -730,5 +794,6 @@ export async function encerrarPedidoPorTarefa(sb: SB, tarefaId: string): Promise
       tarefa_id: tarefaId,
       acao: "encerrar_pedido_por_tarefa",
     });
+    return { encerrado: false };
   }
 }

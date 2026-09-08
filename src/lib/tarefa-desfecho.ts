@@ -38,6 +38,16 @@ export function ehTipoProposta(tipo: string | null | undefined): boolean {
   return (TIPOS_PROPOSTA as readonly string[]).includes(tipo ?? "");
 }
 
+/**
+ * Tarefas de PEDIDO que também exigem desfecho (Bloco 5): concluir sem dizer o
+ * que aconteceu deixaria o pedido sem próximo ato.
+ */
+export const TIPOS_PEDIDO_COM_DESFECHO = ["combinar_coleta", "pos_venda_atrasado"] as const;
+
+export function ehTipoPedidoComDesfecho(tipo: string | null | undefined): boolean {
+  return (TIPOS_PEDIDO_COM_DESFECHO as readonly string[]).includes(tipo ?? "");
+}
+
 export type TarefaParaDesfecho = {
   origem?: string | null;
   tipo?: string | null;
@@ -49,10 +59,11 @@ export type TarefaParaDesfecho = {
 /**
  * Tarefas manuais, de pedido e de pós-venda seguem o fluxo antigo (nota;
  * pós-venda exige nota >= 10). Só tarefa comercial do Xerife ligada a um lead
- * exige desfecho — exceções: `conversa_parada` (conversa avulsa) e as tarefas
- * de proposta, que podem não ter lead.
+ * exige desfecho — exceções: `conversa_parada` (conversa avulsa), as tarefas
+ * de proposta (que podem não ter lead) e as duas tarefas de pedido do Bloco 5.
  */
 export function exigeDesfecho(t: TarefaParaDesfecho): boolean {
+  if (ehTipoPedidoComDesfecho(t.tipo)) return true;
   if (t.origem !== "xerife") return false;
   if (t.pedido_id) return false;
   if (t.tipo === "conversa_parada") return true;
@@ -115,6 +126,16 @@ export const DESFECHOS = [
     rotulo: "Excluir o rascunho",
     descricao: "Apaga o rascunho que não vai virar proposta.",
   },
+  {
+    tipo: "data_combinada",
+    rotulo: "Combinei a coleta/entrega para [data]",
+    descricao: "Grava a data acertada com o cliente como previsão de entrega do pedido.",
+  },
+  {
+    tipo: "contato_registrado",
+    rotulo: "Falei com o cliente (registrar o contato)",
+    descricao: "Registra o contato de pós-venda no pedido e no histórico do cliente.",
+  },
 ] as const;
 
 export type DesfechoTipo = (typeof DESFECHOS)[number]["tipo"];
@@ -156,6 +177,12 @@ export function desfechosParaTipo(
     if (temLead) permitidos.splice(3, 0, "perdido");
     return filtrar(permitidos);
   }
+  if (tipoTarefa === "combinar_coleta") {
+    return filtrar(["data_combinada", "sem_pendencia"]);
+  }
+  if (tipoTarefa === "pos_venda_atrasado") {
+    return filtrar(["contato_registrado", "sem_pendencia"]);
+  }
   if (tipoTarefa === "proposta_rascunho_parada") {
     const permitidos = ["retorno_agendado", "recusar_proposta", "excluir_rascunho", "sem_pendencia"];
     return filtrar(permitidos);
@@ -177,6 +204,8 @@ export function desfechosParaTipo(
       d.tipo !== "reemitir_proposta" &&
       d.tipo !== "prorrogar_proposta" &&
       d.tipo !== "excluir_rascunho" &&
+      d.tipo !== "data_combinada" &&
+      d.tipo !== "contato_registrado" &&
       d.tipo !== "recusar_proposta",
   ) as typeof DESFECHOS[number][];
   if (tipoTarefa === "cadencia_proposta") {
@@ -296,6 +325,8 @@ export function somarDiasUteis(n: number, base = new Date()): string {
 
 export const LIMITE_RETORNO_DIAS = 60;
 export const JUSTIFICATIVA_MIN_CHARS = 5;
+/** Nota mínima ao registrar o contato de pós-venda. */
+export const CONTATO_MIN_CHARS = 10;
 
 // ─────────────── Validação ───────────────
 
@@ -402,6 +433,40 @@ export function validarDesfecho(
   if (input.tipo === "reemitir_proposta") {
     return { ok: true };
   }
+
+  if (input.tipo === "data_combinada") {
+    const data = (input.data ?? "").trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) {
+      return { ok: false, erro: "Informe a data combinada com o cliente." };
+    }
+    if (data < ymd(agora)) {
+      return { ok: false, erro: "A data combinada não pode ser no passado." };
+    }
+    const limite = new Date(agora.getTime() + LIMITE_RETORNO_DIAS * 86_400_000);
+    if (data > ymd(limite)) {
+      return { ok: false, erro: `A data não pode passar de ${LIMITE_RETORNO_DIAS} dias.` };
+    }
+    const obs = (input.detalhe ?? "").trim();
+    if (obs.length < JUSTIFICATIVA_MIN_CHARS) {
+      return {
+        ok: false,
+        erro: `Diga o que ficou combinado (mín. ${JUSTIFICATIVA_MIN_CHARS} caracteres).`,
+      };
+    }
+    return { ok: true };
+  }
+
+  if (input.tipo === "contato_registrado") {
+    const nota = ((input.detalhe ?? "") || (input.nota ?? "")).trim();
+    if (nota.length < CONTATO_MIN_CHARS) {
+      return {
+        ok: false,
+        erro: `Conte como foi o contato com o cliente (mín. ${CONTATO_MIN_CHARS} caracteres).`,
+      };
+    }
+    return { ok: true };
+  }
+
 
 
 

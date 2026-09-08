@@ -134,8 +134,12 @@ export const concluirTarefa = createServerFn({ method: "POST" })
       await assertNoError(up, "minha-agenda.concluirTarefa", { id: data.id });
 
       const { encerrarPedidoPorTarefa } = await import("@/lib/pedidos-fluxo.server");
-      await encerrarPedidoPorTarefa(supabase, data.id);
-      return { ok: true as const, mensagem: "Tarefa concluída." };
+      const rPedido = await encerrarPedidoPorTarefa(supabase, data.id);
+      return {
+        ok: true as const,
+        mensagem: "Tarefa concluída.",
+        ...(rPedido.aviso ? { aviso: rPedido.aviso } : {}),
+      };
     }
 
     // ── Tarefa comercial do Xerife: desfecho obrigatório (fail-closed).
@@ -155,7 +159,11 @@ export const concluirTarefa = createServerFn({ method: "POST" })
       if (erroLead) throw new Error(erroLead.message);
       if (!l) throw new Error("Lead da tarefa não encontrado.");
       lead = l as any;
-    } else if (tarefa.tipo !== "conversa_parada" && !ehTipoProposta(tarefa.tipo as string)) {
+    } else if (
+      tarefa.tipo !== "conversa_parada" &&
+      !ehTipoProposta(tarefa.tipo as string) &&
+      !(tarefa as any).pedido_id
+    ) {
       throw new Error("Lead da tarefa não encontrado.");
     }
 
@@ -397,6 +405,53 @@ export const concluirTarefa = createServerFn({ method: "POST" })
         detalhe = `Rascunho ${prop.number ?? ""} excluído · ${(desfecho.detalhe ?? "").trim()}`;
         mensagem = r.mensagem;
       }
+    } else if (desfecho.tipo === "data_combinada") {
+      const pedidoId = (tarefa as any).pedido_id as string | null;
+      if (!pedidoId) throw new Error("Esta tarefa não está ligada a nenhum pedido.");
+      const dia = ddmm(desfecho.data!);
+      const obs = (desfecho.detalhe ?? "").trim();
+      const upPedido = await supabase
+        .from("pedidos")
+        .update({
+          previsao_entrega: dataRetornoParaISO(desfecho.data!),
+          coleta_combinada_em: new Date().toISOString(),
+          coleta_combinada_por: userId,
+        })
+        .eq("id", pedidoId);
+      await assertNoError(upPedido, "concluirTarefa.coleta.pedido", { pedido_id: pedidoId });
+
+      if (leadId) {
+        const insInt = await supabase.from("lead_interactions").insert({
+          lead_id: leadId,
+          owner_id: userId,
+          type: "note",
+          content: `Coleta/entrega combinada para ${dia} — ${obs}`,
+        });
+        await assertNoError(insInt, "concluirTarefa.coleta.interacao", { lead_id: leadId });
+      }
+      detalhe = `Coleta/entrega combinada para ${dia} — ${obs}`;
+      mensagem = `Coleta/entrega combinada para ${dia}.`;
+    } else if (desfecho.tipo === "contato_registrado") {
+      const pedidoId = (tarefa as any).pedido_id as string | null;
+      if (!pedidoId) throw new Error("Esta tarefa não está ligada a nenhum pedido.");
+      const relato = ((desfecho.detalhe ?? "") || nota).trim();
+      const upPedido = await supabase
+        .from("pedidos")
+        .update({ pos_venda_contato_em: new Date().toISOString() })
+        .eq("id", pedidoId);
+      await assertNoError(upPedido, "concluirTarefa.posvenda.pedido", { pedido_id: pedidoId });
+
+      if (leadId) {
+        const insInt = await supabase.from("lead_interactions").insert({
+          lead_id: leadId,
+          owner_id: userId,
+          type: "note",
+          content: `Contato de pós-venda: ${relato}`,
+        });
+        await assertNoError(insInt, "concluirTarefa.posvenda.interacao", { lead_id: leadId });
+      }
+      detalhe = `Contato de pós-venda registrado — ${relato}`;
+      mensagem = "Contato de pós-venda registrado.";
     } else {
       // sem_pendencia
       mensagem = "Tarefa encerrada sem pendência.";
@@ -417,7 +472,8 @@ export const concluirTarefa = createServerFn({ method: "POST" })
     // Duplicatas: outras tarefas abertas do mesmo lead e tipo saem junto.
     // Sem nota → recebe o motivo como nota (o trigger de pós-venda exige nota).
     const detalheDup = `encerrada junto com a tarefa ${tarefa.title ?? data.id}`;
-    if (leadId) {
+    // Tarefa de pedido é por pedido: não arrasta a do outro pedido do mesmo lead.
+    if (leadId && !(tarefa as any).pedido_id) {
       for (const semNota of [true, false]) {
         let qDup = supabase
           .from("tarefas")
@@ -441,7 +497,8 @@ export const concluirTarefa = createServerFn({ method: "POST" })
 
 
     const { encerrarPedidoPorTarefa } = await import("@/lib/pedidos-fluxo.server");
-    await encerrarPedidoPorTarefa(supabase, data.id);
+    const rPedido = await encerrarPedidoPorTarefa(supabase, data.id);
+    if (rPedido.aviso) aviso = rPedido.aviso;
 
     return { ok: true as const, mensagem, ...(aviso ? { aviso } : {}) };
   });
