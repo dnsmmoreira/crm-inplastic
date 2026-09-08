@@ -601,7 +601,10 @@ export const updatePedidoStage = createServerFn({ method: "POST" })
     // Notificações na tela + automações de etapa (nunca lançam).
     {
       const { aoEntrarNaEtapa } = await import("@/lib/pedidos-fluxo.server");
-      await aoEntrarNaEtapa(sb, data.pedido_id, to, { motivoReprovacao: data.motivo ?? null });
+      await aoEntrarNaEtapa(sb, data.pedido_id, to, {
+        motivoReprovacao: data.motivo ?? null,
+        de: from,
+      });
     }
 
     return { ok: true, stage: to, backward };
@@ -1314,6 +1317,7 @@ export const reprovarPedidoFinanceiro = createServerFn({ method: "POST" })
     const { aoEntrarNaEtapa } = await import("@/lib/pedidos-fluxo.server");
     await aoEntrarNaEtapa(sb, data.pedido_id, "reprovado_financeiro", {
       motivoReprovacao: data.motivo,
+      de: current.stage as string,
     });
 
     return { ok: true as const };
@@ -1434,6 +1438,7 @@ export const devolverPedidoOperacional = createServerFn({ method: "POST" })
     const { aoEntrarNaEtapa } = await import("@/lib/pedidos-fluxo.server");
     await aoEntrarNaEtapa(sb, data.pedido_id, PEDIDO_STAGE_CANCELADO, {
       motivoReprovacao: data.motivo,
+      de: fromStage,
     });
 
     return { ok: true as const };
@@ -1671,6 +1676,17 @@ export const resolverOcorrencia = createServerFn({ method: "POST" })
           pedido_id: updated.pedido_id,
         });
       }
+    }
+    {
+      const { encerrarTarefasDoPedido } = await import("@/lib/pedidos-fluxo.server");
+      const { motivoEncerramento } = await import("@/lib/tarefas-encerramento");
+      await encerrarTarefasDoPedido(
+        sb,
+        updated.pedido_id as string,
+        ["ocorrencia_aberta"],
+        motivoEncerramento({ causa: "ocorrencia_resolvida" }),
+        { descricaoContem: data.ocorrencia_id },
+      );
     }
     return { ok: true as const };
   });
@@ -2040,6 +2056,17 @@ export const confirmarEntregaComprovada = createServerFn({ method: "POST" })
         pedido_id: data.pedido_id,
       });
 
+    {
+      const { encerrarTarefasDoPedido } = await import("@/lib/pedidos-fluxo.server");
+      const { motivoEncerramento } = await import("@/lib/tarefas-encerramento");
+      await encerrarTarefasDoPedido(
+        sb,
+        data.pedido_id,
+        ["comprovacao_entrega"],
+        motivoEncerramento({ causa: "entrega_comprovada" }),
+      );
+    }
+
     return { ok: true as const, pedido_number: p.number as string, entrega_comprovada_em: agoraIso };
   });
 
@@ -2145,6 +2172,16 @@ export const dispensarComprovacaoEntrega = createServerFn({ method: "POST" })
       "Não foi possível dispensar a comprovação. Tente novamente.",
     );
     await auditarDispensa(sb, userId, data.pedido_id, motivo);
+    {
+      const { encerrarTarefasDoPedido } = await import("@/lib/pedidos-fluxo.server");
+      const { motivoEncerramento } = await import("@/lib/tarefas-encerramento");
+      await encerrarTarefasDoPedido(
+        sb,
+        data.pedido_id,
+        ["comprovacao_entrega"],
+        motivoEncerramento({ causa: "comprovacao_dispensada" }),
+      );
+    }
     return { ok: true as const, pedido_number: p.number as string };
   });
 

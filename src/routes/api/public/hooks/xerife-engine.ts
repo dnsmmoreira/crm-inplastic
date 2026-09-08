@@ -185,7 +185,6 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
     b1_carteira_45: 0,
     b2_carteira_60: 0,
     b3_reciclagem: 0,
-    c_pos_venda: 0,
     d1_abandono: 0,
     d1_escalado: 0,
     d1_reatribuido: 0,
@@ -980,62 +979,10 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
     }
   }
 
-  // ─────────────── C: pós-venda D+N (pos_venda_dias, default 3/15/45) ───────────────
-  {
-    for (const d of cfg.pos_venda_dias) {
-      const alvoInicio = new Date(now.getTime() - (d + 1) * 86400_000).toISOString();
-      const alvoFim = new Date(now.getTime() - d * 86400_000).toISOString();
-      const { data: leads } = await sb
-        .from("leads")
-        .select("id, company, owner_id, etapa_changed_at, next_followup")
-        .eq("stage", "ganho" as any)
-        .gte("etapa_changed_at", alvoInicio)
-        .lt("etapa_changed_at", alvoFim)
-        .not("owner_id", "is", null)
-        .limit(500);
-
-      const tipo =
-        d <= 5 ? "pos_venda_confirmacao" : d <= 20 ? "pos_venda_satisfacao" : "pos_venda_recompra";
-      const titulos: Record<string, string> = {
-        pos_venda_confirmacao: "Confirmar recebimento",
-        pos_venda_satisfacao: "Pesquisa de satisfação",
-        pos_venda_recompra: "Sondar recompra",
-      };
-      const prefixoPv = `Pós-venda D+${d}`;
-
-      for (const l of leads ?? []) {
-        if (silenciado(l)) continue;
-        const regra = `C_pos_venda_D${d}`;
-        if (await alreadyActed(sb, regra, l.id, 30 * 24)) continue;
-        if (await temTarefaAbertaOuRecente(sb, l.id, tipo, carenciaHorasUteis(tipo), win, now)) continue;
-
-        const fechadoDDMM = fmtDDMM(l.etapa_changed_at);
-        await criarTarefa({
-          regra,
-          lead_id: l.id,
-          lead_company: l.company,
-          owner_id: l.owner_id,
-          tipo,
-          titulo: withCtx(
-            `${prefixoPv}: ${l.company}`,
-            fechadoDDMM ? `pedido fechado em ${fechadoDDMM}` : null,
-          ),
-          descricao: `Pós-venda D+${d}. Requer nota de conclusão. (${titulos[tipo]})`,
-          motivo: `Pós-venda D+${d}. Requer nota de conclusão.`,
-          prioridade: 2,
-        });
-        await log(sb, {
-          regra,
-          leadId: l.id,
-          clienteId: l.id,
-          vendedorId: l.owner_id,
-          acao: "tarefa criada",
-          payload: { d, tipo },
-        });
-        stats.c_pos_venda++;
-      }
-    }
-  }
+  // Bloco C removido: pós-venda por PEDIDO é criado uma única vez pelo fluxo
+  // operacional (`pos_venda_pedido`). Um motor por assunto — o comercial não
+  // duplica mais a mesma cobrança por lead.
+  // A régua D+30/45/90 a partir do encerramento do pedido entra no Bloco 5.
 
   return { ran: true, stats, plan, dryRun };
 }

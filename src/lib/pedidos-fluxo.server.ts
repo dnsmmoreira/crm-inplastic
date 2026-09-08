@@ -11,6 +11,11 @@ import {
   type AprovacaoDecisao,
   type AprovacaoParams,
 } from "@/lib/pedidos-stages";
+import {
+  DESFECHO_AUTOMATICO,
+  motivoEncerramento,
+  tiposParaEncerrarNaTransicao,
+} from "@/lib/tarefas-encerramento";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SB = any;
@@ -113,6 +118,23 @@ async function clienteDeEfeitos(sb: SB): Promise<SB> {
     return sb;
   }
 }
+
+/**
+ * Etapa anterior do pedido, lida do histórico (último movimento que chegou em
+ * `stageAtual`). Usada quando o chamador não informa `de`.
+ */
+async function stageAnterior(sb: SB, pedidoId: string, stageAtual: string): Promise<string | null> {
+  const { data } = await sb
+    .from("pedido_stage_history")
+    .select("from_stage, to_stage, created_at")
+    .eq("pedido_id", pedidoId)
+    .order("created_at", { ascending: false })
+    .limit(5);
+  const rows = (data ?? []) as Array<{ from_stage: string | null; to_stage: string }>;
+  const hit = rows.find((r) => r.to_stage === stageAtual && r.from_stage !== stageAtual);
+  return hit?.from_stage ?? null;
+}
+
 
 /** Notifica de forma idempotente por (pedido_id, tipo, user_id). */
 /**
@@ -467,7 +489,12 @@ export async function aoEntrarNaEtapa(
   sbIn: SB,
   pedidoId: string,
   stage: string,
-  opts?: { motivoReprovacao?: string | null; usarClienteDeServico?: boolean },
+  opts?: {
+    motivoReprovacao?: string | null;
+    usarClienteDeServico?: boolean;
+    /** Etapa anterior. Quando ausente, é lida do histórico de etapas. */
+    de?: string | null;
+  },
 ): Promise<void> {
   try {
     // Efeitos gravam para terceiros: precisa do client de serviço (RLS barra).
@@ -476,9 +503,20 @@ export async function aoEntrarNaEtapa(
     const p = await carregarPedidoCtx(sb, pedidoId);
     if (!p) return;
 
-    // Ao SAIR das etapas financeiras, conclui as tarefas pendentes correspondentes
-    // para não deixar tarefa fantasma na agenda de ninguém.
-    await concluirTarefasEtapaFinanceira(sb, pedidoId, stage);
+    // Condição de morte: tudo que a etapa anterior cobrava (e o que a nova
+    // etapa torna sem sentido) é encerrado com desfecho automático.
+    const de = opts?.de !== undefined ? opts.de : await stageAnterior(sb, pedidoId, stage);
+    const tiposMortos = tiposParaEncerrarNaTransicao(de, stage);
+    if (tiposMortos.length > 0) {
+      await encerrarTarefasDoPedido(
+        sb,
+        pedidoId,
+        tiposMortos,
+        de
+          ? motivoEncerramento({ causa: "pedido_saiu", stage: de })
+          : motivoEncerramento({ causa: "pedido_entrou", stage }),
+      );
+    }
 
     if (stage === "analise_financeira") {
       await notificarUsuarios(sb, await destinatariosFinanceiro(sb), {
@@ -611,33 +649,47 @@ export async function aoEntrarNaEtapa(
  * Conclui tarefas pendentes das etapas financeiras que não correspondem
  * mais à etapa atual do pedido.
  */
-export async function concluirTarefasEtapaFinanceira(
-  sb: SB,
+/**
+ * Encerra automaticamente as tarefas de um pedido cujos tipos perderam o
+ * sentido. Generaliza a antiga `concluirTarefasEtapaFinanceira`.
+ *
+ * Toda tarefa fechada aqui é do sistema: desfecho='automatico' + motivo.
+ */
+export async function encerrarTarefasDoPedido(
+  sbIn: SB,
   pedidoId: string,
-  stageAtual: string,
-): Promise<void> {
-  const tipoDaEtapa: Record<string, string> = {
-    analise_financeira: TAREFA_TIPO_APROVACAO_PENDENTE,
-    aguardando_pagamento: TAREFA_TIPO_AGUARDANDO_PAGAMENTO,
-  };
-  const manter = tipoDaEtapa[stageAtual];
-  const alvos = TAREFAS_ETAPA_FINANCEIRA.filter((t) => t !== manter);
-  if (alvos.length === 0) return;
-  const { error } = await sb
+  tipos: string[],
+  motivo: string,
+  extra?: { ownerId?: string | null; descricaoContem?: string },
+): Promise<number> {
+  if (tipos.length === 0) return 0;
+  const sb: SB = await clienteDeEfeitos(sbIn);
+  let q = sb
     .from("tarefas")
-    .update({ status: "concluida", concluida_at: new Date().toISOString() })
+    .update({
+      status: "concluida",
+      concluida_at: new Date().toISOString(),
+      desfecho: DESFECHO_AUTOMATICO,
+      desfecho_detalhe: motivo,
+    })
     .eq("pedido_id", pedidoId)
-    .in("tipo", alvos)
+    .in("tipo", tipos)
     .in("status", ["pendente", "adiada"]);
+  if (extra?.ownerId) q = q.eq("owner_id", extra.ownerId);
+  if (extra?.descricaoContem) q = q.filter("descricao", "ilike", `%${extra.descricaoContem}%`);
+  const { data, error } = await q.select("id");
   if (error) {
-    console.error("[pedidos-fluxo] falha ao concluir tarefas de etapa:", error.message);
+    console.error("[pedidos-fluxo] falha ao encerrar tarefas do pedido:", error.message);
     const { registrarFalhaAdmin } = await import("@/lib/falhas.server");
     await registrarFalhaAdmin("pedido.tarefa", error.message, {
       pedido_id: pedidoId,
-      etapa: stageAtual,
-      acao: "concluir_tarefas_etapa_financeira",
+      tipos,
+      motivo,
+      acao: "encerrar_tarefas_do_pedido",
     });
+    return 0;
   }
+  return (data ?? []).length;
 }
 
 /** Concluir a tarefa de pós-venda encerra o pedido. */
