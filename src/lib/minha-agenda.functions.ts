@@ -170,24 +170,48 @@ export const concluirTarefa = createServerFn({ method: "POST" })
     let aviso: string | undefined;
     let detalhe = (desfecho.detalhe ?? "").trim() || null;
 
+    // Tarefa de conversa parada carrega a conversa na descrição: [conversa:<id>]
+    const { conversaIdDaDescricao } = await import("@/lib/conversas-regras");
+    const conversaDaTarefa = conversaIdDaDescricao(tarefa.descricao as string | null);
+
+    /** Conversa alvo das ações de atendimento (a da tarefa ou a do lead). */
+    async function acharConversa(): Promise<string | null> {
+      if (conversaDaTarefa) return conversaDaTarefa;
+      if (!leadId) return null;
+      const { data: conv, error: erroConv } = await supabase
+        .from("whatsapp_conversas")
+        .select("id")
+        .eq("lead_id", leadId)
+        .neq("status", "encerrado")
+        .maybeSingle();
+      if (erroConv) {
+        const { registrarFalhaSegura } = await import("@/lib/guard-erros");
+        await registrarFalhaSegura("concluirTarefa.conversa", erroConv, { lead_id: leadId });
+        return null;
+      }
+      return conv?.id ?? null;
+    }
+
     if (desfecho.tipo === "retorno_agendado") {
       const dataISO = dataRetornoParaISO(desfecho.data!);
       const dia = ddmm(desfecho.data!);
-      const quem = (lead.contact_name || lead.company || "cliente") as string;
+      const quem = (lead?.contact_name || lead?.company || "cliente") as string;
 
-      const insInt = await supabase.from("lead_interactions").insert({
-        lead_id: leadId,
-        owner_id: userId,
-        type: "note",
-        content: `Contato feito · retorno combinado para ${dia}${nota ? ` — ${nota}` : ""}`,
-      });
-      await assertNoError(insInt, "concluirTarefa.retorno.interacao", { lead_id: leadId });
+      if (leadId) {
+        const insInt = await supabase.from("lead_interactions").insert({
+          lead_id: leadId,
+          owner_id: userId,
+          type: "note",
+          content: `Contato feito · retorno combinado para ${dia}${nota ? ` — ${nota}` : ""}`,
+        });
+        await assertNoError(insInt, "concluirTarefa.retorno.interacao", { lead_id: leadId });
 
-      const upLead = await supabase
-        .from("leads")
-        .update({ next_followup: dataISO })
-        .eq("id", leadId);
-      await assertNoError(upLead, "concluirTarefa.retorno.lead", { lead_id: leadId });
+        const upLead = await supabase
+          .from("leads")
+          .update({ next_followup: dataISO })
+          .eq("id", leadId);
+        await assertNoError(upLead, "concluirTarefa.retorno.lead", { lead_id: leadId });
+      }
 
       const insTarefa = await supabase.from("tarefas").insert({
         lead_id: leadId,
@@ -195,7 +219,9 @@ export const concluirTarefa = createServerFn({ method: "POST" })
         tipo: "retorno_agendado",
         kind: "retorno_agendado",
         title: `Retorno combinado: ${quem}${nota ? ` — ${nota.slice(0, 60)}` : ""}`,
-        descricao: nota || `Retorno combinado para ${dia}.`,
+        descricao: `${nota || `Retorno combinado para ${dia}.`}${
+          conversaDaTarefa ? ` [conversa:${conversaDaTarefa}]` : ""
+        }`,
         prioridade: 1,
         due_date: dataISO,
         status: "pendente",
@@ -204,28 +230,61 @@ export const concluirTarefa = createServerFn({ method: "POST" })
       await assertNoError(insTarefa, "concluirTarefa.retorno.tarefa", { lead_id: leadId });
 
       // Conversa do vendedor entra em "Em espera" — não é resposta pendente.
-      const { data: conv, error: erroConv } = await supabase
-        .from("whatsapp_conversas")
-        .select("id")
-        .eq("lead_id", leadId)
-        .eq("atribuido_para", userId)
-        .maybeSingle();
-      if (erroConv) {
-        const { registrarFalhaSegura } = await import("@/lib/guard-erros");
-        await registrarFalhaSegura("concluirTarefa.retorno.conversa", erroConv, { lead_id: leadId });
-      } else if (conv?.id) {
+      const convId = await acharConversa();
+      if (convId) {
         const upConv = await supabase
           .from("whatsapp_conversas")
           .update({ em_espera_desde: new Date().toISOString(), em_espera_por: userId })
-          .eq("id", conv.id);
-        await assertNoError(upConv, "concluirTarefa.retorno.espera", { conversa_id: conv.id });
+          .eq("id", convId);
+        await assertNoError(upConv, "concluirTarefa.retorno.espera", { conversa_id: convId });
       }
 
       detalhe = `Retorno combinado para ${dia}${nota ? ` — ${nota}` : ""}`;
-      mensagem = `Retorno marcado para ${dia}. O Xerife não vai cobrar este lead até lá.`;
+      mensagem = `Retorno marcado para ${dia}. O Xerife não vai cobrar este cliente até lá.`;
+    } else if (desfecho.tipo === "em_espera") {
+      const dataISO = dataRetornoParaISO(desfecho.data!);
+      const dia = ddmm(desfecho.data!);
+      const convId = await acharConversa();
+      if (convId) {
+        const upConv = await supabase
+          .from("whatsapp_conversas")
+          .update({
+            em_espera_desde: new Date().toISOString(),
+            em_espera_por: userId,
+            espera_alertada_em: null,
+          })
+          .eq("id", convId);
+        await assertNoError(upConv, "concluirTarefa.espera.conversa", { conversa_id: convId });
+      }
+      if (leadId) {
+        const upLead = await supabase
+          .from("leads")
+          .update({ next_followup: dataISO })
+          .eq("id", leadId);
+        await assertNoError(upLead, "concluirTarefa.espera.lead", { lead_id: leadId });
+      }
+      detalhe = `Em espera até ${dia}${nota ? ` — ${nota}` : ""}`;
+      mensagem = `Atendimento em espera até ${dia}.`;
+    } else if (desfecho.tipo === "encerrar_conversa") {
+      const motivoEnc = (desfecho.detalhe ?? "").trim();
+      const convId = await acharConversa();
+      if (convId) {
+        const upConv = await supabase
+          .from("whatsapp_conversas")
+          .update({
+            status: "encerrado",
+            ia_ativa: false,
+            requer_humano: false,
+            motivo_handoff: motivoEnc.slice(0, 500),
+          })
+          .eq("id", convId);
+        await assertNoError(upConv, "concluirTarefa.encerrar.conversa", { conversa_id: convId });
+      }
+      detalhe = `Conversa encerrada · ${motivoEnc}`;
+      mensagem = "Conversa encerrada.";
     } else if (desfecho.tipo === "avancou_etapa") {
       const novo = desfecho.stage!;
-      const upLead = await supabase.from("leads").update({ stage: novo as any }).eq("id", leadId);
+      const upLead = await supabase.from("leads").update({ stage: novo as any }).eq("id", leadId!);
       await assertNoError(upLead, "concluirTarefa.avanco.lead", { lead_id: leadId, stage: novo });
 
       const insInt = await supabase.from("lead_interactions").insert({
@@ -241,7 +300,7 @@ export const concluirTarefa = createServerFn({ method: "POST" })
     } else if (desfecho.tipo === "perdido") {
       const { marcarLeadPerdidoServidor } = await import("@/lib/leads-perda.server");
       const r = await marcarLeadPerdidoServidor(supabase, {
-        leadId,
+        leadId: leadId!,
         motivo: desfecho.motivo!,
         detalhe: (desfecho.detalhe ?? "").trim() || nota || null,
         ownerId: userId,
@@ -261,7 +320,7 @@ export const concluirTarefa = createServerFn({ method: "POST" })
         concluida_at: new Date().toISOString(),
         desfecho: desfecho.tipo,
         desfecho_detalhe: detalhe,
-        nota_conclusao: nota || null,
+        nota_conclusao: nota || detalhe || null,
       })
       .eq("id", data.id);
     await assertNoError(up, "minha-agenda.concluirTarefa", { id: data.id });
@@ -269,24 +328,27 @@ export const concluirTarefa = createServerFn({ method: "POST" })
     // Duplicatas: outras tarefas abertas do mesmo lead e tipo saem junto.
     // Sem nota → recebe o motivo como nota (o trigger de pós-venda exige nota).
     const detalheDup = `encerrada junto com a tarefa ${tarefa.title ?? data.id}`;
-    for (const semNota of [true, false]) {
-      let qDup = supabase
-        .from("tarefas")
-        .update({
-          status: "concluida",
-          concluida_at: new Date().toISOString(),
-          desfecho: "sem_pendencia",
-          desfecho_detalhe: detalheDup,
-          ...(semNota ? { nota_conclusao: detalheDup } : {}),
-        })
-        .eq("lead_id", leadId)
-        .eq("tipo", tarefa.tipo as string)
-        .in("status", ["pendente", "adiada"])
-        .neq("id", data.id);
-      qDup = semNota ? qDup.is("nota_conclusao", null) : qDup.not("nota_conclusao", "is", null);
-      const upDup = await qDup;
-      await assertNoError(upDup, "concluirTarefa.duplicatas", { lead_id: leadId });
+    if (leadId) {
+      for (const semNota of [true, false]) {
+        let qDup = supabase
+          .from("tarefas")
+          .update({
+            status: "concluida",
+            concluida_at: new Date().toISOString(),
+            desfecho: "sem_pendencia",
+            desfecho_detalhe: detalheDup,
+            ...(semNota ? { nota_conclusao: detalheDup } : {}),
+          })
+          .eq("lead_id", leadId)
+          .eq("tipo", tarefa.tipo as string)
+          .in("status", ["pendente", "adiada"])
+          .neq("id", data.id);
+        qDup = semNota ? qDup.is("nota_conclusao", null) : qDup.not("nota_conclusao", "is", null);
+        const upDup = await qDup;
+        await assertNoError(upDup, "concluirTarefa.duplicatas", { lead_id: leadId });
+      }
     }
+
 
 
     const { encerrarPedidoPorTarefa } = await import("@/lib/pedidos-fluxo.server");
