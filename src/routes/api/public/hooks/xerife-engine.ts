@@ -1449,6 +1449,166 @@ ${crmLeadLink(conv.lead_id)}` : ""
   // duplica mais a mesma cobrança por lead.
   // A régua D+30/45/90 a partir do encerramento do pedido entra no Bloco 5.
 
+  /* ─────────── E1: escalação para cima (tarefas vencidas há 2+ dias úteis) ─────────── */
+  stats["e1_escalado"] = 0;
+  stats["e2_aceite_sem_canal"] = 0;
+  try {
+    const limiteIso = subtractBusinessHours(20, win, new Date()).toISOString();
+    const { data: vencidas, error: errVenc } = await sb
+      .from("tarefas")
+      .select("id, owner_id, tipo, due_date")
+      .in("status", ["pendente", "adiada"])
+      .lt("due_date", limiteIso)
+      .not("owner_id", "is", null);
+    if (errVenc) await registrarFalhaSegura("xerife-engine.E1.tarefas", errVenc);
+
+    const porDono = new Map<string, Map<string, number>>();
+    for (const t of (vencidas ?? []) as Array<{ owner_id: string; tipo: string | null }>) {
+      const m = porDono.get(t.owner_id) ?? new Map<string, number>();
+      const tipo = t.tipo ?? "tarefa";
+      m.set(tipo, (m.get(tipo) ?? 0) + 1);
+      porDono.set(t.owner_id, m);
+    }
+
+    if (porDono.size > 0) {
+      const ids = [...porDono.keys()];
+      const { data: perfis } = await sb
+        .from("profiles")
+        .select("id, name, gestor_id, ativo, deleted_at")
+        .in("id", ids);
+      const perfilPorId = new Map<string, any>(
+        ((perfis ?? []) as any[]).map((p) => [p.id as string, p]),
+      );
+
+      let admins: string[] | null = null;
+      const { usuariosComPermissao } = await import("@/lib/pedidos-fluxo.server");
+
+      for (const [uid, tipos] of porDono) {
+        const perfil = perfilPorId.get(uid);
+        if (!perfil || perfil.ativo === false || perfil.deleted_at) continue;
+        const regra = `E1_vencidas:${uid}`;
+        if (await alreadyActed(sb, regra, null, 22)) continue;
+
+        const total = [...tipos.values()].reduce((a, b) => a + b, 0);
+        const detalhe = [...tipos.entries()]
+          .sort((a, b) => b[1] - a[1])
+          .map(([tipo, n]) => `${n} ${tipo.replace(/_/g, " ")}`)
+          .join(", ");
+        const nome = perfil.name ?? "vendedor";
+        const texto = `${nome}: ${detalhe} (${total} vencidas há 2+ dias úteis) — /equipe?u=${uid}`;
+
+        let destinos: string[] = [];
+        if (perfil.gestor_id) destinos = [perfil.gestor_id as string];
+        else {
+          if (admins === null) admins = await usuariosComPermissao(sb, "usuarios.gerenciar");
+          destinos = admins ?? [];
+        }
+        destinos = [...new Set(destinos)].filter((d) => d && d !== uid);
+        if (destinos.length === 0) continue;
+
+        if (!dryRun) {
+          const ins = await sb.from("notificacoes").insert(
+            destinos.map((d) => ({
+              user_id: d,
+              tipo: "tarefas_vencidas_escalado",
+              titulo: texto,
+              exige_aceite: false,
+            })),
+          );
+          if (ins?.error)
+            await registrarFalhaSegura("xerife-engine.E1.notificacao", ins.error, { owner_id: uid });
+          if (perfil.gestor_id)
+            await notifyOwner(perfil.gestor_id as string, `⏰ *Tarefas vencidas*\n${texto}`);
+          await logAction(sb, {
+            regra,
+            acao: "escalado",
+            payload: { user_id: uid, total },
+          });
+        }
+        plan.push({
+          regra: "E1",
+          lead_id: null,
+          lead_company: null,
+          owner_id: uid,
+          tipo: "escalacao",
+          titulo: texto,
+          descricao: `Ver painel: /equipe?u=${uid}`,
+          motivo: "tarefas vencidas há 2+ dias úteis",
+          prioridade: 1,
+          acao: "registrar_escalacao",
+        });
+        stats["e1_escalado"] = (stats["e1_escalado"] ?? 0) + 1;
+      }
+    }
+  } catch (e) {
+    await registrarFalhaSegura("xerife-engine.E1", e);
+  }
+
+  /* ─────────── E2: aceites pendentes sem canal ─────────── */
+  try {
+    const limiteAceite = subtractBusinessHours(4, win, new Date()).toISOString();
+    const { data: pend, error: errAceite } = await sb
+      .from("notificacoes")
+      .select("id, user_id, titulo, created_at")
+      .eq("exige_aceite", true)
+      .is("aceito_em", null)
+      .lt("created_at", limiteAceite);
+    if (errAceite) await registrarFalhaSegura("xerife-engine.E2.notificacoes", errAceite);
+
+    const porUsuario = new Map<string, number>();
+    for (const n of (pend ?? []) as Array<{ user_id: string }>) {
+      if (!n.user_id) continue;
+      porUsuario.set(n.user_id, (porUsuario.get(n.user_id) ?? 0) + 1);
+    }
+
+    if (porUsuario.size > 0 && !dryRun) {
+      const { data: perfis } = await sb
+        .from("profiles")
+        .select("id, name, telegram_chat_id")
+        .in("id", [...porUsuario.keys()]);
+      const perfilPorId = new Map<string, any>(
+        ((perfis ?? []) as any[]).map((p) => [p.id as string, p]),
+      );
+      const semCanal: string[] = [];
+
+      for (const [uid, n] of porUsuario) {
+        const regra = `E2_aceite:${uid}`;
+        if (await alreadyActed(sb, regra, null, 22)) continue;
+        const perfil = perfilPorId.get(uid);
+        const nome = perfil?.name ?? "usuário";
+        await notifyOwner(
+          uid,
+          `📌 Você tem *${n}* aviso(s) aguardando aceite no CRM. Abra o sino e confirme.`,
+        );
+        if (!perfil?.telegram_chat_id)
+          semCanal.push(`${nome} tem ${n} avisos aguardando aceite (sem Telegram vinculado)`);
+        await logAction(sb, { regra, acao: "reenviado", payload: { user_id: uid, pendentes: n } });
+        stats["e2_aceite_sem_canal"] = (stats["e2_aceite_sem_canal"] ?? 0) + 1;
+      }
+
+      if (semCanal.length && !(await alreadyActed(sb, "E2_admins", null, 22))) {
+        const { usuariosComPermissao } = await import("@/lib/pedidos-fluxo.server");
+        const admins = await usuariosComPermissao(sb, "usuarios.gerenciar");
+        if (admins?.length) {
+          const titulo = semCanal.join(" · ");
+          const ins = await sb.from("notificacoes").insert(
+            admins.map((d: string) => ({
+              user_id: d,
+              tipo: "aceites_sem_canal",
+              titulo: titulo.slice(0, 300),
+              exige_aceite: false,
+            })),
+          );
+          if (ins?.error) await registrarFalhaSegura("xerife-engine.E2.admins", ins.error);
+          await notifyDiretoria(`⚠️ *Avisos sem aceite*\n${semCanal.join("\n")}`);
+          await logAction(sb, { regra: "E2_admins", acao: "avisado", payload: { n: semCanal.length } });
+        }
+      }
+    }
+  } catch (e) {
+    await registrarFalhaSegura("xerife-engine.E2", e);
+  }
+
   return { ran: true, stats, plan, dryRun };
 }
 

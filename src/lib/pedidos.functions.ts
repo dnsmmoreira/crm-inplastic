@@ -78,6 +78,10 @@ export type PedidoRow = {
   /** Dispensa (pedidos legados): quando e por quê a comprovação foi dispensada. */
   comprovacao_dispensada_em: string | null;
   comprovacao_dispensa_motivo: string | null;
+  /** Data acertada com o cliente para a coleta/entrega (etapa Pronto). */
+  coleta_combinada_em: string | null;
+  /** Quando o vendedor registrou o contato de pós-venda. */
+  pos_venda_contato_em: string | null;
   encerrado_em: string | null;
   aprovacao_rota: string | null;
   reprovacao_motivo: string | null;
@@ -126,6 +130,7 @@ export const listPedidos = createServerFn({ method: "GET" })
           "vendedor_proprietario_id, proposta_id, lead_id",
           "modalidade_entrega, entrega_confirmada, entrega_comprovada_em, encerrado_em, aprovacao_rota, reprovacao_motivo",
           "comprovacao_dispensada_em, comprovacao_dispensa_motivo",
+          "coleta_combinada_em, pos_venda_contato_em",
           "propostas:proposta_id(number)",
         ].join(", "),
       )
@@ -243,6 +248,8 @@ export const listPedidos = createServerFn({ method: "GET" })
         entrega_comprovada_em: string | null;
         comprovacao_dispensada_em: string | null;
         comprovacao_dispensa_motivo: string | null;
+        coleta_combinada_em: string | null;
+        pos_venda_contato_em: string | null;
         encerrado_em: string | null;
         aprovacao_rota: string | null;
         reprovacao_motivo: string | null;
@@ -278,6 +285,8 @@ export const listPedidos = createServerFn({ method: "GET" })
         entrega_comprovada_em: r.entrega_comprovada_em ?? null,
         comprovacao_dispensada_em: r.comprovacao_dispensada_em ?? null,
         comprovacao_dispensa_motivo: r.comprovacao_dispensa_motivo ?? null,
+        coleta_combinada_em: r.coleta_combinada_em ?? null,
+        pos_venda_contato_em: r.pos_venda_contato_em ?? null,
         encerrado_em: r.encerrado_em,
         aprovacao_rota: r.aprovacao_rota,
         reprovacao_motivo: r.reprovacao_motivo,
@@ -864,6 +873,11 @@ export type PedidoDetalhes = {
   comprovacao_dispensada_em: string | null;
   comprovacao_dispensa_motivo: string | null;
   comprovacao_dispensada_por_nome: string | null;
+  /** Contato de pós-venda registrado (conversa com o cliente após a entrega). */
+  pos_venda_contato_em: string | null;
+  encerrado_em: string | null;
+  encerrado_motivo: string | null;
+  coleta_combinada_em: string | null;
   /** Admin, `pedidos.operar_producao` ou `pedidos.movimentar`. */
   pode_comprovar_entrega: boolean;
   fiscal_status: string | null;
@@ -920,6 +934,7 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
          entrega_comprovada_em, entregue_em, entrega_recebida_por,
          entrega_observacao, entrega_confirmada_por,
          comprovacao_dispensada_em, comprovacao_dispensada_por, comprovacao_dispensa_motivo,
+         pos_venda_contato_em, coleta_combinada_em, encerrado_em, encerrado_motivo,
          ${APPROVAL_FIELDS}`,
       )
       .eq("id", data.pedido_id)
@@ -1111,6 +1126,10 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
         : null,
       pode_operar: podeOperar,
       entrega_comprovada_em: p.entrega_comprovada_em ?? null,
+      pos_venda_contato_em: p.pos_venda_contato_em ?? null,
+      encerrado_em: p.encerrado_em ?? null,
+      encerrado_motivo: p.encerrado_motivo ?? null,
+      coleta_combinada_em: p.coleta_combinada_em ?? null,
       entregue_em: p.entregue_em ?? null,
       entrega_recebida_por: p.entrega_recebida_por ?? null,
       entrega_observacao: p.entrega_observacao ?? null,
@@ -2352,4 +2371,162 @@ export const dispensarComprovacaoLegado = createServerFn({ method: "POST" })
     );
     for (const p of alvos) await auditarDispensa(sb, userId, p.id, MOTIVO_DISPENSA_LEGADO);
     return { ok: true as const, total: alvos.length };
+  });
+
+/* ───────────────────────── Pós-venda: contato e encerramento ───────────────────────── */
+
+/**
+ * Registra o contato de pós-venda (a conversa com o cliente depois da entrega)
+ * e, quando a comprovação já existe, encerra o pedido na hora.
+ */
+export const registrarContatoPosVenda = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { pedido_id: string; nota: string }) =>
+    z.object({ pedido_id: z.string().uuid(), nota: z.string().max(2000) }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const sb: LooseClient = context.supabase;
+    const userId = context.userId as string;
+
+    const { contatoPosVendaValido, comprovacaoOk } = await import("@/lib/pedido-avanco");
+    if (!contatoPosVendaValido(data.nota)) {
+      return { ok: false as const, message: "Descreva o contato com o cliente (mín. 10 letras)." };
+    }
+
+    const { data: p, error } = await sb
+      .from("pedidos")
+      .select(
+        "id, number, lead_id, encerrado_em, pos_venda_contato_em, entrega_comprovada_em, comprovacao_dispensada_em",
+      )
+      .eq("id", data.pedido_id)
+      .maybeSingle();
+    if (error) throw new Error(`Falha ao carregar pedido: ${error.message}`);
+    if (!p) throw new Error("Pedido não encontrado");
+
+    const agora = new Date().toISOString();
+    const up = await sb
+      .from("pedidos")
+      .update({ pos_venda_contato_em: p.pos_venda_contato_em ?? agora })
+      .eq("id", data.pedido_id);
+    await assertNoError(
+      up,
+      "pedidos.registrarContatoPosVenda/update",
+      { pedido_id: data.pedido_id },
+      "Não foi possível registrar o contato. Tente novamente.",
+    );
+
+    if (p.lead_id) {
+      const ins = await sb.from("lead_interactions").insert({
+        lead_id: p.lead_id,
+        type: "note",
+        content: `Pós-venda do pedido ${p.number}: ${data.nota.trim()}`,
+        created_by: userId,
+      });
+      if (ins?.error)
+        await registrarFalhaSegura("pedidos.registrarContatoPosVenda/interacao", ins.error, {
+          pedido_id: data.pedido_id,
+        });
+    }
+
+    const { encerrarTarefasDoPedido } = await import("@/lib/pedidos-fluxo.server");
+    const { motivoEncerramento } = await import("@/lib/tarefas-encerramento");
+    await encerrarTarefasDoPedido(
+      sb,
+      data.pedido_id,
+      ["pos_venda_atrasado", "pos_venda_pedido", "pos_venda_confirmacao"],
+      motivoEncerramento({ causa: "contato_pos_venda" }),
+    );
+
+    if (!comprovacaoOk(p) || p.encerrado_em) {
+      return {
+        ok: true as const,
+        encerrado: Boolean(p.encerrado_em),
+        aviso: p.encerrado_em
+          ? undefined
+          : "Contato registrado. O pedido encerra quando a comprovação de entrega for anexada.",
+      };
+    }
+
+    return await encerrarPosVendaImpl(sb, data.pedido_id, userId, "contato e comprovação registrados");
+  });
+
+async function encerrarPosVendaImpl(
+  sb: LooseClient,
+  pedidoId: string,
+  userId: string,
+  motivo: string,
+): Promise<{ ok: true; encerrado: boolean; aviso?: string }> {
+  const up = await sb
+    .from("pedidos")
+    .update({
+      encerrado_em: new Date().toISOString(),
+      pos_venda_status: "concluido",
+      encerrado_motivo: motivo,
+    })
+    .eq("id", pedidoId)
+    .is("encerrado_em", null);
+  await assertNoError(
+    up,
+    "pedidos.encerrarPosVenda/update",
+    { pedido_id: pedidoId },
+    "Não foi possível encerrar o pedido. Tente novamente.",
+  );
+
+  const { encerrarTarefasDoPedido } = await import("@/lib/pedidos-fluxo.server");
+  const { motivoEncerramento, todosTiposPedido } = await import("@/lib/tarefas-encerramento");
+  await encerrarTarefasDoPedido(
+    sb,
+    pedidoId,
+    todosTiposPedido(),
+    motivoEncerramento({ causa: "pedido_encerrado" }),
+  );
+
+  const audit = await sb.from("user_audit_log").insert({
+    ator_user_id: userId,
+    alvo_user_id: userId,
+    campo: "pedido_encerrado",
+    valor_novo: pedidoId,
+  });
+  if (audit?.error)
+    await registrarFalhaSegura("pedidos.encerrarPosVenda/auditoria", audit.error, {
+      pedido_id: pedidoId,
+    });
+
+  return { ok: true as const, encerrado: true };
+}
+
+/** Encerrar o pós-venda manualmente — exige contato E comprovação (ou dispensa). */
+export const encerrarPosVendaAgora = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { pedido_id: string }) =>
+    z.object({ pedido_id: z.string().uuid() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const sb: LooseClient = context.supabase;
+    const { data: p, error } = await sb
+      .from("pedidos")
+      .select(
+        "id, encerrado_em, pos_venda_contato_em, entrega_comprovada_em, comprovacao_dispensada_em",
+      )
+      .eq("id", data.pedido_id)
+      .maybeSingle();
+    if (error) throw new Error(`Falha ao carregar pedido: ${error.message}`);
+    if (!p) throw new Error("Pedido não encontrado");
+    if (p.encerrado_em) return { ok: true as const, encerrado: true };
+
+    const { comprovacaoOk, contatoOk } = await import("@/lib/pedido-avanco");
+    if (!comprovacaoOk(p) || !contatoOk(p)) {
+      return {
+        ok: false as const,
+        message: !comprovacaoOk(p)
+          ? "Anexe a comprovação de entrega antes de encerrar."
+          : "Registre o contato de pós-venda antes de encerrar.",
+      };
+    }
+    return await encerrarPosVendaImpl(
+      sb,
+      data.pedido_id,
+      context.userId as string,
+      "encerrado pelo responsável: contato e comprovação registrados",
+    );
   });

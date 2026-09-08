@@ -38,6 +38,7 @@ type Cfg = {
   reciclagem_perdidos_dias: number;
   // Pós-venda
   pos_venda_dias: string;
+  pos_venda_dias_uteis: number;
   // Agenda
   meta_atividades_dia: number;
   dias_uteis_inicio: string;
@@ -103,6 +104,7 @@ export function XerifeConfigForm() {
         carteira_critico_dias: r.carteira_critico_dias ?? 60,
         reciclagem_perdidos_dias: r.reciclagem_perdidos_dias ?? 90,
         pos_venda_dias: (r.pos_venda_dias ?? [3, 15, 45]).join(", "),
+        pos_venda_dias_uteis: r.pos_venda_dias_uteis ?? 5,
         meta_atividades_dia: r.meta_atividades_dia ?? 15,
         dias_uteis_inicio: hhmm(r.dias_uteis_inicio, "08:00"),
         dias_uteis_fim: hhmm(r.dias_uteis_fim, "18:00"),
@@ -164,6 +166,7 @@ export function XerifeConfigForm() {
           carteira_critico_dias: cfg.carteira_critico_dias,
           reciclagem_perdidos_dias: cfg.reciclagem_perdidos_dias,
           pos_venda_dias: parseCsvInts(cfg.pos_venda_dias),
+          pos_venda_dias_uteis: cfg.pos_venda_dias_uteis,
           meta_atividades_dia: cfg.meta_atividades_dia,
           dias_uteis_inicio: `${cfg.dias_uteis_inicio}:00`,
           dias_uteis_fim: `${cfg.dias_uteis_fim}:00`,
@@ -285,6 +288,11 @@ export function XerifeConfigForm() {
             label="Proposta enviada sem resposta (dias)"
             value={cfg.proposta_enviada_dias}
             onChange={(v) => upd({ proposta_enviada_dias: v })}
+          />
+          <NumField
+            label="Pós-venda: dias úteis para encerrar sozinho"
+            value={cfg.pos_venda_dias_uteis}
+            onChange={(v) => upd({ pos_venda_dias_uteis: v })}
           />
         </Section>
 

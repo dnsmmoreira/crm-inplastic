@@ -27,6 +27,7 @@ import { Route as LeadsRouteImport } from './routes/leads'
 import { Route as FrasesProntasRouteImport } from './routes/frases-prontas'
 import { Route as FalhasRouteImport } from './routes/falhas'
 import { Route as EstoqueRouteImport } from './routes/estoque'
+import { Route as EquipeRouteImport } from './routes/equipe'
 import { Route as EmpresasRouteImport } from './routes/empresas'
 import { Route as DefinirSenhaRouteImport } from './routes/definir-senha'
 import { Route as ConversasRouteImport } from './routes/conversas'
@@ -156,6 +157,11 @@ const FalhasRoute = FalhasRouteImport.update({
 const EstoqueRoute = EstoqueRouteImport.update({
   id: '/estoque',
   path: '/estoque',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EquipeRoute = EquipeRouteImport.update({
+  id: '/equipe',
+  path: '/equipe',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EmpresasRoute = EmpresasRouteImport.update({
@@ -390,6 +396,7 @@ export interface FileRoutesByFullPath {
   '/conversas': typeof ConversasRoute
   '/definir-senha': typeof DefinirSenhaRoute
   '/empresas': typeof EmpresasRoute
+  '/equipe': typeof EquipeRoute
   '/estoque': typeof EstoqueRoute
   '/falhas': typeof FalhasRoute
   '/frases-prontas': typeof FrasesProntasRoute
@@ -450,6 +457,7 @@ export interface FileRoutesByTo {
   '/conversas': typeof ConversasRoute
   '/definir-senha': typeof DefinirSenhaRoute
   '/empresas': typeof EmpresasRoute
+  '/equipe': typeof EquipeRoute
   '/estoque': typeof EstoqueRoute
   '/falhas': typeof FalhasRoute
   '/frases-prontas': typeof FrasesProntasRoute
@@ -511,6 +519,7 @@ export interface FileRoutesById {
   '/conversas': typeof ConversasRoute
   '/definir-senha': typeof DefinirSenhaRoute
   '/empresas': typeof EmpresasRoute
+  '/equipe': typeof EquipeRoute
   '/estoque': typeof EstoqueRoute
   '/falhas': typeof FalhasRoute
   '/frases-prontas': typeof FrasesProntasRoute
@@ -573,6 +582,7 @@ export interface FileRouteTypes {
     | '/conversas'
     | '/definir-senha'
     | '/empresas'
+    | '/equipe'
     | '/estoque'
     | '/falhas'
     | '/frases-prontas'
@@ -633,6 +643,7 @@ export interface FileRouteTypes {
     | '/conversas'
     | '/definir-senha'
     | '/empresas'
+    | '/equipe'
     | '/estoque'
     | '/falhas'
     | '/frases-prontas'
@@ -693,6 +704,7 @@ export interface FileRouteTypes {
     | '/conversas'
     | '/definir-senha'
     | '/empresas'
+    | '/equipe'
     | '/estoque'
     | '/falhas'
     | '/frases-prontas'
@@ -754,6 +766,7 @@ export interface RootRouteChildren {
   ConversasRoute: typeof ConversasRoute
   DefinirSenhaRoute: typeof DefinirSenhaRoute
   EmpresasRoute: typeof EmpresasRoute
+  EquipeRoute: typeof EquipeRoute
   EstoqueRoute: typeof EstoqueRoute
   FalhasRoute: typeof FalhasRoute
   FrasesProntasRoute: typeof FrasesProntasRoute
@@ -927,6 +940,13 @@ declare module '@tanstack/react-router' {
       path: '/estoque'
       fullPath: '/estoque'
       preLoaderRoute: typeof EstoqueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/equipe': {
+      id: '/equipe'
+      path: '/equipe'
+      fullPath: '/equipe'
+      preLoaderRoute: typeof EquipeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/empresas': {
@@ -1226,6 +1246,7 @@ const rootRouteChildren: RootRouteChildren = {
   ConversasRoute: ConversasRoute,
   DefinirSenhaRoute: DefinirSenhaRoute,
   EmpresasRoute: EmpresasRoute,
+  EquipeRoute: EquipeRoute,
   EstoqueRoute: EstoqueRoute,
   FalhasRoute: FalhasRoute,
   FrasesProntasRoute: FrasesProntasRoute,

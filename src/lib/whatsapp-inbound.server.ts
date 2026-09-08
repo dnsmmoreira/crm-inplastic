@@ -323,6 +323,19 @@ export async function processarEntradaWhatsapp(
     return { ok: true, conversaId, tipo, n8n: false };
   }
 
+  // 5d) Fora do horário de atendimento: aviso curto ao cliente (1x por período)
+  // e tarefa para o dono logo na abertura do próximo dia útil.
+  if (!silencioso && conversaId) {
+    try {
+      const { tratarMensagemForaHorario } = await import("@/lib/fora-horario.server");
+      await tratarMensagemForaHorario(supabaseAdmin, { conversaId, texto: message });
+    } catch (e) {
+      const { registrarFalhaSegura } = await import("@/lib/guard-erros");
+      await registrarFalhaSegura("whatsapp-inbound/fora-horario", e, { conversa_id: conversaId });
+    }
+  }
+
+
   // 6) Notifica o n8n se a IA estiver ativa.
   const n8nUrl = process.env.N8N_WEBHOOK_URL;
   const n8nSecret = process.env.N8N_SECRET;

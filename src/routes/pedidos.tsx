@@ -724,6 +724,27 @@ function PedidoCard({
       </div>
 
       <div className="mt-2 flex flex-wrap items-center gap-1">
+        {pedido.stage === "pronto" &&
+          (pedido.coleta_combinada_em ? (
+            <Badge className="text-[10px] px-1.5 py-0 bg-emerald-500/15 text-emerald-700 border-emerald-500/30">
+              Coleta combinada
+            </Badge>
+          ) : (
+            <Badge className="text-[10px] px-1.5 py-0 bg-amber-500/15 text-amber-700 border-amber-500/30">
+              Sem data de coleta
+            </Badge>
+          ))}
+        {pedido.stage === "pos_venda" &&
+          !pedido.encerrado_em &&
+          (pedido.pos_venda_contato_em ? (
+            <Badge className="text-[10px] px-1.5 py-0 bg-emerald-500/15 text-emerald-700 border-emerald-500/30">
+              Contato feito
+            </Badge>
+          ) : (
+            <Badge className="text-[10px] px-1.5 py-0 bg-amber-500/15 text-amber-700 border-amber-500/30">
+              Sem contato
+            </Badge>
+          ))}
         {pedido.proposta_number && (
           <Badge variant="outline" className="text-[10px] px-1.5 py-0" title="Proposta origem">
             <FileText className="h-2.5 w-2.5 mr-1" />
