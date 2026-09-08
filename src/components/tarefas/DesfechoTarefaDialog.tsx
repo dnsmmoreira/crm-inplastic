@@ -163,6 +163,34 @@ export function DesfechoTarefaDialog({
           </div>
         )}
 
+        {tipo === "data_combinada" && (
+          <div className="space-y-2">
+            <Label>
+              Observação da combinação <span className="text-destructive">*</span>
+            </Label>
+            <Textarea
+              rows={2}
+              value={detalhe}
+              onChange={(e) => setDetalhe(e.target.value)}
+              placeholder="Ex: transportadora retira pela manhã; falado com o comprador"
+            />
+          </div>
+        )}
+
+        {tipo === "contato_registrado" && (
+          <div className="space-y-2">
+            <Label>
+              O que o cliente disse? <span className="text-destructive">*</span>
+            </Label>
+            <Textarea
+              rows={2}
+              value={detalhe}
+              onChange={(e) => setDetalhe(e.target.value)}
+              placeholder="Ex: recebeu tudo certo, sem avarias; pediu para avisar do próximo lote"
+            />
+          </div>
+        )}
+
         {tipo === "reemitir_proposta" && (
           <p className="text-xs text-muted-foreground">
             Vamos criar um novo rascunho com os mesmos itens, para você revisar os preços antes de enviar.
