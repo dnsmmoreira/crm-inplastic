@@ -18,7 +18,7 @@ import {
 import { cn } from "@/lib/utils";
 import { MOTIVOS_PERDA, MOTIVOS_PERDA_DESCRICAO } from "@/lib/motivos-perda";
 import {
-  DESFECHOS,
+  desfechosParaTipo,
   etapasAvancoPermitidas,
   proximoDiaUtil,
   somarDiasUteis,
@@ -36,7 +36,7 @@ const STAGE_LABEL: Record<string, string> = {
 };
 
 export function DesfechoTarefaDialog({
-  open, onOpenChange, titulo, stageAtual, pendente, onConfirmar,
+  open, onOpenChange, titulo, stageAtual, pendente, onConfirmar, tipoTarefa, temLead = true,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
@@ -44,6 +44,10 @@ export function DesfechoTarefaDialog({
   stageAtual: string | null | undefined;
   pendente?: boolean;
   onConfirmar: (d: DesfechoInput) => void;
+  /** Tipo da tarefa — define quais desfechos aparecem. */
+  tipoTarefa?: string | null;
+  /** Tarefa sem lead (conversa avulsa) não oferece "perdido". */
+  temLead?: boolean;
 }) {
   const [tipo, setTipo] = useState<string>("");
   const [data, setData] = useState("");
@@ -55,6 +59,10 @@ export function DesfechoTarefaDialog({
 
   const minData = useMemo(() => proximoDiaUtil(), []);
   const permitidas = etapasAvancoPermitidas(stageAtual);
+  const opcoes = useMemo(
+    () => desfechosParaTipo(tipoTarefa, { temLead }),
+    [tipoTarefa, temLead],
+  );
 
   const limpar = () => {
     setTipo(""); setData(""); setStage(""); setMotivo(""); setDetalhe(""); setNota(""); setErro(null);
@@ -62,11 +70,12 @@ export function DesfechoTarefaDialog({
 
   const confirmar = () => {
     const input: DesfechoInput = { tipo, data, stage, motivo, detalhe, nota };
-    const v = validarDesfecho(input, { stageAtual });
+    const v = validarDesfecho(input, { stageAtual, tipoTarefa, temLead });
     if (!v.ok) { setErro(v.erro); return; }
     setErro(null);
     onConfirmar(input);
   };
+
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) limpar(); onOpenChange(o); }}>
