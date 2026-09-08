@@ -67,6 +67,16 @@ export const DESFECHOS = [
 
 export type DesfechoTipo = (typeof DESFECHOS)[number]["tipo"];
 
+/**
+ * Desfechos que NÃO vêm de uma escolha do vendedor:
+ *  - 'manual': rede de segurança do trigger (marcado como feito na lista antiga);
+ *  - 'automatico': o sistema encerrou porque a tarefa perdeu o motivo
+ *    (ver `src/lib/tarefas-encerramento.ts`).
+ */
+export const DESFECHOS_SISTEMA = ["manual", "automatico"] as const;
+
+export type DesfechoRegistrado = DesfechoTipo | (typeof DESFECHOS_SISTEMA)[number];
+
 export function isDesfechoTipo(v: unknown): v is DesfechoTipo {
   return typeof v === "string" && DESFECHOS.some((d) => d.tipo === v);
 }

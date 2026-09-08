@@ -14,7 +14,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { requireXerifeCronAuth, cronJsonResponse } from "@/lib/xerife/cron-auth.server";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { hasOpenTask, logAction } from "@/lib/xerife/dedupe.server";
+import { logAction } from "@/lib/xerife/dedupe.server";
 import { notifyDiretoria } from "@/lib/xerife/notify.server";
 import {
   etapasComCadencia,
@@ -26,8 +26,10 @@ import {
 import {
   destinatariosFinanceiro,
   destinatariosOperacional,
+  encerrarTarefasDoPedido,
   notificarUsuarios,
 } from "@/lib/pedidos-fluxo.server";
+import { motivoEncerramento } from "@/lib/tarefas-encerramento";
 import { stageLabel } from "@/lib/pedidos-stages";
 import {
   deveEscalarFinanceiro,
@@ -112,7 +114,7 @@ async function hasOpenTaskForPedido(sb: SB, pedidoId: string, tipo: string): Pro
     .select("id", { count: "exact", head: true })
     .eq("tipo", tipo)
     .in("status", ["pendente", "adiada"])
-    .filter("descricao", "ilike", `%${pedidoId}%`);
+    .eq("pedido_id", pedidoId);
   return (count ?? 0) > 0;
 }
 
@@ -143,7 +145,6 @@ type Stats = {
   nf_atrasada: number;
   previsao_atrasada: number;
   ocorrencia_aberta: number;
-  pos_venda_entrega: number;
   pos_venda_recompra: number;
   comprovacao_entrega: number;
   financeiro_escalado: number;
@@ -165,7 +166,6 @@ async function runXerifePedidos(
     nf_atrasada: 0,
     previsao_atrasada: 0,
     ocorrencia_aberta: 0,
-    pos_venda_entrega: 0,
     pos_venda_recompra: 0,
     comprovacao_entrega: 0,
     financeiro_escalado: 0,
@@ -211,6 +211,7 @@ async function runXerifePedidos(
     // rodada, mas a falha precisa aparecer em /falhas.
     const insTarefa = await sb.from("tarefas").insert({
       lead_id: t.leadId,
+      pedido_id: t.pedidoId,
       owner_id: t.ownerId,
       title: t.titulo,
       descricao: descricaoComTag,
@@ -346,8 +347,20 @@ async function runXerifePedidos(
       // Uma tarefa por responsável do grupo; dedupe por (regra, pedido, dono).
       let criou = false;
       for (const ownerId of alvos) {
+        const regraCadencia = `pedido_cadencia:${p.stage}:D${passo.passo}:${ownerId}`;
+        // Cadência SUBSTITUI: o toque anterior do mesmo (pedido, dono, tipo)
+        // morre quando o próximo nasce — nunca empilha na agenda.
+        if (!dryRun && !(await alreadyActedPedido(sb, regraCadencia, p.id, 22))) {
+          await encerrarTarefasDoPedido(
+            sb,
+            p.id,
+            [passo.tipo],
+            motivoEncerramento({ causa: "cadencia_substituida", toque: passo.nivel }),
+            { ownerId },
+          );
+        }
         const ok = await criarTarefa({
-          regra: `pedido_cadencia:${p.stage}:D${passo.passo}:${ownerId}`,
+          regra: regraCadencia,
           pedidoId: p.id,
           pedidoNumber: p.number,
           leadId: p.lead_id ?? null,
@@ -529,7 +542,8 @@ async function runXerifePedidos(
         ownerId: owner,
         tipo: "ocorrencia_aberta",
         titulo: `Ocorrência aberta há ${horas}h — Pedido ${p.number}`,
-        descricao: `[${o.severidade ?? "media"}] ${o.tipo}: ${o.descricao ?? ""}`.trim(),
+        descricao:
+          `[ocorrencia:${o.id}] [${o.severidade ?? "media"}] ${o.tipo}: ${o.descricao ?? ""}`.trim(),
         motivo: `Ocorrência não resolvida há ${horas}h`,
         prioridade: (o.severidade ?? "").toLowerCase() === "alta" ? 1 : 2,
         janelaHoras: 24,
@@ -538,45 +552,9 @@ async function runXerifePedidos(
     }
   }
 
-  // ─────────────── R6: Pós-venda — confirmação de entrega ───────────────
-  {
-    const alvoInicio = new Date(
-      now.getTime() - (POS_VENDA_ENTREGA_DIAS + 1) * 86400_000,
-    ).toISOString();
-    const alvoFim = new Date(now.getTime() - POS_VENDA_ENTREGA_DIAS * 86400_000).toISOString();
-    const { data: pedidos } = await sb
-      .from("pedidos")
-      .select("id, number, entregue_em, vendedor_proprietario_id, responsavel_atual_id, lead_id")
-      .not("entregue_em", "is", null)
-      .gte("entregue_em", alvoInicio)
-      .lt("entregue_em", alvoFim)
-      .limit(500);
-
-    for (const p of pedidos ?? []) {
-      // O motor comercial (bloco C) cria a mesma tarefa por lead em D+3 do ganho.
-      // Respeitamos a chave dele (lead_id, tipo) para não duplicar no mesmo cliente.
-      if (p.lead_id && (await hasOpenTask(sb, p.lead_id, "pos_venda_confirmacao"))) {
-        stats.skipped_dedupe++;
-        continue;
-      }
-      const owner = await donoEfetivo(p.vendedor_proprietario_id ?? p.responsavel_atual_id);
-      if (!owner) continue;
-      const ok = await criarTarefa({
-        regra: "pos_venda_pedido_entregue",
-        pedidoId: p.id,
-        pedidoNumber: p.number,
-        leadId: p.lead_id ?? null,
-        ownerId: owner,
-        tipo: "pos_venda_confirmacao",
-        titulo: `Pós-venda: confirmar entrega — Pedido ${p.number}`,
-        descricao: `Pedido entregue há ${POS_VENDA_ENTREGA_DIAS}d. Confirmar recebimento e satisfação com o cliente.`,
-        motivo: `+${POS_VENDA_ENTREGA_DIAS}d após entregue_em`,
-        prioridade: 2,
-        janelaHoras: 24 * 30,
-      });
-      if (ok) stats.pos_venda_entrega++;
-    }
-  }
+  // R6 removida: o pós-venda por pedido é criado UMA vez pelo fluxo
+  // (`pos_venda_pedido` em aoEntrarNaEtapa('pos_venda')). Um motor por assunto.
+  // A régua D+30/45/90 a partir do encerramento do pedido entra no Bloco 5.
 
   // ────── R6b: Pós-venda sem comprovação de entrega (foto + documento) ──────
   {

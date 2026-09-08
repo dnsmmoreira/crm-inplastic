@@ -414,7 +414,8 @@ export const moverParaGanho = createServerFn({ method: "POST" })
  * - fiscal_status = 'nao_iniciado', pos_venda_status = 'nao_iniciado'
  * - vendedor_proprietario_id = owner da proposta
  * - responsavel_atual_id = null ("Julia" não existe como usuário no projeto);
- *   equipe_responsavel = 'Julia (Operações)' documenta a intenção
+ *   equipe_responsavel = null (nome fictício não é gravado: o quadro mostra
+ *   "Sem responsável" até alguém assumir o pedido)
  * - proposta_snapshot = cópia imutável (proposta + itens + parcelas + emitter + lead)
  * - copia itens de proposta_itens para pedido_itens
  * - número via next_pedido_number(ano corrente)
@@ -508,7 +509,7 @@ async function ensurePedidoFromProposta(
       owner_id: proposta.owner_id,
       vendedor_proprietario_id: proposta.owner_id,
       responsavel_atual_id: null,
-      equipe_responsavel: "Julia (Operações)",
+      equipe_responsavel: null,
       status: "novo",
       stage: decisao.stage,
       aprovacao_rota: decisao.rota,

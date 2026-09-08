@@ -233,7 +233,9 @@ export function textoCadencia(
       ? " — ESCALADO À GESTÃO"
       : "";
   return {
-    titulo: `${p.nivel}ª cobrança · ${args.label}: Pedido ${args.numero} há ${args.dias}d${sufixo}`,
+    titulo:
+      `${p.nivel}ª cobrança · toque ${p.nivel}/${p.regua.length} · ${args.label}: ` +
+      `Pedido ${args.numero} há ${args.dias}d${sufixo}`,
     descricao:
       `${p.acao}. Pedido ${args.numero} está em "${args.label}" há ${args.dias} dias ` +
       `(régua ${p.regua.join("/")} dias, toque ${p.nivel}/${p.regua.length})` +
