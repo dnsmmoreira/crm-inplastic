@@ -417,23 +417,23 @@ const seedTasks: Task[] = [
     leadId: "l1",
     title: "Ligar para Marcos — revisão contrato",
     dueDate: iso(0),
-    done: false,
+    status: "pendente",
   },
   {
     id: "t2",
     leadId: "l4",
     title: "Enviar proposta inicial AgroExport",
     dueDate: iso(0),
-    done: false,
+    status: "pendente",
   },
-  { id: "t3", leadId: "l3", title: "Agendar visita técnica Ápice", dueDate: iso(1), done: false },
-  { id: "t4", leadId: "l2", title: "Follow-up Renata (proposta)", dueDate: iso(2), done: false },
+  { id: "t3", leadId: "l3", title: "Agendar visita técnica Ápice", dueDate: iso(1), status: "pendente" },
+  { id: "t4", leadId: "l2", title: "Follow-up Renata (proposta)", dueDate: iso(2), status: "pendente" },
   {
     id: "t5",
     leadId: "l6",
     title: "Retorno financeiro Bebidas Cristal",
     dueDate: iso(3),
-    done: false,
+    status: "pendente",
   },
 ];
 
@@ -1045,8 +1045,9 @@ type CrmState = {
   moveLead: (id: string, stage: StageId) => void;
   addInteraction: (leadId: string, i: Omit<Interaction, "id">) => void;
   addAiAction: (leadId: string, a: Omit<AiAction, "id">) => void;
-  addTask: (t: Omit<Task, "id" | "done">) => void;
-  toggleTask: (id: string) => void;
+  addTask: (t: Omit<Task, "id" | "status">) => void;
+  /** Reflete no estado local o resultado de uma baixa/reabertura feita no servidor. */
+  setTaskStatus: (id: string, patch: Partial<Task>) => void;
   removeTask: (id: string) => void;
   receiveWhatsapp: (m: Omit<WhatsappMessage, "id" | "receivedAt" | "status">) => void;
   convertWhatsappToLead: (id: string) => string | null;
@@ -1202,9 +1203,9 @@ export const useCrm = create<CrmState>()((set, get) => ({
         l.id === leadId ? { ...l, aiActions: [{ ...a, id: uid() }, ...(l.aiActions ?? [])] } : l,
       ),
     })),
-  addTask: (t) => set((s) => ({ tasks: [...s.tasks, { ...t, id: uid(), done: false }] })),
-  toggleTask: (id) =>
-    set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? { ...t, done: !t.done } : t)) })),
+  addTask: (t) => set((s) => ({ tasks: [...s.tasks, { ...t, id: uid(), status: "pendente" }] })),
+  setTaskStatus: (id, patch) =>
+    set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? { ...t, ...patch } : t)) })),
   removeTask: (id) =>
     set((s) => {
       markDeleted("tasks", id);
