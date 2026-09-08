@@ -73,6 +73,8 @@ export function useBaixaTarefa() {
       onOpenChange={(o) => !o && setAlvo(null)}
       titulo={alvo?.tarefa.title ?? ""}
       stageAtual={alvo?.stageAtual ?? null}
+      tipoTarefa={alvo?.tarefa.tipo ?? null}
+      temLead={!!alvo?.tarefa.leadId}
       pendente={mConcluir.isPending}
       onConfirmar={(d) => alvo && mConcluir.mutate({ id: alvo.tarefa.id, desfecho: d })}
     />

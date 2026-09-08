@@ -133,6 +133,8 @@ function MinhaAgendaPage() {
         onOpenChange={(o) => !o && setDesfecho(null)}
         titulo={desfecho?.title ?? ""}
         stageAtual={desfecho?.lead?.stage ?? null}
+        tipoTarefa={desfecho?.tipo ?? null}
+        temLead={!!desfecho?.lead_id}
         pendente={mConcluir.isPending}
         onConfirmar={(d) => desfecho && mConcluir.mutate({ id: desfecho.id, desfecho: d })}
       />
