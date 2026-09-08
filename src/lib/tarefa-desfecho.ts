@@ -18,6 +18,7 @@ export const TIPOS_COMERCIAIS_XERIFE = [
   "cadencia_proposta",
   "resgate_carteira",
   "reativacao_lead",
+  "conversa_parada",
 ] as const;
 
 export type TipoComercialXerife = (typeof TIPOS_COMERCIAIS_XERIFE)[number];
@@ -32,14 +33,17 @@ export type TarefaParaDesfecho = {
 /**
  * Tarefas manuais, de pedido e de pós-venda seguem o fluxo antigo (nota;
  * pós-venda exige nota >= 10). Só tarefa comercial do Xerife ligada a um lead
- * exige desfecho.
+ * exige desfecho — exceção: `conversa_parada` pode não ter lead (conversa
+ * avulsa) e mesmo assim exige desfecho.
  */
 export function exigeDesfecho(t: TarefaParaDesfecho): boolean {
   if (t.origem !== "xerife") return false;
-  if (!t.lead_id) return false;
   if (t.pedido_id) return false;
+  if (t.tipo === "conversa_parada") return true;
+  if (!t.lead_id) return false;
   return (TIPOS_COMERCIAIS_XERIFE as readonly string[]).includes(t.tipo ?? "");
 }
+
 
 export const DESFECHOS = [
   {
