@@ -115,7 +115,10 @@ export function DesfechoTarefaDialog({
           ))}
         </div>
 
-        {(tipo === "retorno_agendado" || tipo === "em_espera" || tipo === "prorrogar_proposta") && (
+        {(tipo === "retorno_agendado" ||
+          tipo === "em_espera" ||
+          tipo === "prorrogar_proposta" ||
+          tipo === "data_combinada") && (
           <div className="space-y-2">
             <Label>
               {tipo === "em_espera"
