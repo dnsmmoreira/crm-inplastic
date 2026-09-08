@@ -22,7 +22,8 @@ import {
   isBusinessNow,
   type BusinessWindow,
 } from "@/lib/xerife/businessTime.server";
-import { alreadyActed, hasOpenTask, logAction } from "@/lib/xerife/dedupe.server";
+import { alreadyActed, temTarefaAbertaOuRecente, logAction } from "@/lib/xerife/dedupe.server";
+import { carenciaHorasUteis, sufixoCobranca } from "@/lib/tarefa-desfecho";
 import { notifyOwner, notifyDiretoria, crmLeadLink } from "@/lib/xerife/notify.server";
 
 // ─── Helpers de contexto para títulos de tarefas (regras gerais):
@@ -225,14 +226,25 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
     if (dryRun) return;
     // Dono isento não é cobrado pelo Xerife — nada a criar.
     if (t.owner_id && isentos.has(t.owner_id)) return;
+    // Numeração da cobrança: quantas vezes já cobramos este (lead, tipo) em 30 dias.
+    const desde30 = new Date(Date.now() - 30 * 86400_000).toISOString();
+    const { count: jaCobradas } = await sb
+      .from("tarefas")
+      .select("id", { count: "exact", head: true })
+      .eq("lead_id", t.lead_id)
+      .eq("tipo", t.tipo)
+      .eq("status", "concluida")
+      .gte("concluida_at", desde30);
+    const cobrancaN = (jaCobradas ?? 0) + 1;
     // REGISTRAR E SEGUIR: cron; uma tarefa perdida é recriada na próxima
     // rodada, mas a falha precisa ficar visível em /falhas.
     const insTarefa = await sb.from("tarefas").insert({
       lead_id: t.lead_id,
       owner_id: t.owner_id,
-      title: t.titulo,
+      title: `${t.titulo}${sufixoCobranca(cobrancaN)}`,
       descricao: t.descricao,
       tipo: t.tipo,
+      cobranca_n: cobrancaN,
       kind: t.tipo,
       prioridade: t.prioridade,
       hora_sugerida: t.horaSugerida ?? null,
@@ -426,7 +438,7 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
       if (l.last_interaction_at || l.last_contact_at) continue;
       const regra = "A1_primeiro_contato";
       if (await alreadyActed(sb, regra, l.id, 24)) continue;
-      if (await hasOpenTask(sb, l.id, "primeiro_contato")) continue;
+      if (await temTarefaAbertaOuRecente(sb, l.id, "primeiro_contato", carenciaHorasUteis("primeiro_contato"), win, now)) continue;
 
       const hora = fmtHHhMM(l.created_at);
       const canal = canalLabel((l as any).origem ?? (l as any).source);
@@ -492,7 +504,7 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
       for (const l of leads ?? []) {
         const regra = `A2_lead_parado_${stage}`;
         if (await alreadyActed(sb, regra, l.id, 24)) continue;
-        if (await hasOpenTask(sb, l.id, "follow_up")) continue;
+        if (await temTarefaAbertaOuRecente(sb, l.id, "follow_up", carenciaHorasUteis("follow_up"), win, now)) continue;
 
         const diasParado = diasDesde(l.etapa_changed_at, now) ?? maxDias;
         const etapaLabel = STAGE_LABEL[stage] ?? stage;
@@ -564,7 +576,7 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
 
       const regra = "A3_sem_resposta";
       if (await alreadyActed(sb, regra, l.id, 12)) continue;
-      if (await hasOpenTask(sb, l.id, "resposta_pendente")) continue;
+      if (await temTarefaAbertaOuRecente(sb, l.id, "resposta_pendente", carenciaHorasUteis("resposta_pendente"), win, now)) continue;
 
       const hEspera = horasDesde(l.ultima_msg_cliente_at, now);
       await criarTarefa({
@@ -745,7 +757,7 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
       if (await alreadyActed(sb, regra, l.id, 22 * 60)) continue;
 
       if (!ultimo) {
-        if (await hasOpenTask(sb, l.id, "retomar_contato")) continue;
+        if (await temTarefaAbertaOuRecente(sb, l.id, "retomar_contato", carenciaHorasUteis("retomar_contato"), win, now)) continue;
         await criarTarefa({
           regra,
           lead_id: l.id,
@@ -839,7 +851,7 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
     for (const l of leads ?? []) {
       const regra = "B1_carteira_45";
       if (await alreadyActed(sb, regra, l.id, 7 * 24)) continue;
-      if (await hasOpenTask(sb, l.id, "resgate_carteira")) continue;
+      if (await temTarefaAbertaOuRecente(sb, l.id, "resgate_carteira", carenciaHorasUteis("resgate_carteira"), win, now)) continue;
 
       const diasSem45 = diasDesde(l.last_contact_at, now);
       await criarTarefa({
@@ -883,7 +895,7 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
       const regra = "B2_carteira_60";
       if (await alreadyActed(sb, regra, l.id, 7 * 24)) continue;
 
-      if (!(await hasOpenTask(sb, l.id, "resgate_carteira"))) {
+      if (!(await temTarefaAbertaOuRecente(sb, l.id, "resgate_carteira", carenciaHorasUteis("resgate_carteira"), win, now))) {
         const diasSem60 = diasDesde(l.last_contact_at, now);
         await criarTarefa({
           regra,
@@ -930,7 +942,7 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
     for (const l of leads ?? []) {
       const regra = "B3_reciclagem";
       if (await alreadyActed(sb, regra, l.id, 30 * 24)) continue;
-      if (await hasOpenTask(sb, l.id, "reativacao_lead")) continue;
+      if (await temTarefaAbertaOuRecente(sb, l.id, "reativacao_lead", carenciaHorasUteis("reativacao_lead"), win, now)) continue;
 
       const diasPerdido = diasDesde((l as any).etapa_changed_at ?? l.updated_at, now);
       await criarTarefa({
@@ -984,7 +996,7 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
       for (const l of leads ?? []) {
         const regra = `C_pos_venda_D${d}`;
         if (await alreadyActed(sb, regra, l.id, 30 * 24)) continue;
-        if (await hasOpenTask(sb, l.id, tipo)) continue;
+        if (await temTarefaAbertaOuRecente(sb, l.id, tipo, carenciaHorasUteis(tipo), win, now)) continue;
 
         const fechadoDDMM = fmtDDMM(l.etapa_changed_at);
         await criarTarefa({
