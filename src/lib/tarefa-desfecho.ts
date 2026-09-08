@@ -171,6 +171,9 @@ export function carenciaHorasUteis(tipo: string | null | undefined): number {
       return 70; // ~7 dias úteis
     case "reativacao_lead":
       return 300; // ~30 dias úteis
+    case "conversa_parada":
+      return 30; // 3 dias úteis
+
     default:
       if (typeof tipo === "string" && tipo.startsWith("pos_venda_")) return 300;
       return 0;
