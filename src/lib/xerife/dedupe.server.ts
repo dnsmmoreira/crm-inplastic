@@ -42,6 +42,34 @@ export async function hasOpenTask(
   return (count ?? 0) > 0;
 }
 
+/**
+ * Dedupe com CARÊNCIA: além da tarefa pendente/adiada, considera tarefa do
+ * mesmo (lead, tipo) CONCLUÍDA há menos de `carenciaHorasUteis` horas ÚTEIS.
+ *
+ * Sem isso, concluir a tarefa sem mudar o lead fazia o Xerife recriar a mesma
+ * cobrança na rodada seguinte (15 min depois).
+ */
+export async function temTarefaAbertaOuRecente(
+  sb: SB,
+  leadId: string,
+  tipo: string,
+  carenciaHorasUteis: number,
+  win: BusinessWindow,
+  now: Date = new Date(),
+): Promise<boolean> {
+  if (await hasOpenTask(sb, leadId, tipo)) return true;
+  if (!carenciaHorasUteis || carenciaHorasUteis <= 0) return false;
+  const desdeIso = subtractBusinessHours(carenciaHorasUteis, win, now).toISOString();
+  const { count } = await sb
+    .from("tarefas")
+    .select("id", { count: "exact", head: true })
+    .eq("lead_id", leadId)
+    .eq("tipo", tipo)
+    .eq("status", "concluida")
+    .gte("concluida_at", desdeIso);
+  return (count ?? 0) > 0;
+}
+
 export async function logAction(
   sb: SB,
   args: {
