@@ -21,6 +21,9 @@ const TIPOS_DE_NOTIFICACAO = new Set([
   "conversa_sem_responsavel",
   "handoff_sem_dono",
   "alerta_nao_entregue",
+  "pos_venda_sem_comprovacao_escalado",
+  "tarefas_vencidas_escalado",
+  "aceites_sem_canal",
 ]);
 
 const ARQUIVOS = [

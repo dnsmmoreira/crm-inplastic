@@ -2955,6 +2955,7 @@ export type Database = {
         Row: {
           atribuido_em: string | null
           atribuido_para: string | null
+          auto_resposta_em: string | null
           created_at: string
           em_espera_desde: string | null
           em_espera_por: string | null
@@ -2976,6 +2977,7 @@ export type Database = {
         Insert: {
           atribuido_em?: string | null
           atribuido_para?: string | null
+          auto_resposta_em?: string | null
           created_at?: string
           em_espera_desde?: string | null
           em_espera_por?: string | null
@@ -2997,6 +2999,7 @@ export type Database = {
         Update: {
           atribuido_em?: string | null
           atribuido_para?: string | null
+          auto_resposta_em?: string | null
           created_at?: string
           em_espera_desde?: string | null
           em_espera_por?: string | null

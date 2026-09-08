@@ -49,6 +49,7 @@ import {
 } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ComprovacaoEntregaBlock } from "@/components/pedidos/ComprovacaoEntregaBlock";
+import { PosVendaFechamentoBlock } from "@/components/pedidos/PosVendaFechamentoBlock";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -239,7 +240,10 @@ function PedidoDetailBody({
 
             <>
               {pedido.stage === "pos_venda" && (
-                <ComprovacaoEntregaBlock pedido={pedido} onChanged={onChanged} />
+                <>
+                  <ComprovacaoEntregaBlock pedido={pedido} onChanged={onChanged} />
+                  <PosVendaFechamentoBlock pedido={pedido} onChanged={onChanged} />
+                </>
               )}
               <ResponsavelOperacionalBlock pedido={pedido} onChanged={onChanged} />
               <ItensBlock pedido={pedido} comValores={podeVerValores} />

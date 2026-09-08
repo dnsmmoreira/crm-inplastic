@@ -213,6 +213,32 @@ async function runFechamento(force = false): Promise<{
   } catch (e) {
     console.error("[xerife-fechamento] snapshot_metas_mes falhou:", e);
   }
+  // Seção "SEM PRÓXIMO ATO" — visão consolidada da equipe
+  try {
+    const { coletarResumoEquipe } = await import("@/lib/equipe.server");
+    const resumo = await coletarResumoEquipe(sb, { userIds: null });
+    const t = resumo.totais;
+    dLines.push("");
+    dLines.push(`🚨 *SEM PRÓXIMO ATO: ${t.semProximoAto}*`);
+    dLines.push(`💬 Conversas paradas: ${t.conversasParadas}`);
+    dLines.push(`⏰ Tarefas vencidas: ${t.tarefasVencidas}`);
+    dLines.push(`📄 Propostas vencidas: ${t.propostasVencidas}`);
+    dLines.push(`📝 Rascunhos parados: ${t.rascunhosParados}`);
+    dLines.push(`📦 Pedidos sem dono: ${t.pedidosSemResponsavel}`);
+    dLines.push(`🤝 Pós-venda atrasado: ${t.posVendaAtrasado}`);
+    dLines.push(`↩️ Retornos combinados vencidos: ${t.retornosVencidos}`);
+    const comVencidas = resumo.linhas.filter((l) => l.tarefasVencidas > 0).slice(0, 10);
+    if (comVencidas.length) {
+      dLines.push("");
+      dLines.push("Tarefas vencidas por pessoa:");
+      comVencidas.forEach((l) => dLines.push(`• ${l.nome}: ${l.tarefasVencidas}`));
+    }
+    dLines.push("");
+    dLines.push("👉 crm.inplastic.com.br/equipe");
+  } catch (e) {
+    await registrarFalhaSegura("xerife-fechamento.sem_proximo_ato", e);
+  }
+
 
   if (travadas.length) {
     dLines.push("");
