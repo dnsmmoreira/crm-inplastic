@@ -1069,7 +1069,7 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
         }
       }
 
-      if (!dryRun && leadId && (await temTarefaAbertaOuRecente(sb, leadId, "retomar_contato", 24)))
+      if (!dryRun && leadId && (await temTarefaAbertaOuRecente(sb, leadId, "retomar_contato", carenciaHorasUteis("retomar_contato"), win, agora)))
         continue;
 
       await criarTarefa({

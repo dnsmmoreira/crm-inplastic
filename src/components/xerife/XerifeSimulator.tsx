@@ -163,7 +163,7 @@ export function XerifeSimulator({
                     <div className="flex flex-wrap items-center gap-1.5">
                       <button
                         className="text-sm font-medium hover:text-primary text-left"
-                        onClick={() => onOpenLead?.(p.lead_id)}
+                        onClick={() => p.lead_id && onOpenLead?.(p.lead_id)}
                       >
                         {p.lead_company ?? "—"} <ChevronRight className="inline h-3 w-3" />
                       </button>

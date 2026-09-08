@@ -288,7 +288,7 @@ export const concluirTarefa = createServerFn({ method: "POST" })
       await assertNoError(upLead, "concluirTarefa.avanco.lead", { lead_id: leadId, stage: novo });
 
       const insInt = await supabase.from("lead_interactions").insert({
-        lead_id: leadId,
+        lead_id: leadId!,
         owner_id: userId,
         type: "note",
         content: `Etapa avançada para ${novo} pelo desfecho da tarefa${nota ? ` — ${nota}` : ""}`,
