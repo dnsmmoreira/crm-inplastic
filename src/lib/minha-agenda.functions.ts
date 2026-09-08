@@ -256,19 +256,27 @@ export const concluirTarefa = createServerFn({ method: "POST" })
     await assertNoError(up, "minha-agenda.concluirTarefa", { id: data.id });
 
     // Duplicatas: outras tarefas abertas do mesmo lead e tipo saem junto.
-    const upDup = await supabase
-      .from("tarefas")
-      .update({
-        status: "concluida",
-        concluida_at: new Date().toISOString(),
-        desfecho: "sem_pendencia",
-        desfecho_detalhe: `encerrada junto com a tarefa ${tarefa.title ?? data.id}`,
-      })
-      .eq("lead_id", leadId)
-      .eq("tipo", tarefa.tipo as string)
-      .in("status", ["pendente", "adiada"])
-      .neq("id", data.id);
-    await assertNoError(upDup, "concluirTarefa.duplicatas", { lead_id: leadId });
+    // Sem nota → recebe o motivo como nota (o trigger de pós-venda exige nota).
+    const detalheDup = `encerrada junto com a tarefa ${tarefa.title ?? data.id}`;
+    for (const semNota of [true, false]) {
+      let qDup = supabase
+        .from("tarefas")
+        .update({
+          status: "concluida",
+          concluida_at: new Date().toISOString(),
+          desfecho: "sem_pendencia",
+          desfecho_detalhe: detalheDup,
+          ...(semNota ? { nota_conclusao: detalheDup } : {}),
+        })
+        .eq("lead_id", leadId)
+        .eq("tipo", tarefa.tipo as string)
+        .in("status", ["pendente", "adiada"])
+        .neq("id", data.id);
+      qDup = semNota ? qDup.is("nota_conclusao", null) : qDup.not("nota_conclusao", "is", null);
+      const upDup = await qDup;
+      await assertNoError(upDup, "concluirTarefa.duplicatas", { lead_id: leadId });
+    }
+
 
     const { encerrarPedidoPorTarefa } = await import("@/lib/pedidos-fluxo.server");
     await encerrarPedidoPorTarefa(supabase, data.id);
