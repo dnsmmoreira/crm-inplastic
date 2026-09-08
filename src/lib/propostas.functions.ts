@@ -41,6 +41,10 @@ export type PropostaPublica = {
   number: string;
   created_at: string;
   validity_days: number | null;
+  /** Bloco 4 — prazo: a página pública avisa quando a proposta venceu. */
+  status?: string | null;
+  sent_at?: string | null;
+  prorrogada_ate?: string | null;
   forma_pagamento: string | null;
   observations: string | null;
   cliente: { nome: string | null; contato: string | null };
@@ -87,7 +91,7 @@ export const getPropostaPublica = createServerFn({ method: "POST" })
     const { data: p } = await supabaseAdmin
       .from("propostas")
       .select(
-        "id, number, created_at, validity_days, discount_percent, acrescimo_percent, cartao_parcelas, observations, forma_pagamento, payment_term_id, emitter_id, transport, lead_id",
+        "id, number, created_at, validity_days, status, sent_at, prorrogada_ate, discount_percent, acrescimo_percent, cartao_parcelas, observations, forma_pagamento, payment_term_id, emitter_id, transport, lead_id",
       )
       .eq("id", data.id)
       .maybeSingle();
@@ -192,6 +196,9 @@ export const getPropostaPublica = createServerFn({ method: "POST" })
       number: p.number,
       created_at: p.created_at,
       validity_days: p.validity_days ?? null,
+      status: (p as { status?: string | null }).status ?? null,
+      sent_at: (p as { sent_at?: string | null }).sent_at ?? null,
+      prorrogada_ate: (p as { prorrogada_ate?: string | null }).prorrogada_ate ?? null,
       forma_pagamento: p.forma_pagamento ?? null,
       observations: p.observations ?? null,
       cliente: { nome: nomeCliente, contato: lead?.contact_name ?? null },

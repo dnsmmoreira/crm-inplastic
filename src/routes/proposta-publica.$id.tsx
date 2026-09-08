@@ -73,8 +73,20 @@ function PropostaPublicaPage() {
 
 function Conteudo({ p }: { p: PropostaPublica }) {
   const e = p.emitente;
+  const vencida = propostaVencida({
+    status: p.status ?? "enviada",
+    sent_at: p.sent_at ?? null,
+    validity_days: p.validity_days,
+    prorrogada_ate: p.prorrogada_ate ?? null,
+  });
   return (
     <article className="space-y-6 rounded-lg border bg-white p-6 text-[13px] shadow-sm md:p-10">
+      {vencida && (
+        <div className="rounded-md border border-amber-400 bg-amber-50 px-4 py-3 text-[12px] text-amber-900">
+          Esta proposta está fora do prazo de validade. Fale com o seu vendedor para receber
+          valores atualizados antes de fechar.
+        </div>
+      )}
       <div className="flex flex-wrap items-start justify-between gap-4 border-b pb-4">
         <div>
           <h1 className="text-xl font-bold text-slate-900">{e?.brand ?? "INPLASTIC"}</h1>
