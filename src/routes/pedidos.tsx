@@ -124,9 +124,19 @@ function PedidosKanbanPage() {
     refetchOnWindowFocus: false,
   });
 
+  const [pendingAssumir, setPendingAssumir] = useState<PendingMove | null>(null);
+  const [pendingDados, setPendingDados] = useState<
+    (PendingMove & { faltam: Array<{ campo: string; label: string }> }) | null
+  >(null);
+
   const mutation = useMutation({
-    mutationFn: (vars: { pedido_id: string; stage: PedidoStageId; motivo?: string }) =>
-      updateFn({ data: vars }),
+    mutationFn: (vars: {
+      pedido_id: string;
+      stage: PedidoStageId;
+      motivo?: string;
+      assumir?: boolean;
+      dados?: Record<string, string>;
+    }) => updateFn({ data: vars }),
     onMutate: async (vars) => {
       await qc.cancelQueries({ queryKey: ["pedidos", "kanban"] });
       const prev = qc.getQueryData<PedidoRow[]>(["pedidos", "kanban"]);
@@ -144,14 +154,35 @@ function PedidosKanbanPage() {
     },
     onSuccess: (res, vars) => {
       if (res && "ok" in res && !res.ok) {
+        const pedido = allRowsRef.current.find((p) => p.id === vars.pedido_id);
+        const base: PendingMove = {
+          pedidoId: vars.pedido_id,
+          pedidoNumber: pedido?.number ?? "",
+          from: (pedido?.stage ?? vars.stage) as PedidoStageId,
+          to: vars.stage,
+          motivo: vars.motivo,
+        };
+        if (res.reason === "sem_responsavel") {
+          if (ctx_restore(qc, ctx_prev(qc))) void 0;
+          setPendingAssumir(base);
+          void qc.invalidateQueries({ queryKey: ["pedidos", "kanban"] });
+          return;
+        }
+        if (res.reason === "dados_faltando") {
+          setPendingDados({ ...base, faltam: res.faltam, assumir: vars.assumir });
+          void qc.invalidateQueries({ queryKey: ["pedidos", "kanban"] });
+          return;
+        }
         toast.error(res.message);
         void qc.invalidateQueries({ queryKey: ["pedidos", "kanban"] });
         return;
       }
       void qc.invalidateQueries({ queryKey: ["pedidos", "kanban"] });
       void qc.invalidateQueries({ queryKey: ["pipeline", "leads-com-pedido"] });
+      // Assumiu o pedido no mesmo movimento: abre o pedido para os romaneios.
+      if (res && "ok" in res && res.ok && res.assumiu) setOpenPedidoId(vars.pedido_id);
       // Entrou no Pós-venda: abre o pedido para comprovar a entrega na hora.
-      if (vars.stage === "pos_venda") setOpenPedidoId(vars.pedido_id);
+      else if (vars.stage === "pos_venda") setOpenPedidoId(vars.pedido_id);
     },
   });
 
