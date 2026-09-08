@@ -148,13 +148,28 @@ export const DEFAULT_LEAD_SEGMENTS: string[] = [
   "Orgão Publico",
 ];
 
+export type TaskStatus = "pendente" | "adiada" | "concluida";
+
 export type Task = {
   id: string;
   leadId: string;
   title: string;
   dueDate: string;
-  done: boolean;
+  /** Estado oficial da tarefa. O campo legado `done` do banco é derivado deste. */
+  status: TaskStatus;
+  tipo?: string | null;
+  origem?: string;
+  pedidoId?: string | null;
+  cobrancaN?: number;
+  desfecho?: string | null;
+  desfechoDetalhe?: string | null;
 };
+
+/** Única leitura de "está concluída" no app — nunca use `done`. */
+export function tarefaConcluida(t: { status?: string | null }): boolean {
+  return t.status === "concluida";
+}
+
 
 export type WhatsappMessage = {
   id: string;
