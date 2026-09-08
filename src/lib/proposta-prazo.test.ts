@@ -75,8 +75,8 @@ describe("desfechos de proposta", () => {
     const ctx = { tipoTarefa: "proposta_vencida", temLead: true };
     expect(validarDesfecho({ tipo: "prorrogar_proposta" }, ctx).ok).toBe(false);
     const r = validarDesfecho(
-      { tipo: "prorrogar_proposta", data: "2099-01-10", detalhe: "cliente pediu mais prazo" },
-      ctx,
+      { tipo: "prorrogar_proposta", data: "2026-01-12", detalhe: "cliente pediu mais prazo" },
+      { ...ctx, agora: new Date("2026-01-05T12:00:00Z") },
     );
     expect(r.ok).toBe(true);
   });
@@ -92,8 +92,8 @@ describe("desfechos de proposta", () => {
   it("desfecho de outro tipo é barrado (fail-closed)", () => {
     expect(
       validarDesfecho(
-        { tipo: "prorrogar_proposta", data: "2099-01-10", detalhe: "motivo bom" },
-        { tipoTarefa: "follow_up", temLead: true },
+        { tipo: "prorrogar_proposta", data: "2026-01-12", detalhe: "motivo bom" },
+        { tipoTarefa: "follow_up", temLead: true, agora: new Date("2026-01-05T12:00:00Z") },
       ).ok,
     ).toBe(false);
   });
