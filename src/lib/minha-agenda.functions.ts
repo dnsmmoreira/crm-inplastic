@@ -344,9 +344,11 @@ export const reabrirTarefa = createServerFn({ method: "POST" })
     await assertNoError(up, "minha-agenda.reabrirTarefa", { id: data.id });
 
     const ins = await supabase.from("user_audit_log").insert({
-      user_id: userId,
-      acao: "tarefa_reaberta",
-      detalhes: { tarefa_id: data.id } as any,
+      ator_user_id: userId,
+      alvo_user_id: userId,
+      campo: `tarefa.${data.id}.status`,
+      valor_anterior: "concluida",
+      valor_novo: "pendente",
     });
     await assertNoError(ins, "minha-agenda.reabrirTarefa.audit", { id: data.id });
 
