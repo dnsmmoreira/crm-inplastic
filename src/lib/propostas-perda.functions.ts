@@ -76,110 +76,13 @@ export const recusarProposta = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => recusaSchema.parse(data))
   .handler(async ({ data, context }): Promise<{ ok: true; leadPerdido: boolean }> => {
-    const sb = context.supabase as unknown as SB;
-    const userId = context.userId;
-    const motivo = data.motivo as MotivoPerda;
-    const detalhe = data.observacao.trim();
-
-    const { data: prop, error: propErr } = await sb
-      .from("propostas")
-      .select("id, number, status, owner_id, lead_id")
-      .eq("id", data.propostaId)
-      .maybeSingle();
-    if (propErr) {
-      await registrarFalhaSegura("propostas-perda.recusar/leitura", propErr, {
-        proposta_id: data.propostaId,
-      });
-      throw new Error("Não foi possível carregar a proposta.");
-    }
-    if (!prop) throw new Error("Proposta não encontrada.");
-    await assertPodeAlterarStatus(sb, userId, prop.owner_id);
-
-    if (!(STATUS_RECUSAVEL as readonly string[]).includes(prop.status)) {
-      throw new Error(
-        prop.status === "recusada"
-          ? "Esta proposta já está marcada como recusada."
-          : "Só é possível recusar propostas em rascunho, enviadas ou aguardando aprovação.",
-      );
-    }
-
-    const agora = new Date();
-    const upd = await sb
-      .from("propostas")
-      .update({
-        status: "recusada",
-        motivo_recusa: motivo,
-        recusa_detalhe: detalhe,
-        recusada_em: agora.toISOString(),
-        recusada_por: userId,
-        reaberta_em: null,
-      })
-      .eq("id", prop.id);
-    await assertNoError(upd, "propostas-perda.recusar/update", { proposta_id: prop.id });
-
-    // Regra do lead: só perde quando não sobra nenhuma proposta viva.
-    const { data: outras, error: outrasErr } = await sb
-      .from("propostas")
-      .select("id, status")
-      .eq("lead_id", prop.lead_id)
-      .neq("id", prop.id);
-    if (outrasErr) {
-      await registrarFalhaSegura("propostas-perda.recusar/outras", outrasErr, {
-        lead_id: prop.lead_id,
-      });
-      throw new Error("Não foi possível conferir as outras propostas deste lead.");
-    }
-    const leadPerdido = leadDeveIrParaPerdido(
-      (outras ?? []).map((o: { status: string }) => o.status),
-    );
-
-    if (leadPerdido) {
-      const updLead = await sb
-        .from("leads")
-        .update({
-          stage: "perdido",
-          motivo_perda: motivo,
-          motivo_perda_detalhe: detalhe,
-          perdido_em: agora.toISOString(),
-          recontatar_em: dataRecontato(motivo, agora),
-        })
-        .eq("id", prop.lead_id);
-      await assertNoError(updLead, "propostas-perda.recusar/lead", { lead_id: prop.lead_id });
-    }
-
-    // Tarefa de recontato — idempotente por proposta (tag no título).
-    const dueRecontato = dataRecontato(motivo, agora);
-    if (dueRecontato) {
-      const tag = `[proposta ${prop.number}]`;
-      const { count } = await sb
-        .from("tarefas")
-        .select("id", { count: "exact", head: true })
-        .eq("tipo", "retomar_contato")
-        .in("status", ["pendente", "adiada"])
-        .filter("title", "ilike", `%${tag}%`);
-      if ((count ?? 0) === 0) {
-        const insTarefa = await sb.from("tarefas").insert({
-          lead_id: prop.lead_id,
-          owner_id: prop.owner_id,
-          title: `Retomar contato ${tag}`,
-          descricao: `Proposta ${prop.number} recusada — motivo: ${motivo}. ${detalhe}`,
-          tipo: "retomar_contato",
-          kind: "retomar_contato",
-          due_date: new Date(`${dueRecontato}T12:00:00.000Z`).toISOString(),
-          status: "pendente",
-          origem: "proposta_recusada",
-        });
-        if (insTarefa?.error) {
-          // BAIXA: a recusa já está gravada; a tarefa é acessório.
-          await registrarFalhaSegura("propostas-perda.recusar/tarefa", insTarefa.error, {
-            proposta_id: prop.id,
-          });
-        }
-      }
-    }
-
-    await auditar(sb, userId, "proposta_recusada", prop.status, `${prop.number} — ${motivo}`);
-    return { ok: true as const, leadPerdido };
+    const { recusarPropostaImpl } = await import("@/lib/propostas-perda.server");
+    const r = await recusarPropostaImpl(context.supabase as unknown as SB, context.userId, {
+      propostaId: data.propostaId,
+      motivo: data.motivo as MotivoPerda,
+      observacao: data.observacao,
+    });
+    return { ok: true as const, leadPerdido: r.leadPerdido };
   });
 
 export const reabrirProposta = createServerFn({ method: "POST" })

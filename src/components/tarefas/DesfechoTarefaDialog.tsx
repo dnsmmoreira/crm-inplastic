@@ -37,6 +37,7 @@ const STAGE_LABEL: Record<string, string> = {
 
 export function DesfechoTarefaDialog({
   open, onOpenChange, titulo, stageAtual, pendente, onConfirmar, tipoTarefa, temLead = true,
+  propostaId = null,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
@@ -48,6 +49,8 @@ export function DesfechoTarefaDialog({
   tipoTarefa?: string | null;
   /** Tarefa sem lead (conversa avulsa) não oferece "perdido". */
   temLead?: boolean;
+  /** Tarefa de proposta: mostra o atalho "Abrir proposta". */
+  propostaId?: string | null;
 }) {
   const [tipo, setTipo] = useState<string>("");
   const [data, setData] = useState("");
@@ -83,6 +86,16 @@ export function DesfechoTarefaDialog({
         <DialogHeader>
           <DialogTitle>Qual foi o desfecho?</DialogTitle>
           <DialogDescription>{titulo}</DialogDescription>
+          {propostaId && (
+            <a
+              href={`/propostas/${propostaId}`}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs text-primary underline underline-offset-2"
+            >
+              Abrir proposta
+            </a>
+          )}
         </DialogHeader>
 
         <div className="space-y-2">
@@ -102,10 +115,14 @@ export function DesfechoTarefaDialog({
           ))}
         </div>
 
-        {(tipo === "retorno_agendado" || tipo === "em_espera") && (
+        {(tipo === "retorno_agendado" || tipo === "em_espera" || tipo === "prorrogar_proposta") && (
           <div className="space-y-2">
             <Label>
-              {tipo === "em_espera" ? "Aguardar o cliente até" : "Data do retorno"}{" "}
+              {tipo === "em_espera"
+                ? "Aguardar o cliente até"
+                : tipo === "prorrogar_proposta"
+                  ? "Nova validade da proposta"
+                  : "Data do retorno"}{" "}
               <span className="text-destructive">*</span>
             </Label>
             <Input type="date" min={minData} value={data} onChange={(e) => setData(e.target.value)} />
@@ -118,13 +135,35 @@ export function DesfechoTarefaDialog({
           </div>
         )}
 
-        {tipo === "encerrar_conversa" && (
+        {(tipo === "encerrar_conversa" ||
+          tipo === "excluir_rascunho" ||
+          tipo === "prorrogar_proposta") && (
           <div className="space-y-2">
-            <Label>Motivo do encerramento <span className="text-destructive">*</span></Label>
+            <Label>
+              {tipo === "encerrar_conversa"
+                ? "Motivo do encerramento"
+                : tipo === "excluir_rascunho"
+                  ? "Por que excluir o rascunho?"
+                  : "Motivo da prorrogação"}{" "}
+              <span className="text-destructive">*</span>
+            </Label>
             <Textarea rows={2} value={detalhe} onChange={(e) => setDetalhe(e.target.value)}
-              placeholder="Ex: cliente comprou com outro fornecedor; assunto resolvido" />
+              placeholder={
+                tipo === "prorrogar_proposta"
+                  ? "Ex: cliente pediu mais prazo e o preço se mantém"
+                  : tipo === "excluir_rascunho"
+                    ? "Ex: rascunho de teste, orçamento refeito em outra proposta"
+                    : "Ex: cliente comprou com outro fornecedor; assunto resolvido"
+              } />
           </div>
         )}
+
+        {tipo === "reemitir_proposta" && (
+          <p className="text-xs text-muted-foreground">
+            Vamos criar um novo rascunho com os mesmos itens, para você revisar os preços antes de enviar.
+          </p>
+        )}
+
 
 
         {tipo === "avancou_etapa" && (
@@ -145,9 +184,12 @@ export function DesfechoTarefaDialog({
           </div>
         )}
 
-        {tipo === "perdido" && (
+        {(tipo === "perdido" || tipo === "recusar_proposta") && (
           <div className="space-y-2">
-            <Label>Motivo da perda <span className="text-destructive">*</span></Label>
+            <Label>
+              {tipo === "recusar_proposta" ? "Motivo da recusa" : "Motivo da perda"}{" "}
+              <span className="text-destructive">*</span>
+            </Label>
             <Select value={motivo} onValueChange={setMotivo}>
               <SelectTrigger><SelectValue placeholder="Escolha o motivo…" /></SelectTrigger>
               <SelectContent>
@@ -156,10 +198,16 @@ export function DesfechoTarefaDialog({
                 ))}
               </SelectContent>
             </Select>
-            <Label>Detalhe (opcional)</Label>
+            <Label>
+              Detalhe{" "}
+              {tipo === "recusar_proposta"
+                ? <span className="text-destructive">*</span>
+                : "(opcional)"}
+            </Label>
             <Textarea rows={2} value={detalhe} onChange={(e) => setDetalhe(e.target.value)} />
           </div>
         )}
+
 
         {tipo === "sem_pendencia" && (
           <div className="space-y-2">

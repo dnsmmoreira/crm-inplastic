@@ -21,7 +21,7 @@ export const listMinhaAgenda = createServerFn({ method: "GET" })
 
     const { data: tarefas, error } = await supabase
       .from("tarefas")
-      .select("id, lead_id, pedido_id, tipo, title, descricao, prioridade, escalonamentos, hora_sugerida, due_date, status, origem, cobranca_n, created_at")
+      .select("id, lead_id, pedido_id, proposta_id, tipo, title, descricao, prioridade, escalonamentos, hora_sugerida, due_date, status, origem, cobranca_n, created_at")
       .eq("owner_id", userId)
       .in("status", ["pendente", "adiada"])
       .lte("due_date", endOfDay)
@@ -99,11 +99,12 @@ export const concluirTarefa = createServerFn({ method: "POST" })
       validarDesfecho,
       dataRetornoParaISO,
       ddmm,
+      ehTipoProposta,
     } = await import("@/lib/tarefa-desfecho");
 
     const { data: tarefa, error: readErr } = await supabase
       .from("tarefas")
-      .select("id, lead_id, pedido_id, tipo, origem, status, owner_id, title, descricao")
+      .select("id, lead_id, pedido_id, proposta_id, tipo, origem, status, owner_id, title, descricao")
       .eq("id", data.id)
       .maybeSingle();
     if (readErr) throw new Error(readErr.message);
@@ -154,7 +155,7 @@ export const concluirTarefa = createServerFn({ method: "POST" })
       if (erroLead) throw new Error(erroLead.message);
       if (!l) throw new Error("Lead da tarefa não encontrado.");
       lead = l as any;
-    } else if (tarefa.tipo !== "conversa_parada") {
+    } else if (tarefa.tipo !== "conversa_parada" && !ehTipoProposta(tarefa.tipo as string)) {
       throw new Error("Lead da tarefa não encontrado.");
     }
 
@@ -308,6 +309,85 @@ export const concluirTarefa = createServerFn({ method: "POST" })
       if (r.aviso) aviso = r.aviso;
       detalhe = `Perdido · ${desfecho.motivo}${detalhe ? ` — ${detalhe}` : ""}`;
       mensagem = `Lead marcado como perdido (${desfecho.motivo}).`;
+    } else if (
+      desfecho.tipo === "recusar_proposta" ||
+      desfecho.tipo === "reemitir_proposta" ||
+      desfecho.tipo === "prorrogar_proposta" ||
+      desfecho.tipo === "excluir_rascunho"
+    ) {
+      const propostaId = (tarefa as any).proposta_id as string | null;
+      if (!propostaId) throw new Error("Esta tarefa não está ligada a nenhuma proposta.");
+
+      const { data: prop, error: erroProp } = await supabase
+        .from("propostas")
+        .select("id, number, status, owner_id, lead_id, validity_days, sent_at")
+        .eq("id", propostaId)
+        .maybeSingle();
+      if (erroProp) throw new Error(erroProp.message);
+      if (!prop) throw new Error("Proposta da tarefa não encontrada.");
+
+      const { assertPodeAlterarStatus, auditarProposta } = await import(
+        "@/lib/propostas-perda.server"
+      );
+
+      if (desfecho.tipo === "recusar_proposta") {
+        const { recusarPropostaImpl } = await import("@/lib/propostas-perda.server");
+        const r = await recusarPropostaImpl(supabase as any, userId, {
+          propostaId,
+          motivo: desfecho.motivo as any,
+          observacao: (desfecho.detalhe ?? "").trim(),
+        });
+        detalhe = `Proposta ${prop.number ?? ""} recusada · ${desfecho.motivo}`;
+        mensagem = r.leadPerdido
+          ? `Proposta recusada e lead marcado como perdido (${desfecho.motivo}).`
+          : `Proposta recusada (${desfecho.motivo}).`;
+      } else if (desfecho.tipo === "prorrogar_proposta") {
+        await assertPodeAlterarStatus(supabase as any, userId, prop.owner_id as string);
+        const dia = ddmm(desfecho.data!);
+        const upProp = await supabase
+          .from("propostas")
+          .update({
+            prorrogada_ate: desfecho.data,
+            prorrogacao_motivo: (desfecho.detalhe ?? "").trim(),
+            vencida_em: null,
+          })
+          .eq("id", propostaId);
+        await assertNoError(upProp, "concluirTarefa.prorrogar", { proposta_id: propostaId });
+        await auditarProposta(
+          supabase as any,
+          userId,
+          "proposta_prorrogada",
+          prop.number ?? null,
+          desfecho.data ?? null,
+        );
+        detalhe = `Proposta prorrogada até ${dia}`;
+        mensagem = `Proposta válida até ${dia}.`;
+      } else if (desfecho.tipo === "reemitir_proposta") {
+        await assertPodeAlterarStatus(supabase as any, userId, prop.owner_id as string);
+        const { duplicarPropostaImpl } = await import("@/lib/propostas-duplicar.server");
+        const nova = await duplicarPropostaImpl(supabase as never, propostaId, userId);
+        const upProp = await supabase
+          .from("propostas")
+          .update({ reemitida_como: nova.id, vencida_em: new Date().toISOString() })
+          .eq("id", propostaId);
+        await assertNoError(upProp, "concluirTarefa.reemitir", { proposta_id: propostaId });
+        await auditarProposta(
+          supabase as any,
+          userId,
+          "proposta_reemitida",
+          prop.number ?? null,
+          nova.number ?? null,
+        );
+        detalhe = `Reemitida como ${nova.number}`;
+        mensagem = `Proposta ${nova.number} criada em rascunho com os mesmos itens.`;
+      } else {
+        // excluir_rascunho
+        const { excluirRascunhoPropostaImpl } = await import("@/lib/propostas-prazo.server");
+        const r = await excluirRascunhoPropostaImpl(supabase as any, userId, propostaId);
+        if (!r.ok) return { ok: false as const, message: r.mensagem };
+        detalhe = `Rascunho ${prop.number ?? ""} excluído · ${(desfecho.detalhe ?? "").trim()}`;
+        mensagem = r.mensagem;
+      }
     } else {
       // sem_pendencia
       mensagem = "Tarefa encerrada sem pendência.";

@@ -725,6 +725,11 @@ export type Proposal = {
   approvedAt?: string;
   orderCreatedAt?: string;
   sentAt?: string; // primeira vez que a proposta foi enviada ao cliente
+  /** Prazo da proposta (Bloco 4) — somente leitura no cliente. */
+  prorrogadaAte?: string | null;
+  prorrogacaoMotivo?: string | null;
+  vencidaEm?: string | null;
+  reemitidaComo?: string | null;
   expectedDeliveryDate?: string; // yyyy-MM-dd — data prevista de entrega
   // Solicitação/liberação de alteração em pedido já fechado
   editRequestedAt?: string;

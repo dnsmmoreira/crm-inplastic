@@ -21,6 +21,8 @@ export const TAREFA_TIPOS = [
   "prospeccao",
   "retorno_agendado",
   "conversa_parada",
+  "proposta_rascunho_parada",
+  "proposta_vencida",
   // Pós-venda
   "pos_venda_confirmacao",
   "pos_venda_satisfacao",
@@ -62,6 +64,8 @@ export const TAREFA_TIPO_LABEL: Record<TarefaTipo, string> = {
   prospeccao: "Prospecção",
   retorno_agendado: "Retorno combinado",
   conversa_parada: "Conversa parada",
+  proposta_rascunho_parada: "Rascunho parado",
+  proposta_vencida: "Proposta vencida",
   pos_venda_confirmacao: "Pós-venda: confirmar",
   pos_venda_satisfacao: "Pós-venda: satisfação",
   pos_venda_recompra: "Pós-venda: recompra",

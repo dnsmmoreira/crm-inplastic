@@ -2,6 +2,10 @@ import { MargemPropostaCard } from "@/components/arena/MargemPropostaCard";
 import { createFileRoute, Link, useNavigate, useBlocker } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useDuplicarProposta } from "@/hooks/use-duplicar-proposta";
+import { propostaVencida, diasVencida, validadeYmd, ddmmProposta } from "@/lib/proposta-prazo";
+import { useAuth } from "@/hooks/use-auth";
+import { hydrateCrmForUser } from "@/lib/crm-sync";
+import { prorrogarProposta, reemitirProposta } from "@/lib/propostas-prazo.functions";
 import {
   ArrowLeft,
   Plus,
@@ -132,6 +136,14 @@ function buildTermInstallments(term: PaymentTerm | undefined, total: number) {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -506,6 +518,37 @@ function PropostaDetalhe() {
   const isAdmin = useIsAdmin();
   const { duplicando, duplicarProposta } = useDuplicarProposta();
 
+  // ── Bloco 4: proposta com prazo (vencida é estado derivado)
+  const { user } = useAuth();
+  const [prorrogaOpen, setProrrogaOpen] = useState(false);
+  const [prorrogaAte, setProrrogaAte] = useState("");
+  const [prorrogaMotivo, setProrrogaMotivo] = useState("");
+  const prorrogarFn = useServerFn(prorrogarProposta);
+  const reemitirFn = useServerFn(reemitirProposta);
+  const prorrogarMut = useMutation({
+    mutationFn: () =>
+      prorrogarFn({
+        data: { propostaId: id, ate: prorrogaAte, motivo: prorrogaMotivo.trim() },
+      }),
+    onSuccess: async (r: any) => {
+      toast.success(`Proposta válida até ${ddmmProposta(r.ate) ?? r.ate}`);
+      setProrrogaOpen(false);
+      setProrrogaAte("");
+      setProrrogaMotivo("");
+      if (user) await hydrateCrmForUser(user.id, user.role);
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Não foi possível prorrogar"),
+  });
+  const reemitirMut = useMutation({
+    mutationFn: () => reemitirFn({ data: { propostaId: id } }),
+    onSuccess: async (r: any) => {
+      if (user) await hydrateCrmForUser(user.id, user.role);
+      toast.success(`Proposta ${r.number} criada em rascunho`);
+      navigate({ to: "/propostas/$id", params: { id: r.id } });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Não foi possível reemitir"),
+  });
+
   const currentUser = useCurrentUser();
   const approver = proposal?.approvedByUserId
     ? USERS.find((u) => u.id === proposal.approvedByUserId)
@@ -825,6 +868,14 @@ function PropostaDetalhe() {
   }
 
   const s = STATUS_META[proposal.status];
+  const prazo = {
+    status: proposal.status,
+    sent_at: proposal.sentAt ?? null,
+    validity_days: proposal.validityDays,
+    prorrogada_ate: proposal.prorrogadaAte ?? null,
+  };
+  const vencida = propostaVencida(prazo);
+  const validaAte = validadeYmd(prazo);
 
   return (
     <div className="p-4 md:p-8 space-y-6 print:p-0 print:space-y-4">
@@ -1016,6 +1067,75 @@ function PropostaDetalhe() {
               <CheckCircle2 className="h-4 w-4" /> Aprovar liberação
             </Button>
           )}
+
+          {vencida && (
+            <div className="flex w-full flex-wrap items-center gap-3 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>
+                Proposta vencida{validaAte ? ` em ${ddmmProposta(validaAte)}` : ""} (há{" "}
+                {diasVencida(prazo)} dias) — os preços podem não valer mais.
+              </span>
+              <div className="ml-auto flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" onClick={() => setProrrogaOpen(true)}>
+                  Prorrogar validade
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={reemitirMut.isPending}
+                  onClick={() => reemitirMut.mutate()}
+                >
+                  {reemitirMut.isPending ? "Reemitindo..." : "Reemitir com preço atual"}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {!vencida && validaAte && proposal.status === "enviada" && (
+            <div className="self-center rounded-md border px-3 py-2 text-xs text-muted-foreground">
+              Válida até {ddmmProposta(validaAte)}
+              {proposal.prorrogadaAte ? " (prorrogada)" : ""}
+            </div>
+          )}
+
+          <Dialog open={prorrogaOpen} onOpenChange={setProrrogaOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Prorrogar a validade</DialogTitle>
+                <DialogDescription>
+                  A proposta continua valendo até a nova data, com o motivo registrado.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3">
+                <Input
+                  type="date"
+                  value={prorrogaAte}
+                  onChange={(e) => setProrrogaAte(e.target.value)}
+                />
+                <Textarea
+                  rows={2}
+                  placeholder="Por que está prorrogando?"
+                  value={prorrogaMotivo}
+                  onChange={(e) => setProrrogaMotivo(e.target.value)}
+                />
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setProrrogaOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button
+                  disabled={
+                    prorrogarMut.isPending ||
+                    !/^\d{4}-\d{2}-\d{2}$/.test(prorrogaAte) ||
+                    prorrogaMotivo.trim().length < 5
+                  }
+                  onClick={() => prorrogarMut.mutate()}
+                >
+                  Prorrogar
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           {proposal.status === "recusada" && (
             <div className="flex w-full flex-wrap items-center gap-3 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">

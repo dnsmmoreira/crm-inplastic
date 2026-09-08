@@ -2416,16 +2416,20 @@ export type Database = {
           owner_id: string
           payment_term_id: string | null
           previsao_faturamento: string | null
+          prorrogacao_motivo: string | null
+          prorrogada_ate: string | null
           reaberta_em: string | null
           recusa_detalhe: string | null
           recusada_em: string | null
           recusada_por: string | null
+          reemitida_como: string | null
           sent_at: string | null
           status: Database["public"]["Enums"]["proposal_status"]
           transport: Json
           tratativa_comercial: string | null
           updated_at: string
           validity_days: number
+          vencida_em: string | null
         }
         Insert: {
           acrescimo_percent?: number
@@ -2460,16 +2464,20 @@ export type Database = {
           owner_id: string
           payment_term_id?: string | null
           previsao_faturamento?: string | null
+          prorrogacao_motivo?: string | null
+          prorrogada_ate?: string | null
           reaberta_em?: string | null
           recusa_detalhe?: string | null
           recusada_em?: string | null
           recusada_por?: string | null
+          reemitida_como?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["proposal_status"]
           transport?: Json
           tratativa_comercial?: string | null
           updated_at?: string
           validity_days?: number
+          vencida_em?: string | null
         }
         Update: {
           acrescimo_percent?: number
@@ -2504,16 +2512,20 @@ export type Database = {
           owner_id?: string
           payment_term_id?: string | null
           previsao_faturamento?: string | null
+          prorrogacao_motivo?: string | null
+          prorrogada_ate?: string | null
           reaberta_em?: string | null
           recusa_detalhe?: string | null
           recusada_em?: string | null
           recusada_por?: string | null
+          reemitida_como?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["proposal_status"]
           transport?: Json
           tratativa_comercial?: string | null
           updated_at?: string
           validity_days?: number
+          vencida_em?: string | null
         }
         Relationships: [
           {
@@ -2535,6 +2547,13 @@ export type Database = {
             columns: ["payment_term_id"]
             isOneToOne: false
             referencedRelation: "condicoes_pagamento"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "propostas_reemitida_como_fkey"
+            columns: ["reemitida_como"]
+            isOneToOne: false
+            referencedRelation: "propostas"
             referencedColumns: ["id"]
           },
         ]
@@ -2582,6 +2601,7 @@ export type Database = {
           owner_id: string | null
           pedido_id: string | null
           prioridade: number
+          proposta_id: string | null
           status: string
           tipo: string | null
           title: string
@@ -2608,6 +2628,7 @@ export type Database = {
           owner_id?: string | null
           pedido_id?: string | null
           prioridade?: number
+          proposta_id?: string | null
           status?: string
           tipo?: string | null
           title: string
@@ -2634,6 +2655,7 @@ export type Database = {
           owner_id?: string | null
           pedido_id?: string | null
           prioridade?: number
+          proposta_id?: string | null
           status?: string
           tipo?: string | null
           title?: string
@@ -2652,6 +2674,13 @@ export type Database = {
             columns: ["pedido_id"]
             isOneToOne: false
             referencedRelation: "pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tarefas_proposta_id_fkey"
+            columns: ["proposta_id"]
+            isOneToOne: false
+            referencedRelation: "propostas"
             referencedColumns: ["id"]
           },
         ]

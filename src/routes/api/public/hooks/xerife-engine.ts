@@ -191,6 +191,8 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
     d1_reatribuido: 0,
     a6_ia_abandonada: 0,
     a7_conversa_parada: 0,
+    p1_rascunho_parado: 0,
+    p2_proposta_vencida: 0,
   };
 
   const plan: XerifePlanItem[] = [];
@@ -212,6 +214,7 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
     prioridade: number;
     horaSugerida?: string;
     dueDate?: Date;
+    proposta_id?: string | null;
   }) {
     plan.push({
       regra: t.regra,
@@ -245,6 +248,7 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
     // rodada, mas a falha precisa ficar visível em /falhas.
     const insTarefa = await sb.from("tarefas").insert({
       lead_id: t.lead_id,
+      proposta_id: t.proposta_id ?? null,
       owner_id: t.owner_id,
       title: `${t.titulo}${sufixoCobranca(cobrancaN)}`,
       descricao: t.descricao,
@@ -338,6 +342,23 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
       });
     }
   };
+
+  /** Proposta enviada mais recente do lead — liga a tarefa de cadência a ela. */
+  async function propostaAtivaDoLead(leadId: string): Promise<string | null> {
+    const { data, error } = await sb
+      .from("propostas")
+      .select("id")
+      .eq("lead_id", leadId)
+      .in("status", ["enviada", "aguardando_aprovacao"])
+      .order("sent_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) {
+      await registrarFalhaSegura("xerife-engine.propostaAtivaDoLead", error, { lead_id: leadId });
+      return null;
+    }
+    return (data?.id as string | null) ?? null;
+  }
 
   const now = new Date();
   const nowIso = now.toISOString();
@@ -727,6 +748,7 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
         descricao: `Proposta enviada há ${passo} dias. Cadência: ${cfg.cadencia_proposta_dias.join("/")}.`,
         motivo: `Proposta enviada há ${passo} dias. Cadência: ${cfg.cadencia_proposta_dias.join("/")}.`,
         prioridade: 2,
+        proposta_id: await propostaAtivaDoLead(l.id),
       });
       await log(sb, {
         regra,
@@ -736,6 +758,148 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
         payload: { dias_corridos: diasCorridos, cadencia: cfg.cadencia_proposta_dias },
       });
       stats.a4_cadencia_proposta++;
+    }
+  }
+
+  // ─────────────── P1/P2: proposta com prazo (Bloco 4) ───────────────
+  {
+    const { rascunhoParado, propostaVencida, diasVencida, validadeYmd, P1_HORAS_RASCUNHO } =
+      await import("@/lib/proposta-prazo");
+
+    /** Já existe tarefa aberta (ou recém-criada) para esta proposta e tipo? */
+    async function jaCobrada(propostaId: string, tipo: string, horasCarencia: number) {
+      const { count: aberta, error: e1 } = await sb
+        .from("tarefas")
+        .select("id", { count: "exact", head: true })
+        .eq("proposta_id", propostaId)
+        .eq("tipo", tipo)
+        .in("status", ["pendente", "adiada"]);
+      if (e1) {
+        await registrarFalhaSegura("xerife-engine.proposta.dedupe", e1, { proposta_id: propostaId });
+        return true; // fail-closed: não duplica na dúvida
+      }
+      if ((aberta ?? 0) > 0) return true;
+      if (horasCarencia > 0) {
+        const desde = subtractBusinessHours(horasCarencia, win, now).toISOString();
+        const { count: recente, error: e2 } = await sb
+          .from("tarefas")
+          .select("id", { count: "exact", head: true })
+          .eq("proposta_id", propostaId)
+          .eq("tipo", tipo)
+          .gte("created_at", desde);
+        if (e2) {
+          await registrarFalhaSegura("xerife-engine.proposta.dedupe2", e2, {
+            proposta_id: propostaId,
+          });
+          return true;
+        }
+        if ((recente ?? 0) > 0) return true;
+      }
+      return false;
+    }
+
+    async function stageDoLead(leadId: string | null): Promise<string | null> {
+      if (!leadId) return null;
+      const { data, error } = await sb.from("leads").select("stage").eq("id", leadId).maybeSingle();
+      if (error) {
+        await registrarFalhaSegura("xerife-engine.proposta.lead", error, { lead_id: leadId });
+        return null;
+      }
+      return (data?.stage as string | null) ?? null;
+    }
+
+    const limiteRascunho = subtractBusinessHours(P1_HORAS_RASCUNHO, win, now).getTime();
+
+    // ── P1: rascunho parado
+    const { data: rascunhos, error: erroRas } = await sb
+      .from("propostas")
+      .select("id, number, status, owner_id, lead_id, created_at, updated_at")
+      .eq("status", "rascunho")
+      .limit(300);
+    if (erroRas) await registrarFalhaSegura("xerife-engine.p1.select", erroRas, {});
+
+    for (const prop of (rascunhos ?? []) as any[]) {
+      if (!rascunhoParado(prop, limiteRascunho)) continue;
+      const stage = await stageDoLead(prop.lead_id ?? null);
+      if (stage === "ganho" || stage === "perdido") continue;
+      if (!dryRun && (await jaCobrada(prop.id, "proposta_rascunho_parada", carenciaHorasUteis("proposta_rascunho_parada"))))
+        continue;
+
+      const regra = "P1_rascunho_parado";
+      const dias = diasDesde(prop.updated_at ?? prop.created_at, now) ?? 0;
+      await criarTarefa({
+        regra,
+        lead_id: prop.lead_id ?? null,
+        lead_company: null,
+        owner_id: prop.owner_id ?? null,
+        proposta_id: prop.id,
+        tipo: "proposta_rascunho_parada",
+        titulo: `Rascunho parado há ${dias} dias — proposta ${prop.number ?? ""}`.trim(),
+        descricao: `A proposta ${prop.number ?? ""} está em rascunho e não foi enviada. Envie, recuse ou exclua.`,
+        motivo: `rascunho parado há ${dias} dias`,
+        prioridade: 2,
+      });
+      await log(sb, {
+        regra,
+        leadId: prop.lead_id ?? null,
+        vendedorId: prop.owner_id ?? null,
+        acao: "tarefa criada",
+        payload: { proposta_id: prop.id, dias },
+      });
+      stats.p1_rascunho_parado++;
+    }
+
+    // ── P2: proposta vencida
+    const { data: enviadas, error: erroEnv } = await sb
+      .from("propostas")
+      .select("id, number, status, owner_id, lead_id, sent_at, validity_days, prorrogada_ate, vencida_em")
+      .in("status", ["enviada", "aguardando_aprovacao"])
+      .limit(300);
+    if (erroEnv) await registrarFalhaSegura("xerife-engine.p2.select", erroEnv, {});
+
+    for (const prop of (enviadas ?? []) as any[]) {
+      if (!propostaVencida(prop, now)) continue;
+      const stage = await stageDoLead(prop.lead_id ?? null);
+      if (stage === "ganho" || stage === "perdido") continue;
+
+      if (!dryRun && !prop.vencida_em) {
+        const upVenc = await sb
+          .from("propostas")
+          .update({ vencida_em: now.toISOString() })
+          .eq("id", prop.id);
+        if (upVenc?.error) {
+          await registrarFalhaSegura("xerife-engine.p2.marcar", upVenc.error, {
+            proposta_id: prop.id,
+          });
+        }
+      }
+
+      if (!dryRun && (await jaCobrada(prop.id, "proposta_vencida", carenciaHorasUteis("proposta_vencida"))))
+        continue;
+
+      const regra = "P2_proposta_vencida";
+      const dias = diasVencida(prop, now);
+      const ate = validadeYmd(prop);
+      await criarTarefa({
+        regra,
+        lead_id: prop.lead_id ?? null,
+        lead_company: null,
+        owner_id: prop.owner_id ?? null,
+        proposta_id: prop.id,
+        tipo: "proposta_vencida",
+        titulo: `Proposta ${prop.number ?? ""} vencida há ${dias} dias`.trim(),
+        descricao: `A validade${ate ? ` (${ate})` : ""} passou. Prorrogue, reemita com preço atual ou recuse.`,
+        motivo: `proposta vencida há ${dias} dias`,
+        prioridade: 1,
+      });
+      await log(sb, {
+        regra,
+        leadId: prop.lead_id ?? null,
+        vendedorId: prop.owner_id ?? null,
+        acao: "tarefa criada",
+        payload: { proposta_id: prop.id, dias_vencida: dias },
+      });
+      stats.p2_proposta_vencida++;
     }
   }
 

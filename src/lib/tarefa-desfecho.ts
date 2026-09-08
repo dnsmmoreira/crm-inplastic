@@ -7,7 +7,13 @@
  * (`next_followup`, `stage`, `motivo_perda`) e silencia a cobrança.
  */
 
-import { MOTIVOS_PERDA, isMotivoPerda } from "@/lib/motivos-perda";
+import {
+  MOTIVOS_PERDA,
+  isMotivoPerda,
+  detalheValido,
+  DETALHE_OBRIGATORIO_MSG,
+} from "@/lib/motivos-perda";
+
 
 /** Tipos de tarefa comercial criados pelo Xerife que exigem desfecho. */
 export const TIPOS_COMERCIAIS_XERIFE = [
@@ -19,30 +25,42 @@ export const TIPOS_COMERCIAIS_XERIFE = [
   "resgate_carteira",
   "reativacao_lead",
   "conversa_parada",
+  "proposta_rascunho_parada",
+  "proposta_vencida",
 ] as const;
 
 export type TipoComercialXerife = (typeof TIPOS_COMERCIAIS_XERIFE)[number];
+
+/** Tarefas de proposta (Bloco 4) — podem existir sem lead. */
+export const TIPOS_PROPOSTA = ["proposta_rascunho_parada", "proposta_vencida"] as const;
+
+export function ehTipoProposta(tipo: string | null | undefined): boolean {
+  return (TIPOS_PROPOSTA as readonly string[]).includes(tipo ?? "");
+}
 
 export type TarefaParaDesfecho = {
   origem?: string | null;
   tipo?: string | null;
   lead_id?: string | null;
   pedido_id?: string | null;
+  proposta_id?: string | null;
 };
 
 /**
  * Tarefas manuais, de pedido e de pós-venda seguem o fluxo antigo (nota;
  * pós-venda exige nota >= 10). Só tarefa comercial do Xerife ligada a um lead
- * exige desfecho — exceção: `conversa_parada` pode não ter lead (conversa
- * avulsa) e mesmo assim exige desfecho.
+ * exige desfecho — exceções: `conversa_parada` (conversa avulsa) e as tarefas
+ * de proposta, que podem não ter lead.
  */
 export function exigeDesfecho(t: TarefaParaDesfecho): boolean {
   if (t.origem !== "xerife") return false;
   if (t.pedido_id) return false;
   if (t.tipo === "conversa_parada") return true;
+  if (ehTipoProposta(t.tipo)) return true;
   if (!t.lead_id) return false;
   return (TIPOS_COMERCIAIS_XERIFE as readonly string[]).includes(t.tipo ?? "");
 }
+
 
 
 export const DESFECHOS = [
@@ -77,6 +95,26 @@ export const DESFECHOS = [
     rotulo: "Sem pendência (a tarefa não fazia mais sentido)",
     descricao: "Fecha a tarefa com uma justificativa curta, sem mudar o lead.",
   },
+  {
+    tipo: "recusar_proposta",
+    rotulo: "Cliente recusou a proposta",
+    descricao: "Recusa a proposta com motivo estruturado (entra no relatório de perdas).",
+  },
+  {
+    tipo: "reemitir_proposta",
+    rotulo: "Reemitir a proposta com preço atual",
+    descricao: "Cria um novo rascunho a partir desta proposta e marca a antiga como reemitida.",
+  },
+  {
+    tipo: "prorrogar_proposta",
+    rotulo: "Prorrogar a validade até [data]",
+    descricao: "Mantém a proposta valendo até a nova data, com o motivo registrado.",
+  },
+  {
+    tipo: "excluir_rascunho",
+    rotulo: "Excluir o rascunho",
+    descricao: "Apaga o rascunho que não vai virar proposta.",
+  },
 ] as const;
 
 export type DesfechoTipo = (typeof DESFECHOS)[number]["tipo"];
@@ -99,6 +137,8 @@ export function isDesfechoTipo(v: unknown): v is DesfechoTipo {
  * Quais desfechos a tarefa oferece.
  *  - `conversa_parada`: retorno, espera, encerrar a conversa, perdido (só com
  *    lead) e sem pendência — avançar etapa não faz sentido aqui;
+ *  - `proposta_rascunho_parada` / `proposta_vencida`: ações sobre a proposta;
+ *  - `cadencia_proposta`: o clássico + recusar a proposta (D+15 decide);
  *  - demais tipos: o conjunto clássico do funil.
  */
 export function desfechosParaTipo(
@@ -106,15 +146,46 @@ export function desfechosParaTipo(
   opts: { temLead?: boolean } = {},
 ): typeof DESFECHOS[number][] {
   const temLead = opts.temLead !== false;
+  const filtrar = (permitidos: string[]) =>
+    permitidos
+      .map((p) => DESFECHOS.find((d) => d.tipo === p)!)
+      .filter(Boolean) as typeof DESFECHOS[number][];
+
   if (tipoTarefa === "conversa_parada") {
     const permitidos = ["retorno_agendado", "em_espera", "encerrar_conversa", "sem_pendencia"];
     if (temLead) permitidos.splice(3, 0, "perdido");
-    return DESFECHOS.filter((d) => permitidos.includes(d.tipo));
+    return filtrar(permitidos);
   }
-  return DESFECHOS.filter(
-    (d) => d.tipo !== "em_espera" && d.tipo !== "encerrar_conversa",
+  if (tipoTarefa === "proposta_rascunho_parada") {
+    const permitidos = ["retorno_agendado", "recusar_proposta", "excluir_rascunho", "sem_pendencia"];
+    return filtrar(permitidos);
+  }
+  if (tipoTarefa === "proposta_vencida") {
+    const permitidos = [
+      "prorrogar_proposta",
+      "reemitir_proposta",
+      "recusar_proposta",
+      "retorno_agendado",
+      "sem_pendencia",
+    ];
+    return filtrar(permitidos);
+  }
+  const classico = DESFECHOS.filter(
+    (d) =>
+      d.tipo !== "em_espera" &&
+      d.tipo !== "encerrar_conversa" &&
+      d.tipo !== "reemitir_proposta" &&
+      d.tipo !== "prorrogar_proposta" &&
+      d.tipo !== "excluir_rascunho" &&
+      d.tipo !== "recusar_proposta",
   ) as typeof DESFECHOS[number][];
+  if (tipoTarefa === "cadencia_proposta") {
+    const recusar = DESFECHOS.find((d) => d.tipo === "recusar_proposta")!;
+    return [...classico, recusar];
+  }
+  return classico;
 }
+
 
 /** O desfecho escolhido é válido para o tipo da tarefa? (gate fail-closed) */
 export function desfechoPermitido(
@@ -173,6 +244,11 @@ export function carenciaHorasUteis(tipo: string | null | undefined): number {
       return 300; // ~30 dias úteis
     case "conversa_parada":
       return 30; // 3 dias úteis
+    case "proposta_rascunho_parada":
+      return 30; // 3 dias úteis
+    case "proposta_vencida":
+      return 50; // ~5 dias úteis
+
 
     default:
       if (typeof tipo === "string" && tipo.startsWith("pos_venda_")) return 300;
@@ -277,16 +353,57 @@ export function validarDesfecho(
     return { ok: true };
   }
 
-  if (input.tipo === "encerrar_conversa") {
+  if (input.tipo === "encerrar_conversa" || input.tipo === "excluir_rascunho") {
     const motivo = (input.detalhe ?? "").trim();
     if (motivo.length < JUSTIFICATIVA_MIN_CHARS) {
       return {
         ok: false,
-        erro: `Diga por que está encerrando a conversa (mín. ${JUSTIFICATIVA_MIN_CHARS} caracteres).`,
+        erro:
+          input.tipo === "excluir_rascunho"
+            ? `Diga por que está excluindo o rascunho (mín. ${JUSTIFICATIVA_MIN_CHARS} caracteres).`
+            : `Diga por que está encerrando a conversa (mín. ${JUSTIFICATIVA_MIN_CHARS} caracteres).`,
       };
     }
     return { ok: true };
   }
+
+  if (input.tipo === "prorrogar_proposta") {
+    const data = (input.data ?? "").trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) {
+      return { ok: false, erro: "Informe até quando a proposta continua valendo." };
+    }
+    if (data < proximoDiaUtil(agora)) {
+      return { ok: false, erro: "A nova validade precisa ser a partir do próximo dia útil." };
+    }
+    const limite = new Date(agora.getTime() + LIMITE_RETORNO_DIAS * 86_400_000);
+    if (data > ymd(limite)) {
+      return { ok: false, erro: `A data não pode passar de ${LIMITE_RETORNO_DIAS} dias.` };
+    }
+    const motivo = (input.detalhe ?? "").trim();
+    if (motivo.length < JUSTIFICATIVA_MIN_CHARS) {
+      return {
+        ok: false,
+        erro: `Explique por que está prorrogando (mín. ${JUSTIFICATIVA_MIN_CHARS} caracteres).`,
+      };
+    }
+    return { ok: true };
+  }
+
+  if (input.tipo === "recusar_proposta") {
+    if (!isMotivoPerda(input.motivo)) {
+      return { ok: false, erro: `Escolha um motivo de recusa (${MOTIVOS_PERDA.length} opções).` };
+    }
+    if (!detalheValido(input.detalhe)) {
+      return { ok: false, erro: DETALHE_OBRIGATORIO_MSG };
+    }
+    return { ok: true };
+  }
+
+  if (input.tipo === "reemitir_proposta") {
+    return { ok: true };
+  }
+
+
 
 
   if (input.tipo === "avancou_etapa") {
