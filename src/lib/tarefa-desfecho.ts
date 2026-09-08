@@ -236,26 +236,58 @@ export type ValidacaoDesfecho = { ok: true } | { ok: false; erro: string };
 
 export function validarDesfecho(
   input: DesfechoInput,
-  ctx: { stageAtual?: string | null; agora?: Date } = {},
+  ctx: {
+    stageAtual?: string | null;
+    agora?: Date;
+    tipoTarefa?: string | null;
+    temLead?: boolean;
+  } = {},
 ): ValidacaoDesfecho {
   const agora = ctx.agora ?? new Date();
   if (!isDesfechoTipo(input.tipo)) return { ok: false, erro: "Escolha o desfecho desta tarefa." };
+  if (
+    ctx.tipoTarefa !== undefined &&
+    !desfechoPermitido(ctx.tipoTarefa, input.tipo, { temLead: ctx.temLead })
+  ) {
+    return { ok: false, erro: "Este desfecho não vale para esta tarefa." };
+  }
 
-  if (input.tipo === "retorno_agendado") {
+  if (input.tipo === "retorno_agendado" || input.tipo === "em_espera") {
+    const ehEspera = input.tipo === "em_espera";
     const data = (input.data ?? "").trim();
     if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) {
-      return { ok: false, erro: "Informe a data do retorno combinado." };
+      return {
+        ok: false,
+        erro: ehEspera ? "Informe até quando aguardar o cliente." : "Informe a data do retorno combinado.",
+      };
     }
     const minimo = proximoDiaUtil(agora);
     if (data < minimo) {
-      return { ok: false, erro: "O retorno precisa ser marcado a partir do próximo dia útil." };
+      return {
+        ok: false,
+        erro: ehEspera
+          ? "A espera precisa ir pelo menos até o próximo dia útil."
+          : "O retorno precisa ser marcado a partir do próximo dia útil.",
+      };
     }
     const limite = new Date(agora.getTime() + LIMITE_RETORNO_DIAS * 86_400_000);
     if (data > ymd(limite)) {
-      return { ok: false, erro: `O retorno não pode passar de ${LIMITE_RETORNO_DIAS} dias.` };
+      return { ok: false, erro: `A data não pode passar de ${LIMITE_RETORNO_DIAS} dias.` };
     }
     return { ok: true };
   }
+
+  if (input.tipo === "encerrar_conversa") {
+    const motivo = (input.detalhe ?? "").trim();
+    if (motivo.length < JUSTIFICATIVA_MIN_CHARS) {
+      return {
+        ok: false,
+        erro: `Diga por que está encerrando a conversa (mín. ${JUSTIFICATIVA_MIN_CHARS} caracteres).`,
+      };
+    }
+    return { ok: true };
+  }
+
 
   if (input.tipo === "avancou_etapa") {
     const permitidas = etapasAvancoPermitidas(ctx.stageAtual);
