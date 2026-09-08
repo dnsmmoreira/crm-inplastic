@@ -91,7 +91,7 @@ export function TransferirConversaDialog({
             <ArrowRightLeft className="h-4 w-4 text-primary" /> Transferir conversa
           </DialogTitle>
           <DialogDescription>
-            Quem receber é avisado na hora e precisa aceitar o atendimento.
+            Quem receber é avisado na hora e precisa aceitar o atendimento. O cliente passa a ser dessa pessoa também no funil.
           </DialogDescription>
         </DialogHeader>
 
