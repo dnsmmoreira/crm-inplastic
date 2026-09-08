@@ -91,3 +91,46 @@ describe("tag da conversa", () => {
     expect(conversaIdDaDescricao(null)).toBeNull();
   });
 });
+
+// ─── Desfechos do tipo conversa_parada (Bloco 3)
+import {
+  desfechosParaTipo,
+  desfechoPermitido,
+  validarDesfecho,
+  carenciaHorasUteis,
+  exigeDesfecho,
+} from "@/lib/tarefa-desfecho";
+
+describe("desfechos de conversa parada", () => {
+  it("oferece espera/encerrar e esconde perdido sem lead", () => {
+    const tipos = desfechosParaTipo("conversa_parada", { temLead: false }).map((d) => d.tipo);
+    expect(tipos).toContain("em_espera");
+    expect(tipos).toContain("encerrar_conversa");
+    expect(tipos).not.toContain("perdido");
+  });
+
+  it("permite perdido quando há lead", () => {
+    expect(desfechoPermitido("perdido", "conversa_parada", { temLead: true })).toBe(true);
+  });
+
+  it("não oferece encerrar_conversa em tarefa de follow-up", () => {
+    expect(desfechoPermitido("encerrar_conversa", "follow_up", { temLead: true })).toBe(false);
+  });
+
+  it("exige desfecho mesmo sem lead", () => {
+    expect(exigeDesfecho({ origem: "xerife", tipo: "conversa_parada", lead_id: null })).toBe(true);
+  });
+
+  it("encerrar_conversa exige motivo e em_espera exige data", () => {
+    const ctx = { tipoTarefa: "conversa_parada", temLead: false } as const;
+    expect(validarDesfecho({ tipo: "encerrar_conversa", detalhe: "ok" }, ctx).ok).toBe(false);
+    expect(
+      validarDesfecho({ tipo: "encerrar_conversa", detalhe: "cliente comprou fora" }, ctx).ok,
+    ).toBe(true);
+    expect(validarDesfecho({ tipo: "em_espera", data: "" }, ctx).ok).toBe(false);
+  });
+
+  it("carência de 30 horas úteis", () => {
+    expect(carenciaHorasUteis("conversa_parada")).toBe(30);
+  });
+});
