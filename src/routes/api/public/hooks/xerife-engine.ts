@@ -97,7 +97,8 @@ function withCtx(base: string, ctx: string | null | undefined): string {
 
 export type XerifePlanItem = {
   regra: string;
-  lead_id: string;
+  /** Nulo quando a ação é sobre uma conversa sem lead (A7). */
+  lead_id: string | null;
   lead_company: string | null;
   owner_id: string | null;
   tipo: string;
@@ -188,6 +189,8 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
     d1_abandono: 0,
     d1_escalado: 0,
     d1_reatribuido: 0,
+    a6_ia_abandonada: 0,
+    a7_conversa_parada: 0,
   };
 
   const plan: XerifePlanItem[] = [];
@@ -198,7 +201,7 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
   const isentos = new Set<string>(((isentosRows ?? []) as Array<{ id: string }>).map((r) => r.id));
 
   async function criarTarefa(t: {
-    lead_id: string;
+    lead_id: string | null;
     lead_company: string | null;
     owner_id: string | null;
     tipo: string;
@@ -227,14 +230,17 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
     if (t.owner_id && isentos.has(t.owner_id)) return;
     // Numeração da cobrança: quantas vezes já cobramos este (lead, tipo) em 30 dias.
     const desde30 = new Date(Date.now() - 30 * 86400_000).toISOString();
-    const { count: jaCobradas } = await sb
-      .from("tarefas")
-      .select("id", { count: "exact", head: true })
-      .eq("lead_id", t.lead_id)
-      .eq("tipo", t.tipo)
-      .eq("status", "concluida")
-      .gte("concluida_at", desde30);
-    const cobrancaN = (jaCobradas ?? 0) + 1;
+    let cobrancaN = 1;
+    if (t.lead_id) {
+      const { count: jaCobradas } = await sb
+        .from("tarefas")
+        .select("id", { count: "exact", head: true })
+        .eq("lead_id", t.lead_id)
+        .eq("tipo", t.tipo)
+        .eq("status", "concluida")
+        .gte("concluida_at", desde30);
+      cobrancaN = (jaCobradas ?? 0) + 1;
+    }
     // REGISTRAR E SEGUIR: cron; uma tarefa perdida é recriada na próxima
     // rodada, mas a falha precisa ficar visível em /falhas.
     const insTarefa = await sb.from("tarefas").insert({
@@ -976,6 +982,209 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
         payload: { updated_at: l.updated_at },
       });
       stats.b3_reciclagem++;
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // A6 — Conversa abandonada com a IA: cria lead se faltar, garante dono e
+  // cobra o vendedor com uma tarefa "retomar_contato".
+  // A7 — Conversa humana parada: cobra desfecho do responsável.
+  // ─────────────────────────────────────────────────────────────────────────
+  {
+    const {
+      conversaAbandonadaPelaIA,
+      conversaHumanaParada,
+      janelaA6,
+      diasParada,
+      horasParada,
+      tagConversa,
+    } = await import("@/lib/conversas-regras");
+    const agora = new Date();
+
+    const { data: convsIA, error: erroIA } = await sb
+      .from("whatsapp_conversas")
+      .select("id, phone, name, status, ia_ativa, lead_id, atribuido_para, last_message_at")
+      .in("status", ["ia_atendendo", "aguardando_humano"])
+      .eq("ia_ativa", true)
+      .order("last_message_at", { ascending: true })
+      .limit(100);
+    if (erroIA) {
+      await registrarFalhaSegura("xerife-engine.a6.select", erroIA, {});
+    }
+
+    for (const conv of ((convsIA ?? []) as any[]).filter((c) =>
+      conversaAbandonadaPelaIA(c, agora, win),
+    )) {
+      const regra = "a6_ia_abandonada";
+      const quem = (conv.name as string | null)?.trim() || (conv.phone as string);
+      if (await alreadyActed(sb, regra, conv.lead_id ?? null, 24)) continue;
+
+      let leadId: string | null = conv.lead_id ?? null;
+      let ownerId: string | null = conv.atribuido_para ?? null;
+
+      if (!dryRun) {
+        if (!leadId) {
+          const ins = await sb
+            .from("leads")
+            .insert({
+              owner_id: null,
+              company: quem,
+              contact_name: (conv.name as string | null)?.trim() || "A identificar",
+              phone: conv.phone,
+              telefone_whatsapp: conv.phone,
+              stage: "novo",
+              origem: "whatsapp",
+              source: "WhatsApp IA abandonada",
+              tags: ["WhatsApp"],
+              notes: `Conversa parada com a IA há +${janelaA6(conv.status)}h úteis.`,
+            })
+            .select("id")
+            .single();
+          if (ins.error || !ins.data) {
+            await registrarFalhaSegura("xerife-engine.a6.lead", ins.error, {
+              conversa_id: conv.id,
+            });
+            continue;
+          }
+          leadId = ins.data.id as string;
+          const upConv = await sb
+            .from("whatsapp_conversas")
+            .update({ lead_id: leadId })
+            .eq("id", conv.id);
+          if (upConv.error) {
+            await registrarFalhaSegura("xerife-engine.a6.vincular", upConv.error, {
+              conversa_id: conv.id,
+            });
+          }
+        }
+        if (!ownerId && leadId) {
+          const { data: rpcData, error: rpcErr } = await sb.rpc("atribuir_proximo_vendedor", {
+            _lead_id: leadId,
+          });
+          if (rpcErr) {
+            await registrarFalhaSegura("xerife-engine.a6.fila", rpcErr, { lead_id: leadId });
+          } else {
+            ownerId = (rpcData as string) ?? null;
+          }
+        }
+      }
+
+      if (!dryRun && leadId && (await temTarefaAbertaOuRecente(sb, leadId, "retomar_contato", carenciaHorasUteis("retomar_contato"), win, agora)))
+        continue;
+
+      await criarTarefa({
+        lead_id: leadId,
+        lead_company: quem,
+        owner_id: ownerId,
+        tipo: "retomar_contato",
+        titulo: `Retomar conversa com ${quem} — parada há ${horasParada(conv.last_message_at, agora)}h`,
+        descricao: `A IA ficou com a conversa e ela parou. Assuma o atendimento. ${tagConversa(conv.id)}`,
+        motivo: "conversa abandonada com a IA",
+        regra,
+        prioridade: 1,
+      });
+      if (!dryRun && ownerId) {
+        await notifyOwner(
+          ownerId,
+          `🤖 Conversa parada com a IA
+
+Cliente: ${quem}
+Assuma o atendimento.${
+            leadId ? `
+${crmLeadLink(leadId)}` : ""
+          }`,
+        );
+      }
+      await log(sb, {
+        regra,
+        leadId,
+        vendedorId: ownerId,
+        acao: "tarefa criada",
+        payload: { conversa_id: conv.id, last_message_at: conv.last_message_at },
+      });
+      stats.a6_ia_abandonada++;
+    }
+
+    // ── A7
+    const { data: convsHumanas, error: erroH } = await sb
+      .from("whatsapp_conversas")
+      .select("id, phone, name, status, lead_id, atribuido_para, em_espera_desde, last_message_at")
+      .eq("status", "humano_atendendo")
+      .not("atribuido_para", "is", null)
+      .is("em_espera_desde", null)
+      .order("last_message_at", { ascending: true })
+      .limit(100);
+    if (erroH) {
+      await registrarFalhaSegura("xerife-engine.a7.select", erroH, {});
+    }
+
+    for (const conv of (convsHumanas ?? []) as any[]) {
+      let lead: { stage: string | null; next_followup: string | null; company: string | null } | null =
+        null;
+      if (conv.lead_id) {
+        const { data: l, error: erroL } = await sb
+          .from("leads")
+          .select("stage, next_followup, company")
+          .eq("id", conv.lead_id)
+          .maybeSingle();
+        if (erroL) {
+          await registrarFalhaSegura("xerife-engine.a7.lead", erroL, { conversa_id: conv.id });
+          continue;
+        }
+        lead = (l as any) ?? null;
+      }
+      if (!conversaHumanaParada(conv, lead, agora, win)) continue;
+
+      const regra = "a7_conversa_parada";
+      const quem = lead?.company || (conv.name as string | null)?.trim() || (conv.phone as string);
+
+      // Dedupe por conversa: já cobramos esta conversa nas últimas 24h?
+      const desde = new Date(Date.now() - 24 * 3600_000).toISOString();
+      const { count: jaCobrada } = await sb
+        .from("tarefas")
+        .select("id", { count: "exact", head: true })
+        .eq("tipo", "conversa_parada")
+        .in("status", ["pendente", "adiada"])
+        .ilike("descricao", `%${tagConversa(conv.id)}%`);
+      const { count: recente } = await sb
+        .from("tarefas")
+        .select("id", { count: "exact", head: true })
+        .eq("tipo", "conversa_parada")
+        .gte("created_at", desde)
+        .ilike("descricao", `%${tagConversa(conv.id)}%`);
+      if ((jaCobrada ?? 0) > 0 || (recente ?? 0) > 0) continue;
+
+      await criarTarefa({
+        lead_id: conv.lead_id ?? null,
+        lead_company: quem,
+        owner_id: conv.atribuido_para,
+        tipo: "conversa_parada",
+        titulo: `Conversa parada há ${diasParada(conv.last_message_at, agora)} dias — ${quem}`,
+        descricao: `Ninguém encerrou, colocou em espera nem combinou retorno. Dê o próximo passo. ${tagConversa(conv.id)}`,
+        motivo: "conversa humana sem próximo ato",
+        regra,
+        prioridade: 2,
+      });
+      if (!dryRun && conv.atribuido_para) {
+        await notifyOwner(
+          conv.atribuido_para,
+          `⏳ Conversa parada
+
+Cliente: ${quem}
+Sem próximo ato há ${diasParada(conv.last_message_at, agora)} dias.${
+            conv.lead_id ? `
+${crmLeadLink(conv.lead_id)}` : ""
+          }`,
+        );
+      }
+      await log(sb, {
+        regra,
+        leadId: conv.lead_id ?? null,
+        vendedorId: conv.atribuido_para,
+        acao: "tarefa criada",
+        payload: { conversa_id: conv.id, last_message_at: conv.last_message_at },
+      });
+      stats.a7_conversa_parada++;
     }
   }
 

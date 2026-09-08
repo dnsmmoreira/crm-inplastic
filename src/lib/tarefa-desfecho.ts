@@ -18,6 +18,7 @@ export const TIPOS_COMERCIAIS_XERIFE = [
   "cadencia_proposta",
   "resgate_carteira",
   "reativacao_lead",
+  "conversa_parada",
 ] as const;
 
 export type TipoComercialXerife = (typeof TIPOS_COMERCIAIS_XERIFE)[number];
@@ -32,14 +33,17 @@ export type TarefaParaDesfecho = {
 /**
  * Tarefas manuais, de pedido e de pós-venda seguem o fluxo antigo (nota;
  * pós-venda exige nota >= 10). Só tarefa comercial do Xerife ligada a um lead
- * exige desfecho.
+ * exige desfecho — exceção: `conversa_parada` pode não ter lead (conversa
+ * avulsa) e mesmo assim exige desfecho.
  */
 export function exigeDesfecho(t: TarefaParaDesfecho): boolean {
   if (t.origem !== "xerife") return false;
-  if (!t.lead_id) return false;
   if (t.pedido_id) return false;
+  if (t.tipo === "conversa_parada") return true;
+  if (!t.lead_id) return false;
   return (TIPOS_COMERCIAIS_XERIFE as readonly string[]).includes(t.tipo ?? "");
 }
+
 
 export const DESFECHOS = [
   {
@@ -57,6 +61,16 @@ export const DESFECHOS = [
     tipo: "perdido",
     rotulo: "Marcar como perdido",
     descricao: "Encerra o lead com motivo estruturado (entra no relatório de perdas).",
+  },
+  {
+    tipo: "em_espera",
+    rotulo: "Coloquei o atendimento em espera até [data]",
+    descricao: "A conversa fica aguardando o cliente e o Xerife só volta a cobrar na data.",
+  },
+  {
+    tipo: "encerrar_conversa",
+    rotulo: "Encerrar a conversa",
+    descricao: "Fecha o atendimento no WhatsApp com o motivo registrado.",
   },
   {
     tipo: "sem_pendencia",
@@ -80,6 +94,37 @@ export type DesfechoRegistrado = DesfechoTipo | (typeof DESFECHOS_SISTEMA)[numbe
 export function isDesfechoTipo(v: unknown): v is DesfechoTipo {
   return typeof v === "string" && DESFECHOS.some((d) => d.tipo === v);
 }
+
+/**
+ * Quais desfechos a tarefa oferece.
+ *  - `conversa_parada`: retorno, espera, encerrar a conversa, perdido (só com
+ *    lead) e sem pendência — avançar etapa não faz sentido aqui;
+ *  - demais tipos: o conjunto clássico do funil.
+ */
+export function desfechosParaTipo(
+  tipoTarefa: string | null | undefined,
+  opts: { temLead?: boolean } = {},
+): typeof DESFECHOS[number][] {
+  const temLead = opts.temLead !== false;
+  if (tipoTarefa === "conversa_parada") {
+    const permitidos = ["retorno_agendado", "em_espera", "encerrar_conversa", "sem_pendencia"];
+    if (temLead) permitidos.splice(3, 0, "perdido");
+    return DESFECHOS.filter((d) => permitidos.includes(d.tipo));
+  }
+  return DESFECHOS.filter(
+    (d) => d.tipo !== "em_espera" && d.tipo !== "encerrar_conversa",
+  ) as typeof DESFECHOS[number][];
+}
+
+/** O desfecho escolhido é válido para o tipo da tarefa? (gate fail-closed) */
+export function desfechoPermitido(
+  tipoTarefa: string | null | undefined,
+  desfecho: string,
+  opts: { temLead?: boolean } = {},
+): boolean {
+  return desfechosParaTipo(tipoTarefa, opts).some((d) => d.tipo === desfecho);
+}
+
 
 // ─────────────── Etapas ───────────────
 
@@ -126,6 +171,9 @@ export function carenciaHorasUteis(tipo: string | null | undefined): number {
       return 70; // ~7 dias úteis
     case "reativacao_lead":
       return 300; // ~30 dias úteis
+    case "conversa_parada":
+      return 30; // 3 dias úteis
+
     default:
       if (typeof tipo === "string" && tipo.startsWith("pos_venda_")) return 300;
       return 0;
@@ -188,26 +236,58 @@ export type ValidacaoDesfecho = { ok: true } | { ok: false; erro: string };
 
 export function validarDesfecho(
   input: DesfechoInput,
-  ctx: { stageAtual?: string | null; agora?: Date } = {},
+  ctx: {
+    stageAtual?: string | null;
+    agora?: Date;
+    tipoTarefa?: string | null;
+    temLead?: boolean;
+  } = {},
 ): ValidacaoDesfecho {
   const agora = ctx.agora ?? new Date();
   if (!isDesfechoTipo(input.tipo)) return { ok: false, erro: "Escolha o desfecho desta tarefa." };
+  if (
+    ctx.tipoTarefa !== undefined &&
+    !desfechoPermitido(ctx.tipoTarefa, input.tipo, { temLead: ctx.temLead })
+  ) {
+    return { ok: false, erro: "Este desfecho não vale para esta tarefa." };
+  }
 
-  if (input.tipo === "retorno_agendado") {
+  if (input.tipo === "retorno_agendado" || input.tipo === "em_espera") {
+    const ehEspera = input.tipo === "em_espera";
     const data = (input.data ?? "").trim();
     if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) {
-      return { ok: false, erro: "Informe a data do retorno combinado." };
+      return {
+        ok: false,
+        erro: ehEspera ? "Informe até quando aguardar o cliente." : "Informe a data do retorno combinado.",
+      };
     }
     const minimo = proximoDiaUtil(agora);
     if (data < minimo) {
-      return { ok: false, erro: "O retorno precisa ser marcado a partir do próximo dia útil." };
+      return {
+        ok: false,
+        erro: ehEspera
+          ? "A espera precisa ir pelo menos até o próximo dia útil."
+          : "O retorno precisa ser marcado a partir do próximo dia útil.",
+      };
     }
     const limite = new Date(agora.getTime() + LIMITE_RETORNO_DIAS * 86_400_000);
     if (data > ymd(limite)) {
-      return { ok: false, erro: `O retorno não pode passar de ${LIMITE_RETORNO_DIAS} dias.` };
+      return { ok: false, erro: `A data não pode passar de ${LIMITE_RETORNO_DIAS} dias.` };
     }
     return { ok: true };
   }
+
+  if (input.tipo === "encerrar_conversa") {
+    const motivo = (input.detalhe ?? "").trim();
+    if (motivo.length < JUSTIFICATIVA_MIN_CHARS) {
+      return {
+        ok: false,
+        erro: `Diga por que está encerrando a conversa (mín. ${JUSTIFICATIVA_MIN_CHARS} caracteres).`,
+      };
+    }
+    return { ok: true };
+  }
+
 
   if (input.tipo === "avancou_etapa") {
     const permitidas = etapasAvancoPermitidas(ctx.stageAtual);

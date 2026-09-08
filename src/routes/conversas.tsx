@@ -832,7 +832,7 @@ function ChatPanel({
       const posse = await verificarPosse({ data: { conversaId: conversa.id } });
       if (!posse.souDono && !posse.semDono) {
         assumirPosse = window.confirm(
-          `Esta conversa está com ${posse.nomeDono ?? "outro atendente"}. Assumir o atendimento?`,
+          `Esta conversa está com ${posse.nomeDono ?? "outro atendente"}. Assumir o atendimento? O cliente também passa a ser seu.`,
         );
       }
       if (iaNoControle) await assumir({ data: { conversaId: conversa.id } });
@@ -908,7 +908,7 @@ function ChatPanel({
       const posse = await verificarPosse({ data: { conversaId: conversa.id } });
       if (!posse.souDono && !posse.semDono) {
         assumirPosse = window.confirm(
-          `Esta conversa está com ${posse.nomeDono ?? "outro atendente"}. Assumir o atendimento?`,
+          `Esta conversa está com ${posse.nomeDono ?? "outro atendente"}. Assumir o atendimento? O cliente também passa a ser seu.`,
         );
       }
       if (iaNoControle) await assumir({ data: { conversaId: conversa.id } });

@@ -23,6 +23,8 @@ const TIPO_LABEL: Record<string, string> = {
   cadencia_proposta: "Cadência proposta",
   resgate_carteira: "Resgate carteira",
   reativacao_lead: "Reativação",
+  retomar_contato: "Retomar contato",
+  conversa_parada: "Conversa parada",
   pos_venda_confirmacao: "Pós-venda D+3",
   pos_venda_satisfacao: "Pós-venda D+15",
   pos_venda_recompra: "Recompra D+45",
@@ -161,7 +163,7 @@ export function XerifeSimulator({
                     <div className="flex flex-wrap items-center gap-1.5">
                       <button
                         className="text-sm font-medium hover:text-primary text-left"
-                        onClick={() => onOpenLead?.(p.lead_id)}
+                        onClick={() => p.lead_id && onOpenLead?.(p.lead_id)}
                       >
                         {p.lead_company ?? "—"} <ChevronRight className="inline h-3 w-3" />
                       </button>
