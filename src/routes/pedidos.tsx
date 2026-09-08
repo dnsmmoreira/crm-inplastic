@@ -92,6 +92,12 @@ type PendingBackward = {
   to: PedidoStageId;
 };
 
+/** Movimento que ficou pendente de uma informação (responsável ou dados). */
+type PendingMove = PendingBackward & {
+  motivo?: string | undefined;
+  assumir?: boolean | undefined;
+};
+
 function PedidosKanbanPage() {
   const listFn = useServerFn(listPedidos);
   const updateFn = useServerFn(updatePedidoStage);
@@ -124,9 +130,19 @@ function PedidosKanbanPage() {
     refetchOnWindowFocus: false,
   });
 
+  const [pendingAssumir, setPendingAssumir] = useState<PendingMove | null>(null);
+  const [pendingDados, setPendingDados] = useState<
+    (PendingMove & { faltam: Array<{ campo: string; label: string }> }) | null
+  >(null);
+
   const mutation = useMutation({
-    mutationFn: (vars: { pedido_id: string; stage: PedidoStageId; motivo?: string }) =>
-      updateFn({ data: vars }),
+    mutationFn: (vars: {
+      pedido_id: string;
+      stage: PedidoStageId;
+      motivo?: string;
+      assumir?: boolean;
+      dados?: Record<string, string>;
+    }) => updateFn({ data: vars }),
     onMutate: async (vars) => {
       await qc.cancelQueries({ queryKey: ["pedidos", "kanban"] });
       const prev = qc.getQueryData<PedidoRow[]>(["pedidos", "kanban"]);
@@ -144,14 +160,37 @@ function PedidosKanbanPage() {
     },
     onSuccess: (res, vars) => {
       if (res && "ok" in res && !res.ok) {
+        const pedido = (qc.getQueryData<PedidoRow[]>(["pedidos", "kanban"]) ?? []).find(
+          (p) => p.id === vars.pedido_id,
+        );
+        const base: PendingMove = {
+          pedidoId: vars.pedido_id,
+          pedidoNumber: pedido?.number ?? "",
+          from: (pedido?.stage ?? vars.stage) as PedidoStageId,
+          to: vars.stage,
+          motivo: vars.motivo,
+          assumir: vars.assumir,
+        };
+        if (res.reason === "sem_responsavel") {
+          setPendingAssumir(base);
+          void qc.invalidateQueries({ queryKey: ["pedidos", "kanban"] });
+          return;
+        }
+        if (res.reason === "dados_faltando") {
+          setPendingDados({ ...base, faltam: res.faltam });
+          void qc.invalidateQueries({ queryKey: ["pedidos", "kanban"] });
+          return;
+        }
         toast.error(res.message);
         void qc.invalidateQueries({ queryKey: ["pedidos", "kanban"] });
         return;
       }
       void qc.invalidateQueries({ queryKey: ["pedidos", "kanban"] });
       void qc.invalidateQueries({ queryKey: ["pipeline", "leads-com-pedido"] });
+      // Assumiu o pedido no mesmo movimento: abre o pedido para os romaneios.
+      if (res && "ok" in res && res.ok && res.assumiu) setOpenPedidoId(vars.pedido_id);
       // Entrou no Pós-venda: abre o pedido para comprovar a entrega na hora.
-      if (vars.stage === "pos_venda") setOpenPedidoId(vars.pedido_id);
+      else if (vars.stage === "pos_venda") setOpenPedidoId(vars.pedido_id);
     },
   });
 
@@ -421,6 +460,37 @@ function PedidosKanbanPage() {
           const label = PEDIDO_STAGES.find((s) => s.id === pendingBackward.to)?.label;
           toast.success(`${pendingBackward.pedidoNumber} ↺ ${label}`);
           setPendingBackward(null);
+        }}
+      />
+
+      <AssumirParaMoverDialog
+        pending={pendingAssumir}
+        onCancel={() => setPendingAssumir(null)}
+        onConfirm={() => {
+          if (!pendingAssumir) return;
+          mutation.mutate({
+            pedido_id: pendingAssumir.pedidoId,
+            stage: pendingAssumir.to,
+            motivo: pendingAssumir.motivo,
+            assumir: true,
+          });
+          setPendingAssumir(null);
+        }}
+      />
+
+      <DadosDeAvancoDialog
+        pending={pendingDados}
+        onCancel={() => setPendingDados(null)}
+        onConfirm={(dados) => {
+          if (!pendingDados) return;
+          mutation.mutate({
+            pedido_id: pendingDados.pedidoId,
+            stage: pendingDados.to,
+            motivo: pendingDados.motivo,
+            assumir: pendingDados.assumir,
+            dados,
+          });
+          setPendingDados(null);
         }}
       />
     </div>
@@ -711,6 +781,106 @@ function PedidoCard({
         ))}
       </div>
     </div>
+  );
+}
+
+/** Etapa operacional sem dono: ou alguém assume, ou o card não anda. */
+function AssumirParaMoverDialog({
+  pending,
+  onCancel,
+  onConfirm,
+}: {
+  pending: PendingMove | null;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const toLabel = pending ? PEDIDO_STAGES.find((s) => s.id === pending.to)?.label : "";
+  return (
+    <Dialog open={!!pending} onOpenChange={(o) => !o && onCancel()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Assumir o pedido {pending?.pedidoNumber}?</DialogTitle>
+          <DialogDescription>
+            Esta etapa precisa de um responsável. Ao continuar, você fica como responsável pelo
+            pedido e ele vai para <b>{toLabel}</b>.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onClick={onCancel}>
+            Cancelar
+          </Button>
+          <Button onClick={onConfirm}>Assumir e mover</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Pede APENAS os dados que o servidor apontou como faltando. */
+function DadosDeAvancoDialog({
+  pending,
+  onCancel,
+  onConfirm,
+}: {
+  pending: (PendingMove & { faltam: Array<{ campo: string; label: string }> }) | null;
+  onCancel: () => void;
+  onConfirm: (dados: Record<string, string>) => void;
+}) {
+  const [valores, setValores] = useState<Record<string, string>>({});
+  useEffect(() => {
+    setValores({});
+  }, [pending?.pedidoId, pending?.to]);
+
+  const toLabel = pending ? PEDIDO_STAGES.find((s) => s.id === pending.to)?.label : "";
+  const faltam = pending?.faltam ?? [];
+  const completo = faltam.every((f) => (valores[f.campo] ?? "").trim().length > 0);
+
+  return (
+    <Dialog open={!!pending} onOpenChange={(o) => !o && onCancel()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Informe para avançar — {pending?.pedidoNumber}</DialogTitle>
+          <DialogDescription>
+            Para o pedido entrar em <b>{toLabel}</b>, estes dados são obrigatórios.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          {faltam.map((f) => (
+            <div key={f.campo} className="space-y-1">
+              <label className="text-sm font-medium">{f.label}</label>
+              {f.campo === "modalidade_entrega" ? (
+                <Select
+                  value={valores[f.campo] ?? ""}
+                  onValueChange={(v) => setValores((s) => ({ ...s, [f.campo]: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="coleta">Coleta por transportadora</SelectItem>
+                    <SelectItem value="entrega_propria">Entrega própria</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  type={f.campo === "previsao_entrega" ? "date" : "text"}
+                  value={valores[f.campo] ?? ""}
+                  onChange={(e) => setValores((s) => ({ ...s, [f.campo]: e.target.value }))}
+                />
+              )}
+            </div>
+          ))}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onCancel}>
+            Cancelar
+          </Button>
+          <Button disabled={!completo} onClick={() => onConfirm(valores)}>
+            Salvar e mover
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

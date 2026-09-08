@@ -1868,12 +1868,15 @@ export type Database = {
           checklist_atualizado_em: string | null
           checklist_atualizado_por: string | null
           checklist_conferencia: Json
+          coleta_combinada_em: string | null
+          coleta_combinada_por: string | null
           comprovacao_dispensa_motivo: string | null
           comprovacao_dispensada_em: string | null
           comprovacao_dispensada_por: string | null
           created_at: string
           despachado_em: string | null
           encerrado_em: string | null
+          encerrado_motivo: string | null
           entrega_comprovada_em: string | null
           entrega_confirmada: string | null
           entrega_confirmada_por: string | null
@@ -1899,6 +1902,7 @@ export type Database = {
           ocorrencia: string | null
           owner_id: string
           placa: string | null
+          pos_venda_contato_em: string | null
           pos_venda_status: string | null
           previsao_entrega: string | null
           prioridade: string | null
@@ -1925,12 +1929,15 @@ export type Database = {
           checklist_atualizado_em?: string | null
           checklist_atualizado_por?: string | null
           checklist_conferencia?: Json
+          coleta_combinada_em?: string | null
+          coleta_combinada_por?: string | null
           comprovacao_dispensa_motivo?: string | null
           comprovacao_dispensada_em?: string | null
           comprovacao_dispensada_por?: string | null
           created_at?: string
           despachado_em?: string | null
           encerrado_em?: string | null
+          encerrado_motivo?: string | null
           entrega_comprovada_em?: string | null
           entrega_confirmada?: string | null
           entrega_confirmada_por?: string | null
@@ -1956,6 +1963,7 @@ export type Database = {
           ocorrencia?: string | null
           owner_id: string
           placa?: string | null
+          pos_venda_contato_em?: string | null
           pos_venda_status?: string | null
           previsao_entrega?: string | null
           prioridade?: string | null
@@ -1982,12 +1990,15 @@ export type Database = {
           checklist_atualizado_em?: string | null
           checklist_atualizado_por?: string | null
           checklist_conferencia?: Json
+          coleta_combinada_em?: string | null
+          coleta_combinada_por?: string | null
           comprovacao_dispensa_motivo?: string | null
           comprovacao_dispensada_em?: string | null
           comprovacao_dispensada_por?: string | null
           created_at?: string
           despachado_em?: string | null
           encerrado_em?: string | null
+          encerrado_motivo?: string | null
           entrega_comprovada_em?: string | null
           entrega_confirmada?: string | null
           entrega_confirmada_por?: string | null
@@ -2013,6 +2024,7 @@ export type Database = {
           ocorrencia?: string | null
           owner_id?: string
           placa?: string | null
+          pos_venda_contato_em?: string | null
           pos_venda_status?: string | null
           previsao_entrega?: string | null
           prioridade?: string | null
@@ -3113,6 +3125,7 @@ export type Database = {
           placar_peso_sla_estourado: number
           placar_peso_tarefa: number
           pos_venda_dias: number[]
+          pos_venda_dias_uteis: number
           proposta_enviada_dias: number
           reatribuir_lead_abandonado: boolean
           reciclagem_perdidos_dias: number
@@ -3158,6 +3171,7 @@ export type Database = {
           placar_peso_sla_estourado?: number
           placar_peso_tarefa?: number
           pos_venda_dias?: number[]
+          pos_venda_dias_uteis?: number
           proposta_enviada_dias?: number
           reatribuir_lead_abandonado?: boolean
           reciclagem_perdidos_dias?: number
@@ -3203,6 +3217,7 @@ export type Database = {
           placar_peso_sla_estourado?: number
           placar_peso_tarefa?: number
           pos_venda_dias?: number[]
+          pos_venda_dias_uteis?: number
           proposta_enviada_dias?: number
           reatribuir_lead_abandonado?: boolean
           reciclagem_perdidos_dias?: number

@@ -21,7 +21,7 @@ export const TIPOS_POR_ETAPA_PEDIDO: Record<string, string[]> = {
   aguardando_pagamento: ["aguardando_pagamento", "cadencia_aguardando_pagamento"],
   programacao: ["cadencia_liberado"],
   em_producao: ["acompanhar_producao", "cadencia_producao"],
-  pronto: ["cadencia_coleta_entrega"],
+  pronto: ["cadencia_coleta_entrega", "combinar_coleta"],
   faturado_em_rota: ["cadencia_em_rota", "nf_atrasada"],
   pos_venda: [
     "pos_venda_pedido",
@@ -29,6 +29,7 @@ export const TIPOS_POR_ETAPA_PEDIDO: Record<string, string[]> = {
     "pos_venda_satisfacao",
     "pos_venda_recompra",
     "comprovacao_entrega",
+    "pos_venda_atrasado",
   ],
 };
 
@@ -96,6 +97,9 @@ export type MotivoEncerramento =
   | { causa: "comprovacao_dispensada" }
   | { causa: "ocorrencia_resolvida" }
   | { causa: "previsao_atualizada"; data: string }
+  | { causa: "coleta_combinada" }
+  | { causa: "contato_pos_venda" }
+  | { causa: "pedido_encerrado" }
   | { causa: "cadencia_substituida"; toque: number };
 
 /** Texto humano gravado em `desfecho_detalhe`. */
@@ -121,6 +125,12 @@ export function motivoEncerramento(m: MotivoEncerramento): string {
       return "ocorrência resolvida";
     case "previsao_atualizada":
       return `previsão de entrega atualizada para ${m.data}`;
+    case "coleta_combinada":
+      return "coleta/entrega combinada com o cliente";
+    case "contato_pos_venda":
+      return "contato de pós-venda registrado";
+    case "pedido_encerrado":
+      return "pedido encerrado";
     case "cadencia_substituida":
       return `substituída pelo toque ${m.toque}`;
   }

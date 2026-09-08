@@ -115,14 +115,19 @@ export function DesfechoTarefaDialog({
           ))}
         </div>
 
-        {(tipo === "retorno_agendado" || tipo === "em_espera" || tipo === "prorrogar_proposta") && (
+        {(tipo === "retorno_agendado" ||
+          tipo === "em_espera" ||
+          tipo === "prorrogar_proposta" ||
+          tipo === "data_combinada") && (
           <div className="space-y-2">
             <Label>
               {tipo === "em_espera"
                 ? "Aguardar o cliente até"
                 : tipo === "prorrogar_proposta"
                   ? "Nova validade da proposta"
-                  : "Data do retorno"}{" "}
+                  : tipo === "data_combinada"
+                    ? "Data combinada da coleta/entrega"
+                    : "Data do retorno"}{" "}
               <span className="text-destructive">*</span>
             </Label>
             <Input type="date" min={minData} value={data} onChange={(e) => setData(e.target.value)} />
@@ -155,6 +160,34 @@ export function DesfechoTarefaDialog({
                     ? "Ex: rascunho de teste, orçamento refeito em outra proposta"
                     : "Ex: cliente comprou com outro fornecedor; assunto resolvido"
               } />
+          </div>
+        )}
+
+        {tipo === "data_combinada" && (
+          <div className="space-y-2">
+            <Label>
+              Observação da combinação <span className="text-destructive">*</span>
+            </Label>
+            <Textarea
+              rows={2}
+              value={detalhe}
+              onChange={(e) => setDetalhe(e.target.value)}
+              placeholder="Ex: transportadora retira pela manhã; falado com o comprador"
+            />
+          </div>
+        )}
+
+        {tipo === "contato_registrado" && (
+          <div className="space-y-2">
+            <Label>
+              O que o cliente disse? <span className="text-destructive">*</span>
+            </Label>
+            <Textarea
+              rows={2}
+              value={detalhe}
+              onChange={(e) => setDetalhe(e.target.value)}
+              placeholder="Ex: recebeu tudo certo, sem avarias; pediu para avisar do próximo lote"
+            />
           </div>
         )}
 

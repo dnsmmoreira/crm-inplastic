@@ -308,8 +308,18 @@ export const listLeadsComPedido = createServerFn({ method: "GET" })
   });
 
 export type MoveStageResult =
-  | { ok: true; stage: PedidoStageId; backward: boolean }
-  | { ok: false; reason: "invalid_transition" | "needs_motivo" | "forbidden"; message: string };
+  | { ok: true; stage: PedidoStageId; backward: boolean; assumiu?: boolean }
+  | {
+      ok: false;
+      reason: "invalid_transition" | "needs_motivo" | "forbidden" | "sem_responsavel";
+      message: string;
+    }
+  | {
+      ok: false;
+      reason: "dados_faltando";
+      message: string;
+      faltam: Array<{ campo: string; label: string }>;
+    };
 
 /** Admin ou membro do perfil Financeiro (usado pela reprovação financeira). */
 async function isAdminOuFinanceiro(sb: LooseClient, userId: string): Promise<boolean> {
@@ -452,16 +462,39 @@ async function enqueueStageChangeNotification(
   }
 }
 
+const dadosAvancoSchema = z
+  .object({
+    previsao_entrega: z.string().trim().min(4).max(40).optional(),
+    modalidade_entrega: z.string().trim().min(2).max(40).optional(),
+    transportadora: z.string().trim().min(2).max(120).optional(),
+    nf_numero: z.string().trim().min(1).max(40).optional(),
+  })
+  .optional();
+
 export const updatePedidoStage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { pedido_id: string; stage: PedidoStageId; motivo?: string }) =>
-    z
-      .object({
-        pedido_id: z.string().uuid(),
-        stage: z.enum(PEDIDO_STAGE_IDS),
-        motivo: z.string().trim().min(3).max(1000).optional(),
-      })
-      .parse(input),
+  .inputValidator(
+    (input: {
+      pedido_id: string;
+      stage: PedidoStageId;
+      motivo?: string;
+      assumir?: boolean;
+      dados?: {
+        previsao_entrega?: string;
+        modalidade_entrega?: string;
+        transportadora?: string;
+        nf_numero?: string;
+      };
+    }) =>
+      z
+        .object({
+          pedido_id: z.string().uuid(),
+          stage: z.enum(PEDIDO_STAGE_IDS),
+          motivo: z.string().trim().min(3).max(1000).optional(),
+          assumir: z.boolean().optional(),
+          dados: dadosAvancoSchema,
+        })
+        .parse(input),
   )
   .handler(async ({ data, context }): Promise<MoveStageResult> => {
     const sb: LooseClient = context.supabase;
@@ -480,7 +513,9 @@ export const updatePedidoStage = createServerFn({ method: "POST" })
     // Carrega etapa atual
     const { data: current, error: loadErr } = await sb
       .from("pedidos")
-      .select("id, stage")
+      .select(
+        "id, stage, responsavel_atual_id, previsao_entrega, modalidade_entrega, transportadora, nf_numero",
+      )
       .eq("id", data.pedido_id)
       .maybeSingle();
     if (loadErr) throw new Error(`Falha ao carregar pedido: ${loadErr.message}`);
@@ -552,6 +587,62 @@ export const updatePedidoStage = createServerFn({ method: "POST" })
       }
     }
 
+    // ── Bloco 5: responsável e dados de avanço ────────────────────────────
+    const { exigeResponsavel, faltamDados, MSG_SEM_RESPONSAVEL } = await import(
+      "@/lib/pedido-avanco"
+    );
+
+    let assumiu = false;
+    if ((exigeResponsavel(from) || exigeResponsavel(to)) && !current.responsavel_atual_id) {
+      if (!data.assumir) {
+        return { ok: false, reason: "sem_responsavel", message: MSG_SEM_RESPONSAVEL };
+      }
+      const r = await assumirPedidoImpl(sb, context.userId, data.pedido_id);
+      if (!r.ok) {
+        return {
+          ok: false,
+          reason: "forbidden",
+          message: `Este pedido já está com ${r.responsavel_atual_nome ?? "outro responsável"}.`,
+        };
+      }
+      assumiu = true;
+    }
+
+    // Dados informados na tela: gravam ANTES de validar o avanço.
+    const pedidoDados = {
+      previsao_entrega: current.previsao_entrega as string | null,
+      modalidade_entrega: current.modalidade_entrega as string | null,
+      transportadora: current.transportadora as string | null,
+      nf_numero: current.nf_numero as string | null,
+    };
+    if (data.dados && Object.keys(data.dados).length > 0) {
+      const patchDados: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(data.dados)) {
+        if (v === undefined || v === "") continue;
+        patchDados[k] = v;
+        (pedidoDados as Record<string, unknown>)[k] = v;
+      }
+      if (Object.keys(patchDados).length > 0) {
+        const upDados = await sb.from("pedidos").update(patchDados).eq("id", data.pedido_id);
+        await assertNoError(
+          upDados,
+          "pedidos.updatePedidoStage/dados",
+          { pedido_id: data.pedido_id },
+          "Não foi possível salvar os dados do pedido. Tente novamente.",
+        );
+      }
+    }
+
+    const faltam = faltamDados(pedidoDados, to);
+    if (faltam.length > 0) {
+      return {
+        ok: false,
+        reason: "dados_faltando",
+        message: `Para avançar, informe: ${faltam.map((f) => f.label).join(", ")}.`,
+        faltam,
+      };
+    }
+
     // Atualiza etapa
     const patch: Record<string, unknown> = { stage: to };
     if (to === PEDIDO_STAGE_REPROVADO) patch.reprovacao_motivo = data.motivo ?? null;
@@ -607,7 +698,7 @@ export const updatePedidoStage = createServerFn({ method: "POST" })
       });
     }
 
-    return { ok: true, stage: to, backward };
+    return { ok: true, stage: to, backward, ...(assumiu ? { assumiu: true } : {}) };
   });
 
 export type PedidoStageHistoryRow = {
@@ -1784,89 +1875,103 @@ async function nomeDoPerfil(sb: LooseClient, userId: string): Promise<string> {
   return typeof nome === "string" && nome.trim() ? nome.trim() : "Operacional";
 }
 
+export type AssumirPedidoResult =
+  | { ok: false; conflito: true; responsavel_atual_nome: string | null }
+  | { ok: true; conflito: false; pedido_number: string; responsavel_atual_nome: string };
+
+/**
+ * Assumir o pedido operacional — mesma regra para o botão "Assumir" e para o
+ * avanço de etapa que exige responsável (`updatePedidoStage({ assumir: true })`).
+ */
+async function assumirPedidoImpl(
+  sb: LooseClient,
+  userId: string,
+  pedidoId: string,
+  forcar?: boolean,
+): Promise<AssumirPedidoResult> {
+  if (!(await podeOperarProducao(sb, userId))) {
+    throw new Error("Você não tem permissão para assumir pedidos da operação.");
+  }
+
+  const { data: p, error } = await sb
+    .from("pedidos")
+    .select("id, number, stage, responsavel_atual_id")
+    .eq("id", pedidoId)
+    .maybeSingle();
+  if (error) throw new Error(`Falha ao carregar pedido: ${error.message}`);
+  if (!p) throw new Error("Pedido não encontrado");
+
+  if (!podeAssumirPedido(p.stage)) {
+    throw new Error(
+      `Este pedido está em "${stageLabel(p.stage)}" — só é possível assumir em Liberado, Em Produção ou Coleta / Entrega.`,
+    );
+  }
+
+  if (p.responsavel_atual_id && p.responsavel_atual_id !== userId && !forcar) {
+    const nomes = await resolveNames(sb, [p.responsavel_atual_id]);
+    return {
+      ok: false,
+      conflito: true,
+      responsavel_atual_nome: nomes.get(p.responsavel_atual_id) ?? null,
+    };
+  }
+
+  const equipe = await nomeDoPerfil(sb, userId);
+  const meuNome = (await resolveNames(sb, [userId])).get(userId) ?? equipe;
+
+  const up = await sb
+    .from("pedidos")
+    .update({ responsavel_atual_id: userId, equipe_responsavel: equipe })
+    .eq("id", pedidoId);
+  await assertNoError(
+    up,
+    "pedidos.assumirPedidoOperacional/update",
+    { pedido_id: pedidoId },
+    "Não foi possível assumir o pedido. Tente novamente.",
+  );
+
+  // Rastro (não aborta a operação já concluída).
+  const hist = await sb.from("pedido_stage_history").insert({
+    pedido_id: pedidoId,
+    from_stage: p.stage,
+    to_stage: p.stage,
+    is_backward: false,
+    motivo: `Pedido assumido por ${meuNome}`,
+    moved_by: userId,
+  });
+  if (hist.error)
+    await registrarFalhaSegura("pedidos.assumirPedidoOperacional/historico", hist.error, {
+      pedido_id: pedidoId,
+    });
+
+  const audit = await sb.from("user_audit_log").insert({
+    ator_user_id: userId,
+    alvo_user_id: userId,
+    campo: "pedido_assumido",
+    valor_anterior: p.responsavel_atual_id,
+    valor_novo: pedidoId,
+  });
+  if (audit.error)
+    await registrarFalhaSegura("pedidos.assumirPedidoOperacional/auditoria", audit.error, {
+      pedido_id: pedidoId,
+    });
+
+  return {
+    ok: true,
+    conflito: false,
+    pedido_number: p.number as string,
+    responsavel_atual_nome: meuNome,
+  };
+}
+
 export const assumirPedidoOperacional = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { pedido_id: string; forcar?: boolean }) =>
     z.object({ pedido_id: z.string().uuid(), forcar: z.boolean().optional() }).parse(input),
   )
-  .handler(async ({ data, context }) => {
-    const sb: LooseClient = context.supabase;
-    const userId = context.userId;
-
-    if (!(await podeOperarProducao(sb, userId))) {
-      throw new Error("Você não tem permissão para assumir pedidos da operação.");
-    }
-
-    const { data: p, error } = await sb
-      .from("pedidos")
-      .select("id, number, stage, responsavel_atual_id")
-      .eq("id", data.pedido_id)
-      .maybeSingle();
-    if (error) throw new Error(`Falha ao carregar pedido: ${error.message}`);
-    if (!p) throw new Error("Pedido não encontrado");
-
-    if (!podeAssumirPedido(p.stage)) {
-      throw new Error(
-        `Este pedido está em "${stageLabel(p.stage)}" — só é possível assumir em Liberado, Em Produção ou Coleta / Entrega.`,
-      );
-    }
-
-    if (p.responsavel_atual_id && p.responsavel_atual_id !== userId && !data.forcar) {
-      const nomes = await resolveNames(sb, [p.responsavel_atual_id]);
-      return {
-        ok: false as const,
-        conflito: true as const,
-        responsavel_atual_nome: nomes.get(p.responsavel_atual_id) ?? null,
-      };
-    }
-
-    const equipe = await nomeDoPerfil(sb, userId);
-    const meuNome = (await resolveNames(sb, [userId])).get(userId) ?? equipe;
-
-    const up = await sb
-      .from("pedidos")
-      .update({ responsavel_atual_id: userId, equipe_responsavel: equipe })
-      .eq("id", data.pedido_id);
-    await assertNoError(
-      up,
-      "pedidos.assumirPedidoOperacional/update",
-      { pedido_id: data.pedido_id },
-      "Não foi possível assumir o pedido. Tente novamente.",
-    );
-
-    // Rastro (não aborta a operação já concluída).
-    const hist = await sb.from("pedido_stage_history").insert({
-      pedido_id: data.pedido_id,
-      from_stage: p.stage,
-      to_stage: p.stage,
-      is_backward: false,
-      motivo: `Pedido assumido por ${meuNome}`,
-      moved_by: userId,
-    });
-    if (hist.error)
-      await registrarFalhaSegura("pedidos.assumirPedidoOperacional/historico", hist.error, {
-        pedido_id: data.pedido_id,
-      });
-
-    const audit = await sb.from("user_audit_log").insert({
-      ator_user_id: userId,
-      alvo_user_id: userId,
-      campo: "pedido_assumido",
-      valor_anterior: p.responsavel_atual_id,
-      valor_novo: data.pedido_id,
-    });
-    if (audit.error)
-      await registrarFalhaSegura("pedidos.assumirPedidoOperacional/auditoria", audit.error, {
-        pedido_id: data.pedido_id,
-      });
-
-    return {
-      ok: true as const,
-      conflito: false as const,
-      pedido_number: p.number as string,
-      responsavel_atual_nome: meuNome,
-    };
-  });
+  .handler(async ({ data, context }) =>
+    assumirPedidoImpl(context.supabase as LooseClient, context.userId, data.pedido_id, data.forcar),
+  );
 
 export const liberarPedidoOperacional = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

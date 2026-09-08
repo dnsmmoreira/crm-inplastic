@@ -29,7 +29,12 @@ import {
   encerrarTarefasDoPedido,
   notificarUsuarios,
 } from "@/lib/pedidos-fluxo.server";
-import { motivoEncerramento } from "@/lib/tarefas-encerramento";
+import {
+  ETAPAS_TERMINAIS_PEDIDO,
+  motivoEncerramento,
+  todosTiposPedido,
+} from "@/lib/tarefas-encerramento";
+import { diasUteisEntre, posVendaAtrasado, posVendaPodeEncerrar } from "@/lib/pedido-avanco";
 import { stageLabel } from "@/lib/pedidos-stages";
 import {
   deveEscalarFinanceiro,
@@ -61,9 +66,18 @@ const SLA_STAGE_DIAS: Record<string, number> = {
 };
 
 const APROVACAO_SLA_HORAS = 24;
-const NF_ATRASO_DIAS = 2;
+const NF_ATRASO_DIAS = 1;
 const OCORRENCIA_SLA_HORAS = 24;
 const POS_VENDA_ENTREGA_DIAS = 3;
+/** Etapas em que a previsão de entrega não é mais cobrável. */
+const STAGES_FORA_DA_PREVISAO = [
+  "pedido_entregue",
+  "concluido",
+  "pos_venda",
+  ...ETAPAS_TERMINAIS_PEDIDO,
+];
+/** Dias corridos sem novo pedido do cliente antes da tarefa de relacionamento. */
+const CLIENTE_SEM_PEDIDO_DIAS = 90;
 /** Horas em pós-venda sem comprovação de entrega antes de cobrar. */
 const COMPROVACAO_ENTREGA_HORAS = 48;
 /** Dedupe da cobrança de comprovação: no máximo 1 a cada 3 dias por pedido. */
@@ -147,6 +161,10 @@ type Stats = {
   ocorrencia_aberta: number;
   pos_venda_recompra: number;
   comprovacao_entrega: number;
+  comprovacao_escalada: number;
+  pos_venda_atrasado: number;
+  pos_venda_encerrado: number;
+  cliente_sem_pedido: number;
   financeiro_escalado: number;
   skipped_dedupe: number;
 };
@@ -168,11 +186,23 @@ async function runXerifePedidos(
     ocorrencia_aberta: 0,
     pos_venda_recompra: 0,
     comprovacao_entrega: 0,
+    comprovacao_escalada: 0,
+    pos_venda_atrasado: 0,
+    pos_venda_encerrado: 0,
+    cliente_sem_pedido: 0,
     financeiro_escalado: 0,
     skipped_dedupe: 0,
   };
 
   const now = new Date();
+
+  // Prazo (dias úteis) do pós-venda: Denis ajusta em xerife_config.
+  const { data: cfg } = await sb
+    .from("xerife_config")
+    .select("pos_venda_dias_uteis")
+    .eq("id", 1)
+    .maybeSingle();
+  const posVendaDiasUteis = Number((cfg as any)?.pos_venda_dias_uteis ?? 5) || 5;
 
   // Usuários isentos de cobrança do Xerife (lançam pedidos, mas não decidem o
   // andamento). As tarefas deles vão para o grupo operacional.
@@ -441,14 +471,14 @@ async function runXerifePedidos(
     }
   }
 
-  // ─────────────── R3: NF atrasada em faturado_aguardando_coleta ───────────────
+  // ─────────────── R3: NF atrasada em Faturado / Em rota ───────────────
   {
     const { data: pedidos } = await sb
       .from("pedidos")
       .select(
         "id, number, updated_at, nf_numero, responsavel_atual_id, vendedor_proprietario_id, lead_id",
       )
-      .eq("stage", "faturado_aguardando_coleta" as any)
+      .eq("stage", "faturado_em_rota" as any)
       .is("nf_numero", null)
       .limit(500);
 
@@ -465,7 +495,7 @@ async function runXerifePedidos(
         ownerId: owner,
         tipo: "nf_atrasada",
         titulo: `NF não emitida — Pedido ${p.number} (${dias}d)`,
-        descricao: `Pedido em Faturado/Aguard. Coleta há ${dias}d sem NF. Verifique com fiscal.`,
+        descricao: `Pedido em Faturado / Em rota há ${dias}d sem NF. Verifique com o fiscal.`,
         motivo: `NF ausente há ${dias}d (SLA ${NF_ATRASO_DIAS}d)`,
         prioridade: 1,
       });
@@ -484,7 +514,7 @@ async function runXerifePedidos(
       )
       .not("previsao_entrega", "is", null)
       .lt("previsao_entrega", hojeIso)
-      .not("stage", "in", "(pedido_entregue,concluido)" as any)
+      .not("stage", "in", `(${STAGES_FORA_DA_PREVISAO.join(",")})` as any)
       .limit(500);
 
     for (const p of pedidos ?? []) {
@@ -554,103 +584,218 @@ async function runXerifePedidos(
 
   // R6 removida: o pós-venda por pedido é criado UMA vez pelo fluxo
   // (`pos_venda_pedido` em aoEntrarNaEtapa('pos_venda')). Um motor por assunto.
-  // A régua D+30/45/90 a partir do encerramento do pedido entra no Bloco 5.
 
-  // ────── R6b: Pós-venda sem comprovação de entrega (foto + documento) ──────
+  // ── R6b / R8b / R9: pós-venda com prazo ──────────────────────────────────
+  // Um único varrimento dos pedidos em pós-venda abertos:
+  //   R9  encerra sozinho quando há comprovação + contato e o prazo venceu;
+  //   R6b cobra (e escala) a comprovação de entrega;
+  //   R8b cobra (e escala) o contato de pós-venda.
   {
-    const limite = new Date(now.getTime() - COMPROVACAO_ENTREGA_HORAS * 3600_000).toISOString();
-    // A entrada em pós-venda vem do histórico de etapas (pedidos não guarda a data).
     const { data: entradas } = await sb
       .from("pedido_stage_history")
       .select("pedido_id, created_at")
       .eq("to_stage", "pos_venda")
-      .gte("created_at", COMPROVACAO_VIGENTE_DESDE)
-      .lt("created_at", limite)
       .order("created_at", { ascending: false })
-      .limit(500);
+      .limit(1000);
 
     const entradaPorPedido = new Map<string, string>();
     for (const h of (entradas ?? []) as any[]) {
       if (!entradaPorPedido.has(h.pedido_id)) entradaPorPedido.set(h.pedido_id, h.created_at);
     }
 
-    const idsEntrada = [...entradaPorPedido.keys()];
-    const pedidos = idsEntrada.length
-      ? (
-          await sb
-            .from("pedidos")
-            .select("id, number, responsavel_atual_id, vendedor_proprietario_id, lead_id")
-            .eq("stage", "pos_venda")
-            .is("entrega_comprovada_em", null)
-            .is("comprovacao_dispensada_em", null)
-            .in("id", idsEntrada)
-        ).data
-      : [];
-
-    let fallbackOperacional: string | null | undefined;
-    async function donoOperacional(): Promise<string | null> {
-      if (fallbackOperacional !== undefined) return fallbackOperacional;
-      const { data: perfis } = await sb
-        .from("perfil_permissoes")
-        .select("perfil_id")
-        .eq("permissao_chave", "pedidos.operar_producao")
-        .limit(50);
-      const perfilIds = (perfis ?? []).map((r: any) => r.perfil_id as string);
-      if (perfilIds.length === 0) {
-        fallbackOperacional = null;
-        return null;
-      }
-      const { data: usuarios } = await sb
-        .from("user_perfis")
-        .select("user_id")
-        .in("perfil_id", perfilIds)
-        .limit(1);
-      fallbackOperacional = ((usuarios ?? [])[0] as any)?.user_id ?? null;
-      return fallbackOperacional ?? null;
-    }
-
-    for (const p of pedidos ?? []) {
-      const owner: string | null = await donoEfetivo(
-        p.responsavel_atual_id ?? (await donoOperacional()) ?? p.vendedor_proprietario_id ?? null,
-      );
-      if (!owner) continue;
-      const horas =
-        horasDesde(entradaPorPedido.get(p.id) ?? null, now) ?? COMPROVACAO_ENTREGA_HORAS;
-      const ok = await criarTarefa({
-        regra: "pedido_sem_comprovacao_entrega",
-        pedidoId: p.id,
-        pedidoNumber: p.number,
-        leadId: p.lead_id ?? null,
-        ownerId: owner,
-        tipo: "comprovacao_entrega",
-        titulo: `Comprovar entrega — Pedido ${p.number}`,
-        descricao:
-          "Anexe a foto da entrega e o canhoto da NF (ou comprovante) e confirme a entrega no pedido.",
-        motivo: `Em pós-venda há ${horas}h sem comprovação`,
-        prioridade: 2,
-        janelaHoras: COMPROVACAO_DEDUPE_HORAS,
-      });
-      if (ok) stats.comprovacao_entrega++;
-    }
-  }
-
-  // ─────────────── R7: Pós-venda — recompra (30d após concluido) ───────────────
-  {
-    const alvoInicio = new Date(
-      now.getTime() - (POS_VENDA_RECOMPRA_DIAS + 1) * 86400_000,
-    ).toISOString();
-    const alvoFim = new Date(now.getTime() - POS_VENDA_RECOMPRA_DIAS * 86400_000).toISOString();
     const { data: pedidos } = await sb
       .from("pedidos")
       .select(
-        "id, number, stage, updated_at, vendedor_proprietario_id, responsavel_atual_id, lead_id",
+        "id, number, lead_id, responsavel_atual_id, vendedor_proprietario_id, encerrado_em, pos_venda_contato_em, entrega_comprovada_em, comprovacao_dispensada_em",
       )
-      .eq("stage", "concluido" as any)
-      .gte("updated_at", alvoInicio)
-      .lt("updated_at", alvoFim)
+      .eq("stage", "pos_venda")
+      .is("encerrado_em", null)
+      .limit(500);
+
+    let admins: string[] | null = null;
+    const getAdmins = async (): Promise<string[]> =>
+      (admins ??= await usuariosComPermissao(sb, "usuarios.gerenciar"));
+
+    const gestorCache = new Map<string, string | null>();
+    async function gestorDe(userId: string | null): Promise<string | null> {
+      if (!userId) return null;
+      if (gestorCache.has(userId)) return gestorCache.get(userId) ?? null;
+      const { data } = await sb.from("profiles").select("gestor_id").eq("id", userId).maybeSingle();
+      const g = ((data as any)?.gestor_id as string | null) ?? null;
+      gestorCache.set(userId, g);
+      return g;
+    }
+
+    for (const p of pedidos ?? []) {
+      const entrada = entradaPorPedido.get(p.id) ?? null;
+      const vendedor = p.vendedor_proprietario_id ?? p.responsavel_atual_id ?? null;
+      const owner = await donoEfetivo(
+        vendedor ?? p.responsavel_atual_id ?? (await getOperacional())[0] ?? null,
+      );
+      const diasUteis = entrada ? diasUteisEntre(new Date(entrada), now) : 0;
+      const vencido = diasUteis >= posVendaDiasUteis;
+
+      // ── R9: encerramento automático por prazo ──
+      if (posVendaPodeEncerrar(p as any, entrada, now, posVendaDiasUteis)) {
+        if (dryRun) {
+          stats.pos_venda_encerrado++;
+          continue;
+        }
+        const motivo = "encerrado por prazo: comprovação e contato registrados";
+        const up = await sb
+          .from("pedidos")
+          .update({
+            encerrado_em: now.toISOString(),
+            pos_venda_status: "concluido",
+            encerrado_motivo: motivo,
+          })
+          .eq("id", p.id)
+          .is("encerrado_em", null);
+        if (up?.error) {
+          await registrarFalhaSegura("xerife-pedidos.pos_venda_encerrar", up.error, {
+            pedido_id: p.id,
+          });
+          continue;
+        }
+        await encerrarTarefasDoPedido(
+          sb,
+          p.id,
+          todosTiposPedido(),
+          motivoEncerramento({ causa: "pedido_encerrado" }),
+        );
+        await logAction(sb, {
+          regra: "pedido_pos_venda_encerrado",
+          leadId: p.lead_id ?? null,
+          vendedorId: vendedor,
+          acao: motivo,
+          payload: { pedido_id: p.id, pedido_number: p.number, dias_uteis: diasUteis },
+        });
+        stats.pos_venda_encerrado++;
+        continue;
+      }
+
+      if (!owner) continue;
+      const atraso = posVendaAtrasado(p as any, entrada, now, posVendaDiasUteis);
+
+      // ── R6b: falta comprovação de entrega ──
+      const horasNaEtapa = horasDesde(entrada, now) ?? 0;
+      const vigente = !entrada || entrada >= COMPROVACAO_VIGENTE_DESDE;
+      if (
+        atraso.faltaComprovacao &&
+        vigente &&
+        horasNaEtapa >= COMPROVACAO_ENTREGA_HORAS
+      ) {
+        const ok = await criarTarefa({
+          regra: "pedido_sem_comprovacao_entrega",
+          pedidoId: p.id,
+          pedidoNumber: p.number,
+          leadId: p.lead_id ?? null,
+          ownerId: owner,
+          tipo: "comprovacao_entrega",
+          titulo: `Comprovar entrega — Pedido ${p.number}`,
+          descricao:
+            "Anexe a foto da entrega e o canhoto da NF (ou comprovante) e confirme a entrega no pedido.",
+          motivo: `Em pós-venda há ${horasNaEtapa}h sem comprovação`,
+          prioridade: 2,
+          janelaHoras: COMPROVACAO_DEDUPE_HORAS,
+        });
+        if (ok) stats.comprovacao_entrega++;
+
+        // Escalonamento: passou do prazo em dias úteis e continua sem prova.
+        if (
+          vencido &&
+          !dryRun &&
+          !(await alreadyActedPedido(
+            sb,
+            "pedido_pos_venda_sem_comprovacao_escalado",
+            p.id,
+            COMPROVACAO_DEDUPE_HORAS,
+          ))
+        ) {
+          const alvos = Array.from(
+            new Set(
+              [
+                ...(await getOperacional()),
+                await gestorDe(vendedor),
+                ...(await getAdmins()),
+              ].filter(Boolean) as string[],
+            ),
+          );
+          await notificarUsuarios(sb, alvos, {
+            tipo: "pos_venda_sem_comprovacao_escalado",
+            titulo: `Pedido ${p.number} há ${diasUteis} dias úteis em pós-venda sem comprovação de entrega`,
+            pedidoId: p.id,
+          });
+          await logAction(sb, {
+            regra: "pedido_pos_venda_sem_comprovacao_escalado",
+            leadId: p.lead_id ?? null,
+            vendedorId: vendedor,
+            acao: "escalonamento de comprovação enviado",
+            payload: { pedido_id: p.id, pedido_number: p.number, dias_uteis: diasUteis },
+          });
+          stats.comprovacao_escalada++;
+        }
+      }
+
+      // ── R8b: falta o contato de pós-venda ──
+      if (atraso.faltaContato && vencido) {
+        const ok = await criarTarefa({
+          regra: "pedido_pos_venda_atrasado",
+          pedidoId: p.id,
+          pedidoNumber: p.number,
+          leadId: p.lead_id ?? null,
+          ownerId: owner,
+          tipo: "pos_venda_atrasado",
+          titulo: `Pós-venda atrasado — Pedido ${p.number} (${diasUteis} dias úteis)`,
+          descricao:
+            "Fale com o cliente sobre a entrega e registre o contato de pós-venda no pedido.",
+          motivo: `Sem contato de pós-venda há ${diasUteis} dias úteis`,
+          prioridade: 1,
+          janelaHoras: COMPROVACAO_DEDUPE_HORAS,
+        });
+        if (ok) {
+          stats.pos_venda_atrasado++;
+          if (!dryRun) {
+            const gestor = await gestorDe(vendedor);
+            const alvos = gestor ? [gestor] : await getAdmins();
+            await notificarUsuarios(sb, alvos, {
+              tipo: "pos_venda_atrasado",
+              titulo: `Pedido ${p.number} sem contato de pós-venda há ${diasUteis} dias úteis`,
+              pedidoId: p.id,
+            });
+          }
+        }
+      }
+    }
+  }
+
+  /** Existe pedido mais novo deste lead? (não cobrar relacionamento à toa) */
+  async function temPedidoPosterior(leadId: string | null, desdeIso: string): Promise<boolean> {
+    if (!leadId) return false;
+    const { count } = await sb
+      .from("pedidos")
+      .select("id", { count: "exact", head: true })
+      .eq("lead_id", leadId)
+      .gt("created_at", desdeIso);
+    return (count ?? 0) > 0;
+  }
+
+  // ── R7: recompra D+30 a partir do ENCERRAMENTO do pedido ──────────────────
+  {
+    const inicio = new Date(
+      now.getTime() - (POS_VENDA_RECOMPRA_DIAS + 1) * 86400_000,
+    ).toISOString();
+    const fim = new Date(now.getTime() - POS_VENDA_RECOMPRA_DIAS * 86400_000).toISOString();
+    const { data: pedidos } = await sb
+      .from("pedidos")
+      .select("id, number, encerrado_em, vendedor_proprietario_id, responsavel_atual_id, lead_id")
+      .not("encerrado_em", "is", null)
+      .gte("encerrado_em", inicio)
+      .lt("encerrado_em", fim)
       .limit(500);
 
     for (const p of pedidos ?? []) {
+      if (await temPedidoPosterior(p.lead_id ?? null, p.encerrado_em as string)) continue;
       const owner = await donoEfetivo(p.vendedor_proprietario_id ?? p.responsavel_atual_id);
       if (!owner) continue;
       const ok = await criarTarefa({
@@ -661,12 +806,48 @@ async function runXerifePedidos(
         ownerId: owner,
         tipo: "pos_venda_recompra",
         titulo: `Pós-venda: sondar recompra — Pedido ${p.number}`,
-        descricao: `+${POS_VENDA_RECOMPRA_DIAS}d após conclusão. Abrir contato de recompra/renovação.`,
-        motivo: `+${POS_VENDA_RECOMPRA_DIAS}d após concluído`,
+        descricao: `+${POS_VENDA_RECOMPRA_DIAS}d após o encerramento. Abrir contato de recompra/renovação.`,
+        motivo: `+${POS_VENDA_RECOMPRA_DIAS}d após encerrado`,
         prioridade: 3,
         janelaHoras: 24 * 60,
       });
       if (ok) stats.pos_venda_recompra++;
+    }
+  }
+
+  // ── R10: cliente sem novo pedido há 90 dias ───────────────────────────────
+  {
+    const inicio = new Date(
+      now.getTime() - (CLIENTE_SEM_PEDIDO_DIAS + 1) * 86400_000,
+    ).toISOString();
+    const fim = new Date(now.getTime() - CLIENTE_SEM_PEDIDO_DIAS * 86400_000).toISOString();
+    const { data: pedidos } = await sb
+      .from("pedidos")
+      .select("id, number, encerrado_em, vendedor_proprietario_id, responsavel_atual_id, lead_id")
+      .not("encerrado_em", "is", null)
+      .gte("encerrado_em", inicio)
+      .lt("encerrado_em", fim)
+      .limit(500);
+
+    for (const p of pedidos ?? []) {
+      if (await temPedidoPosterior(p.lead_id ?? null, p.encerrado_em as string)) continue;
+      const owner = await donoEfetivo(p.vendedor_proprietario_id ?? p.responsavel_atual_id);
+      if (!owner) continue;
+      const ok = await criarTarefa({
+        regra: "cliente_sem_pedido_90d",
+        pedidoId: p.id,
+        pedidoNumber: p.number,
+        leadId: p.lead_id ?? null,
+        ownerId: owner,
+        tipo: "reativacao_lead",
+        titulo: `Cliente sem novo pedido há ${CLIENTE_SEM_PEDIDO_DIAS} dias — último: ${p.number}`,
+        descricao:
+          "Nenhum pedido novo desde o último encerramento. Retome o contato e ofereça reposição.",
+        motivo: `+${CLIENTE_SEM_PEDIDO_DIAS}d sem novo pedido`,
+        prioridade: 3,
+        janelaHoras: 24 * CLIENTE_SEM_PEDIDO_DIAS,
+      });
+      if (ok) stats.cliente_sem_pedido++;
     }
   }
 
