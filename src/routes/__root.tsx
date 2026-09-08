@@ -504,7 +504,7 @@ function AppShell({ children }: { children: ReactNode }) {
     <div className="flex min-h-screen bg-background text-foreground">
       <aside
         className={cn(
-          "hidden md:flex shrink-0 flex-col bg-sidebar text-sidebar-foreground transition-[width] duration-200",
+          "hidden md:flex shrink-0 self-start sticky top-0 h-screen supports-[height:100dvh]:h-dvh overflow-hidden flex-col bg-sidebar text-sidebar-foreground transition-[width] duration-200",
           collapsed ? "w-16" : "w-64",
         )}
       >
@@ -539,7 +539,8 @@ function AppShell({ children }: { children: ReactNode }) {
             )}
           </button>
         </div>
-        <nav className="flex-1 space-y-1 overflow-y-auto p-3">
+        <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto p-3">
+
           {rootItems.map((item) => {
             const Icon = item.icon;
             const accent = item.accent ?? "neutral";
