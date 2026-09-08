@@ -784,6 +784,106 @@ function PedidoCard({
   );
 }
 
+/** Etapa operacional sem dono: ou alguém assume, ou o card não anda. */
+function AssumirParaMoverDialog({
+  pending,
+  onCancel,
+  onConfirm,
+}: {
+  pending: PendingMove | null;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const toLabel = pending ? PEDIDO_STAGES.find((s) => s.id === pending.to)?.label : "";
+  return (
+    <Dialog open={!!pending} onOpenChange={(o) => !o && onCancel()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Assumir o pedido {pending?.pedidoNumber}?</DialogTitle>
+          <DialogDescription>
+            Esta etapa precisa de um responsável. Ao continuar, você fica como responsável pelo
+            pedido e ele vai para <b>{toLabel}</b>.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onClick={onCancel}>
+            Cancelar
+          </Button>
+          <Button onClick={onConfirm}>Assumir e mover</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Pede APENAS os dados que o servidor apontou como faltando. */
+function DadosDeAvancoDialog({
+  pending,
+  onCancel,
+  onConfirm,
+}: {
+  pending: (PendingMove & { faltam: Array<{ campo: string; label: string }> }) | null;
+  onCancel: () => void;
+  onConfirm: (dados: Record<string, string>) => void;
+}) {
+  const [valores, setValores] = useState<Record<string, string>>({});
+  useEffect(() => {
+    setValores({});
+  }, [pending?.pedidoId, pending?.to]);
+
+  const toLabel = pending ? PEDIDO_STAGES.find((s) => s.id === pending.to)?.label : "";
+  const faltam = pending?.faltam ?? [];
+  const completo = faltam.every((f) => (valores[f.campo] ?? "").trim().length > 0);
+
+  return (
+    <Dialog open={!!pending} onOpenChange={(o) => !o && onCancel()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Informe para avançar — {pending?.pedidoNumber}</DialogTitle>
+          <DialogDescription>
+            Para o pedido entrar em <b>{toLabel}</b>, estes dados são obrigatórios.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          {faltam.map((f) => (
+            <div key={f.campo} className="space-y-1">
+              <label className="text-sm font-medium">{f.label}</label>
+              {f.campo === "modalidade_entrega" ? (
+                <Select
+                  value={valores[f.campo] ?? ""}
+                  onValueChange={(v) => setValores((s) => ({ ...s, [f.campo]: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="coleta">Coleta por transportadora</SelectItem>
+                    <SelectItem value="entrega_propria">Entrega própria</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  type={f.campo === "previsao_entrega" ? "date" : "text"}
+                  value={valores[f.campo] ?? ""}
+                  onChange={(e) => setValores((s) => ({ ...s, [f.campo]: e.target.value }))}
+                />
+              )}
+            </div>
+          ))}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onCancel}>
+            Cancelar
+          </Button>
+          <Button disabled={!completo} onClick={() => onConfirm(valores)}>
+            Salvar e mover
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function BackwardMotiveDialog({
   pending,
   onCancel,
