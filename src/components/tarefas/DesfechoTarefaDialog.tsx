@@ -125,7 +125,9 @@ export function DesfechoTarefaDialog({
                 ? "Aguardar o cliente até"
                 : tipo === "prorrogar_proposta"
                   ? "Nova validade da proposta"
-                  : "Data do retorno"}{" "}
+                  : tipo === "data_combinada"
+                    ? "Data combinada da coleta/entrega"
+                    : "Data do retorno"}{" "}
               <span className="text-destructive">*</span>
             </Label>
             <Input type="date" min={minData} value={data} onChange={(e) => setData(e.target.value)} />
