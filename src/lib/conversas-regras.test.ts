@@ -110,11 +110,11 @@ describe("desfechos de conversa parada", () => {
   });
 
   it("permite perdido quando há lead", () => {
-    expect(desfechoPermitido("perdido", "conversa_parada", { temLead: true })).toBe(true);
+    expect(desfechoPermitido("conversa_parada", "perdido", { temLead: true })).toBe(true);
   });
 
   it("não oferece encerrar_conversa em tarefa de follow-up", () => {
-    expect(desfechoPermitido("encerrar_conversa", "follow_up", { temLead: true })).toBe(false);
+    expect(desfechoPermitido("follow_up", "encerrar_conversa", { temLead: true })).toBe(false);
   });
 
   it("exige desfecho mesmo sem lead", () => {
