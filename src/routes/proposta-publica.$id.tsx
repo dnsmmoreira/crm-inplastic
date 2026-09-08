@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Boxes, Loader2 } from "lucide-react";
 
 import { getPropostaPublica, type PropostaPublica } from "@/lib/propostas.functions";
+import { propostaVencida } from "@/lib/proposta-prazo";
 
 export const Route = createFileRoute("/proposta-publica/$id")({
   component: PropostaPublicaPage,
