@@ -8,6 +8,7 @@
  * encontra o registro em xerife_log da primeira.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { subtractBusinessHours, type BusinessWindow } from "@/lib/xerife/businessTime.server";
 
 type SB = SupabaseClient<any, any, any>;
 
