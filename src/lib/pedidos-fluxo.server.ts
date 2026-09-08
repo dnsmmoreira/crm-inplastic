@@ -664,33 +664,43 @@ export async function encerrarTarefasDoPedido(
 ): Promise<number> {
   if (tipos.length === 0) return 0;
   const sb: SB = await clienteDeEfeitos(sbIn);
-  let q = sb
-    .from("tarefas")
-    .update({
-      status: "concluida",
-      concluida_at: new Date().toISOString(),
-      desfecho: DESFECHO_AUTOMATICO,
-      desfecho_detalhe: motivo,
-    })
-    .eq("pedido_id", pedidoId)
-    .in("tipo", tipos)
-    .in("status", ["pendente", "adiada"]);
-  if (extra?.ownerId) q = q.eq("owner_id", extra.ownerId);
-  if (extra?.descricaoContem) q = q.filter("descricao", "ilike", `%${extra.descricaoContem}%`);
-  const { data, error } = await q.select("id");
-  if (error) {
-    console.error("[pedidos-fluxo] falha ao encerrar tarefas do pedido:", error.message);
-    const { registrarFalhaAdmin } = await import("@/lib/falhas.server");
-    await registrarFalhaAdmin("pedido.tarefa", error.message, {
-      pedido_id: pedidoId,
-      tipos,
-      motivo,
-      acao: "encerrar_tarefas_do_pedido",
-    });
-    return 0;
+  const base = {
+    status: "concluida",
+    concluida_at: new Date().toISOString(),
+    desfecho: DESFECHO_AUTOMATICO,
+    desfecho_detalhe: motivo,
+  } as const;
+
+  // Duas passadas: tarefas sem nota recebem o motivo como nota (o trigger
+  // `tg_tarefas_protect` exige nota em pós-venda); as demais preservam a nota.
+  let total = 0;
+  for (const semNota of [true, false]) {
+    let q = sb
+      .from("tarefas")
+      .update(semNota ? { ...base, nota_conclusao: motivo } : base)
+      .eq("pedido_id", pedidoId)
+      .in("tipo", tipos)
+      .in("status", ["pendente", "adiada"]);
+    q = semNota ? q.is("nota_conclusao", null) : q.not("nota_conclusao", "is", null);
+    if (extra?.ownerId) q = q.eq("owner_id", extra.ownerId);
+    if (extra?.descricaoContem) q = q.filter("descricao", "ilike", `%${extra.descricaoContem}%`);
+    const { data, error } = await q.select("id");
+    if (error) {
+      console.error("[pedidos-fluxo] falha ao encerrar tarefas do pedido:", error.message);
+      const { registrarFalhaAdmin } = await import("@/lib/falhas.server");
+      await registrarFalhaAdmin("pedido.tarefa", error.message, {
+        pedido_id: pedidoId,
+        tipos,
+        motivo,
+        acao: "encerrar_tarefas_do_pedido",
+      });
+      continue;
+    }
+    total += (data ?? []).length;
   }
-  return (data ?? []).length;
+  return total;
 }
+
 
 /** Concluir a tarefa de pós-venda encerra o pedido. */
 export async function encerrarPedidoPorTarefa(sb: SB, tarefaId: string): Promise<void> {
