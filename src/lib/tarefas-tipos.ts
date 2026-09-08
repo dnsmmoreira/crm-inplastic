@@ -20,6 +20,7 @@ export const TAREFA_TIPOS = [
   "reativacao_lead",
   "prospeccao",
   "retorno_agendado",
+  "conversa_parada",
   // Pós-venda
   "pos_venda_confirmacao",
   "pos_venda_satisfacao",
@@ -60,6 +61,7 @@ export const TAREFA_TIPO_LABEL: Record<TarefaTipo, string> = {
   reativacao_lead: "Reativação",
   prospeccao: "Prospecção",
   retorno_agendado: "Retorno combinado",
+  conversa_parada: "Conversa parada",
   pos_venda_confirmacao: "Pós-venda: confirmar",
   pos_venda_satisfacao: "Pós-venda: satisfação",
   pos_venda_recompra: "Pós-venda: recompra",
