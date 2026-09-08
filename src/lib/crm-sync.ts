@@ -397,7 +397,13 @@ function rowToTask(r: TaskRow): Task {
     leadId: r.lead_id ?? "",
     title: r.title,
     dueDate: r.due_date,
-    done: !!r.done,
+    status: (r.status as Task["status"]) ?? "pendente",
+    tipo: r.tipo ?? null,
+    origem: r.origem ?? "manual",
+    pedidoId: r.pedido_id ?? null,
+    cobrancaN: r.cobranca_n ?? 1,
+    desfecho: r.desfecho ?? null,
+    desfechoDetalhe: r.desfecho_detalhe ?? null,
   };
 }
 function taskToInsert(t: Task, ownerId: string | null): TaskInsert {
@@ -406,7 +412,8 @@ function taskToInsert(t: Task, ownerId: string | null): TaskInsert {
     lead_id: t.leadId || null,
     title: t.title,
     due_date: t.dueDate,
-    done: t.done,
+    // `done` é derivado de `status` pelo trigger — o front nunca escreve nele.
+    status: t.status,
     owner_id: ownerId,
   };
 }
@@ -576,7 +583,8 @@ const COLS_TERMOS =
   "id,label,method,splits,notes,active,permite_pf,acrescimo_percent,max_parcelas,juros_compostos,parcelas,ordem";
 const COLS_LEADS =
   "id,company,contact_name,email,phone,product,product_id,quantity,estimated_value,stage,tags,segment,source,created_at,last_contact,last_contact_at,next_followup,notes,owner_id,cliente_id,cnpj,razao_social,nome_fantasia,inscricao_estadual,inscricao_municipal,endereco,email_financeiro,email_nf_xml,telefone_fixo,whatsapp,site,porte,cnae_principal,faturamento_estimado,num_funcionarios,decisor_nome,decisor_cargo,data_abertura,capital_social,simples_optante,socios";
-const COLS_TAREFAS = "id,lead_id,title,due_date,done";
+const COLS_TAREFAS =
+  "id,lead_id,title,due_date,status,tipo,origem,pedido_id,cobranca_n,desfecho,desfecho_detalhe";
 const COLS_PROPOSTAS =
   "id,number,lead_id,owner_id,emitter_id,status,validity_days,payment_term_id,forma_pagamento,previsao_faturamento,discount_percent,acrescimo_percent,cartao_parcelas,observations,transport,approval_requested_at,approval_reason,approved_by_user_id,approved_at,order_created_at,sent_at,created_at,expected_delivery_date,numero_pedido_cliente,observacoes_pedido,tratativa_comercial,em_negociacao,motivo_recusa,recusa_detalhe,recusada_em,edit_requested_at,edit_request_reason,edit_requested_by_user_id,edit_unlocked_at,edit_unlocked_by_user_id";
 const COLS_PITENS =
@@ -616,7 +624,7 @@ function queryTarefas() {
   return supabase
     .from("tarefas")
     .select(COLS_TAREFAS)
-    .or(`done.eq.false,updated_at.gte.${isoDiasAtras(DIAS_TAREFAS_CONCLUIDAS)}`)
+    .or(`status.neq.concluida,updated_at.gte.${isoDiasAtras(DIAS_TAREFAS_CONCLUIDAS)}`)
     .order("due_date");
 }
 function queryPropostas() {
