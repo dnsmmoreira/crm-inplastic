@@ -138,6 +138,7 @@ function MinhaAgendaPage() {
         stageAtual={desfecho?.lead?.stage ?? null}
         tipoTarefa={desfecho?.tipo ?? null}
         temLead={!!desfecho?.lead_id}
+        propostaId={(desfecho as { proposta_id?: string | null } | null)?.proposta_id ?? null}
         pendente={mConcluir.isPending}
         onConfirmar={(d) => desfecho && mConcluir.mutate({ id: desfecho.id, desfecho: d })}
       />

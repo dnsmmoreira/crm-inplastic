@@ -75,6 +75,7 @@ export function useBaixaTarefa() {
       stageAtual={alvo?.stageAtual ?? null}
       tipoTarefa={alvo?.tarefa.tipo ?? null}
       temLead={!!alvo?.tarefa.leadId}
+      propostaId={(alvo?.tarefa as { propostaId?: string | null } | undefined)?.propostaId ?? null}
       pendente={mConcluir.isPending}
       onConfirmar={(d) => alvo && mConcluir.mutate({ id: alvo.tarefa.id, desfecho: d })}
     />
