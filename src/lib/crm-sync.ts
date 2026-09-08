@@ -498,6 +498,11 @@ function rowToProposal(
     approvedAt: r.approved_at ?? undefined,
     orderCreatedAt: r.order_created_at ?? undefined,
     sentAt: r.sent_at ?? undefined,
+    prorrogadaAte: (r as unknown as { prorrogada_ate?: string | null }).prorrogada_ate ?? null,
+    prorrogacaoMotivo:
+      (r as unknown as { prorrogacao_motivo?: string | null }).prorrogacao_motivo ?? null,
+    vencidaEm: (r as unknown as { vencida_em?: string | null }).vencida_em ?? null,
+    reemitidaComo: (r as unknown as { reemitida_como?: string | null }).reemitida_como ?? null,
     editRequestedAt: r.edit_requested_at ?? undefined,
     editRequestReason: r.edit_request_reason ?? undefined,
     editRequestedByUserId: r.edit_requested_by_user_id ?? undefined,

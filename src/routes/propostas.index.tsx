@@ -26,6 +26,7 @@ import { useCriarPropostaParaCliente } from "@/hooks/use-criar-proposta-para-cli
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { propostaVencida } from "@/lib/proposta-prazo";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
@@ -106,7 +107,7 @@ function PropostasPage() {
   const isAdmin = user?.role === "admin";
   const { duplicando, duplicarProposta } = useDuplicarProposta();
   const [q, setQ] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | ProposalStatus>("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "vencida" | ProposalStatus>("all");
   const [emitterFilter, setEmitterFilter] = useState<string>("all");
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" } | null>(null);
   const toggleSort = (key: SortKey) =>
@@ -191,10 +192,20 @@ function PropostasPage() {
     }).slice(0, 50);
   }, [leads, leadSearch]);
 
+  const estaVencida = (p: { status: string; sentAt?: string; validityDays: number; prorrogadaAte?: string | null }) =>
+    propostaVencida({
+      status: p.status,
+      sent_at: p.sentAt ?? null,
+      validity_days: p.validityDays,
+      prorrogada_ate: p.prorrogadaAte ?? null,
+    });
+
   const filtered = useMemo(() => {
     const t = q.toLowerCase().trim();
     const base = proposals.filter((p) => {
-      if (statusFilter !== "all" && p.status !== statusFilter) return false;
+      if (statusFilter === "vencida") {
+        if (!estaVencida(p)) return false;
+      } else if (statusFilter !== "all" && p.status !== statusFilter) return false;
       if (emitterFilter !== "all" && p.emitterId !== emitterFilter) return false;
       if (!t) return true;
       const lead = leads.find((l) => l.id === p.leadId);
@@ -249,6 +260,7 @@ function PropostasPage() {
               <SelectItem value="aprovada">Aprovada</SelectItem>
               <SelectItem value="pedido">Pedido</SelectItem>
               <SelectItem value="recusada">Recusada</SelectItem>
+              <SelectItem value="vencida">Vencida</SelectItem>
             </SelectContent>
           </Select>
           <Select value={emitterFilter} onValueChange={setEmitterFilter}>
@@ -343,6 +355,11 @@ function PropostasPage() {
                     <TableCell>
                       <div className="flex flex-wrap items-center gap-1">
                         <Badge variant={s.variant} title={p.status === "aguardando_aprovacao" ? (p.approvalReason ?? undefined) : undefined}>{s.label}</Badge>
+                        {estaVencida(p) && (
+                          <Badge variant="outline" className="border-destructive/50 text-destructive text-[10px]">
+                            vencida
+                          </Badge>
+                        )}
                         {p.status === "recusada" && p.motivoRecusa && (
                           <Badge variant="outline" className="text-[10px]" title={p.recusaDetalhe ?? undefined}>
                             {p.motivoRecusa}

@@ -43,6 +43,8 @@ const TIPO_COLOR: Record<string, string> = {
   follow_up: "bg-slate-500/10 text-slate-700 border-slate-500/30",
   retomar_contato: "bg-amber-500/10 text-amber-700 border-amber-500/30",
   conversa_parada: "bg-fuchsia-500/10 text-fuchsia-700 border-fuchsia-500/30",
+  proposta_rascunho_parada: "bg-amber-500/10 text-amber-700 border-amber-500/30",
+  proposta_vencida: "bg-rose-500/10 text-rose-700 border-rose-500/30",
   previsao_atrasada: "bg-red-500/10 text-red-700 border-red-500/30",
   nf_atrasada: "bg-red-500/10 text-red-700 border-red-500/30",
 
