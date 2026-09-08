@@ -19,6 +19,7 @@ export const TAREFA_TIPOS = [
   "resgate_carteira",
   "reativacao_lead",
   "prospeccao",
+  "retorno_agendado",
   // Pós-venda
   "pos_venda_confirmacao",
   "pos_venda_satisfacao",
@@ -58,6 +59,7 @@ export const TAREFA_TIPO_LABEL: Record<TarefaTipo, string> = {
   resgate_carteira: "Resgate carteira",
   reativacao_lead: "Reativação",
   prospeccao: "Prospecção",
+  retorno_agendado: "Retorno combinado",
   pos_venda_confirmacao: "Pós-venda: confirmar",
   pos_venda_satisfacao: "Pós-venda: satisfação",
   pos_venda_recompra: "Pós-venda: recompra",

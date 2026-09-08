@@ -17,6 +17,8 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { TAREFA_TIPO_LABEL } from "@/lib/tarefas-tipos";
 import { rotuloLinha } from "@/lib/rotulo-contato";
+import { DesfechoTarefaDialog } from "@/components/tarefas/DesfechoTarefaDialog";
+import { exigeDesfecho, sufixoCobranca, type DesfechoInput } from "@/lib/tarefa-desfecho";
 
 
 export const Route = createFileRoute("/minha-agenda")({
@@ -61,6 +63,7 @@ function MinhaAgendaPage() {
   const { data, isLoading } = useQuery({ queryKey: ["minha-agenda"], queryFn: () => list() });
 
   const [concluir, setConcluir] = useState<Tarefa | null>(null);
+  const [desfecho, setDesfecho] = useState<Tarefa | null>(null);
   const [adiar, setAdiar] = useState<Tarefa | null>(null);
   const [nota, setNota] = useState("");
   const [motivo, setMotivo] = useState("");
@@ -70,8 +73,14 @@ function MinhaAgendaPage() {
   const adiarFn = useServerFn(adiarTarefa);
 
   const mConcluir = useMutation({
-    mutationFn: (input: { id: string; nota?: string }) => concluirFn({ data: input }),
-    onSuccess: () => { toast.success("Tarefa concluída"); setConcluir(null); setNota(""); qc.invalidateQueries({ queryKey: ["minha-agenda"] }); },
+    mutationFn: (input: { id: string; nota?: string; desfecho?: DesfechoInput }) => concluirFn({ data: input }),
+    onSuccess: (r: any) => {
+      if (r && r.ok === false) { toast.error(r.message ?? "Escolha o desfecho desta tarefa."); return; }
+      toast.success(r?.mensagem ?? "Tarefa concluída");
+      if (r?.aviso) toast.warning(r.aviso);
+      setConcluir(null); setDesfecho(null); setNota("");
+      qc.invalidateQueries({ queryKey: ["minha-agenda"] });
+    },
     onError: (e: any) => toast.error(e?.message ?? "Erro ao concluir"),
   });
   const mAdiar = useMutation({
@@ -79,6 +88,12 @@ function MinhaAgendaPage() {
     onSuccess: () => { toast.success("Tarefa adiada"); setAdiar(null); setMotivo(""); setNovaData(""); qc.invalidateQueries({ queryKey: ["minha-agenda"] }); },
     onError: (e: any) => toast.error(e?.message ?? "Erro ao adiar"),
   });
+
+  /** Tarefa comercial do Xerife exige desfecho; as demais seguem a nota simples. */
+  const abrirConclusao = (t: Tarefa) => {
+    if (exigeDesfecho(t as any)) setDesfecho(t);
+    else setConcluir(t);
+  };
 
   const tarefas = data ?? [];
   const atrasadas = tarefas.filter((t) => t.due_date && isBefore(new Date(t.due_date), new Date()) && !isToday(new Date(t.due_date)));
@@ -109,9 +124,18 @@ function MinhaAgendaPage() {
       )}
 
       <AgendaGroup title="Atrasadas" tone="destructive" items={atrasadas}
-        onConcluir={setConcluir} onAdiar={setAdiar} />
+        onConcluir={abrirConclusao} onAdiar={setAdiar} />
       <AgendaGroup title="Hoje" tone="primary" items={hoje}
-        onConcluir={setConcluir} onAdiar={setAdiar} />
+        onConcluir={abrirConclusao} onAdiar={setAdiar} />
+
+      <DesfechoTarefaDialog
+        open={!!desfecho}
+        onOpenChange={(o) => !o && setDesfecho(null)}
+        titulo={desfecho?.title ?? ""}
+        stageAtual={desfecho?.lead?.stage ?? null}
+        pendente={mConcluir.isPending}
+        onConfirmar={(d) => desfecho && mConcluir.mutate({ id: desfecho.id, desfecho: d })}
+      />
 
       {/* Modal Concluir */}
       <Dialog open={!!concluir} onOpenChange={(o) => !o && (setConcluir(null), setNota(""))}>
@@ -196,7 +220,7 @@ function AgendaGroup({
   const abrir = (t: Tarefa) => {
     const pedidoId = (t as { pedido_id?: string | null }).pedido_id;
     if (pedidoId) void navigate({ to: "/pedidos" });
-    else if (t.lead_id) void navigate({ to: "/pipeline" });
+    else if (t.lead_id) void navigate({ to: "/leads", search: { lead: t.lead_id } as never });
   };
   return (
     <Card>
@@ -227,6 +251,11 @@ function AgendaGroup({
                     </Badge>
                   )}
                   {t.origem === "xerife" && <Badge variant="outline" className="text-[10px]">Xerife</Badge>}
+                  {((t as { cobranca_n?: number }).cobranca_n ?? 1) > 1 && (
+                    <Badge variant="destructive" className="text-[10px]">
+                      {sufixoCobranca((t as { cobranca_n?: number }).cobranca_n).replace(" · ", "")}
+                    </Badge>
+                  )}
                   <span className="text-[10px] text-muted-foreground">Pri. {t.prioridade ?? 3}</span>
                 </div>
                 <div className="text-sm font-medium truncate">{t.title}</div>
