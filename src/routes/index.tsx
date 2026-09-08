@@ -155,10 +155,10 @@ function DashboardPage() {
 
 
   const todayTasks = tasks
-    .filter((t) => !t.done && isToday(new Date(t.dueDate)))
+    .filter((t) => t.status !== "concluida" && isToday(new Date(t.dueDate)))
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
   const overdueTasks = tasks.filter(
-    (t) => !t.done && isBefore(new Date(t.dueDate), new Date()) && !isToday(new Date(t.dueDate)),
+    (t) => t.status !== "concluida" && isBefore(new Date(t.dueDate), new Date()) && !isToday(new Date(t.dueDate)),
   );
 
   return (

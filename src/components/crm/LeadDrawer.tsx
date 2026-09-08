@@ -66,6 +66,7 @@ import {
   followupTemperature,
   proposalTotals,
   leadValueFromProposals,
+  tarefaConcluida,
   type Lead,
   type Interaction,
   type Proposal,
@@ -76,6 +77,8 @@ import { useMoveLeadStage } from "@/hooks/use-move-lead-stage";
 import { LostReasonDialog, type LostReasonPayload } from "@/components/crm/LostReasonDialog";
 import { TabErrorBoundary } from "@/components/crm/TabErrorBoundary";
 import { ContatosSection } from "@/components/contatos/ContatosSection";
+import { useBaixaTarefa } from "@/components/tarefas/useBaixaTarefa";
+import { sufixoCobranca } from "@/lib/tarefa-desfecho";
 
 
 
