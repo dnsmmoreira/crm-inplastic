@@ -103,7 +103,7 @@ export const concluirTarefa = createServerFn({ method: "POST" })
 
     const { data: tarefa, error: readErr } = await supabase
       .from("tarefas")
-      .select("id, lead_id, pedido_id, tipo, origem, status, owner_id, title")
+      .select("id, lead_id, pedido_id, tipo, origem, status, owner_id, title, descricao")
       .eq("id", data.id)
       .maybeSingle();
     if (readErr) throw new Error(readErr.message);
