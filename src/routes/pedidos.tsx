@@ -462,6 +462,37 @@ function PedidosKanbanPage() {
           setPendingBackward(null);
         }}
       />
+
+      <AssumirParaMoverDialog
+        pending={pendingAssumir}
+        onCancel={() => setPendingAssumir(null)}
+        onConfirm={() => {
+          if (!pendingAssumir) return;
+          mutation.mutate({
+            pedido_id: pendingAssumir.pedidoId,
+            stage: pendingAssumir.to,
+            motivo: pendingAssumir.motivo,
+            assumir: true,
+          });
+          setPendingAssumir(null);
+        }}
+      />
+
+      <DadosDeAvancoDialog
+        pending={pendingDados}
+        onCancel={() => setPendingDados(null)}
+        onConfirm={(dados) => {
+          if (!pendingDados) return;
+          mutation.mutate({
+            pedido_id: pendingDados.pedidoId,
+            stage: pendingDados.to,
+            motivo: pendingDados.motivo,
+            assumir: pendingDados.assumir,
+            dados,
+          });
+          setPendingDados(null);
+        }}
+      />
     </div>
   );
 }
