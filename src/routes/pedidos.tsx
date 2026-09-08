@@ -92,6 +92,12 @@ type PendingBackward = {
   to: PedidoStageId;
 };
 
+/** Movimento que ficou pendente de uma informação (responsável ou dados). */
+type PendingMove = PendingBackward & {
+  motivo?: string | undefined;
+  assumir?: boolean | undefined;
+};
+
 function PedidosKanbanPage() {
   const listFn = useServerFn(listPedidos);
   const updateFn = useServerFn(updatePedidoStage);
@@ -154,22 +160,24 @@ function PedidosKanbanPage() {
     },
     onSuccess: (res, vars) => {
       if (res && "ok" in res && !res.ok) {
-        const pedido = allRowsRef.current.find((p) => p.id === vars.pedido_id);
+        const pedido = (qc.getQueryData<PedidoRow[]>(["pedidos", "kanban"]) ?? []).find(
+          (p) => p.id === vars.pedido_id,
+        );
         const base: PendingMove = {
           pedidoId: vars.pedido_id,
           pedidoNumber: pedido?.number ?? "",
           from: (pedido?.stage ?? vars.stage) as PedidoStageId,
           to: vars.stage,
           motivo: vars.motivo,
+          assumir: vars.assumir,
         };
         if (res.reason === "sem_responsavel") {
-          if (ctx_restore(qc, ctx_prev(qc))) void 0;
           setPendingAssumir(base);
           void qc.invalidateQueries({ queryKey: ["pedidos", "kanban"] });
           return;
         }
         if (res.reason === "dados_faltando") {
-          setPendingDados({ ...base, faltam: res.faltam, assumir: vars.assumir });
+          setPendingDados({ ...base, faltam: res.faltam });
           void qc.invalidateQueries({ queryKey: ["pedidos", "kanban"] });
           return;
         }
