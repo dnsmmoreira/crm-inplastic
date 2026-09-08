@@ -300,3 +300,57 @@ export const adiarTarefa = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+/**
+ * Reabre uma tarefa concluída (desmarcar). Só o dono da tarefa ou um admin —
+ * gate fail-closed. Limpa o desfecho para que a próxima baixa exija um novo.
+ */
+export const reabrirTarefa = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { assertNoError } = await import("@/lib/guard-erros");
+
+    const { data: tarefa, error: readErr } = await supabase
+      .from("tarefas")
+      .select("id, owner_id, status")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (readErr) throw new Error(readErr.message);
+    if (!tarefa) throw new Error("Tarefa não encontrada");
+    if (tarefa.status !== "concluida") return { ok: true as const, mensagem: "Tarefa já está aberta." };
+
+    let permitido = tarefa.owner_id === userId;
+    if (!permitido) {
+      const { data: isAdmin, error: erroRole } = await supabase.rpc("has_role", {
+        _user_id: userId,
+        _role: "admin",
+      });
+      if (erroRole) throw new Error(erroRole.message);
+      permitido = !!isAdmin;
+    }
+    if (!permitido) throw new Error("Só o dono da tarefa ou um admin pode reabri-la.");
+
+    const up = await supabase
+      .from("tarefas")
+      .update({
+        status: "pendente",
+        concluida_at: null,
+        desfecho: null,
+        desfecho_detalhe: null,
+      })
+      .eq("id", data.id);
+    await assertNoError(up, "minha-agenda.reabrirTarefa", { id: data.id });
+
+    const ins = await supabase.from("user_audit_log").insert({
+      ator_user_id: userId,
+      alvo_user_id: userId,
+      campo: `tarefa.${data.id}.status`,
+      valor_anterior: "concluida",
+      valor_novo: "pendente",
+    });
+    await assertNoError(ins, "minha-agenda.reabrirTarefa.audit", { id: data.id });
+
+    return { ok: true as const, mensagem: "Tarefa reaberta." };
+  });

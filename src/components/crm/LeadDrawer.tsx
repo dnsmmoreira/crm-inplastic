@@ -66,6 +66,7 @@ import {
   followupTemperature,
   proposalTotals,
   leadValueFromProposals,
+  tarefaConcluida,
   type Lead,
   type Interaction,
   type Proposal,
@@ -76,6 +77,8 @@ import { useMoveLeadStage } from "@/hooks/use-move-lead-stage";
 import { LostReasonDialog, type LostReasonPayload } from "@/components/crm/LostReasonDialog";
 import { TabErrorBoundary } from "@/components/crm/TabErrorBoundary";
 import { ContatosSection } from "@/components/contatos/ContatosSection";
+import { useBaixaTarefa } from "@/components/tarefas/useBaixaTarefa";
+import { sufixoCobranca } from "@/lib/tarefa-desfecho";
 
 
 
@@ -761,38 +764,50 @@ function LeadTasks({ leadId }: { leadId: string }) {
     () => allTasks.filter((t) => t.leadId === leadId),
     [allTasks, leadId],
   );
-  const toggle = useCrm((s) => s.toggleTask);
+  const stageAtual = useCrm((s) => s.leads.find((l) => l.id === leadId)?.stage ?? null);
+  const { alternar, dialog } = useBaixaTarefa();
   const remove = useCrm((s) => s.removeTask);
   if (tasks.length === 0)
     return <div className="text-sm text-muted-foreground italic">Nenhuma tarefa agendada.</div>;
   return (
-    <ul className="space-y-2">
-      {tasks.map((t) => (
-        <li
-          key={t.id}
-          className="flex items-center gap-3 rounded-md border bg-card p-3"
-        >
-          <input
-            type="checkbox"
-            checked={t.done}
-            onChange={() => toggle(t.id)}
-            className="h-4 w-4"
-          />
-          <div className="flex-1 min-w-0">
-            <div className={t.done ? "line-through text-muted-foreground text-sm" : "text-sm"}>{t.title}</div>
-            <div className="text-xs text-muted-foreground">
-              {format(new Date(t.dueDate), "dd MMM yyyy", { locale: ptBR })}
-            </div>
-          </div>
-          <button
-            onClick={() => remove(t.id)}
-            className="text-muted-foreground hover:text-destructive"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
-        </li>
-      ))}
-    </ul>
+    <>
+      {dialog}
+      <ul className="space-y-2">
+        {tasks.map((t) => {
+          const concluida = tarefaConcluida(t);
+          return (
+            <li key={t.id} className="flex items-center gap-3 rounded-md border bg-card p-3">
+              <input
+                type="checkbox"
+                checked={concluida}
+                onChange={() => alternar(t, stageAtual)}
+                className="h-4 w-4"
+              />
+              <div className="flex-1 min-w-0">
+                <div className={concluida ? "line-through text-muted-foreground text-sm" : "text-sm"}>
+                  {t.title}
+                  {(t.cobrancaN ?? 1) > 1 && (
+                    <Badge variant="outline" className="ml-2 text-[10px] align-middle">
+                      {sufixoCobranca(t.cobrancaN).replace(" · ", "")}
+                    </Badge>
+                  )}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {format(new Date(t.dueDate), "dd MMM yyyy", { locale: ptBR })}
+                  {concluida && t.desfechoDetalhe ? ` · ${t.desfechoDetalhe}` : ""}
+                </div>
+              </div>
+              <button
+                onClick={() => remove(t.id)}
+                className="text-muted-foreground hover:text-destructive"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </>
   );
 }
 

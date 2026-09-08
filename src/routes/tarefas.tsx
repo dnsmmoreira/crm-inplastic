@@ -3,7 +3,9 @@ import { useMemo, useState } from "react";
 import { Plus, CheckCircle2, Circle, Trash2, CircleAlert } from "lucide-react";
 import { format, isToday, isTomorrow, isThisWeek, isBefore } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useCrm, useVisibleLeads, useVisibleTasks } from "@/lib/crm-store";
+import { useCrm, useVisibleLeads, useVisibleTasks, tarefaConcluida } from "@/lib/crm-store";
+import { useBaixaTarefa } from "@/components/tarefas/useBaixaTarefa";
+import { sufixoCobranca } from "@/lib/tarefa-desfecho";
 import { dateInputToISO } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,7 +33,7 @@ function TasksPage() {
   const tasks = useVisibleTasks();
   const leads = useVisibleLeads();
   const addTask = useCrm((s) => s.addTask);
-  const toggleTask = useCrm((s) => s.toggleTask);
+  const { alternar, dialog } = useBaixaTarefa();
   const removeTask = useCrm((s) => s.removeTask);
 
   const [openLead, setOpenLead] = useState<string | null>(null);
@@ -44,7 +46,7 @@ function TasksPage() {
     const done: typeof tasks = [];
     const sorted = [...tasks].sort((a, b) => a.dueDate.localeCompare(b.dueDate));
     sorted.forEach((t) => {
-      if (t.done) return done.push(t);
+      if (tarefaConcluida(t)) return done.push(t);
       const d = new Date(t.dueDate);
       if (isToday(d)) today.push(t);
       else if (isBefore(d, new Date())) overdue.push(t);
@@ -112,7 +114,7 @@ function TasksPage() {
         tone="destructive"
         tasks={groups.overdue}
         leads={leads}
-        onToggle={toggleTask}
+        onToggle={alternar}
         onRemove={removeTask}
         onOpen={setOpenLead}
       />
@@ -122,7 +124,7 @@ function TasksPage() {
         tone="primary"
         tasks={groups.today}
         leads={leads}
-        onToggle={toggleTask}
+        onToggle={alternar}
         onRemove={removeTask}
         onOpen={setOpenLead}
       />
@@ -132,7 +134,7 @@ function TasksPage() {
         tone="default"
         tasks={groups.upcoming}
         leads={leads}
-        onToggle={toggleTask}
+        onToggle={alternar}
         onRemove={removeTask}
         onOpen={setOpenLead}
       />
@@ -143,11 +145,13 @@ function TasksPage() {
           tone="success"
           tasks={groups.done}
           leads={leads}
-          onToggle={toggleTask}
+          onToggle={alternar}
           onRemove={removeTask}
           onOpen={setOpenLead}
         />
       )}
+
+      {dialog}
 
       <LeadDrawer leadId={openLead} open={!!openLead} onOpenChange={(o) => !o && setOpenLead(null)} />
     </div>
@@ -162,7 +166,7 @@ function TaskGroup({
   tone: "default" | "primary" | "destructive" | "success";
   tasks: ReturnType<typeof useCrm.getState>["tasks"];
   leads: ReturnType<typeof useCrm.getState>["leads"];
-  onToggle: (id: string) => void;
+  onToggle: (t: ReturnType<typeof useCrm.getState>["tasks"][number], stageAtual: string | null) => void;
   onRemove: (id: string) => void;
   onOpen: (id: string) => void;
 }) {
@@ -195,19 +199,25 @@ function TaskGroup({
                 : format(d, "dd MMM yyyy", { locale: ptBR });
           return (
             <div key={t.id} className="flex items-center gap-3 rounded-md border p-3 hover:bg-accent/30 transition-colors">
-              <button onClick={() => onToggle(t.id)} className="shrink-0">
-                {t.done ? (
+              <button onClick={() => onToggle(t, lead?.stage ?? null)} className="shrink-0">
+                {tarefaConcluida(t) ? (
                   <CheckCircle2 className="h-5 w-5 text-[color:var(--success)]" />
                 ) : (
                   <Circle className="h-5 w-5 text-muted-foreground" />
                 )}
               </button>
               <button onClick={() => lead && onOpen(lead.id)} className="flex-1 min-w-0 text-left">
-                <div className={cn("text-sm font-medium truncate", t.done && "line-through text-muted-foreground")}>
+                <div className={cn("text-sm font-medium truncate", tarefaConcluida(t) && "line-through text-muted-foreground")}>
                   {t.title}
+                  {(t.cobrancaN ?? 1) > 1 && (
+                    <Badge variant="outline" className="ml-2 text-[10px] align-middle">
+                      {sufixoCobranca(t.cobrancaN).replace(" · ", "")}
+                    </Badge>
+                  )}
                 </div>
                 <div className="text-xs text-muted-foreground truncate">
                   {lead?.company || "—"}
+                  {tarefaConcluida(t) && t.desfechoDetalhe ? ` · ${t.desfechoDetalhe}` : ""}
                 </div>
               </button>
               <Badge variant={tone === "destructive" ? "destructive" : "outline"}>{dueLabel}</Badge>

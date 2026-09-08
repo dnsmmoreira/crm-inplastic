@@ -71,7 +71,7 @@ export function ResumoDoDia() {
   const { tarefasHoje, tarefasAtrasadas } = useMemo(() => {
     const startToday = spStartOfTodayMs(now);
     const startTomorrow = startToday + 24 * 3600 * 1000;
-    const abertas = tasks.filter((t) => !t.done);
+    const abertas = tasks.filter((t) => t.status !== "concluida");
     const hoje = abertas.filter((t) => {
       const ts = new Date(t.dueDate).getTime();
       return ts < startTomorrow; // hoje ou atrasada
