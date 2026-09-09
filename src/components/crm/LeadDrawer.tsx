@@ -79,6 +79,9 @@ import { TabErrorBoundary } from "@/components/crm/TabErrorBoundary";
 import { ContatosSection } from "@/components/contatos/ContatosSection";
 import { useBaixaTarefa } from "@/components/tarefas/useBaixaTarefa";
 import { sufixoCobranca } from "@/lib/tarefa-desfecho";
+import { TransferirLeadDialog } from "@/components/crm/TransferirLeadDialog";
+import { useQuery } from "@tanstack/react-query";
+import { listVendedores } from "@/lib/clientes.functions";
 
 
 
@@ -112,6 +115,15 @@ export function LeadDrawer({
   const proposals = useCrm((s) => s.proposals);
   const moveLeadStage = useMoveLeadStage();
   const [lostReasonOpen, setLostReasonOpen] = useState(false);
+  const [transferirOpen, setTransferirOpen] = useState(false);
+  const listVendedoresFn = useServerFn(listVendedores);
+  const vendedoresQ = useQuery({
+    queryKey: ["lead-drawer", "vendedores"],
+    queryFn: () => listVendedoresFn(),
+    staleTime: 300_000,
+  });
+  const nomeResponsavel =
+    (vendedoresQ.data ?? []).find((v) => v.id === lead?.ownerId)?.name ?? "—";
 
   const [newInt, setNewInt] = useState<{ type: Interaction["type"]; content: string }>({
     type: "call",
