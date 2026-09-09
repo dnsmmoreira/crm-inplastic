@@ -49,3 +49,24 @@ describe("elegibilidade para devolução à fila", () => {
     );
   });
 });
+
+describe("carteira e pedido travam a devolução", () => {
+  it("dono é o vendedor da carteira: nunca devolve", () => {
+    expect(
+      elegivelParaDevolucao({ stage: "qualificacao" }, 0, AGORA, { donoDaCarteira: true }),
+    ).toBe(false);
+  });
+  it("pedido em andamento: nunca devolve", () => {
+    expect(
+      elegivelParaDevolucao({ stage: "qualificacao" }, 0, AGORA, { temPedidoAtivo: true }),
+    ).toBe(false);
+  });
+  it("sem carteira e sem pedido continua elegível", () => {
+    expect(
+      elegivelParaDevolucao({ stage: "qualificacao" }, 0, AGORA, {
+        donoDaCarteira: false,
+        temPedidoAtivo: false,
+      }),
+    ).toBe(true);
+  });
+});
