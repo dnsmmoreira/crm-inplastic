@@ -134,18 +134,7 @@ export async function aplicarCarteiraNaConversa(
       }
     }
 
-    const insN = await sb.from("notificacoes").insert({
-      user_id: match.vendedorId,
-      tipo: "conversa_atribuida",
-      conversa_id: input.conversaId,
-      titulo: `Cliente da sua carteira escreveu${input.nome ? ` — ${input.nome}` : ""}`.slice(0, 300),
-      exige_aceite: true,
-    });
-    if (insN.error) {
-      await registrarFalhaSegura("carteira.conversa.notificacao", insN.error, {
-        conversa_id: input.conversaId,
-      });
-    }
+    // A notificação com aceite é criada pelo gatilho de atribuição da conversa.
 
     return { aplicado: true, leadId, vendedorId: match.vendedorId };
   } catch (e) {
