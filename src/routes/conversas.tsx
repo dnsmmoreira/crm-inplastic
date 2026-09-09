@@ -34,6 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { NovaConversaDialog } from "@/components/atendimento/NovaConversaDialog";
+import { SemRespostaAgora } from "@/components/atendimento/SemRespostaAgora";
 
 import { toast } from "sonner";
 import { limparOrigemAnuncio } from "@/lib/mensagem-display";
@@ -363,6 +364,8 @@ function MinhasConversasPage() {
           <Plus className="h-4 w-4" /> NOVO
         </Button>
       </div>
+
+      <SemRespostaAgora onSelect={selecionar} />
 
       <NovaConversaDialog
         open={novoAberto}

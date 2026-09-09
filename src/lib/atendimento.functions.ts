@@ -489,3 +489,89 @@ export const retomarConversa = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+/**
+ * "Sem resposta agora": clientes esperando há 30+ minutos em horário útil.
+ *
+ * Visibilidade em tempo real para toda a equipe comercial — sem regra nova no
+ * Xerife. Uma consulta por tabela (sem N+1).
+ */
+export const conversasSemRespostaAgora = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const ator = await contextoAtor(supabase, userId);
+    if (!ator.isAdmin && !ator.podeAtender) return { emHorario: false, itens: [] as ItemSemResposta[] };
+
+    const { isBusinessNow } = await import("@/lib/xerife/businessTime.server");
+    const { data: cfg } = await supabase
+      .from("xerife_config")
+      .select("dias_uteis_inicio, dias_uteis_fim")
+      .limit(1)
+      .maybeSingle();
+    const win = {
+      inicio: (cfg as any)?.dias_uteis_inicio ?? "08:00",
+      fim: (cfg as any)?.dias_uteis_fim ?? "18:00",
+    };
+    const agora = new Date();
+    if (!isBusinessNow(win, agora)) return { emHorario: false, itens: [] as ItemSemResposta[] };
+
+    const limite = new Date(agora.getTime() - 30 * 60_000).toISOString();
+
+    const { data: convs, error } = await supabase
+      .from("whatsapp_conversas")
+      .select("id, lead_id, name, phone, atribuido_para, status, ia_ativa, em_espera_desde")
+      .eq("status", "humano_atendendo")
+      .eq("ia_ativa", false)
+      .is("em_espera_desde", null)
+      .not("lead_id", "is", null)
+      .limit(400);
+    if (error) throw new Error(error.message);
+
+    const leadIds = [...new Set((convs ?? []).map((c: any) => c.lead_id).filter(Boolean))];
+    if (leadIds.length === 0) return { emHorario: true, itens: [] as ItemSemResposta[] };
+
+    const { data: leads, error: lErr } = await supabase
+      .from("leads")
+      .select("id, company, ultima_msg_cliente_at, ultima_msg_vendedor_at")
+      .in("id", leadIds)
+      .not("ultima_msg_cliente_at", "is", null)
+      .lt("ultima_msg_cliente_at", limite);
+    if (lErr) throw new Error(lErr.message);
+
+    const donos = [...new Set((convs ?? []).map((c: any) => c.atribuido_para).filter(Boolean))];
+    const nomePorId = new Map<string, string>();
+    if (donos.length) {
+      const { data: perfis, error: pErr } = await supabase
+        .from("profiles")
+        .select("id, name")
+        .in("id", donos);
+      if (pErr) throw new Error(pErr.message);
+      for (const p of perfis ?? []) nomePorId.set((p as any).id, (p as any).name ?? "sem nome");
+    }
+
+    const leadPorId = new Map<string, any>((leads ?? []).map((l: any) => [l.id, l]));
+    const itens: ItemSemResposta[] = [];
+    for (const c of (convs ?? []) as any[]) {
+      const l = leadPorId.get(c.lead_id);
+      if (!l) continue;
+      if (l.ultima_msg_vendedor_at && l.ultima_msg_vendedor_at >= l.ultima_msg_cliente_at) continue;
+      itens.push({
+        conversaId: c.id,
+        nome: (c.name as string) || (l.company as string) || (c.phone as string),
+        empresa: (l.company as string) ?? null,
+        dono: c.atribuido_para ? nomePorId.get(c.atribuido_para) ?? null : null,
+        minutos: Math.floor((agora.getTime() - new Date(l.ultima_msg_cliente_at).getTime()) / 60_000),
+      });
+    }
+    itens.sort((a, b) => b.minutos - a.minutos);
+    return { emHorario: true, itens };
+  });
+
+export type ItemSemResposta = {
+  conversaId: string;
+  nome: string;
+  empresa: string | null;
+  dono: string | null;
+  minutos: number;
+};

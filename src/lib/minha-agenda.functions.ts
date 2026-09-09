@@ -82,7 +82,10 @@ const desfechoSchema = z.object({
   motivo: z.string().optional().nullable(),
   detalhe: z.string().trim().max(2000).optional().nullable(),
   nota: z.string().trim().max(2000).optional().nullable(),
+  motivo_sem_pendencia: z.string().max(60).optional().nullable(),
+  novo_dono: z.string().uuid().optional().nullable(),
 });
+
 
 export const concluirTarefa = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -143,10 +146,27 @@ export const concluirTarefa = createServerFn({ method: "POST" })
     }
 
     // ── Tarefa comercial do Xerife: desfecho obrigatório (fail-closed).
-    const desfecho = data.desfecho;
-    if (!desfecho) {
+    const bruto = data.desfecho;
+    if (!bruto) {
       return { ok: false as const, message: "Escolha o desfecho desta tarefa." };
     }
+
+    // Atalhos de "sem pendência": produto fora do portfólio é perda; "não é meu
+    // cliente" é transferência. Normalizamos antes de validar.
+    const { atalhoSemPendencia, rotuloMotivoSemPendencia } = await import("@/lib/tarefa-desfecho");
+    let desfecho = bruto;
+    if (bruto.tipo === "sem_pendencia") {
+      const atalho = atalhoSemPendencia(bruto.motivo_sem_pendencia);
+      if (atalho?.tipo === "perdido") {
+        desfecho = { ...bruto, tipo: "perdido", motivo: atalho.motivo };
+      } else if (atalho?.tipo === "transferir") {
+        if (!bruto.novo_dono) {
+          return { ok: false as const, message: "Escolha para quem o cliente vai." };
+        }
+        desfecho = { ...bruto, tipo: "transferir" };
+      }
+    }
+
 
     const leadId = (tarefa.lead_id as string | null) ?? null;
     let lead: { id: string; company: string | null; contact_name: string | null; stage: string } | null = null;
@@ -452,8 +472,101 @@ export const concluirTarefa = createServerFn({ method: "POST" })
       }
       detalhe = `Contato de pós-venda registrado — ${relato}`;
       mensagem = "Contato de pós-venda registrado.";
+    } else if (desfecho.tipo === "transferir") {
+      // Transferência NÃO conclui a tarefa: ela muda de dono junto com o lead.
+      if (!leadId) return { ok: false as const, message: "Esta tarefa não está ligada a um lead." };
+      const novoDono = desfecho.novo_dono as string;
+      if (novoDono === userId) {
+        return { ok: false as const, message: "Escolha outro vendedor." };
+      }
+      const motivoTransf = (desfecho.detalhe ?? "").trim();
+
+      const { data: perfis, error: erroPerfis } = await supabase
+        .from("profiles")
+        .select("id, name, ativo, deleted_at")
+        .in("id", [novoDono, userId]);
+      if (erroPerfis) throw new Error(erroPerfis.message);
+      const destino = (perfis ?? []).find((p: any) => p.id === novoDono) as any;
+      if (!destino || destino.ativo === false || destino.deleted_at) {
+        return { ok: false as const, message: "Vendedor indisponível." };
+      }
+      const nomeDestino = destino.name ?? "colega";
+      const nomeAnterior =
+        ((perfis ?? []).find((p: any) => p.id === userId) as any)?.name ?? "vendedor";
+
+      const upLead = await supabase
+        .from("leads")
+        .update({ owner_id: novoDono })
+        .eq("id", leadId);
+      await assertNoError(upLead, "concluirTarefa.transferir.lead", { lead_id: leadId });
+
+      const insInt = await supabase.from("lead_interactions").insert({
+        lead_id: leadId,
+        owner_id: userId,
+        type: "note",
+        content: `Transferido para ${nomeDestino} — ${motivoTransf}`,
+      });
+      await assertNoError(insInt, "concluirTarefa.transferir.interacao", { lead_id: leadId });
+
+      const upTarefa = await supabase
+        .from("tarefas")
+        .update({
+          owner_id: novoDono,
+          desfecho: null,
+          title: `↪ de ${nomeAnterior}: ${(tarefa.title ?? "tarefa").slice(0, 150)}`,
+        })
+        .eq("id", data.id);
+      await assertNoError(upTarefa, "concluirTarefa.transferir.tarefa", { id: data.id });
+
+      const upOutras = await supabase
+        .from("tarefas")
+        .update({ owner_id: novoDono })
+        .eq("lead_id", leadId)
+        .in("status", ["pendente", "adiada"])
+        .neq("id", data.id);
+      await assertNoError(upOutras, "concluirTarefa.transferir.outras", { lead_id: leadId });
+
+      const insNotif = await supabase.from("notificacoes").insert({
+        user_id: novoDono,
+        tipo: "lead_transferido",
+        titulo: `${nomeAnterior} transferiu ${lead?.company ?? "um cliente"} para você — ${motivoTransf}`.slice(0, 300),
+        exige_aceite: true,
+      });
+      if (insNotif?.error) {
+        const { registrarFalhaSegura } = await import("@/lib/guard-erros");
+        await registrarFalhaSegura("concluirTarefa.transferir.notificacao", insNotif.error, {
+          lead_id: leadId,
+        });
+      }
+      const { notifyOwner } = await import("@/lib/xerife/notify.server");
+      await notifyOwner(
+        novoDono,
+        `↪️ *Cliente transferido*\n\n${lead?.company ?? "Cliente"} passou a ser seu.\nDe: ${nomeAnterior}\nMotivo: ${motivoTransf}`,
+      );
+
+      const insAudit = await supabase.from("user_audit_log").insert({
+        ator_user_id: userId,
+        alvo_user_id: novoDono,
+        campo: "lead_transferido",
+        valor_anterior: userId,
+        valor_novo: `${leadId} — ${motivoTransf}`.slice(0, 1000),
+      });
+      if (insAudit?.error) {
+        const { registrarFalhaSegura } = await import("@/lib/guard-erros");
+        await registrarFalhaSegura("concluirTarefa.transferir.auditoria", insAudit.error, {
+          lead_id: leadId,
+        });
+      }
+
+      return {
+        ok: true as const,
+        mensagem: `Cliente transferido para ${nomeDestino}. A tarefa foi junto.`,
+      };
     } else {
-      // sem_pendencia
+      // sem_pendencia — motivo estruturado
+      const rotulo = rotuloMotivoSemPendencia(desfecho.motivo_sem_pendencia);
+      const texto = (desfecho.detalhe ?? "").trim();
+      detalhe = texto ? `${rotulo} — ${texto}` : rotulo;
       mensagem = "Tarefa encerrada sem pendência.";
     }
 
@@ -465,9 +578,13 @@ export const concluirTarefa = createServerFn({ method: "POST" })
         desfecho: desfecho.tipo,
         desfecho_detalhe: detalhe,
         nota_conclusao: nota || detalhe || null,
+        ...(desfecho.tipo === "sem_pendencia"
+          ? { sem_pendencia_motivo: desfecho.motivo_sem_pendencia ?? null }
+          : {}),
       })
       .eq("id", data.id);
     await assertNoError(up, "minha-agenda.concluirTarefa", { id: data.id });
+
 
     // Duplicatas: outras tarefas abertas do mesmo lead e tipo saem junto.
     // Sem nota → recebe o motivo como nota (o trigger de pós-venda exige nota).

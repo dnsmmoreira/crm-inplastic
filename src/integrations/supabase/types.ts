@@ -2614,6 +2614,7 @@ export type Database = {
           pedido_id: string | null
           prioridade: number
           proposta_id: string | null
+          sem_pendencia_motivo: string | null
           status: string
           tipo: string | null
           title: string
@@ -2641,6 +2642,7 @@ export type Database = {
           pedido_id?: string | null
           prioridade?: number
           proposta_id?: string | null
+          sem_pendencia_motivo?: string | null
           status?: string
           tipo?: string | null
           title: string
@@ -2668,6 +2670,7 @@ export type Database = {
           pedido_id?: string | null
           prioridade?: number
           proposta_id?: string | null
+          sem_pendencia_motivo?: string | null
           status?: string
           tipo?: string | null
           title?: string

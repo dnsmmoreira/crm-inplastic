@@ -24,6 +24,8 @@ const TIPOS_DE_NOTIFICACAO = new Set([
   "pos_venda_sem_comprovacao_escalado",
   "tarefas_vencidas_escalado",
   "aceites_sem_canal",
+  "lead_sera_devolvido",
+  "lead_transferido",
 ]);
 
 const ARQUIVOS = [

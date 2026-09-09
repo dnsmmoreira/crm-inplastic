@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { format, isToday, isBefore, addBusinessDays } from "date-fns";
+import { format, addBusinessDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CheckCircle2, Clock, Flame, AlertTriangle } from "lucide-react";
 import { listMinhaAgenda, concluirTarefa, adiarTarefa } from "@/lib/minha-agenda.functions";
@@ -19,6 +19,7 @@ import { TAREFA_TIPO_LABEL } from "@/lib/tarefas-tipos";
 import { rotuloLinha } from "@/lib/rotulo-contato";
 import { DesfechoTarefaDialog } from "@/components/tarefas/DesfechoTarefaDialog";
 import { exigeDesfecho, sufixoCobranca, type DesfechoInput } from "@/lib/tarefa-desfecho";
+import { vencidaHa, rotuloRolagens } from "@/lib/tarefa-vencimento";
 
 
 export const Route = createFileRoute("/minha-agenda")({
@@ -99,7 +100,8 @@ function MinhaAgendaPage() {
   };
 
   const tarefas = data ?? [];
-  const atrasadas = tarefas.filter((t) => t.due_date && isBefore(new Date(t.due_date), new Date()) && !isToday(new Date(t.due_date)));
+  // Atrasada = já rolou ao menos uma vez no fechamento (ou passou da data).
+  const atrasadas = tarefas.filter((t) => vencidaHa(t as never, 1));
   const hoje = tarefas.filter((t) => !atrasadas.includes(t));
 
   return (
@@ -253,7 +255,7 @@ function AgendaGroup({
                   </Badge>
                   {(t.escalonamentos ?? 0) > 0 && (
                     <Badge variant="destructive" className="text-[10px] gap-1">
-                      <Flame className="h-3 w-3" />x{t.escalonamentos}
+                      <Flame className="h-3 w-3" />{rotuloRolagens(t.escalonamentos)}
                     </Badge>
                   )}
                   {t.origem === "xerife" && <Badge variant="outline" className="text-[10px]">Xerife</Badge>}

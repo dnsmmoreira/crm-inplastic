@@ -92,6 +92,11 @@ export const DESFECHOS = [
     descricao: "Encerra o lead com motivo estruturado (entra no relatório de perdas).",
   },
   {
+    tipo: "transferir",
+    rotulo: "Transferir para outro vendedor",
+    descricao: "O lead, a conversa e as tarefas abertas passam para o colega escolhido.",
+  },
+  {
     tipo: "em_espera",
     rotulo: "Coloquei o atendimento em espera até [data]",
     descricao: "A conversa fica aguardando o cliente e o Xerife só volta a cobrar na data.",
@@ -104,8 +109,9 @@ export const DESFECHOS = [
   {
     tipo: "sem_pendencia",
     rotulo: "Sem pendência (a tarefa não fazia mais sentido)",
-    descricao: "Fecha a tarefa com uma justificativa curta, sem mudar o lead.",
+    descricao: "Use só quando nenhuma das opções acima descreve o que aconteceu.",
   },
+
   {
     tipo: "recusar_proposta",
     rotulo: "Cliente recusou a proposta",
@@ -167,15 +173,43 @@ export function desfechosParaTipo(
   opts: { temLead?: boolean } = {},
 ): typeof DESFECHOS[number][] {
   const temLead = opts.temLead !== false;
+  /** Ordem pedida: ação concreta primeiro, "sem pendência" sempre por último. */
+  const ORDEM = [
+    "retorno_agendado",
+    "avancou_etapa",
+    "data_combinada",
+    "contato_registrado",
+    "prorrogar_proposta",
+    "reemitir_proposta",
+    "recusar_proposta",
+    "excluir_rascunho",
+    "perdido",
+    "transferir",
+    "em_espera",
+    "encerrar_conversa",
+    "sem_pendencia",
+  ];
+  const ordenar = (lista: typeof DESFECHOS[number][]) =>
+    [...lista].sort((a, b) => ORDEM.indexOf(a.tipo) - ORDEM.indexOf(b.tipo));
+
   const filtrar = (permitidos: string[]) =>
-    permitidos
-      .map((p) => DESFECHOS.find((d) => d.tipo === p)!)
-      .filter(Boolean) as typeof DESFECHOS[number][];
+    ordenar(
+      permitidos
+        .filter((p) => temLead || p !== "transferir")
+        .map((p) => DESFECHOS.find((d) => d.tipo === p)!)
+        .filter(Boolean) as typeof DESFECHOS[number][],
+    );
 
   if (tipoTarefa === "conversa_parada") {
-    const permitidos = ["retorno_agendado", "em_espera", "encerrar_conversa", "sem_pendencia"];
-    if (temLead) permitidos.splice(3, 0, "perdido");
-    return filtrar(permitidos);
+    const permitidos = [
+      "retorno_agendado",
+      "em_espera",
+      "encerrar_conversa",
+      "sem_pendencia",
+      "perdido",
+      "transferir",
+    ];
+    return filtrar(temLead ? permitidos : ["retorno_agendado", "em_espera", "encerrar_conversa", "sem_pendencia"]);
   }
   if (tipoTarefa === "combinar_coleta") {
     return filtrar(["data_combinada", "sem_pendencia"]);
@@ -184,18 +218,23 @@ export function desfechosParaTipo(
     return filtrar(["contato_registrado", "sem_pendencia"]);
   }
   if (tipoTarefa === "proposta_rascunho_parada") {
-    const permitidos = ["retorno_agendado", "recusar_proposta", "excluir_rascunho", "sem_pendencia"];
-    return filtrar(permitidos);
+    return filtrar([
+      "retorno_agendado",
+      "recusar_proposta",
+      "excluir_rascunho",
+      "sem_pendencia",
+      ...(temLead ? ["transferir"] : []),
+    ]);
   }
   if (tipoTarefa === "proposta_vencida") {
-    const permitidos = [
+    return filtrar([
       "prorrogar_proposta",
       "reemitir_proposta",
       "recusar_proposta",
       "retorno_agendado",
       "sem_pendencia",
-    ];
-    return filtrar(permitidos);
+      ...(temLead ? ["transferir"] : []),
+    ]);
   }
   const classico = DESFECHOS.filter(
     (d) =>
@@ -206,14 +245,16 @@ export function desfechosParaTipo(
       d.tipo !== "excluir_rascunho" &&
       d.tipo !== "data_combinada" &&
       d.tipo !== "contato_registrado" &&
-      d.tipo !== "recusar_proposta",
+      d.tipo !== "recusar_proposta" &&
+      (temLead || d.tipo !== "transferir"),
   ) as typeof DESFECHOS[number][];
   if (tipoTarefa === "cadencia_proposta") {
     const recusar = DESFECHOS.find((d) => d.tipo === "recusar_proposta")!;
-    return [...classico, recusar];
+    return ordenar([...classico, recusar]);
   }
-  return classico;
+  return ordenar(classico);
 }
+
 
 
 /** O desfecho escolhido é válido para o tipo da tarefa? (gate fail-closed) */
@@ -327,6 +368,45 @@ export const LIMITE_RETORNO_DIAS = 60;
 export const JUSTIFICATIVA_MIN_CHARS = 5;
 /** Nota mínima ao registrar o contato de pós-venda. */
 export const CONTATO_MIN_CHARS = 10;
+/** Texto livre do "outro" motivo de sem pendência. */
+export const OUTRO_MIN_CHARS = 10;
+/** Motivo mínimo da transferência. */
+export const TRANSFERENCIA_MIN_CHARS = 5;
+
+/**
+ * "Sem pendência" deixou de ser texto livre: os primeiros desfechos reais
+ * mostraram que quase todos eram outra coisa (transferência, perda, avanço).
+ * Dois motivos são ATALHO e viram outro desfecho no servidor.
+ */
+export const MOTIVOS_SEM_PENDENCIA = [
+  { valor: "ja_resolvido_outro_canal", rotulo: "Já resolvido por telefone/e-mail" },
+  { valor: "duplicado", rotulo: "Cliente duplicado / já atendido em outro lead" },
+  { valor: "fora_portfolio", rotulo: "Produto fora do portfólio" },
+  { valor: "cliente_nao_e_meu", rotulo: "Este cliente não é meu" },
+  { valor: "outro", rotulo: "Outro (explique)" },
+] as const;
+
+export type MotivoSemPendencia = (typeof MOTIVOS_SEM_PENDENCIA)[number]["valor"];
+
+export function isMotivoSemPendencia(v: unknown): v is MotivoSemPendencia {
+  return typeof v === "string" && MOTIVOS_SEM_PENDENCIA.some((m) => m.valor === v);
+}
+
+export function rotuloMotivoSemPendencia(v: string | null | undefined): string {
+  return MOTIVOS_SEM_PENDENCIA.find((m) => m.valor === v)?.rotulo ?? "Sem pendência";
+}
+
+/**
+ * Atalhos: "produto fora do portfólio" é perda; "este cliente não é meu" é
+ * transferência. Devolve o desfecho que deve ser gravado no lugar.
+ */
+export function atalhoSemPendencia(
+  motivo: string | null | undefined,
+): { tipo: "perdido"; motivo: string } | { tipo: "transferir" } | null {
+  if (motivo === "fora_portfolio") return { tipo: "perdido", motivo: "Lead inválido" };
+  if (motivo === "cliente_nao_e_meu") return { tipo: "transferir" };
+  return null;
+}
 
 // ─────────────── Validação ───────────────
 
@@ -337,6 +417,11 @@ export type DesfechoInput = {
   motivo?: string | null;
   detalhe?: string | null;
   nota?: string | null;
+  /** `sem_pendencia`: motivo estruturado. */
+  motivo_sem_pendencia?: string | null;
+  /** `transferir`: id do vendedor que assume. */
+  novo_dono?: string | null;
+
 };
 
 export type ValidacaoDesfecho = { ok: true } | { ok: false; erro: string };
@@ -487,16 +572,37 @@ export function validarDesfecho(
     return { ok: true };
   }
 
-  // sem_pendencia
-  const just = (input.detalhe ?? "").trim();
-  if (just.length < JUSTIFICATIVA_MIN_CHARS) {
-    return {
-      ok: false,
-      erro: `Explique em poucas palavras por que não há pendência (mín. ${JUSTIFICATIVA_MIN_CHARS} caracteres).`,
-    };
+  if (input.tipo === "transferir") {
+    const novo = (input.novo_dono ?? "").trim();
+    if (!/^[0-9a-fA-F-]{36}$/.test(novo)) {
+      return { ok: false, erro: "Escolha para quem o cliente vai." };
+    }
+    const motivo = (input.detalhe ?? "").trim();
+    if (motivo.length < TRANSFERENCIA_MIN_CHARS) {
+      return {
+        ok: false,
+        erro: `Diga por que está transferindo (mín. ${TRANSFERENCIA_MIN_CHARS} caracteres).`,
+      };
+    }
+    return { ok: true };
+  }
+
+  // sem_pendencia — motivo estruturado obrigatório
+  if (!isMotivoSemPendencia(input.motivo_sem_pendencia)) {
+    return { ok: false, erro: "Escolha o motivo de não haver pendência." };
+  }
+  if (input.motivo_sem_pendencia === "outro") {
+    const just = (input.detalhe ?? "").trim();
+    if (just.length < OUTRO_MIN_CHARS) {
+      return {
+        ok: false,
+        erro: `Explique o que aconteceu (mín. ${OUTRO_MIN_CHARS} caracteres).`,
+      };
+    }
   }
   return { ok: true };
 }
+
 
 /** dd/mm a partir de yyyy-mm-dd (mensagens para o vendedor). */
 export function ddmm(data: string): string {

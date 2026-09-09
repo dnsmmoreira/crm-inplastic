@@ -19,6 +19,26 @@ export const LOTE_EXPURGO = 200;
 /** Campo usado em `user_audit_log` para registrar cada expurgo. */
 export const CAMPO_AUDITORIA_EXPURGO = "documento_expurgado";
 
+/** Avisos informativos (sem aceite) somem depois de 7 dias. Aceites nunca expiram. */
+export const DIAS_AVISO_INFORMATIVO = 7;
+
+async function expurgarAvisos(): Promise<number> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const limite = new Date(Date.now() - DIAS_AVISO_INFORMATIVO * 86400_000).toISOString();
+  const { data, error } = await supabaseAdmin
+    .from("notificacoes")
+    .update({ lida_em: new Date().toISOString() })
+    .eq("exige_aceite", false)
+    .is("lida_em", null)
+    .lt("created_at", limite)
+    .select("id");
+  if (error) {
+    await registrarFalhaSegura("notificacoes.expurgo", error);
+    return 0;
+  }
+  return (data ?? []).length;
+}
+
 async function executar(): Promise<{ candidatos: number; removidos: number; erros: number }> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const agora = new Date();
@@ -73,7 +93,8 @@ async function executar(): Promise<{ candidatos: number; removidos: number; erro
     }
   }
 
-  return { candidatos: alvos.length, removidos, erros };
+  const avisosLidos = await expurgarAvisos();
+  return { candidatos: alvos.length, removidos, erros, avisosLidos } as never;
 }
 
 export const Route = createFileRoute("/api/public/hooks/documentos-expurgo")({
