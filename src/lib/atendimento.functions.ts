@@ -503,8 +503,16 @@ export const conversasSemRespostaAgora = createServerFn({ method: "GET" })
     const ator = await contextoAtor(supabase, userId);
     if (!ator.isAdmin && !ator.podeAtender) return { emHorario: false, itens: [] as ItemSemResposta[] };
 
-    const { carregarJanela, isBusinessNow } = await import("@/lib/xerife/businessTime.server");
-    const win = await carregarJanela();
+    const { isBusinessNow } = await import("@/lib/xerife/businessTime.server");
+    const { data: cfg } = await supabase
+      .from("xerife_config")
+      .select("dias_uteis_inicio, dias_uteis_fim")
+      .limit(1)
+      .maybeSingle();
+    const win = {
+      inicio: (cfg as any)?.dias_uteis_inicio ?? "08:00",
+      fim: (cfg as any)?.dias_uteis_fim ?? "18:00",
+    };
     const agora = new Date();
     if (!isBusinessNow(win, agora)) return { emHorario: false, itens: [] as ItemSemResposta[] };
 
