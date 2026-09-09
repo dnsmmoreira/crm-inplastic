@@ -34,6 +34,7 @@ import {
   type ClienteFormState,
 } from "@/components/clientes/ClienteFormFields";
 import { ContatosSection } from "@/components/contatos/ContatosSection";
+import { TransferirLeadDialog } from "@/components/crm/TransferirLeadDialog";
 import { DocumentosSection } from "@/components/documentos/DocumentosSection";
 
 
@@ -81,6 +82,7 @@ function ClienteDetailPage() {
 
   const [form, setForm] = useState<ClienteFormState | null>(null);
   const [saving, setSaving] = useState(false);
+  const [transferirAberto, setTransferirAberto] = useState(false);
   const [iniciandoConversa, setIniciandoConversa] = useState(false);
   const iniciarConversaFn = useServerFn(iniciarConversaCliente);
   const { criando: criandoProposta, criarPropostaParaCliente } = useCriarPropostaParaCliente();
@@ -165,6 +167,17 @@ function ClienteDetailPage() {
 
   return (
     <div className="p-4 md:p-8 space-y-4">
+      <TransferirLeadDialog
+        open={transferirAberto}
+        onOpenChange={setTransferirAberto}
+        clienteId={id}
+        donoAtual={c.vendedor_id}
+        onTransferido={() => {
+          void qc.invalidateQueries({ queryKey: ["cliente", id] });
+          void qc.invalidateQueries({ queryKey: ["clientes"] });
+          void qc.invalidateQueries({ queryKey: ["cliente-leads", id] });
+        }}
+      />
       <div className="flex items-center justify-between gap-3 sticky top-0 bg-background/95 backdrop-blur z-10 py-2">
         <div>
           <Link to="/clientes" className="text-sm text-muted-foreground inline-flex items-center gap-1 hover:text-foreground">
@@ -182,6 +195,11 @@ function ClienteDetailPage() {
             </Badge>
           )}
           {!c.ativo && <Badge variant="outline">Inativo</Badge>}
+          {canEdit && (
+            <Button variant="outline" onClick={() => setTransferirAberto(true)}>
+              Transferir carteira
+            </Button>
+          )}
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
