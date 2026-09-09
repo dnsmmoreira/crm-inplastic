@@ -74,7 +74,7 @@ function RepresentantesPage() {
   const load = useCallback(async () => {
     try {
       setErro(null);
-      const data = (await listar({ data: {} })) as RepresentanteLinha[];
+      const data = (await listar()) as RepresentanteLinha[];
       setRows(data);
     } catch (e) {
       setRows([]);
