@@ -79,6 +79,9 @@ import { TabErrorBoundary } from "@/components/crm/TabErrorBoundary";
 import { ContatosSection } from "@/components/contatos/ContatosSection";
 import { useBaixaTarefa } from "@/components/tarefas/useBaixaTarefa";
 import { sufixoCobranca } from "@/lib/tarefa-desfecho";
+import { TransferirLeadDialog } from "@/components/crm/TransferirLeadDialog";
+import { useQuery } from "@tanstack/react-query";
+import { listVendedores } from "@/lib/clientes.functions";
 
 
 
@@ -112,6 +115,15 @@ export function LeadDrawer({
   const proposals = useCrm((s) => s.proposals);
   const moveLeadStage = useMoveLeadStage();
   const [lostReasonOpen, setLostReasonOpen] = useState(false);
+  const [transferirOpen, setTransferirOpen] = useState(false);
+  const listVendedoresFn = useServerFn(listVendedores);
+  const vendedoresQ = useQuery({
+    queryKey: ["lead-drawer", "vendedores"],
+    queryFn: () => listVendedoresFn(),
+    staleTime: 300_000,
+  });
+  const nomeResponsavel =
+    (vendedoresQ.data ?? []).find((v) => v.id === lead?.ownerId)?.name ?? "—";
 
   const [newInt, setNewInt] = useState<{ type: Interaction["type"]; content: string }>({
     type: "call",
@@ -135,6 +147,18 @@ export function LeadDrawer({
               <SheetDescription className="mt-1">
                 {lead.contactName} · Lead desde {format(new Date(lead.createdAt), "dd MMM yyyy", { locale: ptBR })}
               </SheetDescription>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+                <span className="text-muted-foreground">Responsável:</span>
+                <span className="font-medium">{nomeResponsavel}</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => setTransferirOpen(true)}
+                >
+                  Transferir
+                </Button>
+              </div>
               <div className="mt-3 flex flex-wrap items-center gap-1.5">
                 {(() => {
                   const t = leadTemperature(lead);
@@ -629,6 +653,13 @@ export function LeadDrawer({
         const r = await moveLeadStage(lead.id, "perdido", { onGanhoLabel: lead.company, lostReason: payload });
         if (r.ok) toast.success("Lead marcado como Perdido");
       }}
+    />
+    <TransferirLeadDialog
+      open={transferirOpen}
+      onOpenChange={setTransferirOpen}
+      leadIds={[lead.id]}
+      donoAtual={lead.ownerId}
+      onTransferido={(novo) => updateLead(lead.id, { ownerId: novo })}
     />
     </>
   );
