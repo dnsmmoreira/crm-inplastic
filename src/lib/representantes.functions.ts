@@ -53,7 +53,7 @@ export const listRepresentantes = createServerFn({ method: "POST" })
       .from("profiles")
       .select("id, name, cargo, ativo, deleted_at")
       .eq("cargo", CARGO_REPRESENTANTE);
-    assertNoError(pErr, "representantes/profiles");
+    await assertNoError({ error: pErr }, "representantes/profiles");
     const base0 = profs ?? [];
     const ids = base0.map((p) => p.id as string);
     if (ids.length === 0) return [];
@@ -66,11 +66,11 @@ export const listRepresentantes = createServerFn({ method: "POST" })
       sb.from("propostas").select("owner_id, created_at").in("owner_id", ids).gte("created_at", desde),
       sb.from("whatsapp_conversas").select("atribuido_para, last_message_at").in("atribuido_para", ids),
     ]);
-    assertNoError(part.error, "representantes/arena_participacao");
-    assertNoError(clientes.error, "representantes/clientes");
-    assertNoError(leads.error, "representantes/leads");
-    assertNoError(propostas.error, "representantes/propostas");
-    assertNoError(conversas.error, "representantes/conversas");
+    await assertNoError(part, "representantes/arena_participacao");
+    await assertNoError(clientes, "representantes/clientes");
+    await assertNoError(leads, "representantes/leads");
+    await assertNoError(propostas, "representantes/propostas");
+    await assertNoError(conversas, "representantes/conversas");
 
     const pMap = new Map((part.data ?? []).map((r) => [r.user_id as string, r]));
     const base: RepresentanteBase[] = base0.map((p) => ({
@@ -108,7 +108,7 @@ export const atualizarDadosRepresentante = createServerFn({ method: "POST" })
       .select("id, cargo, deleted_at")
       .eq("id", data.userId)
       .maybeSingle();
-    assertNoError(aErr, "representantes/alvo");
+    await assertNoError({ error: aErr }, "representantes/alvo");
     if (!alvo || alvo.deleted_at) throw new Error("Usuário não encontrado.");
     if (!ehCargoRepresentante(alvo.cargo as string | null)) {
       throw new Error("Este usuário não tem o cargo Representante.");
@@ -119,7 +119,7 @@ export const atualizarDadosRepresentante = createServerFn({ method: "POST" })
       .select("user_id, participa_arena, tipo_comercial")
       .eq("user_id", data.userId)
       .maybeSingle();
-    assertNoError(cErr, "representantes/participacao-atual");
+    await assertNoError({ error: cErr }, "representantes/participacao-atual");
 
     const { error: uErr } = await sb.from("arena_participacao").upsert(
       {
@@ -130,7 +130,7 @@ export const atualizarDadosRepresentante = createServerFn({ method: "POST" })
       },
       { onConflict: "user_id" },
     );
-    assertNoError(uErr, "representantes/participacao-upsert");
+    await assertNoError({ error: uErr }, "representantes/participacao-upsert");
 
     if ((atual?.participa_arena ?? null) !== data.participaArena) {
       const { error: logErr } = await sb.from("user_audit_log").insert({
