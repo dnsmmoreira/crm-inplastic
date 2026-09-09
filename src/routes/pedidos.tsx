@@ -359,8 +359,9 @@ function PedidosKanbanPage() {
   };
 
   return (
-    <div className="p-4 md:p-8 space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="p-4 md:p-8 space-y-6 md:h-dvh md:flex md:flex-col md:gap-6 md:space-y-0 md:overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-3 shrink-0">
+
         <div>
           <h1 className="text-2xl md:text-3xl font-semibold">Funil Operacional</h1>
           <p className="text-sm text-muted-foreground">
@@ -379,9 +380,14 @@ function PedidosKanbanPage() {
         </div>
       </div>
 
-      <KpiBar pedidos={filtered} />
+      <div className="shrink-0">
+        <KpiBar pedidos={filtered} />
+      </div>
 
+
+      <div className="shrink-0">
       <FilterBar
+
         options={options}
         fVendedor={fVendedor}
         setFVendedor={setFVendedor}
@@ -404,7 +410,9 @@ function PedidosKanbanPage() {
         totalCount={allRows.length}
         filteredCount={filtered.length}
       />
+      </div>
 
+      <div className="md:flex md:min-h-0 md:flex-1 md:flex-col">
       {pedidosQ.isLoading ? (
         <div className="text-sm text-muted-foreground">Carregando pedidos…</div>
       ) : pedidosQ.isError ? (
@@ -416,7 +424,8 @@ function PedidosKanbanPage() {
         </div>
       ) : (
         <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
-          <div className="flex gap-4 overflow-x-auto pb-4 -mx-4 md:-mx-8 px-4 md:px-8">
+          <div className="flex gap-4 overflow-x-auto overflow-y-hidden scrollbar-visible pb-4 -mx-4 md:-mx-8 px-4 md:px-8 md:h-full">
+
             {PEDIDO_STAGES.map((stage) => {
               const blockedByOcorrencia =
                 !!activePedido &&
@@ -444,6 +453,8 @@ function PedidosKanbanPage() {
           <DragOverlay>{activePedido && <PedidoCard pedido={activePedido} dragging />}</DragOverlay>
         </DndContext>
       )}
+      </div>
+
 
       <PedidoDetailDrawer pedidoId={openPedidoId} onClose={() => setOpenPedidoId(null)} />
 
@@ -520,8 +531,9 @@ function Column({
   const total = pedidos.reduce((s, p) => s + p.total, 0);
   const showBlocked = dragActive && !canDrop;
   return (
-    <div className="w-[300px] shrink-0 flex flex-col">
-      <div className="px-1 pb-2 flex items-center justify-between">
+    <div className="w-[300px] shrink-0 flex flex-col md:h-full">
+      <div className="px-1 pb-2 flex items-center justify-between shrink-0">
+
         <div className="flex items-center gap-2 min-w-0">
           <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: stage.color }} />
           <span className="font-medium text-sm truncate">{stage.label}</span>
@@ -541,6 +553,8 @@ function Column({
         title={showBlocked && blockedReason ? blockedReason : undefined}
         className={cn(
           "flex-1 rounded-xl border border-dashed p-2 space-y-2 min-h-[400px] transition-colors relative",
+          "md:min-h-0 md:overflow-y-auto scroll-gutter-stable",
+
           isOver && canDrop && !isBackwardTarget && "bg-accent/40 border-primary",
           isOver && canDrop && isBackwardTarget && "bg-amber-500/10 border-amber-500",
           showBlocked && "bg-muted/10 border-border/40 opacity-50",

@@ -793,7 +793,7 @@ function AppShell({ children }: { children: ReactNode }) {
           </div>
         )}
 
-        <main className="flex-1 min-w-0">{children}</main>
+        <main className="flex-1 min-w-0 md:flex md:min-h-0 md:flex-col">{children}</main>
       </div>
     </div>
   );

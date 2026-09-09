@@ -389,7 +389,7 @@ function PipelinePage() {
   };
 
   return (
-    <div className="flex h-[calc(100dvh-4rem)] flex-col gap-4 overflow-hidden p-4 md:p-8">
+    <div className="flex flex-col gap-4 p-4 md:h-dvh md:overflow-hidden md:p-8">
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
 
         <div>
@@ -493,8 +493,9 @@ function PipelinePage() {
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
       >
-        <div className="-mx-4 min-h-0 flex-1 overflow-auto px-4 md:-mx-8 md:px-8">
-          <div className="flex gap-4 pb-4">
+        <div className="-mx-4 min-h-0 flex-1 overflow-auto md:overflow-y-hidden scrollbar-visible px-4 md:-mx-8 md:px-8">
+          <div className="flex gap-4 pb-4 md:h-full">
+
             {BOARD_STAGES.map((stage) =>
               stage.id === "perdido" && !mostrarPerdidos ? null :
               PROPOSAL_STAGES.includes(stage.id) ? (
@@ -662,8 +663,9 @@ function Column({
   const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selected.has(id));
 
   return (
-    <div className="w-[300px] shrink-0 flex flex-col">
-      <div className="sticky top-0 z-20 px-1 pb-2 pt-1 flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+    <div className="w-[300px] shrink-0 flex flex-col md:h-full">
+      <div className="sticky top-0 z-20 shrink-0 px-1 pb-2 pt-1 flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+
         <div className="flex items-center gap-2">
           {selectMode && (
             <Checkbox
@@ -683,6 +685,8 @@ function Column({
         ref={setNodeRef}
         className={cn(
           "flex-1 rounded-xl border border-dashed p-2 space-y-2 min-h-[400px] transition-colors",
+          "md:min-h-0 md:overflow-y-auto scroll-gutter-stable",
+
           isOver ? "bg-accent/40 border-primary" : "bg-muted/30 border-border",
         )}
       >
@@ -866,8 +870,8 @@ function ProposalColumn({
   const visible = proposals.slice(start, start + CARDS_PER_PAGE);
 
   return (
-    <div className="w-[300px] shrink-0 flex flex-col">
-      <div className="sticky top-0 z-20 px-1 pb-2 pt-1 flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+    <div className="w-[300px] shrink-0 flex flex-col md:h-full">
+      <div className="sticky top-0 z-20 shrink-0 px-1 pb-2 pt-1 flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/70">
         <div className="flex items-center gap-2">
           <span className="stage-dot" style={{ background: stage.color }} />
           <span className="font-medium text-sm">{stage.label}</span>
@@ -879,6 +883,8 @@ function ProposalColumn({
         ref={setNodeRef}
         className={cn(
           "flex-1 rounded-xl border border-dashed p-2 space-y-2 min-h-[400px] transition-colors",
+          "md:min-h-0 md:overflow-y-auto scroll-gutter-stable",
+
           isOver ? "bg-accent/40 border-primary" : "bg-muted/30 border-border",
         )}
       >
