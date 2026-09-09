@@ -410,7 +410,9 @@ function PedidosKanbanPage() {
         totalCount={allRows.length}
         filteredCount={filtered.length}
       />
+      </div>
 
+      <div className="md:flex md:min-h-0 md:flex-1 md:flex-col">
       {pedidosQ.isLoading ? (
         <div className="text-sm text-muted-foreground">Carregando pedidos…</div>
       ) : pedidosQ.isError ? (
@@ -422,7 +424,8 @@ function PedidosKanbanPage() {
         </div>
       ) : (
         <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
-          <div className="flex gap-4 overflow-x-auto pb-4 -mx-4 md:-mx-8 px-4 md:px-8">
+          <div className="flex gap-4 overflow-x-auto overflow-y-hidden scrollbar-visible pb-4 -mx-4 md:-mx-8 px-4 md:px-8 md:h-full">
+
             {PEDIDO_STAGES.map((stage) => {
               const blockedByOcorrencia =
                 !!activePedido &&
