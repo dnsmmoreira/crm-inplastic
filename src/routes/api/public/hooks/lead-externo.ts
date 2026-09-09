@@ -123,6 +123,10 @@ export const Route = createFileRoute("/api/public/hooks/lead-externo")({
         // 2) Lead
         let leadId = (existente?.lead_id as string | null) ?? null;
         if (!leadId) {
+          const { leadExistenteDaCarteira } = await import("@/lib/carteira.server");
+          leadId = await leadExistenteDaCarteira(supabaseAdmin, telefone);
+        }
+        if (!leadId) {
           const quantidade =
             typeof body.quantidade === "string"
               ? Number(body.quantidade.replace(/[^\d]/g, "")) || undefined
