@@ -14,6 +14,7 @@ import { Route as TrocarSenhaRouteImport } from './routes/trocar-senha'
 import { Route as TransportadorasRouteImport } from './routes/transportadoras'
 import { Route as TarefasRouteImport } from './routes/tarefas'
 import { Route as TabelaPrecosRouteImport } from './routes/tabela-precos'
+import { Route as RepresentantesRouteImport } from './routes/representantes'
 import { Route as RelatoriosRouteImport } from './routes/relatorios'
 import { Route as ProdutosRouteImport } from './routes/produtos'
 import { Route as PlacarRouteImport } from './routes/placar'
@@ -92,6 +93,11 @@ const TarefasRoute = TarefasRouteImport.update({
 const TabelaPrecosRoute = TabelaPrecosRouteImport.update({
   id: '/tabela-precos',
   path: '/tabela-precos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RepresentantesRoute = RepresentantesRouteImport.update({
+  id: '/representantes',
+  path: '/representantes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RelatoriosRoute = RelatoriosRouteImport.update({
@@ -410,6 +416,7 @@ export interface FileRoutesByFullPath {
   '/placar': typeof PlacarRoute
   '/produtos': typeof ProdutosRoute
   '/relatorios': typeof RelatoriosRoute
+  '/representantes': typeof RepresentantesRoute
   '/tabela-precos': typeof TabelaPrecosRoute
   '/tarefas': typeof TarefasRoute
   '/transportadoras': typeof TransportadorasRoute
@@ -471,6 +478,7 @@ export interface FileRoutesByTo {
   '/placar': typeof PlacarRoute
   '/produtos': typeof ProdutosRoute
   '/relatorios': typeof RelatoriosRoute
+  '/representantes': typeof RepresentantesRoute
   '/tabela-precos': typeof TabelaPrecosRoute
   '/tarefas': typeof TarefasRoute
   '/transportadoras': typeof TransportadorasRoute
@@ -533,6 +541,7 @@ export interface FileRoutesById {
   '/placar': typeof PlacarRoute
   '/produtos': typeof ProdutosRoute
   '/relatorios': typeof RelatoriosRoute
+  '/representantes': typeof RepresentantesRoute
   '/tabela-precos': typeof TabelaPrecosRoute
   '/tarefas': typeof TarefasRoute
   '/transportadoras': typeof TransportadorasRoute
@@ -596,6 +605,7 @@ export interface FileRouteTypes {
     | '/placar'
     | '/produtos'
     | '/relatorios'
+    | '/representantes'
     | '/tabela-precos'
     | '/tarefas'
     | '/transportadoras'
@@ -657,6 +667,7 @@ export interface FileRouteTypes {
     | '/placar'
     | '/produtos'
     | '/relatorios'
+    | '/representantes'
     | '/tabela-precos'
     | '/tarefas'
     | '/transportadoras'
@@ -718,6 +729,7 @@ export interface FileRouteTypes {
     | '/placar'
     | '/produtos'
     | '/relatorios'
+    | '/representantes'
     | '/tabela-precos'
     | '/tarefas'
     | '/transportadoras'
@@ -780,6 +792,7 @@ export interface RootRouteChildren {
   PlacarRoute: typeof PlacarRoute
   ProdutosRoute: typeof ProdutosRoute
   RelatoriosRoute: typeof RelatoriosRoute
+  RepresentantesRoute: typeof RepresentantesRoute
   TabelaPrecosRoute: typeof TabelaPrecosRoute
   TarefasRoute: typeof TarefasRoute
   TransportadorasRoute: typeof TransportadorasRoute
@@ -849,6 +862,13 @@ declare module '@tanstack/react-router' {
       path: '/tabela-precos'
       fullPath: '/tabela-precos'
       preLoaderRoute: typeof TabelaPrecosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/representantes': {
+      id: '/representantes'
+      path: '/representantes'
+      fullPath: '/representantes'
+      preLoaderRoute: typeof RepresentantesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/relatorios': {
@@ -1260,6 +1280,7 @@ const rootRouteChildren: RootRouteChildren = {
   PlacarRoute: PlacarRoute,
   ProdutosRoute: ProdutosRoute,
   RelatoriosRoute: RelatoriosRoute,
+  RepresentantesRoute: RepresentantesRoute,
   TabelaPrecosRoute: TabelaPrecosRoute,
   TarefasRoute: TarefasRoute,
   TransportadorasRoute: TransportadorasRoute,
