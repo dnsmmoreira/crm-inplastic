@@ -685,6 +685,8 @@ function Column({
         ref={setNodeRef}
         className={cn(
           "flex-1 rounded-xl border border-dashed p-2 space-y-2 min-h-[400px] transition-colors",
+          "md:min-h-0 md:overflow-y-auto scroll-gutter-stable",
+
           isOver ? "bg-accent/40 border-primary" : "bg-muted/30 border-border",
         )}
       >
