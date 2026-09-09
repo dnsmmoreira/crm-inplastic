@@ -385,7 +385,9 @@ function PedidosKanbanPage() {
       </div>
 
 
+      <div className="shrink-0">
       <FilterBar
+
         options={options}
         fVendedor={fVendedor}
         setFVendedor={setFVendedor}
