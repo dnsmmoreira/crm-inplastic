@@ -481,82 +481,30 @@ export const concluirTarefa = createServerFn({ method: "POST" })
       }
       const motivoTransf = (desfecho.detalhe ?? "").trim();
 
-      const { data: perfis, error: erroPerfis } = await supabase
+      // A troca de dono passa pela RPC `transferir_lead` (SECURITY DEFINER):
+      // o vendedor não tem RLS para gravar `owner_id` de outra pessoa.
+      const { data: destino, error: erroDestino } = await supabase
         .from("profiles")
-        .select("id, name, ativo, deleted_at")
-        .in("id", [novoDono, userId]);
-      if (erroPerfis) throw new Error(erroPerfis.message);
-      const destino = (perfis ?? []).find((p: any) => p.id === novoDono) as any;
-      if (!destino || destino.ativo === false || destino.deleted_at) {
-        return { ok: false as const, message: "Vendedor indisponível." };
-      }
-      const nomeDestino = destino.name ?? "colega";
-      const nomeAnterior =
-        ((perfis ?? []).find((p: any) => p.id === userId) as any)?.name ?? "vendedor";
+        .select("id, name")
+        .eq("id", novoDono)
+        .maybeSingle();
+      if (erroDestino) throw new Error(erroDestino.message);
+      const nomeDestino = (destino?.name as string) ?? "colega";
 
-      const upLead = await supabase
-        .from("leads")
-        .update({ owner_id: novoDono })
-        .eq("id", leadId);
-      await assertNoError(upLead, "concluirTarefa.transferir.lead", { lead_id: leadId });
-
-      const insInt = await supabase.from("lead_interactions").insert({
-        lead_id: leadId,
-        owner_id: userId,
-        type: "note",
-        content: `Transferido para ${nomeDestino} — ${motivoTransf}`,
+      const { error: erroRpc } = await supabase.rpc("transferir_lead", {
+        _lead_id: leadId,
+        _novo_owner: novoDono,
+        _motivo: motivoTransf,
       });
-      await assertNoError(insInt, "concluirTarefa.transferir.interacao", { lead_id: leadId });
-
-      const upTarefa = await supabase
-        .from("tarefas")
-        .update({
-          owner_id: novoDono,
-          desfecho: null,
-          title: `↪ de ${nomeAnterior}: ${(tarefa.title ?? "tarefa").slice(0, 150)}`,
-        })
-        .eq("id", data.id);
-      await assertNoError(upTarefa, "concluirTarefa.transferir.tarefa", { id: data.id });
-
-      const upOutras = await supabase
-        .from("tarefas")
-        .update({ owner_id: novoDono })
-        .eq("lead_id", leadId)
-        .in("status", ["pendente", "adiada"])
-        .neq("id", data.id);
-      await assertNoError(upOutras, "concluirTarefa.transferir.outras", { lead_id: leadId });
-
-      const insNotif = await supabase.from("notificacoes").insert({
-        user_id: novoDono,
-        tipo: "lead_transferido",
-        titulo: `${nomeAnterior} transferiu ${lead?.company ?? "um cliente"} para você — ${motivoTransf}`.slice(0, 300),
-        exige_aceite: true,
-      });
-      if (insNotif?.error) {
-        const { registrarFalhaSegura } = await import("@/lib/guard-erros");
-        await registrarFalhaSegura("concluirTarefa.transferir.notificacao", insNotif.error, {
-          lead_id: leadId,
-        });
+      if (erroRpc) {
+        return { ok: false as const, message: erroRpc.message };
       }
+
       const { notifyOwner } = await import("@/lib/xerife/notify.server");
       await notifyOwner(
         novoDono,
-        `↪️ *Cliente transferido*\n\n${lead?.company ?? "Cliente"} passou a ser seu.\nDe: ${nomeAnterior}\nMotivo: ${motivoTransf}`,
+        `↪️ *Cliente transferido*\n\n${lead?.company ?? "Cliente"} passou a ser seu.\nMotivo: ${motivoTransf}`,
       );
-
-      const insAudit = await supabase.from("user_audit_log").insert({
-        ator_user_id: userId,
-        alvo_user_id: novoDono,
-        campo: "lead_transferido",
-        valor_anterior: userId,
-        valor_novo: `${leadId} — ${motivoTransf}`.slice(0, 1000),
-      });
-      if (insAudit?.error) {
-        const { registrarFalhaSegura } = await import("@/lib/guard-erros");
-        await registrarFalhaSegura("concluirTarefa.transferir.auditoria", insAudit.error, {
-          lead_id: leadId,
-        });
-      }
 
       return {
         ok: true as const,

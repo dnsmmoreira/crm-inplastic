@@ -3509,6 +3509,10 @@ export type Database = {
         Args: { _chave: string; _user_id: string }
         Returns: boolean
       }
+      transferir_lead: {
+        Args: { _lead_id: string; _motivo: string; _novo_owner: string }
+        Returns: Json
+      }
       valor_permissao: {
         Args: { _chave: string; _user_id: string }
         Returns: number

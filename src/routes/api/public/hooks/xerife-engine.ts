@@ -1004,14 +1004,33 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
 
     const { data: leads } = await sb
       .from("leads")
-      .select("id, company, owner_id, stage, last_contact_at, created_at, reatribuido_abandono_em, next_followup")
+      .select("id, company, owner_id, stage, last_contact_at, created_at, reatribuido_abandono_em, next_followup, proposta_enviada_at")
       .in("stage", ["novo", "atendimento", "qualificacao", "proposta", "negociacao"] as any)
       .not("owner_id", "is", null)
       .or(`last_contact_at.lt.${limiteIso},last_contact_at.is.null`)
       .limit(500);
 
+    // Quem já está na cadência de proposta (A4) não é "abandonado": proposta
+    // enviada há ≤15 dias, proposta aberta em proposta/negociação ou retorno
+    // futuro já agendado. Consulta em lote — sem N+1.
+    const { elegivelParaDevolucao } = await import("@/lib/lead-devolucao");
+    const idsLeads = (leads ?? []).map((l) => l.id as string);
+    const abertasPorLead = new Map<string, number>();
+    if (idsLeads.length > 0) {
+      const { data: propAbertas } = await sb
+        .from("propostas")
+        .select("lead_id")
+        .eq("status", "enviada")
+        .in("lead_id", idsLeads);
+      for (const p of propAbertas ?? []) {
+        const k = p.lead_id as string | null;
+        if (k) abertasPorLead.set(k, (abertasPorLead.get(k) ?? 0) + 1);
+      }
+    }
+
     for (const l of leads ?? []) {
       if (silenciado(l)) continue;
+      if (!elegivelParaDevolucao(l as any, abertasPorLead.get(l.id as string) ?? 0, now)) continue;
       const ref = l.last_contact_at ?? l.created_at;
       const dias = diasDesde(ref, now);
       if (dias == null) continue;

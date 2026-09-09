@@ -371,7 +371,7 @@ export const transferirConversa = createServerFn({ method: "POST" })
 
     const { data: conversa, error: cErr } = await supabase
       .from("whatsapp_conversas")
-      .select("id, atribuido_para, name, phone")
+      .select("id, atribuido_para, name, phone, lead_id")
       .eq("id", data.conversaId)
       .maybeSingle();
     if (cErr || !conversa) throw new Error("Conversa não encontrada ou sem permissão.");
@@ -408,6 +408,22 @@ export const transferirConversa = createServerFn({ method: "POST" })
       })
       .eq("id", data.conversaId);
     if (error) throw new Error(error.message);
+
+    // Havendo lead, o dono do cliente vai junto — pela RPC, que valida permissão
+    // e leva as tarefas abertas. Falha aqui não desfaz a transferência da conversa.
+    if (conversa.lead_id) {
+      const { error: rpcErr } = await supabase.rpc("transferir_lead", {
+        _lead_id: conversa.lead_id as string,
+        _novo_owner: data.paraUserId,
+        _motivo: data.motivo,
+      });
+      if (rpcErr) {
+        await registrarFalhaSegura("atendimento/transferir-lead", rpcErr, {
+          conversa_id: data.conversaId,
+          lead_id: conversa.lead_id,
+        });
+      }
+    }
 
     // REGISTRAR E SEGUIR: o rastro é posterior à transferência já efetivada.
     const audit = await supabaseAdmin.from("user_audit_log").insert({
