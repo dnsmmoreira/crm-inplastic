@@ -5,6 +5,7 @@
  * consulta por tabela (sem N+1) e cruza tudo em memória.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { diasVencida } from "@/lib/tarefa-vencimento";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SB = SupabaseClient<any, any, any>;
@@ -25,6 +26,7 @@ export type TarefaEquipe = {
   status: string | null;
   due_date: string | null;
   concluida_at: string | null;
+  escalonamentos?: number | null;
   id?: string;
   title?: string | null;
   lead_id?: string | null;
@@ -78,6 +80,7 @@ export type LinhaEquipe = {
   tarefasAbertas: number;
   tarefasPorTipo: Record<string, number>;
   tarefasVencidas: number;
+  vencidas5mais: number;
   leadsSemContato: number;
   propostasVencidas: number;
   rascunhosParados: number;
@@ -110,8 +113,9 @@ const ABERTA = (s: string | null) => s === "pendente" || s === "adiada";
 
 export function agregarEquipe(e: EntradaEquipe): ResumoEquipe {
   const nowMs = e.now.getTime();
-  const vencida = (t: TarefaEquipe) =>
-    ABERTA(t.status) && !!t.due_date && nowMs - new Date(t.due_date).getTime() >= DIA_MS;
+  // "Vencida" conta ROLAGENS do fechamento: o due_date é empurrado todo dia,
+  // então a data sozinha nunca fica no passado.
+  const vencida = (t: TarefaEquipe) => ABERTA(t.status) && diasVencida(t, e.now) >= 1;
 
   const linhas: LinhaEquipe[] = e.pessoas.map((p) => ({
     id: p.id,
@@ -121,6 +125,7 @@ export function agregarEquipe(e: EntradaEquipe): ResumoEquipe {
     tarefasAbertas: 0,
     tarefasPorTipo: {},
     tarefasVencidas: 0,
+    vencidas5mais: 0,
     leadsSemContato: 0,
     propostasVencidas: 0,
     rascunhosParados: 0,
@@ -153,6 +158,7 @@ export function agregarEquipe(e: EntradaEquipe): ResumoEquipe {
     if (tipo === "resposta_pendente") l.semResposta++;
     if (vencida(t)) {
       l.tarefasVencidas++;
+      if (diasVencida(t, e.now) >= 5) l.vencidas5mais++;
       if (tipo === "retorno_agendado") l.retornosVencidos++;
       l.itens.push({
         grupo: "Tarefa vencida",
@@ -286,7 +292,7 @@ export async function coletarResumoEquipe(
   const [tarefasRes, leadsRes, propostasRes, pedidosRes, aceitesRes, itensRes] = await Promise.all([
     sb
       .from("tarefas")
-      .select("id, owner_id, tipo, status, due_date, concluida_at, title, lead_id")
+      .select("id, owner_id, tipo, status, due_date, concluida_at, title, lead_id, escalonamentos")
       .in("owner_id", ids)
       .or(`status.in.(pendente,adiada),concluida_at.gte.${desde30}`),
     sb

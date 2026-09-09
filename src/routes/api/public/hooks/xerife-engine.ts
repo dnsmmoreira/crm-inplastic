@@ -1056,6 +1056,40 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
       stats.d1_escalado++;
 
       if (cfg.reatribuir_lead_abandonado && !l.reatribuido_abandono_em) {
+        // Aviso prévio de 24h: ninguém perde o cliente sem ser avisado.
+        const { decidirDevolucao, textoAvisoDevolucao } = await import("@/lib/lead-devolucao");
+        const { gestoresDe } = await import("@/lib/pedidos-fluxo.server");
+        const regraAviso = "D1_aviso_devolucao";
+        const decisao = decidirDevolucao(
+          await alreadyActed(sb, regraAviso, l.id, 48),
+          await alreadyActed(sb, regraAviso, l.id, 24),
+        );
+        if (decisao !== "devolver") {
+          if (decisao === "avisar" && !dryRun) {
+            const texto = textoAvisoDevolucao(l.company);
+            const destinos = [l.owner_id as string, ...(await gestoresDe(sb, [l.owner_id as string]))]
+              .filter((d, i, arr) => d && arr.indexOf(d) === i);
+            const insAviso = await sb.from("notificacoes").insert(
+              destinos.map((d) => ({
+                user_id: d,
+                tipo: "lead_sera_devolvido",
+                titulo: texto.slice(0, 300),
+                exige_aceite: d === l.owner_id,
+              })),
+            );
+            if (insAviso?.error)
+              await registrarFalhaSegura("xerife-engine.D1.aviso", insAviso.error, { lead_id: l.id });
+            await notifyOwner(l.owner_id as string, `⚠️ *${texto}*\n${crmLeadLink(l.id)}`);
+            await log(sb, {
+              regra: regraAviso,
+              leadId: l.id,
+              vendedorId: l.owner_id,
+              acao: "aviso de devolução enviado",
+              payload: { dias, avisado_em: now.toISOString() },
+            });
+          }
+          continue;
+        }
         plan.push({
           regra,
           lead_id: l.id,
@@ -1453,17 +1487,25 @@ ${crmLeadLink(conv.lead_id)}` : ""
   stats["e1_escalado"] = 0;
   stats["e2_aceite_sem_canal"] = 0;
   try {
-    const limiteIso = subtractBusinessHours(20, win, new Date()).toISOString();
+    // "Vencida" = 2+ ROLAGENS do fechamento (o due_date é empurrado todo dia).
+    const { vencidaHa } = await import("@/lib/tarefa-vencimento");
+    const limiteIso = new Date(now.getTime() - 2 * 86400_000).toISOString();
     const { data: vencidas, error: errVenc } = await sb
       .from("tarefas")
-      .select("id, owner_id, tipo, due_date")
+      .select("id, owner_id, tipo, due_date, escalonamentos, status")
       .in("status", ["pendente", "adiada"])
-      .lt("due_date", limiteIso)
+      .or(`escalonamentos.gte.2,due_date.lt.${limiteIso}`)
       .not("owner_id", "is", null);
     if (errVenc) await registrarFalhaSegura("xerife-engine.E1.tarefas", errVenc);
 
     const porDono = new Map<string, Map<string, number>>();
-    for (const t of (vencidas ?? []) as Array<{ owner_id: string; tipo: string | null }>) {
+    for (const t of (vencidas ?? []) as Array<{
+      owner_id: string;
+      tipo: string | null;
+      due_date: string | null;
+      escalonamentos: number | null;
+    }>) {
+      if (!vencidaHa(t, 2, now)) continue;
       const m = porDono.get(t.owner_id) ?? new Map<string, number>();
       const tipo = t.tipo ?? "tarefa";
       m.set(tipo, (m.get(tipo) ?? 0) + 1);

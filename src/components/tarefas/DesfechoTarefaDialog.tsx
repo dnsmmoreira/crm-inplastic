@@ -5,6 +5,8 @@
  */
 import { useMemo, useState } from "react";
 import { format } from "date-fns";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
@@ -17,15 +19,19 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { MOTIVOS_PERDA, MOTIVOS_PERDA_DESCRICAO } from "@/lib/motivos-perda";
+import { listVendedores } from "@/lib/clientes.functions";
 import {
   desfechosParaTipo,
   etapasAvancoPermitidas,
   proximoDiaUtil,
   somarDiasUteis,
   validarDesfecho,
+  atalhoSemPendencia,
+  MOTIVOS_SEM_PENDENCIA,
   MSG_NEGOCIACAO_SEM_AVANCO,
   type DesfechoInput,
 } from "@/lib/tarefa-desfecho";
+
 
 const STAGE_LABEL: Record<string, string> = {
   atendimento: "Atendimento",
@@ -58,6 +64,8 @@ export function DesfechoTarefaDialog({
   const [motivo, setMotivo] = useState("");
   const [detalhe, setDetalhe] = useState("");
   const [nota, setNota] = useState("");
+  const [motivoSem, setMotivoSem] = useState("");
+  const [novoDono, setNovoDono] = useState("");
   const [erro, setErro] = useState<string | null>(null);
 
   const minData = useMemo(() => proximoDiaUtil(), []);
@@ -67,17 +75,44 @@ export function DesfechoTarefaDialog({
     [tipoTarefa, temLead],
   );
 
+  const listar = useServerFn(listVendedores);
+  const { data: vendedores } = useQuery({
+    queryKey: ["vendedores-transferencia"],
+    queryFn: () => listar(),
+    enabled: open && tipo === "transferir",
+    staleTime: 5 * 60_000,
+  });
+
   const limpar = () => {
-    setTipo(""); setData(""); setStage(""); setMotivo(""); setDetalhe(""); setNota(""); setErro(null);
+    setTipo(""); setData(""); setStage(""); setMotivo(""); setDetalhe(""); setNota("");
+    setMotivoSem(""); setNovoDono(""); setErro(null);
+  };
+
+  /** "Produto fora do portfólio" vira perda; "não é meu cliente" vira transferência. */
+  const escolherMotivoSem = (v: string) => {
+    setMotivoSem(v);
+    setErro(null);
+    const atalho = atalhoSemPendencia(v);
+    if (atalho?.tipo === "perdido") {
+      setTipo("perdido");
+      setMotivo(atalho.motivo);
+    } else if (atalho?.tipo === "transferir") {
+      setTipo("transferir");
+    }
   };
 
   const confirmar = () => {
-    const input: DesfechoInput = { tipo, data, stage, motivo, detalhe, nota };
+    const input: DesfechoInput = {
+      tipo, data, stage, motivo, detalhe, nota,
+      motivo_sem_pendencia: motivoSem || null,
+      novo_dono: novoDono || null,
+    };
     const v = validarDesfecho(input, { stageAtual, tipoTarefa, temLead });
     if (!v.ok) { setErro(v.erro); return; }
     setErro(null);
     onConfirmar(input);
   };
+
 
 
   return (
@@ -242,13 +277,45 @@ export function DesfechoTarefaDialog({
         )}
 
 
+        {tipo === "transferir" && (
+          <div className="space-y-2">
+            <Label>Quem passa a atender <span className="text-destructive">*</span></Label>
+            <Select value={novoDono} onValueChange={setNovoDono}>
+              <SelectTrigger><SelectValue placeholder="Escolha o vendedor…" /></SelectTrigger>
+              <SelectContent>
+                {(vendedores ?? []).map((v) => (
+                  <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Label>Motivo da transferência <span className="text-destructive">*</span></Label>
+            <Textarea
+              rows={2}
+              value={detalhe}
+              onChange={(e) => setDetalhe(e.target.value)}
+              placeholder="Ex: cliente já é atendido pela Bianca"
+            />
+          </div>
+        )}
+
         {tipo === "sem_pendencia" && (
           <div className="space-y-2">
             <Label>Por quê? <span className="text-destructive">*</span></Label>
-            <Textarea rows={2} value={detalhe} onChange={(e) => setDetalhe(e.target.value)}
-              placeholder="Ex: cliente já respondeu por outro canal" />
+            <Select value={motivoSem} onValueChange={escolherMotivoSem}>
+              <SelectTrigger><SelectValue placeholder="Escolha o motivo…" /></SelectTrigger>
+              <SelectContent>
+                {MOTIVOS_SEM_PENDENCIA.map((m) => (
+                  <SelectItem key={m.valor} value={m.valor}>{m.rotulo}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {motivoSem === "outro" && (
+              <Textarea rows={2} value={detalhe} onChange={(e) => setDetalhe(e.target.value)}
+                placeholder="Ex: cliente já respondeu por outro canal" />
+            )}
           </div>
         )}
+
 
         {tipo && (
           <div className="space-y-2">
