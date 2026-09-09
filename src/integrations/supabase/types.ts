@@ -3462,6 +3462,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      localizar_carteira: {
+        Args: { _cnpj: string; _email: string; _telefone: string }
+        Returns: {
+          cliente_id: string
+          lead_id: string
+          origem: string
+          vendedor_id: string
+        }[]
+      }
       next_pedido_number: { Args: { _year: number }; Returns: string }
       next_proposta_number: { Args: { _year: number }; Returns: string }
       placar_vendedores: {
@@ -3505,9 +3514,14 @@ export type Database = {
         Args: { _ano: number; _mes: number }
         Returns: number
       }
+      tel_chave: { Args: { _v: string }; Returns: string }
       tem_permissao: {
         Args: { _chave: string; _user_id: string }
         Returns: boolean
+      }
+      transferir_cliente: {
+        Args: { _cliente_id: string; _motivo: string; _novo_owner: string }
+        Returns: Json
       }
       transferir_lead: {
         Args: { _lead_id: string; _motivo: string; _novo_owner: string }
