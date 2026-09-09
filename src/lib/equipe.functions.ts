@@ -85,3 +85,105 @@ export const cobrarPessoa = createServerFn({ method: "POST" })
     }
     return { ok: true as const };
   });
+
+export type LinhaCarteira = {
+  leadId: string;
+  clienteId: string | null;
+  empresa: string;
+  donoAtual: string | null;
+  donoAtualNome: string;
+  donoCarteiraNome: string;
+};
+
+export type DevolucaoCarteira = { vendedor: string; total: number };
+
+export type RelatorioCarteira = {
+  donoDivergente: LinhaCarteira[];
+  clienteExistente: LinhaCarteira[];
+  devolucoes: DevolucaoCarteira[];
+};
+
+/** Painel do gestor: onde a carteira e o atendimento não batem. */
+export const relatorioCarteira = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<RelatorioCarteira> => {
+    const sb: LooseClient = context.supabase;
+    const userId = context.userId as string;
+    const ctx = await contexto(sb, userId);
+    if (!ctx.admin && !ctx.gerencia && ctx.liderados.length === 0) {
+      throw new Error("Sem acesso ao painel da equipe.");
+    }
+
+    const desde = new Date(Date.now() - 30 * 86400_000).toISOString();
+
+    const { data: leads, error: errLeads } = await sb
+      .from("leads")
+      .select("id, company, owner_id, cliente_id, tags, created_at, stage")
+      .not("stage", "in", "(ganho,perdido)")
+      .limit(1000);
+    if (errLeads) throw new Error(`Falha ao ler atendimentos: ${errLeads.message}`);
+
+    const idsClientes = [
+      ...new Set(
+        ((leads ?? []) as { cliente_id: string | null }[])
+          .map((l) => l.cliente_id)
+          .filter(Boolean) as string[],
+      ),
+    ];
+    const vendPorCliente = new Map<string, string | null>();
+    if (idsClientes.length > 0) {
+      const { data: cls, error } = await sb
+        .from("clientes")
+        .select("id, vendedor_id")
+        .in("id", idsClientes);
+      if (error) throw new Error(`Falha ao ler clientes: ${error.message}`);
+      for (const c of cls ?? []) vendPorCliente.set(c.id as string, c.vendedor_id as string | null);
+    }
+
+    const { data: perfis, error: errPerfis } = await sb.from("profiles").select("id, name");
+    if (errPerfis) throw new Error(`Falha ao ler pessoas: ${errPerfis.message}`);
+    const nomes = new Map<string, string>();
+    for (const p of perfis ?? []) nomes.set(p.id as string, (p.name as string) ?? "Sem nome");
+    const nome = (id: string | null | undefined) =>
+      (id && nomes.get(id)) || "Sem responsável";
+
+    const donoDivergente: LinhaCarteira[] = [];
+    const clienteExistente: LinhaCarteira[] = [];
+    for (const l of (leads ?? []) as any[]) {
+      const donoCarteira = l.cliente_id ? vendPorCliente.get(l.cliente_id) ?? null : null;
+      const linha: LinhaCarteira = {
+        leadId: l.id as string,
+        clienteId: (l.cliente_id as string | null) ?? null,
+        empresa: (l.company as string) ?? "Sem nome",
+        donoAtual: (l.owner_id as string | null) ?? null,
+        donoAtualNome: nome(l.owner_id as string | null),
+        donoCarteiraNome: nome(donoCarteira),
+      };
+      if (donoCarteira && donoCarteira !== l.owner_id) donoDivergente.push(linha);
+      if (
+        Array.isArray(l.tags) &&
+        l.tags.includes("cliente_existente") &&
+        (l.created_at as string) >= desde
+      ) {
+        clienteExistente.push(linha);
+      }
+    }
+
+    const { data: logs, error: errLog } = await sb
+      .from("xerife_log")
+      .select("vendedor_id, regra, created_at")
+      .gte("created_at", desde)
+      .like("regra", "D1_abandono%")
+      .limit(1000);
+    if (errLog) throw new Error(`Falha ao ler histórico: ${errLog.message}`);
+    const porVendedor = new Map<string, number>();
+    for (const r of (logs ?? []) as any[]) {
+      const k = (r.vendedor_id as string | null) ?? "";
+      porVendedor.set(k, (porVendedor.get(k) ?? 0) + 1);
+    }
+    const devolucoes: DevolucaoCarteira[] = [...porVendedor.entries()]
+      .map(([id, total]) => ({ vendedor: nome(id || null), total }))
+      .sort((a, b) => b.total - a.total);
+
+    return { donoDivergente, clienteExistente, devolucoes };
+  });
