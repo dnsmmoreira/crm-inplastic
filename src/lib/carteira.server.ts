@@ -81,7 +81,50 @@ export async function aplicarCarteiraNaConversa(
     const match = await localizarCarteira(sb, { telefone: input.phone });
     if (!match) return { aplicado: false };
 
+    // Lead aberto exige conferir se um humano já trabalhou aquele lead.
+    let leadCasado: LeadCasado = null;
+    if (match.origem.startsWith("lead_aberto:") && match.leadId) {
+      const { data: lc, error: lcErr } = await sb
+        .from("leads")
+        .select("id, owner_id, last_contact_at")
+        .eq("id", match.leadId)
+        .maybeSingle();
+      if (lcErr) {
+        await registrarFalhaSegura("carteira.conversa.lead-casado", lcErr, {
+          conversa_id: input.conversaId,
+        });
+        return { aplicado: false };
+      }
+      let statusConversa: string | null = null;
+      if (lc?.id) {
+        const { data: cc } = await sb
+          .from("whatsapp_conversas")
+          .select("status")
+          .eq("lead_id", lc.id)
+          .neq("id", input.conversaId)
+          .order("updated_at", { ascending: false })
+          .limit(1);
+        statusConversa = cc?.[0]?.status ?? null;
+      }
+      leadCasado = lc
+        ? {
+            ownerId: (lc.owner_id as string | null) ?? null,
+            ultimoContatoEm: (lc.last_contact_at as string | null) ?? null,
+            statusConversa,
+          }
+        : null;
+    }
+
+    const { decidirCarteiraNaConversa } = await import("@/lib/carteira-match");
+    const deveAgir = decidirCarteiraNaConversa(
+      { id: input.conversaId, leadId: (conv.lead_id as string | null) ?? null },
+      { leadId: match.leadId, vendedorId: match.vendedorId, origem: match.origem },
+      leadCasado,
+    );
+    if (!deveAgir) return { aplicado: false };
+
     const leadId = (conv.lead_id as string | null) ?? match.leadId;
+
 
     const up = await sb
       .from("whatsapp_conversas")
