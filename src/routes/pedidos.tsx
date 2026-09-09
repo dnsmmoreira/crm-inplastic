@@ -553,6 +553,8 @@ function Column({
         title={showBlocked && blockedReason ? blockedReason : undefined}
         className={cn(
           "flex-1 rounded-xl border border-dashed p-2 space-y-2 min-h-[400px] transition-colors relative",
+          "md:min-h-0 md:overflow-y-auto scroll-gutter-stable",
+
           isOver && canDrop && !isBackwardTarget && "bg-accent/40 border-primary",
           isOver && canDrop && isBackwardTarget && "bg-amber-500/10 border-amber-500",
           showBlocked && "bg-muted/10 border-border/40 opacity-50",
