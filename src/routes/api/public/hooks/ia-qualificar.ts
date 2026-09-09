@@ -84,6 +84,12 @@ export const Route = createFileRoute("/api/public/hooks/ia-qualificar")({
 
         let leadId = conv.lead_id as string | null;
 
+        // 0) A carteira manda: cliente da casa continua no lead que já existe.
+        if (!leadId) {
+          const { leadExistenteDaCarteira } = await import("@/lib/carteira.server");
+          leadId = await leadExistenteDaCarteira(supabaseAdmin, conv.phone as string);
+        }
+
         // 1) Cria o lead se ainda não existir
         if (!leadId) {
           const nomePerfil = nomePlausivel(conv.name);

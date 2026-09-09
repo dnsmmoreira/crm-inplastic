@@ -7,7 +7,9 @@ import { formatDistanceToNowStrict } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { AlertTriangle, ChevronDown, ChevronRight, Loader2, Megaphone, Users } from "lucide-react";
 
-import { cobrarPessoa, resumoEquipe } from "@/lib/equipe.functions";
+import { cobrarPessoa, relatorioCarteira, resumoEquipe } from "@/lib/equipe.functions";
+import type { LinhaCarteira } from "@/lib/equipe.functions";
+import { TransferirLeadDialog } from "@/components/crm/TransferirLeadDialog";
 import type { LinhaEquipe } from "@/lib/equipe.server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -265,6 +267,8 @@ function EquipePage() {
         )}
       </div>
 
+      <SecaoCarteira />
+
       <Dialog open={!!cobranca} onOpenChange={(o) => !o && setCobranca(null)}>
         <DialogContent>
           <DialogHeader>
@@ -300,5 +304,104 @@ function Contagem({ label, valor }: { label: string; valor: number }) {
       <div className={cn("text-lg font-semibold", valor > 0 && "text-rose-600")}>{valor}</div>
       <div className="text-[11px] text-muted-foreground">{label}</div>
     </div>
+  );
+}
+
+/** Onde a carteira e o atendimento não batem — com transferência na mesma tela. */
+function SecaoCarteira() {
+  const qc = useQueryClient();
+  const carregar = useServerFn(relatorioCarteira);
+  const q = useQuery({ queryKey: ["carteira-equipe"], queryFn: () => carregar() });
+  const [alvo, setAlvo] = useState<LinhaCarteira | null>(null);
+
+  if (q.isLoading) {
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Carteira</CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm text-muted-foreground">
+          <Loader2 className="inline h-4 w-4 mr-2 animate-spin" />
+          Carregando...
+        </CardContent>
+      </Card>
+    );
+  }
+  if (!q.data) return null;
+
+  const lista = (titulo: string, linhas: LinhaCarteira[], vazio: string) => (
+    <div className="space-y-2">
+      <div className="text-sm font-medium">
+        {titulo} <span className="text-muted-foreground">({linhas.length})</span>
+      </div>
+      {linhas.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{vazio}</p>
+      ) : (
+        <ul className="divide-y rounded border">
+          {linhas.slice(0, 50).map((l) => (
+            <li key={l.leadId} className="flex flex-wrap items-center gap-2 p-2 text-sm">
+              <span className="font-medium">{l.empresa}</span>
+              <span className="text-muted-foreground">
+                atende: {l.donoAtualNome} • carteira: {l.donoCarteiraNome}
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                className="ml-auto"
+                onClick={() => setAlvo(l)}
+              >
+                Transferir
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base">Carteira</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {lista(
+          "Atendimentos com responsável diferente do dono do cliente",
+          q.data.donoDivergente,
+          "Tudo alinhado.",
+        )}
+        {lista(
+          "Novos atendimentos de clientes que já eram da casa (30 dias)",
+          q.data.clienteExistente,
+          "Nenhum nos últimos 30 dias.",
+        )}
+        <div className="space-y-2">
+          <div className="text-sm font-medium">Devoluções por abandono (30 dias)</div>
+          {q.data.devolucoes.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhuma devolução no período.</p>
+          ) : (
+            <ul className="text-sm">
+              {q.data.devolucoes.map((d) => (
+                <li key={d.vendedor} className="flex justify-between border-b py-1">
+                  <span>{d.vendedor}</span>
+                  <span className="font-medium">{d.total}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </CardContent>
+
+      <TransferirLeadDialog
+        open={!!alvo}
+        onOpenChange={(o) => !o && setAlvo(null)}
+        leadIds={alvo ? [alvo.leadId] : []}
+        donoAtual={alvo?.donoAtual ?? null}
+        onTransferido={() => {
+          void qc.invalidateQueries({ queryKey: ["carteira-equipe"] });
+          setAlvo(null);
+        }}
+      />
+    </Card>
   );
 }

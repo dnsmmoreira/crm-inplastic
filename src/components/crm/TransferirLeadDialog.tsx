@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { listVendedores } from "@/lib/clientes.functions";
-import { transferirLead } from "@/lib/leads-transferencia.functions";
+import { transferirCliente, transferirLead } from "@/lib/leads-transferencia.functions";
 
 /**
  * Diálogo único de troca de responsável do lead.
@@ -33,14 +33,17 @@ import { transferirLead } from "@/lib/leads-transferencia.functions";
 export function TransferirLeadDialog({
   open,
   onOpenChange,
-  leadIds,
+  leadIds = [],
+  clienteId,
   donoAtual,
   onTransferido,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   /** Um ou vários leads (seleção em lote do funil). */
-  leadIds: string[];
+  leadIds?: string[];
+  /** Carteira inteira de um cliente (tela de clientes). */
+  clienteId?: string;
   /** Dono atual, quando todos os leads têm o mesmo — some da lista. */
   donoAtual?: string | null;
   /** Recebe o novo dono para atualizar o store local. */
@@ -48,6 +51,7 @@ export function TransferirLeadDialog({
 }) {
   const listar = useServerFn(listVendedores);
   const transferir = useServerFn(transferirLead);
+  const transferirCarteira = useServerFn(transferirCliente);
   const [vendedores, setVendedores] = useState<Array<{ id: string; name: string }>>([]);
   const [destino, setDestino] = useState("");
   const [motivo, setMotivo] = useState("");
@@ -72,6 +76,19 @@ export function TransferirLeadDialog({
     let movidas = 0;
     let ok = 0;
     try {
+      if (clienteId) {
+        const r = await transferirCarteira({
+          data: { clienteId, novoOwnerId: destino, motivo: motivo.trim() },
+        });
+        onTransferido(destino);
+        toast.success(`A carteira agora é de ${nomeDestino}`, {
+          description:
+            `${r.leadsMovidos} atendimento${r.leadsMovidos === 1 ? "" : "s"} e ` +
+            `${r.tarefasMovidas} tarefa${r.tarefasMovidas === 1 ? "" : "s"} foram junto.`,
+        });
+        onOpenChange(false);
+        return;
+      }
       for (const leadId of leadIds) {
         const r = await transferir({
           data: { leadId, novoOwnerId: destino, motivo: motivo.trim() },
@@ -105,11 +122,15 @@ export function TransferirLeadDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ArrowRightLeft className="h-4 w-4 text-primary" />
-            Transferir {leadIds.length > 1 ? `${leadIds.length} clientes` : "cliente"}
+            {clienteId
+              ? "Transferir carteira"
+              : `Transferir ${leadIds.length > 1 ? `${leadIds.length} clientes` : "cliente"}`}
             {nomeDestino ? ` para ${nomeDestino}` : ""}
           </DialogTitle>
           <DialogDescription>
-            As tarefas abertas e a conversa vão junto. O novo responsável é avisado na hora.
+            {clienteId
+              ? "O cliente, os atendimentos abertos, as tarefas e as conversas vão junto."
+              : "As tarefas abertas e a conversa vão junto. O novo responsável é avisado na hora."}
           </DialogDescription>
         </DialogHeader>
 

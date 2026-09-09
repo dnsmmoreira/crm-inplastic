@@ -103,6 +103,8 @@ type Props = {
   isAdmin?: boolean;
   vendedores?: Vendedor[];
   showInternal?: boolean; // "Interno" card
+  /** Só no cadastro: depois da criação, o dono muda por "Transferir carteira". */
+  permitirEscolherVendedor?: boolean;
 };
 
 export function ClienteFormFields({
@@ -113,6 +115,7 @@ export function ClienteFormFields({
   isAdmin,
   vendedores,
   showInternal = true,
+  permitirEscolherVendedor = false,
 }: Props) {
   const [cnpjMasked, setCnpjMasked] = useState(formatCnpj(value.cnpj));
   const [cpfMasked, setCpfMasked] = useState(formatCpf(value.cpf ?? ""));
@@ -427,7 +430,7 @@ export function ClienteFormFields({
               <Textarea value={value.observacao ?? ""} disabled={disabled} rows={3}
                 onChange={(e) => onChange({ observacao: e.target.value })} />
             </div>
-            {isAdmin && vendedores && vendedores.length > 0 && (
+            {isAdmin && vendedores && vendedores.length > 0 && permitirEscolherVendedor && (
               <div>
                 <Label>Vendedor responsável</Label>
                 <Select
@@ -442,6 +445,17 @@ export function ClienteFormFields({
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+            )}
+            {!permitirEscolherVendedor && (
+              <div>
+                <Label>Vendedor responsável</Label>
+                <p className="text-sm">
+                  {vendedores?.find((v) => v.id === value.vendedor_id)?.name ?? "Sem responsável"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Para mudar, use o botão “Transferir carteira”.
+                </p>
               </div>
             )}
             <label className="flex items-center gap-2">

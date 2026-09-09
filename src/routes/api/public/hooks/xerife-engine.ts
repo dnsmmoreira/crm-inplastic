@@ -1004,7 +1004,7 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
 
     const { data: leads } = await sb
       .from("leads")
-      .select("id, company, owner_id, stage, last_contact_at, created_at, reatribuido_abandono_em, next_followup, proposta_enviada_at")
+      .select("id, company, owner_id, stage, last_contact_at, created_at, reatribuido_abandono_em, next_followup, proposta_enviada_at, cliente_id")
       .in("stage", ["novo", "atendimento", "qualificacao", "proposta", "negociacao"] as any)
       .not("owner_id", "is", null)
       .or(`last_contact_at.lt.${limiteIso},last_contact_at.is.null`)
@@ -1028,9 +1028,108 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
       }
     }
 
+    // A carteira é âncora: quem é dono do cliente (ou tem pedido em andamento)
+    // não perde o lead para a fila — o caso sobe para o gestor. Consultas em
+    // lote, sem N+1.
+    const donoDaCarteira = new Set<string>();
+    const comPedidoAtivo = new Set<string>();
+    if (idsLeads.length > 0) {
+      const idsClientes = [
+        ...new Set((leads ?? []).map((l) => l.cliente_id as string | null).filter(Boolean)),
+      ] as string[];
+      if (idsClientes.length > 0) {
+        const { data: cls, error: errCls } = await sb
+          .from("clientes")
+          .select("id, vendedor_id")
+          .in("id", idsClientes);
+        if (errCls) await registrarFalhaSegura("xerife-engine.D1.clientes", errCls, {});
+        const vendPorCliente = new Map<string, string | null>();
+        for (const c of cls ?? []) vendPorCliente.set(c.id as string, c.vendedor_id as string | null);
+        for (const l of leads ?? []) {
+          const v = l.cliente_id ? vendPorCliente.get(l.cliente_id as string) : null;
+          if (v && v === l.owner_id) donoDaCarteira.add(l.id as string);
+        }
+      }
+      const { data: peds, error: errPed } = await sb
+        .from("pedidos")
+        .select("lead_id, stage")
+        .in("lead_id", idsLeads)
+        .not("stage", "in", "(cancelado,reprovado_financeiro)");
+      if (errPed) await registrarFalhaSegura("xerife-engine.D1.pedidos", errPed, {});
+      for (const p of peds ?? []) if (p.lead_id) comPedidoAtivo.add(p.lead_id as string);
+    }
+
+    /** Cliente da carteira parado: cobra o gestor em vez de devolver à fila. */
+    async function escalarCarteira(l: any, dias: number, motivoCurto: string) {
+      const regraEsc = "D1_carteira_escalada";
+      if (await alreadyActed(sb, regraEsc, l.id, 7 * 24)) return;
+      const { gestoresDe } = await import("@/lib/pedidos-fluxo.server");
+      const gestores = await gestoresDe(sb, [l.owner_id as string]);
+      const destino = gestores[0] ?? null;
+      const { data: dono } = await sb
+        .from("profiles")
+        .select("name")
+        .eq("id", l.owner_id)
+        .maybeSingle();
+      const nomeDono = (dono?.name as string | null)?.trim() || "o vendedor";
+      if (destino && !dryRun) {
+        await criarTarefa({
+          regra: regraEsc,
+          lead_id: l.id,
+          lead_company: l.company,
+          owner_id: destino,
+          tipo: "follow_up",
+          titulo: `Cliente da carteira de ${nomeDono} sem contato há ${dias} dias: ${l.company}`,
+          descricao: `${motivoCurto} — o lead não volta para a fila. Cobre o responsável ou transfira o cliente.`,
+          motivo: motivoCurto,
+          prioridade: 1,
+        });
+        const insN = await sb.from("notificacoes").insert({
+          user_id: destino,
+          tipo: "carteira_parada",
+          titulo: `Cliente da carteira de ${nomeDono} sem contato há ${dias} dias`.slice(0, 300),
+          exige_aceite: false,
+        });
+        if (insN?.error)
+          await registrarFalhaSegura("xerife-engine.D1.escala", insN.error, { lead_id: l.id });
+      }
+      await log(sb, {
+        regra: regraEsc,
+        leadId: l.id,
+        vendedorId: l.owner_id,
+        acao: destino ? "escalado ao gestor" : "sem gestor para escalar",
+        payload: { dias, motivo: motivoCurto },
+      });
+    }
+
     for (const l of leads ?? []) {
       if (silenciado(l)) continue;
-      if (!elegivelParaDevolucao(l as any, abertasPorLead.get(l.id as string) ?? 0, now)) continue;
+      const ctxCart = {
+        donoDaCarteira: donoDaCarteira.has(l.id as string),
+        temPedidoAtivo: comPedidoAtivo.has(l.id as string),
+      };
+      if (
+        !elegivelParaDevolucao(
+          l as any,
+          abertasPorLead.get(l.id as string) ?? 0,
+          now,
+          ctxCart,
+        )
+      ) {
+        if (ctxCart.donoDaCarteira || ctxCart.temPedidoAtivo) {
+          const diasSem = diasDesde(l.last_contact_at ?? l.created_at, now);
+          if (diasSem != null && diasSem >= (reguaOrd[reguaOrd.length - 1] ?? 10)) {
+            await escalarCarteira(
+              l,
+              diasSem,
+              ctxCart.temPedidoAtivo
+                ? "Cliente com pedido em andamento e sem contato"
+                : "Cliente da própria carteira sem contato",
+            );
+          }
+        }
+        continue;
+      }
       const ref = l.last_contact_at ?? l.created_at;
       const dias = diasDesde(ref, now);
       if (dias == null) continue;
@@ -1129,6 +1228,20 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
           });
           if (rpcErr) {
             await sb.from("leads").update({ owner_id: anterior }).eq("id", l.id);
+          } else if ((novoDono as string | null) === anterior) {
+            // Fila devolveu ao mesmo dono: efeito nulo. Escala em vez de fingir.
+            await sb
+              .from("leads")
+              .update({ reatribuido_abandono_em: now.toISOString() })
+              .eq("id", l.id);
+            await log(sb, {
+              regra,
+              leadId: l.id,
+              vendedorId: anterior,
+              acao: "fila devolveu ao mesmo dono",
+              payload: { dias },
+            });
+            await escalarCarteira(l, dias, "A fila devolveu o lead ao mesmo responsável");
           } else {
             await sb
               .from("leads")
@@ -1136,13 +1249,15 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
               .eq("id", l.id);
             stats.d1_reatribuido++;
           }
-          await log(sb, {
-            regra,
-            leadId: l.id,
-            vendedorId: anterior,
-            acao: rpcErr ? "reatribuição falhou" : "lead devolvido à fila",
-            payload: { dias, novo_owner: novoDono ?? null, erro: rpcErr?.message ?? null },
-          });
+          if ((novoDono as string | null) !== anterior) {
+            await log(sb, {
+              regra,
+              leadId: l.id,
+              vendedorId: anterior,
+              acao: rpcErr ? "reatribuição falhou" : "lead devolvido à fila",
+              payload: { dias, novo_owner: novoDono ?? null, erro: rpcErr?.message ?? null },
+            });
+          }
         }
       } else {
         await log(sb, {
@@ -1332,6 +1447,10 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
       let ownerId: string | null = conv.atribuido_para ?? null;
 
       if (!dryRun) {
+        if (!leadId) {
+          const { leadExistenteDaCarteira } = await import("@/lib/carteira.server");
+          leadId = await leadExistenteDaCarteira(sb, conv.phone as string);
+        }
         if (!leadId) {
           const ins = await sb
             .from("leads")

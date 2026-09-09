@@ -35,6 +35,13 @@ function diasCorridos(iso: string | null | undefined, now: Date): number | null 
   return (now.getTime() - t) / 86_400_000;
 }
 
+export type ContextoDevolucao = {
+  /** O dono atual já é o vendedor da carteira deste cliente. */
+  donoDaCarteira?: boolean;
+  /** Existe pedido não cancelado ligado a este lead. */
+  temPedidoAtivo?: boolean;
+};
+
 /**
  * O lead ainda pode ser devolvido à fila?
  *
@@ -48,7 +55,13 @@ export function elegivelParaDevolucao(
   lead: LeadDevolucao,
   propostasAbertas: number,
   now: Date,
+  ctx: ContextoDevolucao = {},
 ): boolean {
+  // A carteira é âncora: cliente do próprio dono nunca volta para a fila.
+  if (ctx.donoDaCarteira) return false;
+  // Pedido em andamento: quem atende o pedido continua atendendo o cliente.
+  if (ctx.temPedidoAtivo) return false;
+
   const dias = diasCorridos(lead.proposta_enviada_at, now);
   if (dias != null && dias <= 15) return false;
 
