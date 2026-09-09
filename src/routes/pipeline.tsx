@@ -16,11 +16,12 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { Plus, Package, Calendar as CalendarIcon, Search, ArrowDownUp, X, PackageCheck, ChevronLeft, ChevronRight, CheckSquare } from "lucide-react";
+import { Plus, Package, Calendar as CalendarIcon, Search, ArrowDownUp, X, PackageCheck, ChevronLeft, ChevronRight, CheckSquare, ArrowRightLeft } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useCrm, STAGES, formatBRL, leadTemperature, followupTemperature, proposalTotals, type Lead, type Proposal, type StageId, type FollowupLevel, useVisibleLeads, useVisibleProposals, useLeadValueMap } from "@/lib/crm-store";
 import { useMoveLeadStage } from "@/hooks/use-move-lead-stage";
+import { TransferirLeadDialog } from "@/components/crm/TransferirLeadDialog";
 import { LostReasonDialog, type LostReasonPayload } from "@/components/crm/LostReasonDialog";
 import { computeLeadScore } from "@/lib/lead-score";
 import { useAuth } from "@/hooks/use-auth";
@@ -96,6 +97,9 @@ function PipelinePage() {
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkLostOpen, setBulkLostOpen] = useState(false);
+  // Troca de responsável — SEMPRE pela server function (RLS + tarefas + aviso).
+  const [transferirIds, setTransferirIds] = useState<string[] | null>(null);
+  const updateLead = useCrm((s) => s.updateLead);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
@@ -526,6 +530,7 @@ function PipelinePage() {
                   selected={selected}
                   onToggleSelect={toggleSelected}
                   onSelectMany={selectMany}
+                  onTransferir={(id) => setTransferirIds([id])}
                 />
               ),
             )}
@@ -554,6 +559,10 @@ function PipelinePage() {
             </span>
             <div className="flex gap-2">
               <Button variant="ghost" onClick={exitSelection}>Cancelar</Button>
+              <Button variant="outline" onClick={() => setTransferirIds(Array.from(selected))}>
+                <ArrowRightLeft className="mr-1 h-4 w-4" />
+                Transferir responsável
+              </Button>
               <Button variant="destructive" onClick={() => setBulkLostOpen(true)}>
                 Marcar como Perdido
               </Button>
@@ -561,6 +570,21 @@ function PipelinePage() {
           </div>
         </div>
       )}
+
+      <TransferirLeadDialog
+        open={!!transferirIds}
+        onOpenChange={(o) => !o && setTransferirIds(null)}
+        leadIds={transferirIds ?? []}
+        donoAtual={
+          transferirIds && transferirIds.length === 1
+            ? (leadById.get(transferirIds[0]!)?.ownerId ?? null)
+            : null
+        }
+        onTransferido={(novo) => {
+          (transferirIds ?? []).forEach((id) => updateLead(id, { ownerId: novo }));
+          exitSelection();
+        }}
+      />
 
       <LeadDrawer leadId={openLead} open={!!openLead} onOpenChange={(o) => !o && setOpenLead(null)} />
       <LostReasonDialog
@@ -629,6 +653,7 @@ function Column({
   selected,
   onToggleSelect,
   onSelectMany,
+  onTransferir,
   propostasRecusadas,
   leadById,
   onOpenProposta,
@@ -640,6 +665,7 @@ function Column({
   selected: Set<string>;
   onToggleSelect: (id: string) => void;
   onSelectMany: (ids: string[], on: boolean) => void;
+  onTransferir: (id: string) => void;
   /** Coluna Perdido também mostra as propostas recusadas. */
   propostasRecusadas?: Proposal[];
   leadById?: Map<string, Lead>;
@@ -698,6 +724,7 @@ function Column({
             selectMode={selectMode}
             isSelected={selected.has(l.id)}
             onToggleSelect={onToggleSelect}
+            onTransferir={onTransferir}
           />
         ))}
 
@@ -757,6 +784,7 @@ function LeadCard({
   selectMode = false,
   isSelected = false,
   onToggleSelect,
+  onTransferir,
 }: {
   lead: Lead;
   onOpen: (id: string) => void;
@@ -764,6 +792,7 @@ function LeadCard({
   selectMode?: boolean;
   isSelected?: boolean;
   onToggleSelect?: (id: string) => void;
+  onTransferir?: (id: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: lead.id, disabled: selectMode });
   const sc = computeLeadScore(lead);
@@ -806,8 +835,23 @@ function LeadCard({
           )}
           <div className="font-medium text-sm truncate">{lead.company}</div>
         </div>
-        <div className="text-primary font-semibold text-sm shrink-0">
-          {formatBRL(effValue)}
+        <div className="flex shrink-0 items-center gap-1">
+          <div className="text-primary font-semibold text-sm">{formatBRL(effValue)}</div>
+          {!selectMode && onTransferir && (
+            <button
+              type="button"
+              title="Transferir responsável"
+              aria-label={`Transferir responsável de ${lead.company}`}
+              className="rounded p-1 text-muted-foreground opacity-0 transition hover:bg-accent hover:text-foreground group-hover:opacity-100 focus:opacity-100"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                onTransferir(lead.id);
+              }}
+            >
+              <ArrowRightLeft className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
 
       </div>
