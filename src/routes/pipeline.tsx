@@ -493,8 +493,9 @@ function PipelinePage() {
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
       >
-        <div className="-mx-4 min-h-0 flex-1 overflow-auto px-4 md:-mx-8 md:px-8">
-          <div className="flex gap-4 pb-4">
+        <div className="-mx-4 min-h-0 flex-1 overflow-x-auto overflow-y-hidden scrollbar-visible px-4 md:-mx-8 md:px-8">
+          <div className="flex gap-4 pb-4 md:h-full">
+
             {BOARD_STAGES.map((stage) =>
               stage.id === "perdido" && !mostrarPerdidos ? null :
               PROPOSAL_STAGES.includes(stage.id) ? (
