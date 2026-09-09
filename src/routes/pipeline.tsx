@@ -663,8 +663,9 @@ function Column({
   const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selected.has(id));
 
   return (
-    <div className="w-[300px] shrink-0 flex flex-col">
-      <div className="sticky top-0 z-20 px-1 pb-2 pt-1 flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+    <div className="w-[300px] shrink-0 flex flex-col md:h-full">
+      <div className="sticky top-0 z-20 shrink-0 px-1 pb-2 pt-1 flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+
         <div className="flex items-center gap-2">
           {selectMode && (
             <Checkbox
