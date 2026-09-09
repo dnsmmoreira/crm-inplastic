@@ -389,7 +389,7 @@ function PipelinePage() {
   };
 
   return (
-    <div className="flex h-[calc(100dvh-4rem)] flex-col gap-4 overflow-hidden p-4 md:p-8">
+    <div className="flex flex-col gap-4 p-4 md:h-dvh md:overflow-hidden md:p-8">
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
 
         <div>
