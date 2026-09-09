@@ -870,8 +870,8 @@ function ProposalColumn({
   const visible = proposals.slice(start, start + CARDS_PER_PAGE);
 
   return (
-    <div className="w-[300px] shrink-0 flex flex-col">
-      <div className="sticky top-0 z-20 px-1 pb-2 pt-1 flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+    <div className="w-[300px] shrink-0 flex flex-col md:h-full">
+      <div className="sticky top-0 z-20 shrink-0 px-1 pb-2 pt-1 flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/70">
         <div className="flex items-center gap-2">
           <span className="stage-dot" style={{ background: stage.color }} />
           <span className="font-medium text-sm">{stage.label}</span>
@@ -883,6 +883,8 @@ function ProposalColumn({
         ref={setNodeRef}
         className={cn(
           "flex-1 rounded-xl border border-dashed p-2 space-y-2 min-h-[400px] transition-colors",
+          "md:min-h-0 md:overflow-y-auto scroll-gutter-stable",
+
           isOver ? "bg-accent/40 border-primary" : "bg-muted/30 border-border",
         )}
       >
