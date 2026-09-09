@@ -173,6 +173,41 @@ export async function runWatchdogConversa(
         continue;
       }
 
+      // 0) A carteira manda: cliente da casa não entra na fila — a conversa
+      // vai direto para o vendedor dele e nenhum lead novo é criado.
+      {
+        const { aplicarCarteiraNaConversa, leadExistenteDaCarteira } = await import(
+          "@/lib/carteira.server"
+        );
+        const daCarteira = await leadExistenteDaCarteira(sb, conv.phone as string);
+        if (daCarteira) {
+          const vinc = await sb
+            .from("whatsapp_conversas")
+            .update({ lead_id: daCarteira, updated_at: new Date().toISOString() })
+            .eq("id", conv.id);
+          if (vinc.error) {
+            const { registrarFalhaSegura } = await import("@/lib/guard-erros");
+            await registrarFalhaSegura("watchdog-conversa.carteira", vinc.error, {
+              conversa_id: conv.id,
+            });
+          }
+          const r = await aplicarCarteiraNaConversa(sb, {
+            conversaId: conv.id as string,
+            phone: conv.phone as string,
+            nome: (conv.name as string | null) ?? null,
+          });
+          if (r.aplicado) stats.atribuidos++;
+          await logAction(sb, {
+            regra: REGRA,
+            leadId: daCarteira,
+            vendedorId: r.vendedorId ?? null,
+            acao: "conversa devolvida ao dono da carteira",
+            payload: { conversa_id: conv.id },
+          });
+          continue;
+        }
+      }
+
       // 1) Cria o lead (mesma forma do fluxo ia-qualificar: owner_id null, stage novo)
       const company = conv.name?.trim() || `WhatsApp ${conv.phone}`;
       const contactName = conv.name?.trim() || "A identificar";
