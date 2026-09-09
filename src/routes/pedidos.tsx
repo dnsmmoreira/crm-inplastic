@@ -453,6 +453,8 @@ function PedidosKanbanPage() {
           <DragOverlay>{activePedido && <PedidoCard pedido={activePedido} dragging />}</DragOverlay>
         </DndContext>
       )}
+      </div>
+
 
       <PedidoDetailDrawer pedidoId={openPedidoId} onClose={() => setOpenPedidoId(null)} />
 
