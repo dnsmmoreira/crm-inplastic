@@ -1333,6 +1333,10 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
 
       if (!dryRun) {
         if (!leadId) {
+          const { leadExistenteDaCarteira } = await import("@/lib/carteira.server");
+          leadId = await leadExistenteDaCarteira(sb, conv.phone as string);
+        }
+        if (!leadId) {
           const ins = await sb
             .from("leads")
             .insert({

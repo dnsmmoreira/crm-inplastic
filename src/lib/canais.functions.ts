@@ -472,6 +472,20 @@ export const createLeadFromConversa = createServerFn({ method: "POST" })
     if (cErr || !conversa) throw new Error("Conversa não encontrada ou sem permissão.");
     if (conversa.lead_id) return { leadId: conversa.lead_id };
 
+    // A carteira manda: se o contato já é cliente da casa, usa o lead dele.
+    {
+      const { leadExistenteDaCarteira } = await import("@/lib/carteira.server");
+      const daCarteira = await leadExistenteDaCarteira(supabase, conversa.phone);
+      if (daCarteira) {
+        const vinc = await supabase
+          .from("whatsapp_conversas")
+          .update({ lead_id: daCarteira, updated_at: new Date().toISOString() })
+          .eq("id", data.conversaId);
+        if (vinc.error) throw new Error(vinc.error.message);
+        return { leadId: daCarteira };
+      }
+    }
+
     const phoneDigits = normalizePhoneBR(conversa.phone);
     const displayName = data.contactName?.trim() || conversa.name?.trim() || "A identificar";
     const company =

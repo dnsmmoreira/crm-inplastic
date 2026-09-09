@@ -76,6 +76,10 @@ export const Route = createFileRoute("/api/public/hooks/ia-urgente")({
         // Garante lead (cria se ainda não existe, mesma lógica do ia-qualificar)
         let leadId = conv.lead_id as string | null;
         if (!leadId) {
+          const { leadExistenteDaCarteira } = await import("@/lib/carteira.server");
+          leadId = await leadExistenteDaCarteira(supabaseAdmin, conv.phone as string);
+        }
+        if (!leadId) {
           const company = dados.empresa?.trim() || conv.name?.trim() || `WhatsApp ${conv.phone}`;
           const contactName = dados.contato?.trim() || conv.name?.trim() || "A identificar";
           const quantidade =
