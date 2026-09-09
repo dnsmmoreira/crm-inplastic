@@ -435,6 +435,36 @@ export const updateUsuario = createServerFn({ method: "POST" })
       const { error } = await sb.from("profiles").update(patch).eq("id", data.userId);
       if (error) throw new Error(error.message);
 
+      // Representante nasce fora do placar/Arena: garante a linha de
+      // participação sem sobrescrever escolha manual já feita.
+      if (ehRepresentante) {
+        const { data: partAtual, error: partErr } = await sb
+          .from("arena_participacao")
+          .select("user_id, participa_arena, tipo_comercial")
+          .eq("user_id", data.userId)
+          .maybeSingle();
+        if (partErr) throw new Error(partErr.message);
+        if (!partAtual) {
+          const { error: insErr } = await sb.from("arena_participacao").insert({
+            user_id: data.userId,
+            participa_arena: false,
+            tipo_comercial: "representante",
+          });
+          if (insErr) throw new Error(insErr.message);
+          audit.push({ campo: "arena_participa", anterior: null, novo: "false" });
+        } else if (partAtual.tipo_comercial === "nao_comercial") {
+          const { error: updErr } = await sb
+            .from("arena_participacao")
+            .update({ tipo_comercial: "representante" })
+            .eq("user_id", data.userId);
+          if (updErr) throw new Error(updErr.message);
+          audit.push({
+            campo: "arena_tipo_comercial",
+            anterior: "nao_comercial",
+            novo: "representante",
+          });
+        }
+      }
     }
 
     /* ---- Acesso e segurança (papel NÃO é alterado aqui) ---- */

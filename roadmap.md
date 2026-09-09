@@ -21,3 +21,9 @@
 - [x] D1: carteira/pedido/proposta travam a devolução; fila que devolve ao mesmo dono escala ao gestor
 - [x] `transferir_cliente` + `transferir_lead` levam a carteira junto; botão "Transferir carteira" em /clientes
 - [x] Seção "Carteira" em /equipe com transferência na mesma tela
+
+## Bloco Kelly-1 — Representantes com acesso (em curso)
+- [x] Permissão `representantes.gerenciar` (Administrador + Gestor Comercial)
+- [x] Tela /representantes (roster, contagens em lote) + item no menu
+- [x] Salvar usuário com cargo Representante garante linha em arena_participacao
+- [ ] Comissão/região: aguardando decisão do Denis sobre o motor da Arena
