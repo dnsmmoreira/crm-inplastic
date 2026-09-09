@@ -6,6 +6,7 @@ import {
   chavesDoContato,
   mesmoTelefone,
   temChave,
+  decidirCarteiraNaConversa,
 } from "./carteira-match";
 
 describe("chave de telefone da carteira", () => {
@@ -53,5 +54,69 @@ describe("chaves de CNPJ e e-mail", () => {
     expect(c).toEqual({ telefone: "3497793330", cnpj: null, email: "a@b.com" });
     expect(temChave(c)).toBe(true);
     expect(temChave({ telefone: null, cnpj: null, email: null })).toBe(false);
+  });
+});
+
+describe("decidir carteira na conversa", () => {
+  const conv = { id: "c1", leadId: "lead-1" };
+
+  it("match com o próprio lead da conversa: não age", () => {
+    expect(
+      decidirCarteiraNaConversa(conv, {
+        leadId: "lead-1",
+        vendedorId: "v1",
+        origem: "lead_aberto:telefone",
+      }),
+    ).toBe(false);
+  });
+
+  it("cliente da carteira por telefone: age", () => {
+    expect(
+      decidirCarteiraNaConversa(conv, {
+        leadId: null,
+        vendedorId: "v1",
+        origem: "cliente:telefone",
+      }),
+    ).toBe(true);
+  });
+
+  it("lead ganho: age", () => {
+    expect(
+      decidirCarteiraNaConversa(conv, {
+        leadId: "lead-9",
+        vendedorId: "v1",
+        origem: "lead_ganho:telefone",
+      }),
+    ).toBe(true);
+  });
+
+  it("lead aberto sem contato humano: não age", () => {
+    expect(
+      decidirCarteiraNaConversa(
+        conv,
+        { leadId: "lead-9", vendedorId: "v1", origem: "lead_aberto:telefone" },
+        { ownerId: "v1", ultimoContatoEm: null },
+      ),
+    ).toBe(false);
+  });
+
+  it("lead aberto já trabalhado por outro vendedor: age", () => {
+    expect(
+      decidirCarteiraNaConversa(
+        conv,
+        { leadId: "lead-9", vendedorId: "v2", origem: "lead_aberto:telefone" },
+        { ownerId: "v2", ultimoContatoEm: "2026-09-01T12:00:00Z", statusConversa: "encerrado" },
+      ),
+    ).toBe(true);
+  });
+
+  it("lead aberto cuja conversa ainda está com a IA: não age", () => {
+    expect(
+      decidirCarteiraNaConversa(
+        conv,
+        { leadId: "lead-9", vendedorId: "v2", origem: "lead_aberto:telefone" },
+        { ownerId: "v2", ultimoContatoEm: "2026-09-01T12:00:00Z", statusConversa: "ia_atendendo" },
+      ),
+    ).toBe(false);
   });
 });

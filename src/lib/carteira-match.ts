@@ -63,3 +63,45 @@ export function chavesDoContato(input: {
 export function temChave(c: ChavesContato): boolean {
   return Boolean(c.telefone || c.cnpj || c.email);
 }
+
+export type ConversaParaCarteira = { id: string; leadId: string | null };
+export type MatchParaCarteira = { leadId: string | null; vendedorId: string; origem: string };
+/** Lead que o match apontou (quando é lead_aberto). */
+export type LeadCasado = {
+  ownerId: string | null;
+  ultimoContatoEm: string | null;
+  /** Status da conversa desse lead casado, se existir. */
+  statusConversa?: string | null;
+} | null;
+
+/**
+ * A conversa deve ser entregue ao vendedor da carteira?
+ *
+ * Cliente da casa (cliente ativo ou lead ganho) sempre sim. Lead ABERTO só
+ * conta quando é outro lead, já trabalhado por um humano e que não está sendo
+ * atendido pela IA — senão todo prospect novo casaria consigo mesmo e mataria
+ * o atendimento automático.
+ */
+export function decidirCarteiraNaConversa(
+  conv: ConversaParaCarteira,
+  match: MatchParaCarteira,
+  leadCasado: LeadCasado = null,
+): boolean {
+  if (!match?.vendedorId) return false;
+  const origem = String(match.origem ?? "");
+
+  // O match é o próprio lead da conversa: não é "cliente da casa".
+  if (match.leadId && conv.leadId && match.leadId === conv.leadId) return false;
+
+  if (origem.startsWith("cliente:") || origem.startsWith("lead_ganho:")) return true;
+
+  if (origem.startsWith("lead_aberto:")) {
+    if (!match.leadId || match.leadId === conv.leadId) return false;
+    if (!leadCasado?.ownerId || !leadCasado.ultimoContatoEm) return false;
+    if (leadCasado.statusConversa === "ia_atendendo") return false;
+    return true;
+  }
+
+  return false;
+}
+
