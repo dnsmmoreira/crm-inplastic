@@ -654,6 +654,13 @@ export function LeadDrawer({
         if (r.ok) toast.success("Lead marcado como Perdido");
       }}
     />
+    <TransferirLeadDialog
+      open={transferirOpen}
+      onOpenChange={setTransferirOpen}
+      leadIds={[lead.id]}
+      donoAtual={lead.ownerId}
+      onTransferido={(novo) => updateLead(lead.id, { ownerId: novo })}
+    />
     </>
   );
 }
