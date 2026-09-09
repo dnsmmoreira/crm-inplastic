@@ -359,8 +359,9 @@ function PedidosKanbanPage() {
   };
 
   return (
-    <div className="p-4 md:p-8 space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="p-4 md:p-8 space-y-6 md:h-dvh md:flex md:flex-col md:gap-6 md:space-y-0 md:overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-3 shrink-0">
+
         <div>
           <h1 className="text-2xl md:text-3xl font-semibold">Funil Operacional</h1>
           <p className="text-sm text-muted-foreground">
