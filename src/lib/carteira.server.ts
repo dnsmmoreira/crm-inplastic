@@ -142,3 +142,15 @@ export async function aplicarCarteiraNaConversa(
     return { aplicado: false };
   }
 }
+
+/**
+ * Lead já existente da carteira para este telefone (cliente da casa).
+ * Quando existe, NÃO se cria lead novo: o atendimento continua no mesmo.
+ */
+export async function leadExistenteDaCarteira(
+  sb: SB,
+  telefone: string | null | undefined,
+): Promise<string | null> {
+  const m = await localizarCarteira(sb, { telefone: telefone ?? null });
+  return m?.leadId ?? null;
+}
