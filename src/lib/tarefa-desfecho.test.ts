@@ -85,9 +85,14 @@ describe("validarDesfecho", () => {
     expect(validarDesfecho({ tipo: "perdido", motivo: "Preço" }, { agora }).ok).toBe(true);
     expect(validarDesfecho({ tipo: "perdido", motivo: "Outro" }, { agora }).ok).toBe(false);
   });
-  it("sem pendência: exige justificativa curta", () => {
+  it("sem pendência: exige o motivo estruturado", () => {
     expect(validarDesfecho({ tipo: "sem_pendencia", detalhe: "ok" }, { agora }).ok).toBe(false);
-    expect(validarDesfecho({ tipo: "sem_pendencia", detalhe: "já respondeu por e-mail" }, { agora }).ok).toBe(true);
+    expect(
+      validarDesfecho(
+        { tipo: "sem_pendencia", motivo_sem_pendencia: "ja_resolvido_outro_canal" },
+        { agora },
+      ).ok,
+    ).toBe(true);
   });
 });
 
