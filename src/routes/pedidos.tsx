@@ -380,7 +380,10 @@ function PedidosKanbanPage() {
         </div>
       </div>
 
-      <KpiBar pedidos={filtered} />
+      <div className="shrink-0">
+        <KpiBar pedidos={filtered} />
+      </div>
+
 
       <FilterBar
         options={options}
