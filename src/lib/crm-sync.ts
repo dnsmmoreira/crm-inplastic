@@ -346,8 +346,21 @@ function normalizarEnderecoLead(e: Lead["endereco"]): Lead["endereco"] | null {
   return out as Lead["endereco"];
 }
 
-export function leadToInsert(l: Lead): LeadInsert {
-  return {
+/**
+ * Payload do lead para o banco.
+ *
+ * `owner_id` só vai na CRIAÇÃO. Trocar o responsável de um lead existente é
+ * sempre pela server function `transferirLead` (RPC `transferir_lead`): a RLS
+ * recusa a escrita direta do vendedor e o caminho direto não levaria tarefas,
+ * histórico nem aviso ao novo dono.
+ */
+/** Payload considerando se o lead já existe no banco (snapshot). */
+function leadPayload(l: Lead): LeadInsert {
+  return leadToInsert(l, { novo: !snapshot.leads.has(l.id) });
+}
+
+export function leadToInsert(l: Lead, opts?: { novo?: boolean }): LeadInsert {
+  const base = {
     id: l.id,
     company: normalizarTexto(l.company),
     contact_name: normalizarTexto(l.contactName),
@@ -388,7 +401,11 @@ export function leadToInsert(l: Lead): LeadInsert {
     capital_social: l.capitalSocial ?? null,
     simples_optante: l.simplesOptante ?? null,
     socios: (l.socios?.length ? l.socios : null) as unknown as Json,
-  };
+  } satisfies LeadInsert;
+  if (opts?.novo) return base;
+  const { owner_id: _ignorado, ...semDono } = base;
+  return semDono as LeadInsert;
+
 }
 
 function rowToTask(r: TaskRow): Task {
@@ -911,7 +928,7 @@ function montarPropostas(
 export async function persistLeadNow(leadId: string): Promise<void> {
   const lead = useCrm.getState().leads.find((l) => l.id === leadId);
   if (!lead) throw new Error("Lead não encontrado no estado local");
-  const payload = leadToInsert(lead);
+  const payload = leadPayload(lead);
   const { error } = await supabase.from("leads").upsert(payload, { onConflict: "id" });
   if (error) {
     throw new Error(error.message || "Falha ao salvar o lead no banco");
@@ -1503,9 +1520,9 @@ async function doSaveInterno(userId: string) {
       current: state.leads,
       snapshot: snapshot.leads,
       toKey: (l) => l.id,
-      toJson: (l) => JSON.stringify(leadToInsert(l)),
+      toJson: (l) => JSON.stringify(leadPayload(l)),
       upsert: (items) =>
-        supabase.from("leads").upsert(items.map(leadToInsert), { onConflict: "id" }),
+        supabase.from("leads").upsert(items.map(leadPayload), { onConflict: "id" }),
       del: (ids) => supabase.from("leads").delete().in("id", ids),
       isIntentionalDelete: isIntentionalDelete("leads"),
       collectionName: "leads",
