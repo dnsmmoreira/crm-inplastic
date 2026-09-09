@@ -204,6 +204,7 @@ export function NovoClienteDialog({ open, onOpenChange, cnpjInicial, leadId, onC
         )}
 
         <ClienteFormFields
+            permitirEscolherVendedor
           value={state}
           onChange={patch}
           cnpjDisabled={!!cnpjInicial}

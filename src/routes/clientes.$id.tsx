@@ -75,7 +75,7 @@ function ClienteDetailPage() {
   const vendedoresQ = useQuery({
     queryKey: ["vendedores"],
     queryFn: () => listVendedoresFn(),
-    enabled: !!isAdmin,
+    enabled: true,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -151,8 +151,6 @@ function ClienteDetailPage() {
           simples_optante: form.simples_optante ?? null,
           suframa_isento: form.suframa_isento ?? null,
           suframa_numero: form.suframa_numero ?? null,
-          ...(isAdmin ? { vendedor_id: form.vendedor_id } : {}),
-
         },
       } });
       toast.success("Cliente atualizado");
