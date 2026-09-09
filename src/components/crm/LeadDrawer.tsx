@@ -147,6 +147,18 @@ export function LeadDrawer({
               <SheetDescription className="mt-1">
                 {lead.contactName} · Lead desde {format(new Date(lead.createdAt), "dd MMM yyyy", { locale: ptBR })}
               </SheetDescription>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+                <span className="text-muted-foreground">Responsável:</span>
+                <span className="font-medium">{nomeResponsavel}</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => setTransferirOpen(true)}
+                >
+                  Transferir
+                </Button>
+              </div>
               <div className="mt-3 flex flex-wrap items-center gap-1.5">
                 {(() => {
                   const t = leadTemperature(lead);
