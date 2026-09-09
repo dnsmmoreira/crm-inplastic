@@ -173,6 +173,15 @@ export async function processarEntradaWhatsapp(
   // histórico — nada de IA, handoff, notificação ou alerta.
   if (silencioso) return { ok: true, conversaId, tipo, silencioso: true };
 
+  // 5-carteira) Cliente que já é da casa não fala com a IA nem entra na fila:
+  // a conversa vai direto para o vendedor da carteira.
+  {
+    const { aplicarCarteiraNaConversa } = await import("@/lib/carteira.server");
+    await aplicarCarteiraNaConversa(supabaseAdmin, { conversaId, phone, nome: name ?? null });
+  }
+
+
+
 
   // 5-espera) Retomada automática: mensagem do cliente encerra a espera.
   // REGISTRAR E SEGUIR: a mensagem já foi gravada; sair da espera é estado
