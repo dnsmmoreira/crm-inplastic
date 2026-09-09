@@ -6,6 +6,7 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { registrarFalhaSegura } from "@/lib/guard-erros";
+import type { LeadCasado } from "@/lib/carteira-match";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SB = SupabaseClient<any, any, any>;
