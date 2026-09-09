@@ -141,3 +141,28 @@
   height: 0.5rem;
   border-radius: 9999px;
 }
+
+/* Barra de rolagem horizontal sempre visível (quadros kanban). */
+@utility scrollbar-visible {
+  scrollbar-width: auto;
+  scrollbar-color: var(--color-muted-foreground) var(--color-muted);
+
+  &::-webkit-scrollbar {
+    height: 12px;
+    width: 12px;
+  }
+  &::-webkit-scrollbar-track {
+    background: var(--color-muted);
+    border-radius: 9999px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: var(--color-muted-foreground);
+    border-radius: 9999px;
+    border: 3px solid var(--color-muted);
+  }
+}
+
+@utility scroll-gutter-stable {
+  scrollbar-gutter: stable;
+}
+
