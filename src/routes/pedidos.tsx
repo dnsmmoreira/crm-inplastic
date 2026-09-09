@@ -531,8 +531,9 @@ function Column({
   const total = pedidos.reduce((s, p) => s + p.total, 0);
   const showBlocked = dragActive && !canDrop;
   return (
-    <div className="w-[300px] shrink-0 flex flex-col">
-      <div className="px-1 pb-2 flex items-center justify-between">
+    <div className="w-[300px] shrink-0 flex flex-col md:h-full">
+      <div className="px-1 pb-2 flex items-center justify-between shrink-0">
+
         <div className="flex items-center gap-2 min-w-0">
           <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: stage.color }} />
           <span className="font-medium text-sm truncate">{stage.label}</span>
