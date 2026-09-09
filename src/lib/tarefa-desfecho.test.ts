@@ -10,6 +10,7 @@ import {
   somarDiasUteis,
   sufixoCobranca,
   validarDesfecho,
+  atalhoSemPendencia,
 } from "./tarefa-desfecho";
 
 describe("exigeDesfecho", () => {
@@ -87,5 +88,31 @@ describe("validarDesfecho", () => {
   it("sem pendência: exige justificativa curta", () => {
     expect(validarDesfecho({ tipo: "sem_pendencia", detalhe: "ok" }, { agora }).ok).toBe(false);
     expect(validarDesfecho({ tipo: "sem_pendencia", detalhe: "já respondeu por e-mail" }, { agora }).ok).toBe(true);
+  });
+});
+
+describe("transferir e sem_pendencia estruturado", () => {
+  const agora = new Date("2026-03-10T12:00:00Z");
+  const uuid = "11111111-2222-3333-4444-555555555555";
+  it("transferir exige vendedor e motivo", () => {
+    expect(validarDesfecho({ tipo: "transferir" }, { agora }).ok).toBe(false);
+    expect(validarDesfecho({ tipo: "transferir", novo_dono: uuid }, { agora }).ok).toBe(false);
+    expect(
+      validarDesfecho({ tipo: "transferir", novo_dono: uuid, detalhe: "cliente é da Bianca" }, { agora }).ok,
+    ).toBe(true);
+  });
+  it("sem pendência exige motivo estruturado", () => {
+    expect(validarDesfecho({ tipo: "sem_pendencia", detalhe: "qualquer coisa" }, { agora }).ok).toBe(false);
+    expect(
+      validarDesfecho({ tipo: "sem_pendencia", motivo_sem_pendencia: "duplicado" }, { agora }).ok,
+    ).toBe(true);
+    expect(
+      validarDesfecho({ tipo: "sem_pendencia", motivo_sem_pendencia: "outro", detalhe: "curto" }, { agora }).ok,
+    ).toBe(false);
+  });
+  it("fora do portfólio é atalho de perda; não é meu cliente vira transferência", () => {
+    expect(atalhoSemPendencia("fora_portfolio")).toEqual({ tipo: "perdido", motivo: "Lead inválido" });
+    expect(atalhoSemPendencia("cliente_nao_e_meu")?.tipo).toBe("transferir");
+    expect(atalhoSemPendencia("duplicado")).toBeNull();
   });
 });
