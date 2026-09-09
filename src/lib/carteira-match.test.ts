@@ -117,7 +117,6 @@ describe("decidir carteira na conversa", () => {
         { leadId: "lead-9", vendedorId: "v2", origem: "lead_aberto:telefone" },
         { ownerId: "v2", ultimoContatoEm: "2026-09-01T12:00:00Z", statusConversa: "ia_atendendo" },
       ),
-    ).toBe(true && false),
-      expect(true).toBe(true);
+    ).toBe(false);
   });
 });
