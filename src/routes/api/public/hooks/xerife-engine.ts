@@ -1249,13 +1249,15 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
               .eq("id", l.id);
             stats.d1_reatribuido++;
           }
-          await log(sb, {
-            regra,
-            leadId: l.id,
-            vendedorId: anterior,
-            acao: rpcErr ? "reatribuição falhou" : "lead devolvido à fila",
-            payload: { dias, novo_owner: novoDono ?? null, erro: rpcErr?.message ?? null },
-          });
+          if ((novoDono as string | null) !== anterior) {
+            await log(sb, {
+              regra,
+              leadId: l.id,
+              vendedorId: anterior,
+              acao: rpcErr ? "reatribuição falhou" : "lead devolvido à fila",
+              payload: { dias, novo_owner: novoDono ?? null, erro: rpcErr?.message ?? null },
+            });
+          }
         }
       } else {
         await log(sb, {
