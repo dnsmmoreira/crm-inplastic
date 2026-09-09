@@ -26,6 +26,7 @@ const TIPOS_DE_NOTIFICACAO = new Set([
   "aceites_sem_canal",
   "lead_sera_devolvido",
   "lead_transferido",
+  "carteira_parada",
 ]);
 
 const ARQUIVOS = [

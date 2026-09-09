@@ -39,6 +39,7 @@ export const TAREFA_TIPOS = [
   "comprovacao_entrega",
   "combinar_coleta",
   "pos_venda_atrasado",
+  "transferir_carteira",
   // Cadência por etapa do pedido (src/lib/pedidos-cadencia.ts)
   "cadencia_analise_financeira",
   "cadencia_aguardando_pagamento",
@@ -88,6 +89,7 @@ export const TAREFA_TIPO_LABEL: Record<TarefaTipo, string> = {
   cadencia_producao: "Cadência: produção",
   cadencia_coleta_entrega: "Cadência: coleta/entrega",
   cadencia_em_rota: "Cadência: em rota",
+  transferir_carteira: "Transferir ou justificar",
 };
 
 export function rotuloTipoTarefa(tipo: string | null | undefined): string {
