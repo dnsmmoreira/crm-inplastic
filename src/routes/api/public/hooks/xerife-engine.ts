@@ -674,8 +674,13 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
       .not("em_espera_desde", "is", null)
       .limit(300);
 
+    // Conversa cujo lead já foi ganho/perdido não gera mais cobrança.
+    const { leadsEncerrados: _encA5 } = await import("@/lib/xerife/lead-elegivel");
+    const encerradosA5 = await _encA5(sb, (emEspera ?? []).map((c: any) => c.lead_id));
+
     for (const c of emEspera ?? []) {
       if (!c.atribuido_para) continue;
+      if (c.lead_id && encerradosA5.has(c.lead_id)) continue;
       if (
         !deveCobrarEspera(
           { em_espera_desde: c.em_espera_desde, ultimoAvisoEm: c.espera_alertada_em },
