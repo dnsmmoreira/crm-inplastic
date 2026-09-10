@@ -65,18 +65,39 @@
   </div>
 
   <section class="chapter">
-    <h2>As palavras do sistema<small>Glossário rápido</small></h2>
+    <h2>As palavras do sistema<small>Glossário e siglas</small></h2>
     <table>
       <tr><th>Palavra</th><th>O que é</th></tr>
       <tr><td>Lead</td><td>Uma oportunidade: alguém que pediu preço. Ainda não é cliente.</td></tr>
       <tr><td>Cliente</td><td>Empresa cadastrada com CNPJ. Tem um dono (o vendedor da carteira).</td></tr>
       <tr><td>Carteira</td><td>Os clientes que são de uma pessoa. Contato de cliente da casa volta sempre para o dono dele.</td></tr>
-      <tr><td>Proposta</td><td>O orçamento formal, com itens, preço, frete e validade.</td></tr>
+      <tr><td>Proposta</td><td>O orçamento formal, com itens, preço, frete e validade (padrão de 15 dias).</td></tr>
       <tr><td>Pedido</td><td>A proposta aprovada virando produção e entrega.</td></tr>
       <tr><td>Tarefa</td><td>O próximo ato. Tem prazo e só fecha com desfecho (o que aconteceu).</td></tr>
+      <tr><td>Desfecho</td><td>A resposta obrigatória ao concluir uma tarefa: retorno em [data], perdido, transferir, em espera…</td></tr>
       <tr><td>Xerife</td><td>O vigia do sistema: cria tarefa, avisa e escala o que está parado.</td></tr>
-      <tr><td>Placar / ARENA</td><td>A pontuação do time e o programa de metas e premiação.</td></tr>
+      <tr><td>Escalar / escalação</td><td>Quando o Xerife leva o caso para o gestor ou para a diretoria porque o prazo estourou.</td></tr>
+      <tr><td>Placar / ARENA</td><td>A pontuação do time e o programa de metas, comissão e premiação.</td></tr>
+      <tr><td>Funil / Pipeline</td><td>O quadro de colunas: Novo, Qualificação, Proposta, Negociação, Ganho, Perdido.</td></tr>
+      <tr><td>Pós-venda</td><td>O contato depois da entrega para confirmar recebimento e sondar recompra.</td></tr>
+      <tr><td>Romaneio</td><td>A lista de carga que acompanha a mercadoria.</td></tr>
+      <tr><td>Ocorrência</td><td>Registro de problema no pedido: avaria, recusa, reentrega, endereço errado.</td></tr>
     </table>
+
+    <h3>Siglas que aparecem na tela</h3>
+    <table>
+      <tr><th>Sigla</th><th>O que quer dizer</th></tr>
+      <tr><td><b>SLA</b></td><td>Do inglês <i>Service Level Agreement</i> — em português, <b>prazo de atendimento combinado</b>. É o tempo máximo que a empresa aceita deixar alguém esperando. Explicado logo abaixo.</td></tr>
+      <tr><td><b>IA</b></td><td>Inteligência artificial: o atendente automático que responde no WhatsApp antes de a conversa chegar a uma pessoa.</td></tr>
+      <tr><td><b>CNPJ</b></td><td>Cadastro Nacional da Pessoa Jurídica: o número da empresa cliente. É por ele que o sistema descobre de quem é a carteira.</td></tr>
+      <tr><td><b>CEP</b></td><td>Código de Endereçamento Postal: usado para simular o frete e para o endereço de entrega.</td></tr>
+      <tr><td><b>NF</b></td><td>Nota fiscal. Sem dados fiscais completos do cliente, o pedido não pode ser faturado.</td></tr>
+      <tr><td><b>ARENA</b></td><td>O programa de metas, comissão e premiação do time comercial (não é sigla de nada — é o nome do programa).</td></tr>
+      <tr><td><b>PED-ANO-0000</b></td><td>O formato do número do pedido. Use para buscar na tela de Pedidos.</td></tr>
+    </table>
+
+    <div class="box dica"><b>SLA, com todas as letras</b>SLA é o <b>prazo máximo de resposta</b>. Hoje estão valendo dois: <b>15 minutos úteis</b> para o primeiro contato com um lead novo e <b>2 horas úteis</b> para responder um cliente que escreveu no WhatsApp. “Úteis” quer dizer que o relógio só corre em dia útil, das 8h às 18h. Se estourar, o Xerife cobra; passando de <b>60 minutos</b> (primeiro contato) ou <b>4 horas</b> (resposta), ele escala para cima e o caso conta <b>−5 pontos</b> no placar — uma vez por cliente no mês. Esses prazos ficam em Empresa → Xerife e podem ser alterados pela diretoria.</div>
+    <div class="box"><b>Sobre “SLR”</b>Não existe nada chamado “SLR” em nenhuma tela do sistema. O rótulo usado é <b>SLA</b> (na coluna “SLAs” do Placar e em “SLAs de atendimento”, na configuração do Xerife). É desse que se trata.</div>
   </section>
 </div>
 
