@@ -165,6 +165,8 @@ function RepresentantesPage() {
                     <TableHead>Nome</TableHead>
                     <TableHead>Situação</TableHead>
                     <TableHead>Placar</TableHead>
+                    <TableHead>Região</TableHead>
+                    <TableHead className="text-right">Comissão</TableHead>
                     <TableHead className="text-right">Carteira</TableHead>
                     <TableHead className="text-right">Leads abertos</TableHead>
                     <TableHead className="text-right">Propostas no mês</TableHead>
