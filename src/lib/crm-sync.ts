@@ -1265,7 +1265,7 @@ async function recarregarColecao(colecao: ColecaoRealtime) {
         (t) =>
           snapshot.tasks.get(t.id) !==
           JSON.stringify(
-            taskToInsert(t, leadsAtuais.find((l) => l.id === t.leadId)?.ownerId ?? null),
+            taskPayload(t, leadsAtuais.find((l) => l.id === t.leadId)?.ownerId ?? null),
           ),
       );
       aplicarNoStore(() => useCrm.setState({ tasks }));
@@ -1588,12 +1588,28 @@ async function doSaveInterno(userId: string) {
       current: state.tasks,
       snapshot: snapshot.tasks,
       toKey: (t) => t.id,
-      toJson: (t) => JSON.stringify(taskToInsert(t, leadOwnerMap.get(t.leadId) ?? userId)),
-      upsert: (items) =>
-        supabase.from("tarefas").upsert(
-          items.map((t) => taskToInsert(t, leadOwnerMap.get(t.leadId) ?? userId)),
-          { onConflict: "id" },
-        ),
+      toJson: (t) => JSON.stringify(taskPayload(t, leadOwnerMap.get(t.leadId) ?? userId)),
+      // Novas e existentes vão em lotes separados: só as novas carregam
+      // `owner_id`, para não desfazer trocas de dono feitas no servidor.
+      upsert: async (items) => {
+        const novas = items.filter((t) => !snapshot.tasks.has(t.id));
+        const existentes = items.filter((t) => snapshot.tasks.has(t.id));
+        if (novas.length) {
+          const r = await supabase
+            .from("tarefas")
+            .upsert(
+              novas.map((t) => taskToInsert(t, leadOwnerMap.get(t.leadId) ?? userId)),
+              { onConflict: "id" },
+            );
+          if (r.error) return r;
+        }
+        if (existentes.length) {
+          return await supabase
+            .from("tarefas")
+            .upsert(existentes.map(taskToUpdate), { onConflict: "id" });
+        }
+        return { error: null };
+      },
       del: (ids) => supabase.from("tarefas").delete().in("id", ids),
       isIntentionalDelete: isIntentionalDelete("tasks"),
       collectionName: "tasks",
