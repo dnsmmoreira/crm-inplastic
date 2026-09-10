@@ -163,6 +163,12 @@ export type Task = {
   cobrancaN?: number;
   desfecho?: string | null;
   desfechoDetalhe?: string | null;
+  /**
+   * Dono da tarefa no banco. O front NUNCA reatribui dono: tarefa escalada
+   * ao gestor (Xerife) tem dono diferente do dono do lead, e sobrescrever
+   * isso bate na RLS (`owner_id = auth.uid()`) e trava o save em loop.
+   */
+  ownerId?: string | null;
 };
 
 /** Única leitura de "está concluída" no app — nunca use `done`. */
