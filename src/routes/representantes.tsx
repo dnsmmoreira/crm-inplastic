@@ -1,9 +1,9 @@
 /**
  * Roster de representantes.
  *
- * ESCOPO: só acesso e atividade. Representante é usuário normal (cargo
- * "Representante", papel vendedor) — criação/edição completa continua em
- * `/usuarios`. Comissão e região são do motor da Arena e não aparecem aqui.
+ * ESCOPO: acesso, atividade e os dados de representação (comissão própria e
+ * região) — gravados em `arena_participacao`, a mesma linha que diz se a
+ * pessoa entra no placar. Criação/edição do usuário continua em `/usuarios`.
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
@@ -19,6 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -69,6 +70,8 @@ function RepresentantesPage() {
   const [erro, setErro] = useState<string | null>(null);
   const [editando, setEditando] = useState<RepresentanteLinha | null>(null);
   const [participa, setParticipa] = useState(false);
+  const [comissao, setComissao] = useState("");
+  const [regiao, setRegiao] = useState("");
   const [salvando, setSalvando] = useState(false);
 
   const load = useCallback(async () => {
@@ -89,13 +92,28 @@ function RepresentantesPage() {
   const abrir = (r: RepresentanteLinha) => {
     setEditando(r);
     setParticipa(r.participaArena);
+    setComissao(r.comissaoPct === null ? "" : String(r.comissaoPct));
+    setRegiao(r.regiao ?? "");
   };
 
   const confirmar = async () => {
     if (!editando) return;
+    const bruto = comissao.trim().replace(",", ".");
+    const pct = bruto === "" ? null : Number(bruto);
+    if (pct !== null && (!Number.isFinite(pct) || pct < 0 || pct > 100)) {
+      toast.error("Informe a comissão como um número entre 0 e 100.");
+      return;
+    }
     setSalvando(true);
     try {
-      await salvar({ data: { userId: editando.id, participaArena: participa } });
+      await salvar({
+        data: {
+          userId: editando.id,
+          participaArena: participa,
+          comissaoPct: pct,
+          regiao: regiao.trim() || null,
+        },
+      });
       toast.success("Representante atualizado");
       setEditando(null);
       await load();
@@ -148,6 +166,8 @@ function RepresentantesPage() {
                     <TableHead>Nome</TableHead>
                     <TableHead>Situação</TableHead>
                     <TableHead>Placar</TableHead>
+                    <TableHead>Região</TableHead>
+                    <TableHead className="text-right">Comissão</TableHead>
                     <TableHead className="text-right">Carteira</TableHead>
                     <TableHead className="text-right">Leads abertos</TableHead>
                     <TableHead className="text-right">Propostas no mês</TableHead>
@@ -172,6 +192,12 @@ function RepresentantesPage() {
                         <Badge variant={r.participaArena ? "default" : "outline"}>
                           {r.participaArena ? "Participa" : "Fora"}
                         </Badge>
+                      </TableCell>
+                      <TableCell>{r.regiao || "—"}</TableCell>
+                      <TableCell className="text-right">
+                        {r.comissaoPct === null
+                          ? "—"
+                          : `${r.comissaoPct.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`}
                       </TableCell>
                       <TableCell className="text-right">{r.carteira}</TableCell>
                       <TableCell className="text-right">{r.leadsAbertos}</TableCell>
@@ -204,6 +230,28 @@ function RepresentantesPage() {
               </p>
             </div>
             <Switch id="participa-arena" checked={participa} onCheckedChange={setParticipa} />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <Label htmlFor="comissao-pct">Comissão (%)</Label>
+              <Input
+                id="comissao-pct"
+                inputMode="decimal"
+                placeholder="ex.: 5"
+                value={comissao}
+                onChange={(e) => setComissao(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">Deixe vazio para não definir.</p>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="regiao">Região</Label>
+              <Input
+                id="regiao"
+                placeholder="ex.: Triângulo Mineiro"
+                value={regiao}
+                onChange={(e) => setRegiao(e.target.value)}
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditando(null)} disabled={salvando}>

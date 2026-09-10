@@ -23,6 +23,9 @@ export type RepresentanteBase = {
   /** Vem de `arena_participacao` (null quando não há linha). */
   participaArena: boolean | null;
   tipoComercial: string | null;
+  /** Percentual de comissão da pessoa (null = ainda não definido). */
+  comissaoPct: number | null;
+  regiao: string | null;
 };
 
 export type LotesRepresentantes = {
@@ -39,6 +42,8 @@ export type RepresentanteLinha = {
   excluido: boolean;
   participaArena: boolean;
   tipoComercial: string | null;
+  comissaoPct: number | null;
+  regiao: string | null;
   carteira: number;
   leadsAbertos: number;
   propostasMes: number;
@@ -104,6 +109,8 @@ export function montarRepresentantes(
       excluido: !!b.deletedAt,
       participaArena: b.participaArena === true,
       tipoComercial: b.tipoComercial,
+      comissaoPct: b.comissaoPct,
+      regiao: b.regiao,
       carteira: carteira.get(b.id) ?? 0,
       leadsAbertos: abertos.get(b.id) ?? 0,
       propostasMes: propostas.get(b.id) ?? 0,

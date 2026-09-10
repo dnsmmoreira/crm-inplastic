@@ -10,9 +10,9 @@ import {
 const AGORA = new Date("2026-09-10T12:00:00.000Z");
 
 const base: RepresentanteBase[] = [
-  { id: "a", nome: "Kelly", ativo: true, deletedAt: null, participaArena: false, tipoComercial: "representante" },
-  { id: "b", nome: "Bruno", ativo: false, deletedAt: null, participaArena: null, tipoComercial: null },
-  { id: "c", nome: "Carla", ativo: true, deletedAt: "2026-01-01T00:00:00Z", participaArena: true, tipoComercial: "representante" },
+  { id: "a", nome: "Kelly", ativo: true, deletedAt: null, participaArena: false, tipoComercial: "representante", comissaoPct: 5, regiao: "Triângulo" },
+  { id: "b", nome: "Bruno", ativo: false, deletedAt: null, participaArena: null, tipoComercial: null, comissaoPct: null, regiao: null },
+  { id: "c", nome: "Carla", ativo: true, deletedAt: "2026-01-01T00:00:00Z", participaArena: true, tipoComercial: "representante", comissaoPct: 2.5, regiao: null },
 ];
 
 const lotes: LotesRepresentantes = {

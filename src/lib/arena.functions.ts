@@ -616,7 +616,18 @@ export const getArenaKelly = createServerFn({ method: "POST" })
     const baseLogiscal = String(cfg?.base_calculo_logiscal ?? "recebido");
     const base = baseLogiscal === "faturado" ? faturado : recebido;
 
-    const comissaoLogiscalPct = Number(cfg?.comissao_logiscal_pct ?? 5);
+    // Comissão é por pessoa: o percentual da linha de participação manda.
+    // A configuração geral vira apenas o valor de reserva.
+    const { data: partRep } = await sb
+      .from("arena_participacao")
+      .select("comissao_pct")
+      .eq("user_id", userId)
+      .maybeSingle();
+    const pctPessoa =
+      partRep?.comissao_pct === null || partRep?.comissao_pct === undefined
+        ? null
+        : Number(partRep.comissao_pct);
+    const comissaoLogiscalPct = pctPessoa ?? Number(cfg?.comissao_logiscal_pct ?? 5);
     const comissaoKellyPct = Number(cfg?.comissao_kelly_pct ?? 0.5);
     const referencia = Number(cfg?.meta_canal_representante ?? 150000);
 

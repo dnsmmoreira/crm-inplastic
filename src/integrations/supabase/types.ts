@@ -323,10 +323,12 @@ export type Database = {
         Row: {
           carencia_inicio: string | null
           carencia_meses: number
+          comissao_pct: number | null
           created_at: string
           fase_rampa: number
           observacao: string | null
           participa_arena: boolean
+          regiao: string | null
           tipo_comercial: Database["public"]["Enums"]["arena_tipo_comercial"]
           updated_at: string
           user_id: string
@@ -334,10 +336,12 @@ export type Database = {
         Insert: {
           carencia_inicio?: string | null
           carencia_meses?: number
+          comissao_pct?: number | null
           created_at?: string
           fase_rampa?: number
           observacao?: string | null
           participa_arena?: boolean
+          regiao?: string | null
           tipo_comercial?: Database["public"]["Enums"]["arena_tipo_comercial"]
           updated_at?: string
           user_id: string
@@ -345,10 +349,12 @@ export type Database = {
         Update: {
           carencia_inicio?: string | null
           carencia_meses?: number
+          comissao_pct?: number | null
           created_at?: string
           fase_rampa?: number
           observacao?: string | null
           participa_arena?: boolean
+          regiao?: string | null
           tipo_comercial?: Database["public"]["Enums"]["arena_tipo_comercial"]
           updated_at?: string
           user_id?: string
