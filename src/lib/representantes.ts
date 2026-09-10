@@ -42,6 +42,8 @@ export type RepresentanteLinha = {
   excluido: boolean;
   participaArena: boolean;
   tipoComercial: string | null;
+  comissaoPct: number | null;
+  regiao: string | null;
   carteira: number;
   leadsAbertos: number;
   propostasMes: number;
