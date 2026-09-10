@@ -192,6 +192,12 @@ function RepresentantesPage() {
                           {r.participaArena ? "Participa" : "Fora"}
                         </Badge>
                       </TableCell>
+                      <TableCell>{r.regiao || "—"}</TableCell>
+                      <TableCell className="text-right">
+                        {r.comissaoPct === null
+                          ? "—"
+                          : `${r.comissaoPct.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`}
+                      </TableCell>
                       <TableCell className="text-right">{r.carteira}</TableCell>
                       <TableCell className="text-right">{r.leadsAbertos}</TableCell>
                       <TableCell className="text-right">{r.propostasMes}</TableCell>
