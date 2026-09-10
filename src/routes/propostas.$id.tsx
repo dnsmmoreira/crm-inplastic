@@ -59,6 +59,8 @@ import {
   useCrm,
   formatBRL,
   proposalTotals,
+  valorOperacaoProposta,
+
   useMaxDiscountForCurrentUser,
   useIsAdmin,
   useCurrentUser,
@@ -83,6 +85,13 @@ import {
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { enviarPropostaWhatsapp, enviarPropostaEmail } from "@/lib/propostas.functions";
 import { tratativaValida, MSG_TRATATIVA_OBRIGATORIA } from "@/lib/tratativa-comercial";
+import {
+  calcularDifal,
+  DIFAL_ALIQUOTAS_PADRAO,
+  LABEL_DIFAL,
+  type AliquotaUf,
+} from "@/lib/difal";
+
 
 import { formatCep } from "@/lib/format";
 import { useServerFn } from "@tanstack/react-start";
@@ -366,10 +375,9 @@ function PropostaDetalhe() {
     selectedTerm?.acrescimoPercent,
     cartaoAtivo,
   );
-  const totals = useMemo(
-    () => (proposal ? proposalTotals(proposal, acrescimoPercentAtual) : null),
-    [proposal, acrescimoPercentAtual],
-  );
+  // `totals` é calculado mais abaixo, depois do cadastro do cliente (o DIFAL
+  // depende da UF de destino e da inscrição estadual do destinatário).
+
   /** Simulação do cartão: condição pendente de escolha + condição anterior p/ cancelar. */
   const [simulacao, setSimulacao] = useState<{
     open: boolean;
@@ -488,6 +496,48 @@ function PropostaDetalhe() {
     (clienteRow as { estado?: string | null } | null)?.estado ??
     (lead as { endereco?: { uf?: string } } | undefined)?.endereco?.uf ??
     null;
+
+  // ---- DIFAL (travado): destinatário sem inscrição estadual, destino ≠ SP ----
+  const aliquotasQ = useQuery({
+    queryKey: ["difal-aliquotas"],
+    staleTime: 30 * 60 * 1000,
+    queryFn: async (): Promise<AliquotaUf[]> => {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data } = await supabase
+        .from("difal_aliquotas")
+        .select("uf, aliquota_interna, aliquota_interestadual");
+      const rows = (data ?? []) as AliquotaUf[];
+      return rows.length ? rows : DIFAL_ALIQUOTAS_PADRAO;
+    },
+  });
+  const inscricaoDestinatario =
+    (clienteRow as { inscricao_estadual?: string | null } | null)?.inscricao_estadual ??
+    (lead as { inscricaoEstadual?: string | null } | undefined)?.inscricaoEstadual ??
+    null;
+  const ieIsentoDestinatario = !!(clienteRow as { ie_isento?: boolean | null } | null)?.ie_isento;
+  const difal = useMemo(
+    () =>
+      calcularDifal({
+        valorOperacao: proposal ? valorOperacaoProposta(proposal, acrescimoPercentAtual) : 0,
+        ufDestino: ufCliente,
+        inscricaoEstadual: inscricaoDestinatario,
+        ieIsento: ieIsentoDestinatario,
+        aliquotas: aliquotasQ.data ?? DIFAL_ALIQUOTAS_PADRAO,
+      }),
+    [
+      proposal,
+      acrescimoPercentAtual,
+      ufCliente,
+      inscricaoDestinatario,
+      ieIsentoDestinatario,
+      aliquotasQ.data,
+    ],
+  );
+  const totals = useMemo(
+    () => (proposal ? proposalTotals(proposal, acrescimoPercentAtual, difal.valor) : null),
+    [proposal, acrescimoPercentAtual, difal.valor],
+  );
+
   const sugerirTransportadoraFn = useServerFn(sugerirTransportadora);
   const sugestaoQ = useQuery({
     queryKey: ["sugestao-transportadora", ufCliente],
@@ -714,7 +764,15 @@ function PropostaDetalhe() {
     const acrescimoPct = ehCartao
       ? (opts?.acrescimoPercent ?? 0)
       : acrescimoEfetivo(0, novo?.acrescimoPercent, false);
-    const totalAtual = proposalTotals(proposal, acrescimoPct).total;
+    // O DIFAL entra no total parcelado (recalculado com o acréscimo da condição).
+    const difalCondicao = calcularDifal({
+      valorOperacao: valorOperacaoProposta(proposal, acrescimoPct),
+      ufDestino: ufCliente,
+      inscricaoEstadual: inscricaoDestinatario,
+      ieIsento: ieIsentoDestinatario,
+      aliquotas: aliquotasQ.data ?? DIFAL_ALIQUOTAS_PADRAO,
+    }).valor;
+    const totalAtual = proposalTotals(proposal, acrescimoPct, difalCondicao).total;
     const valores = valoresPorPercentual(
       totalAtual,
       parcelasCond.map((p) => p.percentual),
@@ -947,6 +1005,12 @@ function PropostaDetalhe() {
                 {clienteRow?.razao_social || lead.company}
               </p>
             )}
+            {difal.aplica && (
+              <div className="mt-1 rounded-md border border-amber-500/60 bg-amber-500/10 px-2 py-1 text-xs font-medium text-amber-800 print:hidden">
+                Sem inscrição estadual — DIFAL aplicado ({formatBRL(difal.valor)})
+              </div>
+            )}
+
             <p className="text-xs text-muted-foreground">
               Criada em {format(new Date(proposal.createdAt), "dd/MM/yyyy", { locale: ptBR })} ·
               Vendedor: {vendedorNome}
@@ -1245,7 +1309,7 @@ function PropostaDetalhe() {
                     </div>
                     <div>
                       <span className="text-muted-foreground">Total: </span>
-                      {formatBRL(proposalTotals(proposal, acrescimoPercentAtual).total)}
+                      {formatBRL(totals?.total ?? 0)}
                     </div>
                     <div>
                       <span className="text-muted-foreground">Condição de pagamento: </span>
@@ -1797,6 +1861,17 @@ function PropostaDetalhe() {
                     <span>Acréscimo ({String(totals.surchargePercent).replace(".", ",")}%):</span>
                     <span className="font-semibold w-32 text-right">
                       + {formatBRL(totals.surchargeAmount)}
+                    </span>
+                  </div>
+                )}
+                {difal.aplica && (
+                  <div className="flex justify-end gap-6 text-amber-700">
+                    <span>
+                      {LABEL_DIFAL} — {difal.uf} {String(difal.aliquotaInterna).replace(".", ",")}%
+                      × {String(difal.aliquotaInterestadual).replace(".", ",")}%:
+                    </span>
+                    <span className="font-semibold w-32 text-right">
+                      + {formatBRL(difal.valor)}
                     </span>
                   </div>
                 )}
@@ -2942,6 +3017,7 @@ function PropostaDetalhe() {
               <th className="border p-1.5">Subtotal dos itens</th>
               <th className="border p-1.5">Desconto</th>
               <th className="border p-1.5">Acréscimo</th>
+              {difal.aplica && <th className="border p-1.5">DIFAL</th>}
               <th className="border p-1.5">Frete</th>
               <th className="border p-1.5">Total da proposta</th>
             </tr>
@@ -2961,6 +3037,9 @@ function PropostaDetalhe() {
                   ? `+ ${formatBRL(totals?.surchargeAmount ?? 0)} (${String(totals?.surchargePercent).replace(".", ",")}%)`
                   : "—"}
               </td>
+              {difal.aplica && (
+                <td className="border p-1.5 text-right">+ {formatBRL(difal.valor)}</td>
+              )}
               <td className="border p-1.5 text-right">
                 {formatBRL(proposal.transport.freightValue)}
               </td>
