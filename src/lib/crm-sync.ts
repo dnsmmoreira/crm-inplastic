@@ -17,6 +17,7 @@
 import { isIntentionalDelete, clearDeleteIntent, markDeleted } from "@/lib/delete-intents";
 import { reportarFalhaSync } from "@/lib/sync-falhas";
 import { ehErroColunaInexistente } from "@/lib/build-version";
+import { ehErroPermanente } from "@/lib/sync-erro-permanente";
 import {
   bundleDesatualizado,
   bloquearPorBundleDesatualizado,
