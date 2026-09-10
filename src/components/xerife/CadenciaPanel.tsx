@@ -205,6 +205,10 @@ export function CadenciaPanel({
             <Snowflake className="h-4 w-4 text-primary" />
             <h3 className="font-medium">Esfriando por etapa (alerta automático do Xerife)</h3>
           </header>
+          <p className="text-xs text-muted-foreground">
+            Marcado pelo próprio Xerife, não é pausa feita pelo vendedor. Para parar a cobrança,
+            feche o lead (ganho/perdido) ou use "Reagendar cobrança" na ficha.
+          </p>
           {data.leadsEsfriando.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4">Nenhum lead parado além do limite.</p>
           ) : (
