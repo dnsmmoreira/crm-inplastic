@@ -118,6 +118,8 @@ export function motivoEncerramento(m: MotivoEncerramento): string {
       return "primeiro contato registrado";
     case "cliente_respondido":
       return "cliente respondido";
+    case "contato_retomado":
+      return "contato retomado pelo vendedor";
     case "entrega_comprovada":
       return "entrega comprovada";
     case "comprovacao_dispensada":
