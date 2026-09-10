@@ -3477,6 +3477,16 @@ export type Database = {
           vendedor_id: string
         }[]
       }
+      localizar_lead_ativo: {
+        Args: { _cnpj?: string; _telefone?: string }
+        Returns: {
+          company: string
+          lead_id: string
+          origem: string
+          owner_id: string
+          stage: Database["public"]["Enums"]["lead_stage"]
+        }[]
+      }
       log_falha_trigger: {
         Args: { _contexto: Json; _mensagem: string; _origem: string }
         Returns: undefined
