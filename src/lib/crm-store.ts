@@ -4,6 +4,7 @@ import { useAuth, hasPerm } from "@/hooks/use-auth";
 import { markDeleted } from "@/lib/delete-intents";
 import { DEFAULT_FLEET, type FleetVehicle } from "@/lib/logistica";
 import { normalizarParcelas, type ParcelaCondicao } from "@/lib/condicoes-comerciais";
+import { chaveTelefone } from "@/lib/carteira-match";
 
 export type UserRole = "admin" | "vendedor";
 export type User = { id: string; name: string; role: UserRole; avatarColor: string };
