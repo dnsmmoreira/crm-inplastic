@@ -439,6 +439,31 @@ function taskToInsert(t: Task, ownerId: string | null): TaskInsert {
   };
 }
 
+/**
+ * Payload de tarefa JÁ EXISTENTE: sem `owner_id`.
+ *
+ * O dono de uma tarefa muda no servidor (trigger `tg_leads_owner_para_tarefas`,
+ * transferência de lead, escalação do Xerife). Se o front reenviasse o
+ * `owner_id` que tem em cache, uma aba antiga desfaria a troca feita no
+ * servidor — foi assim que a tarefa de "Verapaz Alimentos" voltou para a
+ * vendedora anterior depois da transferência.
+ */
+function taskToUpdate(t: Task): TaskInsert {
+  return {
+    id: t.id,
+    lead_id: t.leadId || null,
+    title: t.title,
+    due_date: t.dueDate,
+    status: t.status,
+  };
+}
+
+/** Existente (está no snapshot do servidor) => nunca escreve `owner_id`. */
+function taskPayload(t: Task, ownerId: string | null): TaskInsert {
+  return snapshot.tasks.has(t.id) ? taskToUpdate(t) : taskToInsert(t, ownerId);
+}
+
+
 function rowToInteraction(r: InteractionRow): Interaction {
   return { id: r.id, date: r.occurred_at, type: r.type, content: r.content };
 }
