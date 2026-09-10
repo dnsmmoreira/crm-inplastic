@@ -289,8 +289,11 @@ export function UsuarioEditDialog({
             carenciaMeses: arena.carenciaMeses,
             faseRampa: arena.faseRampa,
             observacao: arena.observacao?.trim() ? arena.observacao.trim() : null,
+            comissaoPct: arena.comissaoPct,
+            regiao: arena.regiao?.trim() ? arena.regiao.trim() : null,
           },
         });
+
         setArenaInicial(arena);
       }
       setMetaInicial(String(Number(meta) || 0));
