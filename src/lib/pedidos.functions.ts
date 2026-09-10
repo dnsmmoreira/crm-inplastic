@@ -602,11 +602,21 @@ export const updatePedidoStage = createServerFn({ method: "POST" })
     );
 
     let assumiu = false;
-    if ((exigeResponsavel(from) || exigeResponsavel(to)) && !current.responsavel_atual_id) {
+    // Admin (diretoria/administrativo) aprova e movimenta sem precisar assumir:
+    // aprovação financeira não é execução operacional.
+    const ehAdmin = await isAdminUser(sb, context.userId);
+    if (
+      !ehAdmin &&
+      (exigeResponsavel(from) || exigeResponsavel(to)) &&
+      !current.responsavel_atual_id
+    ) {
       if (!data.assumir) {
         return { ok: false, reason: "sem_responsavel", message: MSG_SEM_RESPONSAVEL };
       }
-      const r = await assumirPedidoImpl(sb, context.userId, data.pedido_id);
+      // O pedido ainda está na etapa de origem (ex.: Análise Financeira), que
+      // por si só não é assumível — quem autoriza o "assumir" aqui é a etapa
+      // de destino do movimento.
+      const r = await assumirPedidoImpl(sb, context.userId, data.pedido_id, false, to);
       if (!r.ok) {
         return {
           ok: false,
@@ -1907,6 +1917,8 @@ async function assumirPedidoImpl(
   userId: string,
   pedidoId: string,
   forcar?: boolean,
+  /** Etapa de destino, quando o "assumir" acontece junto de um movimento. */
+  stageAlvo?: string,
 ): Promise<AssumirPedidoResult> {
   if (!(await podeOperarProducao(sb, userId))) {
     throw new Error("Você não tem permissão para assumir pedidos da operação.");
@@ -1920,11 +1932,14 @@ async function assumirPedidoImpl(
   if (error) throw new Error(`Falha ao carregar pedido: ${error.message}`);
   if (!p) throw new Error("Pedido não encontrado");
 
-  if (!podeAssumirPedido(p.stage)) {
+  const stageValido =
+    podeAssumirPedido(p.stage) || (!!stageAlvo && podeAssumirPedido(String(stageAlvo)));
+  if (!stageValido) {
     throw new Error(
       `Este pedido está em "${stageLabel(p.stage)}" — só é possível assumir em Liberado, Em Produção ou Coleta / Entrega.`,
     );
   }
+
 
   if (p.responsavel_atual_id && p.responsavel_atual_id !== userId && !forcar) {
     const nomes = await resolveNames(sb, [p.responsavel_atual_id]);
