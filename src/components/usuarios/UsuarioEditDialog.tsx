@@ -674,6 +674,43 @@ export function UsuarioEditDialog({
                 </div>
               </div>
 
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-1">
+                  <Label htmlFor="ue-comissao">Comissão (%)</Label>
+                  <Input
+                    id="ue-comissao"
+                    type="number"
+                    min={0}
+                    max={100}
+                    step="0.01"
+                    value={arena.comissaoPct === null ? "" : String(arena.comissaoPct)}
+                    onChange={(e) =>
+                      setArena((a) => ({
+                        ...a,
+                        comissaoPct:
+                          e.target.value.trim() === ""
+                            ? null
+                            : Math.min(100, Math.max(0, Number(e.target.value) || 0)),
+                      }))
+                    }
+                    placeholder="usa o padrão do canal"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Percentual próprio desta pessoa. Em branco, vale o padrão do canal.
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="ue-regiao">Região</Label>
+                  <Input
+                    id="ue-regiao"
+                    value={arena.regiao ?? ""}
+                    onChange={(e) => setArena((a) => ({ ...a, regiao: e.target.value || null }))}
+                    maxLength={120}
+                    placeholder="Ex.: Triângulo Mineiro"
+                  />
+                </div>
+              </div>
+
               <div className="space-y-1">
                 <Label htmlFor="ue-arena-obs">Observação</Label>
                 <Input
@@ -684,6 +721,7 @@ export function UsuarioEditDialog({
                   placeholder="Contexto da participação, acordo de rampa, etc."
                 />
               </div>
+
 
               <p className="text-xs text-muted-foreground">
                 Seção restrita a administradores. Alterações ficam registradas na auditoria do usuário.
