@@ -59,9 +59,19 @@ export function reportarFalhaSync(
     return;
   }
 
+  // Tentativas esgotadas: o motor parou de repetir, descartou o pendente e
+  // recarregou a coleção. Nada de "recarregue a página".
+  if (extra?.["esgotado"] === true) {
+    toast.error(
+      `Não consegui salvar ${rotuloColecao(colecao)} depois de algumas tentativas. Parei de tentar e atualizei a tela com os dados do servidor — confira e refaça a alteração.`,
+      { duration: 12_000 },
+    );
+    return;
+  }
+
   toast.error(
-    `Falha ao salvar ${rotuloColecao(colecao)} — suas últimas alterações podem não ter sido gravadas. Recarregue a página.`,
-    { duration: Infinity },
+    `Falha ao salvar ${rotuloColecao(colecao)} — vou tentar de novo em instantes.`,
+    { duration: 6_000 },
   );
 }
 

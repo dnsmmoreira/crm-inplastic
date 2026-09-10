@@ -18,6 +18,7 @@ import { isIntentionalDelete, clearDeleteIntent, markDeleted } from "@/lib/delet
 import { reportarFalhaSync } from "@/lib/sync-falhas";
 import { ehErroColunaInexistente } from "@/lib/build-version";
 import { ehErroPermanente } from "@/lib/sync-erro-permanente";
+import { ControleRetry } from "@/lib/sync-retry";
 import {
   bundleDesatualizado,
   bloquearPorBundleDesatualizado,
@@ -950,6 +951,9 @@ export function clearCrmState() {
   saveTimer = null;
   if (reloadTimer) clearTimeout(reloadTimer);
   reloadTimer = null;
+  if (retryTimer) clearTimeout(retryTimer);
+  retryTimer = null;
+  controleRetry.limparTudo();
   recargasPendentes.clear();
   detachRealtime();
   useCrm.setState({
@@ -1341,6 +1345,24 @@ function marcarParaReprocessar(collectionName: string) {
   if (collectionName === "proposalItems" || collectionName === "proposalParcelas") {
     forcarColecao.add("proposalsFilhos");
   }
+}
+
+/**
+ * Repetição de falha transitória.
+ *
+ * O `scheduleSave` só dispara quando o usuário mexe em algo; sem este timer,
+ * uma falha de rede poderia ficar parada até a próxima edição. Aqui a nova
+ * tentativa é agendada sozinha, com espera progressiva (ver `sync-retry.ts`).
+ */
+const controleRetry = new ControleRetry();
+let retryTimer: ReturnType<typeof setTimeout> | null = null;
+
+function agendarNovaTentativa(esperaMs: number) {
+  if (retryTimer) clearTimeout(retryTimer);
+  retryTimer = setTimeout(() => {
+    retryTimer = null;
+    void doSave().catch((e) => console.warn("[crm-sync] nova tentativa:", e));
+  }, esperaMs);
 }
 
 function precisaDiff(nome: string, ...refs: unknown[]): boolean {
@@ -1768,31 +1790,50 @@ async function syncCollection<T>(opts: {
     }
   }
 
+  const nome = collectionName ?? "collection";
+
   if (toUpsert.length) {
     const { error } = await upsert(toUpsert);
     if (!error) {
       toUpsert.forEach((item) => snap.set(toKey(item), toJson(item)));
+      controleRetry.limpar(nome);
     } else {
       const permanente = ehErroPermanente(error);
+      let esgotado = false;
+      let tentativa = 0;
       if (permanente) {
         // Erro que retry nunca resolve (RLS, FK, check): limpar o dirty-tracking
         // — senão o mesmo erro volta a cada ciclo — e trazer a verdade do
         // servidor por cima do cache velho.
         toUpsert.forEach((item) => snap.set(toKey(item), toJson(item)));
+        controleRetry.limpar(nome);
         recarregarAposErroPermanente(collectionName);
       } else {
-        // Snapshot intocado de propósito: o registro segue "sujo" e é reenviado
-        // no próximo ciclo de save.
-        if (collectionName) marcarParaReprocessar(collectionName);
+        const decisao = controleRetry.registrarFalha(nome);
+        tentativa = decisao.tentativa;
+        esgotado = decisao.desistiu;
+        if (decisao.repetir) {
+          // Snapshot intocado de propósito: o registro segue "sujo" e é
+          // reenviado sozinho, com espera progressiva.
+          if (collectionName) marcarParaReprocessar(collectionName);
+          agendarNovaTentativa(decisao.esperaMs);
+        } else {
+          // Esgotou: para de tentar, descarta o pendente desta coleção e
+          // recarrega o servidor. As demais coleções seguem salvando.
+          toUpsert.forEach((item) => snap.set(toKey(item), toJson(item)));
+          recarregarAposErroPermanente(collectionName);
+        }
       }
       if (ehErroColunaInexistente(error)) {
         bloquearPorBundleDesatualizado(
           `A gravação de ${collectionName ?? "dados"} falhou porque esta aba usa colunas que não existem mais no banco.`,
         );
       }
-      reportarFalhaSync(collectionName ?? "collection", "upsert", error, {
+      reportarFalhaSync(nome, "upsert", error, {
         registros: toUpsert.length,
         permanente,
+        esgotado,
+        tentativa,
       });
     }
   }
@@ -1801,18 +1842,34 @@ async function syncCollection<T>(opts: {
     if (!error) {
       toDelete.forEach((k) => snap.delete(k));
       onDeleted?.(toDelete);
+      controleRetry.limpar(nome);
     } else {
       const permanente = ehErroPermanente(error);
+      let esgotado = false;
+      let tentativa = 0;
       if (permanente) {
         toDelete.forEach((k) => snap.delete(k));
         onDeleted?.(toDelete);
+        controleRetry.limpar(nome);
         recarregarAposErroPermanente(collectionName);
-      } else if (collectionName) {
-        marcarParaReprocessar(collectionName);
+      } else {
+        const decisao = controleRetry.registrarFalha(nome);
+        tentativa = decisao.tentativa;
+        esgotado = decisao.desistiu;
+        if (decisao.repetir) {
+          if (collectionName) marcarParaReprocessar(collectionName);
+          agendarNovaTentativa(decisao.esperaMs);
+        } else {
+          toDelete.forEach((k) => snap.delete(k));
+          onDeleted?.(toDelete);
+          recarregarAposErroPermanente(collectionName);
+        }
       }
-      reportarFalhaSync(collectionName ?? "collection", "delete", error, {
+      reportarFalhaSync(nome, "delete", error, {
         ids: toDelete,
         permanente,
+        esgotado,
+        tentativa,
       });
     }
   }
