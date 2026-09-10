@@ -91,13 +91,28 @@ function RepresentantesPage() {
   const abrir = (r: RepresentanteLinha) => {
     setEditando(r);
     setParticipa(r.participaArena);
+    setComissao(r.comissaoPct === null ? "" : String(r.comissaoPct));
+    setRegiao(r.regiao ?? "");
   };
 
   const confirmar = async () => {
     if (!editando) return;
+    const bruto = comissao.trim().replace(",", ".");
+    const pct = bruto === "" ? null : Number(bruto);
+    if (pct !== null && (!Number.isFinite(pct) || pct < 0 || pct > 100)) {
+      toast.error("Informe a comissão como um número entre 0 e 100.");
+      return;
+    }
     setSalvando(true);
     try {
-      await salvar({ data: { userId: editando.id, participaArena: participa } });
+      await salvar({
+        data: {
+          userId: editando.id,
+          participaArena: participa,
+          comissaoPct: pct,
+          regiao: regiao.trim() || null,
+        },
+      });
       toast.success("Representante atualizado");
       setEditando(null);
       await load();
