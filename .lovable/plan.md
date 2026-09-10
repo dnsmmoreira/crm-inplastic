@@ -1,77 +1,52 @@
-# Bloco Kelly-1 — Representantes com acesso ao sistema
+# Manuais por função ("o mundo acabou e começou hoje")
 
-Representante ativo = usuário normal (papel vendedor, cargo "Representante"), fora do placar/Arena.
-Nada dos programas já publicados é alterado.
+Regra do placar já alterada: o desconto por atendimento escalado agora conta **uma vez por cliente** no período (antes repetia a cada escalação do mesmo cliente). Vale também na comparação com o mês anterior.
 
-## Premissas (corrija se estiver errado)
+## Ideia
 
-- "Gestora de Representação" hoje existe como **cargo**, não como perfil de acesso.
-  A nova permissão será concedida aos perfis **Administrador** e **Gestor Comercial**
-  (mecanismo existente: linhas em `perfil_permissoes`). Se você quiser um perfil novo
-  chamado "Gestora de Representação", diga e eu crio no mesmo bloco.
-- A participação na Arena hoje mora em `arena_participacao.participa_arena`.
-  Vou criar `profiles.participa_arena` como pedido e as duas funções do placar passam a
-  exigir **as duas** condições (participa na Arena e `profiles.participa_arena = true`),
-  preservando todo o resto da lógica.
+Hoje existe um manual único e genérico. A pessoa nova abre e não sabe o que é dela.
+A troca: uma **página inicial de manuais** que pergunta "quem é você?" e leva cada
+um para o seu próprio manual, escrito como se ninguém pudesse ensinar nada.
 
-## 1. Migrations
+## Manuais (um por função, seguindo as funções que existem hoje)
 
-`profiles`: `participa_arena boolean not null default true`,
-`comissao_percent numeric(5,2) null` (CHECK 0–100 quando não nulo), `regiao text null`.
+1. **Vendedor** (Beatriz, Bianca, Daniel, Pamela)
+2. **Assistente Comercial** (Bruna) — apoio, cadastros, pedidos, romaneios
+3. **Financeiro** (Wagner, Renata) — aprovações, faturamento, cobrança
+4. **Representação** (Kelly) — canal representante, licitações, comissão
+5. **Diretoria / Administrador** (Denis) — equipe, placar, ARENA, configurações
 
-Recriar `placar_vendedores(text)` e `ganhos_fora_do_placar(text)` a partir da definição
-atual do banco, mudando **apenas** o CTE de participantes: junta `profiles p` e adiciona
-`AND coalesce(p.participa_arena, true) = true`. Mesma assinatura, mesmo retorno, mesma ordem.
+## O que cada manual tem (mesma espinha, conteúdo diferente)
 
-Catálogo: inserir em `permissoes` a chave `representantes.gerenciar` no formato das linhas
-existentes (ex.: `licitacoes.gerenciar`) e conceder aos perfis Administrador e Gestor Comercial.
+- **Seu primeiro dia**: entrar, trocar a senha, onde fica cada coisa no menu.
+- **Sua rotina**: o que abrir de manhã, durante o dia e antes de sair.
+- **Suas telas, uma a uma**: para que serve, o que fazer nela, o que NÃO mexer.
+- **Passo a passo das tarefas do dia** com números: cadastrar cliente, criar
+  proposta, virar pedido, dar baixa em tarefa com desfecho, transferir carteira…
+- **"E se…"**: cliente sumiu, cliente reclamou, proposta venceu, pedido atrasou,
+  entrou lead que já é de outra pessoa, esqueci a senha.
+- **O que o sistema cobra de você**: prazos, tarefas automáticas, avisos do Xerife.
+- **Placar** (só onde faz sentido): como pontua, como sobe, o que desconta — já
+  com a regra nova de um desconto por cliente.
+- **Palavras do sistema** em português simples (lead, proposta, pedido, carteira).
 
-Texto exato da permissão nova:
-- grupo: `representantes`
-- rótulo: `Gerenciar representantes`
-- descrição: `Acessa e gerencia o módulo de representantes`
-- tipo: `booleana`
+## Como fica na tela
 
-## 2. Formulário de usuário (`/usuarios`)
+- Novo `public/manuais.html`: capa com os cinco cartões de função.
+- Cinco páginas novas: `manual-vendedor.html`, `manual-assistente.html`,
+  `manual-financeiro.html`, `manual-representacao.html`, `manual-diretoria.html`.
+- Mesmo visual do manual atual (mesma paleta, mesmas caixas, índice lateral,
+  barra de leitura), para não parecer outro produto.
+- O manual atual continua existindo como "Visão geral do CRM", linkado na capa.
+- No menu lateral, "Manual do CRM" passa a abrir a capa de manuais; no desktop e
+  no celular. Se der para saber a função da pessoa logada, o cartão dela vem
+  destacado em primeiro.
 
-Em `UsuarioEditDialog`, quando o cargo escolhido for "Representante":
-- sugere papel vendedor quando ainda não há papel/perfil definido;
-- checkbox "Participa do placar/Arena" ligado a `participa_arena` — sugerido **desligado**
-  para representante novo, sempre editável por quem tem `usuarios.gerenciar`;
-- campos "Comissão (%)" e "Região", visíveis só nesse cargo.
+## Detalhes técnicos
 
-Leitura e gravação passam pela função de servidor existente `updateUsuario`
-(novo bloco opcional `representacao` no schema), sem duplicar checagem de permissão.
-Alterações entram na auditoria (`user_audit_log`) como os demais campos.
-
-## 3. Tela `/representantes`
-
-Item de menu ao lado de "Equipe" no grupo Empresa, ícone `Handshake`,
-visibilidade `key("representantes.gerenciar")` — mesmo padrão de `/licitacoes`.
-O gate real é no servidor (RPC `tem_permissao`), como em `licitacoes.functions.ts`;
-a tela mostra aviso de sem acesso quando a função de servidor recusa.
-
-Tabela com todo usuário de cargo "Representante" (ativos e inativos, badge de status):
-nome, região, comissão %, participa da Arena, carteira (clientes ativos), leads abertos,
-propostas do mês corrente, última atividade (maior entre `leads.updated_at` e
-`whatsapp_conversas.last_message_at`).
-
-Uma única server function `listRepresentantes` faz todas as contagens em lote
-(um select por tabela filtrado por `owner_id/vendedor_id in (ids)`, agregação em memória)
-— sem consulta por representante.
-
-`atualizarDadosRepresentante`: gate `representantes.gerenciar` OU `usuarios.gerenciar`,
-confere que o alvo tem cargo "Representante" antes de gravar (fail-closed), grava
-comissão/região/participa_arena e registra em `user_audit_log`.
-
-Botão "Novo representante" leva para `/usuarios` (a tela só aceita `?busca=` hoje,
-então o link vai sem pré-seleção de cargo).
-
-## 4. Testes
-
-Módulo puro `src/lib/representantes.ts` (montagem das linhas a partir dos lotes:
-contagens, mês corrente, última atividade) com testes vitest. Suíte completa + `tsgo` no fim.
-
-## Fora deste bloco
-
-Balcão de solicitações, política comercial, ficha de produto, licitações.
+- Páginas estáticas em `public/`, sem build e sem dados do banco — abrem mesmo
+  para quem ainda não tem acesso ao sistema.
+- Conteúdo escrito a partir do comportamento real do código (etapas do funil,
+  estágios de pedido, desfechos obrigatórios de tarefa, regras do Xerife, pesos
+  do placar), não inventado.
+- Único arquivo do app tocado: `src/routes/__root.tsx` (o link do menu).
