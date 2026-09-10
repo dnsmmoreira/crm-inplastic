@@ -4,6 +4,7 @@ import { lookupCnpj } from "@/lib/cnpj.functions";
 import { isValidCnpj, friendlyCnpjError } from "@/lib/cnpj";
 import { useAuth } from "@/hooks/use-auth";
 import { dateInputToISO } from "@/lib/format";
+import { semInscricaoEstadual, normalizarUf, UF_ORIGEM_DIFAL } from "@/lib/difal";
 import { ProdutoFamiliaField } from "@/components/crm/ProdutoFamiliaField";
 
 
