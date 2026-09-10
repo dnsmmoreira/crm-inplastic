@@ -3477,6 +3477,10 @@ export type Database = {
           vendedor_id: string
         }[]
       }
+      log_falha_trigger: {
+        Args: { _contexto: Json; _mensagem: string; _origem: string }
+        Returns: undefined
+      }
       next_pedido_number: { Args: { _year: number }; Returns: string }
       next_proposta_number: { Args: { _year: number }; Returns: string }
       placar_vendedores: {
