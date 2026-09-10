@@ -73,3 +73,33 @@ export async function resolverContatoEntrada(
     return { acao: "criar_lead" };
   }
 }
+
+/**
+ * Existe lead ativo com nome de empresa parecido? Só para AVISAR — nome nunca
+ * mescla nem transfere nada sozinho.
+ */
+export async function avisoDuplicidadePorNome(
+  sb: SB,
+  empresa: string | null | undefined,
+  ignorarLeadId?: string | null,
+): Promise<{ leadId: string; company: string | null } | null> {
+  const { normalizarNomeEmpresa, possivelDuplicidadePorNome } = await import("@/lib/contato-entrada");
+  const alvo = normalizarNomeEmpresa(empresa);
+  if (alvo.length < 4) return null;
+  const primeira = alvo.split(" ")[0];
+  if (!primeira || primeira.length < 4) return null;
+  const { data, error } = await sb
+    .from("leads")
+    .select("id, company")
+    .not("stage", "in", "(ganho,perdido)")
+    .ilike("company", `%${primeira}%`)
+    .limit(20);
+  if (error || !data?.length) return null;
+  for (const row of data) {
+    if (ignorarLeadId && row.id === ignorarLeadId) continue;
+    if (possivelDuplicidadePorNome(empresa, row.company as string | null)) {
+      return { leadId: row.id as string, company: (row.company as string | null) ?? null };
+    }
+  }
+  return null;
+}
