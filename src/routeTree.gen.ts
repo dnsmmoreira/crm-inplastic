@@ -69,6 +69,7 @@ import { Route as ApiPublicHooksIaQualificarRouteImport } from './routes/api/pub
 import { Route as ApiPublicHooksIaHandoffRouteImport } from './routes/api/public/hooks/ia-handoff'
 import { Route as ApiPublicHooksIaFilaEnvioRouteImport } from './routes/api/public/hooks/ia-fila-envio'
 import { Route as ApiPublicHooksDocumentosExpurgoRouteImport } from './routes/api/public/hooks/documentos-expurgo'
+import { Route as ApiPublicHooksCarteiraReconciliacaoRouteImport } from './routes/api/public/hooks/carteira-reconciliacao'
 
 const UsuariosRoute = UsuariosRouteImport.update({
   id: '/usuarios',
@@ -387,6 +388,12 @@ const ApiPublicHooksDocumentosExpurgoRoute =
     path: '/api/public/hooks/documentos-expurgo',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksCarteiraReconciliacaoRoute =
+  ApiPublicHooksCarteiraReconciliacaoRouteImport.update({
+    id: '/api/public/hooks/carteira-reconciliacao',
+    path: '/api/public/hooks/carteira-reconciliacao',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -432,6 +439,7 @@ export interface FileRoutesByFullPath {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/romaneio/$pedidoId/$tipo': typeof RomaneioPedidoIdTipoRoute
+  '/api/public/hooks/carteira-reconciliacao': typeof ApiPublicHooksCarteiraReconciliacaoRoute
   '/api/public/hooks/documentos-expurgo': typeof ApiPublicHooksDocumentosExpurgoRoute
   '/api/public/hooks/ia-fila-envio': typeof ApiPublicHooksIaFilaEnvioRoute
   '/api/public/hooks/ia-handoff': typeof ApiPublicHooksIaHandoffRoute
@@ -494,6 +502,7 @@ export interface FileRoutesByTo {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/romaneio/$pedidoId/$tipo': typeof RomaneioPedidoIdTipoRoute
+  '/api/public/hooks/carteira-reconciliacao': typeof ApiPublicHooksCarteiraReconciliacaoRoute
   '/api/public/hooks/documentos-expurgo': typeof ApiPublicHooksDocumentosExpurgoRoute
   '/api/public/hooks/ia-fila-envio': typeof ApiPublicHooksIaFilaEnvioRoute
   '/api/public/hooks/ia-handoff': typeof ApiPublicHooksIaHandoffRoute
@@ -557,6 +566,7 @@ export interface FileRoutesById {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/romaneio/$pedidoId/$tipo': typeof RomaneioPedidoIdTipoRoute
+  '/api/public/hooks/carteira-reconciliacao': typeof ApiPublicHooksCarteiraReconciliacaoRoute
   '/api/public/hooks/documentos-expurgo': typeof ApiPublicHooksDocumentosExpurgoRoute
   '/api/public/hooks/ia-fila-envio': typeof ApiPublicHooksIaFilaEnvioRoute
   '/api/public/hooks/ia-handoff': typeof ApiPublicHooksIaHandoffRoute
@@ -621,6 +631,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/romaneio/$pedidoId/$tipo'
+    | '/api/public/hooks/carteira-reconciliacao'
     | '/api/public/hooks/documentos-expurgo'
     | '/api/public/hooks/ia-fila-envio'
     | '/api/public/hooks/ia-handoff'
@@ -683,6 +694,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/romaneio/$pedidoId/$tipo'
+    | '/api/public/hooks/carteira-reconciliacao'
     | '/api/public/hooks/documentos-expurgo'
     | '/api/public/hooks/ia-fila-envio'
     | '/api/public/hooks/ia-handoff'
@@ -745,6 +757,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/romaneio/$pedidoId/$tipo'
+    | '/api/public/hooks/carteira-reconciliacao'
     | '/api/public/hooks/documentos-expurgo'
     | '/api/public/hooks/ia-fila-envio'
     | '/api/public/hooks/ia-handoff'
@@ -808,6 +821,7 @@ export interface RootRouteChildren {
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   RomaneioPedidoIdTipoRoute: typeof RomaneioPedidoIdTipoRoute
+  ApiPublicHooksCarteiraReconciliacaoRoute: typeof ApiPublicHooksCarteiraReconciliacaoRoute
   ApiPublicHooksDocumentosExpurgoRoute: typeof ApiPublicHooksDocumentosExpurgoRoute
   ApiPublicHooksIaFilaEnvioRoute: typeof ApiPublicHooksIaFilaEnvioRoute
   ApiPublicHooksIaHandoffRoute: typeof ApiPublicHooksIaHandoffRoute
@@ -1249,6 +1263,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksDocumentosExpurgoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/carteira-reconciliacao': {
+      id: '/api/public/hooks/carteira-reconciliacao'
+      path: '/api/public/hooks/carteira-reconciliacao'
+      fullPath: '/api/public/hooks/carteira-reconciliacao'
+      preLoaderRoute: typeof ApiPublicHooksCarteiraReconciliacaoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -1297,6 +1318,8 @@ const rootRouteChildren: RootRouteChildren = {
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   RomaneioPedidoIdTipoRoute: RomaneioPedidoIdTipoRoute,
+  ApiPublicHooksCarteiraReconciliacaoRoute:
+    ApiPublicHooksCarteiraReconciliacaoRoute,
   ApiPublicHooksDocumentosExpurgoRoute: ApiPublicHooksDocumentosExpurgoRoute,
   ApiPublicHooksIaFilaEnvioRoute: ApiPublicHooksIaFilaEnvioRoute,
   ApiPublicHooksIaHandoffRoute: ApiPublicHooksIaHandoffRoute,

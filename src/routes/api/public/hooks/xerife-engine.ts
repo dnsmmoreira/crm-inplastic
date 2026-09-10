@@ -584,9 +584,12 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
 
     // conversas com última msg cliente recente demais NÃO qualificam;
     // buscamos leads onde ultima_msg_cliente_at é antiga o suficiente e ultima_msg_vendedor_at é anterior a ela
+    const { SQL_STAGES_ENCERRADOS } = await import("@/lib/xerife/lead-elegivel");
     const { data: leads } = await sb
       .from("leads")
       .select("id, company, owner_id, ultima_msg_cliente_at, ultima_msg_vendedor_at")
+      // Lead ganho/perdido não tem próximo ato comercial: nunca é cobrado.
+      .not("stage", "in", SQL_STAGES_ENCERRADOS)
       .not("ultima_msg_cliente_at", "is", null)
       .lt("ultima_msg_cliente_at", thresholdIso)
       .not("owner_id", "is", null)
@@ -671,8 +674,13 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
       .not("em_espera_desde", "is", null)
       .limit(300);
 
+    // Conversa cujo lead já foi ganho/perdido não gera mais cobrança.
+    const { leadsEncerrados: _encA5 } = await import("@/lib/xerife/lead-elegivel");
+    const encerradosA5 = await _encA5(sb, (emEspera ?? []).map((c: any) => c.lead_id));
+
     for (const c of emEspera ?? []) {
       if (!c.atribuido_para) continue;
+      if (c.lead_id && encerradosA5.has(c.lead_id)) continue;
       if (
         !deveCobrarEspera(
           { em_espera_desde: c.em_espera_desde, ultimoAvisoEm: c.espera_alertada_em },
@@ -1436,9 +1444,15 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
       await registrarFalhaSegura("xerife-engine.a6.select", erroIA, {});
     }
 
-    for (const conv of ((convsIA ?? []) as any[]).filter((c) =>
+    const { leadsEncerrados: _encA6 } = await import("@/lib/xerife/lead-elegivel");
+    const candidatasA6 = ((convsIA ?? []) as any[]).filter((c) =>
       conversaAbandonadaPelaIA(c, agora, win),
-    )) {
+    );
+    const encerradosA6 = await _encA6(sb, candidatasA6.map((c) => c.lead_id));
+
+    for (const conv of candidatasA6) {
+      // Lead ganho/perdido: o assunto já teve desfecho, nada a retomar.
+      if (conv.lead_id && encerradosA6.has(conv.lead_id)) continue;
       const regra = "a6_ia_abandonada";
       const quem = (conv.name as string | null)?.trim() || (conv.phone as string);
       if (await alreadyActed(sb, regra, conv.lead_id ?? null, 24)) continue;
