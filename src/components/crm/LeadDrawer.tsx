@@ -80,6 +80,7 @@ import { ContatosSection } from "@/components/contatos/ContatosSection";
 import { useBaixaTarefa } from "@/components/tarefas/useBaixaTarefa";
 import { sufixoCobranca } from "@/lib/tarefa-desfecho";
 import { TransferirLeadDialog } from "@/components/crm/TransferirLeadDialog";
+import { verificarContatoEntrada } from "@/lib/contato-entrada.functions";
 import { useQuery } from "@tanstack/react-query";
 import { listVendedores } from "@/lib/clientes.functions";
 
