@@ -154,15 +154,28 @@ export const getPropostaPublica = createServerFn({ method: "POST" })
       due_date: r.due_date ?? null,
     }));
 
-    const lead = leadRes.data as { company?: string | null; contact_name?: string | null; cliente_id?: string | null } | null;
+    const lead = leadRes.data as {
+      company?: string | null;
+      contact_name?: string | null;
+      cliente_id?: string | null;
+      estado?: string | null;
+      inscricao_estadual?: string | null;
+    } | null;
     let nomeCliente = lead?.company ?? null;
+    // Dados fiscais do destinatário (DIFAL): cliente manda, lead é o fallback.
+    let ufDestino = lead?.estado ?? null;
+    let ieDestino = lead?.inscricao_estadual ?? null;
+    let ieIsento = false;
     if (lead?.cliente_id) {
       const { data: cli } = await supabaseAdmin
         .from("clientes")
-        .select("razao_social, nome_fantasia")
+        .select("razao_social, nome_fantasia, estado, inscricao_estadual, ie_isento")
         .eq("id", lead.cliente_id)
         .maybeSingle();
       nomeCliente = cli?.razao_social ?? cli?.nome_fantasia ?? nomeCliente;
+      ufDestino = cli?.estado ?? ufDestino;
+      ieDestino = cli?.inscricao_estadual ?? ieDestino;
+      ieIsento = !!cli?.ie_isento;
     }
 
     const cond = condRes.data as {
