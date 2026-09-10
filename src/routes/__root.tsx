@@ -109,20 +109,20 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "CRM — TAOPLAST" },
+      { title: "CRM — INPLASTIC" },
       {
         name: "description",
         content: "CRM interno para gestão de leads e propostas do site palletdeplastico.com.br",
       },
       { name: "robots", content: "noindex, nofollow" },
-      { property: "og:title", content: "CRM — TAOPLAST" },
+      { property: "og:title", content: "CRM — INPLASTIC" },
       {
         property: "og:description",
         content: "CRM interno para gestão de leads e propostas do site palletdeplastico.com.br",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:title", content: "CRM — TAOPLAST" },
+      { name: "twitter:title", content: "CRM — INPLASTIC" },
       {
         name: "twitter:description",
         content: "CRM interno para gestão de leads e propostas do site palletdeplastico.com.br",
