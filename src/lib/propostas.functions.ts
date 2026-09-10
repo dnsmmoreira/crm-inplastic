@@ -207,6 +207,19 @@ export const getPropostaPublica = createServerFn({ method: "POST" })
     const acrescimoValor = +(aposDesconto * (acrescimoPct / 100)).toFixed(2);
     const frete = Number(transport.freightValue) || 0;
 
+    // DIFAL travado — mesma base dos demais totais (itens com desconto/acréscimo, sem frete).
+    const { calcularDifal, DIFAL_ALIQUOTAS_PADRAO } = await import("@/lib/difal");
+    const { data: aliqRows } = await supabaseAdmin
+      .from("difal_aliquotas")
+      .select("uf, aliquota_interna, aliquota_interestadual");
+    const difal = calcularDifal({
+      valorOperacao: +(aposDesconto + acrescimoValor).toFixed(2),
+      ufDestino: ufDestino,
+      inscricaoEstadual: ieDestino,
+      ieIsento,
+      aliquotas: (aliqRows?.length ? aliqRows : DIFAL_ALIQUOTAS_PADRAO) as never,
+    });
+
     return {
       id: p.id,
       number: p.number,
@@ -227,14 +240,16 @@ export const getPropostaPublica = createServerFn({ method: "POST" })
         por_conta: transport.freightPayer ?? null,
         transportadora: transport.carrier ?? null,
       },
+      difal: { aplica: difal.aplica, valor: difal.valor, uf: difal.uf },
       totais: {
         subtotal,
         desconto_percent: descontoPct,
         desconto_valor: descontoValor,
         acrescimo_percent: acrescimoPct,
         acrescimo_valor: acrescimoValor,
+        difal_valor: difal.valor,
         cartao_parcelas: ehCartao ? (p.cartao_parcelas ?? null) : null,
-        total: aposDesconto + acrescimoValor + frete,
+        total: aposDesconto + acrescimoValor + difal.valor + frete,
         quantidade: itens.reduce((s, i) => s + i.quantity, 0),
         itens: itens.length,
       },
