@@ -60,7 +60,10 @@ export const listRepresentantes = createServerFn({ method: "POST" })
 
     const desde = inicioDoMes(new Date());
     const [part, clientes, leads, propostas, conversas] = await Promise.all([
-      sb.from("arena_participacao").select("user_id, participa_arena, tipo_comercial").in("user_id", ids),
+      sb
+        .from("arena_participacao")
+        .select("user_id, participa_arena, tipo_comercial, comissao_pct, regiao")
+        .in("user_id", ids),
       sb.from("clientes").select("vendedor_id").eq("ativo", true).in("vendedor_id", ids),
       sb.from("leads").select("owner_id, stage, updated_at").in("owner_id", ids),
       sb.from("propostas").select("owner_id, created_at").in("owner_id", ids).gte("created_at", desde),
