@@ -1917,6 +1917,8 @@ async function assumirPedidoImpl(
   userId: string,
   pedidoId: string,
   forcar?: boolean,
+  /** Etapa de destino, quando o "assumir" acontece junto de um movimento. */
+  stageAlvo?: string,
 ): Promise<AssumirPedidoResult> {
   if (!(await podeOperarProducao(sb, userId))) {
     throw new Error("Você não tem permissão para assumir pedidos da operação.");
@@ -1930,11 +1932,14 @@ async function assumirPedidoImpl(
   if (error) throw new Error(`Falha ao carregar pedido: ${error.message}`);
   if (!p) throw new Error("Pedido não encontrado");
 
-  if (!podeAssumirPedido(p.stage)) {
+  const stageValido =
+    podeAssumirPedido(p.stage) || (!!stageAlvo && podeAssumirPedido(String(stageAlvo)));
+  if (!stageValido) {
     throw new Error(
       `Este pedido está em "${stageLabel(p.stage)}" — só é possível assumir em Liberado, Em Produção ou Coleta / Entrega.`,
     );
   }
+
 
   if (p.responsavel_atual_id && p.responsavel_atual_id !== userId && !forcar) {
     const nomes = await resolveNames(sb, [p.responsavel_atual_id]);
