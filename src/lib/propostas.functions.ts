@@ -68,12 +68,15 @@ export type PropostaPublica = {
   itens: PropostaPublicaItem[];
   parcelas: PropostaPublicaParcela[];
   frete: { valor: number; por_conta: string | null; transportadora: string | null };
+  /** DIFAL travado (destinatário sem inscrição estadual, destino ≠ SP). */
+  difal: { aplica: boolean; valor: number; uf: string | null };
   totais: {
     subtotal: number;
     desconto_percent: number;
     desconto_valor: number;
     acrescimo_percent: number;
     acrescimo_valor: number;
+    difal_valor: number;
     /** Nº de parcelas do cartão, quando houver. */
     cartao_parcelas: number | null;
     total: number;
