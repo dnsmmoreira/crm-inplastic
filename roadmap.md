@@ -27,3 +27,10 @@
 - [x] Tela /representantes (roster, contagens em lote) + item no menu
 - [x] Salvar usuário com cargo Representante garante linha em arena_participacao
 - [ ] Comissão/região: aguardando decisão do Denis sobre o motor da Arena
+
+## Salvamento de tarefas — repetição limitada (concluído)
+- [x] Diagnóstico: gravação recusada ao tentar mover a tarefa para o dono do lead (tarefas do Xerife têm dono próprio)
+- [x] Nova tentativa automática com espera progressiva (2s/8s/20s), máximo de 3 por coleção
+- [x] Ao esgotar: para de tentar, descarta o pendente e recarrega só aquela coleção
+- [x] Aviso novo, sem "recarregue a página"
+- [x] Testes (sync-retry, sync-falhas) + typecheck
