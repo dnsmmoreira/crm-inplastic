@@ -10,6 +10,7 @@ const CORS = {
 type LeadExternoBody = {
   telefone?: string;
   nome?: string;
+  cnpj?: string;
   empresa?: string;
   produto?: string;
   quantidade?: number | string;
