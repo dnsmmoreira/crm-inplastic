@@ -61,7 +61,9 @@ export const getArenaParticipacao = createServerFn({ method: "POST" })
     const sb = await admin();
     const { data: row, error } = await sb
       .from("arena_participacao")
-      .select("participa_arena, tipo_comercial, carencia_inicio, carencia_meses, fase_rampa, observacao")
+      .select(
+        "participa_arena, tipo_comercial, carencia_inicio, carencia_meses, fase_rampa, observacao, comissao_pct, regiao",
+      )
       .eq("user_id", data.userId)
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -73,6 +75,11 @@ export const getArenaParticipacao = createServerFn({ method: "POST" })
       carenciaMeses: Number(row.carencia_meses ?? 6),
       faseRampa: Number(row.fase_rampa ?? 0),
       observacao: row.observacao,
+      comissaoPct:
+        row.comissao_pct === null || row.comissao_pct === undefined
+          ? null
+          : Number(row.comissao_pct),
+      regiao: row.regiao ?? null,
     };
   });
 
@@ -84,6 +91,8 @@ const saveSchema = z.object({
   carenciaMeses: z.number().int().min(0).max(60),
   faseRampa: z.number().int().min(0).max(10),
   observacao: z.string().trim().max(500).nullable(),
+  comissaoPct: z.number().min(0).max(100).nullable().optional(),
+  regiao: z.string().trim().max(120).nullable().optional(),
 });
 
 export const saveArenaParticipacao = createServerFn({ method: "POST" })
@@ -95,10 +104,15 @@ export const saveArenaParticipacao = createServerFn({ method: "POST" })
 
     const { data: atual, error: rErr } = await sb
       .from("arena_participacao")
-      .select("participa_arena, tipo_comercial, carencia_inicio, carencia_meses, fase_rampa, observacao")
+      .select(
+        "participa_arena, tipo_comercial, carencia_inicio, carencia_meses, fase_rampa, observacao, comissao_pct, regiao",
+      )
       .eq("user_id", data.userId)
       .maybeSingle();
     if (rErr) throw new Error(rErr.message);
+
+    const comissaoNova = data.comissaoPct ?? null;
+    const regiaoNova = data.regiao ? data.regiao.trim() : null;
 
     const novo = {
       user_id: data.userId,
@@ -108,6 +122,8 @@ export const saveArenaParticipacao = createServerFn({ method: "POST" })
       carencia_meses: data.carenciaMeses,
       fase_rampa: data.faseRampa,
       observacao: data.observacao,
+      comissao_pct: comissaoNova,
+      regiao: regiaoNova,
     };
 
     const { error } = await sb
@@ -115,6 +131,10 @@ export const saveArenaParticipacao = createServerFn({ method: "POST" })
       .upsert(novo, { onConflict: "user_id" });
     if (error) throw new Error(error.message);
 
+    const comissaoAntes =
+      atual?.comissao_pct === null || atual?.comissao_pct === undefined
+        ? null
+        : Number(atual.comissao_pct);
     const campos: Array<[string, unknown, unknown]> = [
       ["arena_participa", atual?.participa_arena ?? false, data.participaArena],
       ["arena_tipo_comercial", atual?.tipo_comercial ?? "nao_comercial", data.tipoComercial],
@@ -122,7 +142,10 @@ export const saveArenaParticipacao = createServerFn({ method: "POST" })
       ["arena_carencia_meses", atual?.carencia_meses ?? 6, data.carenciaMeses],
       ["arena_fase_rampa", atual?.fase_rampa ?? 0, data.faseRampa],
       ["arena_observacao", atual?.observacao ?? null, data.observacao],
+      ["comissao_pct", comissaoAntes, comissaoNova],
+      ["regiao", atual?.regiao ?? null, regiaoNova],
     ];
+
     const rows = campos
       .filter(([, a, n]) => String(a ?? "") !== String(n ?? ""))
       .map(([campo, a, n]) => ({
