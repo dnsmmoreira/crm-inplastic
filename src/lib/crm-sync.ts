@@ -1344,6 +1344,24 @@ function marcarParaReprocessar(collectionName: string) {
   }
 }
 
+/**
+ * Repetição de falha transitória.
+ *
+ * O `scheduleSave` só dispara quando o usuário mexe em algo; sem este timer,
+ * uma falha de rede poderia ficar parada até a próxima edição. Aqui a nova
+ * tentativa é agendada sozinha, com espera progressiva (ver `sync-retry.ts`).
+ */
+const controleRetry = new ControleRetry();
+let retryTimer: ReturnType<typeof setTimeout> | null = null;
+
+function agendarNovaTentativa(esperaMs: number) {
+  if (retryTimer) clearTimeout(retryTimer);
+  retryTimer = setTimeout(() => {
+    retryTimer = null;
+    void doSave().catch((e) => console.warn("[crm-sync] nova tentativa:", e));
+  }, esperaMs);
+}
+
 function precisaDiff(nome: string, ...refs: unknown[]): boolean {
   const anterior = ultimoRefSalvo.get(nome) as unknown[] | undefined;
   const mudou =
