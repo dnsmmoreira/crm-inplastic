@@ -390,6 +390,19 @@ function PropostaDetalhe() {
       }),
   });
   const vendedor = vendedorQ.data ?? null;
+  /** Nome do vendedor no documento: nunca cai em "—" quando há dono da proposta. */
+  const vendedorNome =
+    (vendedor?.name && vendedor.name !== "—" ? vendedor.name : null) ?? owner?.name ?? "—";
+
+  // Título da aba = cabeçalho que o navegador imprime no PDF.
+  useEffect(() => {
+    if (!proposal?.number) return;
+    const anterior = document.title;
+    document.title = `Proposta ${proposal.number} — INPLASTIC`;
+    return () => {
+      document.title = anterior;
+    };
+  }, [proposal?.number]);
 
   /**
    * Registro da conferência feita pelo VENDEDOR ao solicitar o pedido.
@@ -936,7 +949,7 @@ function PropostaDetalhe() {
             )}
             <p className="text-xs text-muted-foreground">
               Criada em {format(new Date(proposal.createdAt), "dd/MM/yyyy", { locale: ptBR })} ·
-              Vendedor: {vendedor?.name ?? owner?.name ?? "—"}
+              Vendedor: {vendedorNome}
               {proposal.approvedAt && approver && (
                 <>
                   {" "}
@@ -1491,7 +1504,10 @@ function PropostaDetalhe() {
         </div>
       </div>
 
-      <MargemPropostaCard propostaId={proposal.id} />
+      {/* Análise interna de margem: nunca sai no papel/PDF do cliente. */}
+      <div className="print:hidden">
+        <MargemPropostaCard propostaId={proposal.id} />
+      </div>
 
       {/* Confirm dialog for in-app navigation while dirty */}
       <AlertDialog
@@ -2791,7 +2807,7 @@ function PropostaDetalhe() {
         className="bg-white text-[13px] leading-snug border rounded-lg p-8 md:p-10 shadow-sm print:border-0 print:shadow-none print:rounded-none print:p-6 print:text-[11px]"
         id="proposta-print"
       >
-        {/* Print-only running header: repeats on every printed page */}
+        {/* Faixa de identificação impressa no topo do documento */}
         <div className="print-running-header" aria-hidden="true">
           <div className="print-running-header-inner">
             <div className="print-running-header-brand">{emitter.brand}</div>
@@ -2801,14 +2817,6 @@ function PropostaDetalhe() {
               </span>
               <span> · {format(new Date(proposal.createdAt), "dd/MM/yyyy")}</span>
             </div>
-          </div>
-        </div>
-        <div className="print-running-footer" aria-hidden="true">
-          <div className="print-running-footer-inner">
-            <span>
-              {emitter.legalName} · CNPJ {emitter.cnpj} · {emitter.phone} · {emitter.email}
-            </span>
-            <span className="print-page-counter" />
           </div>
         </div>
         <div className="flex items-start justify-between border-b pb-4 mb-4">
@@ -2880,7 +2888,7 @@ function PropostaDetalhe() {
             <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">
               Vendedor(a)
             </div>
-            <div className="font-semibold">{vendedor?.name ?? owner?.name ?? "—"}</div>
+            <div className="font-semibold">{vendedorNome}</div>
             <div className="text-[11px]">{vendedor?.email ?? emitter.email}</div>
           </div>
         </div>
@@ -2888,7 +2896,7 @@ function PropostaDetalhe() {
         <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">
           Itens da proposta comercial
         </div>
-        <table className="w-full text-[11px] border-collapse mb-4">
+        <table className="tabela-itens w-full text-[11px] border-collapse mb-4">
           <thead>
             <tr className="bg-muted/60">
               <th className="border p-1.5 text-left w-8">#</th>
@@ -2966,7 +2974,7 @@ function PropostaDetalhe() {
         {proposal.installments.length > 0 && (
           <div className="mb-4 print-block">
             <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1 print-title">
-              Vencimentos{selectedTerm ? ` ${selectedTerm.label}` : ""}
+              Vencimentos
             </div>
             <table className="w-full text-[11px] border-collapse">
               <tbody>
@@ -3027,7 +3035,7 @@ function PropostaDetalhe() {
               </tr>
               <tr>
                 <td className="border p-1.5 bg-muted/40 font-medium">Vendedor(a)</td>
-                <td className="border p-1.5">{vendedor?.name ?? owner?.name ?? "—"}</td>
+                <td className="border p-1.5">{vendedorNome}</td>
                 <td className="border p-1.5 bg-muted/40 font-medium">Frete</td>
                 <td className="border p-1.5">
                   {proposal.transport.freightPayer} · {formatBRL(proposal.transport.freightValue)}
@@ -3229,17 +3237,26 @@ function PropostaDetalhe() {
             </div>
           </div>
         </div>
+        {/* Rodapé institucional (impresso ao fim do documento) */}
+        <div className="print-running-footer" aria-hidden="true">
+          <div className="print-running-footer-inner">
+            <span>
+              {emitter.legalName} · CNPJ {emitter.cnpj} · {emitter.phone} · {emitter.email}
+            </span>
+            <span>Proposta {proposal.number}</span>
+          </div>
+        </div>
       </div>
 
       <style>{`
-        /* Elementos exclusivos de impressão ficam ocultos na tela */
-        .print-running-header,
-        .print-running-footer { display: none; }
+        /* Faixas de identificação só existem no papel */
+        #proposta-print .print-running-header,
+        #proposta-print .print-running-footer { display: none; }
 
-        /* Folha A4 com margens do modelo anterior */
+        /* Folha A4 */
         @page {
           size: A4;
-          margin: 14mm 12mm 16mm 12mm;
+          margin: 12mm;
         }
 
         @media print {
@@ -3256,17 +3273,44 @@ function PropostaDetalhe() {
             color: #111827;
             background: #fff;
           }
-          #proposta-print table { font-size: 8pt; width: 100%; }
-          #proposta-print th, #proposta-print td { padding: 1.2mm 1.5mm; }
+          /* Nada pode ultrapassar a largura útil da folha */
+          #proposta-print { max-width: 100%; }
 
-          /* Cabeçalho corrido em todas as páginas */
+          #proposta-print table {
+            font-size: 8pt;
+            width: 100%;
+            table-layout: fixed;
+          }
+          #proposta-print table th,
+          #proposta-print table td {
+            padding: 1.2mm 1.5mm;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+          }
+          /* Colunas da tabela de itens em proporção fixa (soma 100%) */
+          #proposta-print .tabela-itens th:nth-child(1),
+          #proposta-print .tabela-itens td:nth-child(1) { width: 4%; }
+          #proposta-print .tabela-itens th:nth-child(2),
+          #proposta-print .tabela-itens td:nth-child(2) { width: 30%; }
+          #proposta-print .tabela-itens th:nth-child(3),
+          #proposta-print .tabela-itens td:nth-child(3) { width: 12%; }
+          #proposta-print .tabela-itens th:nth-child(4),
+          #proposta-print .tabela-itens td:nth-child(4) { width: 12%; }
+          #proposta-print .tabela-itens th:nth-child(5),
+          #proposta-print .tabela-itens td:nth-child(5) { width: 6%; }
+          #proposta-print .tabela-itens th:nth-child(6),
+          #proposta-print .tabela-itens td:nth-child(6) { width: 9%; }
+          #proposta-print .tabela-itens th:nth-child(7),
+          #proposta-print .tabela-itens td:nth-child(7) { width: 12%; }
+          #proposta-print .tabela-itens th:nth-child(8),
+          #proposta-print .tabela-itens td:nth-child(8) { width: 15%; }
+
+          /* Faixa de cabeçalho repetida */
           #proposta-print .print-running-header {
             display: block;
-            position: fixed;
-            top: 0; left: 0; right: 0;
-            height: 10mm;
             box-sizing: border-box;
-            padding: 2mm 0;
+            padding: 0 0 1.5mm;
+            margin-bottom: 3mm;
             background: white;
             border-bottom: 0.3mm solid #0e7c6b;
             font-size: 8pt;
@@ -3284,61 +3328,55 @@ function PropostaDetalhe() {
           }
           #proposta-print .print-running-header-meta { color: #374151; }
 
-          /* Rodapé com dados da empresa e numeração */
+          /* Faixa de rodapé repetida */
           #proposta-print .print-running-footer {
             display: block;
-            position: fixed;
-            bottom: 0; left: 0; right: 0;
-            height: 10mm;
             box-sizing: border-box;
-            padding: 2mm 0;
+            padding: 1.5mm 0 0;
+            margin-top: 3mm;
             background: white;
             border-top: 0.3mm solid #d1d5db;
             font-size: 7pt;
             color: #4b5563;
           }
-          #proposta-print .print-page-counter::after {
-            content: "Página " counter(page) " de " counter(pages);
-          }
 
-          /* Blocos inteiros e linhas não quebram entre páginas */
-          #proposta-print > div,
-          #proposta-print > table,
-          #proposta-print .print-block {
+          /* Blocos pequenos não quebram entre páginas */
+          #proposta-print .print-block,
+          #proposta-print > div {
             break-inside: avoid;
             page-break-inside: avoid;
           }
-          #proposta-print table,
-          #proposta-print thead,
-          #proposta-print tbody,
-          #proposta-print tr {
+          /* Tabelas longas PODEM quebrar (com cabeçalho repetido); a linha, não */
+          #proposta-print table { break-inside: auto; page-break-inside: auto; }
+          #proposta-print table tr,
+          #proposta-print table thead {
             break-inside: avoid;
             page-break-inside: avoid;
           }
+          /* Título nunca fica sozinho no fim da página */
           #proposta-print .print-title,
           #proposta-print .text-xs.uppercase {
             break-after: avoid;
             page-break-after: avoid;
           }
 
-          /* Cabeçalho da tabela de itens repete a cada quebra de página */
-          #proposta-print thead { display: table-header-group; }
-          #proposta-print tfoot { display: table-footer-group; }
+          /* Cabeçalho das tabelas repete a cada quebra de página */
+          #proposta-print table thead { display: table-header-group; }
 
           /* Verde institucional nos cabeçalhos e destaques + zebra */
-          #proposta-print thead tr,
+          #proposta-print table thead tr,
           #proposta-print tr.print-head-row {
             background: #0e7c6b !important;
             color: #ffffff !important;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
           }
-          #proposta-print thead th,
+          #proposta-print table thead th,
           #proposta-print tr.print-head-row th {
             color: #ffffff !important;
             border-color: #0e7c6b !important;
           }
-          #proposta-print tbody tr:nth-child(even) td {
+          #proposta-print table tbody tr:nth-child(even) td {
             background: #f3f4f6 !important;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
