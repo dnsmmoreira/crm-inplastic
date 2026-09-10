@@ -34,3 +34,10 @@
 - [x] Ao esgotar: para de tentar, descarta o pendente e recarrega só aquela coleção
 - [x] Aviso novo, sem "recarregue a página"
 - [x] Testes (sync-retry, sync-falhas) + typecheck
+
+## Contato duplicado — porta de entrada única (em curso)
+- [x] `resolverContatoEntrada`: casa telefone (DDD+8) e CNPJ contra carteira e leads ativos antes de criar lead
+- [x] Usar em WhatsApp, lead externo (OPA) e cadastro manual
+- [x] Nome/empresa só geram aviso de possível duplicidade
+- [x] Teste de aceitação com 1205330c / 97df561a
+- [ ] DIFAL/Inscrição Estadual: aguardando as 4 decisões fiscais do Denis

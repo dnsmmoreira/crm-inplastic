@@ -10,6 +10,7 @@ const CORS = {
 type LeadExternoBody = {
   telefone?: string;
   nome?: string;
+  cnpj?: string;
   empresa?: string;
   produto?: string;
   quantidade?: number | string;
@@ -120,11 +121,19 @@ export const Route = createFileRoute("/api/public/hooks/lead-externo")({
           }
         }
 
-        // 2) Lead
+        // 2) Lead — porta de entrada única (carteira → lead ativo → novo)
         let leadId = (existente?.lead_id as string | null) ?? null;
+        let donoDaEntrada: string | null = null;
         if (!leadId) {
-          const { leadExistenteDaCarteira } = await import("@/lib/carteira.server");
-          leadId = await leadExistenteDaCarteira(supabaseAdmin, telefone);
+          const { resolverContatoEntrada } = await import("@/lib/contato-entrada.server");
+          const entrada = await resolverContatoEntrada(supabaseAdmin, {
+            telefone,
+            cnpj: typeof body.cnpj === "string" ? body.cnpj : null,
+          });
+          if (entrada.acao !== "criar_lead") {
+            leadId = entrada.leadId ?? null;
+            donoDaEntrada = entrada.vendedorId ?? null;
+          }
         }
         if (!leadId) {
           const quantidade =
@@ -134,10 +143,21 @@ export const Route = createFileRoute("/api/public/hooks/lead-externo")({
                 ? body.quantidade
                 : undefined;
 
+          const empresa = body.empresa?.trim() || nomePlausivel(nome) || "A identificar";
+
           const notesLines: string[] = [];
           if (resumo) notesLines.push(resumo);
           if (body.cidade_uf) notesLines.push(`Cidade/UF: ${body.cidade_uf}`);
           if (body.protocolo_opa) notesLines.push(`Protocolo OPA: ${body.protocolo_opa}`);
+
+          // Nome parecido NÃO mescla nada: só deixa o aviso para um humano decidir.
+          const { avisoDuplicidadePorNome } = await import("@/lib/contato-entrada.server");
+          const parecido = await avisoDuplicidadePorNome(supabaseAdmin, empresa);
+          if (parecido) {
+            notesLines.push(
+              `⚠ Possível duplicidade: já existe o lead ativo "${parecido.company ?? "—"}" com nome parecido. Confira antes de trabalhar.`,
+            );
+          }
 
           // Tenta ligar o produto do texto livre a uma família do catálogo.
           const { resolverProdutoIdPorTexto } = await import("@/lib/produto-familia.server");
@@ -147,10 +167,11 @@ export const Route = createFileRoute("/api/public/hooks/lead-externo")({
             .from("leads")
             .insert({
               owner_id: null,
-              company: body.empresa?.trim() || nomePlausivel(nome) || "A identificar",
+              company: empresa,
               contact_name: nomePlausivel(nome) || "A identificar",
               phone: telefone,
               telefone_whatsapp: telefone,
+              cnpj: typeof body.cnpj === "string" ? body.cnpj : null,
               product: body.produto ?? null,
               product_id: produtoIdInferido,
               quantity: quantidade,
@@ -158,7 +179,7 @@ export const Route = createFileRoute("/api/public/hooks/lead-externo")({
               stage: "novo",
               origem: "whatsapp-opa",
               source: "OPA/Inplastic",
-              tags: ["WhatsApp", "OPA", "IA"],
+              tags: parecido ? ["WhatsApp", "OPA", "IA", "possivel_duplicidade"] : ["WhatsApp", "OPA", "IA"],
               notes: notesLines.join("\n"),
             })
             .select("id")
@@ -238,7 +259,21 @@ export const Route = createFileRoute("/api/public/hooks/lead-externo")({
           }
         }
 
-        // 4) Round-robin + notificação ao vendedor
+        // 4) Dono da carteira/lead ativo tem precedência sobre o rodízio.
+        if (donoDaEntrada) {
+          const upDono = await supabaseAdmin
+            .from("whatsapp_conversas")
+            .update({ atribuido_para: donoDaEntrada, updated_at: new Date().toISOString() })
+            .eq("id", conversaId)
+            .is("atribuido_para", null);
+          if (upDono.error) {
+            await registrarFalhaSegura("lead-externo.donoCarteira", upDono.error, {
+              conversa_id: conversaId,
+              lead_id: leadId,
+            });
+          }
+        }
+
         const { garantirResponsavelConversa } = await import("@/lib/xerife/handoff.server");
         const atribuicao = await garantirResponsavelConversa(supabaseAdmin, {
           conversaId,
