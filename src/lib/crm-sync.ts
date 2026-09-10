@@ -951,6 +951,9 @@ export function clearCrmState() {
   saveTimer = null;
   if (reloadTimer) clearTimeout(reloadTimer);
   reloadTimer = null;
+  if (retryTimer) clearTimeout(retryTimer);
+  retryTimer = null;
+  controleRetry.limparTudo();
   recargasPendentes.clear();
   detachRealtime();
   useCrm.setState({
