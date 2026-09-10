@@ -1051,6 +1051,13 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
             <div>
               <Label>Inscrição Estadual</Label>
               <Input value={form.inscricaoEstadual} onChange={(e) => setForm({ ...form, inscricaoEstadual: e.target.value })} />
+              {semInscricaoEstadual(form.inscricaoEstadual) &&
+                normalizarUf(form.uf) &&
+                normalizarUf(form.uf) !== UF_ORIGEM_DIFAL && (
+                  <p className="mt-1 text-xs font-medium text-amber-700">
+                    Sem inscrição estadual — DIFAL aplicado nas propostas deste contato.
+                  </p>
+                )}
             </div>
             <div>
               <Label>Inscrição Municipal</Label>
