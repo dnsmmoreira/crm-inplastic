@@ -143,10 +143,21 @@ export const Route = createFileRoute("/api/public/hooks/lead-externo")({
                 ? body.quantidade
                 : undefined;
 
+          const empresa = body.empresa?.trim() || nomePlausivel(nome) || "A identificar";
+
           const notesLines: string[] = [];
           if (resumo) notesLines.push(resumo);
           if (body.cidade_uf) notesLines.push(`Cidade/UF: ${body.cidade_uf}`);
           if (body.protocolo_opa) notesLines.push(`Protocolo OPA: ${body.protocolo_opa}`);
+
+          // Nome parecido NÃO mescla nada: só deixa o aviso para um humano decidir.
+          const { avisoDuplicidadePorNome } = await import("@/lib/contato-entrada.server");
+          const parecido = await avisoDuplicidadePorNome(supabaseAdmin, empresa);
+          if (parecido) {
+            notesLines.push(
+              `⚠ Possível duplicidade: já existe o lead ativo "${parecido.company ?? "—"}" com nome parecido. Confira antes de trabalhar.`,
+            );
+          }
 
           // Tenta ligar o produto do texto livre a uma família do catálogo.
           const { resolverProdutoIdPorTexto } = await import("@/lib/produto-familia.server");
@@ -156,10 +167,11 @@ export const Route = createFileRoute("/api/public/hooks/lead-externo")({
             .from("leads")
             .insert({
               owner_id: null,
-              company: body.empresa?.trim() || nomePlausivel(nome) || "A identificar",
+              company: empresa,
               contact_name: nomePlausivel(nome) || "A identificar",
               phone: telefone,
               telefone_whatsapp: telefone,
+              cnpj: typeof body.cnpj === "string" ? body.cnpj : null,
               product: body.produto ?? null,
               product_id: produtoIdInferido,
               quantity: quantidade,
@@ -167,7 +179,7 @@ export const Route = createFileRoute("/api/public/hooks/lead-externo")({
               stage: "novo",
               origem: "whatsapp-opa",
               source: "OPA/Inplastic",
-              tags: ["WhatsApp", "OPA", "IA"],
+              tags: parecido ? ["WhatsApp", "OPA", "IA", "possivel_duplicidade"] : ["WhatsApp", "OPA", "IA"],
               notes: notesLines.join("\n"),
             })
             .select("id")
