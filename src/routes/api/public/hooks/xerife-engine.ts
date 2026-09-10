@@ -584,9 +584,12 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
 
     // conversas com última msg cliente recente demais NÃO qualificam;
     // buscamos leads onde ultima_msg_cliente_at é antiga o suficiente e ultima_msg_vendedor_at é anterior a ela
+    const { SQL_STAGES_ENCERRADOS } = await import("@/lib/xerife/lead-elegivel");
     const { data: leads } = await sb
       .from("leads")
       .select("id, company, owner_id, ultima_msg_cliente_at, ultima_msg_vendedor_at")
+      // Lead ganho/perdido não tem próximo ato comercial: nunca é cobrado.
+      .not("stage", "in", SQL_STAGES_ENCERRADOS)
       .not("ultima_msg_cliente_at", "is", null)
       .lt("ultima_msg_cliente_at", thresholdIso)
       .not("owner_id", "is", null)
