@@ -861,7 +861,8 @@ function montarTasks(taskRows: TaskRow[], ownerOf: (leadId: string) => string | 
   const tasks = taskRows.map(rowToTask);
   tasks.forEach((t) => {
     const owner = ownerOf(t.leadId);
-    snapshot.tasks.set(t.id, JSON.stringify(taskToInsert(t, owner)));
+    void owner;
+    snapshot.tasks.set(t.id, JSON.stringify(taskToUpdate(t)));
   });
   return tasks;
 }
@@ -1077,8 +1078,7 @@ function converterRow(
       }
       case "tasks": {
         const task = rowToTask(row as unknown as TaskRow);
-        const owner = state.leads.find((l) => l.id === task.leadId)?.ownerId ?? null;
-        return { item: task, json: JSON.stringify(taskToInsert(task, owner)) };
+        return { item: task, json: JSON.stringify(taskToUpdate(task)) };
       }
       case "proposals": {
         const anterior = state.proposals.find((p) => p.id === row["id"]);
