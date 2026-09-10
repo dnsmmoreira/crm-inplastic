@@ -109,6 +109,8 @@ export function montarRepresentantes(
       excluido: !!b.deletedAt,
       participaArena: b.participaArena === true,
       tipoComercial: b.tipoComercial,
+      comissaoPct: b.comissaoPct,
+      regiao: b.regiao,
       carteira: carteira.get(b.id) ?? 0,
       leadsAbertos: abertos.get(b.id) ?? 0,
       propostasMes: propostas.get(b.id) ?? 0,
