@@ -49,6 +49,16 @@ export function reportarFalhaSync(
   if (agora - anterior < INTERVALO_MS) return;
   ultimoAviso.set(colecao, agora);
 
+  // Erro permanente (RLS/FK/check): o motor já limpou o pendente e está
+  // recarregando do servidor — o usuário não precisa recarregar a página.
+  if (extra?.["permanente"] === true) {
+    toast.error(
+      `Uma alteração em ${rotuloColecao(colecao)} foi recusada pelo servidor (o registro mudou de dono ou não existe mais). Atualizei a tela com os dados do servidor — confira e refaça se precisar.`,
+      { duration: 12_000 },
+    );
+    return;
+  }
+
   toast.error(
     `Falha ao salvar ${rotuloColecao(colecao)} — suas últimas alterações podem não ter sido gravadas. Recarregue a página.`,
     { duration: Infinity },

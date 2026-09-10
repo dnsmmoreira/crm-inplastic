@@ -1770,9 +1770,18 @@ async function syncCollection<T>(opts: {
     if (!error) {
       toUpsert.forEach((item) => snap.set(toKey(item), toJson(item)));
     } else {
-      // Snapshot intocado de propósito: o registro segue "sujo" e é reenviado
-      // no próximo ciclo de save.
-      if (collectionName) marcarParaReprocessar(collectionName);
+      const permanente = ehErroPermanente(error);
+      if (permanente) {
+        // Erro que retry nunca resolve (RLS, FK, check): limpar o dirty-tracking
+        // — senão o mesmo erro volta a cada ciclo — e trazer a verdade do
+        // servidor por cima do cache velho.
+        toUpsert.forEach((item) => snap.set(toKey(item), toJson(item)));
+        recarregarAposErroPermanente(collectionName);
+      } else {
+        // Snapshot intocado de propósito: o registro segue "sujo" e é reenviado
+        // no próximo ciclo de save.
+        if (collectionName) marcarParaReprocessar(collectionName);
+      }
       if (ehErroColunaInexistente(error)) {
         bloquearPorBundleDesatualizado(
           `A gravação de ${collectionName ?? "dados"} falhou porque esta aba usa colunas que não existem mais no banco.`,
@@ -1780,6 +1789,7 @@ async function syncCollection<T>(opts: {
       }
       reportarFalhaSync(collectionName ?? "collection", "upsert", error, {
         registros: toUpsert.length,
+        permanente,
       });
     }
   }
@@ -1789,8 +1799,38 @@ async function syncCollection<T>(opts: {
       toDelete.forEach((k) => snap.delete(k));
       onDeleted?.(toDelete);
     } else {
-      if (collectionName) marcarParaReprocessar(collectionName);
-      reportarFalhaSync(collectionName ?? "collection", "delete", error, { ids: toDelete });
+      const permanente = ehErroPermanente(error);
+      if (permanente) {
+        toDelete.forEach((k) => snap.delete(k));
+        onDeleted?.(toDelete);
+        recarregarAposErroPermanente(collectionName);
+      } else if (collectionName) {
+        marcarParaReprocessar(collectionName);
+      }
+      reportarFalhaSync(collectionName ?? "collection", "delete", error, {
+        ids: toDelete,
+        permanente,
+      });
     }
   }
+}
+
+/**
+ * Coleções a recarregar quando uma gravação é recusada em definitivo.
+ * `tasks` depende do dono do lead, então lead e tarefa voltam juntos.
+ */
+const RECARGA_APOS_ERRO: Record<string, ColecaoRealtime[]> = {
+  tasks: ["tasks", "leads"],
+  leads: ["leads", "tasks"],
+  proposals: ["proposals", "leads"],
+  proposalItems: ["proposals"],
+  proposalParcelas: ["proposals"],
+  products: ["products"],
+  emitters: ["emitters"],
+  paymentTerms: ["paymentTerms"],
+};
+
+function recarregarAposErroPermanente(collectionName?: string) {
+  const alvos = RECARGA_APOS_ERRO[collectionName ?? ""] ?? [];
+  alvos.forEach((c) => agendarRecarga(c));
 }
