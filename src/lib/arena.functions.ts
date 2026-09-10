@@ -18,6 +18,9 @@ export type ArenaParticipacao = {
   carenciaMeses: number;
   faseRampa: number;
   observacao: string | null;
+  /** Percentual de comissão próprio da pessoa (vendedor interno ou representante). */
+  comissaoPct: number | null;
+  regiao: string | null;
 };
 
 export const ARENA_PARTICIPACAO_PADRAO: ArenaParticipacao = {
@@ -27,7 +30,10 @@ export const ARENA_PARTICIPACAO_PADRAO: ArenaParticipacao = {
   carenciaMeses: 6,
   faseRampa: 0,
   observacao: null,
+  comissaoPct: null,
+  regiao: null,
 };
+
 
 /* ------------------------------------------------------------------ */
 
