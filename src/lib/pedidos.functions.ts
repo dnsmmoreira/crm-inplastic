@@ -602,11 +602,21 @@ export const updatePedidoStage = createServerFn({ method: "POST" })
     );
 
     let assumiu = false;
-    if ((exigeResponsavel(from) || exigeResponsavel(to)) && !current.responsavel_atual_id) {
+    // Admin (diretoria/administrativo) aprova e movimenta sem precisar assumir:
+    // aprovação financeira não é execução operacional.
+    const ehAdmin = await isAdminUser(sb, context.userId);
+    if (
+      !ehAdmin &&
+      (exigeResponsavel(from) || exigeResponsavel(to)) &&
+      !current.responsavel_atual_id
+    ) {
       if (!data.assumir) {
         return { ok: false, reason: "sem_responsavel", message: MSG_SEM_RESPONSAVEL };
       }
-      const r = await assumirPedidoImpl(sb, context.userId, data.pedido_id);
+      // O pedido ainda está na etapa de origem (ex.: Análise Financeira), que
+      // por si só não é assumível — quem autoriza o "assumir" aqui é a etapa
+      // de destino do movimento.
+      const r = await assumirPedidoImpl(sb, context.userId, data.pedido_id, false, to);
       if (!r.ok) {
         return {
           ok: false,
