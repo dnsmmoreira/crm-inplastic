@@ -1,0 +1,58 @@
+/* Estilo compartilhado dos manuais por função — CRM Inplastic/TAOPLAST */
+:root{
+  --azul:#1B5FBF; --azul-escuro:#12315C; --papel:#F2F7FC;
+  --amarelo:#FFC833; --verde:#2FA84F; --vermelho:#E4553F;
+  --cinza:#5B77A0; --borda:#DCE9F7; --branco:#fff;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Nunito',system-ui,sans-serif;background:var(--papel);color:var(--azul-escuro);line-height:1.65;font-size:17px}
+h1,h2,h3{font-family:'Baloo 2','Nunito',cursive;line-height:1.2}
+a{color:var(--azul)}
+.page{max-width:900px;margin:0 auto;padding:0 18px}
+#progresso{position:fixed;top:0;left:0;height:6px;background:var(--amarelo);width:0;z-index:99;border-radius:0 4px 4px 0}
+
+header.capa{background:linear-gradient(180deg,#12315C 0%,#1B5FBF 60%,#2E77D8 100%);color:#fff;padding:48px 20px 40px;text-align:center}
+header.capa .eyebrow{display:inline-block;background:var(--amarelo);color:var(--azul-escuro);font-weight:800;font-size:13px;letter-spacing:.12em;padding:6px 16px;border-radius:999px;text-transform:uppercase}
+header.capa h1{font-size:clamp(28px,5vw,46px);font-weight:800;margin:16px auto 8px;max-width:720px}
+header.capa p{font-size:18px;opacity:.93;max-width:620px;margin:0 auto}
+header.capa .voltar{display:inline-block;margin-top:18px;color:#fff;text-decoration:none;font-weight:700;border:2px solid rgba(255,255,255,.5);border-radius:999px;padding:7px 18px;font-size:14px}
+
+nav.indice{background:#fff;border:3px solid var(--borda);border-radius:22px;padding:20px 22px;margin:28px 0}
+nav.indice h2{font-size:20px;margin-bottom:10px}
+nav.indice ol{margin-left:20px}
+nav.indice li{margin:4px 0}
+
+section.chapter{background:#fff;border-radius:24px;padding:28px 26px;margin:26px 0;box-shadow:0 6px 0 rgba(18,49,92,.08);border:3px solid var(--borda)}
+section.chapter h2{font-size:clamp(23px,3.4vw,30px);color:var(--azul);margin-bottom:6px}
+section.chapter h2 small{display:block;font-family:'Nunito';font-size:14px;font-weight:700;color:var(--cinza);letter-spacing:.04em;text-transform:uppercase;margin-top:4px}
+section.chapter h3{font-size:20px;margin:22px 0 6px}
+section.chapter p{margin:10px 0}
+section.chapter ul,section.chapter ol{margin:10px 0 10px 24px}
+section.chapter li{margin:6px 0}
+code{background:#EAF2FD;border-radius:6px;padding:1px 6px;font-size:.92em}
+
+.passos{list-style:none;margin-left:0;counter-reset:passo}
+.passos li{counter-increment:passo;position:relative;padding-left:44px;margin:12px 0}
+.passos li::before{content:counter(passo);position:absolute;left:0;top:-2px;width:30px;height:30px;border-radius:50%;background:var(--azul);color:#fff;font-family:'Baloo 2';font-weight:800;display:flex;align-items:center;justify-content:center}
+
+.box{border-radius:16px;padding:14px 18px;margin:16px 0;border-left:8px solid var(--azul);background:#EAF2FD}
+.box.alerta{border-color:var(--vermelho);background:#FDEDEA}
+.box.ok{border-color:var(--verde);background:#E9F7EE}
+.box.dica{border-color:var(--amarelo);background:#FFF7E2}
+.box b{display:block;margin-bottom:2px}
+
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:15.5px}
+th,td{border:2px solid var(--borda);padding:9px 11px;text-align:left;vertical-align:top}
+th{background:#EAF2FD;font-family:'Baloo 2';font-size:16px}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:18px;margin:26px 0}
+.card{display:block;background:#fff;border:3px solid var(--borda);border-radius:22px;padding:22px;text-decoration:none;color:inherit;box-shadow:0 6px 0 rgba(18,49,92,.08);transition:transform .15s}
+.card:hover{transform:translateY(-4px)}
+.card .emoji{font-size:34px}
+.card h3{font-size:22px;color:var(--azul);margin:8px 0 4px}
+.card p{font-size:15px;color:var(--cinza)}
+.card .quem{display:inline-block;margin-top:10px;background:#EAF2FD;border-radius:999px;padding:4px 12px;font-size:13px;font-weight:700}
+
+footer.rodape{text-align:center;color:var(--cinza);font-size:14px;padding:36px 18px 60px}
+@media print{#progresso{display:none}section.chapter{box-shadow:none;break-inside:avoid}}
