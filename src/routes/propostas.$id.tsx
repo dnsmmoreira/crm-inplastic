@@ -3120,6 +3120,14 @@ function PropostaDetalhe() {
                   {proposal.transport.freightPayer} · {formatBRL(proposal.transport.freightValue)}
                 </td>
               </tr>
+              {difal.aplica && (
+                <tr>
+                  <td className="border p-1.5 bg-muted/40 font-medium">DIFAL</td>
+                  <td className="border p-1.5" colSpan={3}>
+                    {LABEL_DIFAL} — destino {difal.uf} · {formatBRL(difal.valor)}
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
