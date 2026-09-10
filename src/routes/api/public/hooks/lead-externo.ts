@@ -259,7 +259,21 @@ export const Route = createFileRoute("/api/public/hooks/lead-externo")({
           }
         }
 
-        // 4) Round-robin + notificação ao vendedor
+        // 4) Dono da carteira/lead ativo tem precedência sobre o rodízio.
+        if (donoDaEntrada) {
+          const upDono = await supabaseAdmin
+            .from("whatsapp_conversas")
+            .update({ atribuido_para: donoDaEntrada, updated_at: new Date().toISOString() })
+            .eq("id", conversaId)
+            .is("atribuido_para", null);
+          if (upDono.error) {
+            await registrarFalhaSegura("lead-externo.donoCarteira", upDono.error, {
+              conversa_id: conversaId,
+              lead_id: leadId,
+            });
+          }
+        }
+
         const { garantirResponsavelConversa } = await import("@/lib/xerife/handoff.server");
         const atribuicao = await garantirResponsavelConversa(supabaseAdmin, {
           conversaId,
