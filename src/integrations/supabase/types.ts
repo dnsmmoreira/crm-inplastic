@@ -3518,6 +3518,10 @@ export type Database = {
         Args: { _contexto: Json; _mensagem: string; _origem: string }
         Returns: undefined
       }
+      mover_etapa_lead: {
+        Args: { _lead_id: string; _origem?: string; _stage: string }
+        Returns: Json
+      }
       next_pedido_number: { Args: { _year: number }; Returns: string }
       next_proposta_number: { Args: { _year: number }; Returns: string }
       placar_vendedores: {
@@ -3556,6 +3560,10 @@ export type Database = {
       pode_ver_documento: {
         Args: { _entidade_id: string; _tipo: string }
         Returns: boolean
+      }
+      reagendar_lead: {
+        Args: { _lead_id: string; _motivo?: string; _quando: string }
+        Returns: Json
       }
       snapshot_metas_mes: {
         Args: { _ano: number; _mes: number }

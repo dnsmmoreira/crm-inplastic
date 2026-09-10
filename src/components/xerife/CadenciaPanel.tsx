@@ -85,7 +85,7 @@ export function CadenciaPanel({
         <Kpi label="Tarefas atrasadas" value={t.tarefas_atrasadas} tone="warn" icon={<AlertTriangle className="h-4 w-4" />} />
         <Kpi label="Escalonadas" value={t.tarefas_escalonadas} tone="danger" icon={<Flame className="h-4 w-4" />} />
         <Kpi label="Carteira em risco" value={t.carteira_risco} tone="warn" icon={<Users className="h-4 w-4" />} />
-        <Kpi label="Leads esfriando" value={t.leads_esfriando} tone="warn" icon={<Snowflake className="h-4 w-4" />} />
+        <Kpi label="Esfriando (alerta automático)" value={t.leads_esfriando} tone="warn" icon={<Snowflake className="h-4 w-4" />} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -203,8 +203,12 @@ export function CadenciaPanel({
         <section className="rounded-xl border bg-card p-5 space-y-3">
           <header className="flex items-center gap-2">
             <Snowflake className="h-4 w-4 text-primary" />
-            <h3 className="font-medium">Leads esfriando por etapa</h3>
+            <h3 className="font-medium">Esfriando por etapa (alerta automático do Xerife)</h3>
           </header>
+          <p className="text-xs text-muted-foreground">
+            Marcado pelo próprio Xerife, não é pausa feita pelo vendedor. Para parar a cobrança,
+            feche o lead (ganho/perdido) ou use "Reagendar cobrança" na ficha.
+          </p>
           {data.leadsEsfriando.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4">Nenhum lead parado além do limite.</p>
           ) : (

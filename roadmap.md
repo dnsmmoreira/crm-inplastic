@@ -41,3 +41,10 @@
 - [x] Nome/empresa só geram aviso de possível duplicidade
 - [x] Teste de aceitação com 1205330c / 97df561a
 - [ ] DIFAL/Inscrição Estadual: aguardando as 4 decisões fiscais do Denis
+
+## Etapa do lead volta sozinha (em curso)
+- [x] `stage` e `next_followup` fora do salvamento genérico de lead existente
+- [x] RPC `mover_etapa_lead` + server fn `moverEtapaLead` (caminho único de etapa)
+- [x] RPC `reagendar_lead` + bloco "Reagendar cobrança" na ficha
+- [x] Trava `trg_leads_stage_lock` (lead ganho/perdido não sai por save genérico)
+- [x] Rótulo "esfriando" como alerta automático

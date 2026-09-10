@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { moverParaGanho } from "@/lib/pedidos-gerar.functions";
 import { registrarPerdaLead } from "@/lib/leads-perda.functions";
+import { moverEtapaLead } from "@/lib/leads-etapa.functions";
 import { useCrm, type StageId } from "@/lib/crm-store";
 
 /**
@@ -29,6 +30,7 @@ export function useMoveLeadStage() {
   const addInteraction = useCrm((s) => s.addInteraction);
   const mover = useServerFn(moverParaGanho);
   const registrarPerda = useServerFn(registrarPerdaLead);
+  const moverEtapa = useServerFn(moverEtapaLead);
 
   return useCallback(
     async (
@@ -62,6 +64,16 @@ export function useMoveLeadStage() {
           observacao ? ` · ${observacao}` : ""
         }`;
         const prevNotes = lead?.notes ?? "";
+        // A etapa vai PRIMEIRO ao servidor: o estado local só muda depois de
+        // confirmada a gravação (senão a tela mostra fechado e o banco não).
+        try {
+          await moverEtapa({ data: { leadId, stage: "perdido", origem: "tela" } });
+        } catch (e) {
+          toast.error("Não foi possível marcar como Perdido", {
+            description: e instanceof Error ? e.message : String(e),
+          });
+          return { ok: false as const, reason: "servidor" as const };
+        }
         updateLead(leadId, {
           notes: prevNotes ? `${line}\n${prevNotes}` : line,
         });
@@ -89,6 +101,14 @@ export function useMoveLeadStage() {
       }
 
       if (stage !== "ganho") {
+        try {
+          await moverEtapa({ data: { leadId, stage, origem: "tela" } });
+        } catch (e) {
+          toast.error("Não foi possível mudar a etapa", {
+            description: e instanceof Error ? e.message : String(e),
+          });
+          return { ok: false as const, reason: "servidor" as const };
+        }
         moveLead(leadId, stage);
         return { ok: true as const };
       }
@@ -127,6 +147,6 @@ export function useMoveLeadStage() {
         return { ok: false as const };
       }
     },
-    [mover, moveLead, updateLead, addInteraction, registrarPerda],
+    [mover, moveLead, updateLead, addInteraction, registrarPerda, moverEtapa],
   );
 }
