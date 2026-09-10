@@ -69,6 +69,8 @@ function RepresentantesPage() {
   const [erro, setErro] = useState<string | null>(null);
   const [editando, setEditando] = useState<RepresentanteLinha | null>(null);
   const [participa, setParticipa] = useState(false);
+  const [comissao, setComissao] = useState("");
+  const [regiao, setRegiao] = useState("");
   const [salvando, setSalvando] = useState(false);
 
   const load = useCallback(async () => {
