@@ -202,6 +202,12 @@ function Conteudo({ p }: { p: PropostaPublica }) {
             valor={`+ ${brl(p.totais.acrescimo_valor)}`}
           />
         )}
+        {p.difal?.aplica && (
+          <Linha
+            label="DIFAL (destinatário sem inscrição estadual)"
+            valor={`+ ${brl(p.totais.difal_valor)}`}
+          />
+        )}
         {p.frete.valor > 0 && <Linha label="Frete" valor={brl(p.frete.valor)} />}
         <div className="flex justify-between border-t pt-1 font-bold text-slate-900">
           <span>Total</span>
@@ -298,9 +304,9 @@ function Conteudo({ p }: { p: PropostaPublica }) {
 
 function Linha({ label, valor }: { label: string; valor: string }) {
   return (
-    <div className="flex justify-between text-slate-700">
-      <span>{label}</span>
-      <span className="font-medium">{valor}</span>
+    <div className="flex justify-between gap-2 text-slate-700">
+      <span className="break-words">{label}</span>
+      <span className="whitespace-nowrap font-medium">{valor}</span>
     </div>
   );
 }
