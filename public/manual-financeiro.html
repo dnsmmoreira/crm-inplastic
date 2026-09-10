@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manual do Financeiro — CRM</title>
+<meta name="description" content="Manual do financeiro: análise de pedido, aprovação de crédito, pagamento, faturamento e cobrança.">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/manual-estilo.css">
+</head>
+<body>
+<div id="progresso"></div>
+
+<header class="capa">
+  <span class="eyebrow">Manual por função</span>
+  <h1>💳 Financeiro</h1>
+  <p>Você decide se o pedido entra. Este manual mostra onde olhar, o que aprovar e o que registrar.</p>
+  <a class="voltar" href="/manuais.html">← todos os manuais</a>
+</header>
+
+<div class="page">
+  <nav class="indice">
+    <h2>O que tem aqui</h2>
+    <ol>
+      <li><a href="#dia1">Seu primeiro dia</a></li>
+      <li><a href="#rotina">Sua rotina</a></li>
+      <li><a href="#analise">Análise financeira do pedido</a></li>
+      <li><a href="#pagamento">Pagamento e faturamento</a></li>
+      <li><a href="#condicoes">Condições comerciais e descontos</a></li>
+      <li><a href="#seacontecer">E se acontecer…</a></li>
+    </ol>
+  </nav>
+
+  <section class="chapter" id="dia1">
+    <h2>Seu primeiro dia<small>Comece por aqui</small></h2>
+    <ol class="passos">
+      <li>Entre com o seu e-mail e troque a senha.</li>
+      <li>Abra <b>Negócios → Pedidos</b> e olhe a primeira coluna: <b>Análise Financeira</b>. É a sua fila.</li>
+      <li>Abra <b>Negócios → Condições Comerciais</b> para conhecer prazos e formas de pagamento aceitos.</li>
+      <li>Abra <b>Empresa → Relatórios</b> para o acompanhamento de pedidos em aberto.</li>
+    </ol>
+    <div class="box"><b>Seu papel em uma frase</b>Nenhum pedido produz sem decisão financeira registrada — aprovada, reprovada ou aguardando pagamento.</div>
+  </section>
+
+  <section class="chapter" id="rotina">
+    <h2>Sua rotina<small>Duas passadas por dia bastam</small></h2>
+    <ul>
+      <li><b>Manhã</b>: limpar a coluna Análise Financeira. Cada pedido sai dali aprovado, reprovado ou aguardando pagamento.</li>
+      <li><b>Durante o dia</b>: dar baixa em comprovantes recebidos e liberar o que já pagou.</li>
+      <li><b>Fim do dia</b>: conferir Aguardando Pagamento — quem está lá há muitos dias precisa de cobrança ou cancelamento.</li>
+    </ul>
+  </section>
+
+  <section class="chapter" id="analise">
+    <h2>Análise financeira do pedido<small>O que olhar antes de decidir</small></h2>
+    <ol class="passos">
+      <li>Abra o card na coluna <b>Análise Financeira</b>.</li>
+      <li>Confira cliente e CNPJ, histórico de compras e se há pendência anterior.</li>
+      <li>Confira valor, condição de pagamento e parcelas propostas.</li>
+      <li>Confira a margem do pedido (o sistema mostra o cálculo; margem abaixo do piso exige aprovação).</li>
+      <li>Decida:
+        <ul>
+          <li><b>Aprovar</b> → o pedido vai para Liberado (ou Aguardando Pagamento, conforme a condição).</li>
+          <li><b>Aguardando pagamento</b> → registre o que está sendo esperado.</li>
+          <li><b>Reprovar</b> → escolha o motivo. O pedido vai para Reprovado Financeiro e o vendedor é avisado.</li>
+        </ul>
+      </li>
+    </ol>
+    <div class="box alerta"><b>Sempre com motivo</b>Reprovar e cancelar exigem justificativa escrita. Ela fica no histórico do pedido, com o seu nome e a data.</div>
+  </section>
+
+  <section class="chapter" id="pagamento">
+    <h2>Pagamento e faturamento<small>Da entrada do dinheiro à nota</small></h2>
+    <ul>
+      <li><b>Comprovante recebido</b>: registre no pedido e mova para Liberado.</li>
+      <li><b>Parcelamento</b>: as parcelas ficam gravadas no pedido, com vencimento.</li>
+      <li><b>Cartão</b>: use a simulação disponível na proposta para conferir taxas antes de aprovar.</li>
+      <li><b>Faturamento</b>: a nota é registrada quando o pedido passa para Faturado / Em Rota; dados fiscais incompletos travam essa etapa (veja Pendências de cadastro).</li>
+    </ul>
+  </section>
+
+  <section class="chapter" id="condicoes">
+    <h2>Condições comerciais e descontos<small>O que é regra e o que é exceção</small></h2>
+    <ul>
+      <li><b>Condições Comerciais</b> guarda prazos e formas aceitas. Alterar ali muda o que o time pode oferecer.</li>
+      <li>Preço abaixo do piso ou prazo fora do padrão vira <b>aprovação extraordinária</b>: fica registrada com quem pediu, quem aprovou e por quê.</li>
+      <li>Nada é decidido “no combinado”: se não está no sistema, não vale.</li>
+    </ul>
+  </section>
+
+  <section class="chapter" id="seacontecer">
+    <h2>E se acontecer…<small>Situações comuns</small></h2>
+    <h3>O cliente pagou parcial</h3><p>Registre o valor recebido no pedido e mantenha em Aguardando Pagamento até completar, ou aprove com justificativa.</p>
+    <h3>Aprovei por engano</h3><p>Use o cancelamento/devolução no pedido com motivo. O histórico guarda as duas ações — corrigir é melhor do que disfarçar.</p>
+    <h3>O vendedor está pressionando por prazo maior</h3><p>Peça o pedido de aprovação extraordinária pelo sistema. Assim a decisão fica registrada e a margem entra na conta.</p>
+    <h3>Não consigo faturar</h3><p>Provavelmente falta dado fiscal do cliente. Veja <b>Empresa → Pendências de cadastro</b>.</p>
+    <h3>Preciso de uma visão do mês</h3><p><b>Empresa → Relatórios</b> traz pedidos em aberto, propostas e o processo completo por período.</p>
+  </section>
+</div>
+
+<footer class="rodape">Manual do Financeiro · <a href="/manuais.html">todos os manuais</a></footer>
+<script>document.addEventListener('scroll',function(){var h=document.documentElement;document.getElementById('progresso').style.width=(h.scrollTop/((h.scrollHeight-h.clientHeight)||1)*100)+'%';});</script>
+</body>
+</html>

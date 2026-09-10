@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manual do Assistente Comercial — CRM</title>
+<meta name="description" content="Manual do assistente comercial: cadastros, pedidos, romaneios, entregas e apoio ao time de vendas.">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/manual-estilo.css">
+</head>
+<body>
+<div id="progresso"></div>
+
+<header class="capa">
+  <span class="eyebrow">Manual por função</span>
+  <h1>🗂️ Assistente Comercial</h1>
+  <p>Você é a ponte entre a venda e a entrega. Cadastro certo, pedido andando e cliente informado.</p>
+  <a class="voltar" href="/manuais.html">← todos os manuais</a>
+</header>
+
+<div class="page">
+  <nav class="indice">
+    <h2>O que tem aqui</h2>
+    <ol>
+      <li><a href="#dia1">Seu primeiro dia</a></li>
+      <li><a href="#rotina">Sua rotina</a></li>
+      <li><a href="#telas">Suas telas</a></li>
+      <li><a href="#pedidos">O caminho do pedido, etapa por etapa</a></li>
+      <li><a href="#passo">Passo a passo</a></li>
+      <li><a href="#seacontecer">E se acontecer…</a></li>
+    </ol>
+  </nav>
+
+  <section class="chapter" id="dia1">
+    <h2>Seu primeiro dia<small>Comece por aqui</small></h2>
+    <ol class="passos">
+      <li>Entre com o seu e-mail e troque a senha.</li>
+      <li>Abra <b>Meu Dia → Minha Agenda</b>: é a sua lista de pendências do dia.</li>
+      <li>Abra <b>Negócios → Pedidos</b>: é o quadro onde você passa a maior parte do tempo.</li>
+      <li>Abra <b>Empresa → Pendências de cadastro</b>: cadastro incompleto trava faturamento.</li>
+    </ol>
+    <div class="box"><b>Seu papel em uma frase</b>Garantir que nenhum pedido pare numa coluna sem alguém responsável e sem próxima data.</div>
+  </section>
+
+  <section class="chapter" id="rotina">
+    <h2>Sua rotina<small>Manhã, tarde e fechamento</small></h2>
+    <h3>Manhã</h3>
+    <ul>
+      <li>Pendências de cadastro: complete CNPJ, endereço de entrega, contato e dados fiscais.</li>
+      <li>Pedidos em <b>Liberado</b> e <b>Em Produção</b>: confira se cada um tem responsável e previsão.</li>
+      <li>Tarefas atrasadas da sua agenda.</li>
+    </ul>
+    <h3>Tarde</h3>
+    <ul>
+      <li>Coletas e entregas do dia: emita/confira romaneio e avise o vendedor.</li>
+      <li>Registre ocorrências (avaria, recusa, reentrega) no próprio pedido.</li>
+    </ul>
+    <h3>Fim do dia</h3>
+    <ul>
+      <li>Nenhum pedido com data de entrega vencida sem nova data registrada.</li>
+      <li>Nenhuma tarefa do dia em aberto sem reagendamento com motivo.</li>
+    </ul>
+  </section>
+
+  <section class="chapter" id="telas">
+    <h2>Suas telas<small>Onde fica cada coisa</small></h2>
+    <table>
+      <tr><th>Tela</th><th>Para que serve</th></tr>
+      <tr><td>Pedidos (Funil Operacional)</td><td>O quadro do pedido do financeiro à entrega</td></tr>
+      <tr><td>Pendências de cadastro</td><td>Tudo que falta preencher para faturar</td></tr>
+      <tr><td>Clientes / Contatos / Empresas</td><td>Dados cadastrais e endereços</td></tr>
+      <tr><td>Produtos / Estoque</td><td>O que existe e o que tem disponível</td></tr>
+      <tr><td>Transportadoras</td><td>Quem leva e como cobra</td></tr>
+      <tr><td>Propostas</td><td>Consulta do que originou o pedido</td></tr>
+      <tr><td>Minha Agenda / Tarefas</td><td>Suas pendências com prazo</td></tr>
+      <tr><td>Relatórios</td><td>Pedidos em aberto e acompanhamento do processo</td></tr>
+    </table>
+  </section>
+
+  <section class="chapter" id="pedidos">
+    <h2>O caminho do pedido<small>As colunas do quadro, na ordem</small></h2>
+    <table>
+      <tr><th>Etapa</th><th>O que significa</th><th>Quem age</th></tr>
+      <tr><td>Análise Financeira</td><td>Crédito e condição sendo avaliados</td><td>Financeiro</td></tr>
+      <tr><td>Aguardando Pagamento</td><td>Esperando o cliente pagar/comprovar</td><td>Financeiro + vendedor</td></tr>
+      <tr><td>Liberado</td><td>Pode programar a produção</td><td>Operação / assistente</td></tr>
+      <tr><td>Em Produção</td><td>Fabricando</td><td>Operação</td></tr>
+      <tr><td>Coleta / Entrega</td><td>Pronto, aguardando sair</td><td>Assistente</td></tr>
+      <tr><td>Faturado / Em Rota</td><td>Nota emitida, mercadoria a caminho</td><td>Assistente</td></tr>
+      <tr><td>Pós-venda</td><td>Confirmar recebimento e satisfação</td><td>Vendedor / assistente</td></tr>
+    </table>
+    <p>Fora do quadro existem dois finais: <b>Reprovado Financeiro</b> e <b>Cancelado / Devolvido</b>. Ao cancelar, o sistema encerra sozinho as tarefas daquele pedido.</p>
+    <div class="box alerta"><b>Para avançar, o sistema pede dados</b>Sem responsável, sem previsão ou sem comprovação de entrega, o pedido não passa de etapa. Isso é proposital: evita pedido “no ar”.</div>
+  </section>
+
+  <section class="chapter" id="passo">
+    <h2>Passo a passo<small>O que você mais faz</small></h2>
+
+    <h3>Completar um cadastro pendente</h3>
+    <ol class="passos">
+      <li><b>Empresa → Pendências de cadastro</b> e escolha a linha.</li>
+      <li>Preencha o que está faltando (CNPJ, inscrição, endereço de entrega, contato, e-mail da nota).</li>
+      <li>Salve. A pendência some da lista sozinha.</li>
+    </ol>
+
+    <h3>Assumir e mover um pedido</h3>
+    <ol class="passos">
+      <li>Abra <b>Pedidos</b> e clique no card.</li>
+      <li>Clique em assumir (você vira responsável nas etapas Liberado, Em Produção e Coleta/Entrega).</li>
+      <li>Preencha a previsão pedida e mova para a próxima coluna.</li>
+    </ol>
+
+    <h3>Romaneio</h3>
+    <ol class="passos">
+      <li>No pedido, abra o bloco de romaneios.</li>
+      <li>Gere o romaneio de carga/entrega e confira quantidades.</li>
+      <li>Imprima ou envie ao motorista. Fica salvo no pedido.</li>
+    </ol>
+
+    <h3>Comprovar a entrega</h3>
+    <ol class="passos">
+      <li>No pedido, use o bloco de comprovação: anexe canhoto/foto e registre quem recebeu.</li>
+      <li>Só com a comprovação o pedido segue para pós-venda e depois fecha.</li>
+    </ol>
+
+    <h3>Registrar uma ocorrência</h3>
+    <p>Avaria, recusa, endereço errado, reentrega: registre no pedido com data e descrição. Isso vira histórico e alimenta os relatórios.</p>
+  </section>
+
+  <section class="chapter" id="seacontecer">
+    <h2>E se acontecer…<small>Situações comuns</small></h2>
+    <h3>O cliente ligou perguntando do pedido</h3><p>Busque pelo número (PED-ANO-0000) ou pelo nome da empresa em <b>Pedidos</b>. A coluna diz onde está e o histórico diz o que aconteceu.</p>
+    <h3>A data combinada não vai ser cumprida</h3><p>Conclua a tarefa de coleta/entrega com o desfecho “combinei a coleta/entrega para [data]” usando a data nova. Assim o vendedor e o cliente ficam com a mesma informação.</p>
+    <h3>Faltou produto no estoque</h3><p>Registre a ocorrência no pedido e avise o vendedor pelo próprio sistema. Não mova o pedido para frente sem produto.</p>
+    <h3>Pedido cancelado</h3><p>Use o cancelamento no próprio pedido, com motivo. As tarefas ligadas a ele se encerram automaticamente.</p>
+    <h3>Não consigo mover o card</h3><p>Falta algum dado obrigatório da etapa ou você não é o responsável. A mensagem na tela diz exatamente o que falta.</p>
+  </section>
+</div>
+
+<footer class="rodape">Manual do Assistente Comercial · <a href="/manuais.html">todos os manuais</a></footer>
+<script>document.addEventListener('scroll',function(){var h=document.documentElement;document.getElementById('progresso').style.width=(h.scrollTop/((h.scrollHeight-h.clientHeight)||1)*100)+'%';});</script>
+</body>
+</html>
