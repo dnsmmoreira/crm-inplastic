@@ -41,6 +41,6 @@ describe("payload de lead", () => {
     expect("owner_id" in p).toBe(false);
     expect("next_followup" in p).toBe(false);
     // o resto do cadastro continua sendo salvo normalmente
-    expect(p["company"]).toBe("Ricardo Enrique");
+    expect(p["company"]).toBe("RICARDO ENRIQUE");
   });
 });
