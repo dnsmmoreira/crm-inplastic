@@ -23,6 +23,9 @@ export type RepresentanteBase = {
   /** Vem de `arena_participacao` (null quando não há linha). */
   participaArena: boolean | null;
   tipoComercial: string | null;
+  /** Percentual de comissão da pessoa (null = ainda não definido). */
+  comissaoPct: number | null;
+  regiao: string | null;
 };
 
 export type LotesRepresentantes = {
