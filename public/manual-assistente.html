@@ -50,11 +50,13 @@
       <li>Pedidos em <b>Liberado</b> e <b>Em Produção</b>: confira se cada um tem responsável e previsão.</li>
       <li>Tarefas atrasadas da sua agenda.</li>
     </ul>
+    <div class="box xerife"><b>Aqui o Xerife</b>Cada etapa do pedido tem prazo: Análise Financeira <b>1 dia</b>, Aguardando Pagamento <b>5 dias</b>, Liberado/Programação <b>1 dia</b>, Pronto <b>2 dias</b>, Faturado/Em Rota <b>3 dias</b>. Estourou, ele cria tarefa para o responsável da etapa; seguindo parado, avisa a diretoria.</div>
     <h3>Tarde</h3>
     <ul>
       <li>Coletas e entregas do dia: emita/confira romaneio e avise o vendedor.</li>
       <li>Registre ocorrências (avaria, recusa, reentrega) no próprio pedido.</li>
     </ul>
+    <div class="box xerife"><b>Aqui o Xerife</b>Ocorrência aberta há <b>24 horas</b> sem tratativa vira tarefa. Entrega com data prevista vencida também: ele cobra a nova data todo dia até alguém registrar o desfecho “combinei a coleta/entrega para [data]”.</div>
     <h3>Fim do dia</h3>
     <ul>
       <li>Nenhum pedido com data de entrega vencida sem nova data registrada.</li>
@@ -91,6 +93,7 @@
     </table>
     <p>Fora do quadro existem dois finais: <b>Reprovado Financeiro</b> e <b>Cancelado / Devolvido</b>. Ao cancelar, o sistema encerra sozinho as tarefas daquele pedido.</p>
     <div class="box alerta"><b>Para avançar, o sistema pede dados</b>Sem responsável, sem previsão ou sem comprovação de entrega, o pedido não passa de etapa. Isso é proposital: evita pedido “no ar”.</div>
+    <div class="box xerife"><b>Aqui o Xerife</b>Ele vigia coluna por coluna: aprovação sem decisão há <b>24 horas</b> escala para quem administra o sistema; nota fiscal não emitida há <b>1 dia</b> vira tarefa; pedido em pós-venda sem comprovação de entrega há <b>48 horas</b> vira cobrança e, passados <b>5 dias úteis</b>, é escalado.</div>
   </section>
 
   <section class="chapter" id="passo">
@@ -109,6 +112,8 @@
       <li>Clique em assumir (você vira responsável nas etapas Liberado, Em Produção e Coleta/Entrega).</li>
       <li>Preencha a previsão pedida e mova para a próxima coluna.</li>
     </ol>
+    <div class="box xerife"><b>Aqui o Xerife</b>Ao assumir, as tarefas daquela etapa passam a ser suas. Enquanto o card não muda de coluna dentro do prazo da etapa, ele cobra você — e o pedido cancelado encerra sozinho todas as tarefas ligadas a ele.</div>
+    <div class="box placar"><b>No Placar</b>Cada tarefa concluída com desfecho vale <b>+1 ponto</b>; tarefa vencida sem desfecho é escalada ao gestor depois de <b>2 dias úteis</b>. Os pesos ficam em Empresa → Xerife e podem mudar.</div>
 
     <h3>Romaneio</h3>
     <ol class="passos">
@@ -122,6 +127,8 @@
       <li>No pedido, use o bloco de comprovação: anexe canhoto/foto e registre quem recebeu.</li>
       <li>Só com a comprovação o pedido segue para pós-venda e depois fecha.</li>
     </ol>
+    <div class="box xerife"><b>Aqui o Xerife</b>Sem comprovação, ele cobra a partir de <b>48 horas</b> em pós-venda e repete a cada 3 dias; com <b>5 dias úteis</b> sem comprovar, escala para a diretoria. Com a comprovação registrada, o pós-venda anda e o pedido pode fechar.</div>
+    <div class="box placar"><b>No Placar</b>O contato de pós-venda feito no prazo vale <b>+2 pontos</b> para o vendedor do pedido — comprovar rápido ajuda o time inteiro.</div>
 
     <h3>Registrar uma ocorrência</h3>
     <p>Avaria, recusa, endereço errado, reentrega: registre no pedido com data e descrição. Isso vira histórico e alimenta os relatórios.</p>
