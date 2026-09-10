@@ -93,6 +93,7 @@ export type MotivoEncerramento =
   | { causa: "lead_avancou"; stage: string }
   | { causa: "primeiro_contato" }
   | { causa: "cliente_respondido" }
+  | { causa: "contato_retomado" }
   | { causa: "entrega_comprovada" }
   | { causa: "comprovacao_dispensada" }
   | { causa: "ocorrencia_resolvida" }
