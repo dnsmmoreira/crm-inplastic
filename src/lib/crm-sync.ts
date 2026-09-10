@@ -422,6 +422,7 @@ function rowToTask(r: TaskRow): Task {
     cobrancaN: r.cobranca_n ?? 1,
     desfecho: r.desfecho ?? null,
     desfechoDetalhe: r.desfecho_detalhe ?? null,
+    ownerId: r.owner_id ?? null,
   };
 }
 function taskToInsert(t: Task, ownerId: string | null): TaskInsert {
@@ -432,7 +433,8 @@ function taskToInsert(t: Task, ownerId: string | null): TaskInsert {
     due_date: t.dueDate,
     // `done` é derivado de `status` pelo trigger — o front nunca escreve nele.
     status: t.status,
-    owner_id: ownerId,
+    // Dono já existente manda; o dono do lead só vale para tarefa nova.
+    owner_id: t.ownerId ?? ownerId,
   };
 }
 
