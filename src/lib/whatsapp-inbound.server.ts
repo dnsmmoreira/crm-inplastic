@@ -120,11 +120,12 @@ export async function processarEntradaWhatsapp(
         }
       }
     } else {
-      const { data: leadMatch } = await supabaseAdmin
-        .from("leads")
-        .select("id")
-        .eq("telefone_whatsapp", phone)
-        .maybeSingle();
+      // Porta de entrada única: casa telefone pela chave DDD+8 dígitos
+      // (imune ao DDI 55 e ao nono dígito), nunca por texto exato.
+      const { resolverContatoEntrada } = await import("@/lib/contato-entrada.server");
+      const entrada = await resolverContatoEntrada(supabaseAdmin, { telefone: phone });
+      const leadMatch =
+        entrada.acao === "criar_lead" ? null : { id: entrada.leadId ?? null };
 
       const { data: novo, error: novoErr } = await supabaseAdmin
         .from("whatsapp_conversas")
