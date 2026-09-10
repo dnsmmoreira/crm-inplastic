@@ -83,6 +83,12 @@ export const listRepresentantes = createServerFn({ method: "POST" })
       deletedAt: (p.deleted_at as string | null) ?? null,
       participaArena: (pMap.get(p.id as string)?.participa_arena as boolean | undefined) ?? null,
       tipoComercial: (pMap.get(p.id as string)?.tipo_comercial as string | null) ?? null,
+      comissaoPct:
+        pMap.get(p.id as string)?.comissao_pct === null ||
+        pMap.get(p.id as string)?.comissao_pct === undefined
+          ? null
+          : Number(pMap.get(p.id as string)?.comissao_pct),
+      regiao: (pMap.get(p.id as string)?.regiao as string | null) ?? null,
     }));
 
     return montarRepresentantes(base, {
