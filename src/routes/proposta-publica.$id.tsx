@@ -45,6 +45,21 @@ function PropostaPublicaPage() {
 
   return (
     <div className="min-h-screen bg-slate-100">
+      {/* Impressão da página pública: nada de conteúdo cortado na borda da folha. */}
+      <style>{`
+        @page { size: A4; margin: 12mm; }
+        @media print {
+          header { display: none !important; }
+          body, main { background: #fff !important; }
+          main { padding: 0 !important; max-width: none !important; }
+          article { border: 0 !important; box-shadow: none !important; padding: 0 !important; }
+          article table { table-layout: fixed; width: 100%; font-size: 8pt; }
+          article th, article td { overflow-wrap: anywhere; word-break: break-word; }
+          article section { break-inside: avoid; page-break-inside: avoid; }
+          article table tr { break-inside: avoid; page-break-inside: avoid; }
+          article thead { display: table-header-group; }
+        }
+      `}</style>
       <header className="bg-slate-900 text-white">
         <div className="mx-auto flex max-w-4xl items-center gap-3 px-4 py-5">
           <Boxes className="h-7 w-7 text-emerald-400" />
