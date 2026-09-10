@@ -1292,8 +1292,39 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
         <DialogFooter>
           <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
           <Button
-            onClick={() => {
+            disabled={checando}
+            onClick={async () => {
               if (!form.company.trim()) { toast.error("Informe a empresa"); return; }
+              // Porta de entrada única: carteira e leads de outros vendedores
+              // só aparecem na checagem do servidor.
+              setChecando(true);
+              try {
+                const check = await verificarContato({
+                  data: {
+                    telefone: form.phone || form.whatsapp || null,
+                    cnpj: form.cnpj || null,
+                    email: form.email || null,
+                    empresa: form.company.trim(),
+                  },
+                });
+                if (check.situacao === "duplicado") {
+                  toast.error(
+                    `Este contato já é de ${check.vendedorNome ?? "outro vendedor"}${
+                      check.empresa ? ` (${check.empresa})` : ""
+                    }. Continue o atendimento no cadastro existente.`,
+                  );
+                  return;
+                }
+                if (check.situacao === "suspeita") {
+                  toast.warning(
+                    `Existe um cadastro com nome parecido${check.empresa ? `: "${check.empresa}"` : ""}. Confira antes de duplicar.`,
+                  );
+                }
+              } catch {
+                // Checagem indisponível não pode impedir o cadastro.
+              } finally {
+                setChecando(false);
+              }
               try {
                 addLead({
                   company: form.company.trim(),
