@@ -1,9 +1,9 @@
 /**
  * Roster de representantes.
  *
- * ESCOPO: só acesso e atividade. Representante é usuário normal (cargo
- * "Representante", papel vendedor) — criação/edição completa continua em
- * `/usuarios`. Comissão e região são do motor da Arena e não aparecem aqui.
+ * ESCOPO: acesso, atividade e os dados de representação (comissão própria e
+ * região) — gravados em `arena_participacao`, a mesma linha que diz se a
+ * pessoa entra no placar. Criação/edição do usuário continua em `/usuarios`.
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
