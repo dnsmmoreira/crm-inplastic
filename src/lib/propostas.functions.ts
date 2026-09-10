@@ -130,7 +130,7 @@ export const getPropostaPublica = createServerFn({ method: "POST" })
       p.lead_id
         ? supabaseAdmin
             .from("leads")
-            .select("company, contact_name, cliente_id")
+            .select("company, contact_name, cliente_id, estado, inscricao_estadual")
             .eq("id", p.lead_id)
             .maybeSingle()
         : Promise.resolve({ data: null }),
