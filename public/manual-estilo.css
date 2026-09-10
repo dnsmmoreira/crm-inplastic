@@ -40,6 +40,9 @@ code{background:#EAF2FD;border-radius:6px;padding:1px 6px;font-size:.92em}
 .box.alerta{border-color:var(--vermelho);background:#FDEDEA}
 .box.ok{border-color:var(--verde);background:#E9F7EE}
 .box.dica{border-color:var(--amarelo);background:#FFF7E2}
+.box.xerife{border-color:#7A4FD0;background:#F2ECFD}
+.box.placar{border-color:var(--verde);background:#EAF6F1}
+.box.arena{border-color:var(--amarelo);background:#FFF4D9}
 .box b{display:block;margin-bottom:2px}
 
 table{width:100%;border-collapse:collapse;margin:16px 0;font-size:15.5px}
