@@ -1771,7 +1771,12 @@ export const useVisibleProposals = () => {
   );
 };
 
-export const proposalTotals = (p: Proposal, surchargePercent = Number(p?.acrescimoPercent) || 0) => {
+export const proposalTotals = (
+  p: Proposal,
+  surchargePercent = Number(p?.acrescimoPercent) || 0,
+  /** DIFAL calculado (travado) — soma ao total, entre acréscimo e frete. */
+  difalValor = 0,
+) => {
   const items = Array.isArray(p?.items) ? p.items : [];
   const transport = p?.transport ?? ({} as Proposal["transport"]);
   const subtotal = items.reduce(
@@ -1783,7 +1788,9 @@ export const proposalTotals = (p: Proposal, surchargePercent = Number(p?.acresci
   const subtotalAfterDiscount = +(subtotal - discountAmount).toFixed(2);
   const surchargePct = Math.max(0, Math.min(100, Number(surchargePercent) || 0));
   const surchargeAmount = +(subtotalAfterDiscount * (surchargePct / 100)).toFixed(2);
-  const total = subtotalAfterDiscount + surchargeAmount + (Number(transport?.freightValue) || 0);
+  const difal = Math.max(0, Number(difalValor) || 0);
+  const total =
+    subtotalAfterDiscount + surchargeAmount + difal + (Number(transport?.freightValue) || 0);
   const qty = items.reduce((s, i) => s + (Number(i?.quantity) || 0), 0);
   return {
     subtotal,
@@ -1795,11 +1802,22 @@ export const proposalTotals = (p: Proposal, surchargePercent = Number(p?.acresci
     // Aliases em português usados nas telas/relatórios.
     acrescimoPercent: surchargePct,
     acrescimo: surchargeAmount,
+    difal,
     total,
     qty,
     count: items.length,
   };
 };
+
+/** Valor da operação (base do DIFAL): subtotal com desconto/acréscimo, sem frete. */
+export const valorOperacaoProposta = (
+  p: Proposal,
+  surchargePercent = Number(p?.acrescimoPercent) || 0,
+) => {
+  const t = proposalTotals(p, surchargePercent);
+  return +(t.subtotalAfterDiscount + t.surchargeAmount).toFixed(2);
+};
+
 
 /** Status de propostas em aberto (contam em pipeline ativo). */
 export const OPEN_PROPOSAL_STATUSES: ProposalStatus[] = [

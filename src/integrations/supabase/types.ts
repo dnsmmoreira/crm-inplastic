@@ -740,6 +740,33 @@ export type Database = {
           },
         ]
       }
+      difal_aliquotas: {
+        Row: {
+          aliquota_interestadual: number
+          aliquota_interna: number
+          created_at: string
+          observacao: string | null
+          uf: string
+          updated_at: string
+        }
+        Insert: {
+          aliquota_interestadual: number
+          aliquota_interna: number
+          created_at?: string
+          observacao?: string | null
+          uf: string
+          updated_at?: string
+        }
+        Update: {
+          aliquota_interestadual?: number
+          aliquota_interna?: number
+          created_at?: string
+          observacao?: string | null
+          uf?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       documentos: {
         Row: {
           categoria: string

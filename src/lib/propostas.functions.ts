@@ -68,12 +68,15 @@ export type PropostaPublica = {
   itens: PropostaPublicaItem[];
   parcelas: PropostaPublicaParcela[];
   frete: { valor: number; por_conta: string | null; transportadora: string | null };
+  /** DIFAL travado (destinatário sem inscrição estadual, destino ≠ SP). */
+  difal: { aplica: boolean; valor: number; uf: string | null };
   totais: {
     subtotal: number;
     desconto_percent: number;
     desconto_valor: number;
     acrescimo_percent: number;
     acrescimo_valor: number;
+    difal_valor: number;
     /** Nº de parcelas do cartão, quando houver. */
     cartao_parcelas: number | null;
     total: number;
@@ -127,7 +130,7 @@ export const getPropostaPublica = createServerFn({ method: "POST" })
       p.lead_id
         ? supabaseAdmin
             .from("leads")
-            .select("company, contact_name, cliente_id")
+            .select("company, contact_name, cliente_id, estado, inscricao_estadual")
             .eq("id", p.lead_id)
             .maybeSingle()
         : Promise.resolve({ data: null }),
@@ -151,15 +154,28 @@ export const getPropostaPublica = createServerFn({ method: "POST" })
       due_date: r.due_date ?? null,
     }));
 
-    const lead = leadRes.data as { company?: string | null; contact_name?: string | null; cliente_id?: string | null } | null;
+    const lead = leadRes.data as {
+      company?: string | null;
+      contact_name?: string | null;
+      cliente_id?: string | null;
+      estado?: string | null;
+      inscricao_estadual?: string | null;
+    } | null;
     let nomeCliente = lead?.company ?? null;
+    // Dados fiscais do destinatário (DIFAL): cliente manda, lead é o fallback.
+    let ufDestino = lead?.estado ?? null;
+    let ieDestino = lead?.inscricao_estadual ?? null;
+    let ieIsento = false;
     if (lead?.cliente_id) {
       const { data: cli } = await supabaseAdmin
         .from("clientes")
-        .select("razao_social, nome_fantasia")
+        .select("razao_social, nome_fantasia, estado, inscricao_estadual, ie_isento")
         .eq("id", lead.cliente_id)
         .maybeSingle();
       nomeCliente = cli?.razao_social ?? cli?.nome_fantasia ?? nomeCliente;
+      ufDestino = cli?.estado ?? ufDestino;
+      ieDestino = cli?.inscricao_estadual ?? ieDestino;
+      ieIsento = !!cli?.ie_isento;
     }
 
     const cond = condRes.data as {
@@ -191,6 +207,19 @@ export const getPropostaPublica = createServerFn({ method: "POST" })
     const acrescimoValor = +(aposDesconto * (acrescimoPct / 100)).toFixed(2);
     const frete = Number(transport.freightValue) || 0;
 
+    // DIFAL travado — mesma base dos demais totais (itens com desconto/acréscimo, sem frete).
+    const { calcularDifal, DIFAL_ALIQUOTAS_PADRAO } = await import("@/lib/difal");
+    const { data: aliqRows } = await supabaseAdmin
+      .from("difal_aliquotas")
+      .select("uf, aliquota_interna, aliquota_interestadual");
+    const difal = calcularDifal({
+      valorOperacao: +(aposDesconto + acrescimoValor).toFixed(2),
+      ufDestino: ufDestino,
+      inscricaoEstadual: ieDestino,
+      ieIsento,
+      aliquotas: (aliqRows?.length ? aliqRows : DIFAL_ALIQUOTAS_PADRAO) as never,
+    });
+
     return {
       id: p.id,
       number: p.number,
@@ -211,14 +240,16 @@ export const getPropostaPublica = createServerFn({ method: "POST" })
         por_conta: transport.freightPayer ?? null,
         transportadora: transport.carrier ?? null,
       },
+      difal: { aplica: difal.aplica, valor: difal.valor, uf: difal.uf },
       totais: {
         subtotal,
         desconto_percent: descontoPct,
         desconto_valor: descontoValor,
         acrescimo_percent: acrescimoPct,
         acrescimo_valor: acrescimoValor,
+        difal_valor: difal.valor,
         cartao_parcelas: ehCartao ? (p.cartao_parcelas ?? null) : null,
-        total: aposDesconto + acrescimoValor + frete,
+        total: aposDesconto + acrescimoValor + difal.valor + frete,
         quantidade: itens.reduce((s, i) => s + i.quantity, 0),
         itens: itens.length,
       },

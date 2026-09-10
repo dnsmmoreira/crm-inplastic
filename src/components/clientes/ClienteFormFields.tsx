@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { semInscricaoEstadual, normalizarUf, UF_ORIGEM_DIFAL } from "@/lib/difal";
 import {
   Select,
   SelectContent,
@@ -246,6 +247,15 @@ export function ClienteFormFields({
               </label>
             </div>
           )}
+          {!isPF &&
+            !value.ie_isento &&
+            semInscricaoEstadual(value.inscricao_estadual) &&
+            normalizarUf(value.estado) &&
+            normalizarUf(value.estado) !== UF_ORIGEM_DIFAL && (
+              <p className="md:col-span-2 text-xs font-medium text-amber-700">
+                Sem inscrição estadual — DIFAL aplicado nas propostas deste cliente.
+              </p>
+            )}
         </CardContent>
       </Card>
 
