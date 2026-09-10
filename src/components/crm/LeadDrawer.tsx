@@ -858,6 +858,8 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
   const leadTags = useCrm((s) => s.leadTags);
   const leadSegments = useCrm((s) => s.leadSegments);
   const [open, setOpen] = useState(false);
+  const [checando, setChecando] = useState(false);
+  const verificarContato = useServerFn(verificarContatoEntrada);
   const initial = {
     // Fiscal
     cnpj: "",
