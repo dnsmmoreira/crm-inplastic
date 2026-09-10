@@ -1444,9 +1444,15 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
       await registrarFalhaSegura("xerife-engine.a6.select", erroIA, {});
     }
 
-    for (const conv of ((convsIA ?? []) as any[]).filter((c) =>
+    const { leadsEncerrados: _encA6 } = await import("@/lib/xerife/lead-elegivel");
+    const candidatasA6 = ((convsIA ?? []) as any[]).filter((c) =>
       conversaAbandonadaPelaIA(c, agora, win),
-    )) {
+    );
+    const encerradosA6 = await _encA6(sb, candidatasA6.map((c) => c.lead_id));
+
+    for (const conv of candidatasA6) {
+      // Lead ganho/perdido: o assunto já teve desfecho, nada a retomar.
+      if (conv.lead_id && encerradosA6.has(conv.lead_id)) continue;
       const regra = "a6_ia_abandonada";
       const quem = (conv.name as string | null)?.trim() || (conv.phone as string);
       if (await alreadyActed(sb, regra, conv.lead_id ?? null, 24)) continue;
