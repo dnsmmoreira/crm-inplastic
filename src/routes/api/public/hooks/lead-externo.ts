@@ -120,11 +120,19 @@ export const Route = createFileRoute("/api/public/hooks/lead-externo")({
           }
         }
 
-        // 2) Lead
+        // 2) Lead — porta de entrada única (carteira → lead ativo → novo)
         let leadId = (existente?.lead_id as string | null) ?? null;
+        let donoDaEntrada: string | null = null;
         if (!leadId) {
-          const { leadExistenteDaCarteira } = await import("@/lib/carteira.server");
-          leadId = await leadExistenteDaCarteira(supabaseAdmin, telefone);
+          const { resolverContatoEntrada } = await import("@/lib/contato-entrada.server");
+          const entrada = await resolverContatoEntrada(supabaseAdmin, {
+            telefone,
+            cnpj: typeof body.cnpj === "string" ? body.cnpj : null,
+          });
+          if (entrada.acao !== "criar_lead") {
+            leadId = entrada.leadId ?? null;
+            donoDaEntrada = entrada.vendedorId ?? null;
+          }
         }
         if (!leadId) {
           const quantidade =
