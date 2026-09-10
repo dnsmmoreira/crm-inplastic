@@ -81,6 +81,7 @@ import { ContatosSection } from "@/components/contatos/ContatosSection";
 import { useBaixaTarefa } from "@/components/tarefas/useBaixaTarefa";
 import { sufixoCobranca } from "@/lib/tarefa-desfecho";
 import { TransferirLeadDialog } from "@/components/crm/TransferirLeadDialog";
+import { reagendarLead } from "@/lib/leads-etapa.functions";
 import { verificarContatoEntrada } from "@/lib/contato-entrada.functions";
 import { useQuery } from "@tanstack/react-query";
 import { listVendedores } from "@/lib/clientes.functions";
@@ -279,6 +280,8 @@ export function LeadDrawer({
             <InfoRow icon={Calendar} label="Último contato" value={format(new Date(lead.lastContact), "dd/MM/yyyy")} />
             {lead.emailNfXml && <InfoRow icon={Mail} label="E-mail NF (XML)" value={lead.emailNfXml} />}
           </div>
+
+          <ReagendarCobranca lead={lead} />
 
 
           <div className="grid grid-cols-2 gap-3">
@@ -1394,3 +1397,73 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
 }
 
 
+
+/**
+ * Reagendar cobrança = silenciar o Xerife até a data escolhida.
+ *
+ * Grava só pela server function `reagendarLead` (RPC `reagendar_lead`): o
+ * salvamento genérico do lead não escreve mais `next_followup`, justamente
+ * para uma aba antiga não apagar o reagendamento (caso "PR Comércio").
+ */
+function ReagendarCobranca({ lead }: { lead: Lead }) {
+  const updateLead = useCrm((s) => s.updateLead);
+  const reagendar = useServerFn(reagendarLead);
+  const [data, setData] = React.useState("");
+  const [salvando, setSalvando] = React.useState(false);
+
+  const atual = lead.nextFollowUp ? new Date(lead.nextFollowUp) : null;
+  const futuro = atual ? atual.getTime() > Date.now() : false;
+
+  const gravar = async (iso: string | null) => {
+    setSalvando(true);
+    try {
+      await reagendar({ data: { leadId: lead.id, quando: iso, motivo: undefined } });
+      updateLead(lead.id, { nextFollowUp: iso ?? undefined });
+      setData("");
+      toast.success(iso ? "Cobrança reagendada" : "Reagendamento removido");
+    } catch (e) {
+      toast.error("Não foi possível reagendar", {
+        description: e instanceof Error ? e.message : String(e),
+      });
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  return (
+    <div className="rounded-md border p-3">
+      <Label className="text-xs">Reagendar cobrança</Label>
+      {futuro && atual && (
+        <p className="mt-1 text-xs text-muted-foreground">
+          Xerife silenciado até {format(atual, "dd/MM/yyyy")}
+        </p>
+      )}
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <Input
+          type="date"
+          className="h-9 w-[160px]"
+          value={data}
+          onChange={(e) => setData(e.target.value)}
+        />
+        <Button
+          size="sm"
+          disabled={!data || salvando}
+          onClick={() => {
+            const iso = dateInputToISO(data);
+            if (iso) void gravar(iso);
+          }}
+        >
+          Reagendar
+        </Button>
+        {futuro && (
+          <Button size="sm" variant="ghost" disabled={salvando} onClick={() => void gravar(null)}>
+            Remover
+          </Button>
+        )}
+      </div>
+      <p className="mt-1 text-[10px] text-muted-foreground">
+        Até essa data o Xerife não cobra este lead.
+      </p>
+    </div>
+  );
+}

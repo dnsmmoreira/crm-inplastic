@@ -351,10 +351,15 @@ function normalizarEnderecoLead(e: Lead["endereco"]): Lead["endereco"] | null {
 /**
  * Payload do lead para o banco.
  *
- * `owner_id` só vai na CRIAÇÃO. Trocar o responsável de um lead existente é
- * sempre pela server function `transferirLead` (RPC `transferir_lead`): a RLS
- * recusa a escrita direta do vendedor e o caminho direto não levaria tarefas,
- * histórico nem aviso ao novo dono.
+ * Campos que SÓ mudam por ação explícita e nunca vão no save genérico de um
+ * lead existente:
+ *  - `owner_id` → server function `transferirLead` (RPC `transferir_lead`);
+ *  - `stage`    → `moverEtapaLead` (RPC `mover_etapa_lead`);
+ *  - `next_followup` → `reagendarLead` (RPC `reagendar_lead`).
+ *
+ * Motivo: uma aba com cópia antiga do lead reenviava esses campos e desfazia
+ * fechamento de negócio, transferência de dono e reagendamento feitos no
+ * servidor. Na CRIAÇÃO eles vão normalmente.
  */
 /** Payload considerando se o lead já existe no banco (snapshot). */
 function leadPayload(l: Lead): LeadInsert {
@@ -405,8 +410,13 @@ export function leadToInsert(l: Lead, opts?: { novo?: boolean }): LeadInsert {
     socios: (l.socios?.length ? l.socios : null) as unknown as Json,
   } satisfies LeadInsert;
   if (opts?.novo) return base;
-  const { owner_id: _ignorado, ...semDono } = base;
-  return semDono as LeadInsert;
+  const {
+    owner_id: _semDono,
+    stage: _semEtapa,
+    next_followup: _semReagendamento,
+    ...existente
+  } = base;
+  return existente as LeadInsert;
 
 }
 
