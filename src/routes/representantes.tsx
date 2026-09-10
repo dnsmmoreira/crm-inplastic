@@ -230,6 +230,28 @@ function RepresentantesPage() {
             </div>
             <Switch id="participa-arena" checked={participa} onCheckedChange={setParticipa} />
           </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <Label htmlFor="comissao-pct">Comissão (%)</Label>
+              <Input
+                id="comissao-pct"
+                inputMode="decimal"
+                placeholder="ex.: 5"
+                value={comissao}
+                onChange={(e) => setComissao(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">Deixe vazio para não definir.</p>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="regiao">Região</Label>
+              <Input
+                id="regiao"
+                placeholder="ex.: Triângulo Mineiro"
+                value={regiao}
+                onChange={(e) => setRegiao(e.target.value)}
+              />
+            </div>
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditando(null)} disabled={salvando}>
               Cancelar
