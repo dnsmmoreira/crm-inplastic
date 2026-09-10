@@ -100,13 +100,20 @@ export const listRepresentantes = createServerFn({ method: "POST" })
   });
 
 /**
- * Ajusta os dados de representação de um usuário.
- * Hoje só a participação na Arena — comissão e região ficam com o motor da Arena.
+ * Ajusta os dados de representação de um usuário: participação na Arena,
+ * percentual de comissão próprio e região. Tudo gravado em `arena_participacao`.
  */
 export const atualizarDadosRepresentante = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({ userId: z.string().uuid(), participaArena: z.boolean() }).parse(input),
+    z
+      .object({
+        userId: z.string().uuid(),
+        participaArena: z.boolean(),
+        comissaoPct: z.number().min(0).max(100).nullable().optional(),
+        regiao: z.string().trim().max(120).nullable().optional(),
+      })
+      .parse(input),
   )
   .handler(async ({ data, context }) => {
     await assertGerenciaRepresentantes(context.supabase, context.userId);
