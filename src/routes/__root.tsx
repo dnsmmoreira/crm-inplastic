@@ -613,10 +613,10 @@ function AppShell({ children }: { children: ReactNode }) {
           })}
 
           <a
-            href="/manual.html"
+            href="/manuais.html"
             target="_blank"
             rel="noopener noreferrer"
-            title={collapsed ? "Manual do CRM" : undefined}
+            title={collapsed ? "Manuais do CRM" : undefined}
             className={cn(
               "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
               collapsed && "justify-center px-2",
@@ -624,7 +624,7 @@ function AppShell({ children }: { children: ReactNode }) {
             )}
           >
             <BookOpen className="h-4 w-4 shrink-0" />
-            {!collapsed && "Manual do CRM"}
+            {!collapsed && "Manuais do CRM"}
           </a>
 
           <a
@@ -772,14 +772,14 @@ function AppShell({ children }: { children: ReactNode }) {
                 })}
 
                 <a
-                  href="/manual.html"
+                  href="/manuais.html"
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={() => setDrawerOpen(false)}
                   className="flex min-h-11 items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent"
                 >
                   <BookOpen className="h-4 w-4 shrink-0" />
-                  Manual do CRM
+                  Manuais do CRM
                 </a>
 
                 <a

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manual da Diretoria / Administrador — CRM</title>
+<meta name="description" content="Manual da diretoria: equipe, placar, ARENA, usuários, permissões, Xerife e configuração do sistema.">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/manual-estilo.css">
+</head>
+<body>
+<div id="progresso"></div>
+
+<header class="capa">
+  <span class="eyebrow">Manual por função</span>
+  <h1>🏁 Diretoria / Administrador</h1>
+  <p>Você configura as regras e cobra o resultado. Este manual mostra os botões que só você tem.</p>
+  <a class="voltar" href="/manuais.html">← todos os manuais</a>
+</header>
+
+<div class="page">
+  <nav class="indice">
+    <h2>O que tem aqui</h2>
+    <ol>
+      <li><a href="#dia1">Seu primeiro dia</a></li>
+      <li><a href="#rotina">Sua rotina de gestão</a></li>
+      <li><a href="#usuarios">Usuários, perfis e permissões</a></li>
+      <li><a href="#equipe">Painel da equipe e carteira</a></li>
+      <li><a href="#placar">Placar: como a nota é feita</a></li>
+      <li><a href="#arena">ARENA: parâmetros econômicos</a></li>
+      <li><a href="#xerife">Xerife: o vigia</a></li>
+      <li><a href="#seacontecer">E se acontecer…</a></li>
+    </ol>
+  </nav>
+
+  <section class="chapter" id="dia1">
+    <h2>Seu primeiro dia<small>O mapa do administrador</small></h2>
+    <ol class="passos">
+      <li>Entre e troque a senha.</li>
+      <li><b>Empresa → Usuários</b>: cadastre as pessoas, defina cargo, perfil, meta e comissão.</li>
+      <li><b>Empresa → Equipe</b>: o painel de gestão — quem está com o quê, o que está parado.</li>
+      <li><b>Empresa → ARENA</b>: parâmetros econômicos, metas, temporada e auditoria.</li>
+      <li><b>IA &amp; Canais</b>: o atendimento automático, as frases prontas e a conexão do WhatsApp.</li>
+    </ol>
+  </section>
+
+  <section class="chapter" id="rotina">
+    <h2>Sua rotina de gestão<small>Diário, semanal, mensal</small></h2>
+    <ul>
+      <li><b>Diário</b>: Equipe (o que está sem próximo ato) e Placar.</li>
+      <li><b>Semanal</b>: Relatórios (propostas, pedidos em aberto, motivos de recusa) e Pendências de cadastro.</li>
+      <li><b>Mensal</b>: metas, comissões, ARENA e fechamento da temporada.</li>
+    </ul>
+  </section>
+
+  <section class="chapter" id="usuarios">
+    <h2>Usuários, perfis e permissões<small>Quem pode o quê</small></h2>
+    <ol class="passos">
+      <li><b>Empresa → Usuários → Novo usuário</b>: nome, e-mail, cargo e perfil.</li>
+      <li>O <b>perfil</b> (Administrador, Gestor Comercial, Financeiro, Operacional, Vendedor) define as telas.</li>
+      <li>Na ficha da pessoa você ajusta meta mensal, participação na fila de leads, limite de leads, canais de entrada e, na aba ARENA, comissão % e região.</li>
+      <li>Senha: use “Definir senha” para dar acesso imediato; a pessoa troca depois.</li>
+      <li>Saída da empresa: desative o usuário (não apague). O histórico precisa continuar existindo.</li>
+    </ol>
+    <div class="box alerta"><b>Cuidado</b>Perfil de Administrador enxerga e altera tudo, inclusive regras econômicas. Dê para poucas pessoas.</div>
+  </section>
+
+  <section class="chapter" id="equipe">
+    <h2>Painel da equipe e carteira<small>Onde a gestão acontece</small></h2>
+    <ul>
+      <li>Quem está com tarefa atrasada, conversa parada ou lead sem próximo ato.</li>
+      <li>Seção <b>Carteira</b>: leads cujo dono é diferente do vendedor do cliente, leads novos que bateram com carteira de outro e devoluções por abandono nos últimos 30 dias — cada linha com botão para transferir.</li>
+      <li>Toda transferência exige motivo e leva junto leads, tarefas e conversas.</li>
+    </ul>
+  </section>
+
+  <section class="chapter" id="placar">
+    <h2>Placar: como a nota é feita<small>Para explicar ao time sem discussão</small></h2>
+    <p>A nota de cada pessoa é a soma de pontos do período:</p>
+    <table>
+      <tr><th>Soma</th><th>Desconta</th></tr>
+      <tr><td>Pedido ganho, proposta enviada, tarefa concluída, pós-venda no prazo, meta batida (com faixas de 50%, 80%, 100% e 120%)</td><td>Atendimento escalado por demora e cliente da carteira que passou de 60 dias sem contato</td></tr>
+    </table>
+    <div class="box ok"><b>Regra nova</b>O desconto por demora agora conta <b>uma vez por cliente</b> no período. Antes, o mesmo cliente esperando descontava a cada escalação, o que empilhava pontos negativos sobre um único caso.</div>
+    <p>Os pesos ficam na configuração do Xerife. Mudar peso muda o comportamento do time — avise antes de mexer.</p>
+  </section>
+
+  <section class="chapter" id="arena">
+    <h2>ARENA: parâmetros econômicos<small>Nada é fixo no código</small></h2>
+    <ul>
+      <li><b>Custo e comissões</b>: teto de custo comercial, percentuais e fator de encargos.</li>
+      <li><b>Margem e preço</b>: margem mínima e piso comercial.</li>
+      <li><b>Metas e rampa</b>: carência para quem entra e as fases da rampa.</li>
+      <li><b>Premiação e temporada</b>: orçamento mensal, teto por temporada e duração.</li>
+      <li><b>Ponto de equilíbrio</b>: comparação entre vendedor interno e canal representante.</li>
+      <li><b>Auditoria</b>: toda alteração fica registrada com autor, data e motivo.</li>
+    </ul>
+    <p>Nada é computado antes da data oficial de início da temporada.</p>
+  </section>
+
+  <section class="chapter" id="xerife">
+    <h2>Xerife: o vigia<small>Quem cria as cobranças</small></h2>
+    <ul>
+      <li>Cria tarefa quando um lead, conversa, proposta ou pedido fica sem próximo ato.</li>
+      <li>Escala para o gestor quando o prazo estoura.</li>
+      <li>Devolve para a fila leads abandonados — exceto quando o cliente é da carteira da própria pessoa, quando há pedido em andamento ou proposta recente. Nesses casos, escala em vez de devolver.</li>
+      <li>Mensagem fora do horário comercial vira a primeira tarefa da manhã seguinte.</li>
+      <li>Prazos e pesos ficam em <b>IA &amp; Canais</b> e na configuração do Xerife; o simulador de cadência mostra o efeito antes de valer.</li>
+    </ul>
+  </section>
+
+  <section class="chapter" id="seacontecer">
+    <h2>E se acontecer…<small>Situações de gestão</small></h2>
+    <h3>Alguém reclama que caiu no placar</h3><p>Abra o Placar no período e mostre as parcelas: ganhos, propostas, tarefas e descontos. A conta é sempre a mesma para todos.</p>
+    <h3>Um lead caiu na pessoa errada</h3><p>Painel da Equipe → seção Carteira → Transferir, com motivo. O histórico guarda a correção.</p>
+    <h3>Uma tela sumiu para alguém</h3><p>É perfil/permissão. Ajuste em Usuários e peça para a pessoa recarregar.</p>
+    <h3>Algo no sistema falhou</h3><p><b>Empresa → Falhas do sistema</b> lista os erros registrados, com data e contexto.</p>
+    <h3>Quero mudar uma regra econômica</h3><p>ARENA → Configuração, sempre com motivo preenchido. Fica auditado.</p>
+  </section>
+</div>
+
+<footer class="rodape">Manual da Diretoria · <a href="/manuais.html">todos os manuais</a></footer>
+<script>document.addEventListener('scroll',function(){var h=document.documentElement;document.getElementById('progresso').style.width=(h.scrollTop/((h.scrollHeight-h.clientHeight)||1)*100)+'%';});</script>
+</body>
+</html>

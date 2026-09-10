@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manuais do CRM — escolha a sua função</title>
+<meta name="description" content="Manuais do CRM por função: vendedor, assistente comercial, financeiro, representação e diretoria.">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/manual-estilo.css">
+</head>
+<body>
+<div id="progresso"></div>
+
+<header class="capa">
+  <span class="eyebrow">Manuais do CRM</span>
+  <h1>Primeiro dia? Comece por aqui.</h1>
+  <p>Escolha a sua função. Cada manual explica, do zero, o que você faz no sistema todo dia — sem precisar de ninguém para ensinar.</p>
+</header>
+
+<div class="page">
+  <section class="chapter">
+    <h2>Como usar estes manuais<small>Leia isto em 1 minuto</small></h2>
+    <p>Todo manual segue a mesma ordem: <b>seu primeiro dia</b> → <b>sua rotina</b> → <b>suas telas</b> → <b>passo a passo</b> → <b>e se acontecer…</b> → <b>o que o sistema cobra de você</b>.</p>
+    <div class="box dica"><b>Regra de ouro do CRM</b>Nada fica sem próximo ato. Toda conversa, proposta, tarefa e pedido termina com uma decisão registrada: o que aconteceu e qual é o próximo passo.</div>
+    <p>Não sabe qual é a sua função? Pergunte quem te cadastrou, ou olhe o seu nome no canto do menu: o sistema mostra o seu perfil.</p>
+  </section>
+
+  <div class="cards">
+    <a class="card" href="/manual-vendedor.html">
+      <div class="emoji">🤝</div>
+      <h3>Vendedor</h3>
+      <p>Leads, conversas no WhatsApp, propostas, fechamento e carteira de clientes.</p>
+      <span class="quem">Beatriz · Bianca · Daniel · Pamela</span>
+    </a>
+    <a class="card" href="/manual-assistente.html">
+      <div class="emoji">🗂️</div>
+      <h3>Assistente Comercial</h3>
+      <p>Cadastros, apoio ao time, pedidos, romaneios e acompanhamento da entrega.</p>
+      <span class="quem">Bruna</span>
+    </a>
+    <a class="card" href="/manual-financeiro.html">
+      <div class="emoji">💳</div>
+      <h3>Financeiro</h3>
+      <p>Análise do pedido, aprovação de crédito, pagamento, faturamento e cobrança.</p>
+      <span class="quem">Wagner · Renata</span>
+    </a>
+    <a class="card" href="/manual-representacao.html">
+      <div class="emoji">🌎</div>
+      <h3>Representação</h3>
+      <p>Canal de representantes, licitações, comissão por pessoa e região.</p>
+      <span class="quem">Kelly</span>
+    </a>
+    <a class="card" href="/manual-diretoria.html">
+      <div class="emoji">🏁</div>
+      <h3>Diretoria / Administrador</h3>
+      <p>Equipe, placar, ARENA, usuários, permissões e configuração do sistema.</p>
+      <span class="quem">Denis</span>
+    </a>
+    <a class="card" href="/manual.html">
+      <div class="emoji">📘</div>
+      <h3>Visão geral do CRM</h3>
+      <p>O manual ilustrado original: o que é, por que existe e um passeio pelas telas.</p>
+      <span class="quem">Serve para todos</span>
+    </a>
+  </div>
+
+  <section class="chapter">
+    <h2>As palavras do sistema<small>Glossário rápido</small></h2>
+    <table>
+      <tr><th>Palavra</th><th>O que é</th></tr>
+      <tr><td>Lead</td><td>Uma oportunidade: alguém que pediu preço. Ainda não é cliente.</td></tr>
+      <tr><td>Cliente</td><td>Empresa cadastrada com CNPJ. Tem um dono (o vendedor da carteira).</td></tr>
+      <tr><td>Carteira</td><td>Os clientes que são de uma pessoa. Contato de cliente da casa volta sempre para o dono dele.</td></tr>
+      <tr><td>Proposta</td><td>O orçamento formal, com itens, preço, frete e validade.</td></tr>
+      <tr><td>Pedido</td><td>A proposta aprovada virando produção e entrega.</td></tr>
+      <tr><td>Tarefa</td><td>O próximo ato. Tem prazo e só fecha com desfecho (o que aconteceu).</td></tr>
+      <tr><td>Xerife</td><td>O vigia do sistema: cria tarefa, avisa e escala o que está parado.</td></tr>
+      <tr><td>Placar / ARENA</td><td>A pontuação do time e o programa de metas e premiação.</td></tr>
+    </table>
+  </section>
+</div>
+
+<footer class="rodape">CRM Inplastic · manuais por função · atualizado em setembro de 2026</footer>
+
+<script>
+document.addEventListener('scroll',function(){
+  var h=document.documentElement, p=h.scrollTop/((h.scrollHeight-h.clientHeight)||1);
+  document.getElementById('progresso').style.width=(p*100)+'%';
+});
+</script>
+</body>
+</html>
