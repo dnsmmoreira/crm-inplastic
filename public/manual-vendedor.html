@@ -54,12 +54,16 @@
       <li><b>Conversas</b>: responda quem escreveu fora do horário e quem está esperando resposta. Cliente esperando é o que mais custa caro no placar.</li>
       <li><b>Funil de Vendas</b>: olhe as colunas Qualificação, Proposta e Negociação. Cada card parado há dias precisa de um próximo ato.</li>
     </ol>
+    <div class="box xerife"><b>Aqui o Xerife</b>Lead novo sem contato: ele cria a tarefa “Primeiro contato” quando passam <b>15 minutos úteis</b> do cadastro; passando de <b>60 minutos úteis</b> sem contato, ele registra escalação para a diretoria. Cliente esperando resposta no WhatsApp: tarefa a partir de <b>2 horas úteis</b>; passando de <b>4 horas úteis</b>, escala. Horas úteis contam de 8h às 18h em dia útil.</div>
+    <div class="box placar"><b>No Placar</b>Cada escalação por demora vale <b>−5 pontos</b> — mas só <b>uma vez por cliente</b> no mês. Responder cedo é o jeito mais barato de não perder ponto.</div>
     <h3>Durante o dia</h3>
     <ul>
       <li>Todo contato feito vira registro: dê baixa na tarefa dizendo o que aconteceu.</li>
       <li>Combinou retorno? Escolha o desfecho “retorno em [data]”. O sistema cria a próxima tarefa sozinho e para de cobrar até lá.</li>
       <li>Mandou preço? Crie a <b>proposta</b> no sistema, não solte só no WhatsApp.</li>
     </ul>
+    <div class="box xerife"><b>Aqui o Xerife</b>Lead parado na mesma etapa vira tarefa e ganha a marca “esfriando”: <b>1 dia</b> em Novo, <b>2 dias</b> em Qualificação, <b>3 dias</b> em Proposta e <b>5 dias</b> em Negociação. Tarefa vencida há <b>24 horas</b> entra na lista de atrasadas; parada <b>2 dias úteis</b> ou mais, ele escala ao seu gestor.</div>
+    <div class="box placar"><b>No Placar</b>Cada tarefa concluída vale <b>+1 ponto</b>. Ficar <b>14 dias</b> sem enviar proposta acende alerta no seu cartão do placar.</div>
     <h3>Antes de sair</h3>
     <ul>
       <li>Zere as tarefas do dia (ou reagende com data e motivo).</li>
@@ -96,9 +100,11 @@
       <li>Salve. O lead nasce na sua mão, na etapa inicial do funil.</li>
     </ol>
     <div class="box alerta"><b>Atenção</b>Se o CNPJ ou telefone já for de outro vendedor, o sistema avisa e o lead vai para o dono da carteira. Isso é regra da casa, não erro.</div>
+    <div class="box xerife"><b>Aqui o Xerife</b>Lead que entrou sem dono ele distribui sozinho pela fila em <b>15 minutos</b>. Assim que o lead tem dono, começa a contar o prazo de primeiro contato (15 minutos úteis).</div>
 
     <h3>2. Qualificar</h3>
     <p>Fale com o cliente e descubra: quantidade, prazo, uso do pallet, quem decide e quando decide. Registre na ficha do lead e mova o card para <b>Qualificação</b>.</p>
+    <div class="box xerife"><b>Aqui o Xerife</b>Em Qualificação você tem <b>2 dias</b> sem interação antes de virar tarefa “lead parado”. Se o cliente pediu para aguardar, use o desfecho “em espera até [data]”: ele para de cobrar até a data e volta a cobrar depois.</div>
 
     <h3>3. Fazer a proposta</h3>
     <ol class="passos">
@@ -109,12 +115,17 @@
       <li>Confira e envie. O card vai para a coluna Proposta.</li>
     </ol>
     <p>Perto do vencimento o sistema cria uma tarefa para você cobrar resposta. Se vencer, ela deixa de valer — dá para <b>prorrogar</b> ou <b>reemitir com preço atual</b>.</p>
+    <div class="box xerife"><b>Aqui o Xerife</b>Proposta em rascunho parada há <b>30 horas úteis</b> vira tarefa “terminar ou descartar”. Depois de enviada, ele cobra retorno nos dias <b>2, 5, 10 e 15</b>. Passada a validade (padrão <b>15 dias</b>), ele espera cerca de <b>50 horas</b> e abre a tarefa “proposta vencida”: prorrogar, reemitir ou marcar recusada — com motivo.</div>
+    <div class="box placar"><b>No Placar</b>Cada proposta enviada vale <b>+3 pontos</b>. Proposta vencida sem desfecho não some do sistema: vira cobrança.</div>
 
     <h3>4. Fechar</h3>
     <p>Cliente aprovou? Aprove a proposta no sistema; ela vira <b>pedido</b> e segue para o financeiro. A partir daí você acompanha em <b>Pedidos</b> e o cliente recebe as atualizações.</p>
+    <div class="box xerife"><b>Aqui o Xerife</b>Pedido parado em Análise Financeira sem decisão por <b>24 horas</b> é escalado para quem administra o sistema — você não precisa ficar cobrando na mão. Depois da entrega, ele abre o pós-venda e cobra o contato em até <b>5 dias úteis</b>, com nova sondagem de recompra em <b>30 dias</b>.</div>
+    <div class="box placar"><b>No Placar</b>Pedido ganho vale <b>+10 pontos</b>; contato de pós-venda no prazo, <b>+2</b>; bater a meta do mês, <b>+20</b>.</div>
 
     <h3>5. Perder (sem vergonha nenhuma)</h3>
     <p>Não fechou? Marque como perdido escolhendo o motivo da lista. Perda registrada vira informação; lead parado vira cobrança.</p>
+    <div class="box xerife"><b>Aqui o Xerife</b>Perdido não é esquecido: depois de <b>90 dias</b> ele devolve o lead para você tentar de novo (reciclagem). Lead ativo sem contato ele cobra nos dias <b>2, 5 e 10</b>; se ninguém agir, escala ao gestor e avisa que o lead pode voltar para a fila.</div>
   </section>
 
   <section class="chapter" id="carteira">
@@ -125,6 +136,8 @@
       <li>Você pode transferir um cliente <b>da sua própria carteira</b> para um colega. O que ninguém faz é puxar cliente dos outros.</li>
       <li>Ao transferir, vão junto: leads abertos, tarefas e conversas. É preciso escrever um motivo (mínimo 5 letras).</li>
     </ul>
+    <div class="box xerife"><b>Aqui o Xerife</b>Cliente da sua carteira sem contato há <b>45 dias</b>: ele avisa e cria tarefa de retomada. Chegando a <b>60 dias</b>, o caso vira crítico e a diretoria é informada.</div>
+    <div class="box placar"><b>No Placar</b>Cada cliente da carteira parado há mais de <b>60 dias</b> vale <b>−3 pontos</b>. Um telefonema evita o desconto.</div>
   </section>
 
   <section class="chapter" id="tarefas">
@@ -141,6 +154,8 @@
       <tr><td>Sem pendência</td><td>Só quando nenhuma das outras descreve o caso</td></tr>
     </table>
     <p>Em proposta aparecem também: recusar (com motivo), prorrogar validade, reemitir com preço atual e excluir rascunho. Em pedido: combinei a coleta/entrega para [data] e registrar contato de pós-venda.</p>
+    <div class="box xerife"><b>Aqui o Xerife</b>É o desfecho que desliga a cobrança. Escolheu “retorno em [data]”? Ele silencia até a data e recria a tarefa nela. Não deu desfecho? A tarefa vence em <b>24 horas</b>, entra na lista de atrasadas e, com <b>2 dias úteis</b> vencida, é escalada ao gestor. Conversa parada também pede desfecho: a da IA depois de <b>15 minutos</b> sem retorno vira sua, e a conversa humana parada abre tarefa para você encerrar ou combinar retorno.</div>
+    <div class="box placar"><b>No Placar</b>Cada tarefa concluída com desfecho vale <b>+1 ponto</b>. Marcar “feito” sem desfecho não existe — o sistema não aceita.</div>
   </section>
 
   <section class="chapter" id="seacontecer">
@@ -155,10 +170,17 @@
 
   <section class="chapter" id="placar">
     <h2>Placar: como você sobe<small>Sem mistério</small></h2>
-    <ul>
-      <li><b>+</b> proposta enviada, tarefa concluída, pós-venda no prazo, pedido ganho e meta batida.</li>
-      <li><b>−</b> atendimento escalado por demora e cliente da carteira sem contato há mais de 60 dias.</li>
-    </ul>
+    <table>
+      <tr><th>O que você faz</th><th>Quanto vale hoje</th></tr>
+      <tr><td>Pedido ganho</td><td>+10</td></tr>
+      <tr><td>Proposta enviada</td><td>+3</td></tr>
+      <tr><td>Contato de pós-venda no prazo</td><td>+2</td></tr>
+      <tr><td>Tarefa concluída com desfecho</td><td>+1</td></tr>
+      <tr><td>Meta do mês batida</td><td>+20</td></tr>
+      <tr><td>Atendimento escalado por demora</td><td>−5 (uma vez por cliente no mês)</td></tr>
+      <tr><td>Cliente da carteira sem contato há +60 dias</td><td>−3</td></tr>
+    </table>
+    <div class="box dica"><b>Esses números podem mudar</b>Eles ficam na configuração do Xerife (Empresa → Xerife) e só a diretoria altera. Os valores acima são os que estão valendo hoje.</div>
     <div class="box ok"><b>Novidade</b>O desconto por demora agora conta <b>uma vez por cliente</b> no mês. Antes, o mesmo cliente descontava todo dia que ficava esperando.</div>
     <p>O caminho mais rápido para subir: responder quem está esperando, fechar as tarefas do dia e enviar propostas.</p>
   </section>
