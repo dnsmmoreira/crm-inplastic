@@ -1,98 +1,66 @@
-# Desenho — Caso 1 (contato duplicado) e DIFAL/Inscrição Estadual
+# Etapa do lead volta sozinha — correção
 
-Feito agora, sem esperar aprovação: a tarefa órfã da Verapaz (40485be9) passou para o Daniel.
-Caso 3: sem ação, confirmado.
+## a) Gatilho confirmado
 
----
+Consultei o histórico dos três leads no banco. Todas as mudanças de etapa chegaram
+como gravação genérica de lead (`POST /leads` e `PATCH /leads`), nenhuma por caminho
+dedicado. No caso do Ricardo, a volta ganho→proposta (04/09 19:45) veio de uma
+gravação genérica — é exatamente o mesmo padrão do bug de dono de tarefa: a aba com
+cópia antiga do lead reenviou a etapa velha por cima da etapa certa do servidor.
 
-## Parte A — Caso 1: contato novo cai sempre no dono certo
+Confirmações extras:
+- Não existe hoje nenhum lugar na tela que grave o "reagendar para" (`next_followup`)
+  do lead. Por isso o campo do PR Comércio está vazio: o reagendamento nunca teve
+  onde ser feito. O motor do Xerife já respeita esse campo.
+- "Concluir" no card da tarefa fecha só a tarefa; não encerra o lead. Isso explica
+  CSI e PR Comércio sem registro de fechamento.
+- A tela "Minha Agenda" filtra pelas tarefas do próprio usuário. Não há como a
+  tarefa da Beatriz aparecer para a Pamela por essa tela — vale pedir print.
 
-### O que acontece hoje (causa dos dois "Mauricio")
-Existem três portas de entrada de contato, cada uma com uma regra diferente:
+## b) O que será feito
 
-1. **WhatsApp (mensagem recebida)** — procura a conversa pelo telefone em dois
-   formatos (com e sem o 55) e, se não achar, procura um lead só pelo campo
-   `telefone_whatsapp` **em formato exato**. Foi aqui que o "5519996733919"
-   não encontrou o lead gravado como "19996733919" e nasceu um segundo lead.
-2. **Lead externo (OPA/n8n)** — normaliza o telefone e já consulta a carteira;
-   é a porta mais correta hoje, mas não olha CNPJ.
-3. **Cadastro manual na tela** — grava o lead direto, sem nenhuma checagem de
-   duplicidade.
+1. **Etapa deixa de ir no salvamento genérico.** Em `src/lib/crm-sync.ts`, o payload
+   de lead já existente passa a excluir `stage` e `next_followup` (hoje só exclui o
+   responsável). Nenhuma aba antiga consegue mais reverter fechamento nem apagar
+   reagendamento. Lead novo continua nascendo com a etapa inicial.
 
-A regra de carteira (que compara DDD + os 8 últimos dígitos, imune ao 55 e ao
-nono dígito) só é consultada depois, e apenas para decidir o dono da conversa —
-nunca para evitar a criação de um lead repetido.
+2. **Mudança de etapa por caminho dedicado.** Nova função de servidor
+   `moverEtapaLead` (`src/lib/leads-etapa.functions.ts`), no mesmo padrão da
+   transferência de dono: valida dono/admin, grava a etapa, registra origem
+   "tela" no histórico e devolve erro claro. `useMoveLeadStage` passa a chamar
+   essa função para toda etapa (hoje só "ganho" tem caminho de servidor); o
+   estado local só muda depois do servidor confirmar. Ganho continua passando
+   antes pelo gate fiscal existente, e perdido continua gravando motivo
+   estruturado.
 
-### Desenho proposto
-Uma única porta de entrada compartilhada, `resolverContatoEntrada`, usada pelas
-três rotas acima, com esta ordem:
+3. **Reagendar (silenciar cobrança) vira ação real.** Mesma família:
+   `reagendarLead` grava `next_followup` (e `recontatar_em` quando for lead
+   perdido). Botão "Reagendar cobrança" na ficha do lead, com seletor de data e
+   confirmação; a ficha mostra "Xerife silenciado até dd/mm".
 
-1. Normaliza telefone (chave DDD + 8 dígitos), CNPJ (14 dígitos) e e-mail.
-2. Procura **cliente da carteira** por telefone ou CNPJ → vincula ao cliente e
-   entrega ao vendedor dele. Não cria lead novo nem entra em rodízio.
-3. Procura **lead ativo** (etapa não encerrada) por telefone ou CNPJ → reaproveita
-   esse lead, vincula a conversa a ele e mantém o dono atual.
-4. Só quando nada bate, cria lead novo e segue o rodízio de hoje.
-5. Empresa/nome sozinhos **não** vinculam automaticamente — geram apenas um aviso
-   de "possível duplicidade" na tela do vendedor, para ele decidir. Nome é fraco
-   demais para mesclar sozinho.
+4. **Etapa/reagendamento só mudam por ação explícita.** Varredura para garantir
+   que nenhuma outra tela grave esses campos direto.
 
-Detalhes:
-- A busca por telefone passa a usar a mesma chave da carteira em todos os
-  caminhos (fim do casamento por texto exato).
-- Quando o CNPJ chega depois (lead que nasceu só com telefone), a regra já
-  existente de "CNPJ que chega depois" continua valendo e agora também aponta
-  leads irmãos ativos.
-- Nada é apagado: quando dois leads ativos batem entre si, o mais novo é
-  marcado como duplicado e a conversa migra para o canônico, com nota no
-  histórico e aviso ao dono.
-- Teste de aceitação com o caso real: 1205330c e 97df561a devem ser reconhecidos
-  como o mesmo contato (5519996733919 ≡ 19996733919).
+5. **Regra de banco de segurança (aviso obrigatório, vou te chamar antes de
+   aplicar):** para blindar de vez, avalio uma trava no banco que impeça um
+   lead sair de ganho/perdido por gravação genérica. Isso mexe em regra de
+   banco, então só aplico com seu ok — a correção dos itens 1 a 3 já resolve o
+   caso relatado sem isso.
 
-Não mexe em RLS/policies. Precisa de uma consulta nova no banco para "lead ativo
-por telefone/CNPJ" (função de leitura, nos mesmos moldes de `localizar_carteira`).
+## c) Ponto de UX — "esfriando"
 
----
+Esse marcador é ligado pelo próprio Xerife a cada rodada, nunca pelo vendedor.
+Hoje ele aparece só no painel de cadência (gestão), com o rótulo "Leads
+esfriando". Vou trocar para "Esfriando (alerta automático do Xerife)" e
+acrescentar a explicação de que a única forma de pausar a cobrança é fechar o
+lead ou reagendar — que passa a existir no item 3.
 
-## Parte B — DIFAL / Inscrição Estadual
+## d) Validação antes de publicar
 
-### O que já existe
-- `leads.inscricao_estadual` e `clientes.inscricao_estadual`, com a marca
-  "isento de IE" no cadastro de cliente.
-- UF do destinatário no cadastro (`estado`).
-- Na proposta: subtotal, desconto, acréscimo, frete e total. **Não existe**
-  nenhuma tabela de alíquota, nem UF de origem no cadastro do emitente
-  (o emitente só tem endereço em texto livre), nem campo de DIFAL.
+- Caso do Ricardo simulado: aba com cópia antiga salvando depois do fechamento
+  não altera mais a etapa.
+- Marcar perdido pela tela grava histórico e fecha as tarefas do Xerife.
+- Reagendar para outubro persiste e o Xerife não cobra até lá.
+- Suíte completa e verificações automáticas.
 
-Ou seja: hoje não há de onde tirar a alíquota. Ela precisa ser criada.
-
-### Proposta de desenho (preciso da sua confirmação)
-1. **Origem da alíquota**: uma tabela de configuração por UF de destino, com
-   alíquota interna do estado de destino e alíquota interestadual (7% ou 12%
-   conforme a UF de origem). A UF de origem passa a ser um campo do emitente
-   (hoje inexistente) — sugiro MG, confirme.
-   O DIFAL é a diferença entre a alíquota interna do destino e a interestadual,
-   aplicada quando o destinatário não tem inscrição estadual (consumidor final
-   não contribuinte).
-2. **Quando entra**: só quando o cliente/lead da proposta está sem inscrição
-   estadual e não está marcado como isento, e a UF de destino é diferente da UF
-   de origem.
-3. **Automático ou sugestão**: sugiro **calcular automaticamente e deixar
-   editável** — a proposta já nasce com o valor certo, e quem monta pode ajustar
-   ou zerar com um clique, ficando registrado quem alterou. Confirme se prefere
-   totalmente automático e travado.
-4. **Onde aparece**: linha própria no bloco de totais, logo depois do acréscimo
-   e antes do frete — "DIFAL (destinatário sem inscrição estadual) — R$ X" —
-   somada ao total, e repetida na proposta pública/PDF.
-5. **Alerta**: aviso amarelo na tela da proposta e no cadastro do cliente/lead:
-   "Sem inscrição estadual — DIFAL aplicado".
-
-### Pontos que preciso que você decida
-- UF de origem da empresa (uma só ou uma por emitente?).
-- Base de cálculo: base simples (valor × diferença de alíquota) ou base dupla /
-  "por dentro"? Isso muda o valor final e não dá para adivinhar.
-- Automático travado ou automático editável.
-- A tabela de alíquotas por UF: eu preencho com os valores públicos atuais e
-  você revisa, ou você me manda a tabela usada pela contabilidade?
-
-Só implemento depois da sua resposta nesses quatro pontos.
+Te chamo com o resumo do diff antes de qualquer publicação.
