@@ -319,8 +319,17 @@ export async function runWatchdogConversa(
     .order("last_message_at", { ascending: true })
     .limit(LOTE);
 
+  // Conversa de lead já ganho/perdido não gera mais cobrança (o assunto teve
+  // desfecho; sem este filtro o alerta voltaria todo dia, para sempre).
+  const { leadsEncerrados } = await import("@/lib/xerife/lead-elegivel");
+  const encerradosFrias = await leadsEncerrados(
+    sb,
+    ((frias ?? []) as any[]).map((c) => c.lead_id),
+  );
+
   for (const conv of (frias ?? []) as any[]) {
     try {
+      if (conv.lead_id && encerradosFrias.has(conv.lead_id)) continue;
       // Só interessa quando quem falou por último foi o cliente.
       const { data: ultima } = await sb
         .from("whatsapp_mensagens")
