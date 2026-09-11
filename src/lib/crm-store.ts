@@ -711,7 +711,7 @@ export type Proposal = {
   orderNotes?: string; // Observações do pedido (separado de observations)
   tratativaComercial?: string; // INTERNO — nunca impresso na proposta
   paymentTermId?: string; // ADM-managed payment term chosen by seller
-  formaPagamento?: PaymentForm; // Boleto / Depósito em Conta / PIX
+  formaPagamento?: PaymentForm; // Boleto / Depósito em Conta / PIX / Cartão
   billingForecastDate?: string; // previsão de faturamento (yyyy-MM-dd)
 
   emNegociacao: boolean; // toggle "em negociação" exibido no funil
@@ -748,8 +748,8 @@ export type Proposal = {
 export type PaymentMethod = "Boleto" | "PIX" | "Depósito em Conta" | "Cartão" | "Dinheiro";
 
 /** Forma de pagamento escolhida NA PROPOSTA (separada do prazo do catálogo). */
-export type PaymentForm = "Boleto" | "Depósito em Conta" | "PIX";
-export const PAYMENT_FORMS: PaymentForm[] = ["Boleto", "Depósito em Conta", "PIX"];
+export type PaymentForm = "Boleto" | "Depósito em Conta" | "PIX" | "Cartão";
+export const PAYMENT_FORMS: PaymentForm[] = ["Boleto", "Depósito em Conta", "PIX", "Cartão"];
 
 export type PaymentTerm = {
   id: string;
@@ -766,6 +766,8 @@ export type PaymentTerm = {
   maxParcelas?: number | null;
   /** Cartão: acréscimo por parcela adicional é composto (juros sobre juros). */
   jurosCompostos?: boolean;
+  /** Cartão: taxa base aplicada já na 1x, antes das parcelas adicionais. */
+  cartaoTaxaBasePercent?: number;
   ordem?: number; // posição na lista de prazos (menor primeiro)
 };
 

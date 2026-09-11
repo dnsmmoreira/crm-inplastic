@@ -238,6 +238,7 @@ function rowToPayTerm(r: PayTermRow): PaymentTerm {
     acrescimo_percent?: number | null;
     max_parcelas?: number | null;
     juros_compostos?: boolean | null;
+    cartao_taxa_base_percent?: number | null;
     parcelas?: unknown;
     ordem?: number | null;
   };
@@ -254,6 +255,7 @@ function rowToPayTerm(r: PayTermRow): PaymentTerm {
     acrescimoPercent: Number(loose.acrescimo_percent ?? 0),
     maxParcelas: loose.max_parcelas ?? null,
     jurosCompostos: !!loose.juros_compostos,
+    cartaoTaxaBasePercent: Number(loose.cartao_taxa_base_percent ?? 0),
     ordem: Number(loose.ordem ?? 0),
   };
 }
@@ -275,6 +277,7 @@ function payTermToInsert(t: PaymentTerm): PayTermInsert {
     acrescimo_percent: Number(t.acrescimoPercent ?? 0),
     max_parcelas: t.maxParcelas ?? null,
     juros_compostos: !!t.jurosCompostos,
+    cartao_taxa_base_percent: Number(t.cartaoTaxaBasePercent ?? 0),
     ordem: Number(t.ordem ?? 0),
   } as PayTermInsert;
 }
