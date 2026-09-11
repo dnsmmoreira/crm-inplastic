@@ -27,7 +27,8 @@ devolução operacional) passam a chamá-lo. Comportamento idêntico nos dois ca
 - motivo obrigatório, mínimo 3 caracteres;
 - pedido encerrado com o motivo gravado no histórico de etapas;
 - proposta desvinculada (o retrato do pedido é preservado para auditoria) e
-  reaberta como "enviada", editável;
+  reaberta como "rascunho", editável, com data de envio zerada (para não nascer
+  vencida) e a data de reabertura registrada;
 - lead volta para "proposta";
 - tarefas abertas do pedido encerradas;
 - aviso ao vendedor (item 3).
