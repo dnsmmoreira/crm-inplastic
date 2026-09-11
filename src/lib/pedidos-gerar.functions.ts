@@ -540,6 +540,17 @@ async function ensurePedidoFromProposta(
     parcelas,
     emitter: emitterRes.data ?? null,
     lead: leadRes.data ?? null,
+    // Composição do total gravado (auditoria: o que o cliente aprovou).
+    totais: {
+      subtotal: money(subtotal),
+      desconto_percent: descontoPct,
+      acrescimo_percent: acrescimoPct,
+      acrescimo_valor: acrescimoValor,
+      difal_valor: difal.valor,
+      difal_uf: difal.uf,
+      frete,
+      total,
+    },
   };
 
   // 6) Motor de regras de aprovação financeira (parâmetros em arena_config)
