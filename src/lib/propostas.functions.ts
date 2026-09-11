@@ -207,17 +207,13 @@ export const getPropostaPublica = createServerFn({ method: "POST" })
     const acrescimoValor = +(aposDesconto * (acrescimoPct / 100)).toFixed(2);
     const frete = Number(transport.freightValue) || 0;
 
-    // DIFAL travado — mesma base dos demais totais (itens com desconto/acréscimo, sem frete).
-    const { calcularDifal, DIFAL_ALIQUOTAS_PADRAO } = await import("@/lib/difal");
-    const { data: aliqRows } = await supabaseAdmin
-      .from("difal_aliquotas")
-      .select("uf, aliquota_interna, aliquota_interestadual");
-    const difal = calcularDifal({
+    // DIFAL travado — mesma base dos demais totais (itens com desconto/acréscimo,
+    // sem frete) e MESMA função usada na geração do pedido.
+    const { difalDoDestinatario } = await import("@/lib/difal.server");
+    const difal = await difalDoDestinatario(supabaseAdmin, {
+      leadId: null,
       valorOperacao: +(aposDesconto + acrescimoValor).toFixed(2),
-      ufDestino: ufDestino,
-      inscricaoEstadual: ieDestino,
-      ieIsento,
-      aliquotas: (aliqRows?.length ? aliqRows : DIFAL_ALIQUOTAS_PADRAO) as never,
+      fiscais: { uf: ufDestino, inscricaoEstadual: ieDestino, ieIsento },
     });
 
     return {
