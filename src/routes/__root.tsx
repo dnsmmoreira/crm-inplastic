@@ -802,9 +802,31 @@ function AppShell({ children }: { children: ReactNode }) {
 
         <main className="flex-1 min-w-0 md:flex md:min-h-0 md:flex-col">{children}</main>
       </div>
+
+      {/* Impressão: a folha usa toda a largura útil, sem menu e sem corte lateral */}
+      <style>{`
+        @media print {
+          html, body { width: auto !important; height: auto !important; overflow: visible !important; background: #fff !important; }
+          body > * { overflow: visible !important; }
+          aside, header, nav { display: none !important; }
+          main, main > *, body div { overflow: visible !important; }
+          main {
+            display: block !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            height: auto !important;
+            min-height: 0 !important;
+            flex: none !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }
+
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
