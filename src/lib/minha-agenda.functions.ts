@@ -313,8 +313,19 @@ export const concluirTarefa = createServerFn({ method: "POST" })
       mensagem = "Conversa encerrada.";
     } else if (desfecho.tipo === "avancou_etapa") {
       const novo = desfecho.stage!;
-      const upLead = await supabase.from("leads").update({ stage: novo as any }).eq("id", leadId!);
-      await assertNoError(upLead, "concluirTarefa.avanco.lead", { lead_id: leadId, stage: novo });
+      // Caminho do sistema: cobre também o lead que estava em ganho/perdido
+      // (UPDATE direto é recusado pelo trigger `trg_leads_stage_lock`).
+      const { moverStageLeadSistema } = await import("@/lib/leads-stage.server");
+      const upLead = await moverStageLeadSistema({
+        leadId: leadId!,
+        para: novo as never,
+        origem: "desfecho_tarefa",
+      });
+      await assertNoError(
+        upLead.ok ? { error: null } : { error: { message: upLead.erro } },
+        "concluirTarefa.avanco.lead",
+        { lead_id: leadId, stage: novo },
+      );
 
       const insInt = await supabase.from("lead_interactions").insert({
         lead_id: leadId!,

@@ -321,7 +321,13 @@ export const gerarPedidoInterno = createServerFn({ method: "POST" })
     }
 
     // ABORTAR: o pedido depende do lead em "ganho".
-    const upLead = await loose.from("leads").update({ stage: "ganho" }).eq("id", leadId);
+    const { moverStageLeadSistema } = await import("@/lib/leads-stage.server");
+    const movidaGanho = await moverStageLeadSistema({
+      leadId,
+      para: "ganho",
+      origem: "geracao_pedido",
+    });
+    const upLead = movidaGanho.ok ? { error: null } : { error: { message: movidaGanho.erro } };
     await assertNoError(
       upLead,
       "pedidos-gerar.gerarPedidoInterno/lead-ganho",
@@ -382,7 +388,13 @@ export const moverParaGanho = createServerFn({ method: "POST" })
     }
 
     // ABORTAR: o Ganho é o efeito principal desta operação.
-    const upLeadGanho = await loose.from("leads").update({ stage: "ganho" }).eq("id", data.lead_id);
+    const { moverStageLeadSistema } = await import("@/lib/leads-stage.server");
+    const movida = await moverStageLeadSistema({
+      leadId: data.lead_id,
+      para: "ganho",
+      origem: "mover_para_ganho",
+    });
+    const upLeadGanho = movida.ok ? { error: null } : { error: { message: movida.erro } };
     await assertNoError(
       upLeadGanho,
       "pedidos-gerar.moverParaGanho/lead-ganho",
@@ -462,20 +474,55 @@ async function ensurePedidoFromProposta(
     sb.from("leads").select("*").eq("id", leadId).maybeSingle(),
   ]);
 
-  // 3) Total (subtotal dos itens com desconto% da proposta)
+  // 3) Total — MESMA conta que o cliente viu na proposta:
+  //    itens → desconto → acréscimo (cartão) → DIFAL → frete.
+  //    Antes o pedido nascia só com itens+desconto+acréscimo: quando havia
+  //    DIFAL (ou frete), o financeiro recebia um valor menor que o aprovado.
+  const money = (n: number) => +(Math.round(n * 100) / 100).toFixed(2);
   const subtotal = itens.reduce(
     (s: number, i: { quantity: number; unit_price: number }) =>
       s + Number(i.quantity) * Number(i.unit_price),
     0,
   );
   const descontoPct = Number(proposta.discount_percent ?? 0);
-  // Acréscimo do cartão parcelado entra no total do pedido (mesma conta da proposta).
-  const acrescimoPct = Math.max(
-    0,
-    Number((proposta as { acrescimo_percent?: number | null }).acrescimo_percent ?? 0),
+
+  const { data: condRow } = proposta.payment_term_id
+    ? await sb
+        .from("condicoes_pagamento")
+        .select("acrescimo_percent, method, max_parcelas")
+        .eq("id", proposta.payment_term_id)
+        .maybeSingle()
+    : { data: null };
+  const { acrescimoEfetivo, ehCondicaoCartao } = await import("@/lib/cartao-simulacao");
+  const acrescimoPct = Math.min(
+    100,
+    Math.max(
+      0,
+      acrescimoEfetivo(
+        (proposta as { acrescimo_percent?: number | null }).acrescimo_percent,
+        condRow?.acrescimo_percent ?? null,
+        ehCondicaoCartao({
+          method: condRow?.method ?? null,
+          maxParcelas: condRow?.max_parcelas ?? null,
+        }),
+      ),
+    ),
   );
-  const aposDesconto = subtotal * (1 - descontoPct / 100);
-  const total = +(aposDesconto * (1 + acrescimoPct / 100)).toFixed(2);
+
+  const aposDesconto = money(subtotal * (1 - descontoPct / 100));
+  const acrescimoValor = money(aposDesconto * (acrescimoPct / 100));
+  const valorOperacao = money(aposDesconto + acrescimoValor);
+
+  const { difalDoDestinatario } = await import("@/lib/difal.server");
+  const difal = await difalDoDestinatario(sb, { leadId, valorOperacao });
+
+  const frete =
+    Number(
+      ((proposta as { transport?: { freightValue?: number } | null }).transport ?? {})
+        .freightValue,
+    ) || 0;
+
+  const total = money(valorOperacao + difal.valor + frete);
 
   // 4) Número do pedido
   const ano = new Date().getFullYear();
@@ -493,6 +540,17 @@ async function ensurePedidoFromProposta(
     parcelas,
     emitter: emitterRes.data ?? null,
     lead: leadRes.data ?? null,
+    // Composição do total gravado (auditoria: o que o cliente aprovou).
+    totais: {
+      subtotal: money(subtotal),
+      desconto_percent: descontoPct,
+      acrescimo_percent: acrescimoPct,
+      acrescimo_valor: acrescimoValor,
+      difal_valor: difal.valor,
+      difal_uf: difal.uf,
+      frete,
+      total,
+    },
   };
 
   // 6) Motor de regras de aprovação financeira (parâmetros em arena_config)

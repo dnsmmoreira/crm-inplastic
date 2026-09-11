@@ -3581,6 +3581,15 @@ export type Database = {
         Args: { _lead_id: string; _motivo?: string; _quando: string }
         Returns: Json
       }
+      sistema_mover_etapa_lead: {
+        Args: {
+          _de?: string
+          _lead_id: string
+          _origem?: string
+          _stage: string
+        }
+        Returns: Json
+      }
       snapshot_metas_mes: {
         Args: { _ano: number; _mes: number }
         Returns: number

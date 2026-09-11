@@ -136,13 +136,18 @@ export async function devolverPedidoCore(
     );
   }
   if (leadId) {
-    const rbLead = await sb
-      .from("leads")
-      .update({ stage: "proposta" })
-      .eq("id", leadId)
-      .eq("stage", "ganho");
+    // O lead está em `ganho` e o trigger `trg_leads_stage_lock` recusa esse
+    // UPDATE vindo do usuário autenticado — por isso a volta ao funil passa
+    // pelo caminho do sistema (ver leads-stage.server.ts).
+    const { moverStageLeadSistema } = await import("@/lib/leads-stage.server");
+    const rbLead = await moverStageLeadSistema({
+      leadId,
+      para: "proposta",
+      de: "ganho",
+      origem: "devolucao_pedido",
+    });
     await assertNoError(
-      rbLead,
+      rbLead.ok ? { error: null } : { error: { message: rbLead.erro } },
       "pedidos.devolverPedido/rollback-lead",
       {
         pedido_id: pedidoId,
