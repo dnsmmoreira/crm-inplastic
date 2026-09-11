@@ -111,7 +111,9 @@ function RomaneioPrintPage() {
           </div>
         </div>
 
-        <table className="w-full border-collapse">
+        <table
+          className={`w-full border-collapse ${comValores ? "romaneio-11" : "romaneio-8"}`}
+        >
           <thead>
             <tr className="print-head-row bg-gray-100 text-left">
               <Th>SKU</Th>
@@ -171,11 +173,75 @@ function RomaneioPrintPage() {
           aside, header, nav { display: none !important; }
           .print\\:hidden { display: none !important; }
           [data-sonner-toaster] { display: none !important; }
-          #romaneio-print { font-size: 9pt; color: #111827; background: #fff; }
-          #romaneio-print table { font-size: 8pt; width: 100%; }
-          #romaneio-print th, #romaneio-print td { padding: 1.2mm 1.5mm; }
+
+          #romaneio-print {
+            font-size: 9pt;
+            color: #111827;
+            background: #fff;
+            width: 100% !important;
+            overflow: visible !important;
+          }
+          /* Nada pode ultrapassar a largura útil da folha */
+          #romaneio-print, #romaneio-print * { box-sizing: border-box; max-width: 100%; }
+          #romaneio-print .overflow-x-auto,
+          #romaneio-print .overflow-hidden { overflow: visible !important; }
+
+          #romaneio-print table {
+            font-size: 8pt;
+            width: 100%;
+            table-layout: fixed;
+          }
+          #romaneio-print th, #romaneio-print td {
+            padding: 1.2mm 1.5mm;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+          }
+
+          /* 8 colunas (separação / conferência sem valores) — soma 100% */
+          #romaneio-print .romaneio-8 th:nth-child(1),
+          #romaneio-print .romaneio-8 td:nth-child(1) { width: 14%; }
+          #romaneio-print .romaneio-8 th:nth-child(2),
+          #romaneio-print .romaneio-8 td:nth-child(2) { width: 34%; }
+          #romaneio-print .romaneio-8 th:nth-child(3),
+          #romaneio-print .romaneio-8 td:nth-child(3) { width: 7%; }
+          #romaneio-print .romaneio-8 th:nth-child(4),
+          #romaneio-print .romaneio-8 td:nth-child(4) { width: 7%; }
+          #romaneio-print .romaneio-8 th:nth-child(5),
+          #romaneio-print .romaneio-8 td:nth-child(5) { width: 10%; }
+          #romaneio-print .romaneio-8 th:nth-child(6),
+          #romaneio-print .romaneio-8 td:nth-child(6) { width: 10%; }
+          #romaneio-print .romaneio-8 th:nth-child(7),
+          #romaneio-print .romaneio-8 td:nth-child(7) { width: 10%; }
+          #romaneio-print .romaneio-8 th:nth-child(8),
+          #romaneio-print .romaneio-8 td:nth-child(8) { width: 8%; }
+
+          /* 11 colunas (conferência para emissão de NF) — soma 100% */
+          #romaneio-print .romaneio-11 th:nth-child(1),
+          #romaneio-print .romaneio-11 td:nth-child(1) { width: 10%; }
+          #romaneio-print .romaneio-11 th:nth-child(2),
+          #romaneio-print .romaneio-11 td:nth-child(2) { width: 21%; }
+          #romaneio-print .romaneio-11 th:nth-child(3),
+          #romaneio-print .romaneio-11 td:nth-child(3) { width: 5%; }
+          #romaneio-print .romaneio-11 th:nth-child(4),
+          #romaneio-print .romaneio-11 td:nth-child(4) { width: 5%; }
+          #romaneio-print .romaneio-11 th:nth-child(5),
+          #romaneio-print .romaneio-11 td:nth-child(5) { width: 7%; }
+          #romaneio-print .romaneio-11 th:nth-child(6),
+          #romaneio-print .romaneio-11 td:nth-child(6) { width: 7%; }
+          #romaneio-print .romaneio-11 th:nth-child(7),
+          #romaneio-print .romaneio-11 td:nth-child(7) { width: 9%; }
+          #romaneio-print .romaneio-11 th:nth-child(8),
+          #romaneio-print .romaneio-11 td:nth-child(8) { width: 7%; }
+          #romaneio-print .romaneio-11 th:nth-child(9),
+          #romaneio-print .romaneio-11 td:nth-child(9) { width: 11%; }
+          #romaneio-print .romaneio-11 th:nth-child(10),
+          #romaneio-print .romaneio-11 td:nth-child(10) { width: 8%; }
+          #romaneio-print .romaneio-11 th:nth-child(11),
+          #romaneio-print .romaneio-11 td:nth-child(11) { width: 10%; }
+
           #romaneio-print thead { display: table-header-group; }
           #romaneio-print tfoot { display: table-footer-group; }
+          #romaneio-print table { break-inside: auto; page-break-inside: auto; }
           #romaneio-print tr, #romaneio-print .print-block {
             break-inside: avoid;
             page-break-inside: avoid;

@@ -653,7 +653,10 @@ function AppShell({ children }: { children: ReactNode }) {
       </aside>
 
       {/* Mobile drawer */}
-      <div className="flex flex-1 flex-col min-w-0 overflow-x-hidden">
+      <div
+        data-print-reset="conteudo"
+        className="app-conteudo flex flex-1 flex-col min-w-0 overflow-x-hidden"
+      >
         <header className="md:hidden sticky top-0 z-30 flex items-center justify-between border-b bg-sidebar text-sidebar-foreground px-3 py-2">
           <div className="flex min-w-0 items-center gap-2">
             <button
@@ -810,6 +813,21 @@ function AppShell({ children }: { children: ReactNode }) {
           body > * { overflow: visible !important; }
           aside, header, nav { display: none !important; }
           main, main > *, body div { overflow: visible !important; }
+          /* Wrapper de conteúdo de TODA rota: alvo explícito, não só o coringa acima.
+             Sem isto o overflow-x-hidden corta a lateral direita de qualquer impressão. */
+          .app-conteudo,
+          [data-print-reset="conteudo"] {
+            display: block !important;
+            overflow: visible !important;
+            overflow-x: visible !important;
+            overflow-y: visible !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            flex: none !important;
+          }
           main {
             display: block !important;
             width: 100% !important;
