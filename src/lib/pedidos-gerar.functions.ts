@@ -388,7 +388,13 @@ export const moverParaGanho = createServerFn({ method: "POST" })
     }
 
     // ABORTAR: o Ganho é o efeito principal desta operação.
-    const upLeadGanho = await loose.from("leads").update({ stage: "ganho" }).eq("id", data.lead_id);
+    const { moverStageLeadSistema } = await import("@/lib/leads-stage.server");
+    const movida = await moverStageLeadSistema({
+      leadId: data.lead_id,
+      para: "ganho",
+      origem: "mover_para_ganho",
+    });
+    const upLeadGanho = movida.ok ? { error: null } : { error: { message: movida.erro } };
     await assertNoError(
       upLeadGanho,
       "pedidos-gerar.moverParaGanho/lead-ganho",
