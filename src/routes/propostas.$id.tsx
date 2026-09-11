@@ -556,8 +556,12 @@ function PropostaDetalhe() {
     const base = isClientePf
       ? activePaymentTerms.filter((t: PaymentTerm) => !!t.permitePf)
       : activePaymentTerms;
+    const preferirCartao = proposal?.formaPagamento === "Cartão";
     const lista = [...base].sort(
-      (a, b) => (a.ordem ?? 0) - (b.ordem ?? 0) || a.label.localeCompare(b.label, "pt-BR"),
+      (a, b) =>
+        (preferirCartao ? Number(ehCondicaoCartao(b)) - Number(ehCondicaoCartao(a)) : 0) ||
+        (a.ordem ?? 0) - (b.ordem ?? 0) ||
+        a.label.localeCompare(b.label, "pt-BR"),
     );
     // O prazo em uso pela proposta continua na lista mesmo quando inativo,
     // senão propostas antigas perdem a condição ao serem abertas.
@@ -566,7 +570,13 @@ function PropostaDetalhe() {
       : undefined;
     if (atual && !lista.some((t) => t.id === atual.id)) lista.push(atual);
     return lista;
-  }, [activePaymentTerms, isClientePf, paymentTerms, proposal?.paymentTermId]);
+  }, [
+    activePaymentTerms,
+    isClientePf,
+    paymentTerms,
+    proposal?.paymentTermId,
+    proposal?.formaPagamento,
+  ]);
   useEffect(() => {
     if (!proposal || !isClientePf || !proposal.paymentTermId) return;
     const term = paymentTerms.find((t: PaymentTerm) => t.id === proposal.paymentTermId);
@@ -784,6 +794,10 @@ function PropostaDetalhe() {
     );
     updateProposal(proposal.id, {
       paymentTermId: termId,
+      // A forma de pagamento acompanha a condição escolhida (sugestão, sem trava).
+      ...(ehCartao && proposal.formaPagamento !== "Cartão"
+        ? { formaPagamento: "Cartão" as PaymentForm }
+        : {}),
       acrescimoPercent: ehCartao ? acrescimoPct : 0,
       cartaoParcelas: ehCartao ? (opts?.cartaoParcelas ?? null) : null,
       installments:
@@ -798,6 +812,22 @@ function PropostaDetalhe() {
             }))
           : [],
     });
+  };
+
+  /**
+   * Forma de pagamento: ao marcar "Cartão", já sugere a condição de cartão
+   * (abrindo a simulação) quando houver exatamente uma ativa e o prazo atual
+   * não for de cartão. Sugestão, sem bloqueio.
+   */
+  const escolherFormaPagamento = (forma: PaymentForm) => {
+    if (!proposal) return;
+    updateProposal(proposal.id, { formaPagamento: forma });
+    if (forma !== "Cartão") return;
+    const atual = paymentTerms.find((t: PaymentTerm) => t.id === proposal.paymentTermId) ?? null;
+    if (ehCondicaoCartao(atual)) return;
+    const cartoes = visiblePaymentTerms.filter((t: PaymentTerm) => ehCondicaoCartao(t) && t.active);
+    if (cartoes.length !== 1) return;
+    setSimulacao({ open: true, termId: cartoes[0].id, anterior: proposal.paymentTermId ?? null });
   };
 
   /** Troca no select: cartão abre a simulação antes de aplicar. */
@@ -1375,6 +1405,13 @@ function PropostaDetalhe() {
               compostos={
 
                 paymentTerms.find((t: PaymentTerm) => t.id === simulacao.termId)?.jurosCompostos !== false
+
+              }
+
+              taxaBasePercent={
+
+                paymentTerms.find((t: PaymentTerm) => t.id === simulacao.termId)
+                  ?.cartaoTaxaBasePercent ?? 0
 
               }
 
@@ -2388,12 +2425,10 @@ function PropostaDetalhe() {
                 <Select
                   value={proposal.formaPagamento ?? ""}
                   disabled={readOnly}
-                  onValueChange={(v) =>
-                    updateProposal(proposal.id, { formaPagamento: v as PaymentForm })
-                  }
+                  onValueChange={(v) => escolherFormaPagamento(v as PaymentForm)}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Boleto, Depósito em Conta ou PIX" />
+                    <SelectValue placeholder="Boleto, Depósito em Conta, PIX ou Cartão" />
                   </SelectTrigger>
                   <SelectContent>
                     {PAYMENT_FORMS.map((f) => (
