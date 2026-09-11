@@ -626,7 +626,7 @@ function PropostaDetalhe() {
   // Proposta convertida em pedido é SEMPRE somente-leitura, sem exceção:
   // o pedido lê o retrato tirado na conversão, então editar aqui não chegaria
   // ao pedido. Para alterar, é preciso devolver o pedido — aí a proposta volta
-  // a `enviada` e fica editável de novo.
+  // a `rascunho` (sem `sent_at`) e fica editável de novo.
   const isPedido = proposal?.status === "pedido";
   const editUnlocked = false;
   const editRequested = false;
