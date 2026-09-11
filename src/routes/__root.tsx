@@ -813,6 +813,21 @@ function AppShell({ children }: { children: ReactNode }) {
           body > * { overflow: visible !important; }
           aside, header, nav { display: none !important; }
           main, main > *, body div { overflow: visible !important; }
+          /* Wrapper de conteúdo de TODA rota: alvo explícito, não só o coringa acima.
+             Sem isto o overflow-x-hidden corta a lateral direita de qualquer impressão. */
+          .app-conteudo,
+          [data-print-reset="conteudo"] {
+            display: block !important;
+            overflow: visible !important;
+            overflow-x: visible !important;
+            overflow-y: visible !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            flex: none !important;
+          }
           main {
             display: block !important;
             width: 100% !important;
