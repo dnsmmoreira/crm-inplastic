@@ -57,6 +57,12 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuth, hasPerm } from "@/hooks/use-auth";
 import { PERM_PEDIDOS_MOVIMENTAR } from "@/lib/permissoes";
+import {
+  limiteDoPrazo,
+  pedidoAtrasado,
+  prazoEfetivo,
+  usandoPrazoReal,
+} from "@/lib/pedido-prazo";
 
 import { formatBRL } from "@/lib/crm-store";
 import {
@@ -222,7 +228,6 @@ function PedidosKanbanPage() {
     };
   }, [allRows]);
 
-  const terminalStages: PedidoStageId[] = ["pos_venda", "reprovado_financeiro"];
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
@@ -242,14 +247,8 @@ function PedidosKanbanPage() {
       if (fStage !== "all" && p.stage !== fStage) return false;
       if (fForma !== "all" && (p.forma_atendimento?.trim() ?? "") !== fForma) return false;
 
-      if (tAtrasados) {
-        const prev = p.previsao_entrega ? new Date(p.previsao_entrega) : null;
-        const atrasado =
-          prev !== null &&
-          !terminalStages.includes(p.stage) &&
-          differenceInCalendarDays(now, prev) > 0;
-        if (!atrasado) return false;
-      }
+      // Atraso conta pelo prazo REAL (renegociado) quando existir.
+      if (tAtrasados && !pedidoAtrasado(p, now)) return false;
       if (tBloqueados) {
         const fiscalBlock =
           p.fiscal_status === "aguardando_correcao" || p.fiscal_status === "nota_fiscal_cancelada";
@@ -602,12 +601,11 @@ function PedidoCard({
     differenceInCalendarDays(new Date(), new Date(pedido.stage_changed_at)),
   );
 
-  const terminalStages: PedidoStageId[] = ["pos_venda", "reprovado_financeiro"];
-  const previsao = pedido.previsao_entrega ? new Date(pedido.previsao_entrega) : null;
-  const atrasado =
-    previsao !== null &&
-    !terminalStages.includes(pedido.stage) &&
-    differenceInCalendarDays(new Date(), previsao) > 0;
+  // Prazo mostrado: o real (renegociado) quando existir.
+  const prazo = prazoEfetivo(pedido);
+  const previsao = prazo ? limiteDoPrazo(prazo) : null;
+  const usaReal = usandoPrazoReal(pedido);
+  const atrasado = pedidoAtrasado(pedido);
 
   const responsavel =
     pedido.responsavel_nome ?? pedido.equipe_responsavel ?? pedido.vendedor_nome ?? null;
@@ -730,7 +728,7 @@ function PedidoCard({
           >
             <Truck className="h-3 w-3 shrink-0" />
             <span>
-              Previsão {format(previsao, "dd MMM", { locale: ptBR })}
+              {usaReal ? "Prazo real" : "Previsão"} {format(previsao, "dd MMM", { locale: ptBR })}
               {atrasado && ` · atrasado ${differenceInCalendarDays(new Date(), previsao)}d`}
             </span>
           </div>
@@ -989,11 +987,7 @@ function KpiBar({ pedidos }: { pedidos: PedidoRow[] }) {
     const ativos = pedidos.filter((p) => !terminal.includes(p.stage));
     const valorAtivos = ativos.reduce((s, p) => s + p.total, 0);
 
-    const atrasados = pedidos.filter((p) => {
-      if (!p.previsao_entrega) return false;
-      if (terminal.includes(p.stage)) return false;
-      return differenceInCalendarDays(now, new Date(p.previsao_entrega)) > 0;
-    }).length;
+    const atrasados = pedidos.filter((p) => pedidoAtrasado(p, now)).length;
 
     const bloqueados = pedidos.filter((p) => {
       const ocor = (p.ocorrencias_abertas ?? 0) > 0;

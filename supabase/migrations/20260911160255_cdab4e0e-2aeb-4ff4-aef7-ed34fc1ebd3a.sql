@@ -1,0 +1,2 @@
+ALTER TABLE public.pedidos ADD COLUMN IF NOT EXISTS prazo_real_entrega date;
+COMMENT ON COLUMN public.pedidos.prazo_real_entrega IS 'Prazo real de entrega renegociado pelo Operacional. Quando presente, substitui previsao_entrega em toda a lógica de atraso.';

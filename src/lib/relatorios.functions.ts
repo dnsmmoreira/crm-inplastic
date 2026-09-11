@@ -22,6 +22,7 @@ export type RelatorioPedidoRow = {
   total: number;
   created_at: string;
   previsao_entrega: string | null;
+  prazo_real_entrega: string | null;
   cliente: string | null;
   itens: RelatorioPedidoItem[];
 };
@@ -108,7 +109,7 @@ export const listPedidosRelatorio = createServerFn({ method: "GET" })
       .from("pedidos")
       .select(
         [
-          "id, number, stage, total, created_at, previsao_entrega, lead_id",
+          "id, number, stage, total, created_at, previsao_entrega, prazo_real_entrega, lead_id",
           "leads:lead_id(company)",
         ].join(", "),
       );
@@ -125,6 +126,7 @@ export const listPedidosRelatorio = createServerFn({ method: "GET" })
       total: number | null;
       created_at: string;
       previsao_entrega: string | null;
+      prazo_real_entrega: string | null;
       leads?: { company: string | null } | null;
     }>;
 
@@ -162,6 +164,7 @@ export const listPedidosRelatorio = createServerFn({ method: "GET" })
       total: Number(r.total ?? 0),
       created_at: r.created_at,
       previsao_entrega: r.previsao_entrega,
+      prazo_real_entrega: r.prazo_real_entrega ?? null,
       cliente: r.leads?.company ?? null,
       itens: itensByPedido.get(r.id) ?? [],
     }));
@@ -184,6 +187,7 @@ export type PedidoAbertoRow = {
   total: number;
   created_at: string;
   previsao_entrega: string | null;
+  prazo_real_entrega: string | null;
   cliente: string | null;
   vendedor_id: string | null;
   vendedor_nome: string | null;
@@ -221,7 +225,7 @@ export const listPedidosEmAberto = createServerFn({ method: "GET" })
       .from("pedidos")
       .select(
         [
-          "id, number, stage, total, created_at, previsao_entrega, entregue_em",
+          "id, number, stage, total, created_at, previsao_entrega, prazo_real_entrega, entregue_em",
           "vendedor_proprietario_id, responsavel_atual_id, owner_id, proposta_snapshot",
           "leads:lead_id(company)",
         ].join(", "),
@@ -241,6 +245,7 @@ export const listPedidosEmAberto = createServerFn({ method: "GET" })
       total: number | null;
       created_at: string;
       previsao_entrega: string | null;
+      prazo_real_entrega: string | null;
       vendedor_proprietario_id: string | null;
       responsavel_atual_id: string | null;
       owner_id: string | null;
@@ -303,6 +308,7 @@ export const listPedidosEmAberto = createServerFn({ method: "GET" })
         total: Number(r.total ?? 0),
         created_at: r.created_at,
         previsao_entrega: r.previsao_entrega,
+        prazo_real_entrega: r.prazo_real_entrega ?? null,
         cliente: r.leads?.company ?? clienteDoSnapshot(r.proposta_snapshot),
         vendedor_id: vendedorId,
         vendedor_nome: vendedorId ? nameById.get(vendedorId) ?? null : null,

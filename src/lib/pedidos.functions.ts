@@ -58,6 +58,8 @@ export type PedidoRow = {
   created_at: string;
   stage_changed_at: string;
   previsao_entrega: string | null;
+  /** Prazo renegociado pelo Operacional; quando existe, manda no atraso. */
+  prazo_real_entrega: string | null;
   equipe_responsavel: string | null;
   responsavel_atual_id: string | null;
   responsavel_nome: string | null;
@@ -126,7 +128,7 @@ export const listPedidos = createServerFn({ method: "GET" })
       .from("pedidos")
       .select(
         [
-          "id, number, stage, total, created_at, previsao_entrega",
+          "id, number, stage, total, created_at, previsao_entrega, prazo_real_entrega",
           "equipe_responsavel, responsavel_atual_id, fiscal_status, nf_numero",
           "forma_atendimento, prioridade, ocorrencia",
           "vendedor_proprietario_id, proposta_id, lead_id",
@@ -233,6 +235,7 @@ export const listPedidos = createServerFn({ method: "GET" })
         total: number;
         created_at: string;
         previsao_entrega: string | null;
+        prazo_real_entrega: string | null;
         equipe_responsavel: string | null;
         responsavel_atual_id: string | null;
         fiscal_status: string | null;
@@ -263,6 +266,7 @@ export const listPedidos = createServerFn({ method: "GET" })
         created_at: r.created_at,
         stage_changed_at: lastChangeByPedido.get(r.id) ?? r.created_at,
         previsao_entrega: r.previsao_entrega,
+        prazo_real_entrega: r.prazo_real_entrega ?? null,
         equipe_responsavel: r.equipe_responsavel,
         responsavel_atual_id: r.responsavel_atual_id,
         responsavel_nome: r.responsavel_atual_id
@@ -893,6 +897,10 @@ export type PedidoDetalhes = {
   /** Admin, `pedidos.operar_producao` ou `pedidos.movimentar`. */
   pode_comprovar_entrega: boolean;
   fiscal_status: string | null;
+  previsao_entrega: string | null;
+  prazo_real_entrega: string | null;
+  modalidade_entrega: string | null;
+  transportadora: string | null;
   nf_numero: string | null;
   nf_serie: string | null;
   nf_chave: string | null;
@@ -941,6 +949,7 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
       .from("pedidos")
       .select(
         `id, number, stage, total, fiscal_status, nf_numero, lead_id, proposta_id,
+         previsao_entrega, prazo_real_entrega, modalidade_entrega, transportadora,
          vendedor_proprietario_id, owner_id, proposta_snapshot,
          responsavel_atual_id, equipe_responsavel,
          entrega_comprovada_em, entregue_em, entrega_recebida_por,
@@ -1155,6 +1164,10 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
         : null,
       pode_comprovar_entrega: podeComprovarEntrega,
       fiscal_status: p.fiscal_status,
+      previsao_entrega: p.previsao_entrega ?? null,
+      prazo_real_entrega: p.prazo_real_entrega ?? null,
+      modalidade_entrega: p.modalidade_entrega ?? null,
+      transportadora: p.transportadora ?? null,
       nf_numero: p.nf_numero,
       nf_serie: p.nf_serie,
       nf_chave: p.nf_chave,
@@ -1598,6 +1611,12 @@ export const atualizarStatusFiscal = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+/**
+ * `pedido_ocorrencias` é o LOG do pedido: cada chamada acrescenta uma linha e
+ * nenhuma linha anterior é apagada ou sobrescrita. O campo antigo
+ * `pedidos.ocorrencia` (texto único, sobrescrito) fica como coluna legada, sem
+ * receber mais escrita — quem quiser saber o que houve lê o histórico.
+ */
 export const registrarOcorrencia = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
@@ -1606,6 +1625,8 @@ export const registrarOcorrencia = createServerFn({ method: "POST" })
       tipo: string;
       severidade: "baixa" | "media" | "alta" | "critica";
       descricao: string;
+      /** Observação informativa: nasce resolvida e não trava o pós-venda. */
+      informativa?: boolean;
     }) =>
       z
         .object({
@@ -1613,41 +1634,231 @@ export const registrarOcorrencia = createServerFn({ method: "POST" })
           tipo: z.string().trim().min(1).max(60),
           severidade: z.enum(["baixa", "media", "alta", "critica"]),
           descricao: z.string().trim().min(3).max(2000),
+          informativa: z.boolean().optional(),
         })
         .parse(input),
   )
   .handler(async ({ data, context }) => {
     const sb: LooseClient = context.supabase;
-    const { data: pedidoRow } = await sb
+    const id = await inserirOcorrencia(sb, context.userId, {
+      pedidoId: data.pedido_id,
+      tipo: data.tipo,
+      severidade: data.severidade,
+      descricao: data.descricao,
+      informativa: data.informativa ?? false,
+    });
+    return { ok: true as const, id };
+  });
+
+/** Insere a linha no log e devolve o id. Compartilhado pelas funções abaixo. */
+async function inserirOcorrencia(
+  sb: LooseClient,
+  userId: string,
+  args: {
+    pedidoId: string;
+    tipo: string;
+    severidade: "baixa" | "media" | "alta" | "critica";
+    descricao: string;
+    /** Informativa: já entra resolvida (não bloqueia o avanço para pós-venda). */
+    informativa?: boolean;
+  },
+): Promise<string> {
+  const { data: pedidoRow } = await sb
+    .from("pedidos")
+    .select("stage")
+    .eq("id", args.pedidoId)
+    .maybeSingle();
+  const agora = new Date().toISOString();
+  const { data: inserted, error } = await sb
+    .from("pedido_ocorrencias")
+    .insert({
+      pedido_id: args.pedidoId,
+      tipo: args.tipo,
+      severidade: args.severidade,
+      descricao: args.descricao,
+      stage_no_momento: pedidoRow?.stage ?? null,
+      criada_por: userId,
+      ...(args.informativa
+        ? { resolvida: true, resolvida_em: agora, resolvida_por: userId }
+        : {}),
+    })
+    .select("id")
+    .single();
+  if (error) throw new Error(`Falha ao registrar ocorrência: ${error.message}`);
+  return inserted.id as string;
+}
+
+/** Só quem movimenta pedidos (operacional/financeiro/admin) registra prazo e condição. */
+async function exigirMovimentar(sb: LooseClient, userId: string): Promise<void> {
+  const pode = await temPermissao(sb, userId, PERM_PEDIDOS_MOVIMENTAR);
+  if (!pode) throw new Error("Você não tem permissão para alterar dados do pedido.");
+}
+
+/** Avisa o vendedor dono do pedido com pop-up de aceite obrigatório. */
+async function avisarVendedorDoPedido(
+  sb: LooseClient,
+  args: { pedidoId: string; vendedorId: string | null; tipo: string; titulo: string },
+): Promise<void> {
+  if (!args.vendedorId) return;
+  const { notificarUsuarios } = await import("@/lib/pedidos-fluxo.server");
+  await notificarUsuarios(sb, [args.vendedorId], {
+    tipo: args.tipo,
+    titulo: args.titulo,
+    pedidoId: args.pedidoId,
+    exigeAceite: true,
+    repetivel: true,
+  });
+}
+
+/**
+ * Prazo REAL de entrega — o combinado de verdade com o cliente, separado da
+ * previsão herdada da proposta. Toda a lógica de atraso passa a olhar para ele
+ * (ver `src/lib/pedido-prazo.ts`). Cada alteração vira linha no log e pop-up
+ * com aceite obrigatório para o vendedor.
+ */
+export const definirPrazoRealEntrega = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { pedido_id: string; prazo: string | null; motivo?: string }) =>
+    z
+      .object({
+        pedido_id: z.string().uuid(),
+        prazo: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/, "Informe uma data válida.")
+          .nullable(),
+        motivo: z.string().trim().max(500).optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const sb: LooseClient = context.supabase;
+    await exigirMovimentar(sb, context.userId);
+
+    const { data: p, error } = await sb
       .from("pedidos")
-      .select("stage")
+      .select("id, number, prazo_real_entrega, previsao_entrega, vendedor_proprietario_id")
       .eq("id", data.pedido_id)
       .maybeSingle();
-    const { data: inserted, error } = await sb
-      .from("pedido_ocorrencias")
-      .insert({
-        pedido_id: data.pedido_id,
-        tipo: data.tipo,
-        severidade: data.severidade,
-        descricao: data.descricao,
-        stage_no_momento: pedidoRow?.stage ?? null,
-        criada_por: context.userId,
-      })
-      .select("id")
-      .single();
-    if (error) throw new Error(`Falha ao registrar ocorrência: ${error.message}`);
-    // REGISTRAR E SEGUIR: a ocorrência já foi gravada; este campo é resumo.
-    const upOco = await sb
+    if (error) throw new Error(`Falha ao carregar pedido: ${error.message}`);
+    if (!p) throw new Error("Pedido não encontrado");
+
+    const anterior = (p.prazo_real_entrega as string | null) ?? null;
+    if ((anterior ?? "") === (data.prazo ?? "")) return { ok: true as const, inalterado: true };
+
+    const up = await sb
       .from("pedidos")
-      .update({ ocorrencia: `[${data.severidade}] ${data.tipo}: ${data.descricao}`.slice(0, 500) })
+      .update({ prazo_real_entrega: data.prazo })
       .eq("id", data.pedido_id);
-    if (upOco?.error) {
-      await registrarFalhaSegura("pedidos.registrarOcorrencia/resumo", upOco.error, {
-        pedido_id: data.pedido_id,
-      });
-    }
-    return { ok: true as const, id: inserted.id as string };
+    await assertNoError(
+      up,
+      "pedidos.definirPrazoRealEntrega/update",
+      { pedido_id: data.pedido_id },
+      "Não foi possível salvar o prazo real. Tente novamente.",
+    );
+
+    const { formatarPrazo } = await import("@/lib/pedido-prazo");
+    const de = formatarPrazo(anterior ?? (p.previsao_entrega as string | null));
+    const para = data.prazo ? formatarPrazo(data.prazo) : "sem prazo real";
+    const motivo = data.motivo?.trim() ? ` — ${data.motivo.trim()}` : "";
+    await inserirOcorrencia(sb, context.userId, {
+      pedidoId: data.pedido_id,
+      tipo: "prazo_alterado",
+      severidade: "baixa",
+      descricao: `Prazo real de entrega alterado de ${de} para ${para}${motivo}`,
+      informativa: true,
+    });
+
+    await avisarVendedorDoPedido(sb, {
+      pedidoId: data.pedido_id,
+      vendedorId: (p.vendedor_proprietario_id as string | null) ?? null,
+      tipo: "pedido_prazo_alterado",
+      titulo: data.prazo
+        ? `Prazo do pedido ${p.number} foi atualizado para ${para}`
+        : `Prazo real do pedido ${p.number} foi removido — vale a previsão original`,
+    });
+
+    return { ok: true as const, inalterado: false };
   });
+
+/**
+ * Condição negociada real do pedido (modalidade de entrega e transportadora),
+ * alterada pelo Operacional depois da venda. Registra no log e avisa o vendedor
+ * com pop-up de aceite obrigatório.
+ */
+export const atualizarCondicaoNegociada = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (input: {
+      pedido_id: string;
+      modalidade_entrega?: string | null;
+      transportadora?: string | null;
+      observacao?: string;
+    }) =>
+      z
+        .object({
+          pedido_id: z.string().uuid(),
+          modalidade_entrega: z.string().trim().max(40).nullable().optional(),
+          transportadora: z.string().trim().max(120).nullable().optional(),
+          observacao: z.string().trim().max(500).optional(),
+        })
+        .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const sb: LooseClient = context.supabase;
+    await exigirMovimentar(sb, context.userId);
+
+    const { data: p, error } = await sb
+      .from("pedidos")
+      .select("id, number, modalidade_entrega, transportadora, vendedor_proprietario_id")
+      .eq("id", data.pedido_id)
+      .maybeSingle();
+    if (error) throw new Error(`Falha ao carregar pedido: ${error.message}`);
+    if (!p) throw new Error("Pedido não encontrado");
+
+    const campos: Array<{ campo: "modalidade_entrega" | "transportadora"; label: string }> = [
+      { campo: "modalidade_entrega", label: "Modalidade de entrega" },
+      { campo: "transportadora", label: "Transportadora" },
+    ];
+    const patch: Record<string, unknown> = {};
+    const mudancas: string[] = [];
+    for (const { campo, label } of campos) {
+      const novo = data[campo];
+      if (novo === undefined) continue;
+      const antes = ((p as Record<string, unknown>)[campo] as string | null) ?? null;
+      const depois = novo === null || novo === "" ? null : novo;
+      if (antes === depois) continue;
+      patch[campo] = depois;
+      mudancas.push(`${label}: ${antes ?? "—"} → ${depois ?? "—"}`);
+    }
+    if (mudancas.length === 0) return { ok: true as const, inalterado: true };
+
+    const up = await sb.from("pedidos").update(patch).eq("id", data.pedido_id);
+    await assertNoError(
+      up,
+      "pedidos.atualizarCondicaoNegociada/update",
+      { pedido_id: data.pedido_id },
+      "Não foi possível salvar a condição do pedido. Tente novamente.",
+    );
+
+    const obs = data.observacao?.trim() ? ` — ${data.observacao.trim()}` : "";
+    await inserirOcorrencia(sb, context.userId, {
+      pedidoId: data.pedido_id,
+      tipo: "condicao_alterada",
+      severidade: "baixa",
+      descricao: `Condição negociada atualizada. ${mudancas.join("; ")}${obs}`,
+      informativa: true,
+    });
+
+    await avisarVendedorDoPedido(sb, {
+      pedidoId: data.pedido_id,
+      vendedorId: (p.vendedor_proprietario_id as string | null) ?? null,
+      tipo: "pedido_condicao_alterada",
+      titulo: `Pedido ${p.number} teve uma condição atualizada pelo operacional — confira`,
+    });
+
+    return { ok: true as const, inalterado: false };
+  });
+
 
 export const resolverOcorrencia = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

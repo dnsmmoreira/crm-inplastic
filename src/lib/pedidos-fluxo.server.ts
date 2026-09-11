@@ -169,6 +169,13 @@ export async function notificarUsuarios(
     exigeAceite?: boolean;
     /** Proposta reaberta pela devolução — o pop-up leva direto para ela. */
     propostaId?: string | null;
+    /**
+     * Avisos que podem acontecer VÁRIAS vezes no mesmo pedido (ex.: prazo real
+     * alterado duas vezes). Sem isto, o dedupe por (pedido, tipo) silenciaria o
+     * segundo aviso para sempre. Com isto, só o aviso ainda NÃO aceito bloqueia
+     * um novo — a tela nunca duplica, mas nada se perde.
+     */
+    repetivel?: boolean;
   },
 ): Promise<number> {
   const alvos = Array.from(new Set(userIds.filter(Boolean)));
@@ -178,16 +185,19 @@ export async function notificarUsuarios(
   const copias = await gestoresDe(sb, alvos);
   const todos = [...alvos, ...copias];
 
-  const { data: jaExistem } = await sb
+  let q = sb
     .from("notificacoes")
     .select("user_id")
     .eq("pedido_id", args.pedidoId)
     .eq("tipo", args.tipo)
     .in("user_id", todos);
+  if (args.repetivel) q = q.is("aceito_em", null);
+  const { data: jaExistem } = await q;
   const existentes = new Set(
     ((jaExistem ?? []) as Array<{ user_id: string }>).map((r) => r.user_id),
   );
   const novos = todos.filter((u) => !existentes.has(u));
+
   if (novos.length === 0) return 0;
 
   const exigeAceite = args.exigeAceite ?? args.tipo.startsWith("pedido_");
