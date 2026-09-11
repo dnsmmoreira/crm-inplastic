@@ -23,12 +23,29 @@ export type SimulacaoLinha = {
 
 const round2 = (v: number) => Math.round(v * 100) / 100;
 
-/** Fator multiplicador do total para `n` parcelas. */
-export function fatorCartao(n: number, taxaPercent: number, compostos = true): number {
+/**
+ * Fator multiplicador do total para `n` parcelas.
+ *
+ * `taxaBasePercent` é a taxa da operadora que incide já na 1x; `taxaPercent` é
+ * a taxa por parcela adicional, composta (padrão) ou simples.
+ * fator(n) = (1 + base) * (1 + taxa)^(n-1)
+ */
+export function fatorCartao(
+  n: number,
+  taxaPercent: number,
+  compostos = true,
+  taxaBasePercent = 0,
+): number {
   const parcelas = Math.max(1, Math.trunc(Number(n) || 1));
   const taxa = Math.max(0, Number(taxaPercent) || 0) / 100;
-  if (parcelas <= 1 || taxa === 0) return 1;
-  return compostos ? Math.pow(1 + taxa, parcelas - 1) : 1 + (parcelas - 1) * taxa;
+  const base = Math.max(0, Number(taxaBasePercent) || 0) / 100;
+  const adicional =
+    parcelas <= 1 || taxa === 0
+      ? 1
+      : compostos
+        ? Math.pow(1 + taxa, parcelas - 1)
+        : 1 + (parcelas - 1) * taxa;
+  return (1 + base) * adicional;
 }
 
 /** Tabela 1x…maxParcelas com acréscimo, total e valor da parcela. */
@@ -37,13 +54,14 @@ export function simularCartao(input: {
   taxaPercent: number;
   maxParcelas: number;
   compostos?: boolean;
+  taxaBasePercent?: number;
 }): SimulacaoLinha[] {
   const base = Math.max(0, Number(input.valorBase) || 0);
   const max = Math.max(1, Math.trunc(Number(input.maxParcelas) || 1));
   const compostos = input.compostos !== false;
   const out: SimulacaoLinha[] = [];
   for (let n = 1; n <= max; n++) {
-    const fator = fatorCartao(n, input.taxaPercent, compostos);
+    const fator = fatorCartao(n, input.taxaPercent, compostos, input.taxaBasePercent ?? 0);
     const acrescimoPercent = round2((fator - 1) * 100);
     const totalCents = Math.round(base * 100 * fator);
     const total = round2(totalCents / 100);
@@ -83,7 +101,12 @@ export function gerarParcelasCartao(n: number): ParcelaCondicao[] {
 /** A condição de pagamento é um cartão parcelável? */
 export function ehCondicaoCartao(
   cond:
-    | { method?: string | null; maxParcelas?: number | null; jurosCompostos?: boolean | null }
+    | {
+        method?: string | null;
+        maxParcelas?: number | null;
+        jurosCompostos?: boolean | null;
+        cartaoTaxaBasePercent?: number | null;
+      }
     | null
     | undefined,
 ): boolean {
