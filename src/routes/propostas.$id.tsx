@@ -678,7 +678,9 @@ function PropostaDetalhe() {
   const markDirty = () => setDirty(true);
   const guard = () => {
     if (readOnly) {
-      toast.error("Pedido fechado — solicite liberação do ADM para editar.");
+      toast.error(
+        "Esta proposta virou pedido e não pode ser editada. Para alterar, devolva o pedido — a proposta volta a ficar editável.",
+      );
       return true;
     }
     return false;
@@ -983,7 +985,7 @@ function PropostaDetalhe() {
                   variant="outline"
                   className="border-slate-400 text-slate-700 bg-slate-500/10 gap-1"
                 >
-                  <Lock className="h-3 w-3" /> Pedido bloqueado para edição
+                  <Lock className="h-3 w-3" /> Virou pedido — edite só após devolver o pedido
                 </Badge>
               )}
               {editRequested && (
