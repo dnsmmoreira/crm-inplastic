@@ -321,7 +321,13 @@ export const gerarPedidoInterno = createServerFn({ method: "POST" })
     }
 
     // ABORTAR: o pedido depende do lead em "ganho".
-    const upLead = await loose.from("leads").update({ stage: "ganho" }).eq("id", leadId);
+    const { moverStageLeadSistema } = await import("@/lib/leads-stage.server");
+    const movidaGanho = await moverStageLeadSistema({
+      leadId,
+      para: "ganho",
+      origem: "geracao_pedido",
+    });
+    const upLead = movidaGanho.ok ? { error: null } : { error: { message: movidaGanho.erro } };
     await assertNoError(
       upLead,
       "pedidos-gerar.gerarPedidoInterno/lead-ganho",
