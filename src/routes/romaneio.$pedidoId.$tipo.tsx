@@ -111,7 +111,9 @@ function RomaneioPrintPage() {
           </div>
         </div>
 
-        <table className="w-full border-collapse">
+        <table
+          className={`w-full border-collapse ${comValores ? "romaneio-11" : "romaneio-8"}`}
+        >
           <thead>
             <tr className="print-head-row bg-gray-100 text-left">
               <Th>SKU</Th>
