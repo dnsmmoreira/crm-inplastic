@@ -623,11 +623,14 @@ function PropostaDetalhe() {
     ? USERS.find((u) => u.id === proposal.editUnlockedByUserId)
     : null;
 
-  // Pedido fechado é read-only, salvo se ADM liberou edição.
+  // Proposta convertida em pedido é SEMPRE somente-leitura, sem exceção:
+  // o pedido lê o retrato tirado na conversão, então editar aqui não chegaria
+  // ao pedido. Para alterar, é preciso devolver o pedido — aí a proposta volta
+  // a `enviada` e fica editável de novo.
   const isPedido = proposal?.status === "pedido";
-  const editUnlocked = Boolean(proposal?.editUnlockedAt);
-  const editRequested = Boolean(proposal?.editRequestedAt) && !editUnlocked;
-  const readOnly = isPedido && !editUnlocked;
+  const editUnlocked = false;
+  const editRequested = false;
+  const readOnly = isPedido;
 
   // Estado de UI para diálogos de solicitação/liberação
   const [editReqOpen, setEditReqOpen] = useState(false);
