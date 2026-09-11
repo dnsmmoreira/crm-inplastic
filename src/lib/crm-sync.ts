@@ -644,7 +644,7 @@ const COLS_PRODUTOS =
 const COLS_EMITTERS =
   "id,brand,tagline,legal_name,cnpj,ie,address,phone,whatsapp,email,website,is_default,banco,agencia,conta,pix";
 const COLS_TERMOS =
-  "id,label,method,splits,notes,active,permite_pf,acrescimo_percent,max_parcelas,juros_compostos,parcelas,ordem";
+  "id,label,method,splits,notes,active,permite_pf,acrescimo_percent,max_parcelas,juros_compostos,cartao_taxa_base_percent,parcelas,ordem";
 const COLS_LEADS =
   "id,company,contact_name,email,phone,product,product_id,quantity,estimated_value,stage,tags,segment,source,created_at,last_contact,last_contact_at,next_followup,notes,owner_id,cliente_id,cnpj,razao_social,nome_fantasia,inscricao_estadual,inscricao_municipal,endereco,email_financeiro,email_nf_xml,telefone_fixo,whatsapp,site,porte,cnae_principal,faturamento_estimado,num_funcionarios,decisor_nome,decisor_cargo,data_abertura,capital_social,simples_optante,socios";
 const COLS_TAREFAS =
