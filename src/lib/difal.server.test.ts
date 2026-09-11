@@ -22,8 +22,8 @@ function sbFake(rows: { lead?: any; cliente?: any; aliquotas?: any[] }) {
 }
 
 describe("difalDoDestinatario", () => {
-  it("calcula DIFAL do destino ES para contribuinte (mesmo valor da proposta)", async () => {
-    const sb = sbFake({ lead: { estado: "ES", inscricao_estadual: "123456", cliente_id: null } });
+  it("calcula DIFAL do destino ES sem inscrição estadual (mesmo valor da proposta)", async () => {
+    const sb = sbFake({ lead: { estado: "ES", inscricao_estadual: null, cliente_id: null } });
     const r = await difalDoDestinatario(sb, { leadId: "lead-1", valorOperacao: 1000 });
     expect(r.valor).toBeCloseTo(134.82, 2);
     expect(r.uf).toBe("ES");
@@ -43,7 +43,7 @@ describe("difalDoDestinatario", () => {
     const r = await difalDoDestinatario(sb, {
       leadId: null,
       valorOperacao: 1000,
-      fiscais: { uf: "ES", inscricaoEstadual: "123456", ieIsento: false },
+      fiscais: { uf: "ES", inscricaoEstadual: null, ieIsento: false },
     });
     expect(r.valor).toBeCloseTo(134.82, 2);
   });
