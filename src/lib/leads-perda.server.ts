@@ -23,17 +23,30 @@ export async function marcarLeadPerdidoServidor(
   const recontatar =
     dias === null ? null : new Date(Date.now() + dias * 86_400_000).toISOString().slice(0, 10);
 
+  // A etapa vai pelo caminho do sistema: um lead em `ganho` não sai dessa
+  // etapa por UPDATE do usuário (trigger `trg_leads_stage_lock`).
+  const { moverStageLeadSistema } = await import("@/lib/leads-stage.server");
+  const movida = await moverStageLeadSistema({
+    leadId: args.leadId,
+    para: "perdido",
+    origem: "perda_lead",
+  });
+  await assertNoError(
+    movida.ok ? { error: null } : { error: { message: movida.erro } },
+    "leads-perda.marcarLeadPerdidoServidor",
+    { lead_id: args.leadId },
+  );
+
   const up = await sb
     .from("leads")
     .update({
-      stage: "perdido",
       motivo_perda: motivo,
       motivo_perda_detalhe: args.detalhe?.trim() || null,
       perdido_em: new Date().toISOString(),
       recontatar_em: recontatar,
     })
     .eq("id", args.leadId);
-  await assertNoError(up, "leads-perda.marcarLeadPerdidoServidor", { lead_id: args.leadId });
+  await assertNoError(up, "leads-perda.marcarLeadPerdidoServidor/dados", { lead_id: args.leadId });
 
   const ins = await sb.from("lead_interactions").insert({
     lead_id: args.leadId,
