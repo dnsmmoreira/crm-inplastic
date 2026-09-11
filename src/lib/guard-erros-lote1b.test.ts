@@ -115,15 +115,15 @@ describe("fila de IA — transições fail-closed", () => {
 });
 
 describe("rollback de etapa do pedido", () => {
-  const src = readFileSync("src/lib/pedidos.functions.ts", "utf8");
+  // Recusa financeira e devolução operacional compartilham o MESMO núcleo.
+  const src = readFileSync("src/lib/pedidos-devolucao.server.ts", "utf8");
 
   it("registra 'rollback parcial' quando o segundo update (lead) falha", () => {
     expect(src).toContain("rollback_parcial: true");
     expect(src).toContain("rollback parcial: proposta reaberta, lead permaneceu em ganho");
     expect(src).toContain("Rollback parcial:");
-    // ambos os rollbacks (reprovação e devolução) passam por assertNoError
-    expect(src.match(/rollback-proposta/g)?.length).toBe(2);
-    expect(src.match(/rollback-lead/g)?.length).toBe(2);
+    expect(src.match(/rollback-proposta/g)?.length).toBe(1);
+    expect(src.match(/rollback-lead/g)?.length).toBe(1);
   });
 });
 
