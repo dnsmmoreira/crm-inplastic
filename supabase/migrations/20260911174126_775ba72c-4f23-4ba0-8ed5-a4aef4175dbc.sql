@@ -1,0 +1,2 @@
+ALTER TABLE public.condicoes_pagamento ADD COLUMN IF NOT EXISTS cartao_taxa_base_percent numeric NOT NULL DEFAULT 0;
+UPDATE public.condicoes_pagamento SET acrescimo_percent = 1.5, cartao_taxa_base_percent = 5 WHERE id = 'cartao-credito';

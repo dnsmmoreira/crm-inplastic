@@ -627,6 +627,7 @@ export type Database = {
         Row: {
           acrescimo_percent: number
           active: boolean
+          cartao_taxa_base_percent: number
           created_at: string
           id: string
           juros_compostos: boolean
@@ -643,6 +644,7 @@ export type Database = {
         Insert: {
           acrescimo_percent?: number
           active?: boolean
+          cartao_taxa_base_percent?: number
           created_at?: string
           id: string
           juros_compostos?: boolean
@@ -659,6 +661,7 @@ export type Database = {
         Update: {
           acrescimo_percent?: number
           active?: boolean
+          cartao_taxa_base_percent?: number
           created_at?: string
           id?: string
           juros_compostos?: boolean
