@@ -13,7 +13,8 @@ const KICKERS: Record<string, string> = {
   pedido_aguardando_pagamento: "Pagamento antecipado a confirmar",
   pedido_programacao: "Pedido liberado para programação",
   pedido_pronto: "Pedido pronto",
-  pedido_reprovado: "Pedido reprovado",
+  pedido_reprovado: "Pedido reprovado — corrija a proposta",
+  pedido_cancelado: "Pedido devolvido — corrija a proposta",
   conversa_atribuida: "Nova conversa para você",
 };
 
@@ -52,6 +53,12 @@ export function AlertasPendentesProvider({ children }: { children?: ReactNode })
   const irPara = (a: AlertaPendenteRow) => {
     if (a.tipo === "conversa_atribuida" && a.conversa_id) {
       void router.navigate({ to: "/conversas", search: { c: a.conversa_id } });
+      return;
+    }
+    // Devolução/recusa: leva direto à proposta reaberta, que é onde o vendedor
+    // precisa agir (o pedido já está encerrado).
+    if (a.proposta_id) {
+      void router.navigate({ to: "/propostas/$id", params: { id: a.proposta_id } });
       return;
     }
     void router.navigate({ to: "/pedidos" });

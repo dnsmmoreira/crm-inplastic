@@ -9,6 +9,7 @@ export type AlertaPendenteRow = {
   created_at: string;
   pedido_id: string | null;
   conversa_id: string | null;
+  proposta_id: string | null;
   exige_aceite: boolean;
   aceito_em: string | null;
   adiado_ate: string | null;
@@ -33,7 +34,7 @@ export function filtrarPendentes(
 }
 
 const COLUNAS =
-  "id, tipo, titulo, created_at, pedido_id, conversa_id, exige_aceite, aceito_em, adiado_ate";
+  "id, tipo, titulo, created_at, pedido_id, conversa_id, proposta_id, exige_aceite, aceito_em, adiado_ate";
 
 /**
  * Alertas que EXIGEM aceite do usuário logado.
