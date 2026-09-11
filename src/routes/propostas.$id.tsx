@@ -3361,7 +3361,11 @@ function PropostaDetalhe() {
             background: #fff;
           }
           /* Nada pode ultrapassar a largura útil da folha */
-          #proposta-print { max-width: 100%; }
+          #proposta-print, #proposta-print * { box-sizing: border-box; max-width: 100%; }
+          #proposta-print { width: 100% !important; overflow: visible !important; }
+          #proposta-print .overflow-x-auto,
+          #proposta-print .overflow-hidden { overflow: visible !important; }
+
 
           #proposta-print table {
             font-size: 8pt;
