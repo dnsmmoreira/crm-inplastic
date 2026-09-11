@@ -1140,22 +1140,7 @@ export const useCrm = create<CrmState>()((set, get) => ({
   setCurrentUser: (id) => set({ currentUserId: id }),
   addLead: (l) => {
     const id = uid();
-    // Telefone também identifica o mesmo contato (chave DDD + 8 dígitos).
-    const novoTel = chaveTelefone(l.phone ?? l.whatsapp ?? null);
-    if (novoTel) {
-      const dupTel = get().leads.find(
-        (x) =>
-          x.stage !== "ganho" &&
-          x.stage !== "perdido" &&
-          (chaveTelefone(x.phone ?? null) === novoTel ||
-            chaveTelefone(x.whatsapp ?? null) === novoTel),
-      );
-      if (dupTel) {
-        throw new Error(
-          `Este telefone já está no lead "${dupTel.company}". Continue o atendimento nele em vez de criar outro.`,
-        );
-      }
-    }
+    // Só o CNPJ evita duplicidade. Telefone repetido não bloqueia cadastro.
     const newCnpj = (l.cnpj ?? "").replace(/\D/g, "");
     if (newCnpj) {
       const dup = get().leads.find((x) => (x.cnpj ?? "").replace(/\D/g, "") === newCnpj);
