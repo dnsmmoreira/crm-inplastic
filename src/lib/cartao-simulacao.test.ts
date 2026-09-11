@@ -24,6 +24,51 @@ describe("fatorCartao", () => {
   });
 });
 
+describe("modelo com taxa base (5% na 1x + 1,5% composto por parcela adicional)", () => {
+  const esperado: Record<number, number> = {
+    1: 5.0,
+    2: 6.575,
+    3: 8.1736,
+    4: 9.7962,
+    5: 11.4432,
+    6: 13.1148,
+    7: 14.8115,
+    8: 16.5337,
+    9: 18.2817,
+    10: 20.0559,
+    11: 21.8568,
+    12: 23.6846,
+  };
+
+  it("o fator bate com a tabela oficial (4 casas)", () => {
+    for (const [n, pct] of Object.entries(esperado)) {
+      const fator = fatorCartao(Number(n), 1.5, true, 5);
+      expect(+((fator - 1) * 100).toFixed(4)).toBe(pct);
+    }
+  });
+
+  it("simularCartao aplica a base já na 1x", () => {
+    const linhas = simularCartao({
+      valorBase: 1000,
+      taxaPercent: 1.5,
+      maxParcelas: 12,
+      taxaBasePercent: 5,
+    });
+    expect(linhas[0].acrescimoPercent).toBe(5);
+    expect(linhas[0].total).toBe(1050);
+    expect(linhas[11].acrescimoPercent).toBe(23.68);
+  });
+
+  it("sem taxa base, mantém o comportamento antigo", () => {
+    expect(fatorCartao(3, 3, true, 0)).toBe(fatorCartao(3, 3));
+    expect(fatorCartao(1, 3, true, 0)).toBe(1);
+  });
+
+  it("juros simples também partem da base", () => {
+    expect(+fatorCartao(3, 1.5, false, 5).toFixed(4)).toBe(+(1.05 * 1.03).toFixed(4));
+  });
+});
+
 describe("simularCartao", () => {
   const linhas = simularCartao({ valorBase: 1000, taxaPercent: 3, maxParcelas: 12 });
 
