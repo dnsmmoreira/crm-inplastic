@@ -10,7 +10,8 @@
  *  a) motivo obrigatório (validado nas server functions, mín. 3 caracteres);
  *  b) pedido vai para a etapa terminal com o motivo no histórico;
  *  c) proposta desvinculada (o `proposta_snapshot` do pedido é preservado)
- *     e reaberta como `enviada`, editável;
+ *     e reaberta como `rascunho`, editável, com `sent_at` zerado (senão ela
+ *     nasce "vencida") e `reaberta_em` marcando a devolução;
  *  d) lead volta para `proposta`;
  *  e) tarefas abertas do pedido são encerradas (via `aoEntrarNaEtapa`);
  *  f) vendedor recebe aviso com ACEITE OBRIGATÓRIO apontando para a proposta.
@@ -115,9 +116,16 @@ export async function devolverPedidoCore(
   // ABORTAR: rollback pela metade é pior que nada — proposta e lead têm que
   // voltar juntos ao funil. A falha do 2º update é marcada como parcial.
   if (propostaId) {
+    // `rascunho` (e não `enviada`): a devolução é interna, o cliente não
+    // recebeu nada novo. `sent_at = null` impede que ela apareça vencida pelo
+    // envio antigo; o vendedor marca como enviada de novo ao reenviar.
     const rbProp = await sb
       .from("propostas")
-      .update({ status: "enviada" })
+      .update({
+        status: "rascunho",
+        sent_at: null,
+        reaberta_em: new Date().toISOString(),
+      })
       .eq("id", propostaId)
       .eq("status", "pedido");
     await assertNoError(
