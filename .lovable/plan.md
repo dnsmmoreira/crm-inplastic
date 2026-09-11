@@ -1,66 +1,75 @@
-# Etapa do lead volta sozinha — correção
+# Fechar o buraco que causou os pedidos 2WE e NEWCARE
 
-## a) Gatilho confirmado
+Três frentes, sem publicar nada: trancar a edição de proposta já virada em pedido,
+unificar a devolução em qualquer etapa e avisar o vendedor com pop-up.
 
-Consultei o histórico dos três leads no banco. Todas as mudanças de etapa chegaram
-como gravação genérica de lead (`POST /leads` e `PATCH /leads`), nenhuma por caminho
-dedicado. No caso do Ricardo, a volta ganho→proposta (04/09 19:45) veio de uma
-gravação genérica — é exatamente o mesmo padrão do bug de dono de tarefa: a aba com
-cópia antiga do lead reenviou a etapa velha por cima da etapa certa do servidor.
+## 1) Proposta convertida deixa de ser editável
 
-Confirmações extras:
-- Não existe hoje nenhum lugar na tela que grave o "reagendar para" (`next_followup`)
-  do lead. Por isso o campo do PR Comércio está vazio: o reagendamento nunca teve
-  onde ser feito. O motor do Xerife já respeita esse campo.
-- "Concluir" no card da tarefa fecha só a tarefa; não encerra o lead. Isso explica
-  CSI e PR Comércio sem registro de fechamento.
-- A tela "Minha Agenda" filtra pelas tarefas do próprio usuário. Não há como a
-  tarefa da Beatriz aparecer para a Pamela por essa tela — vale pedir print.
+Hoje `/propostas/$id` considera a proposta somente-leitura quando virou pedido,
+mas um "desbloquear edição" do ADM contorna isso — e a edição liberada grava num
+lugar que o pedido não lê. Passa a valer:
 
-## b) O que será feito
+- Proposta com situação "pedido" fica sempre somente-leitura, sem exceção.
+- Os botões "Desbloquear edição", "Solicitar alteração", "Liberar/Recusar
+  alteração" e "Re-bloquear" somem nesse estado.
+- No lugar deles, um aviso fixo: "Esta proposta virou o pedido PED-XXXX. Para
+  alterar, devolva o pedido — a proposta volta a ficar editável."
+- O aviso leva direto ao pedido correspondente.
+- Nenhum dado histórico é alterado; propostas ainda não convertidas continuam
+  como estão.
 
-1. **Etapa deixa de ir no salvamento genérico.** Em `src/lib/crm-sync.ts`, o payload
-   de lead já existente passa a excluir `stage` e `next_followup` (hoje só exclui o
-   responsável). Nenhuma aba antiga consegue mais reverter fechamento nem apagar
-   reagendamento. Lead novo continua nascendo com a etapa inicial.
+## 2) Uma só devolução, disponível em qualquer etapa
 
-2. **Mudança de etapa por caminho dedicado.** Nova função de servidor
-   `moverEtapaLead` (`src/lib/leads-etapa.functions.ts`), no mesmo padrão da
-   transferência de dono: valida dono/admin, grava a etapa, registra origem
-   "tela" no histórico e devolve erro claro. `useMoveLeadStage` passa a chamar
-   essa função para toda etapa (hoje só "ganho" tem caminho de servidor); o
-   estado local só muda depois do servidor confirmar. Ganho continua passando
-   antes pelo gate fiscal existente, e perdido continua gravando motivo
-   estruturado.
+Um único trecho de código compartilhado (`src/lib/pedidos-devolucao.server.ts`)
+passa a executar a devolução, e as duas ações existentes (recusa do financeiro e
+devolução operacional) passam a chamá-lo. Comportamento idêntico nos dois casos:
 
-3. **Reagendar (silenciar cobrança) vira ação real.** Mesma família:
-   `reagendarLead` grava `next_followup` (e `recontatar_em` quando for lead
-   perdido). Botão "Reagendar cobrança" na ficha do lead, com seletor de data e
-   confirmação; a ficha mostra "Xerife silenciado até dd/mm".
+- motivo obrigatório, mínimo 3 caracteres;
+- pedido encerrado com o motivo gravado no histórico de etapas;
+- proposta desvinculada (o retrato do pedido é preservado para auditoria) e
+  reaberta como "enviada", editável;
+- lead volta para "proposta";
+- tarefas abertas do pedido encerradas;
+- aviso ao vendedor (item 3).
 
-4. **Etapa/reagendamento só mudam por ação explícita.** Varredura para garantir
-   que nenhuma outra tela grave esses campos direto.
+Botão "Devolver / cancelar pedido" passa a aparecer em **toda etapa não
+terminal** — hoje aparece só em Liberado, Em Produção, Coleta/Entrega e
+Faturado/Em Rota; passa a incluir Análise Financeira, Aguardando Pagamento e
+Pós-venda em aberto. Etapas já encerradas (cancelado, reprovado, pós-venda
+fechado) não mostram o botão.
 
-5. **Regra de banco de segurança (aviso obrigatório, vou te chamar antes de
-   aplicar):** para blindar de vez, avalio uma trava no banco que impeça um
-   lead sair de ganho/perdido por gravação genérica. Isso mexe em regra de
-   banco, então só aplico com seu ok — a correção dos itens 1 a 3 já resolve o
-   caso relatado sem isso.
+**Ponto que preciso confirmar contigo:** a recusa do financeiro hoje termina na
+coluna própria "Reprovado Financeiro", que aparece em relatórios. Vou manter esse
+destino para a recusa feita na análise financeira (com exatamente os mesmos
+efeitos da devolução) e usar "Cancelado" para as demais etapas. Se preferir que
+tudo caia em "Cancelado" e a coluna "Reprovado Financeiro" deixe de ser usada, me
+avisa que troco.
 
-## c) Ponto de UX — "esfriando"
+## 3) Pop-up para o vendedor, não só o sino
 
-Esse marcador é ligado pelo próprio Xerife a cada rodada, nunca pelo vendedor.
-Hoje ele aparece só no painel de cadência (gestão), com o rótulo "Leads
-esfriando". Vou trocar para "Esfriando (alerta automático do Xerife)" e
-acrescentar a explicação de que a única forma de pausar a cobrança é fechar o
-lead ou reagendar — que passa a existir no item 3.
+A devolução já cria uma notificação com aceite obrigatório; o que falta é ela
+aparecer como pop-up com texto e destino certos:
 
-## d) Validação antes de publicar
+- Texto: "Pedido PED-XXXX foi devolvido. Motivo: {motivo}. A proposta {número}
+  está editável novamente em Propostas — corrija e reenvie."
+- Botão "Aceitar" leva direto à proposta reaberta.
+- Enquanto não for aceito, reaparece a cada 10 minutos, igual aos avisos
+  financeiros de hoje.
 
-- Caso do Ricardo simulado: aba com cópia antiga salvando depois do fechamento
-  não altera mais a etapa.
-- Marcar perdido pela tela grava histórico e fecha as tarefas do Xerife.
-- Reagendar para outubro persiste e o Xerife não cobra até lá.
-- Suíte completa e verificações automáticas.
+## Detalhes técnicos
 
-Te chamo com o resumo do diff antes de qualquer publicação.
+- Novo módulo `src/lib/pedidos-devolucao.server.ts` com `devolverPedidoCore(sb, {
+  pedidoId, motivo, userId, stageDestino })`; `reprovarPedidoFinanceiro` e
+  `devolverPedidoOperacional` viram cascas finas (permissão + etapa válida) sobre
+  ele, preservando as mensagens de erro e o padrão "registrar e seguir" do
+  histórico e "abortar" do rollback proposta/lead.
+- `podeDevolverPedido` em `src/lib/pedidos-stages.ts` passa a significar "etapa
+  não terminal"; testes ajustados.
+- Migração pequena: coluna `proposta_id` em `notificacoes` (mais índice), para o
+  pop-up saber para qual proposta levar. Sem mudança de RLS/policy.
+- `useAlertasPendentes` passa a ler `proposta_id`; `AlertaPendente.tsx` ganha o
+  texto de `pedido_cancelado`/`pedido_reprovado` e navega para
+  `/propostas/$id` quando houver proposta.
+- `src/routes/propostas.$id.tsx`: `readOnly = isPedido`, remoção dos caminhos de
+  destravamento e do aviso novo.
+- Suíte completa + verificação de tipos antes de te mandar o diff. Nada publicado.
