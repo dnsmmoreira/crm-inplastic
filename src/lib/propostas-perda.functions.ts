@@ -136,17 +136,31 @@ export const reabrirProposta = createServerFn({ method: "POST" })
 
     let leadReaberto = false;
     if (lead?.stage === "perdido") {
-      const updLead = await sb
+      // Sair de `perdido` é bloqueado pelo trigger `trg_leads_stage_lock` para
+      // o usuário autenticado: a etapa vai pelo caminho do sistema e os campos
+      // da perda são limpos em um UPDATE separado (que não toca em `stage`).
+      const { moverStageLeadSistema } = await import("@/lib/leads-stage.server");
+      const movida = await moverStageLeadSistema({
+        leadId: prop.lead_id,
+        para: "proposta",
+        de: "perdido",
+        origem: "reabertura_proposta",
+      });
+      await assertNoError(
+        movida.ok ? { error: null } : { error: { message: movida.erro } },
+        "propostas-perda.reabrir/lead-update",
+        { lead_id: prop.lead_id },
+      );
+      const limpa = await sb
         .from("leads")
         .update({
-          stage: "proposta",
           motivo_perda: null,
           motivo_perda_detalhe: null,
           perdido_em: null,
           recontatar_em: null,
         })
         .eq("id", prop.lead_id);
-      await assertNoError(updLead, "propostas-perda.reabrir/lead-update", {
+      await assertNoError(limpa, "propostas-perda.reabrir/lead-limpeza", {
         lead_id: prop.lead_id,
       });
       leadReaberto = true;
