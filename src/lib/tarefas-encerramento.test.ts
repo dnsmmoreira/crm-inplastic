@@ -31,7 +31,11 @@ describe("mapa por etapa", () => {
 
 describe("entrar em etapa", () => {
   it("pós-venda mata acompanhamento de atraso e travamento", () => {
-    expect(tiposQueMorremAoEntrarEm("pos_venda")).toEqual(["previsao_atrasada", "pedido_travado"]);
+    expect(tiposQueMorremAoEntrarEm("pos_venda")).toEqual([
+      "previsao_atrasada",
+      "prazo_a_vencer",
+      "pedido_travado",
+    ]);
   });
   it("cancelado/reprovado matam tudo, inclusive pós-venda", () => {
     for (const s of ["cancelado", "reprovado_financeiro"]) {

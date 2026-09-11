@@ -22,6 +22,7 @@ import {
   Copy,
   FileText,
   UserCheck,
+  CalendarClock,
 } from "lucide-react";
 
 import { rotuloMeioAprovacao } from "@/lib/pedido-pendencias";
@@ -84,6 +85,8 @@ import {
   atualizarStatusFiscal,
   registrarOcorrencia,
   resolverOcorrencia,
+  definirPrazoRealEntrega,
+  atualizarCondicaoNegociada,
   listPedidoNotificacoes,
   PEDIDO_STAGES,
   stageLabel as stageLabelDe,
@@ -246,6 +249,7 @@ function PedidoDetailBody({
                 </>
               )}
               <ResponsavelOperacionalBlock pedido={pedido} onChanged={onChanged} />
+              <PrazoCondicaoBlock pedido={pedido} onChanged={onChanged} />
               <ItensBlock pedido={pedido} comValores={podeVerValores} />
               {podeVerValores && <HistoricoClienteBlock pedido={pedido} />}
               {podeVerValores && <TratativaBlock pedido={pedido} />}
@@ -1335,9 +1339,10 @@ function OcorrenciasBlock({
   const [notaResolucao, setNotaResolucao] = useState<Record<string, string>>({});
 
   const registrar = useMutation({
-    mutationFn: () => registrarFn({ data: { pedido_id: pedido.id, tipo, severidade, descricao } }),
+    mutationFn: (informativa: boolean) =>
+      registrarFn({ data: { pedido_id: pedido.id, tipo, severidade, descricao, informativa } }),
     onSuccess: () => {
-      toast.success("Ocorrência registrada");
+      toast.success("Registro adicionado ao histórico do pedido");
       setDescricao("");
       onChanged();
     },
@@ -1356,7 +1361,10 @@ function OcorrenciasBlock({
   });
 
   const abertas = pedido.ocorrencias.filter((o) => !o.resolvida);
-  const resolvidas = pedido.ocorrencias.filter((o) => o.resolvida);
+  // O log nunca some: histórico completo, mais recente primeiro.
+  const historico = [...pedido.ocorrencias].sort((a, b) =>
+    b.created_at.localeCompare(a.created_at),
+  );
 
   return (
     <section className="space-y-3">
@@ -1408,13 +1416,27 @@ function OcorrenciasBlock({
           <Label className="text-xs">Descrição</Label>
           <Textarea rows={3} value={descricao} onChange={(e) => setDescricao(e.target.value)} />
         </div>
-        <Button
-          size="sm"
-          disabled={descricao.trim().length < 3 || registrar.isPending}
-          onClick={() => registrar.mutate()}
-        >
-          Registrar ocorrência
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            size="sm"
+            disabled={descricao.trim().length < 3 || registrar.isPending}
+            onClick={() => registrar.mutate(false)}
+          >
+            Registrar ocorrência
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={descricao.trim().length < 3 || registrar.isPending}
+            onClick={() => registrar.mutate(true)}
+          >
+            Salvar como observação
+          </Button>
+        </div>
+        <p className="text-[11px] text-muted-foreground">
+          A observação entra no histórico como registro informativo — não fica pendente nem
+          trava o avanço para o pós-venda.
+        </p>
       </div>
 
       {abertas.length > 0 && (
@@ -1456,33 +1478,168 @@ function OcorrenciasBlock({
         </div>
       )}
 
-      {resolvidas.length > 0 && (
+      {pedido.ocorrencias.length > 0 && (
         <div className="space-y-2">
           <Separator />
-          <div className="text-xs font-medium text-muted-foreground">Resolvidas</div>
-          {resolvidas.map((o) => (
+          <div className="text-xs font-medium text-muted-foreground">
+            Histórico completo ({pedido.ocorrencias.length}) — mais recente primeiro
+          </div>
+          {historico.map((o) => (
             <div
               key={o.id}
-              className="rounded-lg border p-3 text-xs space-y-1 opacity-80 bg-muted/30"
+              className="rounded-lg border p-3 text-xs space-y-1 bg-muted/30"
             >
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className={severidadeClass(o.severidade)}>
                   {o.severidade}
                 </Badge>
                 <span className="font-medium">{o.tipo}</span>
-                <CheckCircle2 className="h-3 w-3 text-emerald-600 ml-auto" />
+                <span className="text-[11px] text-muted-foreground">
+                  {format(new Date(o.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                </span>
+                {o.resolvida ? (
+                  <CheckCircle2 className="h-3 w-3 text-emerald-600 ml-auto" />
+                ) : (
+                  <span className="ml-auto text-[11px] text-rose-600">aberta</span>
+                )}
               </div>
               <div className="whitespace-pre-wrap">{o.descricao}</div>
               <div className="text-muted-foreground">
-                Resolvida por {o.resolvida_por_nome ?? "—"} em{" "}
-                {o.resolvida_em &&
-                  format(new Date(o.resolvida_em), "dd/MM HH:mm", { locale: ptBR })}
-                {o.resolucao_nota && ` · ${o.resolucao_nota}`}
+                Por {o.criada_por_nome ?? "—"}
+                {o.resolvida && o.resolvida_em
+                  ? ` · resolvida por ${o.resolvida_por_nome ?? "—"} em ${format(new Date(o.resolvida_em), "dd/MM HH:mm", { locale: ptBR })}`
+                  : ""}
+                {o.resolucao_nota ? ` · ${o.resolucao_nota}` : ""}
               </div>
             </div>
           ))}
         </div>
       )}
+    </section>
+  );
+}
+
+/**
+ * Prazo real e condições negociadas — o que o Operacional combinou de verdade
+ * com o cliente depois da venda. Cada mudança entra no histórico do pedido e
+ * dispara aviso com aceite obrigatório para o vendedor.
+ */
+function PrazoCondicaoBlock({
+  pedido,
+  onChanged,
+}: {
+  pedido: PedidoDetalhes;
+  onChanged: () => void;
+}) {
+  const prazoFn = useServerFn(definirPrazoRealEntrega);
+  const condicaoFn = useServerFn(atualizarCondicaoNegociada);
+  const [prazo, setPrazo] = useState((pedido.prazo_real_entrega ?? "").slice(0, 10));
+  const [motivo, setMotivo] = useState("");
+  const [transportadora, setTransportadora] = useState(pedido.transportadora ?? "");
+  const [obsCondicao, setObsCondicao] = useState("");
+
+  const salvarPrazo = useMutation({
+    mutationFn: () =>
+      prazoFn({
+        data: {
+          pedido_id: pedido.id,
+          prazo: prazo ? prazo : null,
+          motivo: motivo.trim() || undefined,
+        },
+      }),
+    onSuccess: () => {
+      toast.success("Prazo real atualizado — vendedor avisado");
+      setMotivo("");
+      onChanged();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const salvarCondicao = useMutation({
+    mutationFn: () =>
+      condicaoFn({
+        data: {
+          pedido_id: pedido.id,
+          transportadora: transportadora.trim() || null,
+          observacao: obsCondicao.trim() || undefined,
+        },
+      }),
+    onSuccess: () => {
+      toast.success("Condição atualizada — vendedor avisado");
+      setObsCondicao("");
+      onChanged();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const previsaoOriginal = pedido.previsao_entrega
+    ? format(new Date(pedido.previsao_entrega), "dd/MM/yyyy", { locale: ptBR })
+    : "—";
+
+  return (
+    <section className="space-y-3">
+      <SectionTitle icon={<CalendarClock className="h-4 w-4" />} label="Prazo e condições" />
+      <div className="space-y-3 rounded-lg border p-3">
+        <div className="text-xs text-muted-foreground">
+          Previsão original da proposta: <span className="font-medium">{previsaoOriginal}</span>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <div>
+            <Label className="text-xs">Prazo real de entrega</Label>
+            <Input
+              type="date"
+              className="h-9"
+              value={prazo}
+              onChange={(e) => setPrazo(e.target.value)}
+            />
+          </div>
+          <div>
+            <Label className="text-xs">Motivo (opcional)</Label>
+            <Input
+              className="h-9"
+              value={motivo}
+              onChange={(e) => setMotivo(e.target.value)}
+              placeholder="Ex.: renegociado com o cliente"
+            />
+          </div>
+        </div>
+        <Button size="sm" disabled={salvarPrazo.isPending} onClick={() => salvarPrazo.mutate()}>
+          Salvar prazo real
+        </Button>
+        <p className="text-[11px] text-muted-foreground">
+          Com prazo real definido, atrasos e avisos passam a contar por ele.
+        </p>
+
+        <Separator />
+
+        <div className="grid gap-2 sm:grid-cols-2">
+          <div>
+            <Label className="text-xs">Transportadora</Label>
+            <Input
+              className="h-9"
+              value={transportadora}
+              onChange={(e) => setTransportadora(e.target.value)}
+            />
+          </div>
+          <div>
+            <Label className="text-xs">Observação (opcional)</Label>
+            <Input
+              className="h-9"
+              value={obsCondicao}
+              onChange={(e) => setObsCondicao(e.target.value)}
+              placeholder="O que mudou com o cliente"
+            />
+          </div>
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={salvarCondicao.isPending}
+          onClick={() => salvarCondicao.mutate()}
+        >
+          Salvar condição negociada
+        </Button>
+      </div>
     </section>
   );
 }

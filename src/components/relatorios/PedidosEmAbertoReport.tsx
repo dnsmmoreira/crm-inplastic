@@ -29,6 +29,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { formatBRL } from "@/lib/crm-store";
+import { pedidoAtrasado } from "@/lib/pedido-prazo";
 import { PEDIDO_STAGES, type PedidoStageId } from "@/lib/pedidos.functions";
 import {
   listPedidosEmAberto,
@@ -120,10 +121,9 @@ function diasEmAberto(iso: string) {
   return Math.max(0, Math.floor((Date.now() - d) / 86_400_000));
 }
 
-function estaAtrasado(previsao: string | null) {
-  if (!previsao) return false;
-  const d = new Date(`${previsao.slice(0, 10)}T23:59:59`).getTime();
-  return !Number.isNaN(d) && d < Date.now();
+/** Atraso pelo prazo efetivo: real (renegociado) quando existir. */
+function estaAtrasado(previsao: string | null, prazoReal?: string | null) {
+  return pedidoAtrasado({ previsao_entrega: previsao, prazo_real_entrega: prazoReal ?? null });
 }
 
 function stageLabel(id: PedidoStageId) {
@@ -542,7 +542,7 @@ export function PedidosEmAbertoReport() {
         ...(groupLevels[1] ? [s ?? ""] : []),
         ...cols.map((k) => cellText(r, k)),
         r.responsavel_nome ?? "",
-        estaAtrasado(r.previsao_entrega) ? "Sim" : "Não",
+        estaAtrasado(r.previsao_entrega, r.prazo_real_entrega) ? "Sim" : "Não",
       ]);
     };
     if (tree) {
@@ -571,7 +571,7 @@ export function PedidosEmAbertoReport() {
   const COLS = colOrder.length + 1;
 
   function Cell({ r, k }: { r: PedidoAbertoRow; k: ColKey }) {
-    const atrasado = estaAtrasado(r.previsao_entrega);
+    const atrasado = estaAtrasado(r.previsao_entrega, r.prazo_real_entrega);
     switch (k) {
       case "number":
         return <td className="px-3 py-2 font-medium whitespace-nowrap">{r.number}</td>;
@@ -641,7 +641,7 @@ export function PedidosEmAbertoReport() {
   }
 
   function Linha({ r, rowKey, depth }: { r: PedidoAbertoRow; rowKey: string; depth: number }) {
-    const atrasado = estaAtrasado(r.previsao_entrega);
+    const atrasado = estaAtrasado(r.previsao_entrega, r.prazo_real_entrega);
     const aberto = !!expandidos[r.id];
     return (
       <Fragment>
@@ -687,7 +687,7 @@ export function PedidosEmAbertoReport() {
     const fechado = !!colapsados[n.path];
     const subtotal = n.rows.reduce((s, r) => s + r.total, 0);
     const qtde = n.rows.reduce((s, r) => s + qtdeUnidades(r, n.produtoFiltro), 0);
-    const atrasados = n.rows.filter((r) => estaAtrasado(r.previsao_entrega)).length;
+    const atrasados = n.rows.filter((r) => estaAtrasado(r.previsao_entrega, r.prazo_real_entrega)).length;
     const pct = totalGeral > 0 ? (subtotal / totalGeral) * 100 : 0;
     // Ordem visual das colunas numéricas para os agregados
     const numericos: Partial<Record<ColKey, ReactNode>> = {

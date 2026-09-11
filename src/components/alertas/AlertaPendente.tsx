@@ -15,6 +15,8 @@ const KICKERS: Record<string, string> = {
   pedido_pronto: "Pedido pronto",
   pedido_reprovado: "Pedido reprovado — corrija a proposta",
   pedido_cancelado: "Pedido devolvido — corrija a proposta",
+  pedido_prazo_alterado: "Prazo do pedido atualizado pelo operacional",
+  pedido_condicao_alterada: "Condição do pedido atualizada pelo operacional",
   conversa_atribuida: "Nova conversa para você",
 };
 

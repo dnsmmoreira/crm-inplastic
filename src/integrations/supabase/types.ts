@@ -1947,6 +1947,7 @@ export type Database = {
           placa: string | null
           pos_venda_contato_em: string | null
           pos_venda_status: string | null
+          prazo_real_entrega: string | null
           previsao_entrega: string | null
           prioridade: string | null
           proposta_id: string | null
@@ -2008,6 +2009,7 @@ export type Database = {
           placa?: string | null
           pos_venda_contato_em?: string | null
           pos_venda_status?: string | null
+          prazo_real_entrega?: string | null
           previsao_entrega?: string | null
           prioridade?: string | null
           proposta_id?: string | null
@@ -2069,6 +2071,7 @@ export type Database = {
           placa?: string | null
           pos_venda_contato_em?: string | null
           pos_venda_status?: string | null
+          prazo_real_entrega?: string | null
           previsao_entrega?: string | null
           prioridade?: string | null
           proposta_id?: string | null

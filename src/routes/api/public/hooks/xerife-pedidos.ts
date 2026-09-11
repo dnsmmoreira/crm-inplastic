@@ -37,6 +37,13 @@ import {
 import { diasUteisEntre, posVendaAtrasado, posVendaPodeEncerrar } from "@/lib/pedido-avanco";
 import { stageLabel } from "@/lib/pedidos-stages";
 import {
+  formatarPrazo,
+  pedidoAtrasado,
+  prazoAVencer,
+  prazoEfetivo,
+  usandoPrazoReal,
+} from "@/lib/pedido-prazo";
+import {
   deveEscalarFinanceiro,
   ESCALONAMENTO_FINANCEIRO_REPETE_HORAS,
 } from "@/lib/xerife/escalonamento-financeiro";
@@ -70,6 +77,19 @@ const NF_ATRASO_DIAS = 1;
 const OCORRENCIA_SLA_HORAS = 24;
 const POS_VENDA_ENTREGA_DIAS = 3;
 /** Etapas em que a previsão de entrega não é mais cobrável. */
+/** Aviso proativo antes do prazo estourar. */
+const PRAZO_AVISO_HORAS = 48;
+/** Dias úteis sem mudança de etapa que já contam como "pedido parado". */
+const PARADO_DIAS_UTEIS = 2;
+/** Etapas de coleta/entrega e faturado/em rota monitoradas contra estagnação. */
+const STAGES_PARADO_MONITORADOS = [
+  "pronto",
+  "faturado_em_rota",
+  // legadas, ainda possíveis em pedidos antigos
+  "faturado_aguardando_coleta",
+  "despachado_transporte",
+];
+
 const STAGES_FORA_DA_PREVISAO = [
   "pedido_entregue",
   "concluido",
@@ -158,6 +178,8 @@ type Stats = {
   aprovacao_pendente: number;
   nf_atrasada: number;
   previsao_atrasada: number;
+  prazo_a_vencer: number;
+  pedido_parado: number;
   ocorrencia_aberta: number;
   pos_venda_recompra: number;
   comprovacao_entrega: number;
@@ -183,6 +205,8 @@ async function runXerifePedidos(
     aprovacao_pendente: 0,
     nf_atrasada: 0,
     previsao_atrasada: 0,
+    prazo_a_vencer: 0,
+    pedido_parado: 0,
     ocorrencia_aberta: 0,
     pos_venda_recompra: 0,
     comprovacao_entrega: 0,
@@ -503,38 +527,105 @@ async function runXerifePedidos(
     }
   }
 
-  // ─────────────── R4: Previsão de entrega estourada ───────────────
-  // Dedupe de 168h: cobrança semanal enquanto o atraso persistir, em vez de diária.
+  // ─────────────── R4: Prazo de entrega estourado ───────────────
+  // Compara pelo prazo EFETIVO: o real (renegociado pelo Operacional) manda;
+  // sem ele, vale a previsão herdada da proposta.
+  // Dedupe de 168h: cobrança semanal enquanto o atraso persistir.
   {
-    const hojeIso = now.toISOString();
     const { data: pedidos } = await sb
       .from("pedidos")
       .select(
-        "id, number, previsao_entrega, stage, responsavel_atual_id, vendedor_proprietario_id, lead_id",
+        "id, number, previsao_entrega, prazo_real_entrega, stage, responsavel_atual_id, vendedor_proprietario_id, lead_id",
       )
-      .not("previsao_entrega", "is", null)
-      .lt("previsao_entrega", hojeIso)
       .not("stage", "in", `(${STAGES_FORA_DA_PREVISAO.join(",")})` as any)
+      .limit(1000);
+
+    for (const p of pedidos ?? []) {
+      const efetivo = prazoEfetivo(p);
+      if (!efetivo) continue;
+      const owner = await donoEfetivo(p.responsavel_atual_id ?? p.vendedor_proprietario_id);
+      if (!owner) continue;
+
+      if (pedidoAtrasado(p, now)) {
+        const dias = diasDesde(efetivo, now) ?? 0;
+        const fonte = usandoPrazoReal(p) ? "prazo real" : "previsão da proposta";
+        const ok = await criarTarefa({
+          regra: "pedido_previsao_atrasada",
+          pedidoId: p.id,
+          pedidoNumber: p.number,
+          leadId: p.lead_id ?? null,
+          ownerId: owner,
+          tipo: "previsao_atrasada",
+          titulo: `Entrega atrasada ${dias}d — Pedido ${p.number}`,
+          descricao: `Prazo de entrega (${fonte}: ${formatarPrazo(efetivo)}) estourado em ${dias}d. Etapa atual: ${p.stage}. Realinhe cliente e transporte.`,
+          motivo: `Prazo efetivo < hoje, stage ${p.stage}`,
+          prioridade: 1,
+          janelaHoras: 168,
+        });
+        if (ok) stats.previsao_atrasada++;
+        continue;
+      }
+
+      // R4b: a vencer — aviso proativo 48h antes de virar atraso.
+      if (prazoAVencer(p, now, PRAZO_AVISO_HORAS)) {
+        const ok = await criarTarefa({
+          regra: "pedido_prazo_a_vencer",
+          pedidoId: p.id,
+          pedidoNumber: p.number,
+          leadId: p.lead_id ?? null,
+          ownerId: owner,
+          tipo: "prazo_a_vencer",
+          titulo: `Prazo vence em breve — Pedido ${p.number}`,
+          descricao: `O prazo de entrega (${formatarPrazo(efetivo)}) vence em até ${PRAZO_AVISO_HORAS}h. Etapa atual: ${p.stage}. Confirme o andamento antes de atrasar.`,
+          motivo: `Prazo efetivo em ${PRAZO_AVISO_HORAS}h ou menos`,
+          prioridade: 2,
+          janelaHoras: 48,
+        });
+        if (ok) stats.prazo_a_vencer++;
+      }
+    }
+  }
+
+  // ─────────────── R4c: Pedido parado na coleta/entrega ───────────────
+  // Etapas de coleta/entrega e faturado/em rota sem NOVO registro em
+  // pedido_stage_history há 2 dias úteis ou mais.
+  {
+    const { data: pedidos } = await sb
+      .from("pedidos")
+      .select(
+        "id, number, stage, created_at, responsavel_atual_id, vendedor_proprietario_id, lead_id",
+      )
+      .in("stage", STAGES_PARADO_MONITORADOS as any)
       .limit(500);
 
     for (const p of pedidos ?? []) {
-      const dias = diasDesde(p.previsao_entrega, now) ?? 0;
+      const { data: ult } = await sb
+        .from("pedido_stage_history")
+        .select("created_at")
+        .eq("pedido_id", p.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const desde = (ult?.created_at as string | null) ?? (p.created_at as string);
+      const dias = diasUteisEntre(new Date(desde), now);
+      if (dias < PARADO_DIAS_UTEIS) continue;
+
       const owner = await donoEfetivo(p.responsavel_atual_id ?? p.vendedor_proprietario_id);
       if (!owner) continue;
       const ok = await criarTarefa({
-        regra: "pedido_previsao_atrasada",
+        regra: "pedido_parado",
         pedidoId: p.id,
         pedidoNumber: p.number,
         leadId: p.lead_id ?? null,
         ownerId: owner,
-        tipo: "previsao_atrasada",
-        titulo: `Entrega atrasada ${dias}d — Pedido ${p.number}`,
-        descricao: `Previsão de entrega estourada em ${dias}d. Etapa atual: ${p.stage}. Realinhe cliente e transporte.`,
-        motivo: `Previsão < hoje, stage ${p.stage}`,
+        tipo: "pedido_travado",
+        titulo: `Pedido parado ${dias} dias úteis — ${p.number}`,
+        descricao: `Sem mudança de etapa há ${dias} dias úteis em "${stageLabel(p.stage)}". Verifique coleta/entrega e atualize o pedido.`,
+        motivo: `Sem histórico novo há ${dias} dias úteis`,
         prioridade: 1,
-        janelaHoras: 168,
+        janelaHoras: 48,
       });
-      if (ok) stats.previsao_atrasada++;
+      if (ok) stats.pedido_parado++;
     }
   }
 
