@@ -618,7 +618,7 @@ async function runXerifePedidos(
         pedidoNumber: p.number,
         leadId: p.lead_id ?? null,
         ownerId: owner,
-        tipo: "pedido_parado",
+        tipo: "pedido_travado",
         titulo: `Pedido parado ${dias} dias úteis — ${p.number}`,
         descricao: `Sem mudança de etapa há ${dias} dias úteis em "${stageLabel(p.stage)}". Verifique coleta/entrega e atualize o pedido.`,
         motivo: `Sem histórico novo há ${dias} dias úteis`,

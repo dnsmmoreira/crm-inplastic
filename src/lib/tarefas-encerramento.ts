@@ -34,7 +34,11 @@ export const TIPOS_POR_ETAPA_PEDIDO: Record<string, string[]> = {
 };
 
 /** Tipos de tarefa que só fazem sentido enquanto o pedido está andando. */
-export const TIPOS_ACOMPANHAMENTO_PEDIDO = ["previsao_atrasada", "pedido_travado"];
+export const TIPOS_ACOMPANHAMENTO_PEDIDO = [
+  "previsao_atrasada",
+  "prazo_a_vencer",
+  "pedido_travado",
+];
 
 /** Etapas terminais: o pedido morreu, nada mais é cobrável nele. */
 export const ETAPAS_TERMINAIS_PEDIDO = ["cancelado", "reprovado_financeiro"];
