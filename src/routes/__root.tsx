@@ -653,7 +653,10 @@ function AppShell({ children }: { children: ReactNode }) {
       </aside>
 
       {/* Mobile drawer */}
-      <div className="flex flex-1 flex-col min-w-0 overflow-x-hidden">
+      <div
+        data-print-reset="conteudo"
+        className="app-conteudo flex flex-1 flex-col min-w-0 overflow-x-hidden"
+      >
         <header className="md:hidden sticky top-0 z-30 flex items-center justify-between border-b bg-sidebar text-sidebar-foreground px-3 py-2">
           <div className="flex min-w-0 items-center gap-2">
             <button

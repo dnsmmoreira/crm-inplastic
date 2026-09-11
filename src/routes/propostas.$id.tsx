@@ -3132,8 +3132,8 @@ function PropostaDetalhe() {
           </table>
         </div>
 
-        <div className="grid grid-cols-2 gap-6 mb-4">
-          <div>
+        <div className="grid grid-cols-2 gap-6 mb-4 print-split">
+          <div className="print-block">
             <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">
               Condições comerciais
             </div>
@@ -3207,7 +3207,7 @@ function PropostaDetalhe() {
               Válido após aprovação financeira.
             </div>
           </div>
-          <div>
+          <div className="print-block">
             <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">
               Transportador
             </div>
@@ -3434,6 +3434,16 @@ function PropostaDetalhe() {
           /* Blocos pequenos não quebram entre páginas */
           #proposta-print .print-block,
           #proposta-print > div {
+            break-inside: avoid;
+            page-break-inside: avoid;
+          }
+          /* Pares lado a lado quebram como colunas independentes: cada uma
+             cai na página onde couber, sem empurrar a outra junto. */
+          #proposta-print .print-split {
+            break-inside: auto;
+            page-break-inside: auto;
+          }
+          #proposta-print .print-split > div {
             break-inside: avoid;
             page-break-inside: avoid;
           }
