@@ -1310,11 +1310,13 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
               // só aparecem na checagem do servidor.
               setChecando(true);
               try {
+                // Só o CNPJ bloqueia duplicidade. Telefone/e-mail não são
+                // chave: cadastro sem CNPJ entra normalmente.
                 const check = await verificarContato({
                   data: {
-                    telefone: form.phone || form.whatsapp || null,
+                    telefone: null,
                     cnpj: form.cnpj || null,
-                    email: form.email || null,
+                    email: null,
                     empresa: form.company.trim(),
                   },
                 });
