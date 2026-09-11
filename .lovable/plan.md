@@ -1,99 +1,70 @@
-# Operacional: ocorrências, prazo real, avisos ao vendedor e Xerife
+# Cartão de crédito — forma de pagamento + novo modelo de taxa
 
-Plano técnico para revisão antes de codar. Nada publicado; sem mexer em RLS/policies
-existentes (a nova coluna entra em tabela já existente, sem alterar policy).
+Plano técnico para revisão. Nada publicado. Sem alterar RLS/policies (só uma
+coluna nova em tabela existente + UPDATE pontual).
 
-## O que já existe (levantamento)
+## Levantamento
 
-- `pedido_ocorrencias` já existe e JÁ é gravada: `registrarOcorrencia` insere linha
-  (tipo, severidade, descrição, `stage_no_momento`, `criada_por`) e o
-  `PedidoDetailDrawer` mostra "Abertas" e "Resolvidas". O problema real é que a
-  mesma função também sobrescreve o campo-resumo `pedidos.ocorrencia`, e a lista
-  no drawer é dividida por resolvida/não-resolvida, não como linha do tempo.
-- Prazo hoje é só `pedidos.previsao_entrega` (herdado da proposta). Não há prazo
-  real separado. "Atrasado" é calculado em: `pedidos.tsx` (badge e KPI),
-  `PedidosEmAbertoReport.tsx` (`estaAtrasado`), `relatorios.tsx` e no Xerife
-  (`xerife-pedidos.ts`, regra `pedido_previsao_atrasada`).
-- Etapas de coleta/entrega e faturado/em rota no fluxo atual: **`pronto`** e
-  **`faturado_em_rota`** (as antigas `faturado_aguardando_coleta` /
-  `despachado_transporte` são legado do enum, fora do kanban).
-- Pop-up com aceite obrigatório já existe: `notificarUsuarios(..., exigeAceite)`
-  → `notificacoes.exige_aceite` → `useAlertasPendentes` + `AlertaPendente`.
-- Xerife de pedidos já tem `criarTarefa` com dedupe por `xerife_log` e helper
-  `diasUteisEntre`.
+- `PaymentForm`/`PAYMENT_FORMS` (`src/lib/crm-store.ts:751-752`) hoje: Boleto,
+  Depósito em Conta, PIX. `PaymentMethod` (catálogo) já tem "Cartão".
+- O select "Forma de pagamento" (`propostas.$id.tsx` ~2387) grava
+  `proposal.formaPagamento` e **não** tem hoje nenhum vínculo com o
+  "Prazo de pagamento" logo abaixo (`paymentTermId`) — são campos independentes.
+- Engine: `fatorCartao(n, taxa, compostos) = (1+taxa)^(n-1)`, fator 1 em 1x;
+  `simularCartao` monta a tabela; `SimulacaoCartaoDialog` exibe e marca 1x como
+  "sem acréscimo"; `acrescimoEfetivo` decide proposta × catálogo.
+- `PaymentTerm` carrega `acrescimoPercent`, `maxParcelas`, `jurosCompostos`
+  (mapeados em `crm-sync.ts` `rowToPayTerm`/`payTermToInsert`).
+- Tela `condicoes-comerciais.tsx` já rotula o campo como "Taxa por parcela
+  adicional (%)" quando é cartão.
 
-## Frente 1 — `pedido_ocorrencias` como log real
+## 1) "Cartão" no seletor de forma de pagamento
 
-- `registrarOcorrencia`: deixa de sobrescrever `pedidos.ocorrencia`; passa a
-  gravar só a linha nova. `pedidos.ocorrencia` fica como campo legado somente
-  leitura (não removemos agora para não quebrar filtros/relatórios; ele deixa
-  de ser fonte de verdade e os filtros passam a usar contagem de ocorrências).
-- Nova opção de "observação livre": tipo `observacao`, severidade `baixa`,
-  gravada já como resolvida (não bloqueia avanço para pós-venda, que hoje é
-  travado por ocorrência aberta). Botão separado no drawer: "Adicionar observação".
-- Drawer: novo bloco "Histórico" com TODAS as linhas em ordem decrescente
-  (data, tipo, severidade, quem registrou, descrição, resolução se houver),
-  mantendo o bloco atual de pendências abertas com ação de resolver.
+- `PaymentForm` e `PAYMENT_FORMS` passam a incluir `"Cartão"`; placeholder do
+  select atualizado.
+- Vínculo com o prazo (proposta de desenho, confirmar):
+  - ao escolher **Cartão** na forma de pagamento, a lista de "Prazo de pagamento"
+    passa a mostrar primeiro as condições de cartão e, se houver exatamente uma
+    condição de cartão ativa e o prazo atual não for de cartão, abrir a
+    simulação já sugerindo essa condição;
+  - ao escolher uma condição de cartão no prazo, `formaPagamento` é ajustada
+    para "Cartão" automaticamente;
+  - nenhum bloqueio rígido — o usuário continua livre para combinar.
 
-## Frente 2 — Prazo real de entrega
+## 2) Novo modelo de taxa
 
-- Migration (tabela existente, sem tocar policies):
-  `pedidos.prazo_real_entrega date null`.
-- Nova server fn `definirPrazoRealEntrega({ pedido_id, prazo, motivo? })`,
-  guardada pela permissão de movimentar pedidos, que:
-  1. lê o valor anterior, grava o novo;
-  2. registra `pedido_ocorrencias` tipo `prazo_alterado`, severidade `baixa`,
-     já resolvida, descrição "Prazo alterado de X para Y — motivo";
-  3. dispara a notificação da frente 3.
-- Helper puro novo `src/lib/pedido-prazo.ts`:
-  `prazoEfetivo(pedido) = prazo_real_entrega ?? previsao_entrega`,
-  `estaAtrasado(pedido, hoje)`, `venceEmHoras(pedido, agora)`.
-  Todos os pontos de "atrasado" passam a usar `prazoEfetivo`:
-  `pedidos.tsx`, `PedidosEmAbertoReport.tsx`, `relatorios.tsx`, Xerife.
-  Sem prazo real → comportamento atual, idêntico.
-- UI: campo de data "Prazo real de entrega" no drawer (com o prazo original
-  exibido ao lado), motivo opcional.
-
-## Frente 3 — Aviso ao vendedor (pop-up com aceite)
-
-- `notificarUsuarios` hoje deduplica por `(pedido_id, tipo)` para sempre — um
-  segundo aviso do mesmo tipo nunca chegaria. Adicionamos a opção
-  `repetivel: true`, que restringe o dedupe às notificações ainda não aceitas
-  (mesma proteção contra duplicata na tela, sem silenciar avisos futuros).
-- Dois tipos novos, ambos `exige_aceite: true`, destinados ao
-  `vendedor_proprietario_id`:
-  - `pedido_prazo_alterado` — "Prazo do pedido X foi atualizado para dd/mm/aaaa";
-  - `pedido_condicao_alterada` — "Pedido X teve uma condição atualizada pelo
-    operacional — confira".
-- A condição alterada é disparada quando o operacional muda os campos
-  negociados do pedido (modalidade de entrega, transportadora, condição de
-  pagamento, frete) — mesma lista já editável na tela de pedidos.
-- `AlertaPendente` já leva ao pedido; só entram os rótulos dos dois tipos novos.
-
-## Frente 4 — Duas regras no Xerife de pedidos
-
-Em `src/routes/api/public/hooks/xerife-pedidos.ts`, usando o `criarTarefa`
-existente (dedupe por `xerife_log`), com dono = responsável operacional do
-pedido (com o mesmo desvio de "isentos" já usado):
-
-- **R-parado**: pedido em `pronto` ou `faturado_em_rota` cujo registro mais
-  recente em `pedido_stage_history` tem 2+ dias úteis (via `diasUteisEntre`).
-  Regra `pedido_parado`, tipo `pedido_parado`, dedupe 24h.
-- **R-a-vencer**: pedido fora das etapas terminais/entregues cujo `prazoEfetivo`
-  vence em ≤48h e ainda não venceu. Regra `pedido_prazo_a_vencer`, dedupe 24h.
-  Não conflita com `pedido_previsao_atrasada`, que só age depois do vencimento
-  (e passa a usar o prazo efetivo também).
+- Migration: `ALTER TABLE public.condicoes_pagamento ADD COLUMN
+  cartao_taxa_base_percent numeric NOT NULL DEFAULT 0;` + UPDATE na linha
+  `cartao-credito` (`acrescimo_percent = 1.5`, `cartao_taxa_base_percent = 5`).
+  Sem tocar em policies.
+- `PaymentTerm.cartaoTaxaBasePercent?: number` + mapeamento em `crm-sync.ts`
+  (leitura e escrita) e campo na tela de condições ("Taxa base do cartão (%)",
+  visível só para cartão, com texto explicando que vale já na 1x).
+- `cartao-simulacao.ts`:
+  - `fatorCartao(n, taxaAdicional, compostos = true, taxaBase = 0)` →
+    `(1 + base) * (1 + taxa)^(n-1)` (compostos) ou
+    `(1 + base) * (1 + (n-1) * taxa)` (simples).
+  - `simularCartao({ ..., taxaBasePercent })` repassa a base; `acrescimoPercent`
+    de cada linha continua arredondado a 2 casas (é o que vai gravado na
+    proposta e impresso); o teste confere o **fator** contra a tabela de 4 casas
+    (1x 5,00 · 2x 6,575 · 3x 8,1736 … 12x 23,6846).
+  - `acrescimoEfetivo` sem mudança de assinatura (no cartão já manda o valor
+    gravado na proposta, que agora nunca é 0 em 1x).
+- `SimulacaoCartaoDialog.tsx`: remove o selo "sem acréscimo" da 1x (passa a
+  mostrar o próprio acréscimo, ex. "+5,00%") e a descrição do topo cita as duas
+  taxas: base (5%, já na 1x) + por parcela adicional (1,5%, composta).
+- `propostas.$id.tsx`: passa `taxaBasePercent` da condição ao diálogo.
 
 ## Testes
 
-- `src/lib/pedido-prazo.test.ts`: precedência real/original, atraso, janela 48h.
-- Testes das duas regras novas com relógio fixo, incluindo fim de semana nos
-  2 dias úteis.
-- `bunx vitest run` + `bunx tsgo --noEmit` + build antes de mandar o diff.
+- `cartao-simulacao.test.ts`: nova tabela 1x–12x com base 5% + 1,5% composto;
+  base zero mantém o comportamento antigo (regressão); juros simples com base;
+  soma das parcelas = total.
+- `bunx vitest run` + `bunx tsgo --noEmit` + build antes do diff.
 
 ## Pontos a confirmar
 
-1. Observação livre entra como ocorrência **já resolvida** (não trava o avanço
-   para pós-venda). OK?
-2. Prazo real é **data** (sem hora); o aviso de 48h usa o fim do dia do prazo.
-3. Manter `pedidos.ocorrencia` como coluna legada por ora, sem remover.
+1. Nome da coluna: `cartao_taxa_base_percent` (campo `cartaoTaxaBasePercent`).
+2. Vínculo forma ↔ prazo como descrito acima (sugestão, sem bloqueio).
+3. O % gravado na proposta continua com 2 casas (ex. 8,17% na 3x), embora a
+   tabela de conferência traga 4 casas. Manter assim?
