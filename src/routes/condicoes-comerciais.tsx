@@ -89,6 +89,8 @@ type FormValues = z.infer<typeof formSchema> & {
   /** Só usado quando a condição é de cartão. */
   maxParcelasRaw: string;
   jurosCompostos: boolean;
+  /** Cartão: taxa base aplicada já na 1x. */
+  taxaBaseRaw: string;
 };
 
 const emptyForm: FormValues = {
@@ -101,6 +103,7 @@ const emptyForm: FormValues = {
   parcelas: [{ dias: 0, percentual: 100 }],
   maxParcelasRaw: "12",
   jurosCompostos: true,
+  taxaBaseRaw: "0",
 };
 
 const parsePercent = (v: string) => Math.max(0, Math.min(100, Number(String(v).replace(",", ".")) || 0));
@@ -166,6 +169,7 @@ function CondicoesComerciais() {
       parcelas: termParcelas(t),
       maxParcelasRaw: String(t.maxParcelas ?? 12),
       jurosCompostos: t.jurosCompostos ?? true,
+      taxaBaseRaw: String(t.cartaoTaxaBasePercent ?? 0).replace(".", ","),
     });
     setErrors({});
     setDialogOpen(true);
@@ -235,6 +239,7 @@ function CondicoesComerciais() {
         ? {
             maxParcelas: Math.max(1, Math.min(24, Number(form.maxParcelasRaw) || 1)),
             jurosCompostos: form.jurosCompostos,
+            cartaoTaxaBasePercent: parsePercent(form.taxaBaseRaw),
           }
         : {}),
     };
@@ -569,6 +574,17 @@ function CondicoesComerciais() {
             </div>
             {ehCartao && (
               <>
+                <div>
+                  <Label>Taxa base do cartão (%)</Label>
+                  <Input
+                    value={form.taxaBaseRaw}
+                    onChange={(e) => setForm((f) => ({ ...f, taxaBaseRaw: e.target.value }))}
+                    placeholder="Ex: 5"
+                  />
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Cobrada já na 1x, antes das parcelas adicionais.
+                  </p>
+                </div>
                 <div>
                   <Label>Máximo de parcelas</Label>
                   <Input

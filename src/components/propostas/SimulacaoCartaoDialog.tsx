@@ -27,6 +27,8 @@ type Props = {
   taxaPercent: number;
   maxParcelas: number;
   compostos: boolean;
+  /** Taxa base da operadora, aplicada já na 1x. */
+  taxaBasePercent?: number;
   parcelasAtuais?: number | null;
   onEscolher: (linha: SimulacaoLinha) => void;
   onCancelar: () => void;
@@ -41,11 +43,12 @@ export function SimulacaoCartaoDialog({
   taxaPercent,
   maxParcelas,
   compostos,
+  taxaBasePercent = 0,
   parcelasAtuais,
   onEscolher,
   onCancelar,
 }: Props) {
-  const linhas = simularCartao({ valorBase, taxaPercent, maxParcelas, compostos });
+  const linhas = simularCartao({ valorBase, taxaPercent, maxParcelas, compostos, taxaBasePercent });
 
   return (
     <Dialog
@@ -62,8 +65,8 @@ export function SimulacaoCartaoDialog({
           </DialogTitle>
           <DialogDescription>
             Valor base (itens menos desconto): <strong>{formatBRL(valorBase)}</strong>. Taxa da
-            operadora: {pct(taxaPercent)} por parcela adicional,{" "}
-            {compostos ? "juros compostos" : "juros simples"}.
+            operadora: {pct(taxaBasePercent)} já na 1x, mais {pct(taxaPercent)} por parcela
+            adicional, {compostos ? "juros compostos" : "juros simples"}.
           </DialogDescription>
         </DialogHeader>
 
@@ -95,7 +98,7 @@ export function SimulacaoCartaoDialog({
                 >
                   <td className="p-2 font-medium">
                     {l.parcelas}x
-                    {l.parcelas === 1 && (
+                    {l.acrescimoPercent === 0 && (
                       <span className="ml-2 rounded bg-emerald-500/15 px-1.5 py-0.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-300">
                         sem acréscimo
                       </span>
