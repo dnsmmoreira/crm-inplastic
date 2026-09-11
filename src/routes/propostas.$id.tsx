@@ -623,11 +623,14 @@ function PropostaDetalhe() {
     ? USERS.find((u) => u.id === proposal.editUnlockedByUserId)
     : null;
 
-  // Pedido fechado é read-only, salvo se ADM liberou edição.
+  // Proposta convertida em pedido é SEMPRE somente-leitura, sem exceção:
+  // o pedido lê o retrato tirado na conversão, então editar aqui não chegaria
+  // ao pedido. Para alterar, é preciso devolver o pedido — aí a proposta volta
+  // a `enviada` e fica editável de novo.
   const isPedido = proposal?.status === "pedido";
-  const editUnlocked = Boolean(proposal?.editUnlockedAt);
-  const editRequested = Boolean(proposal?.editRequestedAt) && !editUnlocked;
-  const readOnly = isPedido && !editUnlocked;
+  const editUnlocked = false;
+  const editRequested = false;
+  const readOnly = isPedido;
 
   // Estado de UI para diálogos de solicitação/liberação
   const [editReqOpen, setEditReqOpen] = useState(false);
@@ -675,7 +678,9 @@ function PropostaDetalhe() {
   const markDirty = () => setDirty(true);
   const guard = () => {
     if (readOnly) {
-      toast.error("Pedido fechado — solicite liberação do ADM para editar.");
+      toast.error(
+        "Esta proposta virou pedido e não pode ser editada. Para alterar, devolva o pedido — a proposta volta a ficar editável.",
+      );
       return true;
     }
     return false;
@@ -980,7 +985,7 @@ function PropostaDetalhe() {
                   variant="outline"
                   className="border-slate-400 text-slate-700 bg-slate-500/10 gap-1"
                 >
-                  <Lock className="h-3 w-3" /> Pedido bloqueado para edição
+                  <Lock className="h-3 w-3" /> Virou pedido — edite só após devolver o pedido
                 </Badge>
               )}
               {editRequested && (
@@ -1449,79 +1454,17 @@ function PropostaDetalhe() {
             </Badge>
           )}
 
-          {/* Pedido fechado: vendedor solicita alteração; ADM libera/recusa/re-bloqueia */}
-          {isPedido && !editUnlocked && !editRequested && !isAdmin && (
+          {/* Proposta já convertida em pedido: NÃO existe destravar edição.
+              Editar aqui gravaria num lugar que o pedido não lê (o pedido usa o
+              retrato tirado na conversão) — foi o que causou o incidente dos
+              pedidos 2WE e NEWCARE. O único caminho é devolver o pedido. */}
+          {isPedido && (
             <Button
               variant="outline"
-              className="gap-2 border-amber-500 text-amber-700 hover:bg-amber-500/10"
-              onClick={() => {
-                setEditReqReason("");
-                setEditReqOpen(true);
-              }}
+              className="gap-2 border-slate-400 text-slate-700"
+              onClick={() => navigate({ to: "/pedidos" })}
             >
-              <ShieldAlert className="h-4 w-4" /> Solicitar alteração
-            </Button>
-          )}
-          {isPedido && editRequested && !isAdmin && (
-            <Button
-              variant="ghost"
-              className="gap-2 text-muted-foreground"
-              onClick={() => {
-                _updateProposal(proposal.id, {
-                  editRequestedAt: undefined,
-                  editRequestReason: undefined,
-                  editRequestedByUserId: undefined,
-                });
-                toast.success("Solicitação de alteração cancelada");
-              }}
-            >
-              <XCircle className="h-4 w-4" /> Cancelar solicitação
-            </Button>
-          )}
-          {isPedido && !editUnlocked && isAdmin && (
-            <Button
-              className="gap-2 bg-emerald-600 hover:bg-emerald-700"
-              onClick={() => setReleaseOpen(true)}
-            >
-              <Unlock className="h-4 w-4" />{" "}
-              {editRequested ? "Liberar alteração" : "Desbloquear edição"}
-            </Button>
-          )}
-          {isPedido && editRequested && isAdmin && (
-            <Button
-              variant="outline"
-              className="gap-2 border-destructive text-destructive hover:bg-destructive/10"
-              onClick={() => {
-                _updateProposal(proposal.id, {
-                  editRequestedAt: undefined,
-                  editRequestReason: undefined,
-                  editRequestedByUserId: undefined,
-                });
-                toast.success("Solicitação recusada", {
-                  description: `${editRequester?.name ?? "Vendedor"} foi notificado — pedido permanece bloqueado.`,
-                });
-              }}
-            >
-              <XCircle className="h-4 w-4" /> Recusar solicitação
-            </Button>
-          )}
-          {isPedido && editUnlocked && (
-            <Button
-              variant="outline"
-              className="gap-2"
-              onClick={() => {
-                _updateProposal(proposal.id, {
-                  editUnlockedAt: undefined,
-                  editUnlockedByUserId: undefined,
-                  editRequestedAt: undefined,
-                  editRequestReason: undefined,
-                  editRequestedByUserId: undefined,
-                });
-                setDirty(false);
-                toast.success("Pedido re-bloqueado");
-              }}
-            >
-              <Lock className="h-4 w-4" /> Re-bloquear
+              <Lock className="h-4 w-4" /> Ver pedido gerado
             </Button>
           )}
 

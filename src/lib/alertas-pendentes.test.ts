@@ -16,6 +16,7 @@ const base: AlertaPendenteRow = {
   created_at: "2026-08-21T10:00:00.000Z",
   pedido_id: "ped-1",
   conversa_id: null,
+  proposta_id: null,
   exige_aceite: true,
   aceito_em: null,
   adiado_ate: null,

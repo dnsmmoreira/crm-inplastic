@@ -40,8 +40,32 @@ export const PEDIDO_STAGES_DEVOLVIVEIS = [
   "faturado_em_rota",
 ] as const;
 
+/** Etapas terminais: o pedido já morreu, não há o que devolver. */
+export const PEDIDO_STAGES_TERMINAIS: readonly string[] = [
+  PEDIDO_STAGE_REPROVADO,
+  PEDIDO_STAGE_CANCELADO,
+  "concluido",
+];
+
+/**
+ * Devolução/recusa é possível em QUALQUER etapa não terminal — inclusive
+ * análise financeira, aguardando pagamento e pós-venda em aberto. Foi a
+ * ausência do caminho em algumas etapas que levou a correções por fora do CRM.
+ */
 export function podeDevolverPedido(stage: string): boolean {
-  return (PEDIDO_STAGES_DEVOLVIVEIS as readonly string[]).includes(stage);
+  return !PEDIDO_STAGES_TERMINAIS.includes(stage);
+}
+
+/**
+ * Destino da devolução. A recusa feita nas etapas financeiras continua caindo
+ * em "Reprovado Financeiro" (métrica do painel); todas as demais em "Cancelado".
+ */
+export function destinoDevolucao(
+  stage: string,
+): typeof PEDIDO_STAGE_REPROVADO | typeof PEDIDO_STAGE_CANCELADO {
+  return stage === "analise_financeira" || stage === "aguardando_pagamento"
+    ? PEDIDO_STAGE_REPROVADO
+    : PEDIDO_STAGE_CANCELADO;
 }
 
 /**
