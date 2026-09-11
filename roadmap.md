@@ -48,3 +48,9 @@
 - [x] RPC `reagendar_lead` + bloco "Reagendar cobrança" na ficha
 - [x] Trava `trg_leads_stage_lock` (lead ganho/perdido não sai por save genérico)
 - [x] Rótulo "esfriando" como alerta automático
+
+## Incidente 2WE / NEWCARE — devolução única (em curso)
+- [ ] Proposta convertida (status=pedido) totalmente travada, sem destravar por ADM
+- [ ] Núcleo único de devolução; recusa financeira → reprovado_financeiro, demais etapas → cancelado
+- [ ] Botão de devolução em toda etapa não terminal
+- [ ] Pop-up com aceite obrigatório para o vendedor, levando à proposta reaberta

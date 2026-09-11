@@ -162,7 +162,14 @@ export async function gestoresDe(sb: SB, userIds: string[]): Promise<string[]> {
 export async function notificarUsuarios(
   sb: SB,
   userIds: string[],
-  args: { tipo: string; titulo: string; pedidoId: string; exigeAceite?: boolean },
+  args: {
+    tipo: string;
+    titulo: string;
+    pedidoId: string;
+    exigeAceite?: boolean;
+    /** Proposta reaberta pela devolução — o pop-up leva direto para ela. */
+    propostaId?: string | null;
+  },
 ): Promise<number> {
   const alvos = Array.from(new Set(userIds.filter(Boolean)));
   if (alvos.length === 0) return 0;
@@ -190,6 +197,7 @@ export async function notificarUsuarios(
       tipo: args.tipo,
       titulo: args.titulo.slice(0, 300),
       pedido_id: args.pedidoId,
+      proposta_id: args.propostaId ?? null,
       // Alertas de pedido exigem aceite explícito do destinatário (default true).
       // A cópia do gestor é sempre informativa: nunca exige aceite.
       exige_aceite: copias.includes(user_id) ? false : exigeAceite,

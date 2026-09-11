@@ -21,6 +21,7 @@ import {
   ALLOWED_FORWARD,
   isBackward,
   podeDevolverPedido,
+  destinoDevolucao,
   podeAssumirPedido,
   stageLabel,
   type PedidoStageId,
@@ -32,6 +33,7 @@ export {
   PEDIDO_STAGE_CANCELADO,
   PEDIDO_STAGE_CANCELADO_LABEL,
   podeDevolverPedido,
+  destinoDevolucao,
   podeAssumirPedido,
   PEDIDO_STAGE_REPROVADO_LABEL,
   PEDIDO_STAGE_IDS,
@@ -1365,92 +1367,38 @@ export const reprovarPedidoFinanceiro = createServerFn({ method: "POST" })
     }
 
     const fromStage = current.stage as PedidoStageId;
-    const propostaId = current.proposta_id as string | null;
-    const leadId = current.lead_id as string | null;
 
-    const { error: updErr } = await sb
-      .from("pedidos")
-      .update({
+    const { devolverPedidoCore } = await import("@/lib/pedidos-devolucao.server");
+    const r = await devolverPedidoCore(sb, {
+      pedidoId: data.pedido_id,
+      motivo: data.motivo,
+      userId: context.userId,
+      fromStage,
+      destino: PEDIDO_STAGE_REPROVADO,
+      propostaId: current.proposta_id as string | null,
+      leadId: current.lead_id as string | null,
+      patchExtra: {
         aprovacao_decisao: "rejeitado",
         aprovacao_decidida_por: context.userId,
         aprovacao_decidida_em: new Date().toISOString(),
         aprovacao_observacao: data.motivo,
-        stage: "reprovado_financeiro",
-        reprovacao_motivo: data.motivo,
-        proposta_id: null,
-      })
-      .eq("id", data.pedido_id);
-    if (updErr) throw new Error(`Falha ao reprovar pedido: ${updErr.message}`);
-
-    // REGISTRAR E SEGUIR: o pedido já mudou de etapa; histórico é auxiliar.
-    const hist = await sb.from("pedido_stage_history").insert({
-      pedido_id: data.pedido_id,
-      from_stage: fromStage,
-      to_stage: "reprovado_financeiro",
-      is_backward: false,
-      motivo: data.motivo,
-      moved_by: context.userId,
-    });
-    if (hist?.error) {
-      await registrarFalhaSegura("pedidos.stage-history", hist.error, {
-        pedido_id: data.pedido_id,
-        to_stage: "reprovado_financeiro",
-      });
-    }
-
-    // Reabre a proposta e o lead no Funil de Vendas — a reprovação desfaz o "ganho".
-    // ABORTAR: rollback pela metade é pior que nada — proposta e lead têm que
-    // voltar juntos ao funil. A falha do 2º update é marcada como parcial.
-    if (propostaId) {
-      const rbProp = await sb
-        .from("propostas")
-        .update({ status: "enviada" })
-        .eq("id", propostaId)
-        .eq("status", "pedido");
-      await assertNoError(
-        rbProp,
-        "pedidos.reprovarPedidoFinanceiro/rollback-proposta",
-        { pedido_id: data.pedido_id, proposta_id: propostaId },
-        "Não foi possível reabrir a proposta no funil. Tente novamente.",
-      );
-    }
-    if (leadId) {
-      const rbLead = await sb
-        .from("leads")
-        .update({ stage: "proposta" })
-        .eq("id", leadId)
-        .eq("stage", "ganho");
-      await assertNoError(
-        rbLead,
-        "pedidos.reprovarPedidoFinanceiro/rollback-lead",
-        {
-          pedido_id: data.pedido_id,
-          lead_id: leadId,
-          proposta_id: propostaId,
-          rollback_parcial: true,
-          detalhe: "rollback parcial: proposta reaberta, lead permaneceu em ganho",
-        },
-        "Rollback parcial: a proposta foi reaberta, mas o lead não voltou ao funil. Verifique em Falhas do sistema.",
-      );
-    }
-
-    const { aoEntrarNaEtapa } = await import("@/lib/pedidos-fluxo.server");
-    await aoEntrarNaEtapa(sb, data.pedido_id, "reprovado_financeiro", {
-      motivoReprovacao: data.motivo,
-      de: current.stage as string,
+      },
     });
 
-    return { ok: true as const };
+    return { ok: true as const, proposta_id: r.proposta_id, proposta_numero: r.proposta_numero };
   });
 
 
 
 /**
- * Devolução/cancelamento de pedido nas etapas operacionais (Liberado, Em Produção,
- * Coleta/Entrega, Faturado/Em Rota). Mesmo padrão da reprovação financeira:
- * motivo obrigatório, etapa terminal, desvinculo de `proposta_id` (libera o
- * índice único parcial `pedidos_proposta_id_unique`) preservando o snapshot,
- * reabertura da proposta/lead no funil e notificação do vendedor.
+ * Devolução/cancelamento de pedido em QUALQUER etapa não terminal. Mesmo núcleo
+ * da reprovação financeira: motivo obrigatório, etapa terminal, desvínculo de
+ * `proposta_id` (libera o índice único parcial `pedidos_proposta_id_unique`)
+ * preservando o snapshot, reabertura da proposta/lead no funil, encerramento
+ * das tarefas e aviso com aceite obrigatório ao vendedor.
+ *
+ * Destino: `reprovado_financeiro` quando a recusa parte das etapas financeiras
+ * (preserva a métrica do painel); `cancelado` nas demais.
  */
 export const devolverPedidoOperacional = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -1485,83 +1433,29 @@ export const devolverPedidoOperacional = createServerFn({ method: "POST" })
       return {
         ok: false as const,
         reason: "invalid_transition" as const,
-        message:
-          "A devolução só é possível nas etapas Liberado, Em Produção, Coleta / Entrega ou Faturado / Em Rota.",
+        message: "Este pedido já está encerrado — não há o que devolver.",
       };
     }
 
     const fromStage = current.stage as PedidoStageId;
-    const propostaId = current.proposta_id as string | null;
-    const leadId = current.lead_id as string | null;
 
-    const { error: updErr } = await sb
-      .from("pedidos")
-      .update({
-        stage: PEDIDO_STAGE_CANCELADO,
-        reprovacao_motivo: data.motivo,
-        proposta_id: null,
-      })
-      .eq("id", data.pedido_id);
-    if (updErr) throw new Error(`Falha ao devolver pedido: ${updErr.message}`);
-
-    // REGISTRAR E SEGUIR: o pedido já mudou de etapa; histórico é auxiliar.
-    const hist = await sb.from("pedido_stage_history").insert({
-      pedido_id: data.pedido_id,
-      from_stage: fromStage,
-      to_stage: PEDIDO_STAGE_CANCELADO,
-      is_backward: false,
+    const { devolverPedidoCore } = await import("@/lib/pedidos-devolucao.server");
+    const r = await devolverPedidoCore(sb, {
+      pedidoId: data.pedido_id,
       motivo: data.motivo,
-      moved_by: context.userId,
-    });
-    if (hist?.error) {
-      await registrarFalhaSegura("pedidos.stage-history", hist.error, {
-        pedido_id: data.pedido_id,
-        to_stage: PEDIDO_STAGE_CANCELADO,
-      });
-    }
-
-    // ABORTAR: rollback pela metade é pior que nada — proposta e lead têm que
-    // voltar juntos ao funil. A falha do 2º update é marcada como parcial.
-    if (propostaId) {
-      const rbProp = await sb
-        .from("propostas")
-        .update({ status: "enviada" })
-        .eq("id", propostaId)
-        .eq("status", "pedido");
-      await assertNoError(
-        rbProp,
-        "pedidos.devolverPedido/rollback-proposta",
-        { pedido_id: data.pedido_id, proposta_id: propostaId },
-        "Não foi possível reabrir a proposta no funil. Tente novamente.",
-      );
-    }
-    if (leadId) {
-      const rbLead = await sb
-        .from("leads")
-        .update({ stage: "proposta" })
-        .eq("id", leadId)
-        .eq("stage", "ganho");
-      await assertNoError(
-        rbLead,
-        "pedidos.devolverPedido/rollback-lead",
-        {
-          pedido_id: data.pedido_id,
-          lead_id: leadId,
-          proposta_id: propostaId,
-          rollback_parcial: true,
-          detalhe: "rollback parcial: proposta reaberta, lead permaneceu em ganho",
-        },
-        "Rollback parcial: a proposta foi reaberta, mas o lead não voltou ao funil. Verifique em Falhas do sistema.",
-      );
-    }
-
-    const { aoEntrarNaEtapa } = await import("@/lib/pedidos-fluxo.server");
-    await aoEntrarNaEtapa(sb, data.pedido_id, PEDIDO_STAGE_CANCELADO, {
-      motivoReprovacao: data.motivo,
-      de: fromStage,
+      userId: context.userId,
+      fromStage,
+      destino: destinoDevolucao(fromStage),
+      propostaId: current.proposta_id as string | null,
+      leadId: current.lead_id as string | null,
     });
 
-    return { ok: true as const };
+    return {
+      ok: true as const,
+      destino: r.destino,
+      proposta_id: r.proposta_id,
+      proposta_numero: r.proposta_numero,
+    };
   });
 
 export const salvarChecklistConferencia = createServerFn({ method: "POST" })
