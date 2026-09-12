@@ -550,6 +550,7 @@ export async function aoEntrarNaEtapa(
         tipo: "pedido_aprovacao",
         titulo: `Novo pedido para aprovação: ${p.number} — ${p.cliente} — ${brl(p.total)}`,
         pedidoId,
+        usarClienteDeServico: usarServico,
       });
       await criarTarefasEtapaFinanceira(sb, p, stage);
       return;
@@ -560,6 +561,7 @@ export async function aoEntrarNaEtapa(
         tipo: "pedido_aguardando_pagamento",
         titulo: `Pedido ${p.number} condicionado a pagamento antecipado — combine com o cliente.`,
         pedidoId,
+        usarClienteDeServico: usarServico,
       });
       await criarTarefasEtapaFinanceira(sb, p, stage);
       return;
@@ -570,6 +572,7 @@ export async function aoEntrarNaEtapa(
         tipo: "pedido_programacao",
         titulo: `Pedido ${p.number} liberado — assuma o pedido para gerar os romaneios`,
         pedidoId,
+        usarClienteDeServico: usarServico,
       });
       return;
     }
@@ -581,6 +584,7 @@ export async function aoEntrarNaEtapa(
           opts?.motivoReprovacao ?? "não informado"
         }`,
         pedidoId,
+        usarClienteDeServico: usarServico,
       });
       return;
     }
@@ -596,6 +600,7 @@ export async function aoEntrarNaEtapa(
           opts?.motivoReprovacao ?? "não informado"
         }`,
         pedidoId,
+        usarClienteDeServico: usarServico,
       });
       return;
     }
@@ -624,6 +629,7 @@ export async function aoEntrarNaEtapa(
         tipo: "pedido_pronto",
         titulo: texto,
         pedidoId,
+        usarClienteDeServico: usarServico,
       });
       // Próximo ato: alguém precisa combinar a data com o cliente.
       const operacionalPronto = await destinatariosOperacional(sb);
