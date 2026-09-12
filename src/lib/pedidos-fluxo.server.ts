@@ -181,6 +181,10 @@ export async function notificarUsuarios(
   const alvos = Array.from(new Set(userIds.filter(Boolean)));
   if (alvos.length === 0) return 0;
 
+  // A notificação é sempre para OUTRA pessoa: `notificacoes` não tem policy de
+  // INSERT, então o client do usuário é barrado pelo RLS. Grava pelo serviço.
+  const sb = await clienteDeEfeitos(sbEntrada);
+
   // Cópia informativa para o gestor responsável (ex.: representantes → gestora).
   const copias = await gestoresDe(sb, alvos);
   const todos = [...alvos, ...copias];
