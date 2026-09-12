@@ -160,7 +160,7 @@ export async function gestoresDe(sb: SB, userIds: string[]): Promise<string[]> {
 }
 
 export async function notificarUsuarios(
-  sb: SB,
+  sbEntrada: SB,
   userIds: string[],
   args: {
     tipo: string;
