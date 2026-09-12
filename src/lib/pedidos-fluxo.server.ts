@@ -176,6 +176,8 @@ export async function notificarUsuarios(
      * um novo — a tela nunca duplica, mas nada se perde.
      */
     repetivel?: boolean;
+    /** `false` quando o chamador já entregou um client que pode gravar. */
+    usarClienteDeServico?: boolean;
   },
 ): Promise<number> {
   const alvos = Array.from(new Set(userIds.filter(Boolean)));
@@ -183,7 +185,8 @@ export async function notificarUsuarios(
 
   // A notificação é sempre para OUTRA pessoa: `notificacoes` não tem policy de
   // INSERT, então o client do usuário é barrado pelo RLS. Grava pelo serviço.
-  const sb = await clienteDeEfeitos(sbEntrada);
+  const sb: SB =
+    args.usarClienteDeServico === false ? sbEntrada : await clienteDeEfeitos(sbEntrada);
 
   // Cópia informativa para o gestor responsável (ex.: representantes → gestora).
   const copias = await gestoresDe(sb, alvos);
