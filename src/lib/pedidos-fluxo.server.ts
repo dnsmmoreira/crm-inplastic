@@ -524,7 +524,8 @@ export async function aoEntrarNaEtapa(
 ): Promise<void> {
   try {
     // Efeitos gravam para terceiros: precisa do client de serviço (RLS barra).
-    const sb: SB = opts?.usarClienteDeServico === false ? sbIn : await clienteDeEfeitos(sbIn);
+    const usarServico = opts?.usarClienteDeServico !== false;
+    const sb: SB = usarServico ? await clienteDeEfeitos(sbIn) : sbIn;
 
     const p = await carregarPedidoCtx(sb, pedidoId);
     if (!p) return;
