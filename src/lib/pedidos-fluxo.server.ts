@@ -160,7 +160,7 @@ export async function gestoresDe(sb: SB, userIds: string[]): Promise<string[]> {
 }
 
 export async function notificarUsuarios(
-  sb: SB,
+  sbEntrada: SB,
   userIds: string[],
   args: {
     tipo: string;
@@ -176,10 +176,17 @@ export async function notificarUsuarios(
      * um novo — a tela nunca duplica, mas nada se perde.
      */
     repetivel?: boolean;
+    /** `false` quando o chamador já entregou um client que pode gravar. */
+    usarClienteDeServico?: boolean;
   },
 ): Promise<number> {
   const alvos = Array.from(new Set(userIds.filter(Boolean)));
   if (alvos.length === 0) return 0;
+
+  // A notificação é sempre para OUTRA pessoa: `notificacoes` não tem policy de
+  // INSERT, então o client do usuário é barrado pelo RLS. Grava pelo serviço.
+  const sb: SB =
+    args.usarClienteDeServico === false ? sbEntrada : await clienteDeEfeitos(sbEntrada);
 
   // Cópia informativa para o gestor responsável (ex.: representantes → gestora).
   const copias = await gestoresDe(sb, alvos);
@@ -517,7 +524,8 @@ export async function aoEntrarNaEtapa(
 ): Promise<void> {
   try {
     // Efeitos gravam para terceiros: precisa do client de serviço (RLS barra).
-    const sb: SB = opts?.usarClienteDeServico === false ? sbIn : await clienteDeEfeitos(sbIn);
+    const usarServico = opts?.usarClienteDeServico !== false;
+    const sb: SB = usarServico ? await clienteDeEfeitos(sbIn) : sbIn;
 
     const p = await carregarPedidoCtx(sb, pedidoId);
     if (!p) return;
@@ -542,6 +550,7 @@ export async function aoEntrarNaEtapa(
         tipo: "pedido_aprovacao",
         titulo: `Novo pedido para aprovação: ${p.number} — ${p.cliente} — ${brl(p.total)}`,
         pedidoId,
+        usarClienteDeServico: usarServico,
       });
       await criarTarefasEtapaFinanceira(sb, p, stage);
       return;
@@ -552,6 +561,7 @@ export async function aoEntrarNaEtapa(
         tipo: "pedido_aguardando_pagamento",
         titulo: `Pedido ${p.number} condicionado a pagamento antecipado — combine com o cliente.`,
         pedidoId,
+        usarClienteDeServico: usarServico,
       });
       await criarTarefasEtapaFinanceira(sb, p, stage);
       return;
@@ -562,6 +572,7 @@ export async function aoEntrarNaEtapa(
         tipo: "pedido_programacao",
         titulo: `Pedido ${p.number} liberado — assuma o pedido para gerar os romaneios`,
         pedidoId,
+        usarClienteDeServico: usarServico,
       });
       return;
     }
@@ -573,6 +584,7 @@ export async function aoEntrarNaEtapa(
           opts?.motivoReprovacao ?? "não informado"
         }`,
         pedidoId,
+        usarClienteDeServico: usarServico,
       });
       return;
     }
@@ -588,6 +600,7 @@ export async function aoEntrarNaEtapa(
           opts?.motivoReprovacao ?? "não informado"
         }`,
         pedidoId,
+        usarClienteDeServico: usarServico,
       });
       return;
     }
@@ -616,6 +629,7 @@ export async function aoEntrarNaEtapa(
         tipo: "pedido_pronto",
         titulo: texto,
         pedidoId,
+        usarClienteDeServico: usarServico,
       });
       // Próximo ato: alguém precisa combinar a data com o cliente.
       const operacionalPronto = await destinatariosOperacional(sb);

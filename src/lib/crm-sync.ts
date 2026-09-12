@@ -648,7 +648,7 @@ const COLS_TERMOS =
 const COLS_LEADS =
   "id,company,contact_name,email,phone,product,product_id,quantity,estimated_value,stage,tags,segment,source,created_at,last_contact,last_contact_at,next_followup,notes,owner_id,cliente_id,cnpj,razao_social,nome_fantasia,inscricao_estadual,inscricao_municipal,endereco,email_financeiro,email_nf_xml,telefone_fixo,whatsapp,site,porte,cnae_principal,faturamento_estimado,num_funcionarios,decisor_nome,decisor_cargo,data_abertura,capital_social,simples_optante,socios";
 const COLS_TAREFAS =
-  "id,lead_id,title,due_date,status,tipo,origem,pedido_id,cobranca_n,desfecho,desfecho_detalhe";
+  "id,lead_id,title,due_date,status,tipo,origem,pedido_id,cobranca_n,desfecho,desfecho_detalhe,owner_id";
 const COLS_PROPOSTAS =
   "id,number,lead_id,owner_id,emitter_id,status,validity_days,payment_term_id,forma_pagamento,previsao_faturamento,discount_percent,acrescimo_percent,cartao_parcelas,observations,transport,approval_requested_at,approval_reason,approved_by_user_id,approved_at,order_created_at,sent_at,created_at,expected_delivery_date,numero_pedido_cliente,observacoes_pedido,tratativa_comercial,em_negociacao,motivo_recusa,recusa_detalhe,recusada_em,edit_requested_at,edit_request_reason,edit_requested_by_user_id,edit_unlocked_at,edit_unlocked_by_user_id";
 const COLS_PITENS =

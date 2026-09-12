@@ -20,10 +20,14 @@ export async function dadosFiscaisDoLead(
   if (!leadId) return { uf: null, inscricaoEstadual: null, ieIsento: false };
   const { data: lead } = await sb
     .from("leads")
-    .select("estado, inscricao_estadual, cliente_id")
+    .select("estado, inscricao_estadual, cliente_id, endereco")
     .eq("id", leadId)
     .maybeSingle();
-  let uf = (lead?.estado as string | null) ?? null;
+  // O cadastro do CRM grava a UF dentro do jsonb `endereco`; a coluna `estado`
+  // só existe em leads antigos/importados. Sem este fallback o DIFAL saía zero
+  // no pedido e ele nascia menor que o total aprovado na proposta.
+  const end = (lead?.endereco ?? null) as { uf?: string | null; estado?: string | null } | null;
+  let uf = (lead?.estado as string | null) ?? end?.uf ?? end?.estado ?? null;
   let ie = (lead?.inscricao_estadual as string | null) ?? null;
   let isento = false;
   if (lead?.cliente_id) {
