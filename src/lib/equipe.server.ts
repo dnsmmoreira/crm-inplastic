@@ -310,7 +310,10 @@ export async function coletarResumoEquipe(
     sb
       .from("pedidos")
       .select(
-        "id, number, stage, vendedor_proprietario_id, responsavel_atual_id, equipe_responsavel, encerrado_em, pos_venda_contato_em, entrega_comprovada_em, comprovacao_dispensada_em, stage_changed_at",
+        // `pedidos` NÃO tem coluna `stage_changed_at` — a entrada na etapa vem
+        // de `pedido_stage_history` (pedir a coluna aqui derrubava o fechamento
+        // do Xerife com "column pedidos.stage_changed_at does not exist").
+        "id, number, stage, vendedor_proprietario_id, responsavel_atual_id, equipe_responsavel, encerrado_em, pos_venda_contato_em, entrega_comprovada_em, comprovacao_dispensada_em, created_at",
       )
       .is("encerrado_em", null),
     sb
