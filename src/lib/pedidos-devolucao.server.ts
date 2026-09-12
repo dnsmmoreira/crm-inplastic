@@ -163,9 +163,14 @@ export async function devolverPedidoCore(
   // Aviso com aceite obrigatório ANTES de `aoEntrarNaEtapa`: o notificador é
   // idempotente por (pedido, tipo, usuário), então este texto — que sabe da
   // proposta reaberta — é o que o vendedor vê.
+  // `notificacoes` NÃO tem policy de INSERT: com o client do usuário o aviso é
+  // recusado por RLS e o vendedor ficava só com o texto genérico gravado depois
+  // por `aoEntrarNaEtapa` (sem o link da proposta reaberta). Por isso o aviso da
+  // devolução é gravado pelo client de serviço, igual aos demais efeitos de etapa.
   const { notificarUsuarios } = await import("@/lib/pedidos-fluxo.server");
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const tipo = destino === PEDIDO_STAGE_REPROVADO ? "pedido_reprovado" : "pedido_cancelado";
-  await notificarUsuarios(sb as never, vendedorId ? [vendedorId] : [], {
+  await notificarUsuarios(supabaseAdmin as never, vendedorId ? [vendedorId] : [], {
     tipo,
     titulo: textoAvisoDevolucao({ pedidoNumero, motivo, propostaNumero }),
     pedidoId,

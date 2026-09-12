@@ -310,7 +310,10 @@ export async function coletarResumoEquipe(
     sb
       .from("pedidos")
       .select(
-        "id, number, stage, vendedor_proprietario_id, responsavel_atual_id, equipe_responsavel, encerrado_em, pos_venda_contato_em, entrega_comprovada_em, comprovacao_dispensada_em, stage_changed_at",
+        // `pedidos` NÃO tem coluna `stage_changed_at` — a entrada na etapa vem
+        // de `pedido_stage_history` (pedir a coluna aqui derrubava o fechamento
+        // do Xerife com "column pedidos.stage_changed_at does not exist").
+        "id, number, stage, vendedor_proprietario_id, responsavel_atual_id, equipe_responsavel, encerrado_em, pos_venda_contato_em, entrega_comprovada_em, comprovacao_dispensada_em, created_at",
       )
       .is("encerrado_em", null),
     sb
@@ -371,12 +374,27 @@ export async function coletarResumoEquipe(
     .maybeSingle();
   const prazoPosVenda = Number(cfg?.pos_venda_dias_uteis ?? 5);
 
+  // Entrada na etapa atual, lida do histórico (a tabela `pedidos` não guarda).
+  const idsPedidos = ((pedidosRes.data ?? []) as Array<{ id: string }>).map((p) => String(p.id));
+  const entradaNaEtapa = new Map<string, string>();
+  if (idsPedidos.length > 0) {
+    const { data: hist } = await sb
+      .from("pedido_stage_history")
+      .select("pedido_id, created_at")
+      .in("pedido_id", idsPedidos)
+      .order("created_at", { ascending: true });
+    for (const h of (hist ?? []) as Array<{ pedido_id: string; created_at: string }>) {
+      entradaNaEtapa.set(String(h.pedido_id), String(h.created_at));
+    }
+  }
+
   const pedidos: PedidoEquipe[] = (
     (pedidosRes.data ?? []) as Array<Record<string, string | null>>
   ).map((p) => {
     const stage = String(p.stage);
     const operacional = podeAssumirPedido(stage);
-    const entrada = p.stage_changed_at ? new Date(String(p.stage_changed_at)) : now;
+    const marco = entradaNaEtapa.get(String(p.id)) ?? p.created_at;
+    const entrada = marco ? new Date(String(marco)) : now;
     const atrasado =
       stage === "pos_venda" &&
       diasUteisEntre(entrada, now) >= prazoPosVenda &&
