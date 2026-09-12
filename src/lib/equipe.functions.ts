@@ -60,7 +60,10 @@ export const cobrarPessoa = createServerFn({ method: "POST" })
     if (data.userId === ator) return { ok: false as const, message: "Não dá para cobrar a si mesmo." };
 
     const texto = data.texto.trim();
-    const ins = await sb.from("notificacoes").insert({
+    // A cobrança é uma notificação para OUTRA pessoa: `notificacoes` não tem
+    // policy de INSERT, então o client do usuário é recusado pelo RLS.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const ins = await supabaseAdmin.from("notificacoes").insert({
       user_id: data.userId,
       tipo: "cobranca_gestor",
       titulo: texto.slice(0, 300),
