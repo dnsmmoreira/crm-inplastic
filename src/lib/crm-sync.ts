@@ -1279,7 +1279,7 @@ async function recarregarColecao(colecao: ColecaoRealtime) {
     const erro = erros.find(Boolean);
     if (!erro) return false;
     console.error("[crm-sync] falha ao recarregar", colecao, erro);
-    reportarFalhaSync(colecao, "upsert", erro, { leitura: true });
+    reportarFalhaLeitura(colecao, erro);
     return true;
   };
   switch (colecao) {
