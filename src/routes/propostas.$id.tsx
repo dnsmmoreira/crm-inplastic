@@ -1045,6 +1045,12 @@ function PropostaDetalhe() {
                 Sem inscrição estadual — DIFAL aplicado ({formatBRL(difal.valor)})
               </div>
             )}
+            {!ufValida(ufCliente) && (
+              <div className="mt-1 rounded-md border border-destructive/60 bg-destructive/10 px-2 py-1 text-xs font-medium text-destructive print:hidden">
+                Cliente sem estado (UF) cadastrado — o DIFAL não entra no total e o pedido não pode
+                ser gerado. Complete o cadastro do cliente.
+              </div>
+            )}
 
             <p className="text-xs text-muted-foreground">
               Criada em {format(new Date(proposal.createdAt), "dd/MM/yyyy", { locale: ptBR })} ·
