@@ -14,6 +14,7 @@ const ok: PendenciaInput = {
     tipoPessoa: "PJ",
     cnpj: "11.222.333/0001-81",
     emailNf: "fiscal@acme.com.br",
+    uf: "SP",
   },
   paymentTermId: "t1",
   transporte: { freightPayer: "CIF", carrier: "Braspress", deliveryCep: "01310-100" },
