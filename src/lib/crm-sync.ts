@@ -15,7 +15,12 @@
  */
 
 import { isIntentionalDelete, clearDeleteIntent, markDeleted } from "@/lib/delete-intents";
-import { reportarFalhaSync, reportarFalhaLeitura } from "@/lib/sync-falhas";
+import {
+  reportarFalhaSync,
+  reportarFalhaLeitura,
+  contadorFalhasGravacao,
+} from "@/lib/sync-falhas";
+
 import { ehErroColunaInexistente } from "@/lib/build-version";
 import { ehErroPermanente } from "@/lib/sync-erro-permanente";
 import { ControleRetry } from "@/lib/sync-retry";
@@ -1534,6 +1539,29 @@ async function doSave() {
     salvandoAgora = false;
   }
 }
+
+/**
+ * Grava AGORA o que estiver pendente e diz se tudo passou.
+ *
+ * A tela da proposta chamava `toast.success("Alterações salvas")` sem esperar
+ * nada: quando o banco recusava os itens/parcelas, o usuário via "salvo" e a
+ * proposta ficava sem produtos.
+ */
+export async function salvarAgora(): Promise<{ ok: boolean }> {
+  if (saveTimer) {
+    clearTimeout(saveTimer);
+    saveTimer = null;
+  }
+  const antes = contadorFalhasGravacao();
+  try {
+    await doSave();
+  } catch (e) {
+    console.warn("[crm-sync] salvarAgora:", e);
+    return { ok: false };
+  }
+  return { ok: contadorFalhasGravacao() === antes };
+}
+
 
 async function doSaveInterno(userId: string) {
   const state = useCrm.getState();

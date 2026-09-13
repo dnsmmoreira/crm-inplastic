@@ -31,18 +31,29 @@ export function rotuloColecao(colecao: string): string {
   return ROTULOS[colecao] ?? colecao;
 }
 
+/**
+ * Contador de falhas de GRAVAÇÃO. A tela da proposta usa antes/depois do save
+ * para não dizer "Alterações salvas" quando alguma parte foi recusada.
+ */
+let totalFalhasGravacao = 0;
+export function contadorFalhasGravacao(): number {
+  return totalFalhasGravacao;
+}
+
 export function reportarFalhaSync(
   colecao: string,
   operacao: "upsert" | "delete",
   erro: unknown,
   extra?: Record<string, unknown>,
 ): void {
+  totalFalhasGravacao += 1;
   console.error("[crm-sync] falha ao gravar", {
     colecao,
     operacao,
     erro,
     ...(extra ?? {}),
   });
+
 
   const agora = Date.now();
   const anterior = ultimoAviso.get(colecao) ?? 0;
