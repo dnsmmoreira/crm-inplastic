@@ -522,8 +522,17 @@ async function ensurePedidoFromProposta(
   const acrescimoValor = money(aposDesconto * (acrescimoPct / 100));
   const valorOperacao = money(aposDesconto + acrescimoValor);
 
-  const { difalDoDestinatario } = await import("@/lib/difal.server");
-  const difal = await difalDoDestinatario(sb, { leadId, valorOperacao });
+  // O DIFAL depende da UF do destinatário. Sem ela o pedido nasceria com total
+  // MENOR que o aprovado na proposta — aí é melhor não gravar nada.
+  const { difalDoDestinatario, dadosFiscaisDoLead } = await import("@/lib/difal.server");
+  const fiscais = await dadosFiscaisDoLead(sb, leadId);
+  const { ufValida } = await import("@/lib/pedido-pendencias");
+  if (!ufValida(fiscais.uf)) {
+    throw new Error(
+      "Cliente sem estado (UF) cadastrado — o DIFAL não pode ser calculado. Complete o cadastro antes de gerar o pedido.",
+    );
+  }
+  const difal = await difalDoDestinatario(sb, { leadId, valorOperacao, fiscais });
 
   const frete =
     Number(
