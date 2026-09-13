@@ -75,7 +75,30 @@ export function reportarFalhaSync(
   );
 }
 
+/**
+ * Falha de LEITURA (carga inicial ou recarga por evento).
+ *
+ * Importante: o motor NÃO aplica nada no estado quando a leitura falha — a tela
+ * continua com os dados anteriores em vez de ficar vazia. O aviso existe para
+ * que o usuário saiba que pode estar vendo informação defasada.
+ */
+export function reportarFalhaLeitura(colecao: string, erro: unknown): void {
+  console.error("[crm-sync] falha ao carregar", { colecao, erro });
+
+  const agora = Date.now();
+  const chave = `leitura:${colecao}`;
+  const anterior = ultimoAviso.get(chave) ?? 0;
+  if (agora - anterior < INTERVALO_MS) return;
+  ultimoAviso.set(chave, agora);
+
+  toast.warning(
+    `Não consegui atualizar ${rotuloColecao(colecao)} agora. Mantive na tela os dados já carregados — eles podem estar desatualizados.`,
+    { duration: 8_000 },
+  );
+}
+
 /** Só para testes. */
 export function _resetAvisosSync(): void {
   ultimoAviso.clear();
 }
+
