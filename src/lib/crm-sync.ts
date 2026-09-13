@@ -15,7 +15,7 @@
  */
 
 import { isIntentionalDelete, clearDeleteIntent, markDeleted } from "@/lib/delete-intents";
-import { reportarFalhaSync } from "@/lib/sync-falhas";
+import { reportarFalhaSync, reportarFalhaLeitura } from "@/lib/sync-falhas";
 import { ehErroColunaInexistente } from "@/lib/build-version";
 import { ehErroPermanente } from "@/lib/sync-erro-permanente";
 import { ControleRetry } from "@/lib/sync-retry";
@@ -622,7 +622,24 @@ export async function hydrateCrmForUser(userId: string, role: "admin" | "vendedo
 
   suppressSave = true;
   try {
-    await loadAll(userId);
+    // Uma nova tentativa antes de desistir: falha de rede na abertura do app é
+    // comum e não pode deixar o CRM em estado "vazio mas funcionando".
+    try {
+      await loadAll(userId);
+    } catch (e) {
+      if (!(e instanceof FalhaDeCargaError)) throw e;
+      await new Promise((r) => setTimeout(r, 3000));
+      await loadAll(userId);
+    }
+  } catch (e) {
+    if (e instanceof FalhaDeCargaError) {
+      // Sem dados confiáveis: NÃO liga o save nem o realtime, para não gravar
+      // (nem apagar) nada em cima de um estado incompleto.
+      e.colecoes.forEach((c) => reportarFalhaLeitura(c, e));
+      suppressSave = false;
+      return;
+    }
+    throw e;
   } finally {
     suppressSave = false;
   }
@@ -636,6 +653,7 @@ export async function hydrateCrmForUser(userId: string, role: "admin" | "vendedo
 
   attachRealtime(userId, role);
 }
+
 
 // ---- colunas explícitas (evita `select("*")` puxando colunas que nenhum
 // `rowTo*` lê — menos bytes por hidratação/recarga de coleção) ----
