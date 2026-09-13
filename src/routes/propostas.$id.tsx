@@ -127,7 +127,7 @@ import {
   gerarParcelasCartao,
   type SimulacaoLinha,
 } from "@/lib/cartao-simulacao";
-import { calcularPendenciasPedido, rotuloMeioAprovacao } from "@/lib/pedido-pendencias";
+import { calcularPendenciasPedido, rotuloMeioAprovacao, ufValida } from "@/lib/pedido-pendencias";
 
 
 /** Parcelas de exibição (dias + percentual da condição) a partir do total da proposta. */
@@ -885,6 +885,7 @@ function PropostaDetalhe() {
         cpf: (clienteRow as { cpf?: string | null } | null)?.cpf ?? null,
         emailNf: (clienteRow as { email_nf?: string | null } | null)?.email_nf ?? null,
         emailLead: lead?.email ?? null,
+        uf: ufCliente,
       },
       paymentTermId: proposal.paymentTermId ?? null,
       transporte: {
@@ -1043,6 +1044,12 @@ function PropostaDetalhe() {
             {difal.aplica && (
               <div className="mt-1 rounded-md border border-amber-500/60 bg-amber-500/10 px-2 py-1 text-xs font-medium text-amber-800 print:hidden">
                 Sem inscrição estadual — DIFAL aplicado ({formatBRL(difal.valor)})
+              </div>
+            )}
+            {!ufValida(ufCliente) && (
+              <div className="mt-1 rounded-md border border-destructive/60 bg-destructive/10 px-2 py-1 text-xs font-medium text-destructive print:hidden">
+                Cliente sem estado (UF) cadastrado — o DIFAL não entra no total e o pedido não pode
+                ser gerado. Complete o cadastro do cliente.
               </div>
             )}
 

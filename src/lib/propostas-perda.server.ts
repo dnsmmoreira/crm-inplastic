@@ -116,10 +116,21 @@ export async function recusarPropostaImpl(
     leadPerdido = leadDeveIrParaPerdido((outras ?? []).map((o: { status: string }) => o.status));
 
     if (leadPerdido) {
+      // Etapa SEMPRE pelo caminho do sistema (trigger `trg_leads_stage_lock`).
+      const { moverStageLeadSistema } = await import("@/lib/leads-stage.server");
+      const movida = await moverStageLeadSistema({
+        leadId: prop.lead_id,
+        para: "perdido",
+        origem: "proposta_recusada",
+      });
+      await assertNoError(
+        movida.ok ? { error: null } : { error: { message: movida.erro } },
+        "propostas-perda.recusar/lead-stage",
+        { lead_id: prop.lead_id },
+      );
       const updLead = await sb
         .from("leads")
         .update({
-          stage: "perdido",
           motivo_perda: motivo,
           motivo_perda_detalhe: detalhe,
           perdido_em: agora.toISOString(),
