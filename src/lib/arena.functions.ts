@@ -156,8 +156,8 @@ export const saveArenaParticipacao = createServerFn({ method: "POST" })
         valor_novo: n === null || n === undefined ? null : String(n),
       }));
     if (rows.length > 0) {
-      const { error: aErr } = await sb.from("user_audit_log").insert(rows);
-      if (aErr) console.error("[arena] auditoria falhou:", aErr.message);
+      const { inserirMonitorado } = await import("@/lib/rls-monitor.server");
+      await inserirMonitorado(sb, "user_audit_log", rows, { acao: "arena.config.auditoria" });
     }
 
     return { ok: true, alteracoes: rows.length };

@@ -50,14 +50,19 @@ async function logAudit(
   anterior: unknown,
   novo: unknown,
 ) {
-  const { error } = await sb.from("user_audit_log").insert({
-    alvo_user_id: ator,
-    ator_user_id: ator,
-    campo,
-    valor_anterior: anterior == null ? null : String(anterior),
-    valor_novo: novo == null ? null : String(novo),
-  });
-  if (error) console.error("[cargos] auditoria falhou:", error.message);
+  const { inserirMonitorado } = await import("@/lib/rls-monitor.server");
+  await inserirMonitorado(
+    sb,
+    "user_audit_log",
+    {
+      alvo_user_id: ator,
+      ator_user_id: ator,
+      campo,
+      valor_anterior: anterior == null ? null : String(anterior),
+      valor_novo: novo == null ? null : String(novo),
+    },
+    { acao: "cargos.auditoria", ator_user_id: ator, campo },
+  );
 }
 
 /* ------------------------------------------------------------------ */
