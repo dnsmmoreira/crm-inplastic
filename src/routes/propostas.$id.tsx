@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useDuplicarProposta } from "@/hooks/use-duplicar-proposta";
 import { propostaVencida, diasVencida, validadeYmd, ddmmProposta } from "@/lib/proposta-prazo";
 import { useAuth } from "@/hooks/use-auth";
-import { hydrateCrmForUser } from "@/lib/crm-sync";
+import { hydrateCrmForUser, salvarAgora } from "@/lib/crm-sync";
 import { prorrogarProposta, reemitirProposta } from "@/lib/propostas-prazo.functions";
 import {
   ArrowLeft,
@@ -1526,10 +1526,11 @@ function PropostaDetalhe() {
           <Button
             variant={dirty ? "default" : "outline"}
             className="gap-2"
-            disabled={!dirty}
-            onClick={() => {
+            disabled={!dirty || salvando}
+            onClick={async () => {
               // Se estava editando um pedido liberado, ao salvar re-bloqueia automaticamente.
-              if (isPedido && editUnlocked) {
+              const rebloquear = isPedido && editUnlocked;
+              if (rebloquear) {
                 _updateProposal(proposal.id, {
                   editUnlockedAt: undefined,
                   editUnlockedByUserId: undefined,
@@ -1537,18 +1538,29 @@ function PropostaDetalhe() {
                   editRequestReason: undefined,
                   editRequestedByUserId: undefined,
                 });
-                setDirty(false);
-                toast.success("Alterações salvas", {
-                  description: "Pedido re-bloqueado automaticamente.",
-                });
+              }
+              // Só diz "salvo" depois que o banco aceitou tudo — itens e
+              // parcelas já foram recusados em silêncio no passado.
+              setSalvando(true);
+              const r = await salvarAgora();
+              setSalvando(false);
+              if (!r.ok) {
+                toast.error(
+                  "Não consegui salvar tudo. Parte das alterações foi recusada — confira os produtos e as parcelas antes de enviar.",
+                  { duration: 12_000 },
+                );
                 return;
               }
               setDirty(false);
-              toast.success("Alterações salvas");
+              toast.success(
+                "Alterações salvas",
+                rebloquear ? { description: "Pedido re-bloqueado automaticamente." } : undefined,
+              );
             }}
           >
-            <CheckCircle2 className="h-4 w-4" /> Salvar
+            <CheckCircle2 className="h-4 w-4" /> {salvando ? "Salvando..." : "Salvar"}
           </Button>
+
           <Button className="gap-2" onClick={() => window.print()}>
             <Printer className="h-4 w-4" /> Imprimir / PDF
           </Button>
