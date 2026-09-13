@@ -745,7 +745,7 @@ async function loadAll(userId: string) {
     { data: aiRows },
     { data: propRows, error: eProp },
     { data: pItemRows, error: eItem },
-    { data: pParc极Rows, error: eParc },
+    { data: pParcRows, error: eParc },
   ] = await Promise.all([
     supabase.from("system_workspace").select("data").eq("id", 1).maybeSingle(),
     supabase.from("user_workspaces").select("data").eq("user_id", userId).maybeSingle(),
