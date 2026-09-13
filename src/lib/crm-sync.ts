@@ -15,7 +15,12 @@
  */
 
 import { isIntentionalDelete, clearDeleteIntent, markDeleted } from "@/lib/delete-intents";
-import { reportarFalhaSync } from "@/lib/sync-falhas";
+import {
+  reportarFalhaSync,
+  reportarFalhaLeitura,
+  contadorFalhasGravacao,
+} from "@/lib/sync-falhas";
+
 import { ehErroColunaInexistente } from "@/lib/build-version";
 import { ehErroPermanente } from "@/lib/sync-erro-permanente";
 import { ControleRetry } from "@/lib/sync-retry";
@@ -622,7 +627,24 @@ export async function hydrateCrmForUser(userId: string, role: "admin" | "vendedo
 
   suppressSave = true;
   try {
-    await loadAll(userId);
+    // Uma nova tentativa antes de desistir: falha de rede na abertura do app é
+    // comum e não pode deixar o CRM em estado "vazio mas funcionando".
+    try {
+      await loadAll(userId);
+    } catch (e) {
+      if (!(e instanceof FalhaDeCargaError)) throw e;
+      await new Promise((r) => setTimeout(r, 3000));
+      await loadAll(userId);
+    }
+  } catch (e) {
+    if (e instanceof FalhaDeCargaError) {
+      // Sem dados confiáveis: NÃO liga o save nem o realtime, para não gravar
+      // (nem apagar) nada em cima de um estado incompleto.
+      e.colecoes.forEach((c) => reportarFalhaLeitura(c, e));
+      suppressSave = false;
+      return;
+    }
+    throw e;
   } finally {
     suppressSave = false;
   }
@@ -636,6 +658,7 @@ export async function hydrateCrmForUser(userId: string, role: "admin" | "vendedo
 
   attachRealtime(userId, role);
 }
+
 
 // ---- colunas explícitas (evita `select("*")` puxando colunas que nenhum
 // `rowTo*` lê — menos bytes por hidratação/recarga de coleção) ----
@@ -718,20 +741,34 @@ function queryAiActions() {
     .order("occurred_at", { ascending: false });
 }
 
+/**
+ * Falha de LEITURA na carga: erro de rede/permissão não pode virar lista vazia
+ * na tela. Quem chama (`hydrate`/`resyncAgora`) trata e mantém o que já estava
+ * carregado.
+ */
+export class FalhaDeCargaError extends Error {
+  colecoes: string[];
+  constructor(colecoes: string[]) {
+    super(`Falha ao carregar: ${colecoes.join(", ")}`);
+    this.name = "FalhaDeCargaError";
+    this.colecoes = colecoes;
+  }
+}
+
 async function loadAll(userId: string) {
   const [
     { data: sysRow },
     { data: userRow },
-    { data: prodRows },
-    { data: emitRows },
-    { data: termRows },
-    { data: leadRows },
-    { data: taskRows },
+    { data: prodRows, error: eProd },
+    { data: emitRows, error: eEmit },
+    { data: termRows, error: eTerm },
+    { data: leadRows, error: eLead },
+    { data: taskRows, error: eTask },
     { data: interRows },
     { data: aiRows },
-    { data: propRows },
-    { data: pItemRows },
-    { data: pParcRows },
+    { data: propRows, error: eProp },
+    { data: pItemRows, error: eItem },
+    { data: pParcRows, error: eParc },
   ] = await Promise.all([
     supabase.from("system_workspace").select("data").eq("id", 1).maybeSingle(),
     supabase.from("user_workspaces").select("data").eq("user_id", userId).maybeSingle(),
@@ -746,6 +783,25 @@ async function loadAll(userId: string) {
     queryItens(),
     queryParcelas(),
   ]);
+
+  // Antes de tocar no store: se alguma coleção falhou, aborta a carga inteira.
+  const falhas: string[] = [];
+  const registrar = (nome: string, erro: unknown) => {
+    if (erro) {
+      console.error("[crm-sync] falha ao carregar", nome, erro);
+      falhas.push(nome);
+    }
+  };
+  registrar("produtos", eProd);
+  registrar("empresas emitentes", eEmit);
+  registrar("condições de pagamento", eTerm);
+  registrar("leads", eLead);
+  registrar("tarefas", eTask);
+  registrar("propostas", eProp);
+  registrar("itens da proposta", eItem);
+  registrar("parcelas da proposta", eParc);
+  if (falhas.length) throw new FalhaDeCargaError(falhas);
+
 
   // ---- system settings (globais leves) ----
   type SysPayload = {
@@ -1241,13 +1297,22 @@ function propostaPendente(p: Proposal): boolean {
 
 async function recarregarColecao(colecao: ColecaoRealtime) {
   if (!currentUserId || !hydrated) return;
+  /** Leitura recusada/sem rede NÃO pode virar lista vazia na tela. */
+  const abortar = (...erros: unknown[]) => {
+    const erro = erros.find(Boolean);
+    if (!erro) return false;
+    console.error("[crm-sync] falha ao recarregar", colecao, erro);
+    reportarFalhaLeitura(colecao, erro);
+    return true;
+  };
   switch (colecao) {
     case "leads": {
-      const [{ data: leadRows }, { data: interRows }, { data: aiRows }] = await Promise.all([
-        queryLeads(),
-        queryInteracoes(),
-        queryAiActions(),
-      ]);
+      const [
+        { data: leadRows, error: eLead },
+        { data: interRows, error: eInter },
+        { data: aiRows, error: eAi },
+      ] = await Promise.all([queryLeads(), queryInteracoes(), queryAiActions()]);
+      if (abortar(eLead, eInter, eAi)) return;
       const { interByLead, aiByLead } = indexarHistoricoLead(
         (interRows ?? []) as unknown as InteractionRow[],
         (aiRows ?? []) as unknown as AiActionRow[],
@@ -1266,7 +1331,8 @@ async function recarregarColecao(colecao: ColecaoRealtime) {
       return;
     }
     case "tasks": {
-      const { data } = await queryTarefas();
+      const { data, error } = await queryTarefas();
+      if (abortar(error)) return;
       const leadsAtuais = useCrm.getState().leads;
       const remotos = montarTasks(
         (data ?? []) as unknown as TaskRow[],
@@ -1285,11 +1351,12 @@ async function recarregarColecao(colecao: ColecaoRealtime) {
       return;
     }
     case "proposals": {
-      const [{ data: propRows }, { data: itemRows }, { data: parcRows }] = await Promise.all([
-        queryPropostas(),
-        queryItens(),
-        queryParcelas(),
-      ]);
+      const [
+        { data: propRows, error: eProp },
+        { data: itemRows, error: eItem },
+        { data: parcRows, error: eParc },
+      ] = await Promise.all([queryPropostas(), queryItens(), queryParcelas()]);
+      if (abortar(eProp, eItem, eParc)) return;
       const remotos = montarPropostas(
         (propRows ?? []) as unknown as ProposalRow[],
         (itemRows ?? []) as unknown as PItemRow[],
@@ -1304,14 +1371,16 @@ async function recarregarColecao(colecao: ColecaoRealtime) {
       return;
     }
     case "products": {
-      const { data } = await queryProdutos();
+      const { data, error } = await queryProdutos();
+      if (abortar(error)) return;
       const products = ((data ?? []) as unknown as ProductRow[]).map(rowToProduct);
       products.forEach((p) => snapshot.products.set(p.id, JSON.stringify(productToInsert(p))));
       aplicarNoStore(() => useCrm.setState({ products }));
       return;
     }
     case "emitters": {
-      const { data } = await queryEmitters();
+      const { data, error } = await queryEmitters();
+      if (abortar(error)) return;
       const emitters = ((data ?? []) as unknown as EmitterRow[]).map(rowToEmitter);
       if (!emitters.length) return;
       const def = useCrm.getState().defaultEmitterId;
@@ -1322,7 +1391,8 @@ async function recarregarColecao(colecao: ColecaoRealtime) {
       return;
     }
     case "paymentTerms": {
-      const { data } = await queryTermos();
+      const { data, error } = await queryTermos();
+      if (abortar(error)) return;
       const paymentTerms = ((data ?? []) as unknown as PayTermRow[]).map(rowToPayTerm);
       if (!paymentTerms.length) return;
       paymentTerms.forEach((t) =>
@@ -1333,6 +1403,7 @@ async function recarregarColecao(colecao: ColecaoRealtime) {
     }
   }
 }
+
 
 /**
  * Rede de segurança: um `loadAll` a cada 10 min, só com a aba visível
@@ -1354,11 +1425,16 @@ export function resyncAgora() {
   const uid = currentUserId;
   suppressSave = true;
   void loadAll(uid)
-    .catch((e) => console.warn("[crm-sync] resync:", e))
+    .catch((e) => {
+      // Leitura falhou: o store continua com o que já estava — só avisa.
+      if (e instanceof FalhaDeCargaError) e.colecoes.forEach((c) => reportarFalhaLeitura(c, e));
+      else console.warn("[crm-sync] resync:", e);
+    })
     .finally(() => {
       suppressSave = false;
     });
 }
+
 
 // ============ Save (write-through com diff) ============
 
@@ -1463,6 +1539,29 @@ async function doSave() {
     salvandoAgora = false;
   }
 }
+
+/**
+ * Grava AGORA o que estiver pendente e diz se tudo passou.
+ *
+ * A tela da proposta chamava `toast.success("Alterações salvas")` sem esperar
+ * nada: quando o banco recusava os itens/parcelas, o usuário via "salvo" e a
+ * proposta ficava sem produtos.
+ */
+export async function salvarAgora(): Promise<{ ok: boolean }> {
+  if (saveTimer) {
+    clearTimeout(saveTimer);
+    saveTimer = null;
+  }
+  const antes = contadorFalhasGravacao();
+  try {
+    await doSave();
+  } catch (e) {
+    console.warn("[crm-sync] salvarAgora:", e);
+    return { ok: false };
+  }
+  return { ok: contadorFalhasGravacao() === antes };
+}
+
 
 async function doSaveInterno(userId: string) {
   const state = useCrm.getState();

@@ -31,18 +31,29 @@ export function rotuloColecao(colecao: string): string {
   return ROTULOS[colecao] ?? colecao;
 }
 
+/**
+ * Contador de falhas de GRAVAÇÃO. A tela da proposta usa antes/depois do save
+ * para não dizer "Alterações salvas" quando alguma parte foi recusada.
+ */
+let totalFalhasGravacao = 0;
+export function contadorFalhasGravacao(): number {
+  return totalFalhasGravacao;
+}
+
 export function reportarFalhaSync(
   colecao: string,
   operacao: "upsert" | "delete",
   erro: unknown,
   extra?: Record<string, unknown>,
 ): void {
+  totalFalhasGravacao += 1;
   console.error("[crm-sync] falha ao gravar", {
     colecao,
     operacao,
     erro,
     ...(extra ?? {}),
   });
+
 
   const agora = Date.now();
   const anterior = ultimoAviso.get(colecao) ?? 0;
@@ -75,7 +86,30 @@ export function reportarFalhaSync(
   );
 }
 
+/**
+ * Falha de LEITURA (carga inicial ou recarga por evento).
+ *
+ * Importante: o motor NÃO aplica nada no estado quando a leitura falha — a tela
+ * continua com os dados anteriores em vez de ficar vazia. O aviso existe para
+ * que o usuário saiba que pode estar vendo informação defasada.
+ */
+export function reportarFalhaLeitura(colecao: string, erro: unknown): void {
+  console.error("[crm-sync] falha ao carregar", { colecao, erro });
+
+  const agora = Date.now();
+  const chave = `leitura:${colecao}`;
+  const anterior = ultimoAviso.get(chave) ?? 0;
+  if (agora - anterior < INTERVALO_MS) return;
+  ultimoAviso.set(chave, agora);
+
+  toast.warning(
+    `Não consegui atualizar ${rotuloColecao(colecao)} agora. Mantive na tela os dados já carregados — eles podem estar desatualizados.`,
+    { duration: 8_000 },
+  );
+}
+
 /** Só para testes. */
 export function _resetAvisosSync(): void {
   ultimoAviso.clear();
 }
+

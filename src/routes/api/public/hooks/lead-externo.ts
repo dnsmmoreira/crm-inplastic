@@ -283,23 +283,74 @@ export const Route = createFileRoute("/api/public/hooks/lead-externo")({
         const vendedorId = atribuicao.vendedorId;
 
         // 5) Re-engajamento — abre a janela de 24h neste número.
+        //
+        // A mensagem era SEMPRE o mesmo texto: caía no anti-duplicado de 10 min
+        // e no limite de 20s por telefone, e a conversa nascia muda sem ninguém
+        // saber. Agora o texto é personalizado (some o duplicado), há uma nova
+        // tentativa quando a trava é só de tempo, e o vendedor é avisado se
+        // mesmo assim não sair.
         let reengajamentoEnviado = false;
         let erroReengajamento: string | null = null;
-        try {
+        const primeiroNome = (nome ?? "").trim().split(/\s+/)[0] ?? "";
+        const textoBoasVindas = [
+          primeiroNome ? `Olá, ${primeiroNome}!` : "Olá!",
+          "Aqui é a Inplastic.",
+          body.empresa ? `Recebemos o contato da ${body.empresa}` : "Recebemos seu contato",
+          body.produto ? `sobre ${body.produto}.` : "e um consultor já vai continuar seu atendimento por aqui. 🙂",
+        ].join(" ");
+        const esperaPorTrava = (msg: string) =>
+          /20 segundos|por minuto|duplicada/i.test(msg) ? 22_000 : 0;
+
+        {
           const { sendWhatsappText } = await import("@/lib/whatsapp-send.server");
-          const res = await sendWhatsappText(
-            telefone,
-            "Olá! Aqui é a Inplastic. Recebemos seu contato e um consultor já vai continuar seu atendimento por aqui. 🙂",
-            "lead-externo",
-            "comercial",
-            { origem: "iniciado_sistema" },
-          );
-          reengajamentoEnviado = !!res?.ok;
-          if (!res?.ok) erroReengajamento = res?.body ?? "falha no envio";
-        } catch (e) {
-          erroReengajamento = e instanceof Error ? e.message : String(e);
-          console.error("[lead-externo] re-engajamento falhou:", erroReengajamento);
+          const tentar = async () => {
+            try {
+              const res = await sendWhatsappText(
+                telefone,
+                textoBoasVindas,
+                "lead-externo",
+                "comercial",
+                { origem: "iniciado_sistema" },
+              );
+              if (res?.ok) return { ok: true as const, erro: null };
+              return { ok: false as const, erro: res?.body ?? "falha no envio" };
+            } catch (e) {
+              return { ok: false as const, erro: e instanceof Error ? e.message : String(e) };
+            }
+          };
+
+          let r = await tentar();
+          const espera = r.ok ? 0 : esperaPorTrava(r.erro ?? "");
+          if (!r.ok && espera > 0) {
+            await new Promise((resolve) => setTimeout(resolve, espera));
+            r = await tentar();
+          }
+          reengajamentoEnviado = r.ok;
+          erroReengajamento = r.erro;
+          if (!r.ok) {
+            console.error("[lead-externo] re-engajamento falhou:", erroReengajamento);
+            await registrarFalhaSegura("lead-externo.reengajamento", erroReengajamento, {
+              lead_id: leadId,
+              conversa_id: conversaId,
+              telefone_final: telefone.slice(-4),
+            });
+            if (vendedorId) {
+              const { inserirMonitorado } = await import("@/lib/rls-monitor.server");
+              await inserirMonitorado(
+                supabaseAdmin,
+                "notificacoes",
+                {
+                  user_id: vendedorId,
+                  lead_id: leadId,
+                  tipo: "whatsapp_boas_vindas_falhou",
+                  titulo: `A mensagem de boas-vindas para ${nome || "o novo lead"} não foi enviada — fale você com o cliente.`,
+                },
+                { acao: "lead-externo.reengajamento", lead_id: leadId, conversa_id: conversaId },
+              );
+            }
+          }
         }
+
 
         // 6) Registro da ação
         // REGISTRAR E SEGUIR: mensagem de re-engajamento já pode ter saído para

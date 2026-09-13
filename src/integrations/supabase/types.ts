@@ -3573,6 +3573,7 @@ export type Database = {
         Args: { _entidade_id: string; _tipo: string }
         Returns: boolean
       }
+      pode_editar_proposta: { Args: { _proposta_id: string }; Returns: boolean }
       pode_ver_documento: {
         Args: { _entidade_id: string; _tipo: string }
         Returns: boolean
