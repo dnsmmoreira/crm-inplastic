@@ -718,20 +718,34 @@ function queryAiActions() {
     .order("occurred_at", { ascending: false });
 }
 
+/**
+ * Falha de LEITURA na carga: erro de rede/permissão não pode virar lista vazia
+ * na tela. Quem chama (`hydrate`/`resyncAgora`) trata e mantém o que já estava
+ * carregado.
+ */
+export class FalhaDeCargaError extends Error {
+  colecoes: string[];
+  constructor(colecoes: string[]) {
+    super(`Falha ao carregar: ${colecoes.join(", ")}`);
+    this.name = "FalhaDeCargaError";
+    this.colecoes = colecoes;
+  }
+}
+
 async function loadAll(userId: string) {
   const [
     { data: sysRow },
     { data: userRow },
-    { data: prodRows },
-    { data: emitRows },
-    { data: termRows },
-    { data: leadRows },
-    { data: taskRows },
+    { data: prodRows, error: eProd },
+    { data: emitRows, error: eEmit },
+    { data: termRows, error: eTerm },
+    { data: leadRows, error: eLead },
+    { data: taskRows, error: eTask },
     { data: interRows },
     { data: aiRows },
-    { data: propRows },
-    { data: pItemRows },
-    { data: pParcRows },
+    { data: propRows, error: eProp },
+    { data: pItemRows, error: eItem },
+    { data: pParc极Rows, error: eParc },
   ] = await Promise.all([
     supabase.from("system_workspace").select("data").eq("id", 1).maybeSingle(),
     supabase.from("user_workspaces").select("data").eq("user_id", userId).maybeSingle(),
@@ -746,6 +760,25 @@ async function loadAll(userId: string) {
     queryItens(),
     queryParcelas(),
   ]);
+
+  // Antes de tocar no store: se alguma coleção falhou, aborta a carga inteira.
+  const falhas: string[] = [];
+  const registrar = (nome: string, erro: unknown) => {
+    if (erro) {
+      console.error("[crm-sync] falha ao carregar", nome, erro);
+      falhas.push(nome);
+    }
+  };
+  registrar("produtos", eProd);
+  registrar("empresas emitentes", eEmit);
+  registrar("condições de pagamento", eTerm);
+  registrar("leads", eLead);
+  registrar("tarefas", eTask);
+  registrar("propostas", eProp);
+  registrar("itens da proposta", eItem);
+  registrar("parcelas da proposta", eParc);
+  if (falhas.length) throw new FalhaDeCargaError(falhas);
+
 
   // ---- system settings (globais leves) ----
   type SysPayload = {
