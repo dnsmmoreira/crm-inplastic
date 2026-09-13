@@ -1420,11 +1420,16 @@ export function resyncAgora() {
   const uid = currentUserId;
   suppressSave = true;
   void loadAll(uid)
-    .catch((e) => console.warn("[crm-sync] resync:", e))
+    .catch((e) => {
+      // Leitura falhou: o store continua com o que já estava — só avisa.
+      if (e instanceof FalhaDeCargaError) e.colecoes.forEach((c) => reportarFalhaLeitura(c, e));
+      else console.warn("[crm-sync] resync:", e);
+    })
     .finally(() => {
       suppressSave = false;
     });
 }
+
 
 // ============ Save (write-through com diff) ============
 
