@@ -1274,13 +1274,22 @@ function propostaPendente(p: Proposal): boolean {
 
 async function recarregarColecao(colecao: ColecaoRealtime) {
   if (!currentUserId || !hydrated) return;
+  /** Leitura recusada/sem rede NÃO pode virar lista vazia na tela. */
+  const abortar = (...erros: unknown[]) => {
+    const erro = erros.find(Boolean);
+    if (!erro) return false;
+    console.error("[crm-sync] falha ao recarregar", colecao, erro);
+    reportarFalhaSync(colecao, "upsert", erro, { leitura: true });
+    return true;
+  };
   switch (colecao) {
     case "leads": {
-      const [{ data: leadRows }, { data: interRows }, { data: aiRows }] = await Promise.all([
-        queryLeads(),
-        queryInteracoes(),
-        queryAiActions(),
-      ]);
+      const [
+        { data: leadRows, error: eLead },
+        { data: interRows, error: eInter },
+        { data: aiRows, error: eAi },
+      ] = await Promise.all([queryLeads(), queryInteracoes(), queryAiActions()]);
+      if (abortar(eLead, eInter, eAi)) return;
       const { interByLead, aiByLead } = indexarHistoricoLead(
         (interRows ?? []) as unknown as InteractionRow[],
         (aiRows ?? []) as unknown as AiActionRow[],
@@ -1299,7 +1308,8 @@ async function recarregarColecao(colecao: ColecaoRealtime) {
       return;
     }
     case "tasks": {
-      const { data } = await queryTarefas();
+      const { data, error } = await queryTarefas();
+      if (abortar(error)) return;
       const leadsAtuais = useCrm.getState().leads;
       const remotos = montarTasks(
         (data ?? []) as unknown as TaskRow[],
@@ -1318,11 +1328,12 @@ async function recarregarColecao(colecao: ColecaoRealtime) {
       return;
     }
     case "proposals": {
-      const [{ data: propRows }, { data: itemRows }, { data: parcRows }] = await Promise.all([
-        queryPropostas(),
-        queryItens(),
-        queryParcelas(),
-      ]);
+      const [
+        { data: propRows, error: eProp },
+        { data: itemRows, error: eItem },
+        { data: parcRows, error: eParc },
+      ] = await Promise.all([queryPropostas(), queryItens(), queryParcelas()]);
+      if (abortar(eProp, eItem, eParc)) return;
       const remotos = montarPropostas(
         (propRows ?? []) as unknown as ProposalRow[],
         (itemRows ?? []) as unknown as PItemRow[],
@@ -1337,14 +1348,16 @@ async function recarregarColecao(colecao: ColecaoRealtime) {
       return;
     }
     case "products": {
-      const { data } = await queryProdutos();
+      const { data, error } = await queryProdutos();
+      if (abortar(error)) return;
       const products = ((data ?? []) as unknown as ProductRow[]).map(rowToProduct);
       products.forEach((p) => snapshot.products.set(p.id, JSON.stringify(productToInsert(p))));
       aplicarNoStore(() => useCrm.setState({ products }));
       return;
     }
     case "emitters": {
-      const { data } = await queryEmitters();
+      const { data, error } = await queryEmitters();
+      if (abortar(error)) return;
       const emitters = ((data ?? []) as unknown as EmitterRow[]).map(rowToEmitter);
       if (!emitters.length) return;
       const def = useCrm.getState().defaultEmitterId;
@@ -1355,7 +1368,8 @@ async function recarregarColecao(colecao: ColecaoRealtime) {
       return;
     }
     case "paymentTerms": {
-      const { data } = await queryTermos();
+      const { data, error } = await queryTermos();
+      if (abortar(error)) return;
       const paymentTerms = ((data ?? []) as unknown as PayTermRow[]).map(rowToPayTerm);
       if (!paymentTerms.length) return;
       paymentTerms.forEach((t) =>
@@ -1366,6 +1380,7 @@ async function recarregarColecao(colecao: ColecaoRealtime) {
     }
   }
 }
+
 
 /**
  * Rede de segurança: um `loadAll` a cada 10 min, só com a aba visível
