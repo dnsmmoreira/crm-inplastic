@@ -47,4 +47,37 @@ describe("difalDoDestinatario", () => {
     });
     expect(r.valor).toBeCloseTo(134.82, 2);
   });
+
+  // Regressão: o CRM grava a UF dentro do endereço; sem este fallback o pedido
+  // nascia sem DIFAL e menor que o total aprovado na proposta.
+  it("lê a UF de dentro do endereço quando a coluna estado está vazia", async () => {
+    const sb = sbFake({ lead: { estado: null, endereco: { uf: "ES" }, cliente_id: null } });
+    const r = await difalDoDestinatario(sb, { leadId: "lead-1", valorOperacao: 1000 });
+    expect(r.uf).toBe("ES");
+    expect(r.valor).toBeCloseTo(134.82, 2);
+  });
+
+  it("o cadastro do cliente manda mais que o do lead", async () => {
+    const sb = sbFake({
+      lead: { estado: "SP", cliente_id: "c1" },
+      cliente: { estado: "ES", inscricao_estadual: null, ie_isento: false },
+    });
+    const r = await difalDoDestinatario(sb, { leadId: "lead-1", valorOperacao: 1000 });
+    expect(r.uf).toBe("ES");
+  });
+
+  it("sem UF nenhuma não cobra DIFAL (a geração do pedido barra antes)", async () => {
+    const sb = sbFake({ lead: { estado: null, endereco: null, cliente_id: null } });
+    const r = await difalDoDestinatario(sb, { leadId: "lead-1", valorOperacao: 1000 });
+    expect(r.valor).toBe(0);
+  });
+});
+
+describe("geração do pedido", () => {
+  it("barra a geração quando o destinatário está sem UF", async () => {
+    const { readFileSync } = await import("node:fs");
+    const src = readFileSync("src/lib/pedidos-gerar.functions.ts", "utf8");
+    expect(src).toContain("if (!ufValida(fiscais.uf))");
+    expect(src).toContain("difalDoDestinatario(sb, { leadId, valorOperacao, fiscais })");
+  });
 });
