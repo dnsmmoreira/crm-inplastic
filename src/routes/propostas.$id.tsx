@@ -335,6 +335,8 @@ function PropostaDetalhe() {
     Record<string, { field: "description" | "quantity" | "unitPrice"; message: string } | null>
   >({});
   const [dirty, setDirty] = useState(false);
+  const [salvando, setSalvando] = useState(false);
+
   const freightConfig = useCrm((s) => s.freightConfig);
   const [freightLoading, setFreightLoading] = useState(false);
   const calcFreight = useServerFn(calculateFreightDistance);
