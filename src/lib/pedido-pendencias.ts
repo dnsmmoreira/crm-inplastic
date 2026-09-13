@@ -75,6 +75,11 @@ function emailValido(v: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v);
 }
 
+/** UF brasileira com 2 letras (o DIFAL depende dela). */
+export function ufValida(v: unknown): boolean {
+  return /^[A-Za-z]{2}$/.test(txt(v));
+}
+
 /** Retirada na fábrica — ver nota no topo do arquivo. */
 export function ehRetirada(t: PendenciaInput["transporte"]): boolean {
   if (t?.retirada === true) return true;
@@ -132,6 +137,16 @@ export function calcularPendenciasPedido(input: PendenciaInput): Pendencia[] {
         linkCliente,
       );
     }
+  }
+
+  // Sem UF não há como calcular o DIFAL: o pedido nasceria com total menor do
+  // que o cliente aprovou na proposta.
+  if (!ufValida(input.cliente.uf)) {
+    add(
+      "cliente_sem_uf",
+      "Cliente sem estado (UF) cadastrado — sem ele o DIFAL não pode ser calculado e o total do pedido sairia errado.",
+      linkCliente,
+    );
   }
 
   // --- Proposta ------------------------------------------------------------
