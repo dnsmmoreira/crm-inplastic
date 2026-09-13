@@ -208,7 +208,12 @@ export async function notificarUsuarios(
   if (novos.length === 0) return 0;
 
   const exigeAceite = args.exigeAceite ?? args.tipo.startsWith("pedido_");
-  const { error } = await sb.from("notificacoes").insert(
+  // Gravação monitorada: recusa do banco (RLS) vira falha visível em /falhas,
+  // com o contexto do aviso que não chegou.
+  const { inserirMonitorado } = await import("@/lib/rls-monitor.server");
+  const res = await inserirMonitorado(
+    sb,
+    "notificacoes",
     novos.map((user_id) => ({
       user_id,
       tipo: args.tipo,
@@ -219,17 +224,15 @@ export async function notificarUsuarios(
       // A cópia do gestor é sempre informativa: nunca exige aceite.
       exige_aceite: copias.includes(user_id) ? false : exigeAceite,
     })),
-  );
-  if (error) {
-    console.error("[pedidos-fluxo] falha ao notificar:", error.message);
-    const { registrarFalhaAdmin } = await import("@/lib/falhas.server");
-    await registrarFalhaAdmin("pedido.notificacao", error.message, {
+    {
+      acao: "pedido.notificacao",
       pedido_id: args.pedidoId,
+      proposta_id: args.propostaId ?? null,
       tipo: args.tipo,
       destinatarios: novos,
-    });
-    return 0;
-  }
+    },
+  );
+  if (!res.ok) return 0;
   return novos.length;
 }
 

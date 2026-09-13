@@ -63,13 +63,22 @@ export const cobrarPessoa = createServerFn({ method: "POST" })
     // A cobrança é uma notificação para OUTRA pessoa: `notificacoes` não tem
     // policy de INSERT, então o client do usuário é recusado pelo RLS.
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const ins = await supabaseAdmin.from("notificacoes").insert({
-      user_id: data.userId,
-      tipo: "cobranca_gestor",
-      titulo: texto.slice(0, 300),
-      exige_aceite: true,
-    });
-    if (ins?.error) throw new Error(`Não foi possível enviar a cobrança: ${ins.error.message}`);
+    const { inserirMonitorado } = await import("@/lib/rls-monitor.server");
+    const ins = await inserirMonitorado(
+      supabaseAdmin,
+      "notificacoes",
+      {
+        user_id: data.userId,
+        tipo: "cobranca_gestor",
+        titulo: texto.slice(0, 300),
+        exige_aceite: true,
+      },
+      { acao: "equipe.cobrarPessoa", ator_user_id: ator, alvo_user_id: data.userId },
+    );
+    if (!ins.ok) {
+      const msg = (ins.error as { message?: string } | null)?.message ?? "erro desconhecido";
+      throw new Error(`Não foi possível enviar a cobrança: ${msg}`);
+    }
 
     const { notifyOwner } = await import("@/lib/xerife/notify.server");
     await notifyOwner(data.userId, `📣 *Cobrança da gestão*\n\n${texto}`);
