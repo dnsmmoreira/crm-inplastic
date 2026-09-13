@@ -127,7 +127,7 @@ import {
   gerarParcelasCartao,
   type SimulacaoLinha,
 } from "@/lib/cartao-simulacao";
-import { calcularPendenciasPedido, rotuloMeioAprovacao } from "@/lib/pedido-pendencias";
+import { calcularPendenciasPedido, rotuloMeioAprovacao, ufValida } from "@/lib/pedido-pendencias";
 
 
 /** Parcelas de exibição (dias + percentual da condição) a partir do total da proposta. */
@@ -885,6 +885,7 @@ function PropostaDetalhe() {
         cpf: (clienteRow as { cpf?: string | null } | null)?.cpf ?? null,
         emailNf: (clienteRow as { email_nf?: string | null } | null)?.email_nf ?? null,
         emailLead: lead?.email ?? null,
+        uf: ufCliente,
       },
       paymentTermId: proposal.paymentTermId ?? null,
       transporte: {
