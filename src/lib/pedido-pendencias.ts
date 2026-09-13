@@ -18,6 +18,7 @@ import { tratativaValida } from "@/lib/tratativa-comercial";
 export type PendenciaCodigo =
   | "cliente_sem_documento"
   | "cliente_sem_email_nf"
+  | "cliente_sem_uf"
   | "sem_condicao_pagamento"
   | "sem_entrega"
   | "sem_previsao_entrega"
@@ -49,6 +50,11 @@ export type PendenciaInput = {
     emailNf?: string | null;
     /** E-mail do lead — usado quando ainda não há cliente vinculado. */
     emailLead?: string | null;
+    /**
+     * UF do destinatário (cadastro do cliente ou endereço do lead). Sem ela o
+     * DIFAL não é calculado e o pedido nasceria com total menor que o aprovado.
+     */
+    uf?: string | null;
   };
   paymentTermId?: string | null;
   transporte?: {
