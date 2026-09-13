@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.pode_editar_proposta(uuid) FROM PUBLIC, anon;
