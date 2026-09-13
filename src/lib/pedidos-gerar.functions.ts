@@ -141,7 +141,7 @@ export const gerarPedidoInterno = createServerFn({ method: "POST" })
       const { data: clienteRow } = clienteId
         ? await loose
             .from("clientes")
-            .select("id, razao_social, tipo_pessoa, cnpj, cpf, email_nf")
+            .select("id, razao_social, tipo_pessoa, cnpj, cpf, email_nf, estado")
             .eq("id", clienteId)
             .maybeSingle()
         : { data: null };
@@ -174,6 +174,15 @@ export const gerarPedidoInterno = createServerFn({ method: "POST" })
           cpf: clienteRow?.cpf ?? null,
           emailNf: clienteRow?.email_nf ?? null,
           emailLead: (leadRow?.email as string | null) ?? null,
+          // Mesma precedência da tela da proposta (cliente → endereço do lead).
+          uf:
+            (clienteRow?.estado as string | null) ??
+            ((leadRow?.endereco ?? null) as { uf?: string | null; estado?: string | null } | null)
+              ?.uf ??
+            ((leadRow?.endereco ?? null) as { uf?: string | null; estado?: string | null } | null)
+              ?.estado ??
+            (leadRow?.estado as string | null) ??
+            null,
         },
         paymentTermId: (proposta.payment_term_id as string | null) ?? null,
         transporte: {
