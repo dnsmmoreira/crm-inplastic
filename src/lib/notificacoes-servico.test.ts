@@ -79,7 +79,7 @@ describe("notificarUsuarios", () => {
       propostaId: "prop3",
     });
     expect(n).toBe(0);
-    const [origem, , ctx] = registrarFalhaAdmin.mock.calls[0] as [string, unknown, any];
+    const [origem, , ctx] = registrarFalhaAdmin.mock.calls[0] as unknown as [string, unknown, any];
     expect(origem).toBe("rls.notificacoes");
     expect(ctx).toMatchObject({ pedido_id: "p3", proposta_id: "prop3", tipo: "pedido_devolvido" });
   });
