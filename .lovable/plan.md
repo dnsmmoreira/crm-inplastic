@@ -1,70 +1,62 @@
-# Cartão de crédito — forma de pagamento + novo modelo de taxa
+# Blindagem dos 4 achados: DIFAL, avisos, etapas de lead e dono da tarefa
 
-Plano técnico para revisão. Nada publicado. Sem alterar RLS/policies (só uma
-coluna nova em tabela existente + UPDATE pontual).
+Objetivo: transformar as correções recentes em regras permanentes — testes que
+falham se alguém reintroduzir o problema, um aviso visível quando falta o estado
+(UF) do cliente, e registro de falhas de permissão do banco com o contexto da ação.
 
-## Levantamento
+## 1. Estado (UF) faltando — aviso na proposta e trava ao gerar pedido
 
-- `PaymentForm`/`PAYMENT_FORMS` (`src/lib/crm-store.ts:751-752`) hoje: Boleto,
-  Depósito em Conta, PIX. `PaymentMethod` (catálogo) já tem "Cartão".
-- O select "Forma de pagamento" (`propostas.$id.tsx` ~2387) grava
-  `proposal.formaPagamento` e **não** tem hoje nenhum vínculo com o
-  "Prazo de pagamento" logo abaixo (`paymentTermId`) — são campos independentes.
-- Engine: `fatorCartao(n, taxa, compostos) = (1+taxa)^(n-1)`, fator 1 em 1x;
-  `simularCartao` monta a tabela; `SimulacaoCartaoDialog` exibe e marca 1x como
-  "sem acréscimo"; `acrescimoEfetivo` decide proposta × catálogo.
-- `PaymentTerm` carrega `acrescimoPercent`, `maxParcelas`, `jurosCompostos`
-  (mapeados em `crm-sync.ts` `rowToPayTerm`/`payTermToInsert`).
-- Tela `condicoes-comerciais.tsx` já rotula o campo como "Taxa por parcela
-  adicional (%)" quando é cartão.
+- Nova pendência `cliente_sem_uf` na lista de conferência: "Cliente sem estado
+  (UF) — o imposto DIFAL não pode ser calculado." Com link para o cadastro do
+  cliente/lead, igual às demais pendências.
+- A tela da proposta passa a mostrar um aviso destacado no bloco de totais
+  quando não há UF, deixando claro que o total pode estar sem o imposto.
+- Ao gerar o pedido, a mesma verificação roda no servidor com os dados do banco:
+  sem UF o pedido não é criado.
+- O cálculo do imposto no servidor lê o estado do cadastro do cliente e, se não
+  houver, do endereço do lead (mesma precedência que a tela usa), de modo que o
+  total gravado no pedido é idêntico ao aprovado na proposta.
 
-## 1) "Cartão" no seletor de forma de pagamento
+## 2. Registro de falhas de permissão do banco
 
-- `PaymentForm` e `PAYMENT_FORMS` passam a incluir `"Cartão"`; placeholder do
-  select atualizado.
-- Vínculo com o prazo (proposta de desenho, confirmar):
-  - ao escolher **Cartão** na forma de pagamento, a lista de "Prazo de pagamento"
-    passa a mostrar primeiro as condições de cartão e, se houver exatamente uma
-    condição de cartão ativa e o prazo atual não for de cartão, abrir a
-    simulação já sugerindo essa condição;
-  - ao escolher uma condição de cartão no prazo, `formaPagamento` é ajustada
-    para "Cartão" automaticamente;
-  - nenhum bloqueio rígido — o usuário continua livre para combinar.
+- Novo utilitário de gravação monitorada: quando um `insert` é recusado pelo
+  banco por regra de acesso, a falha é registrada na tela de Falhas com origem
+  própria (`rls.notificacoes`, `rls.user_audit_log`) e o contexto da ação
+  (quem disparou, tipo de aviso, pedido/proposta envolvida, quantidade de linhas).
+- Aplicado nos pontos de gravação de avisos e de auditoria de usuários.
+- Como a tela de Falhas já agrupa por origem + mensagem, o número de ocorrências
+  vira o contador de reincidência.
 
-## 2) Novo modelo de taxa
+## 3. Dono da tarefa preservado
 
-- Migration: `ALTER TABLE public.condicoes_pagamento ADD COLUMN
-  cartao_taxa_base_percent numeric NOT NULL DEFAULT 0;` + UPDATE na linha
-  `cartao-credito` (`acrescimo_percent = 1.5`, `cartao_taxa_base_percent = 5`).
-  Sem tocar em policies.
-- `PaymentTerm.cartaoTaxaBasePercent?: number` + mapeamento em `crm-sync.ts`
-  (leitura e escrita) e campo na tela de condições ("Taxa base do cartão (%)",
-  visível só para cartão, com texto explicando que vale já na 1x).
-- `cartao-simulacao.ts`:
-  - `fatorCartao(n, taxaAdicional, compostos = true, taxaBase = 0)` →
-    `(1 + base) * (1 + taxa)^(n-1)` (compostos) ou
-    `(1 + base) * (1 + (n-1) * taxa)` (simples).
-  - `simularCartao({ ..., taxaBasePercent })` repassa a base; `acrescimoPercent`
-    de cada linha continua arredondado a 2 casas (é o que vai gravado na
-    proposta e impresso); o teste confere o **fator** contra a tabela de 4 casas
-    (1x 5,00 · 2x 6,575 · 3x 8,1736 … 12x 23,6846).
-  - `acrescimoEfetivo` sem mudança de assinatura (no cartão já manda o valor
-    gravado na proposta, que agora nunca é 0 em 1x).
-- `SimulacaoCartaoDialog.tsx`: remove o selo "sem acréscimo" da 1x (passa a
-  mostrar o próprio acréscimo, ex. "+5,00%") e a descrição do topo cita as duas
-  taxas: base (5%, já na 1x) + por parcela adicional (1,5%, composta).
-- `propostas.$id.tsx`: passa `taxaBasePercent` da condição ao diálogo.
+- Reforço explícito no salvamento: tarefa já existente nunca envia `owner_id`;
+  concluir/reabrir passa só pelo caminho de servidor.
+- Teste de regressão que falha se `owner_id` voltar ao payload de atualização.
 
-## Testes
+## 4. Testes de regressão
 
-- `cartao-simulacao.test.ts`: nova tabela 1x–12x com base 5% + 1,5% composto;
-  base zero mantém o comportamento antigo (regressão); juros simples com base;
-  soma das parcelas = total.
-- `bunx vitest run` + `bunx tsgo --noEmit` + build antes do diff.
+Novos testes cobrindo:
+- imposto DIFAL usando o estado vindo do endereço do lead e do cadastro do cliente,
+  inclusive isenção;
+- pendência de UF ausente bloqueando a geração do pedido;
+- avisos gravados pelo caminho de serviço (não pelo usuário), incluindo a opção
+  de não reembrulhar quando o chamador já é serviço;
+- mudança de etapa de lead passando pela função de sistema (nunca gravação direta);
+- gravação monitorada registrando falha de permissão com contexto.
 
-## Pontos a confirmar
+## Detalhes técnicos
 
-1. Nome da coluna: `cartao_taxa_base_percent` (campo `cartaoTaxaBasePercent`).
-2. Vínculo forma ↔ prazo como descrito acima (sugestão, sem bloqueio).
-3. O % gravado na proposta continua com 2 casas (ex. 8,17% na 3x), embora a
-   tabela de conferência traga 4 casas. Manter assim?
+- `src/lib/pedido-pendencias.ts`: novo código `cliente_sem_uf` + campo `uf` em
+  `PendenciaInput.cliente`; `src/routes/propostas.$id.tsx` e
+  `src/lib/pedidos-gerar.functions.ts` passam a UF (cliente → `lead.endereco.uf`).
+- `src/lib/difal.server.ts`: mantém fallback `leads.endereco.uf/estado`; testes
+  ampliados em `difal.server.test.ts`.
+- Novo `src/lib/rls-monitor.server.ts` com `inserirMonitorado(sb, tabela, linhas,
+  contexto)` usando `registrarFalhaAdmin`; usado em `pedidos-fluxo.server.ts`
+  (`notificarUsuarios`), `equipe.functions.ts` (`cobrarPessoa`) e nos inserts de
+  `user_audit_log`.
+- Novos arquivos de teste: `rls-monitor.test.ts`, `crm-sync-tarefa-owner.test.ts`,
+  `pedido-pendencias-uf.test.ts` (ou casos adicionados aos testes existentes) e
+  casos em `difal.server.test.ts`.
+- Sem migração de banco; nenhuma policy alterada. Ao final: `bunx vitest run` e
+  `bunx tsgo --noEmit`.
