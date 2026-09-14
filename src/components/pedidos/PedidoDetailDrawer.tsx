@@ -1537,6 +1537,8 @@ function PrazoCondicaoBlock({
   const [motivo, setMotivo] = useState("");
   const [transportadora, setTransportadora] = useState(pedido.transportadora ?? "");
   const [obsCondicao, setObsCondicao] = useState("");
+  /** Tratativa comercial: só admin ou vendedor dono (trava também no servidor). */
+  const podeComercial = pedido.pode_editar_comercial;
 
   const salvarPrazo = useMutation({
     mutationFn: () =>
