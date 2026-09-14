@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -129,7 +129,6 @@ function TransportadorasPage() {
   const q = useQuery({
     queryKey: ["transportadoras"],
     queryFn: () => listar({ data: undefined as never }),
-    enabled: podeGerenciar,
   });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["transportadoras"] });
@@ -180,26 +179,8 @@ function TransportadorasPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  if (!podeGerenciar) {
-    return (
-      <div className="p-4 md:p-8">
-        <Card className="max-w-lg mx-auto">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <ShieldAlert className="h-5 w-5 text-amber-500" />
-              <CardTitle className="text-base">Acesso restrito</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm text-muted-foreground">
-            <p>Você não tem permissão para acessar esta tela.</p>
-            <Button asChild variant="outline" size="sm">
-              <Link to="/propostas">Voltar para Propostas</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+
+
 
   const rows = q.data ?? [];
   const ativas = rows.filter((t) => t.ativo).length;
@@ -247,10 +228,24 @@ function TransportadorasPage() {
             <span className="font-medium text-foreground">{ativas}</span> de {rows.length} ativas.
           </p>
         </div>
-        <Button size="sm" onClick={openNew}>
-          <Plus className="h-4 w-4 mr-2" /> Nova transportadora
-        </Button>
+        {podeGerenciar && (
+          <Button size="sm" onClick={openNew}>
+            <Plus className="h-4 w-4 mr-2" /> Nova transportadora
+          </Button>
+        )}
       </div>
+
+      {!podeGerenciar && (
+        <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+          <ShieldAlert className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+          <p className="text-muted-foreground">
+            Modo somente leitura: a gestão do cadastro é feita pela administração. Para usar uma
+            transportadora que ainda não está na lista, cadastre direto pelo campo Transportador da
+            proposta.
+          </p>
+        </div>
+      )}
+
 
       <Card>
         <CardHeader>
@@ -271,7 +266,7 @@ function TransportadorasPage() {
                   <TableHead className="w-40">CNPJ</TableHead>
                   <TableHead>Abrangência</TableHead>
                   <TableHead className="w-32">Status</TableHead>
-                  <TableHead className="w-40 text-right">Ações</TableHead>
+                  {podeGerenciar && <TableHead className="w-40 text-right">Ações</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -286,39 +281,43 @@ function TransportadorasPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <Switch checked={t.ativo} onCheckedChange={() => mToggle.mutate(t)} />
+                        {podeGerenciar && (
+                          <Switch checked={t.ativo} onCheckedChange={() => mToggle.mutate(t)} />
+                        )}
                         <Badge variant={t.ativo ? "default" : "outline"}>
                           {t.ativo ? "Ativa" : "Inativa"}
                         </Badge>
                       </div>
                     </TableCell>
-                    <TableCell className="text-right space-x-1">
-                      <Button variant="ghost" size="sm" onClick={() => openEdit(t)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Remover {t.nome}?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Propostas antigas continuam mostrando o nome escolhido na época.
-                              Se preferir apenas tirar da lista, desative em vez de remover.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => mExcluir.mutate(t)}>
-                              Remover
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </TableCell>
+                    {podeGerenciar && (
+                      <TableCell className="text-right space-x-1">
+                        <Button variant="ghost" size="sm" onClick={() => openEdit(t)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Remover {t.nome}?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Propostas antigas continuam mostrando o nome escolhido na época.
+                                Se preferir apenas tirar da lista, desative em vez de remover.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => mExcluir.mutate(t)}>
+                                Remover
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
