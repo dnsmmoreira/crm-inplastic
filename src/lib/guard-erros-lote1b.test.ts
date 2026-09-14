@@ -122,7 +122,8 @@ describe("rollback de etapa do pedido", () => {
     expect(src).toContain("rollback_parcial: true");
     expect(src).toContain("rollback parcial: proposta reaberta, lead permaneceu em ganho");
     expect(src).toContain("Rollback parcial:");
-    expect(src.match(/rollback-proposta/g)?.length).toBe(1);
+    // 2 ocorrências: erro do banco + recusa silenciosa do RLS (0 linhas).
+    expect(src.match(/rollback-proposta/g)?.length).toBe(2);
     expect(src.match(/rollback-lead/g)?.length).toBe(1);
   });
 });
