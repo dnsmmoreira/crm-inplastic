@@ -1108,6 +1108,11 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
       (await temPermissao(sb, context.userId, "pedidos.aprovar_financeiro"));
 
     const podeOperar = await podeOperarProducao(sb, context.userId);
+    const podeEditarComercial = await podeEditarComercialDoPedido(sb, context.userId, {
+      vendedor_proprietario_id: (p as { vendedor_proprietario_id?: string | null })
+        .vendedor_proprietario_id ?? null,
+      owner_id: (p as { owner_id?: string | null }).owner_id ?? null,
+    });
     const podeComprovarEntrega =
       podeOperar || (await temPermissao(sb, context.userId, PERM_PEDIDOS_MOVIMENTAR));
 
