@@ -330,6 +330,12 @@ const NAV_GROUPS: NavGroup[] = [
         show: vendasOu("pedidos.ver_todos"),
       },
       {
+        to: "/fichas-coleta",
+        label: "Fichas de Coleta",
+        icon: ClipboardList,
+        show: vendasOu("pedidos.ver_todos", "pedidos.operar_producao", "pedidos.movimentar"),
+      },
+      {
         to: "/condicoes-comerciais",
         label: "Condições Comerciais",
         icon: Settings2,
