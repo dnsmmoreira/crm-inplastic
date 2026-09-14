@@ -11,8 +11,32 @@ import {
   ehImagemAnexo,
   formatarTamanhoAnexo,
   anexosChatExpirados,
+  ehPdfAnexo,
+  mesclarHistorico,
+  prepararBusca,
+  escaparCuringaBusca,
   type ChatCanalResumo,
 } from "./chat-interno";
+
+describe("preview e busca", () => {
+  it("reconhece PDF por mime e por extensão", () => {
+    expect(ehPdfAnexo("application/pdf")).toBe(true);
+    expect(ehPdfAnexo("application/octet-stream", "contrato.PDF")).toBe(true);
+    expect(ehPdfAnexo("image/png", "foto.png")).toBe(false);
+  });
+
+  it("mescla histórico sem duplicar e em ordem crescente", () => {
+    const a = { id: "2", criado_em: "2026-01-02T10:00:00Z" };
+    const b = { id: "1", criado_em: "2026-01-01T10:00:00Z" };
+    expect(mesclarHistorico([a], [b, a]).map((m) => m.id)).toEqual(["1", "2"]);
+  });
+
+  it("recusa termo curto e escapa curingas", () => {
+    expect(prepararBusca(" a ")).toBeNull();
+    expect(prepararBusca("  nota ")).toBe("nota");
+    expect(escaparCuringaBusca("50%_x")).toBe("50\\%\\_x");
+  });
+});
 
 const EU = "11111111-1111-4111-8111-111111111111";
 const OUTRO = "22222222-2222-4222-8222-222222222222";
