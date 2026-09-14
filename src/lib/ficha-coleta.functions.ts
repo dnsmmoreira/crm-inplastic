@@ -538,12 +538,24 @@ export const mudarStatusFichaColeta = createServerFn({ method: "POST" })
       patch.cancelamento_motivo = data.motivo?.trim() ?? null;
     }
 
-    const { error } = await sb
+    const { data: alteradas, error } = await sb
       .from("fichas_coleta")
       .update(patch)
       .eq("id", ficha.id)
-      .eq("status", ficha.status);
+      .eq("status", ficha.status)
+      .select("id");
     if (error) throw new Error(`Falha ao atualizar o status: ${error.message}`);
+    if (!Array.isArray(alteradas) || alteradas.length === 0) {
+      const { registrarFalhaSegura } = await import("@/lib/guard-erros");
+      await registrarFalhaSegura("ficha_coleta_status", "update não afetou nenhuma linha", {
+        ficha_id: ficha.id,
+        de: ficha.status,
+        para: data.status,
+      });
+      throw new Error(
+        "O status não pôde ser alterado (o banco não aceitou a gravação ou a ficha mudou em outra tela). Recarregue e tente de novo.",
+      );
+    }
 
     await registrarHistorico(sb, context.userId, {
       fichaId: ficha.id,
