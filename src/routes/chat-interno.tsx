@@ -3,7 +3,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { FileText, Loader2, MessagesSquare, Paperclip, Send, Users, X } from "lucide-react";
+import {
+  AlertTriangle,
+  FileText,
+  Loader2,
+  MessagesSquare,
+  Paperclip,
+  Search,
+  Send,
+  Users,
+  X,
+} from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -11,17 +21,25 @@ import { useAutoScrollMensagens } from "@/hooks/use-auto-scroll-mensagens";
 import { resumoChatInterno } from "@/lib/chat-interno.functions";
 import {
   CHAT_LIMITE_CARACTERES,
+  PAGINA_BUSCA_CHAT,
+  PAGINA_HISTORICO_CHAT,
   caminhoAnexoChat,
   ehImagemAnexo,
+  ehPdfAnexo,
   formatarTamanhoAnexo,
+  mesclarHistorico,
+  prepararBusca,
   prepararTexto,
   primeiroNome,
   validarAnexoChat,
   type ChatItemLista,
   type ChatTipoCanal,
 } from "@/lib/chat-interno";
+import { enviarAnexoComProgresso } from "@/lib/chat-anexo-upload";
 import { CHAT_QUERY_KEY } from "@/lib/chat-interno.query";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
@@ -65,6 +83,15 @@ const COLUNAS_MENSAGEM =
 
 function horario(iso: string) {
   return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+}
+
+function dataHora(iso: string) {
+  return new Date(iso).toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 /**
@@ -115,9 +142,26 @@ function AnexoMensagem({ m }: { m: Mensagem }) {
 
   const nome = m.anexo_nome ?? "arquivo";
   const imagem = ehImagemAnexo(m.anexo_tipo);
+  const pdf = !imagem && ehPdfAnexo(m.anexo_tipo, m.anexo_nome);
+
+  const chip = (
+    <a
+      href={url ?? undefined}
+      target="_blank"
+      rel="noreferrer"
+      className={cn(
+        "flex items-center gap-2 rounded-md border bg-background/60 px-2 py-1.5 text-xs text-foreground",
+        !url && "pointer-events-none opacity-70",
+      )}
+    >
+      <FileText className="h-4 w-4 shrink-0" />
+      <span className="min-w-0 flex-1 truncate">{nome}</span>
+      <span className="shrink-0 opacity-70">{formatarTamanhoAnexo(m.anexo_tamanho_bytes)}</span>
+    </a>
+  );
 
   return (
-    <div ref={ref} className="mt-1">
+    <div ref={ref} className="mt-1 space-y-1">
       {imagem ? (
         url ? (
           <a href={url} target="_blank" rel="noreferrer">
@@ -133,27 +177,64 @@ function AnexoMensagem({ m }: { m: Mensagem }) {
             {erro ? "Não consegui abrir" : "Carregando imagem…"}
           </div>
         )
-      ) : (
-        <a
-          href={url ?? undefined}
-          target="_blank"
-          rel="noreferrer"
-          className={cn(
-            "flex items-center gap-2 rounded-md border bg-background/60 px-2 py-1.5 text-xs text-foreground",
-            !url && "pointer-events-none opacity-70",
+      ) : pdf ? (
+        <>
+          {url ? (
+            <object
+              data={`${url}#page=1&toolbar=0&navpanes=0&view=FitH`}
+              type="application/pdf"
+              aria-label={`Primeira página de ${nome}`}
+              className="h-56 w-64 rounded-md border bg-background"
+            >
+              <span className="p-2 text-xs">Pré-visualização indisponível.</span>
+            </object>
+          ) : (
+            <div className="flex h-56 w-64 items-center justify-center rounded-md border text-xs opacity-70">
+              {erro ? "Não consegui abrir" : "Carregando PDF…"}
+            </div>
           )}
-        >
-          <FileText className="h-4 w-4 shrink-0" />
-          <span className="min-w-0 flex-1 truncate">{nome}</span>
-          <span className="shrink-0 opacity-70">
-            {formatarTamanhoAnexo(m.anexo_tamanho_bytes)}
-          </span>
-        </a>
+          {chip}
+        </>
+      ) : (
+        chip
       )}
     </div>
   );
 }
 
+/** Miniatura local do arquivo escolhido (não sobe nada antes do envio). */
+function PreviaComposer({ arquivo }: { arquivo: File }) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    const u = URL.createObjectURL(arquivo);
+    setUrl(u);
+    return () => URL.revokeObjectURL(u);
+  }, [arquivo]);
+
+  if (!url) return null;
+  if (ehImagemAnexo(arquivo.type)) {
+    return (
+      <img
+        src={url}
+        alt={arquivo.name}
+        className="h-16 w-16 shrink-0 rounded border object-cover"
+      />
+    );
+  }
+  if (ehPdfAnexo(arquivo.type, arquivo.name)) {
+    return (
+      <object
+        data={`${url}#page=1&toolbar=0&navpanes=0&view=FitH`}
+        type="application/pdf"
+        aria-label={`Primeira página de ${arquivo.name}`}
+        className="h-16 w-16 shrink-0 rounded border bg-background"
+      />
+    );
+  }
+  return <Paperclip className="h-4 w-4 shrink-0" />;
+}
+
+type Resultado = Mensagem & { canalTitulo: string };
 
 function ChatInternoPage() {
   const { user } = useAuth();
@@ -192,6 +273,8 @@ function ChatInternoPage() {
 
   const [mensagens, setMensagens] = useState<Mensagem[]>([]);
   const [carregandoThread, setCarregandoThread] = useState(false);
+  const [temMaisAntigas, setTemMaisAntigas] = useState(false);
+  const [carregandoAntigas, setCarregandoAntigas] = useState(false);
   const canalId = selecionado?.canalId ?? null;
   const listaRef = useRef<HTMLDivElement>(null);
   const { onScroll } = useAutoScrollMensagens(listaRef, canalId, mensagens);
@@ -202,6 +285,12 @@ function ChatInternoPage() {
     if (euId) m.set(euId, user?.name ?? "Você");
     return m;
   }, [itens, euId, user?.name]);
+
+  const tituloPorCanal = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const i of itens) if (i.canalId) m.set(i.canalId, i.titulo);
+    return m;
+  }, [itens]);
 
   const marcarLido = useCallback(
     async (id: string) => {
@@ -220,27 +309,59 @@ function ChatInternoPage() {
     [euId, queryClient],
   );
 
+  /** Abre a conversa já com a última página — nunca com o histórico inteiro. */
   const carregarThread = useCallback(async (id: string) => {
     setCarregandoThread(true);
     const { data: rows, error } = await supabase
       .from("chat_mensagens")
       .select(COLUNAS_MENSAGEM)
-
       .eq("canal_id", id)
-      .order("criado_em", { ascending: true })
-      .limit(500);
+      .order("criado_em", { ascending: false })
+      .limit(PAGINA_HISTORICO_CHAT);
     setCarregandoThread(false);
     if (error) {
       console.error(error);
       toast.error("Não consegui carregar as mensagens desta conversa.");
       return;
     }
-    setMensagens((rows ?? []) as Mensagem[]);
+    const lote = (rows ?? []) as Mensagem[];
+    setTemMaisAntigas(lote.length === PAGINA_HISTORICO_CHAT);
+    setMensagens(mesclarHistorico<Mensagem>([], lote));
   }, []);
+
+  const carregarAntigas = useCallback(async () => {
+    if (!canalId || carregandoAntigas || mensagens.length === 0) return;
+    const maisAntiga = mensagens[0]!;
+    const el = listaRef.current;
+    const alturaAntes = el?.scrollHeight ?? 0;
+    setCarregandoAntigas(true);
+    const { data: rows, error } = await supabase
+      .from("chat_mensagens")
+      .select(COLUNAS_MENSAGEM)
+      .eq("canal_id", canalId)
+      .lt("criado_em", maisAntiga.criado_em)
+      .order("criado_em", { ascending: false })
+      .limit(PAGINA_HISTORICO_CHAT);
+    setCarregandoAntigas(false);
+    if (error) {
+      console.error(error);
+      toast.error("Não consegui carregar as mensagens anteriores.");
+      return;
+    }
+    const lote = (rows ?? []) as Mensagem[];
+    setTemMaisAntigas(lote.length === PAGINA_HISTORICO_CHAT);
+    setMensagens((prev) => mesclarHistorico<Mensagem>(prev, lote));
+    // Mantém o ponto de leitura onde estava depois de inserir acima.
+    requestAnimationFrame(() => {
+      const atual = listaRef.current;
+      if (atual) atual.scrollTop += atual.scrollHeight - alturaAntes;
+    });
+  }, [canalId, carregandoAntigas, mensagens]);
 
   useEffect(() => {
     if (!canalId) {
       setMensagens([]);
+      setTemMaisAntigas(false);
       return;
     }
     void carregarThread(canalId);
@@ -298,9 +419,69 @@ function ChatInternoPage() {
     [queryClient],
   );
 
+  /* ------------------------------------------------------------- busca */
+
+  const [buscaAberta, setBuscaAberta] = useState(false);
+  const [termo, setTermo] = useState("");
+  const [soAnexos, setSoAnexos] = useState(false);
+  const [escopoCanal, setEscopoCanal] = useState<"atual" | "todos">("atual");
+  const [pagina, setPagina] = useState(0);
+  const [resultados, setResultados] = useState<Resultado[] | null>(null);
+  const [buscando, setBuscando] = useState(false);
+  const [temMaisResultados, setTemMaisResultados] = useState(false);
+
+  const canaisDisponiveis = useMemo(
+    () => itens.map((i) => i.canalId).filter((c): c is string => !!c),
+    [itens],
+  );
+
+  const buscar = useCallback(
+    async (p: number) => {
+      const pronto = prepararBusca(termo);
+      if (!pronto && !soAnexos) {
+        setResultados(null);
+        return;
+      }
+      const alvo =
+        escopoCanal === "atual" ? (canalId ? [canalId] : []) : canaisDisponiveis;
+      if (alvo.length === 0) {
+        setResultados([]);
+        setTemMaisResultados(false);
+        return;
+      }
+      setBuscando(true);
+      let q = supabase
+        .from("chat_mensagens")
+        .select(COLUNAS_MENSAGEM)
+        .in("canal_id", alvo)
+        .order("criado_em", { ascending: false })
+        .range(p * PAGINA_BUSCA_CHAT, p * PAGINA_BUSCA_CHAT + PAGINA_BUSCA_CHAT - 1);
+      if (soAnexos) q = q.not("anexo_path", "is", null);
+      if (pronto) q = q.or(`conteudo.ilike.%${pronto}%,anexo_nome.ilike.%${pronto}%`);
+      const { data: rows, error } = await q;
+      setBuscando(false);
+      if (error) {
+        console.error(error);
+        toast.error("Não consegui buscar agora. Tente de novo.");
+        return;
+      }
+      const lote = (rows ?? []) as Mensagem[];
+      setTemMaisResultados(lote.length === PAGINA_BUSCA_CHAT);
+      setPagina(p);
+      setResultados(
+        lote.map((m) => ({ ...m, canalTitulo: tituloPorCanal.get(m.canal_id) ?? "Conversa" })),
+      );
+    },
+    [termo, soAnexos, escopoCanal, canalId, canaisDisponiveis, tituloPorCanal],
+  );
+
+  /* ------------------------------------------------------------- envio */
+
   const [texto, setTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [arquivo, setArquivo] = useState<File | null>(null);
+  const [progresso, setProgresso] = useState<number | null>(null);
+  const [erroEnvio, setErroEnvio] = useState<string | null>(null);
   const inputArquivoRef = useRef<HTMLInputElement>(null);
 
   const escolherArquivo = useCallback((file: File | null) => {
@@ -310,6 +491,7 @@ function ChatInternoPage() {
       toast.error(erro);
       return;
     }
+    setErroEnvio(null);
     setArquivo(file);
   }, []);
 
@@ -323,6 +505,7 @@ function ChatInternoPage() {
       return;
     }
     setEnviando(true);
+    setErroEnvio(null);
     let anexo: {
       anexo_path: string;
       anexo_nome: string;
@@ -336,16 +519,18 @@ function ChatInternoPage() {
           ? crypto.randomUUID()
           : `${Date.now()}${Math.random().toString(36).slice(2, 8)}`;
       const path = caminhoAnexoChat(canalId, arquivo.name, uid);
-      const { error: upErr } = await supabase.storage
-        .from(BUCKET_CHAT_ANEXOS)
-        .upload(path, arquivo, {
-          contentType: arquivo.type || "application/octet-stream",
-          upsert: false,
-        });
-      if (upErr) {
+      setProgresso(0);
+      const envio = await enviarAnexoComProgresso({
+        bucket: BUCKET_CHAT_ANEXOS,
+        path,
+        arquivo,
+        onProgress: setProgresso,
+      });
+      if (!envio.ok) {
         setEnviando(false);
-        console.error(upErr);
-        toast.error("Não consegui enviar o arquivo. Tente de novo.");
+        setProgresso(null);
+        setErroEnvio(envio.erro);
+        toast.error(envio.erro);
         return; // sem mensagem órfã
       }
       anexo = {
@@ -362,11 +547,14 @@ function ChatInternoPage() {
       .select(COLUNAS_MENSAGEM)
       .single();
     setEnviando(false);
+    setProgresso(null);
     if (error) {
       console.error(error);
       // Mensagem recusada: o arquivo recém-subido não fica sobrando no bucket.
       if (anexo) void supabase.storage.from(BUCKET_CHAT_ANEXOS).remove([anexo.anexo_path]);
-      toast.error("Não consegui enviar a mensagem. Tente de novo.");
+      const msg = "Não consegui enviar a mensagem. Tente de novo.";
+      setErroEnvio(msg);
+      toast.error(msg);
       return;
     }
     setTexto("");
@@ -376,7 +564,6 @@ function ChatInternoPage() {
     setMensagens((prev) => (prev.some((m) => m.id === nova.id) ? prev : [...prev, nova]));
     void marcarLido(canalId);
   }, [euId, canalId, enviando, texto, arquivo, marcarLido]);
-
 
   return (
     <div className="flex h-[calc(100dvh-8rem)] min-h-[520px] flex-col gap-3 p-4 md:p-6">
@@ -416,7 +603,6 @@ function ChatInternoPage() {
                   ) : (
                     <Users className="h-4 w-4" />
                   )}
-
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium">{item.titulo}</span>
@@ -436,9 +622,116 @@ function ChatInternoPage() {
 
         {/* Thread */}
         <section className="flex min-h-0 flex-col rounded-lg border bg-card">
-          <header className="border-b px-4 py-2 text-sm font-medium">
-            {selecionado?.titulo ?? "Selecione uma conversa"}
+          <header className="flex items-center justify-between gap-2 border-b px-4 py-2 text-sm font-medium">
+            <span className="truncate">{selecionado?.titulo ?? "Selecione uma conversa"}</span>
+            <Button
+              type="button"
+              variant={buscaAberta ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => {
+                setBuscaAberta((v) => !v);
+                if (buscaAberta) setResultados(null);
+              }}
+            >
+              <Search className="h-4 w-4" />
+              <span className="ml-1 hidden sm:inline">Buscar</span>
+            </Button>
           </header>
+
+          {buscaAberta && (
+            <div className="space-y-2 border-b bg-muted/30 p-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <Input
+                  value={termo}
+                  onChange={(e) => setTermo(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      void buscar(0);
+                    }
+                  }}
+                  placeholder="Buscar por texto ou nome do arquivo…"
+                  className="h-9 min-w-[180px] flex-1"
+                />
+                <select
+                  value={escopoCanal}
+                  onChange={(e) => setEscopoCanal(e.target.value as "atual" | "todos")}
+                  aria-label="Onde buscar"
+                  className="h-9 rounded-md border bg-background px-2 text-sm"
+                >
+                  <option value="atual">Nesta conversa</option>
+                  <option value="todos">Todas as conversas</option>
+                </select>
+                <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={soAnexos}
+                    onChange={(e) => setSoAnexos(e.target.checked)}
+                  />
+                  Só anexos
+                </label>
+                <Button size="sm" onClick={() => void buscar(0)} disabled={buscando}>
+                  {buscando ? <Loader2 className="h-4 w-4 animate-spin" /> : "Buscar"}
+                </Button>
+              </div>
+
+              {resultados && (
+                <div className="max-h-64 space-y-1 overflow-y-auto">
+                  {resultados.length === 0 && (
+                    <p className="text-xs text-muted-foreground">Nenhum resultado.</p>
+                  )}
+                  {resultados.map((r) => (
+                    <button
+                      key={r.id}
+                      type="button"
+                      onClick={() => {
+                        const item = itens.find((i) => i.canalId === r.canal_id);
+                        if (item) void abrir(item);
+                        setBuscaAberta(false);
+                        setResultados(null);
+                      }}
+                      className="flex w-full items-start gap-2 rounded-md border bg-background px-2 py-1.5 text-left text-xs hover:bg-muted"
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="block font-medium">
+                          {r.canalTitulo} ·{" "}
+                          <span className="font-normal text-muted-foreground">
+                            {primeiroNome(nomePorId.get(r.autor_user_id) ?? null)}
+                          </span>
+                        </span>
+                        <span className="block truncate text-muted-foreground">
+                          {r.conteudo.trim() || (r.anexo_nome ? `📎 ${r.anexo_nome}` : "—")}
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-[10px] text-muted-foreground">
+                        {dataHora(r.criado_em)}
+                      </span>
+                    </button>
+                  ))}
+                  <div className="flex items-center justify-between pt-1 text-xs text-muted-foreground">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={pagina === 0 || buscando}
+                      onClick={() => void buscar(pagina - 1)}
+                    >
+                      Anterior
+                    </Button>
+                    <span>Página {pagina + 1}</span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={!temMaisResultados || buscando}
+                      onClick={() => void buscar(pagina + 1)}
+                    >
+                      Próxima
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           <div
             ref={listaRef}
             onScroll={onScroll}
@@ -447,6 +740,22 @@ function ChatInternoPage() {
             {carregandoThread && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" /> Carregando…
+              </div>
+            )}
+            {!carregandoThread && temMaisAntigas && (
+              <div className="flex justify-center pb-1">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={carregandoAntigas}
+                  onClick={() => void carregarAntigas()}
+                >
+                  {carregandoAntigas ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Carregar mensagens anteriores"
+                  )}
+                </Button>
               </div>
             )}
             {!carregandoThread && mensagens.length === 0 && (
@@ -478,7 +787,6 @@ function ChatInternoPage() {
                     <div className="mt-1 text-right text-[10px] opacity-60">
                       {horario(m.criado_em)}
                     </div>
-
                   </div>
                 </div>
               );
@@ -487,23 +795,44 @@ function ChatInternoPage() {
 
           <div className="border-t p-3">
             {arquivo && (
-              <div className="mb-2 flex items-center gap-2 rounded-md border bg-muted/50 px-2 py-1.5 text-xs">
-                <Paperclip className="h-3.5 w-3.5 shrink-0" />
-                <span className="min-w-0 flex-1 truncate">{arquivo.name}</span>
-                <span className="shrink-0 text-muted-foreground">
-                  {formatarTamanhoAnexo(arquivo.size)}
-                </span>
-                <button
-                  type="button"
-                  aria-label="Remover anexo"
-                  onClick={() => {
-                    setArquivo(null);
-                    if (inputArquivoRef.current) inputArquivoRef.current.value = "";
-                  }}
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
+              <div className="mb-2 space-y-1.5 rounded-md border bg-muted/50 p-2">
+                <div className="flex items-center gap-2 text-xs">
+                  <PreviaComposer arquivo={arquivo} />
+                  <span className="min-w-0 flex-1 truncate">{arquivo.name}</span>
+                  <span className="shrink-0 text-muted-foreground">
+                    {formatarTamanhoAnexo(arquivo.size)}
+                  </span>
+                  <button
+                    type="button"
+                    aria-label="Remover anexo"
+                    disabled={enviando}
+                    onClick={() => {
+                      setArquivo(null);
+                      setErroEnvio(null);
+                      if (inputArquivoRef.current) inputArquivoRef.current.value = "";
+                    }}
+                    className="text-muted-foreground hover:text-foreground disabled:opacity-50"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                {progresso !== null && (
+                  <div className="flex items-center gap-2">
+                    <Progress value={progresso} className="h-1.5 flex-1" />
+                    <span className="w-9 text-right text-[10px] text-muted-foreground">
+                      {progresso}%
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+            {erroEnvio && (
+              <div className="mb-2 flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-2 py-1.5 text-xs text-destructive">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                <span className="min-w-0 flex-1">{erroEnvio}</span>
+                <Button size="sm" variant="outline" onClick={() => void enviar()}>
+                  Tentar de novo
+                </Button>
               </div>
             )}
             <div className="flex items-end gap-2">
@@ -554,7 +883,6 @@ function ChatInternoPage() {
           </div>
         </section>
       </div>
-
     </div>
   );
 }
