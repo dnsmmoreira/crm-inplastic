@@ -21,6 +21,7 @@ export type PendenciaCodigo =
   | "cliente_sem_uf"
   | "sem_condicao_pagamento"
   | "sem_entrega"
+  | "sem_transportadora"
   | "sem_previsao_entrega"
   | "sem_tratativa"
   | "item_sem_catalogo"
@@ -60,6 +61,8 @@ export type PendenciaInput = {
   transporte?: {
     freightPayer?: string | null;
     carrier?: string | null;
+    /** id da transportadora do cadastro, quando escolhida pela lista. */
+    carrierTransportadoraId?: string | null;
     deliveryAddress?: string | null;
     deliveryCep?: string | null;
     retirada?: boolean | null;
@@ -161,6 +164,19 @@ export function calcularPendenciasPedido(input: PendenciaInput): Pendencia[] {
     add(
       "sem_entrega",
       "Informe o endereço (ou CEP) de entrega, ou marque que o cliente retira.",
+    );
+  }
+
+  // Quem leva a mercadoria é decisão COMERCIAL: sem ela aqui, o dado acabaria
+  // sendo inventado pelo operacional na etapa "Coleta / Entrega".
+  if (
+    !ehRetirada(input.transporte) &&
+    !txt(input.transporte?.carrier) &&
+    !txt(input.transporte?.carrierTransportadoraId)
+  ) {
+    add(
+      "sem_transportadora",
+      "Escolha a transportadora da entrega, ou marque que o cliente retira / é veículo próprio.",
     );
   }
 

@@ -34,12 +34,31 @@ export type PedidoAvanco = {
 
 const txt = (v: unknown) => String(v ?? "").trim();
 
-/** Campos que a etapa de DESTINO exige para o pedido poder entrar nela. */
+/**
+ * Campos que a etapa de DESTINO exige para o pedido poder entrar nela.
+ *
+ * "Coleta / Entrega" (`pronto`) NÃO pede mais modalidade/transportadora: esse
+ * dado é comercial e passa a vir pronto da proposta (ou o pedido nem teria
+ * sido gerado). Pedido legado sem o dado é barrado por `entregaDefinida`.
+ */
 export function dadosExigidosParaEntrar(stage: string | null | undefined): CampoAvanco[] {
   if (stage === "em_producao") return ["previsao_entrega"];
-  if (stage === "pronto") return ["modalidade_entrega", "transportadora"];
   if (stage === "faturado_em_rota") return ["nf_numero"];
   return [];
+}
+
+export const MSG_ENTREGA_COMERCIAL_FALTANDO =
+  "Este pedido veio sem a decisão de entrega (transportadora ou retirada), que é da negociação comercial. Devolva o pedido ao vendedor para completar — o operacional não preenche esse dado.";
+
+/**
+ * O pedido já sabe como a mercadoria sai? Retirada/entrega própria dispensa
+ * transportadora; coleta exige o nome dela.
+ */
+export function entregaDefinida(pedido: PedidoAvanco | null | undefined): boolean {
+  const modalidade = txt(pedido?.modalidade_entrega);
+  if (modalidade === "entrega_propria") return true;
+  if (ehRetirada({ carrier: pedido?.transportadora ?? null })) return true;
+  return Boolean(txt(pedido?.transportadora));
 }
 
 /** Campos que faltam no pedido para ele entrar em `stageAlvo`. */

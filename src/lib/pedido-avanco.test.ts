@@ -15,7 +15,8 @@ const campos = (p: Parameters<typeof faltamDados>[0], s: string) =>
 describe("dados exigidos por etapa", () => {
   it("cada etapa pede o seu", () => {
     expect(dadosExigidosParaEntrar("em_producao")).toEqual(["previsao_entrega"]);
-    expect(dadosExigidosParaEntrar("pronto")).toEqual(["modalidade_entrega", "transportadora"]);
+    // Entrega é decisão comercial: vem pronta da proposta, não se pede aqui.
+    expect(dadosExigidosParaEntrar("pronto")).toEqual([]);
     expect(dadosExigidosParaEntrar("faturado_em_rota")).toEqual(["nf_numero"]);
     expect(dadosExigidosParaEntrar("programacao")).toEqual([]);
   });
@@ -25,22 +26,12 @@ describe("dados exigidos por etapa", () => {
     expect(campos({ previsao_entrega: "2026-09-20" }, "em_producao")).toEqual([]);
   });
 
-  it("pronto exige modalidade e transportadora quando é coleta", () => {
-    expect(campos({}, "pronto")).toEqual(["modalidade_entrega", "transportadora"]);
-    expect(campos({ modalidade_entrega: "coleta" }, "pronto")).toEqual(["transportadora"]);
+  it("pronto nunca abre formulário — o dado é comercial e já veio da proposta", () => {
+    expect(campos({}, "pronto")).toEqual([]);
+    expect(campos({ modalidade_entrega: "coleta" }, "pronto")).toEqual([]);
     expect(
       campos({ modalidade_entrega: "coleta", transportadora: "Braspress" }, "pronto"),
     ).toEqual([]);
-  });
-
-  it("cliente retira ou entrega própria dispensam a transportadora", () => {
-    expect(
-      campos({ modalidade_entrega: "coleta", transportadora: "Cliente retira" }, "pronto"),
-    ).toEqual([]);
-    expect(
-      campos({ modalidade_entrega: "coleta", transportadora: "Veículo próprio" }, "pronto"),
-    ).toEqual([]);
-    expect(campos({ modalidade_entrega: "entrega_propria" }, "pronto")).toEqual([]);
   });
 
   it("faturado em rota exige NF", () => {

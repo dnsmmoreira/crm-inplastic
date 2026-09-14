@@ -603,9 +603,29 @@ export const updatePedidoStage = createServerFn({ method: "POST" })
     }
 
     // ── Bloco 5: responsável e dados de avanço ────────────────────────────
-    const { exigeResponsavel, faltamDados, MSG_SEM_RESPONSAVEL } = await import(
-      "@/lib/pedido-avanco"
-    );
+    const {
+      exigeResponsavel,
+      faltamDados,
+      entregaDefinida,
+      MSG_ENTREGA_COMERCIAL_FALTANDO,
+      MSG_SEM_RESPONSAVEL,
+    } = await import("@/lib/pedido-avanco");
+
+    // Pedido LEGADO sem decisão de entrega: não abre formulário para o
+    // operacional — trava o avanço e manda devolver ao vendedor.
+    if (
+      to === "pronto" &&
+      !entregaDefinida({
+        modalidade_entrega: current.modalidade_entrega as string | null,
+        transportadora: current.transportadora as string | null,
+      })
+    ) {
+      return {
+        ok: false,
+        reason: "invalid_transition",
+        message: MSG_ENTREGA_COMERCIAL_FALTANDO,
+      };
+    }
 
     let assumiu = false;
     // Admin (diretoria/administrativo) aprova e movimenta sem precisar assumir:
@@ -642,8 +662,11 @@ export const updatePedidoStage = createServerFn({ method: "POST" })
     };
     if (data.dados && Object.keys(data.dados).length > 0) {
       const patchDados: Record<string, unknown> = {};
+      const { ehCampoComercialPedido } = await import("@/lib/pedidos-papeis");
       for (const [k, v] of Object.entries(data.dados)) {
         if (v === undefined || v === "") continue;
+        // Campo comercial nunca é gravado por aqui (é do vendedor, na proposta).
+        if (ehCampoComercialPedido(k)) continue;
         patchDados[k] = v;
         (pedidoDados as Record<string, unknown>)[k] = v;
       }
@@ -880,6 +903,8 @@ export type PedidoDetalhes = {
   responsavel_atual_nome: string | null;
   /** Admin ou permissão `pedidos.operar_producao` — calculado no servidor. */
   pode_operar: boolean;
+  /** Admin ou vendedor dono: único que altera tratativa comercial do pedido. */
+  pode_editar_comercial: boolean;
   /* Comprovação de entrega (pós-venda) */
   entrega_comprovada_em: string | null;
   entregue_em: string | null;
@@ -1083,6 +1108,11 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
       (await temPermissao(sb, context.userId, "pedidos.aprovar_financeiro"));
 
     const podeOperar = await podeOperarProducao(sb, context.userId);
+    const podeEditarComercial = await podeEditarComercialDoPedido(sb, context.userId, {
+      vendedor_proprietario_id: (p as { vendedor_proprietario_id?: string | null })
+        .vendedor_proprietario_id ?? null,
+      owner_id: (p as { owner_id?: string | null }).owner_id ?? null,
+    });
     const podeComprovarEntrega =
       podeOperar || (await temPermissao(sb, context.userId, PERM_PEDIDOS_MOVIMENTAR));
 
@@ -1146,6 +1176,7 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
         ? (nameById.get(p.responsavel_atual_id) ?? p.equipe_responsavel ?? null)
         : null,
       pode_operar: podeOperar,
+      pode_editar_comercial: podeEditarComercial,
       entrega_comprovada_em: p.entrega_comprovada_em ?? null,
       pos_venda_contato_em: p.pos_venda_contato_em ?? null,
       encerrado_em: p.encerrado_em ?? null,
@@ -1781,9 +1812,26 @@ export const definirPrazoRealEntrega = createServerFn({ method: "POST" })
   });
 
 /**
- * Condição negociada real do pedido (modalidade de entrega e transportadora),
- * alterada pelo Operacional depois da venda. Registra no log e avisa o vendedor
- * com pop-up de aceite obrigatório.
+ * Quem pode mexer na tratativa comercial do pedido: admin ou o vendedor dono.
+ * Operacional com `pedidos.movimentar`/`pedidos.operar_producao` NÃO pode.
+ */
+async function podeEditarComercialDoPedido(
+  sb: LooseClient,
+  userId: string,
+  pedido: { vendedor_proprietario_id?: string | null; owner_id?: string | null },
+): Promise<boolean> {
+  const { podeEditarComercialPedido } = await import("@/lib/pedidos-papeis");
+  const dono = pedido.vendedor_proprietario_id ?? pedido.owner_id ?? null;
+  return podeEditarComercialPedido({
+    isAdmin: await isAdminUser(sb, userId),
+    isVendedorDono: Boolean(dono && dono === userId),
+  });
+}
+
+/**
+ * Condição negociada real do pedido (modalidade de entrega e transportadora).
+ * Só o vendedor dono (ou admin) altera — é tratativa comercial. Registra no
+ * log e avisa o vendedor com pop-up de aceite obrigatório.
  */
 export const atualizarCondicaoNegociada = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -1809,11 +1857,21 @@ export const atualizarCondicaoNegociada = createServerFn({ method: "POST" })
 
     const { data: p, error } = await sb
       .from("pedidos")
-      .select("id, number, modalidade_entrega, transportadora, vendedor_proprietario_id")
+      .select(
+        "id, number, modalidade_entrega, transportadora, vendedor_proprietario_id, owner_id",
+      )
       .eq("id", data.pedido_id)
       .maybeSingle();
     if (error) throw new Error(`Falha ao carregar pedido: ${error.message}`);
     if (!p) throw new Error("Pedido não encontrado");
+
+    // Tratativa comercial é do vendedor: operacional não altera, nem com
+    // permissão de movimentar.
+    if (!(await podeEditarComercialDoPedido(sb, context.userId, p))) {
+      const { MSG_SEM_EDICAO_COMERCIAL } = await import("@/lib/pedidos-papeis");
+      throw new Error(MSG_SEM_EDICAO_COMERCIAL);
+    }
+
 
     const campos: Array<{ campo: "modalidade_entrega" | "transportadora"; label: string }> = [
       { campo: "modalidade_entrega", label: "Modalidade de entrega" },
@@ -1964,6 +2022,19 @@ export const setModalidadeEntrega = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const sb: LooseClient = context.supabase;
+
+    const { data: atual, error: loadErr } = await sb
+      .from("pedidos")
+      .select("id, vendedor_proprietario_id, owner_id")
+      .eq("id", data.pedido_id)
+      .maybeSingle();
+    if (loadErr) throw new Error(`Falha ao carregar pedido: ${loadErr.message}`);
+    if (!atual) throw new Error("Pedido não encontrado");
+    if (!(await podeEditarComercialDoPedido(sb, context.userId, atual))) {
+      const { MSG_SEM_EDICAO_COMERCIAL } = await import("@/lib/pedidos-papeis");
+      throw new Error(MSG_SEM_EDICAO_COMERCIAL);
+    }
+
     const { data: row, error } = await sb
       .from("pedidos")
       .update({ modalidade_entrega: data.modalidade })

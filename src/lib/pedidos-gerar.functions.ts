@@ -188,6 +188,8 @@ export const gerarPedidoInterno = createServerFn({ method: "POST" })
         transporte: {
           freightPayer: (transport["freightPayer"] as string | null) ?? null,
           carrier: (transport["carrier"] as string | null) ?? null,
+          carrierTransportadoraId:
+            (transport["carrierTransportadoraId"] as string | null) ?? null,
           deliveryAddress: (transport["deliveryAddress"] as string | null) ?? null,
           deliveryCep: (transport["deliveryCep"] as string | null) ?? null,
           retirada: (transport["retirada"] as boolean | null) ?? null,
@@ -571,6 +573,21 @@ async function ensurePedidoFromProposta(
     },
   };
 
+  // 5.1) Entrega HERDADA da proposta — a decisão é comercial e já foi tomada.
+  const { derivarEntregaDaProposta } = await import("@/lib/pedido-entrega");
+  const entrega = derivarEntregaDaProposta(
+    (proposta as { transport?: Record<string, unknown> | null }).transport ?? null,
+  );
+  let transportadoraNome = entrega.transportadora;
+  if (!transportadoraNome && entrega.transportadoraId) {
+    const { data: tRow } = await sb
+      .from("transportadoras")
+      .select("nome")
+      .eq("id", entrega.transportadoraId)
+      .maybeSingle();
+    transportadoraNome = (tRow?.nome as string | null) ?? null;
+  }
+
   // 6) Motor de regras de aprovação financeira (parâmetros em arena_config)
   const { avaliarAprovacaoPedido, aoEntrarNaEtapa } = await import("@/lib/pedidos-fluxo.server");
   const decisao = await avaliarAprovacaoPedido(sb, { total, leadId });
@@ -593,6 +610,8 @@ async function ensurePedidoFromProposta(
       pos_venda_status: "nao_iniciado",
       total,
       previsao_entrega: proposta.expected_delivery_date ?? null,
+      modalidade_entrega: entrega.modalidade_entrega,
+      transportadora: transportadoraNome,
       proposta_snapshot,
       metadata: {
         origem: "conversao_ganho",

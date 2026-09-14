@@ -893,6 +893,7 @@ function PropostaDetalhe() {
       transporte: {
         freightPayer: proposal.transport.freightPayer ?? null,
         carrier: proposal.transport.carrier ?? null,
+        carrierTransportadoraId: proposal.transport.carrierTransportadoraId ?? null,
         deliveryAddress: proposal.transport.deliveryAddress ?? null,
         deliveryCep: proposal.transport.deliveryCep ?? null,
       },
