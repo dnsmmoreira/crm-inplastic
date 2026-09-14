@@ -3569,6 +3569,10 @@ export type Database = {
           vendedor_id: string
         }[]
       }
+      pode_acessar_arquivo_documento: {
+        Args: { _editar: boolean; _name: string }
+        Returns: boolean
+      }
       pode_editar_documento: {
         Args: { _entidade_id: string; _tipo: string }
         Returns: boolean
