@@ -266,7 +266,7 @@ function TransportadorasPage() {
                   <TableHead className="w-40">CNPJ</TableHead>
                   <TableHead>Abrangência</TableHead>
                   <TableHead className="w-32">Status</TableHead>
-                  <TableHead className="w-40 text-right">Ações</TableHead>
+                  {podeGerenciar && <TableHead className="w-40 text-right">Ações</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
