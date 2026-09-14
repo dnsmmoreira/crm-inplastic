@@ -463,6 +463,15 @@ function useChatBadge(userId: string | null): number {
   return totalNaoLidas(data?.itens ?? []);
 }
 
+/** Toca um ping curto quando o total de não lidas aumenta (nunca na 1ª carga). */
+function useAvisoSonoroChat(total: number): void {
+  const anterior = useRef<number | null>(null);
+  useEffect(() => {
+    if (deveAvisarChat(anterior.current, total)) tocarPingChat();
+    anterior.current = total;
+  }, [total]);
+}
+
 function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isAdmin = useIsAdmin();
