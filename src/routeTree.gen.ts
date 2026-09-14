@@ -34,6 +34,7 @@ import { Route as DefinirSenhaRouteImport } from './routes/definir-senha'
 import { Route as ConversasRouteImport } from './routes/conversas'
 import { Route as ContatosRouteImport } from './routes/contatos'
 import { Route as CondicoesComerciaisRouteImport } from './routes/condicoes-comerciais'
+import { Route as ChatInternoRouteImport } from './routes/chat-interno'
 import { Route as CanaisRouteImport } from './routes/canais'
 import { Route as CadenciaSimuladorRouteImport } from './routes/cadencia-simulador'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -194,6 +195,11 @@ const ContatosRoute = ContatosRouteImport.update({
 const CondicoesComerciaisRoute = CondicoesComerciaisRouteImport.update({
   id: '/condicoes-comerciais',
   path: '/condicoes-comerciais',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChatInternoRoute = ChatInternoRouteImport.update({
+  id: '/chat-interno',
+  path: '/chat-interno',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CanaisRoute = CanaisRouteImport.update({
@@ -404,6 +410,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/cadencia-simulador': typeof CadenciaSimuladorRoute
   '/canais': typeof CanaisRoute
+  '/chat-interno': typeof ChatInternoRoute
   '/condicoes-comerciais': typeof CondicoesComerciaisRoute
   '/contatos': typeof ContatosRoute
   '/conversas': typeof ConversasRoute
@@ -467,6 +474,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/cadencia-simulador': typeof CadenciaSimuladorRoute
   '/canais': typeof CanaisRoute
+  '/chat-interno': typeof ChatInternoRoute
   '/condicoes-comerciais': typeof CondicoesComerciaisRoute
   '/contatos': typeof ContatosRoute
   '/conversas': typeof ConversasRoute
@@ -531,6 +539,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/cadencia-simulador': typeof CadenciaSimuladorRoute
   '/canais': typeof CanaisRoute
+  '/chat-interno': typeof ChatInternoRoute
   '/condicoes-comerciais': typeof CondicoesComerciaisRoute
   '/contatos': typeof ContatosRoute
   '/conversas': typeof ConversasRoute
@@ -596,6 +605,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/cadencia-simulador'
     | '/canais'
+    | '/chat-interno'
     | '/condicoes-comerciais'
     | '/contatos'
     | '/conversas'
@@ -659,6 +669,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/cadencia-simulador'
     | '/canais'
+    | '/chat-interno'
     | '/condicoes-comerciais'
     | '/contatos'
     | '/conversas'
@@ -722,6 +733,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/cadencia-simulador'
     | '/canais'
+    | '/chat-interno'
     | '/condicoes-comerciais'
     | '/contatos'
     | '/conversas'
@@ -786,6 +798,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   CadenciaSimuladorRoute: typeof CadenciaSimuladorRoute
   CanaisRoute: typeof CanaisRoute
+  ChatInternoRoute: typeof ChatInternoRoute
   CondicoesComerciaisRoute: typeof CondicoesComerciaisRoute
   ContatosRoute: typeof ContatosRoute
   ConversasRoute: typeof ConversasRoute
@@ -1016,6 +1029,13 @@ declare module '@tanstack/react-router' {
       path: '/condicoes-comerciais'
       fullPath: '/condicoes-comerciais'
       preLoaderRoute: typeof CondicoesComerciaisRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/chat-interno': {
+      id: '/chat-interno'
+      path: '/chat-interno'
+      fullPath: '/chat-interno'
+      preLoaderRoute: typeof ChatInternoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/canais': {
@@ -1282,6 +1302,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   CadenciaSimuladorRoute: CadenciaSimuladorRoute,
   CanaisRoute: CanaisRoute,
+  ChatInternoRoute: ChatInternoRoute,
   CondicoesComerciaisRoute: CondicoesComerciaisRoute,
   ContatosRoute: ContatosRoute,
   ConversasRoute: ConversasRoute,

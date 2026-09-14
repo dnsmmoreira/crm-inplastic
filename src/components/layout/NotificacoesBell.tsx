@@ -13,19 +13,24 @@ export function NotificacoesBell({ className }: { className?: string }) {
   const { user } = useAuth();
   const userId = user?.id ?? null;
   const [count, setCount] = useState(0);
+  // Só quando TODAS as não lidas são de chat interno o sino leva ao chat.
+  // Qualquer outro tipo mantém o destino de sempre.
+  const [soChatInterno, setSoChatInterno] = useState(false);
 
   const load = useCallback(async () => {
     if (!userId) return;
-    const { count: c, error } = await supabase
+    const { data, error } = await supabase
       .from("notificacoes")
-      .select("id", { count: "exact", head: true })
+      .select("tipo")
       .eq("user_id", userId)
       .is("lida_em", null);
     if (error) {
       console.error(error);
       return;
     }
-    setCount(c ?? 0);
+    const linhas = (data ?? []) as { tipo: string }[];
+    setCount(linhas.length);
+    setSoChatInterno(linhas.length > 0 && linhas.every((n) => n.tipo === "chat_interno_dm"));
   }, [userId]);
 
   useEffect(() => {
@@ -52,7 +57,7 @@ export function NotificacoesBell({ className }: { className?: string }) {
 
   return (
     <Link
-      to="/atendimento-ia"
+      to={soChatInterno ? "/chat-interno" : "/atendimento-ia"}
       aria-label={`Notificações${count > 0 ? `: ${count} não lidas` : ""}`}
       className={cn(
         "relative flex h-8 w-8 items-center justify-center rounded-md text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",

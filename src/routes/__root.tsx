@@ -20,6 +20,7 @@ import {
   Handshake,
   MessageSquare,
   MessageSquareText,
+  MessagesSquare,
   Bot,
   Package,
   FileText,
@@ -50,9 +51,13 @@ import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import { useIsAdmin } from "@/lib/crm-store";
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { listarPendenciasCadastro } from "@/lib/pendencias-cadastro.functions";
 import { PENDENCIAS_QUERY_KEY, PENDENCIAS_STALE_MS } from "@/lib/pendencias-cadastro.query";
+import { resumoChatInterno } from "@/lib/chat-interno.functions";
+import { CHAT_QUERY_KEY, CHAT_STALE_MS } from "@/lib/chat-interno.query";
+import { totalNaoLidas } from "@/lib/chat-interno";
+import { supabase } from "@/integrations/supabase/client";
 import { AuthProvider, useAuth, hasPerm } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { NotificacoesBell } from "@/components/layout/NotificacoesBell";
@@ -243,7 +248,7 @@ type NavItem = {
   show: (c: NavCtx) => boolean;
   accent?: Accent;
   /** Marca o item que exibe o contador de pendências de cadastro. */
-  badge?: "pendencias";
+  badge?: "pendencias" | "chat";
 };
 
 type NavGroup = {
@@ -272,6 +277,14 @@ const NAV_ROOT: NavItem[] = [
     icon: MessageSquare,
     show: key("whatsapp.atender"),
     accent: "emerald",
+  },
+  {
+    to: "/chat-interno",
+    label: "Chat Interno",
+    icon: MessagesSquare,
+    show: always,
+    accent: "sky",
+    badge: "chat",
   },
   { to: "/placar", label: "Placar", icon: Trophy, show: vendas, accent: "amber" },
 ];
@@ -424,6 +437,32 @@ function usePendenciasBadge(): number {
   return data?.resumo.total ?? 0;
 }
 
+/** Contador de mensagens internas não lidas, com atualização ao vivo. */
+function useChatBadge(userId: string | null): number {
+  const fetchResumo = useServerFn(resumoChatInterno);
+  const queryClient = useQueryClient();
+  const { data } = useQuery({
+    queryKey: CHAT_QUERY_KEY,
+    queryFn: () => fetchResumo(),
+    staleTime: CHAT_STALE_MS,
+    enabled: Boolean(userId),
+    retry: false,
+  });
+  useEffect(() => {
+    if (!userId) return;
+    const channel = supabase
+      .channel(`chat-badge-${userId}-${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "chat_mensagens" }, () => {
+        void queryClient.invalidateQueries({ queryKey: CHAT_QUERY_KEY });
+      })
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [userId, queryClient]);
+  return totalNaoLidas(data?.itens ?? []);
+}
+
 function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isAdmin = useIsAdmin();
@@ -449,6 +488,9 @@ function AppShell({ children }: { children: ReactNode }) {
   };
   const ctx: NavCtx = { isAdmin, user };
   const pendenciasTotal = usePendenciasBadge();
+  const chatNaoLidas = useChatBadge(user?.id ?? null);
+  const badgeValor = (badge: NavItem["badge"]) =>
+    badge === "pendencias" ? pendenciasTotal : badge === "chat" ? chatNaoLidas : 0;
   const rootItems = NAV_ROOT.filter((i) => i.show(ctx));
   const groups = NAV_GROUPS.map((g) => ({
     ...g,
@@ -560,7 +602,12 @@ function AppShell({ children }: { children: ReactNode }) {
                 className={itemLinkClass(pathname === item.to, false, accent)}
               >
                 <Icon className={cn("h-4 w-4 shrink-0", ACCENT[accent].icon)} />
-                {!collapsed && item.label}
+                {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
+                {!collapsed && badgeValor(item.badge) > 0 && (
+                  <span className="ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
+                    {badgeValor(item.badge) > 99 ? "99+" : badgeValor(item.badge)}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -600,9 +647,9 @@ function AppShell({ children }: { children: ReactNode }) {
                       >
                         <Icon className={cn("h-4 w-4 shrink-0", ga.icon)} />
                         {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
-                        {!collapsed && item.badge === "pendencias" && pendenciasTotal > 0 && (
+                        {!collapsed && badgeValor(item.badge) > 0 && (
                           <span className="ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
-                            {pendenciasTotal}
+                            {badgeValor(item.badge)}
                           </span>
                         )}
                       </Link>
@@ -722,7 +769,12 @@ function AppShell({ children }: { children: ReactNode }) {
                       )}
                     >
                       <Icon className={cn("h-4 w-4 shrink-0", a.icon)} />
-                      {item.label}
+                      <span className="flex-1 truncate">{item.label}</span>
+                      {badgeValor(item.badge) > 0 && (
+                        <span className="ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
+                          {badgeValor(item.badge) > 99 ? "99+" : badgeValor(item.badge)}
+                        </span>
+                      )}
                     </Link>
                   );
                 })}
@@ -762,9 +814,9 @@ function AppShell({ children }: { children: ReactNode }) {
                             >
                               <Icon className={cn("h-4 w-4 shrink-0", ga.icon)} />
                               <span className="flex-1 truncate">{item.label}</span>
-                              {item.badge === "pendencias" && pendenciasTotal > 0 && (
+                              {badgeValor(item.badge) > 0 && (
                                 <span className="ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
-                                  {pendenciasTotal}
+                                  {badgeValor(item.badge)}
                                 </span>
                               )}
                             </Link>
