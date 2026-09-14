@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Loader2, MessagesSquare, Send, Users } from "lucide-react";
+import { FileText, Loader2, MessagesSquare, Paperclip, Send, Users, X } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -11,14 +11,21 @@ import { useAutoScrollMensagens } from "@/hooks/use-auto-scroll-mensagens";
 import { resumoChatInterno } from "@/lib/chat-interno.functions";
 import {
   CHAT_LIMITE_CARACTERES,
+  caminhoAnexoChat,
+  ehImagemAnexo,
+  formatarTamanhoAnexo,
   prepararTexto,
   primeiroNome,
+  validarAnexoChat,
   type ChatItemLista,
+  type ChatTipoCanal,
 } from "@/lib/chat-interno";
 import { CHAT_QUERY_KEY } from "@/lib/chat-interno.query";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+
+const BUCKET_CHAT_ANEXOS = "chat-anexos";
 
 export const Route = createFileRoute("/chat-interno")({
   head: () => ({
@@ -47,11 +54,106 @@ type Mensagem = {
   autor_user_id: string;
   conteudo: string;
   criado_em: string;
+  anexo_path: string | null;
+  anexo_nome: string | null;
+  anexo_tipo: string | null;
+  anexo_tamanho_bytes: number | null;
 };
+
+const COLUNAS_MENSAGEM =
+  "id, canal_id, autor_user_id, conteudo, criado_em, anexo_path, anexo_nome, anexo_tipo, anexo_tamanho_bytes";
 
 function horario(iso: string) {
   return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
+
+/**
+ * Assinatura do arquivo gerada SÓ quando a bolha entra na tela (IntersectionObserver),
+ * nunca para o histórico inteiro de uma vez. Vale ~1h e fica em cache por path.
+ */
+function AnexoMensagem({ m }: { m: Mensagem }) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [erro, setErro] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const path = m.anexo_path;
+
+  useEffect(() => {
+    if (!path) return;
+    const el = ref.current;
+    if (!el) return;
+    let vivo = true;
+    const gerar = async () => {
+      const { data, error } = await supabase.storage
+        .from(BUCKET_CHAT_ANEXOS)
+        .createSignedUrl(path, 3600);
+      if (!vivo) return;
+      if (error || !data?.signedUrl) {
+        setErro(true);
+        return;
+      }
+      setUrl(data.signedUrl);
+    };
+    const obs = new IntersectionObserver(
+      (entradas) => {
+        if (entradas.some((e) => e.isIntersecting)) {
+          obs.disconnect();
+          void gerar();
+        }
+      },
+      { rootMargin: "200px" },
+    );
+    obs.observe(el);
+    return () => {
+      vivo = false;
+      obs.disconnect();
+    };
+  }, [path]);
+
+  if (!path) {
+    return <div className="text-xs italic opacity-70">Anexo removido (15 dias)</div>;
+  }
+
+  const nome = m.anexo_nome ?? "arquivo";
+  const imagem = ehImagemAnexo(m.anexo_tipo);
+
+  return (
+    <div ref={ref} className="mt-1">
+      {imagem ? (
+        url ? (
+          <a href={url} target="_blank" rel="noreferrer">
+            <img
+              src={url}
+              alt={nome}
+              loading="lazy"
+              className="max-h-60 w-auto rounded-md border object-contain"
+            />
+          </a>
+        ) : (
+          <div className="flex h-24 w-40 items-center justify-center rounded-md border text-xs opacity-70">
+            {erro ? "Não consegui abrir" : "Carregando imagem…"}
+          </div>
+        )
+      ) : (
+        <a
+          href={url ?? undefined}
+          target="_blank"
+          rel="noreferrer"
+          className={cn(
+            "flex items-center gap-2 rounded-md border bg-background/60 px-2 py-1.5 text-xs text-foreground",
+            !url && "pointer-events-none opacity-70",
+          )}
+        >
+          <FileText className="h-4 w-4 shrink-0" />
+          <span className="min-w-0 flex-1 truncate">{nome}</span>
+          <span className="shrink-0 opacity-70">
+            {formatarTamanhoAnexo(m.anexo_tamanho_bytes)}
+          </span>
+        </a>
+      )}
+    </div>
+  );
+}
+
 
 function ChatInternoPage() {
   const { user } = useAuth();
