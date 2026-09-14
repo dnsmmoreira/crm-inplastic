@@ -281,39 +281,43 @@ function TransportadorasPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <Switch checked={t.ativo} onCheckedChange={() => mToggle.mutate(t)} />
+                        {podeGerenciar && (
+                          <Switch checked={t.ativo} onCheckedChange={() => mToggle.mutate(t)} />
+                        )}
                         <Badge variant={t.ativo ? "default" : "outline"}>
                           {t.ativo ? "Ativa" : "Inativa"}
                         </Badge>
                       </div>
                     </TableCell>
-                    <TableCell className="text-right space-x-1">
-                      <Button variant="ghost" size="sm" onClick={() => openEdit(t)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Remover {t.nome}?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Propostas antigas continuam mostrando o nome escolhido na época.
-                              Se preferir apenas tirar da lista, desative em vez de remover.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => mExcluir.mutate(t)}>
-                              Remover
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </TableCell>
+                    {podeGerenciar && (
+                      <TableCell className="text-right space-x-1">
+                        <Button variant="ghost" size="sm" onClick={() => openEdit(t)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Remover {t.nome}?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Propostas antigas continuam mostrando o nome escolhido na época.
+                                Se preferir apenas tirar da lista, desative em vez de remover.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => mExcluir.mutate(t)}>
+                                Remover
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
