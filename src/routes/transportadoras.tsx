@@ -129,7 +129,6 @@ function TransportadorasPage() {
   const q = useQuery({
     queryKey: ["transportadoras"],
     queryFn: () => listar({ data: undefined as never }),
-    enabled: podeGerenciar,
   });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["transportadoras"] });
