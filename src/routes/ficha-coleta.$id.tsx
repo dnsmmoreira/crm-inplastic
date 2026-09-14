@@ -188,7 +188,7 @@ function FichaColetaPage() {
           )}
           {ficha.status !== "rascunho" && (
             <Button asChild variant="outline" className="gap-2">
-              <Link to="/ficha-coleta/$id/imprimir" params={{ id }}>
+              <Link to="/ficha-coleta-imprimir/$id" params={{ id }}>
                 <Printer className="h-4 w-4" /> Imprimir / PDF
               </Link>
             </Button>
