@@ -51,7 +51,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import { useIsAdmin } from "@/lib/crm-store";
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { listarPendenciasCadastro } from "@/lib/pendencias-cadastro.functions";
 import { PENDENCIAS_QUERY_KEY, PENDENCIAS_STALE_MS } from "@/lib/pendencias-cadastro.query";
 import { resumoChatInterno } from "@/lib/chat-interno.functions";
