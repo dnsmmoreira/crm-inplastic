@@ -38,12 +38,12 @@ export const resumoChatInterno = createServerFn({ method: "GET" })
       // SECURITY DEFINER existe só para listar colegas ativos do chat.
       sb.rpc("chat_listar_colegas"),
       canalIds.length
-        ? sb.from("chat_canais").select("id, tipo, par_chave").in("id", canalIds)
+        ? sb.from("chat_canais").select("id, tipo, nome, par_chave").in("id", canalIds)
         : Promise.resolve({ data: [], error: null }),
       canalIds.length
         ? sb
             .from("chat_mensagens")
-            .select("canal_id, conteudo, criado_em, autor_user_id")
+            .select("canal_id, conteudo, criado_em, autor_user_id, anexo_nome")
             .in("canal_id", canalIds)
             .order("criado_em", { ascending: false })
             .limit(LIMITE_RESUMO)
@@ -55,19 +55,30 @@ export const resumoChatInterno = createServerFn({ method: "GET" })
       throw new Error(`Falha ao carregar mensagens: ${mensagensRes.error.message}`);
 
     const leituras = new Map(linhas.map((l) => [l.canal_id, l.last_read_at]));
-    const resumo = resumirPorCanal(
-      (mensagensRes.data ?? []) as MensagemBruta[],
-      leituras,
-      eu,
-    );
+    // Mensagem só com anexo mostra o nome do arquivo como prévia.
+    const brutas: MensagemBruta[] = (
+      (mensagensRes.data ?? []) as (MensagemBruta & { anexo_nome: string | null })[]
+    ).map((m) => ({
+      canal_id: m.canal_id,
+      criado_em: m.criado_em,
+      autor_user_id: m.autor_user_id,
+      conteudo: (m.conteudo ?? "").trim() || (m.anexo_nome ? `📎 ${m.anexo_nome}` : ""),
+    }));
+    const resumo = resumirPorCanal(brutas, leituras, eu);
 
     const canais: ChatCanalResumo[] = (
-      (canaisRes.data ?? []) as { id: string; tipo: "geral" | "direto"; par_chave: string | null }[]
+      (canaisRes.data ?? []) as {
+        id: string;
+        tipo: "geral" | "direto" | "grupo";
+        nome: string | null;
+        par_chave: string | null;
+      }[]
     ).map((c) => {
       const r = resumo.get(c.id);
       return {
         canalId: c.id,
         tipo: c.tipo,
+        nome: c.nome,
         outroUserId: outroDoParChave(c.par_chave, eu),
         lastReadAt: leituras.get(c.id) ?? null,
         ultimaMensagemEm: r?.ultimaEm ?? null,
@@ -75,6 +86,7 @@ export const resumoChatInterno = createServerFn({ method: "GET" })
         naoLidas: r?.naoLidas ?? 0,
       };
     });
+
 
     const pessoas: ChatPessoa[] = (
       (pessoasRaw ?? []) as { id: string; name: string | null; avatar_color: string | null }[]
