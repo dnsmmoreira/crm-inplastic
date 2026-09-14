@@ -191,6 +191,14 @@ function PedidosKanbanPage() {
         void qc.invalidateQueries({ queryKey: ["pedidos", "kanban"] });
         return;
       }
+      // Só confirma a mudança de etapa DEPOIS que o servidor aceitou.
+      {
+        const pedido = (qc.getQueryData<PedidoRow[]>(["pedidos", "kanban"]) ?? []).find(
+          (p) => p.id === vars.pedido_id,
+        );
+        const label = PEDIDO_STAGES.find((s) => s.id === vars.stage)?.label;
+        toast.success(`${pedido?.number ?? "Pedido"} → ${label}`);
+      }
       void qc.invalidateQueries({ queryKey: ["pedidos", "kanban"] });
       void qc.invalidateQueries({ queryKey: ["pipeline", "leads-com-pedido"] });
       // Assumiu o pedido no mesmo movimento: abre o pedido para os romaneios.
@@ -353,8 +361,6 @@ function PedidosKanbanPage() {
     }
 
     mutation.mutate({ pedido_id: pedido.id, stage: target });
-    const label = PEDIDO_STAGES.find((s) => s.id === target)?.label;
-    toast.success(`${pedido.number} → ${label}`);
   };
 
   return (
@@ -467,8 +473,6 @@ function PedidosKanbanPage() {
             stage: pendingBackward.to,
             motivo,
           });
-          const label = PEDIDO_STAGES.find((s) => s.id === pendingBackward.to)?.label;
-          toast.success(`${pendingBackward.pedidoNumber} ↺ ${label}`);
           setPendingBackward(null);
         }}
       />
