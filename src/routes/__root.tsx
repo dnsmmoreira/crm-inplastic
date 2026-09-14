@@ -491,6 +491,12 @@ function AppShell({ children }: { children: ReactNode }) {
   const chatNaoLidas = useChatBadge(user?.id ?? null);
   const badgeValor = (badge: NavItem["badge"]) =>
     badge === "pendencias" ? pendenciasTotal : badge === "chat" ? chatNaoLidas : 0;
+  // Chat usa a mesma cor do sino de notificações; pendências segue como está.
+  const badgeClasse = (badge: NavItem["badge"]) =>
+    badge === "chat"
+      ? "bg-destructive text-destructive-foreground"
+      : "bg-primary text-primary-foreground";
+  useAvisoSonoroChat(chatNaoLidas);
   const rootItems = NAV_ROOT.filter((i) => i.show(ctx));
   const groups = NAV_GROUPS.map((g) => ({
     ...g,
