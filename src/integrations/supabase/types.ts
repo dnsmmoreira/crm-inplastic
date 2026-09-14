@@ -3559,6 +3559,14 @@ export type Database = {
         Args: { _canal_id: string; _user_id: string }
         Returns: boolean
       }
+      chat_listar_colegas: {
+        Args: never
+        Returns: {
+          avatar_color: string
+          id: string
+          name: string
+        }[]
+      }
       chat_obter_ou_criar_canal_direto: {
         Args: { _outro_user_id: string }
         Returns: string
