@@ -186,18 +186,37 @@ export type TransportadoraRapida = {
  * `criar_transportadora_rapida` (SECURITY DEFINER) — a policy da tabela continua
  * exigindo admin para editar/desativar. CNPJ já cadastrado devolve a existente.
  */
+export type DadosTransportadoraRapida = z.infer<typeof dadosRapidos>;
+
+export function validarTransportadoraRapida(d: unknown): DadosTransportadoraRapida {
+  return dadosRapidos.parse(d);
+}
+
+/** Núcleo testável: recebe o client já autenticado e chama a função do banco. */
+export async function cadastrarTransportadoraRapida(
+  supabase: { rpc: (name: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }> },
+  entrada: unknown,
+): Promise<TransportadoraRapida> {
+  const data = validarTransportadoraRapida(entrada);
+  const { data: rows, error } = await supabase.rpc("criar_transportadora_rapida", {
+    _nome: data.nome,
+    _cnpj: data.cnpj ?? null,
+    _razao_social: data.razao_social ?? null,
+    _endereco: data.endereco ?? null,
+  });
+  if (error) throw new Error(error.message);
+  const lista = Array.isArray(rows) ? (rows as TransportadoraRapida[]) : rows ? [rows as TransportadoraRapida] : [];
+  const row = lista[0];
+  if (!row) throw new Error("Não foi possível cadastrar a transportadora.");
+  return row;
+}
+
 export const criarTransportadoraRapida = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => dadosRapidos.parse(d))
-  .handler(async ({ data, context }) => {
-    const { data: rows, error } = await context.supabase.rpc("criar_transportadora_rapida", {
-      _nome: data.nome,
-      _cnpj: data.cnpj ?? null,
-      _razao_social: data.razao_social ?? null,
-      _endereco: (data.endereco ?? null) as never,
-    });
-    if (error) throw new Error(error.message);
-    const row = (rows as TransportadoraRapida[] | null)?.[0];
-    if (!row) throw new Error("Não foi possível cadastrar a transportadora.");
-    return row;
-  });
+  .handler(async ({ data, context }) =>
+    cadastrarTransportadoraRapida(
+      context.supabase as unknown as Parameters<typeof cadastrarTransportadoraRapida>[0],
+      data,
+    ),
+  );
