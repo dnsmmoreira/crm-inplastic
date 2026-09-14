@@ -188,6 +188,8 @@ export const gerarPedidoInterno = createServerFn({ method: "POST" })
         transporte: {
           freightPayer: (transport["freightPayer"] as string | null) ?? null,
           carrier: (transport["carrier"] as string | null) ?? null,
+          carrierTransportadoraId:
+            (transport["carrierTransportadoraId"] as string | null) ?? null,
           deliveryAddress: (transport["deliveryAddress"] as string | null) ?? null,
           deliveryCep: (transport["deliveryCep"] as string | null) ?? null,
           retirada: (transport["retirada"] as boolean | null) ?? null,
