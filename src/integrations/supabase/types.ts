@@ -501,6 +501,94 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_canais: {
+        Row: {
+          criado_em: string
+          id: string
+          nome: string | null
+          par_chave: string | null
+          tipo: string
+        }
+        Insert: {
+          criado_em?: string
+          id?: string
+          nome?: string | null
+          par_chave?: string | null
+          tipo: string
+        }
+        Update: {
+          criado_em?: string
+          id?: string
+          nome?: string | null
+          par_chave?: string | null
+          tipo?: string
+        }
+        Relationships: []
+      }
+      chat_canal_membros: {
+        Row: {
+          canal_id: string
+          criado_em: string
+          id: string
+          last_read_at: string | null
+          user_id: string
+        }
+        Insert: {
+          canal_id: string
+          criado_em?: string
+          id?: string
+          last_read_at?: string | null
+          user_id: string
+        }
+        Update: {
+          canal_id?: string
+          criado_em?: string
+          id?: string
+          last_read_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_canal_membros_canal_id_fkey"
+            columns: ["canal_id"]
+            isOneToOne: false
+            referencedRelation: "chat_canais"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_mensagens: {
+        Row: {
+          autor_user_id: string
+          canal_id: string
+          conteudo: string
+          criado_em: string
+          id: string
+        }
+        Insert: {
+          autor_user_id: string
+          canal_id: string
+          conteudo: string
+          criado_em?: string
+          id?: string
+        }
+        Update: {
+          autor_user_id?: string
+          canal_id?: string
+          conteudo?: string
+          criado_em?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_mensagens_canal_id_fkey"
+            columns: ["canal_id"]
+            isOneToOne: false
+            referencedRelation: "chat_canais"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clientes: {
         Row: {
           aceite_desconto_duplicata: boolean
@@ -3467,6 +3555,14 @@ export type Database = {
     Functions: {
       admins_ativos_count: { Args: never; Returns: number }
       atribuir_proximo_vendedor: { Args: { _lead_id: string }; Returns: string }
+      chat_e_membro: {
+        Args: { _canal_id: string; _user_id: string }
+        Returns: boolean
+      }
+      chat_obter_ou_criar_canal_direto: {
+        Args: { _outro_user_id: string }
+        Returns: string
+      }
       cnpj_status:
         | {
             Args: { _cnpj: string }
