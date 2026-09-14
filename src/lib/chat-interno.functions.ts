@@ -34,12 +34,9 @@ export const resumoChatInterno = createServerFn({ method: "GET" })
     const canalIds = linhas.map((l) => l.canal_id);
 
     const [{ data: pessoasRaw, error: ePessoas }, canaisRes, mensagensRes] = await Promise.all([
-      sb
-        .from("profiles")
-        .select("id, name, avatar_color")
-        .eq("ativo", true)
-        .is("deleted_at", null)
-        .order("name"),
+      // A RLS de `profiles` só devolve a própria linha para não-admin; esta função
+      // SECURITY DEFINER existe só para listar colegas ativos do chat.
+      sb.rpc("chat_listar_colegas"),
       canalIds.length
         ? sb.from("chat_canais").select("id, tipo, par_chave").in("id", canalIds)
         : Promise.resolve({ data: [], error: null }),
