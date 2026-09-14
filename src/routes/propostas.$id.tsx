@@ -2276,6 +2276,76 @@ function PropostaDetalhe() {
                       Valor atual (texto antigo): {proposal.transport.carrier}
                     </p>
                   )}
+
+                <Dialog open={novaTranspAberto} onOpenChange={setNovaTranspAberto}>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Cadastrar transportadora</DialogTitle>
+                      <DialogDescription>
+                        Cadastro mínimo para não travar a proposta. O restante dos dados pode ser
+                        completado depois em Cadastros &gt; Transportadoras.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-3">
+                      <div>
+                        <Label>CNPJ (opcional)</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            value={novaTranspCnpj}
+                            onChange={(e) => setNovaTranspCnpj(e.target.value)}
+                            placeholder="00.000.000/0000-00"
+                          />
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            disabled={
+                              !novaTranspCnpj.trim() || buscarCnpjTranspMut.isPending
+                            }
+                            onClick={() => buscarCnpjTranspMut.mutate(novaTranspCnpj.trim())}
+                          >
+                            {buscarCnpjTranspMut.isPending ? (
+                              <RefreshCw className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Search className="h-4 w-4" />
+                            )}
+                            <span className="ml-1">Buscar</span>
+                          </Button>
+                        </div>
+                      </div>
+                      <div>
+                        <Label>Nome *</Label>
+                        <Input
+                          value={novaTranspNome}
+                          onChange={(e) => setNovaTranspNome(e.target.value)}
+                          placeholder="Nome da transportadora"
+                        />
+                        {novaTranspRazao && (
+                          <p className="mt-1 text-[11px] text-muted-foreground">
+                            Razão social: {novaTranspRazao}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => setNovaTranspAberto(false)}
+                      >
+                        Cancelar
+                      </Button>
+                      <Button
+                        type="button"
+                        disabled={
+                          novaTranspNome.trim().length < 2 || criarTranspRapidaMut.isPending
+                        }
+                        onClick={() => criarTranspRapidaMut.mutate()}
+                      >
+                        {criarTranspRapidaMut.isPending ? "Cadastrando…" : "Cadastrar e usar"}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div className="col-span-2">
