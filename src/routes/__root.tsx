@@ -309,6 +309,12 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/contatos", label: "Contatos", icon: Users, show: vendasOu("clientes.ver_todos") },
       { to: "/empresas", label: "Empresas", icon: Building2, show: vendasOu("clientes.ver_todos") },
       { to: "/produtos", label: "Produtos", icon: Package, show: vendasOu("clientes.ver_todos") },
+      {
+        to: "/transportadoras",
+        label: "Transportadoras",
+        icon: Truck,
+        show: key("empresas.editar"),
+      },
     ],
   },
   {
@@ -343,12 +349,6 @@ const NAV_GROUPS: NavGroup[] = [
         to: "/condicoes-comerciais",
         label: "Condições Comerciais",
         icon: Settings2,
-        show: key("empresas.editar"),
-      },
-      {
-        to: "/transportadoras",
-        label: "Transportadoras",
-        icon: Truck,
         show: key("empresas.editar"),
       },
       { to: "/tabela-precos", label: "Tabela de Preços", icon: Tags, show: vendas },
