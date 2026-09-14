@@ -2158,7 +2158,9 @@ function PropostaDetalhe() {
                         <span className="flex items-center gap-2">
                           {o}
                           <span className="text-[10px] text-muted-foreground">
-                            (sem transportadora)
+                            {ehTransportadoraADefinir(o)
+                              ? "(coleta — cliente informa a transportadora)"
+                              : "(sem transportadora)"}
                           </span>
                         </span>
                       </SelectItem>
