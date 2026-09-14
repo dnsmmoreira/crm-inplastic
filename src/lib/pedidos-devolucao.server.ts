@@ -116,24 +116,13 @@ export async function devolverPedidoCore(
   // ABORTAR: rollback pela metade é pior que nada — proposta e lead têm que
   // voltar juntos ao funil. A falha do 2º update é marcada como parcial.
   if (propostaId) {
-    // `rascunho` (e não `enviada`): a devolução é interna, o cliente não
-    // recebeu nada novo. `sent_at = null` impede que ela apareça vencida pelo
-    // envio antigo; o vendedor marca como enviada de novo ao reenviar.
-    const rbProp = await sb
-      .from("propostas")
-      .update({
-        status: "rascunho",
-        sent_at: null,
-        reaberta_em: new Date().toISOString(),
-      })
-      .eq("id", propostaId)
-      .eq("status", "pedido");
-    await assertNoError(
-      rbProp,
-      "pedidos.devolverPedido/rollback-proposta",
-      { pedido_id: pedidoId, proposta_id: propostaId },
-      "Não foi possível reabrir a proposta no funil. Tente novamente.",
+    const { supabaseAdmin: sbAdminProp } = await import(
+      "@/integrations/supabase/client.server"
     );
+    await reabrirPropostaDevolucao(sbAdminProp as unknown as SB, {
+      propostaId,
+      pedidoId,
+    });
   }
   if (leadId) {
     // O lead está em `ganho` e o trigger `trg_leads_stage_lock` recusa esse
