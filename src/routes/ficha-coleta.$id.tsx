@@ -162,15 +162,18 @@ function FichaColetaPage() {
           <h1 className="text-xl md:text-2xl font-semibold flex items-center gap-2">
             <ClipboardList className="h-5 w-5 text-primary" /> {ficha.numero}
           </h1>
-          <p className="text-sm text-muted-foreground">
-            Pedido{" "}
-            <Link to="/pedidos" className="underline">
-              {(q.data?.pedido as { number?: string } | null)?.number ?? "—"}
-            </Link>{" "}
-            · <Badge variant={ficha.status === "cancelada" ? "outline" : "default"}>
+          <div className="text-sm text-muted-foreground flex items-center gap-2">
+            <span>
+              Pedido{" "}
+              <Link to="/pedidos" className="underline">
+                {(q.data?.pedido as { number?: string } | null)?.number ?? "—"}
+              </Link>
+            </span>
+            <span>·</span>
+            <Badge variant={ficha.status === "cancelada" ? "outline" : "default"}>
               {FICHA_STATUS_LABEL[ficha.status]}
             </Badge>
-          </p>
+          </div>
         </div>
         <div className="flex flex-wrap gap-2">
           {editavel && (
