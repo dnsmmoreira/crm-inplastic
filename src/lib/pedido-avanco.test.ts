@@ -15,7 +15,8 @@ const campos = (p: Parameters<typeof faltamDados>[0], s: string) =>
 describe("dados exigidos por etapa", () => {
   it("cada etapa pede o seu", () => {
     expect(dadosExigidosParaEntrar("em_producao")).toEqual(["previsao_entrega"]);
-    expect(dadosExigidosParaEntrar("pronto")).toEqual(["modalidade_entrega", "transportadora"]);
+    // Entrega é decisão comercial: vem pronta da proposta, não se pede aqui.
+    expect(dadosExigidosParaEntrar("pronto")).toEqual([]);
     expect(dadosExigidosParaEntrar("faturado_em_rota")).toEqual(["nf_numero"]);
     expect(dadosExigidosParaEntrar("programacao")).toEqual([]);
   });
