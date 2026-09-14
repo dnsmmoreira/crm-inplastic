@@ -8,7 +8,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   AlertTriangle,
   LayoutDashboard,
@@ -57,6 +57,7 @@ import { PENDENCIAS_QUERY_KEY, PENDENCIAS_STALE_MS } from "@/lib/pendencias-cada
 import { resumoChatInterno } from "@/lib/chat-interno.functions";
 import { CHAT_QUERY_KEY, CHAT_STALE_MS } from "@/lib/chat-interno.query";
 import { totalNaoLidas } from "@/lib/chat-interno";
+import { deveAvisarChat, tocarPingChat } from "@/lib/chat-som";
 import { supabase } from "@/integrations/supabase/client";
 import { AuthProvider, useAuth, hasPerm } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -463,6 +464,15 @@ function useChatBadge(userId: string | null): number {
   return totalNaoLidas(data?.itens ?? []);
 }
 
+/** Toca um ping curto quando o total de não lidas aumenta (nunca na 1ª carga). */
+function useAvisoSonoroChat(total: number): void {
+  const anterior = useRef<number | null>(null);
+  useEffect(() => {
+    if (deveAvisarChat(anterior.current, total)) tocarPingChat();
+    anterior.current = total;
+  }, [total]);
+}
+
 function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isAdmin = useIsAdmin();
@@ -491,6 +501,12 @@ function AppShell({ children }: { children: ReactNode }) {
   const chatNaoLidas = useChatBadge(user?.id ?? null);
   const badgeValor = (badge: NavItem["badge"]) =>
     badge === "pendencias" ? pendenciasTotal : badge === "chat" ? chatNaoLidas : 0;
+  // Chat usa a mesma cor do sino de notificações; pendências segue como está.
+  const badgeClasse = (badge: NavItem["badge"]) =>
+    badge === "chat"
+      ? "bg-destructive text-destructive-foreground"
+      : "bg-primary text-primary-foreground";
+  useAvisoSonoroChat(chatNaoLidas);
   const rootItems = NAV_ROOT.filter((i) => i.show(ctx));
   const groups = NAV_GROUPS.map((g) => ({
     ...g,
@@ -601,10 +617,20 @@ function AppShell({ children }: { children: ReactNode }) {
                 title={collapsed ? item.label : undefined}
                 className={itemLinkClass(pathname === item.to, false, accent)}
               >
-                <Icon className={cn("h-4 w-4 shrink-0", ACCENT[accent].icon)} />
+                <span className="relative shrink-0">
+                  <Icon className={cn("h-4 w-4 shrink-0", ACCENT[accent].icon)} />
+                  {collapsed && badgeValor(item.badge) > 0 && item.badge === "chat" && (
+                    <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-destructive" />
+                  )}
+                </span>
                 {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
                 {!collapsed && badgeValor(item.badge) > 0 && (
-                  <span className="ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
+                  <span
+                    className={cn(
+                      "ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+                      badgeClasse(item.badge),
+                    )}
+                  >
                     {badgeValor(item.badge) > 99 ? "99+" : badgeValor(item.badge)}
                   </span>
                 )}
@@ -648,7 +674,12 @@ function AppShell({ children }: { children: ReactNode }) {
                         <Icon className={cn("h-4 w-4 shrink-0", ga.icon)} />
                         {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
                         {!collapsed && badgeValor(item.badge) > 0 && (
-                          <span className="ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
+                          <span
+                          className={cn(
+                            "ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+                            badgeClasse(item.badge),
+                          )}
+                        >
                             {badgeValor(item.badge)}
                           </span>
                         )}
@@ -771,7 +802,12 @@ function AppShell({ children }: { children: ReactNode }) {
                       <Icon className={cn("h-4 w-4 shrink-0", a.icon)} />
                       <span className="flex-1 truncate">{item.label}</span>
                       {badgeValor(item.badge) > 0 && (
-                        <span className="ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
+                        <span
+                          className={cn(
+                            "ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+                            badgeClasse(item.badge),
+                          )}
+                        >
                           {badgeValor(item.badge) > 99 ? "99+" : badgeValor(item.badge)}
                         </span>
                       )}
@@ -815,7 +851,12 @@ function AppShell({ children }: { children: ReactNode }) {
                               <Icon className={cn("h-4 w-4 shrink-0", ga.icon)} />
                               <span className="flex-1 truncate">{item.label}</span>
                               {badgeValor(item.badge) > 0 && (
-                                <span className="ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
+                                <span
+                          className={cn(
+                            "ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+                            badgeClasse(item.badge),
+                          )}
+                        >
                                   {badgeValor(item.badge)}
                                 </span>
                               )}
