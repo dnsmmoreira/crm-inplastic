@@ -1,18 +1,35 @@
 /**
  * Lógica pura de transportadoras.
  *
- * As duas opções especiais ("Cliente retira" / "Veículo próprio") NÃO são
- * transportadoras de verdade: nunca têm id e nunca entram na estatística de
- * sugestão.
+ * As opções especiais NÃO são transportadoras do cadastro: nunca têm id e nunca
+ * entram na estatística de sugestão.
+ *
+ * "Cliente retira" / "Veículo próprio" = retirada (não há coleta).
+ * "A Definir Pelo Cliente" = É coleta por transportadora; quem escolhe/informa
+ * a empresa é o cliente. É uma decisão comercial EXPLÍCITA (não é omissão), então
+ * conta como transportadora definida e NÃO cai na pendência `sem_transportadora`.
  */
 
 export const TRANSPORTADORA_CLIENTE_RETIRA = "Cliente retira";
 export const TRANSPORTADORA_VEICULO_PROPRIO = "Veículo próprio";
+export const TRANSPORTADORA_A_DEFINIR_CLIENTE = "A Definir Pelo Cliente";
 
 export const OPCOES_ESPECIAIS_TRANSPORTE = [
   TRANSPORTADORA_CLIENTE_RETIRA,
   TRANSPORTADORA_VEICULO_PROPRIO,
+  TRANSPORTADORA_A_DEFINIR_CLIENTE,
 ] as const;
+
+/** Opções especiais que significam retirada (sem transportadora nenhuma). */
+export const OPCOES_ESPECIAIS_RETIRADA = [
+  TRANSPORTADORA_CLIENTE_RETIRA,
+  TRANSPORTADORA_VEICULO_PROPRIO,
+] as const;
+
+/** "A Definir Pelo Cliente" — coleta com a transportadora em aberto por decisão do cliente. */
+export function ehTransportadoraADefinir(nome: string | null | undefined): boolean {
+  return String(nome ?? "").trim().toLowerCase() === TRANSPORTADORA_A_DEFINIR_CLIENTE.toLowerCase();
+}
 
 export function ehOpcaoEspecialTransporte(nome: string | null | undefined): boolean {
   if (!nome) return false;
