@@ -982,7 +982,13 @@ export type EmitterProfile = {
   agencia?: string;
   conta?: string;
   pix?: string;
+  /** Contato padrão que responde pela coleta (usado na Ficha de Coleta). */
+  contatoColetaNome?: string;
+  contatoColetaTelefone?: string;
+  /** Endereço de coleta/expedição, quando diferente do endereço fiscal. */
+  enderecoColeta?: string;
 };
+
 
 export const DEFAULT_EMITTERS: EmitterProfile[] = [
   {
