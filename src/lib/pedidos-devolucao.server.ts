@@ -48,6 +48,70 @@ export function textoAvisoDevolucao(args: {
 }
 
 /**
+ * Reabre a proposta no funil (status `pedido` -> `rascunho`).
+ *
+ * SEMPRE com o client de SERVIÇO: a policy de UPDATE de `propostas` só libera
+ * o dono, admin ou quem tem `propostas.editar`. O operacional que devolve o
+ * pedido não é nenhum dos três, e o RLS recusa em SILÊNCIO (0 linhas, sem
+ * `error`) — foi o que deixou PED-2026-0091/0081 com a proposta travada em
+ * `pedido` mesmo com o aviso dizendo "está editável novamente".
+ *
+ * Por isso a checagem é por LINHAS AFETADAS, não por `error`.
+ */
+export async function reabrirPropostaDevolucao(
+  sbAdmin: SB,
+  args: { propostaId: string; pedidoId: string },
+): Promise<void> {
+  const { propostaId, pedidoId } = args;
+  // `rascunho` (e não `enviada`): a devolução é interna, o cliente não recebeu
+  // nada novo. `sent_at = null` impede que ela apareça vencida pelo envio
+  // antigo; o vendedor marca como enviada de novo ao reenviar.
+  const rbProp = await sbAdmin
+    .from("propostas")
+    .update({
+      status: "rascunho",
+      sent_at: null,
+      reaberta_em: new Date().toISOString(),
+    })
+    .eq("id", propostaId)
+    .eq("status", "pedido")
+    .select("id");
+
+  await assertNoError(
+    rbProp,
+    "pedidos.devolverPedido/rollback-proposta",
+    { pedido_id: pedidoId, proposta_id: propostaId },
+    "Não foi possível reabrir a proposta no funil. Tente novamente.",
+  );
+
+  const linhas = (rbProp?.data as Array<{ id: string }> | null) ?? [];
+  if (linhas.length === 1) return;
+
+  // 0 linhas: ou a proposta já estava reaberta (devolução repetida — ok), ou
+  // a gravação não aconteceu. Só o segundo caso é falha.
+  const { data: atual } = await sbAdmin
+    .from("propostas")
+    .select("status")
+    .eq("id", propostaId)
+    .maybeSingle();
+  if ((atual as { status?: string } | null)?.status === "rascunho") return;
+
+  await registrarFalhaSegura(
+    "pedidos.devolverPedido/rollback-proposta",
+    { message: "UPDATE da proposta não afetou nenhuma linha (RLS ou status inesperado)" },
+    {
+      pedido_id: pedidoId,
+      proposta_id: propostaId,
+      linhas_afetadas: linhas.length,
+      status_atual: (atual as { status?: string } | null)?.status ?? null,
+    },
+  );
+  throw new Error(
+    "Não foi possível reabrir a proposta no funil. A devolução foi interrompida — verifique em Falhas do sistema.",
+  );
+}
+
+/**
  * Executa a devolução. Assume que permissão e etapa já foram validadas por quem
  * chama (as server functions em `pedidos.functions.ts`).
  */
