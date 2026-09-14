@@ -411,11 +411,12 @@ function ChatInternoPage() {
                   className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white"
                   style={{ backgroundColor: item.avatarColor ?? "hsl(var(--primary))" }}
                 >
-                  {item.tipo === "geral" ? (
-                    <Users className="h-4 w-4" />
-                  ) : (
+                  {item.tipo === "direto" ? (
                     primeiroNome(item.titulo).slice(0, 2).toUpperCase()
+                  ) : (
+                    <Users className="h-4 w-4" />
                   )}
+
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium">{item.titulo}</span>
@@ -465,44 +466,95 @@ function ChatInternoPage() {
                         : "rounded-bl-sm bg-muted text-foreground",
                     )}
                   >
-                    {!minha && selecionado?.tipo === "geral" && (
+                    {!minha && selecionado?.tipo !== "direto" && (
                       <div className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide opacity-70">
                         {primeiroNome(nomePorId.get(m.autor_user_id) ?? null)}
                       </div>
                     )}
-                    <div className="whitespace-pre-wrap break-words">{m.conteudo}</div>
+                    {m.conteudo.trim() && (
+                      <div className="whitespace-pre-wrap break-words">{m.conteudo}</div>
+                    )}
+                    {(m.anexo_path || m.anexo_nome) && <AnexoMensagem m={m} />}
                     <div className="mt-1 text-right text-[10px] opacity-60">
                       {horario(m.criado_em)}
                     </div>
+
                   </div>
                 </div>
               );
             })}
           </div>
 
-          <div className="flex items-end gap-2 border-t p-3">
-            <Textarea
-              value={texto}
-              onChange={(e) => setTexto(e.target.value.slice(0, CHAT_LIMITE_CARACTERES))}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  void enviar();
-                }
-              }}
-              placeholder="Escreva uma mensagem… (Enter envia, Shift+Enter quebra linha)"
-              rows={2}
-              maxLength={CHAT_LIMITE_CARACTERES}
-              disabled={!canalId}
-              className="min-h-[44px] resize-none"
-            />
-            <Button onClick={() => void enviar()} disabled={!canalId || enviando || !texto.trim()}>
-              {enviando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-              <span className="ml-1 hidden sm:inline">Enviar</span>
-            </Button>
+          <div className="border-t p-3">
+            {arquivo && (
+              <div className="mb-2 flex items-center gap-2 rounded-md border bg-muted/50 px-2 py-1.5 text-xs">
+                <Paperclip className="h-3.5 w-3.5 shrink-0" />
+                <span className="min-w-0 flex-1 truncate">{arquivo.name}</span>
+                <span className="shrink-0 text-muted-foreground">
+                  {formatarTamanhoAnexo(arquivo.size)}
+                </span>
+                <button
+                  type="button"
+                  aria-label="Remover anexo"
+                  onClick={() => {
+                    setArquivo(null);
+                    if (inputArquivoRef.current) inputArquivoRef.current.value = "";
+                  }}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
+            <div className="flex items-end gap-2">
+              <input
+                ref={inputArquivoRef}
+                type="file"
+                className="hidden"
+                accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt"
+                onChange={(e) => escolherArquivo(e.target.files?.[0] ?? null)}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                aria-label="Anexar arquivo"
+                disabled={!canalId || enviando}
+                onClick={() => inputArquivoRef.current?.click()}
+              >
+                <Paperclip className="h-4 w-4" />
+              </Button>
+              <Textarea
+                value={texto}
+                onChange={(e) => setTexto(e.target.value.slice(0, CHAT_LIMITE_CARACTERES))}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    void enviar();
+                  }
+                }}
+                placeholder="Escreva uma mensagem… (Enter envia, Shift+Enter quebra linha)"
+                rows={2}
+                maxLength={CHAT_LIMITE_CARACTERES}
+                disabled={!canalId}
+                className="min-h-[44px] resize-none"
+              />
+              <Button
+                onClick={() => void enviar()}
+                disabled={!canalId || enviando || (!texto.trim() && !arquivo)}
+              >
+                {enviando ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+                <span className="ml-1 hidden sm:inline">Enviar</span>
+              </Button>
+            </div>
           </div>
         </section>
       </div>
+
     </div>
   );
 }
