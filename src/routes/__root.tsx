@@ -8,7 +8,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   AlertTriangle,
   LayoutDashboard,
@@ -57,6 +57,7 @@ import { PENDENCIAS_QUERY_KEY, PENDENCIAS_STALE_MS } from "@/lib/pendencias-cada
 import { resumoChatInterno } from "@/lib/chat-interno.functions";
 import { CHAT_QUERY_KEY, CHAT_STALE_MS } from "@/lib/chat-interno.query";
 import { totalNaoLidas } from "@/lib/chat-interno";
+import { deveAvisarChat, tocarPingChat } from "@/lib/chat-som";
 import { supabase } from "@/integrations/supabase/client";
 import { AuthProvider, useAuth, hasPerm } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
