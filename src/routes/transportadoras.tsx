@@ -179,26 +179,8 @@ function TransportadorasPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  if (!podeGerenciar) {
-    return (
-      <div className="p-4 md:p-8">
-        <Card className="max-w-lg mx-auto">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <ShieldAlert className="h-5 w-5 text-amber-500" />
-              <CardTitle className="text-base">Acesso restrito</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm text-muted-foreground">
-            <p>Você não tem permissão para acessar esta tela.</p>
-            <Button asChild variant="outline" size="sm">
-              <Link to="/propostas">Voltar para Propostas</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+
+
 
   const rows = q.data ?? [];
   const ativas = rows.filter((t) => t.ativo).length;
