@@ -1,58 +1,115 @@
-# Tratativa comercial fica com o vendedor — pedido nasce com a decisão pronta
+# Ficha de Coleta — arquitetura proposta
 
-Quatro frentes ligadas, saindo do incidente PED-2026-0087 (o pedido específico já foi corrigido por SQL e não será tocado).
+Módulo novo de autorização de coleta, sempre nascido de um pedido, com numeração
+própria, congelamento de dados na emissão, histórico e impressão.
 
-## 1) Pedido nasce já com modalidade e transportadora
+## Correção de um ponto do briefing (verificado no banco)
 
-Em `ensurePedidoFromProposta` (`src/lib/pedidos-gerar.functions.ts`), no insert do pedido, derivar da proposta:
+O item 6 diz que não existe cadastro de empresa. **Existe**: a tabela `emitters`
+(razão social, CNPJ, IE, endereço, telefone, WhatsApp, e-mail, site, dados
+bancários, marca padrão) já alimenta a tela **Empresas do grupo** (`/empresas`,
+restrita a `empresas.editar`) e é a fonte do cabeçalho das propostas.
 
-- `ehRetirada(transport)` verdadeiro ("Cliente retira" / "Veículo próprio" / `retirada: true`) → `modalidade_entrega = 'entrega_propria'`, `transportadora = null`.
-- senão, com `transport.carrier` e/ou `carrierTransportadoraId` definidos → `modalidade_entrega = 'coleta'`, `transportadora` = nome da transportadora (quando só houver id, buscar o nome em `transportadoras`).
-- sem nenhum dos dois → grava nulo (não deve acontecer depois da frente 2, mas o pedido não inventa valor).
+Proposta: **não criar tabela nova de empresa**. Em vez disso, acrescentar a
+`emitters` os campos que faltam para a ficha — contato padrão (nome + telefone,
+pré-preenchido com "Bruna" / "(11) 2574-1360") e endereço de coleta/remetente
+quando diferente do fiscal. Cada linha de `emitters` já é uma unidade, então
+"mais de uma filial no futuro" já está contemplado sem mudança de modelo. A tela
+`/empresas` ganha esses campos numa seção "Coleta / expedição".
 
-A regra vira função pura `derivarEntregaDaProposta(transport)` em `src/lib/pedido-entrega.ts`, com testes.
+Se você preferir mesmo uma tabela separada de unidades, diga — mas duplicaria
+razão social/CNPJ/endereço que já existem.
 
-## 2) Sem decisão de entrega, o pedido não é gerado
+## Tabelas novas
 
-Em `calcularPendenciasPedido` (`src/lib/pedido-pendencias.ts`), nova pendência bloqueante `sem_transportadora`: quando não é retirada e não há `carrier` nem `carrierTransportadoraId`, a mensagem pede ao vendedor escolher a transportadora ou marcar que o cliente retira. Aparece no `ConferenciaFinalDialog` como as demais e é revalidada no servidor em `gerarPedidoInterno` (que já chama a mesma função com dados do banco).
+**`fichas_coleta`**
+- `numero` (COL-AAAA-NNNNNN, único), `pedido_id`, `emitter_id`
+- `status`: rascunho | emitida | em_coleta | coletada | cancelada
+- transportadora (`transportadora_id` + nome congelado), `modalidade_entrega`
+- contato responsável (nome, telefone) — default vindo do emitter, editável
+- campos manuais: previsão de data/horário de coleta, observações de
+  carregamento, motorista, placa, volumes/embalagem
+- `snapshot` JSONB (preenchido na emissão), `emitida_em/_por`,
+  `coletada_em/_por`, `cancelada_em/_por`, `cancelamento_motivo`
+- `peso_total_kg`, `cubagem_m3` (calculados, congelados no snapshot)
+- `created_by`, `created_at`, `updated_at`
 
-## 3) A etapa "Coleta / Entrega" não pede mais esse dado ao operacional
+**`ficha_coleta_itens`** (só enquanto rascunho; depois vale o snapshot)
+- `ficha_id`, `produto_id`, sku/descrição, quantidade, unidade
+- `peso_kg`, `cubagem_m3`
+- `peso_manual` / `cubagem_manual` (boolean) — marca "informado manualmente",
+  para o fallback quando `produtos.weight_kg` ou as dimensões vierem zeradas
 
-- `dadosExigidosParaEntrar('pronto')` passa a devolver `[]`; `faltamDados` deixa de produzir formulário para modalidade/transportadora.
-- Novo guard em `updatePedidoStage`: ao entrar em `pronto`, se o pedido (legado) estiver sem modalidade e sem transportadora e não for retirada, o avanço é recusado com motivo `dado_comercial_faltando` e mensagem explicando que falta decisão comercial e que o pedido precisa ser devolvido ao vendedor. A tela mostra o aviso com o botão de devolução já existente (`devolverPedidoOperacional`), sem abrir campo de preenchimento.
+**`ficha_coleta_historico`** (espelho de `pedido_ocorrencias`)
+- `ficha_id`, `tipo` (criada, editada, status, impressa, cancelada), `descricao`,
+  `status_anterior`, `status_novo`, `criada_por`, `created_at`
 
-## 4) Trava de edição por papel
+Todas com GRANT explícito + RLS: leitura/escrita para quem já pode ver o pedido
+(vendedor dono, `pedidos.operar_producao`, `pedidos.movimentar`,
+`pedidos.ver_todos`, admin) — o escopo amplo do item 14, não a trava comercial.
 
-### Classificação dos campos hoje editáveis no pedido
+## Colunas novas em `transportadoras`
 
-COMERCIAL — bloqueado para quem só é operacional:
+`cnpj`, `razao_social`, `ie`, endereço (cep/logradouro/número/bairro/cidade/uf),
+telefone, e-mail, `abrangencia_ufs text[]`. A busca por CNPJ reaproveita
+`consultarCnpj` de `src/lib/cnpj.functions.ts` (CNPJá), a mesma usada em clientes
+e leads — sem nova integração. "Abrangência" vira multi-select de UFs.
 
-| Campo / ação | Onde está hoje |
-| --- | --- |
-| `transportadora` | `PrazoCondicaoBlock` → `atualizarCondicaoNegociada` |
-| `modalidade_entrega` | `atualizarCondicaoNegociada`, `setModalidadeEntrega`, formulário de avanço |
-| cliente, condição de pagamento, itens, valores, desconto/acréscimo, endereço de entrega | hoje já são somente leitura no pedido (vêm do snapshot) — ficam formalmente marcados como comerciais para não abrirem no futuro |
+## Função de numeração
 
-OPERACIONAL — segue liberado para quem opera produção:
+`public.next_ficha_coleta_number(_year int)` SECURITY DEFINER, cópia fiel de
+`next_pedido_number`: `pg_advisory_xact_lock`, MAX do sufixo, `lpad(...,6,'0')`,
+prefixo `COL-AAAA-`, EXECUTE revogado de PUBLIC/anon. Número gerado na **criação
+do rascunho** e nunca reaproveitado — cancelar não libera o número.
 
-| Campo / ação | Onde está hoje |
-| --- | --- |
-| `prazo_real_entrega` + motivo | `definirPrazoRealEntrega` |
-| status fiscal, número/série/chave da NF, datas de faturamento | `atualizarStatusFiscal` |
-| checklist de conferência | `salvarChecklistConferencia` |
-| ocorrências (abrir/resolver) e observações de logística/faturamento | `registrarOcorrencia`, `resolverOcorrencia` |
-| comprovação de entrega, pós-venda, romaneios | blocos já existentes |
-| mover etapa, assumir/liberar | `updatePedidoStage`, `assumirPedidoOperacional` / `liberarPedidoOperacional` — sem mudança |
+## Lifecycle e imutabilidade
 
-### Como travar
+rascunho → emitida → em_coleta → coletada; cancelada a partir de qualquer uma
+antes de coletada. Só rascunho é editável. Na transição rascunho→emitida o
+servidor monta o snapshot (pedido, cliente, endereço de entrega, itens com peso
+e cubagem, transportadora, vendedor, emitente, contato) e a partir daí toda
+leitura/impressão usa o snapshot — o pedido pode mudar, a ficha impressa não.
+Regras puras em `src/lib/ficha-coleta.ts` (transições válidas, cálculo de peso e
+cubagem, detecção de dado faltante → fallback manual) com testes.
 
-- Função pura nova `podeEditarComercialPedido({ isAdmin, isVendedorDono })` em `src/lib/pedidos-papeis.ts`, com testes: admin sempre pode; vendedor dono do pedido (`vendedor_proprietario_id` ou `owner_id`) pode; qualquer outro (inclusive quem tem `pedidos.operar_producao` e `pedidos.movimentar`) não pode.
-- Servidor: `atualizarCondicaoNegociada` e `setModalidadeEntrega` passam a resolver o papel de quem chama e recusam a chamada quando o campo alterado é comercial e a pessoa não tem direito — a recusa é no handler, não só na UI. `definirPrazoRealEntrega` e os demais operacionais continuam só com `exigirMovimentar`.
-- Tela: `getPedidoDetalhes` devolve `pode_editar_comercial`; o `PedidoDetailBody` divide o bloco atual em "Prazo (operacional)" e "Condição comercial", esse último desabilitado e em somente leitura para o operacional, com nota curta de que a alteração é do vendedor.
+## Telas e rotas
+
+- `/fichas-coleta` — lista com filtro por status/período/transportadora
+- `/fichas-coleta/$id` — detalhe: editar (rascunho), emitir, imprimir, marcar em
+  coleta / coletada, cancelar, aba de histórico
+- `/ficha-coleta/$id/imprimir` — página de impressão no padrão do
+  `romaneio/$pedidoId/$tipo` (bloco `@media print`, A4, sem lib de PDF)
+- `/ficha-coleta-publica/$id` — consulta pública somente leitura, padrão de
+  `proposta-publica.$id`, destino do QR code
+- `PedidoDetailDrawer` ganha "Gerar Ficha de Coleta" + lista das fichas do pedido
+- `/transportadoras` ganha os campos novos e o botão de buscar por CNPJ
+- `/empresas` ganha a seção "Coleta / expedição"
+- Item de menu em Cadastro/Operação conforme a matriz de visibilidade já existente
+
+## Dependência nova
+
+`qrcode.react` (leve, sem binário) — única lib adicionada, só para o QR do PDF.
 
 ## Detalhes técnicos
 
-- Arquivos: `src/lib/pedido-entrega.ts` (novo), `src/lib/pedido-pendencias.ts`, `src/lib/pedido-avanco.ts`, `src/lib/pedidos-papeis.ts` (novo), `src/lib/pedidos-gerar.functions.ts`, `src/lib/pedidos.functions.ts`, `src/components/pedidos/PedidoDetailDrawer.tsx`, `src/routes/pedidos.tsx`, `src/components/propostas/ConferenciaFinalDialog.tsx`.
-- Sem migração de banco: os campos já existem; pedidos legados não são preenchidos em massa (frente 3 os intercepta na etapa).
-- Testes novos: derivação de entrega da proposta, pendência `sem_transportadora`, `dadosExigidosParaEntrar('pronto')` vazio, guard de etapa legado, matriz de papéis.
-- Ao final: `bunx vitest run` + `bunx tsgo --noEmit`, diff completo para revisão, sem publicar e sem tocar no PED-2026-0087.
+- Server functions em `src/lib/ficha-coleta.functions.ts` com
+  `requireSupabaseAuth`; o guard de acesso resolve o papel no servidor
+  (reaproveitando o resolvedor já usado em `pedidos.functions.ts`) e rejeita
+  update em ficha não-rascunho independentemente do papel.
+- A rota pública lê por um server fn público com projeção reduzida (sem valores
+  financeiros) e policy `TO anon` restrita ao snapshot da ficha emitida.
+- Peso/cubagem: `produtos.weight_kg`, `height_cm`, `width_cm`, `length_cm`;
+  zero ou nulo conta como ausente e exige entrada manual, marcada como tal na
+  ficha e no histórico.
+- Migrações em PT-BR, GRANT + RLS em toda tabela nova, sem tocar em
+  `pedidos`/`propostas`/`produtos` além de leitura.
+- Ao final: `bunx vitest run` + `bunx tsgo --noEmit` e diff completo, sem publicar.
+
+## Ordem de implementação sugerida
+
+1. `emitters` (contato/coleta) + tela `/empresas`
+2. `transportadoras` (CNPJ, endereço, abrangência) + tela
+3. Tabelas da ficha, numeração, RLS, puras + testes
+4. Server functions e lifecycle
+5. Telas de lista/detalhe e botão no pedido
+6. Impressão, rota pública e QR code
