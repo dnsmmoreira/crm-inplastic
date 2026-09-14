@@ -130,15 +130,19 @@ export function montarListaChat(
       return a.titulo.localeCompare(b.titulo, "pt-BR");
     });
 
+  // O canal "Geral" só aparece para quem é membro dele (a lista de canais já
+  // chega filtrada por RLS). Sem canal, não existe item — nada de item morto.
+  if (!geral) return diretos;
+
   const itemGeral: ChatItemLista = {
-    canalId: geral?.canalId ?? null,
+    canalId: geral.canalId,
     tipo: "geral",
     titulo: "Geral",
     outroUserId: null,
     avatarColor: null,
-    ultimaMensagemEm: geral?.ultimaMensagemEm ?? null,
-    ultimaMensagemTexto: geral?.ultimaMensagemTexto ?? null,
-    naoLidas: geral?.naoLidas ?? 0,
+    ultimaMensagemEm: geral.ultimaMensagemEm,
+    ultimaMensagemTexto: geral.ultimaMensagemTexto,
+    naoLidas: geral.naoLidas,
   };
 
   return [itemGeral, ...diretos];

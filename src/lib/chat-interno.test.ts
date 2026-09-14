@@ -91,6 +91,19 @@ describe("montarListaChat", () => {
     expect(lista[2]!.canalId).toBeNull();
     expect(totalNaoLidas(lista)).toBe(3);
   });
+
+  it("sem canal Geral (não é membro), o item Geral nem aparece", () => {
+    const lista = montarListaChat(
+      [
+        { id: EU, nome: "Eu", avatarColor: null },
+        { id: OUTRO, nome: "Bruno", avatarColor: null },
+      ],
+      canais.filter((c) => c.tipo !== "geral"),
+      EU,
+    );
+    expect(lista.map((i) => i.titulo)).toEqual(["Bruno"]);
+    expect(lista.some((i) => i.tipo === "geral")).toBe(false);
+  });
 });
 
 describe("prepararTexto", () => {
