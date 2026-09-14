@@ -607,10 +607,20 @@ function AppShell({ children }: { children: ReactNode }) {
                 title={collapsed ? item.label : undefined}
                 className={itemLinkClass(pathname === item.to, false, accent)}
               >
-                <Icon className={cn("h-4 w-4 shrink-0", ACCENT[accent].icon)} />
+                <span className="relative shrink-0">
+                  <Icon className={cn("h-4 w-4 shrink-0", ACCENT[accent].icon)} />
+                  {collapsed && badgeValor(item.badge) > 0 && item.badge === "chat" && (
+                    <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-destructive" />
+                  )}
+                </span>
                 {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
                 {!collapsed && badgeValor(item.badge) > 0 && (
-                  <span className="ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
+                  <span
+                    className={cn(
+                      "ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+                      badgeClasse(item.badge),
+                    )}
+                  >
                     {badgeValor(item.badge) > 99 ? "99+" : badgeValor(item.badge)}
                   </span>
                 )}
