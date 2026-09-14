@@ -83,6 +83,7 @@ import {
   type ClienteRow,
 } from "@/lib/clientes.functions";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { lookupCnpj } from "@/lib/cnpj.functions";
 import { enviarPropostaWhatsapp, enviarPropostaEmail } from "@/lib/propostas.functions";
 import { tratativaValida, MSG_TRATATIVA_OBRIGATORIA } from "@/lib/tratativa-comercial";
 import {
