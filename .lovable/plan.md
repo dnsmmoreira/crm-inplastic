@@ -1,40 +1,63 @@
-# Chat Interno (mensagens entre usuários do CRM)
+# Chat Interno: Grupo Comercial, anexos e limpeza automática
 
-Nova tela `/chat-interno` com conversa direta 1:1 entre usuários e um canal fixo "Geral".
-Nada do WhatsApp (`/conversas`, tabelas `whatsapp_*`), Xerife ou IA é tocado.
+Tudo entra junto com o que ainda não foi publicado. Nada será publicado sem sua revisão do diff.
 
-## O que o usuário vai ver
+## 1. Grupo Comercial (aberto a todo o time)
 
-- Item novo no menu, "Chat Interno" (balão de mensagem), visível para qualquer usuário ativo, com contador de mensagens não lidas.
-- Coluna esquerda: "Geral" fixo no topo com contador; abaixo, os outros usuários ativos, ordenados pela mensagem mais recente, e quem nunca conversou no fim (clicável para iniciar).
-- Coluna direita: bolhas de mensagem (as suas à direita; no Geral aparece o primeiro nome de quem escreveu), campo de texto com Enviar, Enter envia e Shift+Enter quebra linha, limite de 4000 caracteres, rolagem automática para o fim e atualização ao vivo.
-- Abrir uma conversa marca tudo como lido.
-- Sino de notificações: só mensagem direta gera aviso. Mensagem no Geral aparece apenas no contador de não lidas.
+- Novo tipo de canal `grupo` (estrutura genérica, sem amarrar ao nome "comercial").
+- Um canal `Grupo Comercial` criado com id fixo.
+- Todos os perfis ativos entram como membros (backfill) e quem for ativado depois entra sozinho.
+- O canal "Geral" continua exatamente como está: só o Denis.
+- Na tela, o Grupo Comercial aparece fixo no topo da lista, como o Geral aparecia antes, com nome do autor em cada mensagem.
 
-## Banco de dados
+## 2. Anexos nas conversas (DM e grupos)
 
-Modelo exatamente como o combinado — sem contraproposta.
+- Botão de anexo no campo de escrita; imagem aparece em miniatura dentro da bolha, outros arquivos viram um chip com nome, tamanho e link para abrir/baixar.
+- Limite de 15 MB por arquivo, checado antes do envio e reforçado no próprio armazenamento.
+- Tipos aceitos: imagens, PDF, Word/Excel/PowerPoint, CSV e texto. Executáveis e qualquer outro tipo são recusados.
+- Mensagem pode ser só o anexo, sem texto. Texto continua limitado a 4000 caracteres.
+- Só quem participa da conversa consegue enviar ou abrir o arquivo daquela conversa.
 
-- `chat_canais`: `id`, `tipo` CHECK em ('geral','direto'), `nome`, `par_chave` UNIQUE (só em 'direto', `least||':'||greatest`), `criado_em`.
-- `chat_canal_membros`: `canal_id`, `user_id`, `last_read_at`, UNIQUE(canal_id,user_id).
-- `chat_mensagens`: `id`, `canal_id`, `autor_user_id`, `conteudo` CHECK length 1..4000, `criado_em`. Índice em (canal_id, criado_em).
-- GRANTs explícitos: `authenticated` (SELECT nas três; INSERT em `chat_mensagens`; UPDATE de `last_read_at` em `chat_canal_membros`) e `service_role`. Nada para `anon`.
-- RLS: `chat_canal_membros` só a própria linha (`user_id = auth.uid()`); `chat_mensagens` leitura/escrita só para quem é membro do canal, com `autor_user_id = auth.uid()` no insert; `chat_canais` leitura só para membro. Sem INSERT direto do cliente em `chat_canais`/`chat_canal_membros`.
-- Função auxiliar `chat_e_membro(_canal_id uuid, _user_id uuid)` SECURITY DEFINER para evitar recursão de RLS entre membros e mensagens.
-- RPC `chat_obter_ou_criar_canal_direto(_outro_user_id uuid) returns uuid` SECURITY DEFINER: busca pelo `par_chave` e cria canal + 2 membros; em corrida trata 23505 e relê (mesmo padrão do `ensurePedidoFromProposta`). EXECUTE só para `authenticated`, REVOKE de PUBLIC/anon.
-- Canal "Geral": uma linha fixa; backfill de membros com todo `profiles` ativo; trigger em `profiles` (insert ativo ou `ativo` virando true) insere a linha de membro no Geral.
-- Notificação de DM: trigger AFTER INSERT em `chat_mensagens` SECURITY DEFINER — se o canal for 'direto', insere em `notificacoes` para o outro membro (`tipo = 'chat_interno_dm'`, `titulo` com o nome do autor). Canal 'geral' não notifica. O sino hoje aponta para `/atendimento-ia`; será ajustado para levar ao Chat Interno quando a notificação for desse tipo.
-- `ALTER PUBLICATION supabase_realtime ADD TABLE public.chat_mensagens, public.chat_canal_membros`.
+## 3. Limpeza automática em 15 dias
 
-## Frontend
+- 15 dias corridos depois da mensagem, o arquivo é apagado de verdade do armazenamento e os campos de anexo daquela mensagem ficam vazios.
+- O texto e o histórico da conversa permanecem; na bolha antiga fica a indicação "anexo removido".
+- O projeto já tem agendamento interno disponível, então o job roda sozinho, **uma vez por dia**, sem você precisar agendar nada por fora. Uma vez ao dia é a menor frequência que atende a regra: o atraso máximo entre "completou 15 dias" e "arquivo apagado" é de 24 horas, e evita manter o banco acordado com verificações frequentes (o que aumentaria o custo recorrente).
 
-- `src/routes/chat-interno.tsx`: layout duas colunas, lista de conversas + thread.
-- `src/lib/chat-interno.ts`: funções puras (ordenação da lista, contagem de não lidas por `last_read_at`, primeiro nome) com testes unitários.
-- `src/lib/chat-interno.functions.ts`: leitura da lista de usuários ativos e resumo das conversas via server function autenticada; envio e `last_read_at` direto pelo client (RLS cobre).
-- Realtime: canal por conversa aberta, desmontado ao trocar; um canal leve por usuário para alimentar o contador do menu.
-- Reaproveita `useAutoScrollMensagens` e o estilo de bolha já existente (componente próprio, sem alterar `BolhaMensagem` do WhatsApp).
-- `__root.tsx`: item de menu novo com badge (mesmo mecanismo do badge de pendências).
+---
 
-## Entrega
+## Detalhes técnicos
 
-Suíte completa (`bunx vitest run`) e typecheck, depois diff completo com as migrações para revisão. Sem publicar.
+### Migração A — Grupo Comercial
+- `chat_canais`: trocar o CHECK de `tipo` para `IN ('geral','direto','grupo')`. O CHECK `par_chave` coerente já cobre `tipo <> 'direto'`.
+- `INSERT` de uma linha `tipo='grupo'`, `nome='Grupo Comercial'` com UUID literal fixo na migração (idempotente com `ON CONFLICT (id) DO NOTHING`).
+- Índice único parcial em `nome` para `tipo='grupo'`, evitando duplicidade futura.
+- Backfill: `INSERT INTO chat_canal_membros (canal_id, user_id) SELECT <id fixo>, id FROM profiles WHERE ativo AND deleted_at IS NULL ON CONFLICT DO NOTHING`.
+- `tg_profiles_entra_no_grupo_comercial()` SECURITY DEFINER + trigger AFTER INSERT/UPDATE em `profiles`: quando `ativo = true AND deleted_at IS NULL`, insere a linha com `ON CONFLICT DO NOTHING`, envolvido em `EXCEPTION WHEN OTHERS THEN NULL` (nunca derruba a gravação do perfil). `REVOKE EXECUTE` de `PUBLIC`/`anon`/`authenticated`, como nos demais triggers do chat.
+
+### Migração B — Campos de anexo
+- `chat_mensagens`: `anexo_path text`, `anexo_nome text`, `anexo_tipo text`, `anexo_tamanho_bytes bigint`, todos nullable.
+- Substituir `chat_mensagens_conteudo_check` por:
+  `CHECK (char_length(conteudo) <= 4000 AND (char_length(btrim(conteudo)) > 0 OR anexo_path IS NOT NULL))`.
+
+### Bucket e políticas
+- Bucket `chat-anexos`, privado, limite de 15 MB (criado pela ferramenta de storage, não por SQL).
+- `public.pode_acessar_anexo_chat(_name text) returns boolean` SECURITY DEFINER: extrai o primeiro segmento do path (`split_part(_name,'/',1)`), valida como UUID e retorna `public.chat_e_membro(canal_id, auth.uid())`; retorna false se o path não tiver formato esperado. EXECUTE só para `authenticated`.
+- Policies em `storage.objects` para SELECT/INSERT/UPDATE/DELETE com `bucket_id = 'chat-anexos' AND pode_acessar_anexo_chat(name)`.
+- Path: `<canal_id>/<uuid>-<nome sanitizado>` (reaproveita `nomeArquivoSeguro`).
+
+### Frontend
+- `src/lib/chat-interno.ts`: `montarListaChat` passa a aceitar canais `grupo` (fixos no topo, junto com `geral`, ordenados por nome); tipos `ChatCanalResumo`/`ChatItemLista` ganham `nome` e `tipo: 'geral'|'direto'|'grupo'`. Novas puras: `MAX_BYTES_ANEXO_CHAT = 15MB`, `TIPOS_ANEXO_CHAT` (allowlist de mime), `validarAnexoChat(file)`, `caminhoAnexoChat(canalId, nome, uid)`, `ehImagemAnexo(mime)`. Testes em `chat-interno.test.ts`.
+- `src/lib/chat-interno.functions.ts` (`resumoChatInterno`): selecionar também `nome` de `chat_canais` e mapear `grupo`; prévia da lista mostra o nome do arquivo quando a mensagem não tem texto.
+- `src/routes/chat-interno.tsx`: botão de clipe + input de arquivo no composer, validação de tamanho/tipo antes do upload, upload para `chat-anexos` e insert da mensagem com os campos `anexo_*` (erro de upload aborta sem criar mensagem órfã); na bolha, imagem via URL assinada (`createSignedUrl`, ~1h, em cache local) e chip com nome/tamanho para os demais; nome do autor exibido em `geral` e `grupo`; mensagem cujo anexo já foi expurgado mostra "anexo removido".
+- Badge do menu e `CHAT_QUERY_KEY` não mudam.
+
+### Expurgo (15 dias)
+- Nova pura em `src/lib/chat-interno.ts`: `anexosChatExpirados(linhas, agora)` (15 dias, só linhas com `anexo_path`), com teste.
+- Novo endpoint `POST /api/public/hooks/chat-anexos-expurgo` seguindo exatamente o padrão de `documentos-expurgo.ts`: `requireXerifeCronAuth` (`x-xerife-secret`), `supabaseAdmin`, lote de 200, remove do bucket e zera `anexo_path/nome/tipo/tamanho_bytes`, falhas registradas via `registrarFalhaSegura` (aparecem em `/falhas`).
+- Agendamento: `pg_cron` já está habilitado no projeto (junto com `pg_net`), então a migração cria o job diário `chat-anexos-expurgo` às 06:00 UTC chamando o endpoint via `net.http_post` com o header do segredo — mesmo caminho já usado pelas rotinas do Xerife, sem agendamento externo da sua parte. O endpoint fica disponível caso você queira disparar manualmente.
+
+### Verificação
+- `bunx vitest run` + `bunx tsgo --noEmit`.
+- Teste no navegador: envio de imagem e de PDF numa DM e no Grupo Comercial, e checagem de que um não-membro não abre o arquivo.
+- Diff completo (código + migrações) entregue para revisão. Sem publicar.
