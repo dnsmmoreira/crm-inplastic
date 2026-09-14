@@ -83,6 +83,7 @@ import {
   type ClienteRow,
 } from "@/lib/clientes.functions";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { lookupCnpj } from "@/lib/cnpj.functions";
 import { enviarPropostaWhatsapp, enviarPropostaEmail } from "@/lib/propostas.functions";
 import { tratativaValida, MSG_TRATATIVA_OBRIGATORIA } from "@/lib/tratativa-comercial";
 import {
@@ -96,6 +97,7 @@ import {
 import { formatCep } from "@/lib/format";
 import { useServerFn } from "@tanstack/react-start";
 import {
+  criarTransportadoraRapida,
   listarTransportadorasAtivas,
   sugerirTransportadora,
   type TransportadoraRow,
@@ -728,6 +730,78 @@ function PropostaDetalhe() {
     markDirty();
     return _setStatus(...a);
   };
+
+  // Cadastro rápido de transportadora sem sair da proposta (a decisão de
+  // transportadora precisa estar fechada antes de virar pedido).
+  const criarTranspRapidaFn = useServerFn(criarTransportadoraRapida);
+  const lookupCnpjFn = useServerFn(lookupCnpj);
+  const [novaTranspAberto, setNovaTranspAberto] = useState(false);
+  const [novaTranspNome, setNovaTranspNome] = useState("");
+  const [novaTranspCnpj, setNovaTranspCnpj] = useState("");
+  const [novaTranspRazao, setNovaTranspRazao] = useState<string | null>(null);
+  const [novaTranspEndereco, setNovaTranspEndereco] = useState<Record<string, string> | null>(null);
+
+  const abrirNovaTransportadora = () => {
+    setNovaTranspNome("");
+    setNovaTranspCnpj("");
+    setNovaTranspRazao(null);
+    setNovaTranspEndereco(null);
+    setNovaTranspAberto(true);
+  };
+
+  const buscarCnpjTranspMut = useMutation({
+    mutationFn: (cnpj: string) => lookupCnpjFn({ data: { cnpj } }),
+    onSuccess: (r: {
+      razaoSocial?: string;
+      nomeFantasia?: string;
+      telefone?: string;
+      email?: string;
+      endereco?: Record<string, string>;
+    }) => {
+      const nome = (r.nomeFantasia || r.razaoSocial || "").trim();
+      if (nome) setNovaTranspNome(nome);
+      setNovaTranspRazao(r.razaoSocial?.trim() || null);
+      setNovaTranspEndereco({
+        ...(r.endereco ?? {}),
+        ...(r.telefone ? { telefone: r.telefone } : {}),
+        ...(r.email ? { email: r.email } : {}),
+      });
+      toast.success("Dados encontrados pelo CNPJ.");
+    },
+    onError: (err: Error) => toast.error(err.message || "Não foi possível consultar o CNPJ."),
+  });
+
+  const criarTranspRapidaMut = useMutation({
+    mutationFn: () =>
+      criarTranspRapidaFn({
+        data: {
+          nome: novaTranspNome.trim(),
+          cnpj: novaTranspCnpj.trim() || null,
+          razao_social: novaTranspRazao,
+          endereco: novaTranspEndereco,
+        },
+      }),
+    onSuccess: async (t: { id: string; nome: string; reaproveitada: boolean }) => {
+      await transportadorasQ.refetch();
+      if (proposal) {
+        updateProposal(proposal.id, {
+          transport: {
+            ...proposal.transport,
+            carrier: t.nome,
+            carrierTransportadoraId: t.id,
+          },
+        });
+      }
+      setNovaTranspAberto(false);
+      toast.success(
+        t.reaproveitada
+          ? `"${t.nome}" já estava cadastrada e foi selecionada.`
+          : `"${t.nome}" cadastrada e selecionada.`,
+      );
+    },
+    onError: (err: Error) => toast.error(err.message || "Não foi possível cadastrar."),
+  });
+
 
   /**
    * Gate de processo antes de enviar: sem tratativa comercial não sai proposta
@@ -2118,6 +2192,10 @@ function PropostaDetalhe() {
                         : ""
                   }
                   onValueChange={(v) => {
+                    if (v === "__nova_transportadora__") {
+                      abrirNovaTransportadora();
+                      return;
+                    }
                     if (v.startsWith("especial:")) {
                       updateProposal(proposal.id, {
                         transport: {
@@ -2147,6 +2225,13 @@ function PropostaDetalhe() {
                     />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="__nova_transportadora__" className="font-medium">
+                      <span className="flex items-center gap-2">
+                        <Plus className="h-3.5 w-3.5" />
+                        Cadastrar nova transportadora
+                      </span>
+                    </SelectItem>
+                    <div className="my-1 h-px bg-border" />
                     {sugestaoTransportadora && (
                       <SelectItem value={`id:${sugestaoTransportadora.id}`}>
                         <span className="flex items-center gap-2">
@@ -2191,6 +2276,76 @@ function PropostaDetalhe() {
                       Valor atual (texto antigo): {proposal.transport.carrier}
                     </p>
                   )}
+
+                <Dialog open={novaTranspAberto} onOpenChange={setNovaTranspAberto}>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Cadastrar transportadora</DialogTitle>
+                      <DialogDescription>
+                        Cadastro mínimo para não travar a proposta. O restante dos dados pode ser
+                        completado depois em Cadastros &gt; Transportadoras.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-3">
+                      <div>
+                        <Label>CNPJ (opcional)</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            value={novaTranspCnpj}
+                            onChange={(e) => setNovaTranspCnpj(e.target.value)}
+                            placeholder="00.000.000/0000-00"
+                          />
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            disabled={
+                              !novaTranspCnpj.trim() || buscarCnpjTranspMut.isPending
+                            }
+                            onClick={() => buscarCnpjTranspMut.mutate(novaTranspCnpj.trim())}
+                          >
+                            {buscarCnpjTranspMut.isPending ? (
+                              <RefreshCw className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Search className="h-4 w-4" />
+                            )}
+                            <span className="ml-1">Buscar</span>
+                          </Button>
+                        </div>
+                      </div>
+                      <div>
+                        <Label>Nome *</Label>
+                        <Input
+                          value={novaTranspNome}
+                          onChange={(e) => setNovaTranspNome(e.target.value)}
+                          placeholder="Nome da transportadora"
+                        />
+                        {novaTranspRazao && (
+                          <p className="mt-1 text-[11px] text-muted-foreground">
+                            Razão social: {novaTranspRazao}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => setNovaTranspAberto(false)}
+                      >
+                        Cancelar
+                      </Button>
+                      <Button
+                        type="button"
+                        disabled={
+                          novaTranspNome.trim().length < 2 || criarTranspRapidaMut.isPending
+                        }
+                        onClick={() => criarTranspRapidaMut.mutate()}
+                      >
+                        {criarTranspRapidaMut.isPending ? "Cadastrando…" : "Cadastrar e usar"}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div className="col-span-2">
