@@ -662,8 +662,11 @@ export const updatePedidoStage = createServerFn({ method: "POST" })
     };
     if (data.dados && Object.keys(data.dados).length > 0) {
       const patchDados: Record<string, unknown> = {};
+      const { ehCampoComercialPedido } = await import("@/lib/pedidos-papeis");
       for (const [k, v] of Object.entries(data.dados)) {
         if (v === undefined || v === "") continue;
+        // Campo comercial nunca é gravado por aqui (é do vendedor, na proposta).
+        if (ehCampoComercialPedido(k)) continue;
         patchDados[k] = v;
         (pedidoDados as Record<string, unknown>)[k] = v;
       }
