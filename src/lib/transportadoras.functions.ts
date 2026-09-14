@@ -151,3 +151,53 @@ export const sugerirTransportadora = createServerFn({ method: "POST" })
     if (!t) return null;
     return { ...(t as TransportadoraRow), usos: escolha.usos, uf };
   });
+
+const dadosRapidos = z.object({
+  nome: z.string().trim().min(2, "Informe o nome da transportadora").max(120),
+  cnpj: z.string().trim().max(20).nullable().optional(),
+  razao_social: z.string().trim().max(160).nullable().optional(),
+  endereco: z
+    .object({
+      cep: z.string().trim().max(12).optional(),
+      logradouro: z.string().trim().max(160).optional(),
+      numero: z.string().trim().max(20).optional(),
+      complemento: z.string().trim().max(80).optional(),
+      bairro: z.string().trim().max(80).optional(),
+      cidade: z.string().trim().max(80).optional(),
+      uf: z.string().trim().max(2).optional(),
+      telefone: z.string().trim().max(40).optional(),
+      email: z.string().trim().max(160).optional(),
+    })
+    .nullable()
+    .optional(),
+});
+
+export type TransportadoraRapida = {
+  id: string;
+  nome: string;
+  cnpj: string | null;
+  ativo: boolean;
+  reaproveitada: boolean;
+};
+
+/**
+ * Cadastro rápido a partir da proposta: qualquer usuário autenticado pode criar
+ * uma transportadora mínima (nome + CNPJ opcional). A escrita acontece dentro de
+ * `criar_transportadora_rapida` (SECURITY DEFINER) — a policy da tabela continua
+ * exigindo admin para editar/desativar. CNPJ já cadastrado devolve a existente.
+ */
+export const criarTransportadoraRapida = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => dadosRapidos.parse(d))
+  .handler(async ({ data, context }) => {
+    const { data: rows, error } = await context.supabase.rpc("criar_transportadora_rapida", {
+      _nome: data.nome,
+      _cnpj: data.cnpj ?? null,
+      _razao_social: data.razao_social ?? null,
+      _endereco: (data.endereco ?? null) as never,
+    });
+    if (error) throw new Error(error.message);
+    const row = (rows as TransportadoraRapida[] | null)?.[0];
+    if (!row) throw new Error("Não foi possível cadastrar a transportadora.");
+    return row;
+  });
