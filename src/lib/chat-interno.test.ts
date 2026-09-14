@@ -79,9 +79,13 @@ const canaisBase: ChatCanalResumo[] = [
       ultimaMensagemTexto: "oi",
       naoLidas: 1,
     },
-  ];
+];
+
+describe("montarListaChat", () => {
+  const canais = canaisBase;
 
   it("Geral no topo, com conversa antes de quem nunca falou, e ignora o próprio usuário", () => {
+
     const lista = montarListaChat(
       [
         { id: EU, nome: "Eu", avatarColor: null },
