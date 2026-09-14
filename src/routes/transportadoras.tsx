@@ -228,10 +228,24 @@ function TransportadorasPage() {
             <span className="font-medium text-foreground">{ativas}</span> de {rows.length} ativas.
           </p>
         </div>
-        <Button size="sm" onClick={openNew}>
-          <Plus className="h-4 w-4 mr-2" /> Nova transportadora
-        </Button>
+        {podeGerenciar && (
+          <Button size="sm" onClick={openNew}>
+            <Plus className="h-4 w-4 mr-2" /> Nova transportadora
+          </Button>
+        )}
       </div>
+
+      {!podeGerenciar && (
+        <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+          <ShieldAlert className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+          <p className="text-muted-foreground">
+            Modo somente leitura: a gestão do cadastro é feita pela administração. Para usar uma
+            transportadora que ainda não está na lista, cadastre direto pelo campo Transportador da
+            proposta.
+          </p>
+        </div>
+      )}
+
 
       <Card>
         <CardHeader>
