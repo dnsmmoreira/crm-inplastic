@@ -173,7 +173,7 @@ function ChatInternoPage() {
     canalId: string | null;
     outroUserId: string | null;
     titulo: string;
-    tipo: "geral" | "direto";
+    tipo: ChatTipoCanal;
   } | null>(null);
 
   // Abre por padrão a primeira conversa que já existe (Geral, quando a pessoa
@@ -224,7 +224,8 @@ function ChatInternoPage() {
     setCarregandoThread(true);
     const { data: rows, error } = await supabase
       .from("chat_mensagens")
-      .select("id, canal_id, autor_user_id, conteudo, criado_em")
+      .select(COLUNAS_MENSAGEM)
+
       .eq("canal_id", id)
       .order("criado_em", { ascending: true })
       .limit(500);
@@ -299,33 +300,83 @@ function ChatInternoPage() {
 
   const [texto, setTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
+  const [arquivo, setArquivo] = useState<File | null>(null);
+  const inputArquivoRef = useRef<HTMLInputElement>(null);
+
+  const escolherArquivo = useCallback((file: File | null) => {
+    if (!file) return;
+    const erro = validarAnexoChat({ size: file.size, type: file.type });
+    if (erro) {
+      toast.error(erro);
+      return;
+    }
+    setArquivo(file);
+  }, []);
 
   const enviar = useCallback(async () => {
     if (!euId || !canalId || enviando) return;
     const pronto = prepararTexto(texto);
-    if (!pronto) {
+    if (!pronto && !arquivo) {
       if (texto.trim().length > CHAT_LIMITE_CARACTERES) {
         toast.error(`Mensagem muito longa (máximo ${CHAT_LIMITE_CARACTERES} caracteres).`);
       }
       return;
     }
     setEnviando(true);
+    let anexo: {
+      anexo_path: string;
+      anexo_nome: string;
+      anexo_tipo: string;
+      anexo_tamanho_bytes: number;
+    } | null = null;
+
+    if (arquivo) {
+      const uid =
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+          ? crypto.randomUUID()
+          : `${Date.now()}${Math.random().toString(36).slice(2, 8)}`;
+      const path = caminhoAnexoChat(canalId, arquivo.name, uid);
+      const { error: upErr } = await supabase.storage
+        .from(BUCKET_CHAT_ANEXOS)
+        .upload(path, arquivo, {
+          contentType: arquivo.type || "application/octet-stream",
+          upsert: false,
+        });
+      if (upErr) {
+        setEnviando(false);
+        console.error(upErr);
+        toast.error("Não consegui enviar o arquivo. Tente de novo.");
+        return; // sem mensagem órfã
+      }
+      anexo = {
+        anexo_path: path,
+        anexo_nome: arquivo.name,
+        anexo_tipo: arquivo.type || "application/octet-stream",
+        anexo_tamanho_bytes: arquivo.size,
+      };
+    }
+
     const { data: inserida, error } = await supabase
       .from("chat_mensagens")
-      .insert({ canal_id: canalId, autor_user_id: euId, conteudo: pronto })
-      .select("id, canal_id, autor_user_id, conteudo, criado_em")
+      .insert({ canal_id: canalId, autor_user_id: euId, conteudo: pronto ?? "", ...(anexo ?? {}) })
+      .select(COLUNAS_MENSAGEM)
       .single();
     setEnviando(false);
     if (error) {
       console.error(error);
+      // Mensagem recusada: o arquivo recém-subido não fica sobrando no bucket.
+      if (anexo) void supabase.storage.from(BUCKET_CHAT_ANEXOS).remove([anexo.anexo_path]);
       toast.error("Não consegui enviar a mensagem. Tente de novo.");
       return;
     }
     setTexto("");
+    setArquivo(null);
+    if (inputArquivoRef.current) inputArquivoRef.current.value = "";
     const nova = inserida as Mensagem;
     setMensagens((prev) => (prev.some((m) => m.id === nova.id) ? prev : [...prev, nova]));
     void marcarLido(canalId);
-  }, [euId, canalId, enviando, texto, marcarLido]);
+  }, [euId, canalId, enviando, texto, arquivo, marcarLido]);
+
 
   return (
     <div className="flex h-[calc(100dvh-8rem)] min-h-[520px] flex-col gap-3 p-4 md:p-6">
