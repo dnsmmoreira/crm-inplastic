@@ -664,7 +664,12 @@ function AppShell({ children }: { children: ReactNode }) {
                         <Icon className={cn("h-4 w-4 shrink-0", ga.icon)} />
                         {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
                         {!collapsed && badgeValor(item.badge) > 0 && (
-                          <span className="ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
+                          <span
+                          className={cn(
+                            "ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+                            badgeClasse(item.badge),
+                          )}
+                        >
                             {badgeValor(item.badge)}
                           </span>
                         )}
@@ -787,7 +792,12 @@ function AppShell({ children }: { children: ReactNode }) {
                       <Icon className={cn("h-4 w-4 shrink-0", a.icon)} />
                       <span className="flex-1 truncate">{item.label}</span>
                       {badgeValor(item.badge) > 0 && (
-                        <span className="ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
+                        <span
+                          className={cn(
+                            "ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+                            badgeClasse(item.badge),
+                          )}
+                        >
                           {badgeValor(item.badge) > 99 ? "99+" : badgeValor(item.badge)}
                         </span>
                       )}
@@ -831,7 +841,12 @@ function AppShell({ children }: { children: ReactNode }) {
                               <Icon className={cn("h-4 w-4 shrink-0", ga.icon)} />
                               <span className="flex-1 truncate">{item.label}</span>
                               {badgeValor(item.badge) > 0 && (
-                                <span className="ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
+                                <span
+                          className={cn(
+                            "ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+                            badgeClasse(item.badge),
+                          )}
+                        >
                                   {badgeValor(item.badge)}
                                 </span>
                               )}
