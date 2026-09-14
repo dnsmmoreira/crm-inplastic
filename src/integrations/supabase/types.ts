@@ -3871,6 +3871,21 @@ export type Database = {
               mesmo_vendedor: boolean
             }[]
           }
+      criar_transportadora_rapida: {
+        Args: {
+          _cnpj?: string
+          _endereco?: Json
+          _nome: string
+          _razao_social?: string
+        }
+        Returns: {
+          ativo: boolean
+          cnpj: string
+          id: string
+          nome: string
+          reaproveitada: boolean
+        }[]
+      }
       ganhos_fora_do_placar: {
         Args: { _periodo?: string }
         Returns: {
