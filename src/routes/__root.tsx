@@ -333,7 +333,11 @@ const NAV_GROUPS: NavGroup[] = [
         to: "/fichas-coleta",
         label: "Fichas de Coleta",
         icon: ClipboardList,
-        show: vendasOu("pedidos.ver_todos", "pedidos.operar_producao", "pedidos.movimentar"),
+        show: (c: NavCtx) =>
+          vendas(c) ||
+          hasPerm(c.user, "pedidos.ver_todos") ||
+          hasPerm(c.user, "pedidos.operar_producao") ||
+          hasPerm(c.user, "pedidos.movimentar"),
       },
       {
         to: "/condicoes-comerciais",
