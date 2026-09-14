@@ -26,6 +26,7 @@ import { Route as McpRouteImport } from './routes/mcp'
 import { Route as LicitacoesRouteImport } from './routes/licitacoes'
 import { Route as LeadsRouteImport } from './routes/leads'
 import { Route as FrasesProntasRouteImport } from './routes/frases-prontas'
+import { Route as FichasColetaRouteImport } from './routes/fichas-coleta'
 import { Route as FalhasRouteImport } from './routes/falhas'
 import { Route as EstoqueRouteImport } from './routes/estoque'
 import { Route as EquipeRouteImport } from './routes/equipe'
@@ -47,6 +48,7 @@ import { Route as PropostasIndexRouteImport } from './routes/propostas.index'
 import { Route as ClientesIndexRouteImport } from './routes/clientes.index'
 import { Route as PropostasIdRouteImport } from './routes/propostas.$id'
 import { Route as PropostaPublicaIdRouteImport } from './routes/proposta-publica.$id'
+import { Route as FichaColetaIdRouteImport } from './routes/ficha-coleta.$id'
 import { Route as ClientesIdRouteImport } from './routes/clientes.$id'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
@@ -158,6 +160,11 @@ const FrasesProntasRoute = FrasesProntasRouteImport.update({
   path: '/frases-prontas',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FichasColetaRoute = FichasColetaRouteImport.update({
+  id: '/fichas-coleta',
+  path: '/fichas-coleta',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const FalhasRoute = FalhasRouteImport.update({
   id: '/falhas',
   path: '/falhas',
@@ -261,6 +268,11 @@ const PropostasIdRoute = PropostasIdRouteImport.update({
 const PropostaPublicaIdRoute = PropostaPublicaIdRouteImport.update({
   id: '/proposta-publica/$id',
   path: '/proposta-publica/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FichaColetaIdRoute = FichaColetaIdRouteImport.update({
+  id: '/ficha-coleta/$id',
+  path: '/ficha-coleta/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ClientesIdRoute = ClientesIdRouteImport.update({
@@ -426,6 +438,7 @@ export interface FileRoutesByFullPath {
   '/equipe': typeof EquipeRoute
   '/estoque': typeof EstoqueRoute
   '/falhas': typeof FalhasRoute
+  '/fichas-coleta': typeof FichasColetaRoute
   '/frases-prontas': typeof FrasesProntasRoute
   '/leads': typeof LeadsRoute
   '/licitacoes': typeof LicitacoesRoute
@@ -446,6 +459,7 @@ export interface FileRoutesByFullPath {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/clientes/$id': typeof ClientesIdRoute
+  '/ficha-coleta/$id': typeof FichaColetaIdRoute
   '/proposta-publica/$id': typeof PropostaPublicaIdRoute
   '/propostas/$id': typeof PropostasIdRoute
   '/clientes/': typeof ClientesIndexRoute
@@ -491,6 +505,7 @@ export interface FileRoutesByTo {
   '/equipe': typeof EquipeRoute
   '/estoque': typeof EstoqueRoute
   '/falhas': typeof FalhasRoute
+  '/fichas-coleta': typeof FichasColetaRoute
   '/frases-prontas': typeof FrasesProntasRoute
   '/leads': typeof LeadsRoute
   '/licitacoes': typeof LicitacoesRoute
@@ -511,6 +526,7 @@ export interface FileRoutesByTo {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/clientes/$id': typeof ClientesIdRoute
+  '/ficha-coleta/$id': typeof FichaColetaIdRoute
   '/proposta-publica/$id': typeof PropostaPublicaIdRoute
   '/propostas/$id': typeof PropostasIdRoute
   '/clientes': typeof ClientesIndexRoute
@@ -557,6 +573,7 @@ export interface FileRoutesById {
   '/equipe': typeof EquipeRoute
   '/estoque': typeof EstoqueRoute
   '/falhas': typeof FalhasRoute
+  '/fichas-coleta': typeof FichasColetaRoute
   '/frases-prontas': typeof FrasesProntasRoute
   '/leads': typeof LeadsRoute
   '/licitacoes': typeof LicitacoesRoute
@@ -577,6 +594,7 @@ export interface FileRoutesById {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/clientes/$id': typeof ClientesIdRoute
+  '/ficha-coleta/$id': typeof FichaColetaIdRoute
   '/proposta-publica/$id': typeof PropostaPublicaIdRoute
   '/propostas/$id': typeof PropostasIdRoute
   '/clientes/': typeof ClientesIndexRoute
@@ -624,6 +642,7 @@ export interface FileRouteTypes {
     | '/equipe'
     | '/estoque'
     | '/falhas'
+    | '/fichas-coleta'
     | '/frases-prontas'
     | '/leads'
     | '/licitacoes'
@@ -644,6 +663,7 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/clientes/$id'
+    | '/ficha-coleta/$id'
     | '/proposta-publica/$id'
     | '/propostas/$id'
     | '/clientes/'
@@ -689,6 +709,7 @@ export interface FileRouteTypes {
     | '/equipe'
     | '/estoque'
     | '/falhas'
+    | '/fichas-coleta'
     | '/frases-prontas'
     | '/leads'
     | '/licitacoes'
@@ -709,6 +730,7 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/clientes/$id'
+    | '/ficha-coleta/$id'
     | '/proposta-publica/$id'
     | '/propostas/$id'
     | '/clientes'
@@ -754,6 +776,7 @@ export interface FileRouteTypes {
     | '/equipe'
     | '/estoque'
     | '/falhas'
+    | '/fichas-coleta'
     | '/frases-prontas'
     | '/leads'
     | '/licitacoes'
@@ -774,6 +797,7 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/clientes/$id'
+    | '/ficha-coleta/$id'
     | '/proposta-publica/$id'
     | '/propostas/$id'
     | '/clientes/'
@@ -820,6 +844,7 @@ export interface RootRouteChildren {
   EquipeRoute: typeof EquipeRoute
   EstoqueRoute: typeof EstoqueRoute
   FalhasRoute: typeof FalhasRoute
+  FichasColetaRoute: typeof FichasColetaRoute
   FrasesProntasRoute: typeof FrasesProntasRoute
   LeadsRoute: typeof LeadsRoute
   LicitacoesRoute: typeof LicitacoesRoute
@@ -840,6 +865,7 @@ export interface RootRouteChildren {
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   ClientesIdRoute: typeof ClientesIdRoute
+  FichaColetaIdRoute: typeof FichaColetaIdRoute
   PropostaPublicaIdRoute: typeof PropostaPublicaIdRoute
   PropostasIdRoute: typeof PropostasIdRoute
   ClientesIndexRoute: typeof ClientesIndexRoute
@@ -989,6 +1015,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FrasesProntasRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/fichas-coleta': {
+      id: '/fichas-coleta'
+      path: '/fichas-coleta'
+      fullPath: '/fichas-coleta'
+      preLoaderRoute: typeof FichasColetaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/falhas': {
       id: '/falhas'
       path: '/falhas'
@@ -1134,6 +1167,13 @@ declare module '@tanstack/react-router' {
       path: '/proposta-publica/$id'
       fullPath: '/proposta-publica/$id'
       preLoaderRoute: typeof PropostaPublicaIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ficha-coleta/$id': {
+      id: '/ficha-coleta/$id'
+      path: '/ficha-coleta/$id'
+      fullPath: '/ficha-coleta/$id'
+      preLoaderRoute: typeof FichaColetaIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/clientes/$id': {
@@ -1332,6 +1372,7 @@ const rootRouteChildren: RootRouteChildren = {
   EquipeRoute: EquipeRoute,
   EstoqueRoute: EstoqueRoute,
   FalhasRoute: FalhasRoute,
+  FichasColetaRoute: FichasColetaRoute,
   FrasesProntasRoute: FrasesProntasRoute,
   LeadsRoute: LeadsRoute,
   LicitacoesRoute: LicitacoesRoute,
@@ -1353,6 +1394,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   ClientesIdRoute: ClientesIdRoute,
+  FichaColetaIdRoute: FichaColetaIdRoute,
   PropostaPublicaIdRoute: PropostaPublicaIdRoute,
   PropostasIdRoute: PropostasIdRoute,
   ClientesIndexRoute: ClientesIndexRoute,
