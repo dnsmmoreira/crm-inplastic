@@ -54,3 +54,10 @@
 - [ ] Núcleo único de devolução; recusa financeira → reprovado_financeiro, demais etapas → cancelado
 - [ ] Botão de devolução em toda etapa não terminal
 - [ ] Pop-up com aceite obrigatório para o vendedor, levando à proposta reaberta
+
+## Chat Interno (em curso)
+- [ ] Tabelas chat_canais / chat_canal_membros / chat_mensagens com RLS + grants
+- [ ] RPC chat_obter_ou_criar_canal_direto + canal Geral (backfill e trigger em profiles)
+- [ ] Trigger de notificação de DM que nunca derruba o insert da mensagem
+- [ ] Tela /chat-interno + item no menu com badge de não lidas
+- [ ] Sino leva ao chat só quando tipo = 'chat_interno_dm'
