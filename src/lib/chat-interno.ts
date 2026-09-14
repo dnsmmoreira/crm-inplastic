@@ -5,9 +5,14 @@
 
 export const CHAT_LIMITE_CARACTERES = 4000;
 
+/** Tipos de canal. `grupo` = grupo nomeado aberto aos membros cadastrados. */
+export type ChatTipoCanal = "geral" | "direto" | "grupo";
+
 export type ChatCanalResumo = {
   canalId: string;
-  tipo: "geral" | "direto";
+  tipo: ChatTipoCanal;
+  /** Nome do canal (usado pelos grupos nomeados). */
+  nome?: string | null;
   /** Em canais diretos, o id do outro participante. */
   outroUserId: string | null;
   lastReadAt: string | null;
@@ -25,7 +30,7 @@ export type ChatPessoa = {
 export type ChatItemLista = {
   /** `null` quando ainda não existe canal com essa pessoa. */
   canalId: string | null;
-  tipo: "geral" | "direto";
+  tipo: ChatTipoCanal;
   titulo: string;
   outroUserId: string | null;
   avatarColor: string | null;
@@ -33,6 +38,97 @@ export type ChatItemLista = {
   ultimaMensagemTexto: string | null;
   naoLidas: number;
 };
+
+/* ---------------------------------------------------------------- anexos */
+
+/** Limite por arquivo enviado no chat interno. */
+export const MAX_BYTES_ANEXO_CHAT = 15 * 1024 * 1024;
+
+/** Dias até o expurgo automático do arquivo (a mensagem permanece). */
+export const DIAS_RETENCAO_ANEXO_CHAT = 15;
+
+/** Allowlist de mime: imagens, PDF, office, csv/texto. Nada executável. */
+export const TIPOS_ANEXO_CHAT = [
+  "image/png",
+  "image/jpeg",
+  "image/gif",
+  "image/webp",
+  "image/heic",
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "text/csv",
+  "text/plain",
+] as const;
+
+export function tipoAnexoAceito(mime: string | null | undefined): boolean {
+  const m = (mime ?? "").toLowerCase().split(";")[0]!.trim();
+  return (TIPOS_ANEXO_CHAT as readonly string[]).includes(m);
+}
+
+export function ehImagemAnexo(mime: string | null | undefined): boolean {
+  return (mime ?? "").toLowerCase().startsWith("image/");
+}
+
+/** Retorna a mensagem de erro, ou `null` quando o arquivo pode subir. */
+export function validarAnexoChat(file: { size: number; type: string }): string | null {
+  if (file.size <= 0) return "Arquivo vazio.";
+  if (file.size > MAX_BYTES_ANEXO_CHAT) {
+    return "Arquivo muito grande — o limite é de 15 MB.";
+  }
+  if (!tipoAnexoAceito(file.type)) {
+    return "Tipo de arquivo não aceito. Envie imagem, PDF, planilha, documento ou texto.";
+  }
+  return null;
+}
+
+/** Nome de arquivo seguro para o caminho no storage. */
+export function nomeAnexoSeguro(nome: string): string {
+  return (nome || "arquivo")
+    .normalize("NFD")
+    .replace(/[^\w.\-]+/g, "_")
+    .slice(-120);
+}
+
+/** Path do anexo: `<canal_id>/<uuid>-<nome sanitizado>`. */
+export function caminhoAnexoChat(canalId: string, nomeArquivo: string, uid: string): string {
+  return `${canalId}/${uid}-${nomeAnexoSeguro(nomeArquivo)}`;
+}
+
+export function formatarTamanhoAnexo(bytes: number | null | undefined): string {
+  if (!bytes || bytes <= 0) return "—";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+export type AnexoExpuravel = {
+  id: string;
+  criado_em: string;
+  anexo_path: string | null;
+};
+
+/**
+ * Seleciona os anexos que o expurgo pode apagar: com arquivo e com mais de
+ * 15 dias corridos. Sem `anexo_path` nunca entra; data inválida nunca entra.
+ */
+export function anexosChatExpirados<T extends AnexoExpuravel>(
+  linhas: readonly T[],
+  agora: Date = new Date(),
+): T[] {
+  const limite = agora.getTime() - DIAS_RETENCAO_ANEXO_CHAT * 86400_000;
+  return (linhas ?? []).filter((l) => {
+    if (!l || !l.anexo_path) return false;
+    const t = new Date(l.criado_em).getTime();
+    if (Number.isNaN(t)) return false;
+    return t < limite;
+  });
+}
+
 
 export function primeiroNome(nome: string | null | undefined): string {
   const limpo = (nome ?? "").trim();
