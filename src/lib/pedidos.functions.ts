@@ -903,6 +903,8 @@ export type PedidoDetalhes = {
   responsavel_atual_nome: string | null;
   /** Admin ou permissão `pedidos.operar_producao` — calculado no servidor. */
   pode_operar: boolean;
+  /** Admin ou vendedor dono: único que altera tratativa comercial do pedido. */
+  pode_editar_comercial: boolean;
   /* Comprovação de entrega (pós-venda) */
   entrega_comprovada_em: string | null;
   entregue_em: string | null;
@@ -1169,6 +1171,7 @@ export const getPedidoDetalhes = createServerFn({ method: "GET" })
         ? (nameById.get(p.responsavel_atual_id) ?? p.equipe_responsavel ?? null)
         : null,
       pode_operar: podeOperar,
+      pode_editar_comercial: podeEditarComercial,
       entrega_comprovada_em: p.entrega_comprovada_em ?? null,
       pos_venda_contato_em: p.pos_venda_contato_em ?? null,
       encerrado_em: p.encerrado_em ?? null,
