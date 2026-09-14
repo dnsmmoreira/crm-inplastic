@@ -21,6 +21,7 @@ export type PendenciaCodigo =
   | "cliente_sem_uf"
   | "sem_condicao_pagamento"
   | "sem_entrega"
+  | "sem_transportadora"
   | "sem_previsao_entrega"
   | "sem_tratativa"
   | "item_sem_catalogo"
@@ -60,6 +61,8 @@ export type PendenciaInput = {
   transporte?: {
     freightPayer?: string | null;
     carrier?: string | null;
+    /** id da transportadora do cadastro, quando escolhida pela lista. */
+    carrierTransportadoraId?: string | null;
     deliveryAddress?: string | null;
     deliveryCep?: string | null;
     retirada?: boolean | null;
