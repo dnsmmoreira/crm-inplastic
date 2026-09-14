@@ -2192,6 +2192,10 @@ function PropostaDetalhe() {
                         : ""
                   }
                   onValueChange={(v) => {
+                    if (v === "__nova_transportadora__") {
+                      abrirNovaTransportadora();
+                      return;
+                    }
                     if (v.startsWith("especial:")) {
                       updateProposal(proposal.id, {
                         transport: {
@@ -2221,6 +2225,13 @@ function PropostaDetalhe() {
                     />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="__nova_transportadora__" className="font-medium">
+                      <span className="flex items-center gap-2">
+                        <Plus className="h-3.5 w-3.5" />
+                        Cadastrar nova transportadora
+                      </span>
+                    </SelectItem>
+                    <div className="my-1 h-px bg-border" />
                     {sugestaoTransportadora && (
                       <SelectItem value={`id:${sugestaoTransportadora.id}`}>
                         <span className="flex items-center gap-2">
