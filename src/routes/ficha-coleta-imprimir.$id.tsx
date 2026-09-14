@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { getFichaColeta, registrarImpressaoFicha } from "@/lib/ficha-coleta.functions";
 import { FICHA_STATUS_LABEL, formatarCubagem, formatarPeso } from "@/lib/ficha-coleta";
 
-export const Route = createFileRoute("/ficha-coleta/$id/imprimir")({
+export const Route = createFileRoute("/ficha-coleta-imprimir/$id")({
   head: () => ({
     meta: [
       { title: "Imprimir Ficha de Coleta — CRM" },
