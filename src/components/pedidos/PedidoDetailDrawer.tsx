@@ -1612,12 +1612,15 @@ function PrazoCondicaoBlock({
 
         <Separator />
 
+        <div className="text-xs font-medium">Condição comercial</div>
         <div className="grid gap-2 sm:grid-cols-2">
           <div>
             <Label className="text-xs">Transportadora</Label>
             <Input
               className="h-9"
               value={transportadora}
+              readOnly={!podeComercial}
+              disabled={!podeComercial}
               onChange={(e) => setTransportadora(e.target.value)}
             />
           </div>
@@ -1626,19 +1629,28 @@ function PrazoCondicaoBlock({
             <Input
               className="h-9"
               value={obsCondicao}
+              readOnly={!podeComercial}
+              disabled={!podeComercial}
               onChange={(e) => setObsCondicao(e.target.value)}
               placeholder="O que mudou com o cliente"
             />
           </div>
         </div>
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={salvarCondicao.isPending}
-          onClick={() => salvarCondicao.mutate()}
-        >
-          Salvar condição negociada
-        </Button>
+        {podeComercial ? (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={salvarCondicao.isPending}
+            onClick={() => salvarCondicao.mutate()}
+          >
+            Salvar condição negociada
+          </Button>
+        ) : (
+          <p className="text-[11px] text-muted-foreground">
+            Transportadora e modalidade de entrega vêm da negociação: só o vendedor do pedido
+            (ou um administrador) pode alterar.
+          </p>
+        )}
       </div>
     </section>
   );
