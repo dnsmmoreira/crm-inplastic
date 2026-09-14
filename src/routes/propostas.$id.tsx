@@ -731,6 +731,78 @@ function PropostaDetalhe() {
     return _setStatus(...a);
   };
 
+  // Cadastro rápido de transportadora sem sair da proposta (a decisão de
+  // transportadora precisa estar fechada antes de virar pedido).
+  const criarTranspRapidaFn = useServerFn(criarTransportadoraRapida);
+  const lookupCnpjFn = useServerFn(lookupCnpj);
+  const [novaTranspAberto, setNovaTranspAberto] = useState(false);
+  const [novaTranspNome, setNovaTranspNome] = useState("");
+  const [novaTranspCnpj, setNovaTranspCnpj] = useState("");
+  const [novaTranspRazao, setNovaTranspRazao] = useState<string | null>(null);
+  const [novaTranspEndereco, setNovaTranspEndereco] = useState<Record<string, string> | null>(null);
+
+  const abrirNovaTransportadora = () => {
+    setNovaTranspNome("");
+    setNovaTranspCnpj("");
+    setNovaTranspRazao(null);
+    setNovaTranspEndereco(null);
+    setNovaTranspAberto(true);
+  };
+
+  const buscarCnpjTranspMut = useMutation({
+    mutationFn: (cnpj: string) => lookupCnpjFn({ data: { cnpj } }),
+    onSuccess: (r: {
+      razaoSocial?: string;
+      nomeFantasia?: string;
+      telefone?: string;
+      email?: string;
+      endereco?: Record<string, string>;
+    }) => {
+      const nome = (r.nomeFantasia || r.razaoSocial || "").trim();
+      if (nome) setNovaTranspNome(nome);
+      setNovaTranspRazao(r.razaoSocial?.trim() || null);
+      setNovaTranspEndereco({
+        ...(r.endereco ?? {}),
+        ...(r.telefone ? { telefone: r.telefone } : {}),
+        ...(r.email ? { email: r.email } : {}),
+      });
+      toast.success("Dados encontrados pelo CNPJ.");
+    },
+    onError: (err: Error) => toast.error(err.message || "Não foi possível consultar o CNPJ."),
+  });
+
+  const criarTranspRapidaMut = useMutation({
+    mutationFn: () =>
+      criarTranspRapidaFn({
+        data: {
+          nome: novaTranspNome.trim(),
+          cnpj: novaTranspCnpj.trim() || null,
+          razao_social: novaTranspRazao,
+          endereco: novaTranspEndereco,
+        },
+      }),
+    onSuccess: async (t: { id: string; nome: string; reaproveitada: boolean }) => {
+      await transportadorasQ.refetch();
+      if (proposal) {
+        updateProposal(proposal.id, {
+          transport: {
+            ...proposal.transport,
+            carrier: t.nome,
+            carrierTransportadoraId: t.id,
+          },
+        });
+      }
+      setNovaTranspAberto(false);
+      toast.success(
+        t.reaproveitada
+          ? `"${t.nome}" já estava cadastrada e foi selecionada.`
+          : `"${t.nome}" cadastrada e selecionada.`,
+      );
+    },
+    onError: (err: Error) => toast.error(err.message || "Não foi possível cadastrar."),
+  });
+
+
   /**
    * Gate de processo antes de enviar: sem tratativa comercial não sai proposta
    * (o servidor também recusa). Rola e foca o campo para o vendedor preencher.
