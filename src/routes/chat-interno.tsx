@@ -74,15 +74,17 @@ function ChatInternoPage() {
     tipo: "geral" | "direto";
   } | null>(null);
 
-  // Abre o Geral por padrão assim que a lista chega.
+  // Abre por padrão a primeira conversa que já existe (Geral, quando a pessoa
+  // é membro; senão a DM mais recente). Quem nunca conversou começa sem nada.
   useEffect(() => {
     if (selecionado || itens.length === 0) return;
-    const geral = itens[0]!;
+    const primeiro = itens.find((i) => i.canalId);
+    if (!primeiro) return;
     setSelecionado({
-      canalId: geral.canalId,
-      outroUserId: null,
-      titulo: geral.titulo,
-      tipo: geral.tipo,
+      canalId: primeiro.canalId,
+      outroUserId: primeiro.outroUserId,
+      titulo: primeiro.titulo,
+      tipo: primeiro.tipo,
     });
   }, [itens, selecionado]);
 
