@@ -97,6 +97,7 @@ import {
 import { formatCep } from "@/lib/format";
 import { useServerFn } from "@tanstack/react-start";
 import {
+  criarTransportadoraRapida,
   listarTransportadorasAtivas,
   sugerirTransportadora,
   type TransportadoraRow,
