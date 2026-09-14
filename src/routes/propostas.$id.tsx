@@ -100,7 +100,11 @@ import {
   sugerirTransportadora,
   type TransportadoraRow,
 } from "@/lib/transportadoras.functions";
-import { ehOpcaoEspecialTransporte, OPCOES_ESPECIAIS_TRANSPORTE } from "@/lib/transportadoras";
+import {
+  ehOpcaoEspecialTransporte,
+  ehTransportadoraADefinir,
+  OPCOES_ESPECIAIS_TRANSPORTE,
+} from "@/lib/transportadoras";
 import { cotarFreteLalamove } from "@/lib/lalamove.functions";
 import {
   formatarDistanciaLalamove,
