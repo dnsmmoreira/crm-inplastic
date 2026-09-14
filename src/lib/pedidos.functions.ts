@@ -603,9 +603,29 @@ export const updatePedidoStage = createServerFn({ method: "POST" })
     }
 
     // ── Bloco 5: responsável e dados de avanço ────────────────────────────
-    const { exigeResponsavel, faltamDados, MSG_SEM_RESPONSAVEL } = await import(
-      "@/lib/pedido-avanco"
-    );
+    const {
+      exigeResponsavel,
+      faltamDados,
+      entregaDefinida,
+      MSG_ENTREGA_COMERCIAL_FALTANDO,
+      MSG_SEM_RESPONSAVEL,
+    } = await import("@/lib/pedido-avanco");
+
+    // Pedido LEGADO sem decisão de entrega: não abre formulário para o
+    // operacional — trava o avanço e manda devolver ao vendedor.
+    if (
+      to === "pronto" &&
+      !entregaDefinida({
+        modalidade_entrega: current.modalidade_entrega as string | null,
+        transportadora: current.transportadora as string | null,
+      })
+    ) {
+      return {
+        ok: false,
+        reason: "invalid_transition",
+        message: MSG_ENTREGA_COMERCIAL_FALTANDO,
+      };
+    }
 
     let assumiu = false;
     // Admin (diretoria/administrativo) aprova e movimenta sem precisar assumir:
