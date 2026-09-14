@@ -167,6 +167,19 @@ export function calcularPendenciasPedido(input: PendenciaInput): Pendencia[] {
     );
   }
 
+  // Quem leva a mercadoria é decisão COMERCIAL: sem ela aqui, o dado acabaria
+  // sendo inventado pelo operacional na etapa "Coleta / Entrega".
+  if (
+    !ehRetirada(input.transporte) &&
+    !txt(input.transporte?.carrier) &&
+    !txt(input.transporte?.carrierTransportadoraId)
+  ) {
+    add(
+      "sem_transportadora",
+      "Escolha a transportadora da entrega, ou marque que o cliente retira / é veículo próprio.",
+    );
+  }
+
   if (!txt(input.expectedDeliveryDate)) {
     add("sem_previsao_entrega", "Informe a previsão de entrega da proposta.");
   }
