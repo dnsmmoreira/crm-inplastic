@@ -1832,11 +1832,21 @@ export const atualizarCondicaoNegociada = createServerFn({ method: "POST" })
 
     const { data: p, error } = await sb
       .from("pedidos")
-      .select("id, number, modalidade_entrega, transportadora, vendedor_proprietario_id")
+      .select(
+        "id, number, modalidade_entrega, transportadora, vendedor_proprietario_id, owner_id",
+      )
       .eq("id", data.pedido_id)
       .maybeSingle();
     if (error) throw new Error(`Falha ao carregar pedido: ${error.message}`);
     if (!p) throw new Error("Pedido não encontrado");
+
+    // Tratativa comercial é do vendedor: operacional não altera, nem com
+    // permissão de movimentar.
+    if (!(await podeEditarComercialDoPedido(sb, context.userId, p))) {
+      const { MSG_SEM_EDICAO_COMERCIAL } = await import("@/lib/pedidos-papeis");
+      throw new Error(MSG_SEM_EDICAO_COMERCIAL);
+    }
+
 
     const campos: Array<{ campo: "modalidade_entrega" | "transportadora"; label: string }> = [
       { campo: "modalidade_entrega", label: "Modalidade de entrega" },
