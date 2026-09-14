@@ -50,11 +50,11 @@ import { Route as PropostasIdRouteImport } from './routes/propostas.$id'
 import { Route as PropostaPublicaIdRouteImport } from './routes/proposta-publica.$id'
 import { Route as FichaColetaIdRouteImport } from './routes/ficha-coleta.$id'
 import { Route as FichaColetaPublicaIdRouteImport } from './routes/ficha-coleta-publica.$id'
+import { Route as FichaColetaImprimirIdRouteImport } from './routes/ficha-coleta-imprimir.$id'
 import { Route as ClientesIdRouteImport } from './routes/clientes.$id'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as RomaneioPedidoIdTipoRouteImport } from './routes/romaneio.$pedidoId.$tipo'
-import { Route as FichaColetaIdImprimirRouteImport } from './routes/ficha-coleta.$id.imprimir'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
@@ -282,6 +282,11 @@ const FichaColetaPublicaIdRoute = FichaColetaPublicaIdRouteImport.update({
   path: '/ficha-coleta-publica/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FichaColetaImprimirIdRoute = FichaColetaImprimirIdRouteImport.update({
+  id: '/ficha-coleta-imprimir/$id',
+  path: '/ficha-coleta-imprimir/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ClientesIdRoute = ClientesIdRouteImport.update({
   id: '/clientes/$id',
   path: '/clientes/$id',
@@ -303,11 +308,6 @@ const RomaneioPedidoIdTipoRoute = RomaneioPedidoIdTipoRouteImport.update({
   id: '/romaneio/$pedidoId/$tipo',
   path: '/romaneio/$pedidoId/$tipo',
   getParentRoute: () => rootRouteImport,
-} as any)
-const FichaColetaIdImprimirRoute = FichaColetaIdImprimirRouteImport.update({
-  id: '/imprimir',
-  path: '/imprimir',
-  getParentRoute: () => FichaColetaIdRoute,
 } as any)
 const Char91DotmcpChar93InvokeToolToolRoute =
   Char91DotmcpChar93InvokeToolToolRouteImport.update({
@@ -471,15 +471,15 @@ export interface FileRoutesByFullPath {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/clientes/$id': typeof ClientesIdRoute
+  '/ficha-coleta-imprimir/$id': typeof FichaColetaImprimirIdRoute
   '/ficha-coleta-publica/$id': typeof FichaColetaPublicaIdRoute
-  '/ficha-coleta/$id': typeof FichaColetaIdRouteWithChildren
+  '/ficha-coleta/$id': typeof FichaColetaIdRoute
   '/proposta-publica/$id': typeof PropostaPublicaIdRoute
   '/propostas/$id': typeof PropostasIdRoute
   '/clientes/': typeof ClientesIndexRoute
   '/propostas/': typeof PropostasIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
-  '/ficha-coleta/$id/imprimir': typeof FichaColetaIdImprimirRoute
   '/romaneio/$pedidoId/$tipo': typeof RomaneioPedidoIdTipoRoute
   '/api/public/hooks/carteira-reconciliacao': typeof ApiPublicHooksCarteiraReconciliacaoRoute
   '/api/public/hooks/chat-anexos-expurgo': typeof ApiPublicHooksChatAnexosExpurgoRoute
@@ -540,15 +540,15 @@ export interface FileRoutesByTo {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/clientes/$id': typeof ClientesIdRoute
+  '/ficha-coleta-imprimir/$id': typeof FichaColetaImprimirIdRoute
   '/ficha-coleta-publica/$id': typeof FichaColetaPublicaIdRoute
-  '/ficha-coleta/$id': typeof FichaColetaIdRouteWithChildren
+  '/ficha-coleta/$id': typeof FichaColetaIdRoute
   '/proposta-publica/$id': typeof PropostaPublicaIdRoute
   '/propostas/$id': typeof PropostasIdRoute
   '/clientes': typeof ClientesIndexRoute
   '/propostas': typeof PropostasIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
-  '/ficha-coleta/$id/imprimir': typeof FichaColetaIdImprimirRoute
   '/romaneio/$pedidoId/$tipo': typeof RomaneioPedidoIdTipoRoute
   '/api/public/hooks/carteira-reconciliacao': typeof ApiPublicHooksCarteiraReconciliacaoRoute
   '/api/public/hooks/chat-anexos-expurgo': typeof ApiPublicHooksChatAnexosExpurgoRoute
@@ -610,15 +610,15 @@ export interface FileRoutesById {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/clientes/$id': typeof ClientesIdRoute
+  '/ficha-coleta-imprimir/$id': typeof FichaColetaImprimirIdRoute
   '/ficha-coleta-publica/$id': typeof FichaColetaPublicaIdRoute
-  '/ficha-coleta/$id': typeof FichaColetaIdRouteWithChildren
+  '/ficha-coleta/$id': typeof FichaColetaIdRoute
   '/proposta-publica/$id': typeof PropostaPublicaIdRoute
   '/propostas/$id': typeof PropostasIdRoute
   '/clientes/': typeof ClientesIndexRoute
   '/propostas/': typeof PropostasIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
-  '/ficha-coleta/$id/imprimir': typeof FichaColetaIdImprimirRoute
   '/romaneio/$pedidoId/$tipo': typeof RomaneioPedidoIdTipoRoute
   '/api/public/hooks/carteira-reconciliacao': typeof ApiPublicHooksCarteiraReconciliacaoRoute
   '/api/public/hooks/chat-anexos-expurgo': typeof ApiPublicHooksChatAnexosExpurgoRoute
@@ -681,6 +681,7 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/clientes/$id'
+    | '/ficha-coleta-imprimir/$id'
     | '/ficha-coleta-publica/$id'
     | '/ficha-coleta/$id'
     | '/proposta-publica/$id'
@@ -689,7 +690,6 @@ export interface FileRouteTypes {
     | '/propostas/'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
-    | '/ficha-coleta/$id/imprimir'
     | '/romaneio/$pedidoId/$tipo'
     | '/api/public/hooks/carteira-reconciliacao'
     | '/api/public/hooks/chat-anexos-expurgo'
@@ -750,6 +750,7 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/clientes/$id'
+    | '/ficha-coleta-imprimir/$id'
     | '/ficha-coleta-publica/$id'
     | '/ficha-coleta/$id'
     | '/proposta-publica/$id'
@@ -758,7 +759,6 @@ export interface FileRouteTypes {
     | '/propostas'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
-    | '/ficha-coleta/$id/imprimir'
     | '/romaneio/$pedidoId/$tipo'
     | '/api/public/hooks/carteira-reconciliacao'
     | '/api/public/hooks/chat-anexos-expurgo'
@@ -819,6 +819,7 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/clientes/$id'
+    | '/ficha-coleta-imprimir/$id'
     | '/ficha-coleta-publica/$id'
     | '/ficha-coleta/$id'
     | '/proposta-publica/$id'
@@ -827,7 +828,6 @@ export interface FileRouteTypes {
     | '/propostas/'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
-    | '/ficha-coleta/$id/imprimir'
     | '/romaneio/$pedidoId/$tipo'
     | '/api/public/hooks/carteira-reconciliacao'
     | '/api/public/hooks/chat-anexos-expurgo'
@@ -889,8 +889,9 @@ export interface RootRouteChildren {
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   ClientesIdRoute: typeof ClientesIdRoute
+  FichaColetaImprimirIdRoute: typeof FichaColetaImprimirIdRoute
   FichaColetaPublicaIdRoute: typeof FichaColetaPublicaIdRoute
-  FichaColetaIdRoute: typeof FichaColetaIdRouteWithChildren
+  FichaColetaIdRoute: typeof FichaColetaIdRoute
   PropostaPublicaIdRoute: typeof PropostaPublicaIdRoute
   PropostasIdRoute: typeof PropostasIdRoute
   ClientesIndexRoute: typeof ClientesIndexRoute
@@ -1208,6 +1209,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FichaColetaPublicaIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/ficha-coleta-imprimir/$id': {
+      id: '/ficha-coleta-imprimir/$id'
+      path: '/ficha-coleta-imprimir/$id'
+      fullPath: '/ficha-coleta-imprimir/$id'
+      preLoaderRoute: typeof FichaColetaImprimirIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/clientes/$id': {
       id: '/clientes/$id'
       path: '/clientes/$id'
@@ -1235,13 +1243,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/romaneio/$pedidoId/$tipo'
       preLoaderRoute: typeof RomaneioPedidoIdTipoRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/ficha-coleta/$id/imprimir': {
-      id: '/ficha-coleta/$id/imprimir'
-      path: '/imprimir'
-      fullPath: '/ficha-coleta/$id/imprimir'
-      preLoaderRoute: typeof FichaColetaIdImprimirRouteImport
-      parentRoute: typeof FichaColetaIdRoute
     }
     '/.mcp/invoke-tool/$tool': {
       id: '/.mcp/invoke-tool/$tool'
@@ -1393,18 +1394,6 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface FichaColetaIdRouteChildren {
-  FichaColetaIdImprimirRoute: typeof FichaColetaIdImprimirRoute
-}
-
-const FichaColetaIdRouteChildren: FichaColetaIdRouteChildren = {
-  FichaColetaIdImprimirRoute: FichaColetaIdImprimirRoute,
-}
-
-const FichaColetaIdRouteWithChildren = FichaColetaIdRoute._addFileChildren(
-  FichaColetaIdRouteChildren,
-)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AceitarConviteRoute: AceitarConviteRoute,
@@ -1445,8 +1434,9 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   ClientesIdRoute: ClientesIdRoute,
+  FichaColetaImprimirIdRoute: FichaColetaImprimirIdRoute,
   FichaColetaPublicaIdRoute: FichaColetaPublicaIdRoute,
-  FichaColetaIdRoute: FichaColetaIdRouteWithChildren,
+  FichaColetaIdRoute: FichaColetaIdRoute,
   PropostaPublicaIdRoute: PropostaPublicaIdRoute,
   PropostasIdRoute: PropostasIdRoute,
   ClientesIndexRoute: ClientesIndexRoute,
