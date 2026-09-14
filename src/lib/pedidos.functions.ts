@@ -1804,9 +1804,26 @@ export const definirPrazoRealEntrega = createServerFn({ method: "POST" })
   });
 
 /**
- * Condição negociada real do pedido (modalidade de entrega e transportadora),
- * alterada pelo Operacional depois da venda. Registra no log e avisa o vendedor
- * com pop-up de aceite obrigatório.
+ * Quem pode mexer na tratativa comercial do pedido: admin ou o vendedor dono.
+ * Operacional com `pedidos.movimentar`/`pedidos.operar_producao` NÃO pode.
+ */
+async function podeEditarComercialDoPedido(
+  sb: LooseClient,
+  userId: string,
+  pedido: { vendedor_proprietario_id?: string | null; owner_id?: string | null },
+): Promise<boolean> {
+  const { podeEditarComercialPedido } = await import("@/lib/pedidos-papeis");
+  const dono = pedido.vendedor_proprietario_id ?? pedido.owner_id ?? null;
+  return podeEditarComercialPedido({
+    isAdmin: await isAdminUser(sb, userId),
+    isVendedorDono: Boolean(dono && dono === userId),
+  });
+}
+
+/**
+ * Condição negociada real do pedido (modalidade de entrega e transportadora).
+ * Só o vendedor dono (ou admin) altera — é tratativa comercial. Registra no
+ * log e avisa o vendedor com pop-up de aceite obrigatório.
  */
 export const atualizarCondicaoNegociada = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -1997,6 +2014,19 @@ export const setModalidadeEntrega = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const sb: LooseClient = context.supabase;
+
+    const { data: atual, error: loadErr } = await sb
+      .from("pedidos")
+      .select("id, vendedor_proprietario_id, owner_id")
+      .eq("id", data.pedido_id)
+      .maybeSingle();
+    if (loadErr) throw new Error(`Falha ao carregar pedido: ${loadErr.message}`);
+    if (!atual) throw new Error("Pedido não encontrado");
+    if (!(await podeEditarComercialDoPedido(sb, context.userId, atual))) {
+      const { MSG_SEM_EDICAO_COMERCIAL } = await import("@/lib/pedidos-papeis");
+      throw new Error(MSG_SEM_EDICAO_COMERCIAL);
+    }
+
     const { data: row, error } = await sb
       .from("pedidos")
       .update({ modalidade_entrega: data.modalidade })
