@@ -74,6 +74,50 @@ export function ehImagemAnexo(mime: string | null | undefined): boolean {
   return (mime ?? "").toLowerCase().startsWith("image/");
 }
 
+export function ehPdfAnexo(
+  mime: string | null | undefined,
+  nome?: string | null | undefined,
+): boolean {
+  const m = (mime ?? "").toLowerCase();
+  if (m.includes("pdf")) return true;
+  return (nome ?? "").toLowerCase().trim().endsWith(".pdf");
+}
+
+/* ------------------------------------------- histórico paginado e busca */
+
+/** Quantas mensagens carregam por página do histórico (as mais recentes primeiro). */
+export const PAGINA_HISTORICO_CHAT = 40;
+
+/** Quantos resultados por página na busca. */
+export const PAGINA_BUSCA_CHAT = 20;
+
+/**
+ * Junta páginas antigas ao histórico já em tela: sem duplicar id e sempre em
+ * ordem cronológica crescente (a tela rola do mais antigo para o mais novo).
+ */
+export function mesclarHistorico<T extends { id: string; criado_em: string }>(
+  atuais: readonly T[],
+  novas: readonly T[],
+): T[] {
+  const porId = new Map<string, T>();
+  for (const m of [...novas, ...atuais]) porId.set(m.id, m);
+  return [...porId.values()].sort(
+    (a, b) => new Date(a.criado_em).getTime() - new Date(b.criado_em).getTime(),
+  );
+}
+
+/** Escapa curingas do `ilike` para que `%` e `_` digitados sejam literais. */
+export function escaparCuringaBusca(termo: string): string {
+  return termo.replace(/[\\%_]/g, (c) => `\\${c}`);
+}
+
+/** Termo pronto para busca, ou `null` quando é curto demais para valer a pena. */
+export function prepararBusca(bruto: string): string | null {
+  const t = (bruto ?? "").trim();
+  if (t.length < 2) return null;
+  return escaparCuringaBusca(t).slice(0, 120);
+}
+
 /** Retorna a mensagem de erro, ou `null` quando o arquivo pode subir. */
 export function validarAnexoChat(file: { size: number; type: string }): string | null {
   if (file.size <= 0) return "Arquivo vazio.";
