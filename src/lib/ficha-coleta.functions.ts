@@ -469,7 +469,9 @@ export const emitirFichaColeta = createServerFn({ method: "POST" })
       totais,
     };
 
-    const { error } = await sb
+    // Igual ao rollback da devolução: RLS pode recusar em silêncio (0 linhas,
+    // sem erro). Só confirmamos a emissão se a linha realmente foi gravada.
+    const { data: emitidas, error } = await sb
       .from("fichas_coleta")
       .update({
         status: "emitida",
@@ -480,8 +482,19 @@ export const emitirFichaColeta = createServerFn({ method: "POST" })
         emitida_por: context.userId,
       })
       .eq("id", ficha.id)
-      .eq("status", "rascunho");
+      .eq("status", "rascunho")
+      .select("id");
     if (error) throw new Error(`Falha ao emitir a ficha: ${error.message}`);
+    if (!Array.isArray(emitidas) || emitidas.length === 0) {
+      const { registrarFalhaSegura } = await import("@/lib/guard-erros");
+      await registrarFalhaSegura("ficha_coleta_emissao", "update não afetou nenhuma linha", {
+        ficha_id: ficha.id,
+        numero: ficha.numero,
+      });
+      throw new Error(
+        "A ficha não pôde ser emitida (o banco não aceitou a gravação). Nada foi alterado — avise o administrador.",
+      );
+    }
 
     await registrarHistorico(sb, context.userId, {
       fichaId: ficha.id,
@@ -525,12 +538,24 @@ export const mudarStatusFichaColeta = createServerFn({ method: "POST" })
       patch.cancelamento_motivo = data.motivo?.trim() ?? null;
     }
 
-    const { error } = await sb
+    const { data: alteradas, error } = await sb
       .from("fichas_coleta")
       .update(patch)
       .eq("id", ficha.id)
-      .eq("status", ficha.status);
+      .eq("status", ficha.status)
+      .select("id");
     if (error) throw new Error(`Falha ao atualizar o status: ${error.message}`);
+    if (!Array.isArray(alteradas) || alteradas.length === 0) {
+      const { registrarFalhaSegura } = await import("@/lib/guard-erros");
+      await registrarFalhaSegura("ficha_coleta_status", "update não afetou nenhuma linha", {
+        ficha_id: ficha.id,
+        de: ficha.status,
+        para: data.status,
+      });
+      throw new Error(
+        "O status não pôde ser alterado (o banco não aceitou a gravação ou a ficha mudou em outra tela). Recarregue e tente de novo.",
+      );
+    }
 
     await registrarHistorico(sb, context.userId, {
       fichaId: ficha.id,

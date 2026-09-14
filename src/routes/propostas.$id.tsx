@@ -100,7 +100,11 @@ import {
   sugerirTransportadora,
   type TransportadoraRow,
 } from "@/lib/transportadoras.functions";
-import { ehOpcaoEspecialTransporte, OPCOES_ESPECIAIS_TRANSPORTE } from "@/lib/transportadoras";
+import {
+  ehOpcaoEspecialTransporte,
+  ehTransportadoraADefinir,
+  OPCOES_ESPECIAIS_TRANSPORTE,
+} from "@/lib/transportadoras";
 import { cotarFreteLalamove } from "@/lib/lalamove.functions";
 import {
   formatarDistanciaLalamove,
@@ -2158,7 +2162,9 @@ function PropostaDetalhe() {
                         <span className="flex items-center gap-2">
                           {o}
                           <span className="text-[10px] text-muted-foreground">
-                            (sem transportadora)
+                            {ehTransportadoraADefinir(o)
+                              ? "(coleta — cliente informa a transportadora)"
+                              : "(sem transportadora)"}
                           </span>
                         </span>
                       </SelectItem>

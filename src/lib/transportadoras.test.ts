@@ -15,8 +15,8 @@ describe("normalizarUf", () => {
 });
 
 describe("opções especiais", () => {
-  it("reconhece as duas fixas, sem depender de caixa", () => {
-    expect(OPCOES_ESPECIAIS_TRANSPORTE).toHaveLength(2);
+  it("reconhece as fixas, sem depender de caixa", () => {
+    expect(OPCOES_ESPECIAIS_TRANSPORTE).toHaveLength(3);
     expect(ehOpcaoEspecialTransporte("cliente retira")).toBe(true);
     expect(ehOpcaoEspecialTransporte("Veículo próprio")).toBe(true);
     expect(ehOpcaoEspecialTransporte("Transportadora X")).toBe(false);
