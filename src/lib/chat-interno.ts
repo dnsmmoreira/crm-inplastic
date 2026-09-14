@@ -187,16 +187,15 @@ export function resumirPorCanal(
 }
 
 /**
- * Monta a lista da coluna esquerda: "Geral" sempre no topo, depois as pessoas
- * ordenadas por mensagem mais recente; quem nunca conversou vai para o fim,
- * em ordem alfabética.
+ * Monta a lista da coluna esquerda: canais fixos ("Geral" e grupos nomeados)
+ * no topo, depois as pessoas ordenadas por mensagem mais recente; quem nunca
+ * conversou vai para o fim, em ordem alfabética.
  */
 export function montarListaChat(
   pessoas: readonly ChatPessoa[],
   canais: readonly ChatCanalResumo[],
   euId: string,
 ): ChatItemLista[] {
-  const geral = canais.find((c) => c.tipo === "geral") ?? null;
   const porPessoa = new Map<string, ChatCanalResumo>();
   for (const c of canais) {
     if (c.tipo === "direto" && c.outroUserId) porPessoa.set(c.outroUserId, c);
@@ -226,23 +225,28 @@ export function montarListaChat(
       return a.titulo.localeCompare(b.titulo, "pt-BR");
     });
 
-  // O canal "Geral" só aparece para quem é membro dele (a lista de canais já
-  // chega filtrada por RLS). Sem canal, não existe item — nada de item morto.
-  if (!geral) return diretos;
+  // Canais fixos só aparecem para quem é membro (a lista de canais já chega
+  // filtrada por RLS). Sem canal, não existe item — nada de item morto.
+  const fixos: ChatItemLista[] = canais
+    .filter((c) => c.tipo === "geral" || c.tipo === "grupo")
+    .map((c) => ({
+      canalId: c.canalId,
+      tipo: c.tipo,
+      titulo: c.tipo === "geral" ? "Geral" : (c.nome ?? "Grupo"),
+      outroUserId: null,
+      avatarColor: null,
+      ultimaMensagemEm: c.ultimaMensagemEm,
+      ultimaMensagemTexto: c.ultimaMensagemTexto,
+      naoLidas: c.naoLidas,
+    }))
+    .sort((a, b) => {
+      if (a.tipo !== b.tipo) return a.tipo === "geral" ? -1 : 1;
+      return a.titulo.localeCompare(b.titulo, "pt-BR");
+    });
 
-  const itemGeral: ChatItemLista = {
-    canalId: geral.canalId,
-    tipo: "geral",
-    titulo: "Geral",
-    outroUserId: null,
-    avatarColor: null,
-    ultimaMensagemEm: geral.ultimaMensagemEm,
-    ultimaMensagemTexto: geral.ultimaMensagemTexto,
-    naoLidas: geral.naoLidas,
-  };
-
-  return [itemGeral, ...diretos];
+  return [...fixos, ...diretos];
 }
+
 
 export function totalNaoLidas(itens: readonly ChatItemLista[]): number {
   return itens.reduce((acc, i) => acc + i.naoLidas, 0);
