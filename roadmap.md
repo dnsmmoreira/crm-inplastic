@@ -1,3 +1,9 @@
+## Chat Interno — Grupo Comercial + anexos (concluído, não publicado)
+- [x] Canal 'grupo' + "Grupo Comercial" com todos os ativos e entrada automática
+- [x] Anexos (15 MB, imagem/PDF/office/csv) no bucket privado chat-anexos com RLS por membro
+- [x] URL assinada gerada só quando a bolha entra na tela
+- [x] Expurgo diário 06:00 UTC (cron interno) apaga anexo com mais de 15 dias, mensagem permanece
+
 
 ## Bloco 7 — acabamento "Nada fica sem próximo ato" (concluído)
 - Vencimento por rolagens (tarefa-vencimento.ts) em E1, painel Equipe, fechamento e Minha Agenda

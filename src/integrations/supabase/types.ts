@@ -559,6 +559,10 @@ export type Database = {
       }
       chat_mensagens: {
         Row: {
+          anexo_nome: string | null
+          anexo_path: string | null
+          anexo_tamanho_bytes: number | null
+          anexo_tipo: string | null
           autor_user_id: string
           canal_id: string
           conteudo: string
@@ -566,6 +570,10 @@ export type Database = {
           id: string
         }
         Insert: {
+          anexo_nome?: string | null
+          anexo_path?: string | null
+          anexo_tamanho_bytes?: number | null
+          anexo_tipo?: string | null
           autor_user_id: string
           canal_id: string
           conteudo: string
@@ -573,6 +581,10 @@ export type Database = {
           id?: string
         }
         Update: {
+          anexo_nome?: string | null
+          anexo_path?: string | null
+          anexo_tamanho_bytes?: number | null
+          anexo_tipo?: string | null
           autor_user_id?: string
           canal_id?: string
           conteudo?: string
@@ -3673,6 +3685,7 @@ export type Database = {
           vendedor_id: string
         }[]
       }
+      pode_acessar_anexo_chat: { Args: { _name: string }; Returns: boolean }
       pode_acessar_arquivo_documento: {
         Args: { _editar: boolean; _name: string }
         Returns: boolean
