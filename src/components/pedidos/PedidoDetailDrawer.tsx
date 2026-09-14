@@ -28,6 +28,7 @@ import {
 import { rotuloMeioAprovacao } from "@/lib/pedido-pendencias";
 import { DocumentosSection } from "@/components/documentos/DocumentosSection";
 import { RomaneiosBlock } from "@/components/pedidos/RomaneiosBlock";
+import { FichaColetaBlock } from "@/components/pedidos/FichaColetaBlock";
 import { RomaneiosPosPedidoDialog } from "@/components/pedidos/RomaneiosPosPedidoDialog";
 import {
   AlertDialog,
@@ -257,6 +258,7 @@ function PedidoDetailBody({
               <DocumentosBlock pedido={pedido} />
 
               <RomaneiosBlock pedidoId={pedido.id} />
+              <FichaColetaBlock pedidoId={pedido.id} />
               <ChecklistBlock pedido={pedido} onChanged={onChanged} />
               <FiscalBlock pedido={pedido} onChanged={onChanged} />
               <OcorrenciasBlock pedido={pedido} onChanged={onChanged} />

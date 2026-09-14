@@ -929,8 +929,11 @@ export type Database = {
           brand: string
           cnpj: string
           conta: string | null
+          contato_coleta_nome: string | null
+          contato_coleta_telefone: string | null
           created_at: string
           email: string | null
+          endereco_coleta: string | null
           id: string
           ie: string | null
           is_default: boolean
@@ -949,8 +952,11 @@ export type Database = {
           brand: string
           cnpj: string
           conta?: string | null
+          contato_coleta_nome?: string | null
+          contato_coleta_telefone?: string | null
           created_at?: string
           email?: string | null
+          endereco_coleta?: string | null
           id: string
           ie?: string | null
           is_default?: boolean
@@ -969,8 +975,11 @@ export type Database = {
           brand?: string
           cnpj?: string
           conta?: string | null
+          contato_coleta_nome?: string | null
+          contato_coleta_telefone?: string | null
           created_at?: string
           email?: string | null
+          endereco_coleta?: string | null
           id?: string
           ie?: string | null
           is_default?: boolean
@@ -1016,6 +1025,227 @@ export type Database = {
           resolvido_por?: string | null
         }
         Relationships: []
+      }
+      ficha_coleta_historico: {
+        Row: {
+          created_at: string
+          criada_por: string | null
+          descricao: string
+          ficha_id: string
+          id: string
+          status_anterior: string | null
+          status_novo: string | null
+          tipo: string
+        }
+        Insert: {
+          created_at?: string
+          criada_por?: string | null
+          descricao?: string
+          ficha_id: string
+          id?: string
+          status_anterior?: string | null
+          status_novo?: string | null
+          tipo: string
+        }
+        Update: {
+          created_at?: string
+          criada_por?: string | null
+          descricao?: string
+          ficha_id?: string
+          id?: string
+          status_anterior?: string | null
+          status_novo?: string | null
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ficha_coleta_historico_ficha_id_fkey"
+            columns: ["ficha_id"]
+            isOneToOne: false
+            referencedRelation: "fichas_coleta"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ficha_coleta_itens: {
+        Row: {
+          created_at: string
+          cubagem_m3: number | null
+          cubagem_manual: boolean
+          descricao: string
+          ficha_id: string
+          id: string
+          peso_kg: number | null
+          peso_manual: boolean
+          position: number
+          produto_id: string | null
+          quantidade: number
+          sku: string | null
+          unidade: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          cubagem_m3?: number | null
+          cubagem_manual?: boolean
+          descricao?: string
+          ficha_id: string
+          id?: string
+          peso_kg?: number | null
+          peso_manual?: boolean
+          position?: number
+          produto_id?: string | null
+          quantidade?: number
+          sku?: string | null
+          unidade?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          cubagem_m3?: number | null
+          cubagem_manual?: boolean
+          descricao?: string
+          ficha_id?: string
+          id?: string
+          peso_kg?: number | null
+          peso_manual?: boolean
+          position?: number
+          produto_id?: string | null
+          quantidade?: number
+          sku?: string | null
+          unidade?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ficha_coleta_itens_ficha_id_fkey"
+            columns: ["ficha_id"]
+            isOneToOne: false
+            referencedRelation: "fichas_coleta"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fichas_coleta: {
+        Row: {
+          cancelada_em: string | null
+          cancelada_por: string | null
+          cancelamento_motivo: string | null
+          coletada_em: string | null
+          coletada_por: string | null
+          contato_nome: string | null
+          contato_telefone: string | null
+          created_at: string
+          created_by: string | null
+          cubagem_m3: number
+          em_coleta_em: string | null
+          emitida_em: string | null
+          emitida_por: string | null
+          emitter_id: string | null
+          id: string
+          modalidade_entrega: string | null
+          motorista: string | null
+          numero: string
+          observacoes: string | null
+          pedido_id: string
+          peso_total_kg: number
+          placa: string | null
+          previsao_coleta_data: string | null
+          previsao_coleta_hora: string | null
+          snapshot: Json | null
+          status: string
+          transportadora_id: string | null
+          transportadora_nome: string | null
+          updated_at: string
+          volumes: string | null
+        }
+        Insert: {
+          cancelada_em?: string | null
+          cancelada_por?: string | null
+          cancelamento_motivo?: string | null
+          coletada_em?: string | null
+          coletada_por?: string | null
+          contato_nome?: string | null
+          contato_telefone?: string | null
+          created_at?: string
+          created_by?: string | null
+          cubagem_m3?: number
+          em_coleta_em?: string | null
+          emitida_em?: string | null
+          emitida_por?: string | null
+          emitter_id?: string | null
+          id?: string
+          modalidade_entrega?: string | null
+          motorista?: string | null
+          numero: string
+          observacoes?: string | null
+          pedido_id: string
+          peso_total_kg?: number
+          placa?: string | null
+          previsao_coleta_data?: string | null
+          previsao_coleta_hora?: string | null
+          snapshot?: Json | null
+          status?: string
+          transportadora_id?: string | null
+          transportadora_nome?: string | null
+          updated_at?: string
+          volumes?: string | null
+        }
+        Update: {
+          cancelada_em?: string | null
+          cancelada_por?: string | null
+          cancelamento_motivo?: string | null
+          coletada_em?: string | null
+          coletada_por?: string | null
+          contato_nome?: string | null
+          contato_telefone?: string | null
+          created_at?: string
+          created_by?: string | null
+          cubagem_m3?: number
+          em_coleta_em?: string | null
+          emitida_em?: string | null
+          emitida_por?: string | null
+          emitter_id?: string | null
+          id?: string
+          modalidade_entrega?: string | null
+          motorista?: string | null
+          numero?: string
+          observacoes?: string | null
+          pedido_id?: string
+          peso_total_kg?: number
+          placa?: string | null
+          previsao_coleta_data?: string | null
+          previsao_coleta_hora?: string | null
+          snapshot?: Json | null
+          status?: string
+          transportadora_id?: string | null
+          transportadora_nome?: string | null
+          updated_at?: string
+          volumes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fichas_coleta_emitter_id_fkey"
+            columns: ["emitter_id"]
+            isOneToOne: false
+            referencedRelation: "emitters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fichas_coleta_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fichas_coleta_transportadora_id_fkey"
+            columns: ["transportadora_id"]
+            isOneToOne: false
+            referencedRelation: "transportadoras"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       fila_estado: {
         Row: {
@@ -2851,24 +3081,63 @@ export type Database = {
       }
       transportadoras: {
         Row: {
+          abrangencia_ufs: string[]
           ativo: boolean
+          bairro: string | null
+          cep: string | null
+          cidade: string | null
+          cnpj: string | null
+          complemento: string | null
           created_at: string
+          email: string | null
           id: string
+          ie: string | null
+          logradouro: string | null
           nome: string
+          numero: string | null
+          razao_social: string | null
+          telefone: string | null
+          uf: string | null
           updated_at: string
         }
         Insert: {
+          abrangencia_ufs?: string[]
           ativo?: boolean
+          bairro?: string | null
+          cep?: string | null
+          cidade?: string | null
+          cnpj?: string | null
+          complemento?: string | null
           created_at?: string
+          email?: string | null
           id?: string
+          ie?: string | null
+          logradouro?: string | null
           nome: string
+          numero?: string | null
+          razao_social?: string | null
+          telefone?: string | null
+          uf?: string | null
           updated_at?: string
         }
         Update: {
+          abrangencia_ufs?: string[]
           ativo?: boolean
+          bairro?: string | null
+          cep?: string | null
+          cidade?: string | null
+          cnpj?: string | null
+          complemento?: string | null
           created_at?: string
+          email?: string | null
           id?: string
+          ie?: string | null
+          logradouro?: string | null
           nome?: string
+          numero?: string | null
+          razao_social?: string | null
+          telefone?: string | null
+          uf?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -3654,6 +3923,7 @@ export type Database = {
         Args: { _lead_id: string; _origem?: string; _stage: string }
         Returns: Json
       }
+      next_ficha_coleta_number: { Args: { _year: number }; Returns: string }
       next_pedido_number: { Args: { _year: number }; Returns: string }
       next_proposta_number: { Args: { _year: number }; Returns: string }
       placar_vendedores: {
@@ -3688,6 +3958,10 @@ export type Database = {
       pode_acessar_anexo_chat: { Args: { _name: string }; Returns: boolean }
       pode_acessar_arquivo_documento: {
         Args: { _editar: boolean; _name: string }
+        Returns: boolean
+      }
+      pode_acessar_ficha_pedido: {
+        Args: { _pedido_id: string }
         Returns: boolean
       }
       pode_editar_documento: {

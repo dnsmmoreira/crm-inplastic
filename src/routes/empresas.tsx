@@ -133,6 +133,9 @@ function EmitterForm({
       agencia: form.agencia?.trim() ?? "",
       conta: form.conta?.trim() ?? "",
       pix: form.pix?.trim() ?? "",
+      contatoColetaNome: form.contatoColetaNome?.trim() ?? "",
+      contatoColetaTelefone: form.contatoColetaTelefone?.trim() ?? "",
+      enderecoColeta: form.enderecoColeta?.trim() ?? "",
     });
     setDirty(false);
     toast.success(`Dados de ${form.brand} atualizados.`);
@@ -265,6 +268,42 @@ function EmitterForm({
                 Aparece no bloco "Dados para pagamento" da proposta impressa.
               </p>
             </div>
+          </div>
+        </section>
+
+        <section className="space-y-3">
+          <div className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+            Coleta / expedição
+          </div>
+          <div className="grid md:grid-cols-2 gap-3">
+            <div>
+              <Label>Contato responsável (padrão)</Label>
+              <Input
+                value={form.contatoColetaNome ?? ""}
+                onChange={(e) => patch("contatoColetaNome", e.target.value)}
+                placeholder="Ex: Bruna"
+              />
+            </div>
+            <div>
+              <Label>Telefone do contato</Label>
+              <Input
+                value={form.contatoColetaTelefone ?? ""}
+                onChange={(e) => patch("contatoColetaTelefone", e.target.value)}
+                placeholder="Ex: (11) 2574-1360"
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Vem preenchido na Ficha de Coleta e pode ser trocado a cada ficha.
+              </p>
+            </div>
+          </div>
+          <div>
+            <Label>Endereço de coleta (se diferente do fiscal)</Label>
+            <Textarea
+              rows={2}
+              value={form.enderecoColeta ?? ""}
+              onChange={(e) => patch("enderecoColeta", e.target.value)}
+              placeholder="Deixe em branco para usar o endereço acima"
+            />
           </div>
         </section>
 

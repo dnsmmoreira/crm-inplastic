@@ -214,6 +214,10 @@ function rowToEmitter(r: EmitterRow): EmitterProfile {
     agencia: (r as { agencia?: string | null }).agencia ?? undefined,
     conta: (r as { conta?: string | null }).conta ?? undefined,
     pix: (r as { pix?: string | null }).pix ?? undefined,
+    contatoColetaNome: (r as { contato_coleta_nome?: string | null }).contato_coleta_nome ?? undefined,
+    contatoColetaTelefone:
+      (r as { contato_coleta_telefone?: string | null }).contato_coleta_telefone ?? undefined,
+    enderecoColeta: (r as { endereco_coleta?: string | null }).endereco_coleta ?? undefined,
   };
 }
 function emitterToInsert(e: EmitterProfile, isDefault: boolean): EmitterInsert {
@@ -234,6 +238,9 @@ function emitterToInsert(e: EmitterProfile, isDefault: boolean): EmitterInsert {
     agencia: e.agencia ?? null,
     conta: e.conta ?? null,
     pix: e.pix ?? null,
+    contato_coleta_nome: e.contatoColetaNome ?? null,
+    contato_coleta_telefone: e.contatoColetaTelefone ?? null,
+    endereco_coleta: e.enderecoColeta ?? null,
   } as EmitterInsert;
 }
 
@@ -665,7 +672,7 @@ export async function hydrateCrmForUser(userId: string, role: "admin" | "vendedo
 const COLS_PRODUTOS =
   "id,sku,name,description,unit,weight_kg,height_cm,width_cm,length_cm,ncm,default_price,active,pecas_por_coluna,stack_height_cm,family,familia,created_at";
 const COLS_EMITTERS =
-  "id,brand,tagline,legal_name,cnpj,ie,address,phone,whatsapp,email,website,is_default,banco,agencia,conta,pix";
+  "id,brand,tagline,legal_name,cnpj,ie,address,phone,whatsapp,email,website,is_default,banco,agencia,conta,pix,contato_coleta_nome,contato_coleta_telefone,endereco_coleta";
 const COLS_TERMOS =
   "id,label,method,splits,notes,active,permite_pf,acrescimo_percent,max_parcelas,juros_compostos,cartao_taxa_base_percent,parcelas,ordem";
 const COLS_LEADS =

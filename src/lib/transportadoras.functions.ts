@@ -8,14 +8,47 @@ export type TransportadoraRow = {
   id: string;
   nome: string;
   ativo: boolean;
+  cnpj?: string | null;
+  razao_social?: string | null;
+  ie?: string | null;
+  cep?: string | null;
+  logradouro?: string | null;
+  numero?: string | null;
+  complemento?: string | null;
+  bairro?: string | null;
+  cidade?: string | null;
+  uf?: string | null;
+  telefone?: string | null;
+  email?: string | null;
+  abrangencia_ufs?: string[];
 };
+
+const COLS_TRANSP =
+  "id, nome, ativo, cnpj, razao_social, ie, cep, logradouro, numero, complemento, bairro, cidade, uf, telefone, email, abrangencia_ufs";
+
+const dadosTransportadora = z.object({
+  nome: z.string().trim().min(2).max(120),
+  cnpj: z.string().trim().max(20).nullable().optional(),
+  razao_social: z.string().trim().max(160).nullable().optional(),
+  ie: z.string().trim().max(40).nullable().optional(),
+  cep: z.string().trim().max(12).nullable().optional(),
+  logradouro: z.string().trim().max(160).nullable().optional(),
+  numero: z.string().trim().max(20).nullable().optional(),
+  complemento: z.string().trim().max(80).nullable().optional(),
+  bairro: z.string().trim().max(80).nullable().optional(),
+  cidade: z.string().trim().max(80).nullable().optional(),
+  uf: z.string().trim().max(2).nullable().optional(),
+  telefone: z.string().trim().max(40).nullable().optional(),
+  email: z.string().trim().max(160).nullable().optional(),
+  abrangencia_ufs: z.array(z.string().trim().length(2)).max(27).optional(),
+});
 
 export const listarTransportadoras = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("transportadoras")
-      .select("id, nome, ativo")
+      .select(COLS_TRANSP)
       .order("nome", { ascending: true });
     if (error) throw new Error(error.message);
     return (data ?? []) as TransportadoraRow[];
@@ -26,7 +59,7 @@ export const listarTransportadorasAtivas = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("transportadoras")
-      .select("id, nome, ativo")
+      .select(COLS_TRANSP)
       .eq("ativo", true)
       .order("nome", { ascending: true });
     if (error) throw new Error(error.message);
@@ -35,12 +68,12 @@ export const listarTransportadorasAtivas = createServerFn({ method: "POST" })
 
 export const criarTransportadora = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({ nome: z.string().trim().min(2).max(120) }).parse(d))
+  .inputValidator((d: unknown) => dadosTransportadora.parse(d))
   .handler(async ({ data, context }) => {
     const { data: row, error } = await context.supabase
       .from("transportadoras")
-      .insert({ nome: data.nome })
-      .select("id, nome, ativo")
+      .insert(data)
+      .select(COLS_TRANSP)
       .single();
     if (error) throw new Error(error.message);
     return row as TransportadoraRow;
@@ -49,23 +82,21 @@ export const criarTransportadora = createServerFn({ method: "POST" })
 export const atualizarTransportadora = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
-    z
-      .object({
-        id: z.string().uuid(),
-        nome: z.string().trim().min(2).max(120).optional(),
-        ativo: z.boolean().optional(),
-      })
-      .parse(d),
+    dadosTransportadora
+        .partial()
+        .extend({ id: z.string().uuid(), ativo: z.boolean().optional() })
+        .parse(d),
   )
   .handler(async ({ data, context }) => {
-    const patch: { nome?: string; ativo?: boolean } = {};
-    if (data.nome !== undefined) patch.nome = data.nome;
-    if (data.ativo !== undefined) patch.ativo = data.ativo;
+    const { id: _id, ...resto } = data;
+    const patch = Object.fromEntries(
+      Object.entries(resto).filter(([, v]) => v !== undefined),
+    );
     const { data: row, error } = await context.supabase
       .from("transportadoras")
-      .update(patch)
+      .update(patch as never)
       .eq("id", data.id)
-      .select("id, nome, ativo")
+      .select(COLS_TRANSP)
       .single();
     if (error) throw new Error(error.message);
     return row as TransportadoraRow;
@@ -113,7 +144,7 @@ export const sugerirTransportadora = createServerFn({ method: "POST" })
 
     const { data: t } = await context.supabase
       .from("transportadoras")
-      .select("id, nome, ativo")
+      .select(COLS_TRANSP)
       .eq("id", escolha.transportadoraId)
       .eq("ativo", true)
       .maybeSingle();
