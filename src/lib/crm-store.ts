@@ -1389,13 +1389,15 @@ export const useCrm = create<CrmState>()((set, get) => ({
     // 2) senão, aplica regra fiscal do cliente (SUFRAMA → Taoplast; Simples → Licitaplas);
     // 3) senão, empresa_padrao do cliente;
     // 4) senão, default.
+    // CEP inicial de entrega: cliente vinculado manda; endereço do lead é fallback.
+    let deliveryCepDefault: string | undefined;
     try {
       const lead = get().leads.find((l) => l.id === leadId);
       const clienteId = (lead as { clienteId?: string } | undefined)?.clienteId;
       if (clienteId) {
         const { data: cli } = await supabase
           .from("clientes")
-          .select("empresa_padrao, simples_optante, suframa_isento")
+          .select("empresa_padrao, simples_optante, suframa_isento, cep")
           .eq("id", clienteId)
           .maybeSingle();
 
