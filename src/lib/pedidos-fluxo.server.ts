@@ -650,6 +650,40 @@ export async function aoEntrarNaEtapa(
       return;
     }
 
+    if (stage === "em_transito") {
+      await notificarUsuarios(sb, p.vendedor_proprietario_id ? [p.vendedor_proprietario_id] : [], {
+        tipo: "pedido_em_transito",
+        titulo: `Pedido ${p.number} coletado — a caminho do cliente`,
+        pedidoId,
+        usarClienteDeServico: usarServico,
+      });
+      return;
+    }
+
+    if (stage === "entrega") {
+      // A confirmação de entrega/coleta passa a ser registrada AQUI.
+      if (!p.entrega_confirmada) {
+        const upEntrega = await sb
+          .from("pedidos")
+          .update({
+            entrega_confirmada:
+              p.modalidade_entrega === "entrega_propria" ? "entregue" : "coletado",
+            entregue_em: new Date().toISOString(),
+          })
+          .eq("id", pedidoId);
+        const { assertNoError } = await import("@/lib/guard-erros");
+        await assertNoError(
+          upEntrega,
+          "pedidos-fluxo.aoEntrarNaEtapa/confirmar-entrega",
+          { pedido_id: pedidoId },
+          "Não foi possível confirmar a entrega do pedido. Tente novamente.",
+        );
+      }
+      return;
+    }
+
+
+
 
     if (stage === "pos_venda") {
       // registra Entregue/Coletado conforme a modalidade, se ainda não registrado
