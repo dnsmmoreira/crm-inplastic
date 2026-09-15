@@ -96,6 +96,15 @@ export function ResumoDoDia() {
   const propostasValor = proposalAgg.openValue;
   const propostasQtd = proposalAgg.openCount;
 
+  // 3b) Faixas de tempo das propostas em aberto (mesmo escopo de owner do agregado).
+  const proposals = useCrm((s) => s.proposals);
+  const faixasPropostas = useMemo(() => {
+    const scoped = isAdmin ? proposals : proposals.filter((p) => p.ownerId === user.id);
+    const abertas = scoped.filter((p) => OPEN_PROPOSAL_STATUSES.includes(p.status));
+    return agruparPorFaixa(abertas, (p) => p.sentAt ?? p.createdAt);
+  }, [proposals, isAdmin, user.id]);
+
+
   // 4) Meta do mês — via placar
   const fetchPlacar = useServerFn(getPlacar);
   const { data: placar, isLoading: loadingPlacar } = useQuery({
