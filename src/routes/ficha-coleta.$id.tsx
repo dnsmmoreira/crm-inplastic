@@ -81,6 +81,7 @@ function FichaColetaPage() {
       previsao_coleta_hora: ficha.previsao_coleta_hora ?? "",
       motorista: ficha.motorista ?? "",
       placa: ficha.placa ?? "",
+      motorista_documento: ficha.motorista_documento ?? "",
       volumes: ficha.volumes ?? "",
       observacoes: ficha.observacoes ?? "",
     });
