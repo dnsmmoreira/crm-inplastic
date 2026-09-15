@@ -51,11 +51,23 @@ export const CADENCIA_PEDIDO: Record<string, CadenciaEtapa> = {
     tipo: "cadencia_producao",
     acao: "Atualizar o andamento da produção e a previsão de entrega",
   },
-  pronto: {
+  em_transito: {
     dias: [2, 4],
     grupo: "operacional",
+    tipo: "cadencia_em_transito",
+    acao: "Confirmar que a transportadora retirou a carga e está a caminho",
+  },
+  pronto: {
+    dias: [1, 2, 4],
+    grupo: "vendedor",
     tipo: "cadencia_coleta_entrega",
-    acao: "Agendar coleta/entrega do pedido pronto",
+    acao: "Agendar a coleta com a transportadora",
+  },
+  entrega: {
+    dias: [2, 3, 4],
+    grupo: "operacional",
+    tipo: "cadencia_entrega",
+    acao: "Confirmar a entrega ao cliente",
   },
   faturado_em_rota: {
     dias: [3, 6],

@@ -2112,7 +2112,7 @@ async function assumirPedidoImpl(
     podeAssumirPedido(p.stage) || (!!stageAlvo && podeAssumirPedido(String(stageAlvo)));
   if (!stageValido) {
     throw new Error(
-      `Este pedido está em "${stageLabel(p.stage)}" — só é possível assumir em Liberado, Em Produção ou Coleta / Entrega.`,
+      `Este pedido está em "${stageLabel(p.stage)}" — só é possível assumir em Liberado, Em Produção, Em Trânsito, Coleta ou Entrega.`,
     );
   }
 

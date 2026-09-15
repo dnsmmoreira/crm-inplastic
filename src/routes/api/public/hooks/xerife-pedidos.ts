@@ -59,7 +59,9 @@ const SLA_STAGE_DIAS: Record<string, number> = {
   analise_financeira: 1,
   aguardando_pagamento: 5,
   programacao: 1,
+  em_transito: 4,
   pronto: 2,
+  entrega: 4,
   faturado_em_rota: 3,
   // Etapas legadas
   em_validacao: 1,
@@ -83,7 +85,9 @@ const PRAZO_AVISO_HORAS = 48;
 const PARADO_DIAS_UTEIS = 2;
 /** Etapas de coleta/entrega e faturado/em rota monitoradas contra estagnação. */
 const STAGES_PARADO_MONITORADOS = [
+  "em_transito",
   "pronto",
+  "entrega",
   "faturado_em_rota",
   // legadas, ainda possíveis em pedidos antigos
   "faturado_aguardando_coleta",
