@@ -54,6 +54,7 @@ export type FichaRow = {
   previsao_coleta_hora: string | null;
   motorista: string | null;
   placa: string | null;
+  motorista_documento: string | null;
   volumes: string | null;
   observacoes: string | null;
   peso_total_kg: number;
