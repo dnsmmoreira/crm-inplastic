@@ -78,6 +78,7 @@ function DashboardPage() {
   const [openLead, setOpenLead] = useState<string | null>(null);
 
   const leadValueMap = useLeadValueMap();
+  const proposals = useCrm((s) => s.proposals);
   const proposalAgg = useProposalAggregates(isAdmin ? undefined : user.id);
   const leadValue = (id: string, fallback = 0) => leadValueMap.get(id) ?? fallback;
 
