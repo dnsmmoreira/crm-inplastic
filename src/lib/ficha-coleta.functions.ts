@@ -54,6 +54,7 @@ export type FichaRow = {
   previsao_coleta_hora: string | null;
   motorista: string | null;
   placa: string | null;
+  motorista_documento: string | null;
   volumes: string | null;
   observacoes: string | null;
   peso_total_kg: number;
@@ -78,7 +79,7 @@ export type FichaHistoricoRow = {
 };
 
 const COLS_FICHA =
-  "id, numero, pedido_id, emitter_id, status, transportadora_id, transportadora_nome, modalidade_entrega, contato_nome, contato_telefone, previsao_coleta_data, previsao_coleta_hora, motorista, placa, volumes, observacoes, peso_total_kg, cubagem_m3, snapshot, emitida_em, coletada_em, cancelada_em, cancelamento_motivo, created_at, updated_at";
+  "id, numero, pedido_id, emitter_id, status, transportadora_id, transportadora_nome, modalidade_entrega, contato_nome, contato_telefone, previsao_coleta_data, previsao_coleta_hora, motorista, placa, motorista_documento, volumes, observacoes, peso_total_kg, cubagem_m3, snapshot, emitida_em, coletada_em, cancelada_em, cancelamento_motivo, created_at, updated_at";
 
 const COLS_ITEM =
   "id, produto_id, sku, descricao, quantidade, unidade, peso_kg, cubagem_m3, peso_manual, cubagem_manual, position";
@@ -324,6 +325,7 @@ export const atualizarFichaColeta = createServerFn({ method: "POST" })
         previsao_coleta_hora: z.string().trim().max(20).nullable().optional(),
         motorista: z.string().trim().max(120).nullable().optional(),
         placa: z.string().trim().max(20).nullable().optional(),
+        motorista_documento: z.string().trim().max(40).nullable().optional(),
         volumes: z.string().trim().max(160).nullable().optional(),
         observacoes: z.string().trim().max(2000).nullable().optional(),
       })
@@ -462,6 +464,7 @@ export const emitirFichaColeta = createServerFn({ method: "POST" })
         previsao_hora: ficha.previsao_coleta_hora,
         motorista: ficha.motorista,
         placa: ficha.placa,
+        motorista_documento: ficha.motorista_documento,
         volumes: ficha.volumes,
         observacoes: ficha.observacoes,
       },

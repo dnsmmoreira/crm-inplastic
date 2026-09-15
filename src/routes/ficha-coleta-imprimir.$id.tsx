@@ -157,10 +157,24 @@ function FichaColetaImprimir() {
           </tfoot>
         </table>
 
-        <section className="text-sm space-y-1">
+        <section className="text-sm space-y-3">
           <div>
-            <span className="font-semibold">Motorista:</span> {ficha.motorista ?? "____________"} ·{" "}
-            <span className="font-semibold">Placa:</span> {ficha.placa ?? "________"}
+            <div className="font-semibold">Motorista:</div>
+            <div className="mt-6 border-b border-foreground/60 min-h-[1.5rem] text-base">
+              {ficha.motorista ?? ""}
+            </div>
+          </div>
+          <div>
+            <div className="font-semibold">CNH/RG:</div>
+            <div className="mt-4 border-b border-foreground/60 min-h-[1.25rem]">
+              {ficha.motorista_documento ?? ""}
+            </div>
+          </div>
+          <div>
+            <div className="font-semibold">Placa:</div>
+            <div className="mt-4 border-b border-foreground/60 min-h-[1.25rem]">
+              {ficha.placa ?? ""}
+            </div>
           </div>
           <div>
             <span className="font-semibold">Volumes/embalagem:</span> {ficha.volumes ?? "—"}
@@ -170,6 +184,7 @@ function FichaColetaImprimir() {
             {ficha.observacoes ?? coleta.observacoes ?? "—"}
           </div>
         </section>
+
 
         <section className="pt-10 grid grid-cols-2 gap-8 text-xs">
           <div className="border-t pt-1 text-center">Assinatura de quem retira / RG</div>

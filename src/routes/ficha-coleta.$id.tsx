@@ -81,6 +81,7 @@ function FichaColetaPage() {
       previsao_coleta_hora: ficha.previsao_coleta_hora ?? "",
       motorista: ficha.motorista ?? "",
       placa: ficha.placa ?? "",
+      motorista_documento: ficha.motorista_documento ?? "",
       volumes: ficha.volumes ?? "",
       observacoes: ficha.observacoes ?? "",
     });
@@ -103,6 +104,7 @@ function FichaColetaPage() {
           previsao_coleta_hora: campo("previsao_coleta_hora") || null,
           motorista: campo("motorista") || null,
           placa: campo("placa") || null,
+          motorista_documento: campo("motorista_documento") || null,
           volumes: campo("volumes") || null,
           observacoes: campo("observacoes") || null,
         },
@@ -310,6 +312,15 @@ function FichaColetaPage() {
             />
           </div>
           <div>
+            <Label>CNH/RG do motorista</Label>
+            <Input
+              value={campo("motorista_documento")}
+              disabled={!editavel}
+              placeholder="Documento do motorista"
+              onChange={(e) => setCampo("motorista_documento", e.target.value)}
+            />
+          </div>
+          <div>
             <Label>Placa do veículo</Label>
             <Input
               value={campo("placa")}
@@ -317,6 +328,7 @@ function FichaColetaPage() {
               onChange={(e) => setCampo("placa", e.target.value)}
             />
           </div>
+
           <div>
             <Label>Volumes / embalagem</Label>
             <Input
