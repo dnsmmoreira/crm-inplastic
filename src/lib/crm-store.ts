@@ -1482,6 +1482,7 @@ export const useCrm = create<CrmState>()((set, get) => ({
         volumes: 0,
         freightValue: 0,
         approxFreightValue: 0,
+        deliveryCep: deliveryCepDefault,
       },
       observations:
         "Proposta comercial válida por 10 dias. Preços em reais, impostos inclusos conforme legislação vigente. Prazo de entrega a combinar após aprovação.",
