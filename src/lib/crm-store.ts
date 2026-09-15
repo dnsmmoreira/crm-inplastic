@@ -1389,15 +1389,22 @@ export const useCrm = create<CrmState>()((set, get) => ({
     // 2) senão, aplica regra fiscal do cliente (SUFRAMA → Taoplast; Simples → Licitaplas);
     // 3) senão, empresa_padrao do cliente;
     // 4) senão, default.
+    // CEP inicial de entrega: cliente vinculado manda; endereço do lead é fallback.
+    let deliveryCepDefault: string | undefined;
     try {
       const lead = get().leads.find((l) => l.id === leadId);
       const clienteId = (lead as { clienteId?: string } | undefined)?.clienteId;
       if (clienteId) {
         const { data: cli } = await supabase
           .from("clientes")
-          .select("empresa_padrao, simples_optante, suframa_isento")
+          .select("empresa_padrao, simples_optante, suframa_isento, cep")
           .eq("id", clienteId)
           .maybeSingle();
+
+        if (cli?.cep) {
+          const { formatCep } = await import("@/lib/format");
+          deliveryCepDefault = formatCep(String(cli.cep));
+        }
 
         const { data: prev } = await supabase
           .from("propostas")
@@ -1434,6 +1441,13 @@ export const useCrm = create<CrmState>()((set, get) => ({
     } catch {
       // segue com o default
     }
+    if (!deliveryCepDefault) {
+      const cepLead = get().leads.find((l) => l.id === leadId)?.endereco?.cep;
+      if (cepLead) {
+        const { formatCep } = await import("@/lib/format");
+        deliveryCepDefault = formatCep(String(cepLead));
+      }
+    }
     if (!emitterId) {
       toast.error(
         "Nenhum emitente configurado — peça ao admin para cadastrar um emitente antes de criar propostas.",
@@ -1467,6 +1481,7 @@ export const useCrm = create<CrmState>()((set, get) => ({
         volumes: 0,
         freightValue: 0,
         approxFreightValue: 0,
+        deliveryCep: deliveryCepDefault,
       },
       observations:
         "Proposta comercial válida por 10 dias. Preços em reais, impostos inclusos conforme legislação vigente. Prazo de entrega a combinar após aprovação.",
