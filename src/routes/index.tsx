@@ -26,6 +26,8 @@ import {
   ArrowUpRight,
   CheckCircle2,
   CircleAlert,
+  TrendingDown,
+
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { format, isToday, isBefore, startOfMonth, subMonths } from "date-fns";
@@ -40,7 +42,9 @@ import {
   followupTemperature,
   useLeadValueMap,
   useProposalAggregates,
+  proposalTotals,
 } from "@/lib/crm-store";
+import { agruparPorFaixa, FAIXAS_PARADO, type ResumoFaixas } from "@/lib/faixas-parado";
 import { agregarMixProdutos, truncarRotulo } from "@/lib/product-mix";
 import { useFamiliaPorProduto } from "@/hooks/use-familias-produto";
 import { PlacarWidget } from "@/components/placar/PlacarWidget";
@@ -78,21 +82,56 @@ function DashboardPage() {
   const [openLead, setOpenLead] = useState<string | null>(null);
 
   const leadValueMap = useLeadValueMap();
+  const proposals = useCrm((s) => s.proposals);
   const proposalAgg = useProposalAggregates(isAdmin ? undefined : user.id);
   const leadValue = (id: string, fallback = 0) => leadValueMap.get(id) ?? fallback;
 
   const kpis = useMemo(() => {
     const active = leads.filter((l) => l.stage !== "perdido" && l.stage !== "ganho");
-    // Pipeline ativo: valor total das propostas em aberto + leads ativos sem proposta (fallback estimatedValue)
+    // Pipeline em aberto: valor total das propostas em aberto + leads ativos sem proposta (fallback estimatedValue)
     const pipelineFromLeads = active.reduce((sum, l) => sum + leadValue(l.id, l.estimatedValue), 0);
-    // Receita fechada: propostas com status "pedido"
+    // Faturamento fechado (histórico): propostas com status "pedido"
     const wonValue = proposalAgg.wonValue;
     const won = leads.filter((l) => l.stage === "ganho");
     const conv = leads.length ? (won.length / leads.length) * 100 : 0;
     const monthStart = startOfMonth(new Date());
     const newThisMonth = leads.filter((l) => new Date(l.createdAt) >= monthStart).length;
-    return { pipeline: pipelineFromLeads, wonValue, conv, newThisMonth, total: leads.length };
+    const faixasPipeline = agruparPorFaixa(
+      active,
+      (l) => l.lastContact ?? l.createdAt,
+      (l) => leadValue(l.id, l.estimatedValue),
+    );
+    return {
+      pipeline: pipelineFromLeads,
+      wonValue,
+      conv,
+      newThisMonth,
+      total: leads.length,
+      activeCount: active.length,
+      faixasPipeline,
+    };
   }, [leads, leadValueMap, proposalAgg]);
+
+  /** Faturamento fechado no mês atual x mês anterior (propostas viradas em pedido). */
+  const faturamento = useMemo(() => {
+    const scoped = isAdmin ? proposals : proposals.filter((p) => p.ownerId === user.id);
+    const now = new Date();
+    const inicioMes = startOfMonth(now).getTime();
+    const inicioMesAnterior = startOfMonth(subMonths(now, 1)).getTime();
+    let mesAtual = 0;
+    let mesAnterior = 0;
+    for (const p of scoped) {
+      if (p.status !== "pedido") continue;
+      const ref = new Date(p.orderCreatedAt ?? p.createdAt).getTime();
+      if (Number.isNaN(ref)) continue;
+      const total = proposalTotals(p).total;
+      if (ref >= inicioMes) mesAtual += total;
+      else if (ref >= inicioMesAnterior) mesAnterior += total;
+    }
+    const variacao = mesAnterior > 0 ? ((mesAtual - mesAnterior) / mesAnterior) * 100 : null;
+    return { mesAtual, mesAnterior, variacao };
+  }, [proposals, isAdmin, user.id]);
+
 
   const stageData = useMemo(
     () =>
@@ -187,21 +226,21 @@ function DashboardPage() {
 
       {isAdmin && <MotivosRecusaCard />}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Kpi
-          label="Pipeline ativo"
-          value={formatBRL(kpis.pipeline)}
-          hint={`${kpis.total} leads no total`}
-          icon={TrendingUp}
-          tone="brand"
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <PipelineEmAbertoCard
+          valor={kpis.pipeline}
+          leadsAtivos={kpis.activeCount}
+          faixas={kpis.faixasPipeline}
         />
-        <Kpi
-          label="Receita fechada"
-          value={formatBRL(kpis.wonValue)}
-          hint="Negócios ganhos"
-          icon={CheckCircle2}
-          tone="success"
+        <FaturamentoFechadoCard
+          mesAtual={faturamento.mesAtual}
+          mesAnterior={faturamento.mesAnterior}
+          variacao={faturamento.variacao}
+          historico={kpis.wonValue}
         />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
         <Kpi
           label="Taxa de conversão"
           value={`${kpis.conv.toFixed(1)}%`}
@@ -217,6 +256,7 @@ function DashboardPage() {
           tone="default"
         />
       </div>
+
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
@@ -469,7 +509,122 @@ function DashboardPage() {
   );
 }
 
+/** Pipeline em aberto: valor dos leads ativos + quanto está parado por faixa de tempo. */
+function PipelineEmAbertoCard({
+  valor,
+  leadsAtivos,
+  faixas,
+}: {
+  valor: number;
+  leadsAtivos: number;
+  faixas: ResumoFaixas;
+}) {
+  return (
+    <Card className="relative overflow-hidden">
+      <CardContent className="p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-xs uppercase tracking-wider text-muted-foreground">
+              Pipeline em aberto
+            </div>
+            <div className="mt-1 font-display text-2xl font-semibold truncate">
+              {formatBRL(valor)}
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              {leadsAtivos} lead{leadsAtivos === 1 ? "" : "s"} ativo{leadsAtivos === 1 ? "" : "s"}
+            </div>
+          </div>
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0">
+            <TrendingUp className="h-5 w-5" />
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-3 gap-2">
+          {FAIXAS_PARADO.map((f) => (
+            <div key={f.id} className={`rounded-lg border p-2 ${f.className}`}>
+              <div className="flex items-center gap-1.5 text-[11px] font-medium">
+                <span className={`h-1.5 w-1.5 rounded-full ${f.dotClassName}`} />
+                {f.label}
+              </div>
+              <div className="mt-1 font-display text-lg font-semibold leading-none">
+                {faixas[f.id].count}
+              </div>
+              <div className="mt-1 text-[11px] opacity-80 truncate">
+                {formatBRL(faixas[f.id].valor)}
+              </div>
+            </div>
+          ))}
+        </div>
+        <p className="mt-2 text-[11px] text-muted-foreground">Tempo sem contato por lead ativo</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Faturamento fechado: mês atual x mês anterior, com o histórico como legenda. */
+function FaturamentoFechadoCard({
+  mesAtual,
+  mesAnterior,
+  variacao,
+  historico,
+}: {
+  mesAtual: number;
+  mesAnterior: number;
+  variacao: number | null;
+  historico: number;
+}) {
+  const subiu = (variacao ?? 0) >= 0;
+  return (
+    <Card className="relative overflow-hidden">
+      <CardContent className="p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-xs uppercase tracking-wider text-muted-foreground">
+              Faturamento fechado
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              <div className="min-w-0">
+                <div className="text-[11px] text-muted-foreground">Mês atual</div>
+                <div className="font-display text-2xl font-semibold truncate">
+                  {formatBRL(mesAtual)}
+                </div>
+              </div>
+              <div className="min-w-0">
+                <div className="text-[11px] text-muted-foreground">Mês anterior</div>
+                <div className="font-display text-2xl font-semibold truncate text-muted-foreground">
+                  {formatBRL(mesAnterior)}
+                </div>
+              </div>
+            </div>
+            {variacao !== null && (
+              <div
+                className={`mt-2 inline-flex items-center gap-1 text-xs font-medium ${
+                  subiu ? "text-[color:var(--success)]" : "text-destructive"
+                }`}
+              >
+                {subiu ? (
+                  <TrendingUp className="h-3.5 w-3.5" />
+                ) : (
+                  <TrendingDown className="h-3.5 w-3.5" />
+                )}
+                {`${subiu ? "▲" : "▼"} ${Math.abs(variacao).toFixed(0)}% vs mês anterior`}
+              </div>
+            )}
+            <div className="mt-2 text-[11px] text-muted-foreground">
+              Total histórico: {formatBRL(historico)}
+            </div>
+          </div>
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[color:var(--success)]/15 text-[color:var(--success)] shrink-0">
+            <CheckCircle2 className="h-5 w-5" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function Kpi({
+
   label,
   value,
   hint,

@@ -10,8 +10,11 @@ import {
   useVisibleTasks,
   useCurrentUser,
   useProposalAggregates,
+  useCrm,
+  OPEN_PROPOSAL_STATUSES,
   formatBRL,
 } from "@/lib/crm-store";
+import { agruparPorFaixa, FAIXAS_PARADO } from "@/lib/faixas-parado";
 import { getPlacar } from "@/lib/placar.functions";
 
 const TZ = "America/Sao_Paulo";
@@ -95,6 +98,15 @@ export function ResumoDoDia() {
   const proposalAgg = useProposalAggregates(isAdmin ? undefined : user.id);
   const propostasValor = proposalAgg.openValue;
   const propostasQtd = proposalAgg.openCount;
+
+  // 3b) Faixas de tempo das propostas em aberto (mesmo escopo de owner do agregado).
+  const proposals = useCrm((s) => s.proposals);
+  const faixasPropostas = useMemo(() => {
+    const scoped = isAdmin ? proposals : proposals.filter((p) => p.ownerId === user.id);
+    const abertas = scoped.filter((p) => OPEN_PROPOSAL_STATUSES.includes(p.status));
+    return agruparPorFaixa(abertas, (p) => p.sentAt ?? p.createdAt);
+  }, [proposals, isAdmin, user.id]);
+
 
   // 4) Meta do mês — via placar
   const fetchPlacar = useServerFn(getPlacar);
@@ -195,6 +207,18 @@ export function ResumoDoDia() {
               <p className="mt-1 text-[11px] text-muted-foreground">
                 aguardando retorno ({propostasQtd})
               </p>
+              <div className="mt-1.5 flex flex-wrap gap-1">
+                {FAIXAS_PARADO.map((f) => (
+                  <span
+                    key={f.id}
+                    title={`${faixasPropostas[f.id].count} proposta(s) parada(s) há ${f.label}`}
+                    className={`rounded border px-1.5 py-0.5 text-[10px] font-medium leading-none ${f.className}`}
+                  >
+                    {f.label}: {faixasPropostas[f.id].count}
+                  </span>
+                ))}
+              </div>
+
             </MetricCard>
 
             {/* Meta do mês */}
