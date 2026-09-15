@@ -1405,6 +1405,7 @@ function PropostaDetalhe() {
 
           <LostReasonDialog
 
+
             open={recusaOpen}
             alvo="proposta"
             leadLabel={lead?.company}
