@@ -26,6 +26,8 @@ import {
   ArrowUpRight,
   CheckCircle2,
   CircleAlert,
+  TrendingDown,
+
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { format, isToday, isBefore, startOfMonth, subMonths } from "date-fns";
