@@ -38,7 +38,9 @@ export const PEDIDO_STAGE_CANCELADO_LABEL = "Cancelado / Devolvido";
 export const PEDIDO_STAGES_DEVOLVIVEIS = [
   "programacao",
   "em_producao",
+  "em_transito",
   "pronto",
+  "entrega",
   "faturado_em_rota",
 ] as const;
 
@@ -75,7 +77,13 @@ export function destinoDevolucao(
  * Antes de `programacao` o pedido ainda é do comercial/financeiro; depois de
  * `faturado_em_rota` a operação já terminou.
  */
-export const PEDIDO_STAGES_ASSUMIVEIS = ["programacao", "em_producao", "pronto"] as const;
+export const PEDIDO_STAGES_ASSUMIVEIS = [
+  "programacao",
+  "em_producao",
+  "em_transito",
+  "pronto",
+  "entrega",
+] as const;
 
 export function podeAssumirPedido(stage: string): boolean {
   return (PEDIDO_STAGES_ASSUMIVEIS as readonly string[]).includes(stage);
@@ -92,7 +100,9 @@ export const PEDIDO_STAGE_IDS: [PedidoStageId, ...PedidoStageId[]] = [
   "aguardando_pagamento",
   "programacao",
   "em_producao",
+  "em_transito",
   "pronto",
+  "entrega",
   "faturado_em_rota",
   "pos_venda",
   PEDIDO_STAGE_REPROVADO,
@@ -104,9 +114,11 @@ const STAGE_ORDER: Record<PedidoStageId, number> = {
   aguardando_pagamento: 1,
   programacao: 2,
   em_producao: 3,
-  pronto: 4,
-  faturado_em_rota: 5,
-  pos_venda: 6,
+  em_transito: 4,
+  pronto: 5,
+  entrega: 6,
+  faturado_em_rota: 7,
+  pos_venda: 8,
   reprovado_financeiro: 99,
   cancelado: 99,
 };
@@ -128,8 +140,10 @@ export const ALLOWED_FORWARD: Record<PedidoStageId, PedidoStageId[]> = {
   analise_financeira: ["aguardando_pagamento", "programacao", "reprovado_financeiro"],
   aguardando_pagamento: ["programacao", "reprovado_financeiro"],
   programacao: ["em_producao"],
-  em_producao: ["pronto"],
-  pronto: ["faturado_em_rota"],
+  em_producao: ["em_transito"],
+  em_transito: ["pronto"],
+  pronto: ["entrega"],
+  entrega: ["faturado_em_rota"],
   faturado_em_rota: ["pos_venda"],
   pos_venda: [],
   reprovado_financeiro: [],
