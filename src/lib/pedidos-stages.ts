@@ -17,7 +17,9 @@ export const PEDIDO_STAGES = [
   { id: "aguardando_pagamento", label: "Aguardando Pagamento", color: "#eab308" },
   { id: "programacao", label: "Liberado", color: "#6366f1" },
   { id: "em_producao", label: "Em Produção", color: "#8b5cf6" },
-  { id: "pronto", label: "Coleta / Entrega", color: "#0ea5e9" },
+  { id: "em_transito", label: "Em Trânsito", color: "#d946ef" },
+  { id: "pronto", label: "Coleta", color: "#0ea5e9" },
+  { id: "entrega", label: "Entrega", color: "#f97316" },
   { id: "faturado_em_rota", label: "Faturado / Em Rota", color: "#14b8a6" },
   { id: "pos_venda", label: "Pós-venda", color: "#16a34a" },
 ] as const;
