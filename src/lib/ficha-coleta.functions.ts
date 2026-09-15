@@ -325,6 +325,7 @@ export const atualizarFichaColeta = createServerFn({ method: "POST" })
         previsao_coleta_hora: z.string().trim().max(20).nullable().optional(),
         motorista: z.string().trim().max(120).nullable().optional(),
         placa: z.string().trim().max(20).nullable().optional(),
+        motorista_documento: z.string().trim().max(40).nullable().optional(),
         volumes: z.string().trim().max(160).nullable().optional(),
         observacoes: z.string().trim().max(2000).nullable().optional(),
       })
