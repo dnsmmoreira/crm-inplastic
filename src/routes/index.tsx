@@ -40,7 +40,9 @@ import {
   followupTemperature,
   useLeadValueMap,
   useProposalAggregates,
+  proposalTotals,
 } from "@/lib/crm-store";
+import { agruparPorFaixa, FAIXAS_PARADO, type ResumoFaixas } from "@/lib/faixas-parado";
 import { agregarMixProdutos, truncarRotulo } from "@/lib/product-mix";
 import { useFamiliaPorProduto } from "@/hooks/use-familias-produto";
 import { PlacarWidget } from "@/components/placar/PlacarWidget";
@@ -222,21 +224,21 @@ function DashboardPage() {
 
       {isAdmin && <MotivosRecusaCard />}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Kpi
-          label="Pipeline ativo"
-          value={formatBRL(kpis.pipeline)}
-          hint={`${kpis.total} leads no total`}
-          icon={TrendingUp}
-          tone="brand"
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <PipelineEmAbertoCard
+          valor={kpis.pipeline}
+          leadsAtivos={kpis.activeCount}
+          faixas={kpis.faixasPipeline}
         />
-        <Kpi
-          label="Receita fechada"
-          value={formatBRL(kpis.wonValue)}
-          hint="Negócios ganhos"
-          icon={CheckCircle2}
-          tone="success"
+        <FaturamentoFechadoCard
+          mesAtual={faturamento.mesAtual}
+          mesAnterior={faturamento.mesAnterior}
+          variacao={faturamento.variacao}
+          historico={kpis.wonValue}
         />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
         <Kpi
           label="Taxa de conversão"
           value={`${kpis.conv.toFixed(1)}%`}
@@ -252,6 +254,7 @@ function DashboardPage() {
           tone="default"
         />
       </div>
+
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
