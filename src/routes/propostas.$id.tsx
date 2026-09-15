@@ -76,6 +76,8 @@ import { calculateFreightDistance } from "@/lib/freight.functions";
 import { gerarPedidoInterno } from "@/lib/pedidos-gerar.functions";
 import { reabrirProposta, recusarProposta } from "@/lib/propostas-perda.functions";
 import { LostReasonDialog } from "@/components/crm/LostReasonDialog";
+import { EditarClienteDialog } from "@/components/clientes/EditarClienteDialog";
+
 import { formatDocumentoCliente } from "@/lib/clientes";
 import {
   getVendedorDaProposta,
@@ -473,6 +475,8 @@ function PropostaDetalhe() {
   // Dados cadastrais do cliente (CNPJ + endereço) para o bloco "Para" da impressão.
   const clienteId = (lead as { clienteId?: string | null } | undefined)?.clienteId ?? null;
   const [clienteRow, setClienteRow] = useState<ClienteRow | null>(null);
+  const [clienteDialogOpen, setClienteDialogOpen] = useState(false);
+
   useEffect(() => {
     if (!clienteId) {
       setClienteRow(null);
@@ -1117,11 +1121,21 @@ function PropostaDetalhe() {
                 </Badge>
               )}
             </div>
-            {(clienteRow?.razao_social || lead.company) && (
-              <p className="text-sm text-muted-foreground font-medium">
-                {clienteRow?.razao_social || lead.company}
-              </p>
-            )}
+            {(clienteRow?.razao_social || lead.company) &&
+              (clienteId ? (
+                <button
+                  type="button"
+                  onClick={() => setClienteDialogOpen(true)}
+                  className="text-sm text-muted-foreground font-medium cursor-pointer hover:underline underline-offset-2 text-left"
+                >
+                  {clienteRow?.razao_social || lead.company}
+                </button>
+              ) : (
+                <p className="text-sm text-muted-foreground font-medium">
+                  {clienteRow?.razao_social || lead.company}
+                </p>
+              ))}
+
             {difal.aplica && (
               <div className="mt-1 rounded-md border border-amber-500/60 bg-amber-500/10 px-2 py-1 text-xs font-medium text-amber-800 print:hidden">
                 Sem inscrição estadual — DIFAL aplicado ({formatBRL(difal.valor)})
