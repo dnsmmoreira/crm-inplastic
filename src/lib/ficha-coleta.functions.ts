@@ -464,6 +464,7 @@ export const emitirFichaColeta = createServerFn({ method: "POST" })
         previsao_hora: ficha.previsao_coleta_hora,
         motorista: ficha.motorista,
         placa: ficha.placa,
+        motorista_documento: ficha.motorista_documento,
         volumes: ficha.volumes,
         observacoes: ficha.observacoes,
       },
