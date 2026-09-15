@@ -591,6 +591,8 @@ export type FichaPublica = {
   pedido_numero: string | null;
   cliente: string | null;
   transportadora: string | null;
+  endereco_coleta: string | null;
+  horario_coleta: string | null;
   peso_total_kg: number;
   cubagem_m3: number;
   itens: Array<{ sku: string | null; descricao: string; quantidade: number; unidade: string | null }>;
@@ -621,6 +623,8 @@ export const getFichaColetaPublica = createServerFn({ method: "POST" })
       pedido_numero: snap.pedido?.number ?? null,
       cliente: snap.cliente?.razao_social ?? snap.cliente?.company ?? null,
       transportadora: snap.transportadora?.nome ?? null,
+      endereco_coleta: snap.emitente?.endereco_coleta ?? snap.emitente?.address ?? null,
+      horario_coleta: snap.emitente?.horario_coleta ?? null,
       peso_total_kg: Number(f.peso_total_kg ?? 0),
       cubagem_m3: Number(f.cubagem_m3 ?? 0),
       itens: itens.map((i: any) => ({
