@@ -10,8 +10,11 @@ import {
   useVisibleTasks,
   useCurrentUser,
   useProposalAggregates,
+  useCrm,
+  OPEN_PROPOSAL_STATUSES,
   formatBRL,
 } from "@/lib/crm-store";
+import { agruparPorFaixa, FAIXAS_PARADO } from "@/lib/faixas-parado";
 import { getPlacar } from "@/lib/placar.functions";
 
 const TZ = "America/Sao_Paulo";
