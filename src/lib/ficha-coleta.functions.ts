@@ -79,7 +79,7 @@ export type FichaHistoricoRow = {
 };
 
 const COLS_FICHA =
-  "id, numero, pedido_id, emitter_id, status, transportadora_id, transportadora_nome, modalidade_entrega, contato_nome, contato_telefone, previsao_coleta_data, previsao_coleta_hora, motorista, placa, volumes, observacoes, peso_total_kg, cubagem_m3, snapshot, emitida_em, coletada_em, cancelada_em, cancelamento_motivo, created_at, updated_at";
+  "id, numero, pedido_id, emitter_id, status, transportadora_id, transportadora_nome, modalidade_entrega, contato_nome, contato_telefone, previsao_coleta_data, previsao_coleta_hora, motorista, placa, motorista_documento, volumes, observacoes, peso_total_kg, cubagem_m3, snapshot, emitida_em, coletada_em, cancelada_em, cancelamento_motivo, created_at, updated_at";
 
 const COLS_ITEM =
   "id, produto_id, sku, descricao, quantidade, unidade, peso_kg, cubagem_m3, peso_manual, cubagem_manual, position";
