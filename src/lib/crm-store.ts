@@ -1442,6 +1442,13 @@ export const useCrm = create<CrmState>()((set, get) => ({
     } catch {
       // segue com o default
     }
+    if (!deliveryCepDefault) {
+      const cepLead = get().leads.find((l) => l.id === leadId)?.endereco?.cep;
+      if (cepLead) {
+        const { formatCep } = await import("@/lib/format");
+        deliveryCepDefault = formatCep(String(cepLead));
+      }
+    }
     if (!emitterId) {
       toast.error(
         "Nenhum emitente configurado — peça ao admin para cadastrar um emitente antes de criar propostas.",
