@@ -1401,6 +1401,12 @@ export const useCrm = create<CrmState>()((set, get) => ({
           .eq("id", clienteId)
           .maybeSingle();
 
+        if (cli?.cep) {
+          const { formatCep } = await import("@/lib/format");
+          deliveryCepDefault = formatCep(String(cli.cep));
+        }
+
+
         const { data: prev } = await supabase
           .from("propostas")
           .select("emitter_id, created_at, lead_id, leads!inner(cliente_id)")
