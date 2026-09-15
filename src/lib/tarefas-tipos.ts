@@ -46,7 +46,9 @@ export const TAREFA_TIPOS = [
   "cadencia_aguardando_pagamento",
   "cadencia_liberado",
   "cadencia_producao",
+  "cadencia_em_transito",
   "cadencia_coleta_entrega",
+  "cadencia_entrega",
   "cadencia_em_rota",
 ] as const;
 
@@ -89,7 +91,9 @@ export const TAREFA_TIPO_LABEL: Record<TarefaTipo, string> = {
   cadencia_aguardando_pagamento: "Cadência: aguardando pagamento",
   cadencia_liberado: "Cadência: liberado",
   cadencia_producao: "Cadência: produção",
+  cadencia_em_transito: "Cadência: em trânsito",
   cadencia_coleta_entrega: "Cadência: coleta/entrega",
+  cadencia_entrega: "Cadência: entrega",
   cadencia_em_rota: "Cadência: em rota",
   transferir_carteira: "Transferir ou justificar",
 };
