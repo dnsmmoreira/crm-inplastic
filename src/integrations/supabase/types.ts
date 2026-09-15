@@ -934,6 +934,7 @@ export type Database = {
           created_at: string
           email: string | null
           endereco_coleta: string | null
+          horario_coleta: string | null
           id: string
           ie: string | null
           is_default: boolean
@@ -957,6 +958,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           endereco_coleta?: string | null
+          horario_coleta?: string | null
           id: string
           ie?: string | null
           is_default?: boolean
@@ -980,6 +982,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           endereco_coleta?: string | null
+          horario_coleta?: string | null
           id?: string
           ie?: string | null
           is_default?: boolean
