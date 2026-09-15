@@ -83,16 +83,50 @@ function DashboardPage() {
 
   const kpis = useMemo(() => {
     const active = leads.filter((l) => l.stage !== "perdido" && l.stage !== "ganho");
-    // Pipeline ativo: valor total das propostas em aberto + leads ativos sem proposta (fallback estimatedValue)
+    // Pipeline em aberto: valor total das propostas em aberto + leads ativos sem proposta (fallback estimatedValue)
     const pipelineFromLeads = active.reduce((sum, l) => sum + leadValue(l.id, l.estimatedValue), 0);
-    // Receita fechada: propostas com status "pedido"
+    // Faturamento fechado (histórico): propostas com status "pedido"
     const wonValue = proposalAgg.wonValue;
     const won = leads.filter((l) => l.stage === "ganho");
     const conv = leads.length ? (won.length / leads.length) * 100 : 0;
     const monthStart = startOfMonth(new Date());
     const newThisMonth = leads.filter((l) => new Date(l.createdAt) >= monthStart).length;
-    return { pipeline: pipelineFromLeads, wonValue, conv, newThisMonth, total: leads.length };
+    const faixasPipeline = agruparPorFaixa(
+      active,
+      (l) => l.lastContact ?? l.createdAt,
+      (l) => leadValue(l.id, l.estimatedValue),
+    );
+    return {
+      pipeline: pipelineFromLeads,
+      wonValue,
+      conv,
+      newThisMonth,
+      total: leads.length,
+      activeCount: active.length,
+      faixasPipeline,
+    };
   }, [leads, leadValueMap, proposalAgg]);
+
+  /** Faturamento fechado no mês atual x mês anterior (propostas viradas em pedido). */
+  const faturamento = useMemo(() => {
+    const scoped = isAdmin ? proposals : proposals.filter((p) => p.ownerId === user.id);
+    const now = new Date();
+    const inicioMes = startOfMonth(now).getTime();
+    const inicioMesAnterior = startOfMonth(subMonths(now, 1)).getTime();
+    let mesAtual = 0;
+    let mesAnterior = 0;
+    for (const p of scoped) {
+      if (p.status !== "pedido") continue;
+      const ref = new Date(p.orderCreatedAt ?? p.createdAt).getTime();
+      if (Number.isNaN(ref)) continue;
+      const total = proposalTotals(p).total;
+      if (ref >= inicioMes) mesAtual += total;
+      else if (ref >= inicioMesAnterior) mesAnterior += total;
+    }
+    const variacao = mesAnterior > 0 ? ((mesAtual - mesAnterior) / mesAnterior) * 100 : null;
+    return { mesAtual, mesAnterior, variacao };
+  }, [proposals, isAdmin, user.id]);
+
 
   const stageData = useMemo(
     () =>
