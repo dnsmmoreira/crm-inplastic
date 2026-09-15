@@ -1148,6 +1148,7 @@ export type Database = {
           id: string
           modalidade_entrega: string | null
           motorista: string | null
+          motorista_documento: string | null
           numero: string
           observacoes: string | null
           pedido_id: string
@@ -1180,6 +1181,7 @@ export type Database = {
           id?: string
           modalidade_entrega?: string | null
           motorista?: string | null
+          motorista_documento?: string | null
           numero: string
           observacoes?: string | null
           pedido_id: string
@@ -1212,6 +1214,7 @@ export type Database = {
           id?: string
           modalidade_entrega?: string | null
           motorista?: string | null
+          motorista_documento?: string | null
           numero?: string
           observacoes?: string | null
           pedido_id?: string

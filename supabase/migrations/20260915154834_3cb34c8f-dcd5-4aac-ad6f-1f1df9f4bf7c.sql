@@ -1,0 +1,1 @@
+ALTER TABLE public.fichas_coleta ADD COLUMN IF NOT EXISTS motorista_documento text;
