@@ -62,6 +62,8 @@ function FichaColetaPublica() {
           <div>Pedido: {f.pedido_numero ?? "—"}</div>
           <div>Destinatário: {f.cliente ?? "—"}</div>
           <div>Transportadora: {f.transportadora ?? "—"}</div>
+          {f.endereco_coleta && <div>Endereço de coleta: {f.endereco_coleta}</div>}
+          {f.horario_coleta && <div>Horário de coleta: {f.horario_coleta}</div>}
           <div>
             Carga: {formatarPeso(f.peso_total_kg)} · {formatarCubagem(f.cubagem_m3)}
           </div>

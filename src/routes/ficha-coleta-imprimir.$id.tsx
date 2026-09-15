@@ -80,6 +80,9 @@ function FichaColetaImprimir() {
             <div className="text-xs">{emitente.legal_name ?? ""}</div>
             <div className="text-xs">CNPJ {emitente.cnpj ?? "—"}</div>
             <div className="text-xs">{emitente.endereco_coleta || emitente.address || ""}</div>
+            {emitente.horario_coleta && (
+              <div className="text-xs">Horário de coleta: {emitente.horario_coleta}</div>
+            )}
           </div>
           <div className="text-right">
             <div className="text-xs uppercase tracking-wide">Autorização de coleta</div>
