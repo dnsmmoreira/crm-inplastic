@@ -579,6 +579,7 @@ function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen bg-background text-foreground">
       <aside
+        data-app-shell-chrome
         className={cn(
           "hidden md:flex shrink-0 self-start sticky top-0 h-screen supports-[height:100dvh]:h-dvh overflow-hidden flex-col bg-sidebar text-sidebar-foreground transition-[width] duration-200",
           collapsed ? "w-16" : "w-64",
@@ -745,7 +746,10 @@ function AppShell({ children }: { children: ReactNode }) {
         data-print-reset="conteudo"
         className="app-conteudo flex flex-1 flex-col min-w-0 overflow-x-hidden"
       >
-        <header className="md:hidden sticky top-0 z-30 flex items-center justify-between border-b bg-sidebar text-sidebar-foreground px-3 py-2">
+        <header
+          data-app-shell-chrome
+          className="md:hidden sticky top-0 z-30 flex items-center justify-between border-b bg-sidebar text-sidebar-foreground px-3 py-2"
+        >
           <div className="flex min-w-0 items-center gap-2">
             <button
               type="button"
@@ -764,7 +768,7 @@ function AppShell({ children }: { children: ReactNode }) {
         </header>
 
         {drawerOpen && (
-          <div className="md:hidden fixed inset-0 z-50">
+          <div data-app-shell-chrome className="md:hidden fixed inset-0 z-50">
             <button
               type="button"
               aria-label="Fechar menu"
@@ -914,7 +918,7 @@ function AppShell({ children }: { children: ReactNode }) {
         @media print {
           html, body { width: auto !important; height: auto !important; overflow: visible !important; background: #fff !important; }
           body > * { overflow: visible !important; }
-          aside, header, nav { display: none !important; }
+          [data-app-shell-chrome] { display: none !important; }
           main, main > *, body div { overflow: visible !important; }
           /* Wrapper de conteúdo de TODA rota: alvo explícito, não só o coringa acima.
              Sem isto o overflow-x-hidden corta a lateral direita de qualquer impressão. */
@@ -968,6 +972,7 @@ function AuthGate() {
 
   if (pathname === "/auth") return <Outlet />;
   if (pathname.startsWith("/proposta-publica/")) return <Outlet />;
+  if (pathname.startsWith("/ficha-coleta-publica/")) return <Outlet />;
   if (pathname.startsWith("/lovable/")) return <Outlet />;
 
 
