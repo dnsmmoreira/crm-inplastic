@@ -21,7 +21,9 @@ export const TIPOS_POR_ETAPA_PEDIDO: Record<string, string[]> = {
   aguardando_pagamento: ["aguardando_pagamento", "cadencia_aguardando_pagamento"],
   programacao: ["cadencia_liberado"],
   em_producao: ["acompanhar_producao", "cadencia_producao"],
+  em_transito: ["cadencia_em_transito"],
   pronto: ["cadencia_coleta_entrega", "combinar_coleta"],
+  entrega: ["cadencia_entrega"],
   faturado_em_rota: ["cadencia_em_rota", "nf_atrasada"],
   pos_venda: [
     "pos_venda_pedido",

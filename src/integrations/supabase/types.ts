@@ -4079,6 +4079,8 @@ export type Database = {
         | "reprovado_financeiro"
         | "aguardando_pagamento"
         | "cancelado"
+        | "em_transito"
+        | "entrega"
       proposal_status:
         | "rascunho"
         | "enviada"
@@ -4266,6 +4268,8 @@ export const Constants = {
         "reprovado_financeiro",
         "aguardando_pagamento",
         "cancelado",
+        "em_transito",
+        "entrega",
       ],
       proposal_status: [
         "rascunho",

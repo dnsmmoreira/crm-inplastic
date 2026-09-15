@@ -394,7 +394,9 @@ const STAGE_CLASSIFICACAO: Record<PedidoStageId, StageClassificacao> = {
   aguardando_pagamento: "acao_necessaria",
   programacao: "acao_necessaria",
   em_producao: "informativa",
+  em_transito: "informativa",
   pronto: "acao_necessaria",
+  entrega: "acao_necessaria",
   faturado_em_rota: "informativa",
   pos_venda: "informativa",
   reprovado_financeiro: "alerta",
@@ -2112,7 +2114,7 @@ async function assumirPedidoImpl(
     podeAssumirPedido(p.stage) || (!!stageAlvo && podeAssumirPedido(String(stageAlvo)));
   if (!stageValido) {
     throw new Error(
-      `Este pedido está em "${stageLabel(p.stage)}" — só é possível assumir em Liberado, Em Produção ou Coleta / Entrega.`,
+      `Este pedido está em "${stageLabel(p.stage)}" — só é possível assumir em Liberado, Em Produção, Em Trânsito, Coleta ou Entrega.`,
     );
   }
 

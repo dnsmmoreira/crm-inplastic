@@ -12,13 +12,15 @@ import {
 } from "./pedidos-stages";
 
 describe("PEDIDO_STAGES", () => {
-  it("possui as 7 colunas do fluxo novo na ordem correta", () => {
+  it("possui as 9 colunas do fluxo novo na ordem correta", () => {
     expect(PEDIDO_STAGES.map((s) => s.id)).toEqual([
       "analise_financeira",
       "aguardando_pagamento",
       "programacao",
       "em_producao",
+      "em_transito",
       "pronto",
+      "entrega",
       "faturado_em_rota",
       "pos_venda",
     ]);
@@ -36,8 +38,10 @@ describe("ALLOWED_FORWARD — fluxo linear", () => {
     expect(isTransitionAllowed("aguardando_pagamento", "programacao")).toBe(true);
     expect(isTransitionAllowed("aguardando_pagamento", PEDIDO_STAGE_REPROVADO)).toBe(true);
     expect(isTransitionAllowed("programacao", "em_producao")).toBe(true);
-    expect(isTransitionAllowed("em_producao", "pronto")).toBe(true);
-    expect(isTransitionAllowed("pronto", "faturado_em_rota")).toBe(true);
+    expect(isTransitionAllowed("em_producao", "em_transito")).toBe(true);
+    expect(isTransitionAllowed("em_transito", "pronto")).toBe(true);
+    expect(isTransitionAllowed("pronto", "entrega")).toBe(true);
+    expect(isTransitionAllowed("entrega", "faturado_em_rota")).toBe(true);
     expect(isTransitionAllowed("faturado_em_rota", "pos_venda")).toBe(true);
   });
 
@@ -45,6 +49,8 @@ describe("ALLOWED_FORWARD — fluxo linear", () => {
     expect(isTransitionAllowed("analise_financeira", "em_producao")).toBe(false);
     expect(isTransitionAllowed("programacao", "pronto")).toBe(false);
     expect(isTransitionAllowed("em_producao", "faturado_em_rota")).toBe(false);
+    expect(isTransitionAllowed("em_producao", "pronto")).toBe(false);
+    expect(isTransitionAllowed("pronto", "faturado_em_rota")).toBe(false);
   });
 
   it("pos_venda é terminal (nenhum avanço)", () => {

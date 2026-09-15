@@ -15,7 +15,9 @@ describe("mapa por etapa", () => {
       "aguardando_pagamento",
       "programacao",
       "em_producao",
+      "em_transito",
       "pronto",
+      "entrega",
       "faturado_em_rota",
       "pos_venda",
     ]);

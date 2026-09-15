@@ -5,7 +5,9 @@ describe("podeAssumirPedido", () => {
   it("permite assumir nas etapas operacionais", () => {
     expect(podeAssumirPedido("programacao")).toBe(true);
     expect(podeAssumirPedido("em_producao")).toBe(true);
+    expect(podeAssumirPedido("em_transito")).toBe(true);
     expect(podeAssumirPedido("pronto")).toBe(true);
+    expect(podeAssumirPedido("entrega")).toBe(true);
   });
 
   it("recusa antes da liberação e depois do faturamento", () => {
@@ -23,6 +25,12 @@ describe("podeAssumirPedido", () => {
   });
 
   it("mantém a lista de etapas assumíveis estável", () => {
-    expect([...PEDIDO_STAGES_ASSUMIVEIS]).toEqual(["programacao", "em_producao", "pronto"]);
+    expect([...PEDIDO_STAGES_ASSUMIVEIS]).toEqual([
+      "programacao",
+      "em_producao",
+      "em_transito",
+      "pronto",
+      "entrega",
+    ]);
   });
 });
