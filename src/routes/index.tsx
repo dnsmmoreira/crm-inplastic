@@ -509,7 +509,122 @@ function DashboardPage() {
   );
 }
 
+/** Pipeline em aberto: valor dos leads ativos + quanto está parado por faixa de tempo. */
+function PipelineEmAbertoCard({
+  valor,
+  leadsAtivos,
+  faixas,
+}: {
+  valor: number;
+  leadsAtivos: number;
+  faixas: ResumoFaixas;
+}) {
+  return (
+    <Card className="relative overflow-hidden">
+      <CardContent className="p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-xs uppercase tracking-wider text-muted-foreground">
+              Pipeline em aberto
+            </div>
+            <div className="mt-1 font-display text-2xl font-semibold truncate">
+              {formatBRL(valor)}
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              {leadsAtivos} lead{leadsAtivos === 1 ? "" : "s"} ativo{leadsAtivos === 1 ? "" : "s"}
+            </div>
+          </div>
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0">
+            <TrendingUp className="h-5 w-5" />
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-3 gap-2">
+          {FAIXAS_PARADO.map((f) => (
+            <div key={f.id} className={`rounded-lg border p-2 ${f.className}`}>
+              <div className="flex items-center gap-1.5 text-[11px] font-medium">
+                <span className={`h-1.5 w-1.5 rounded-full ${f.dotClassName}`} />
+                {f.label}
+              </div>
+              <div className="mt-1 font-display text-lg font-semibold leading-none">
+                {faixas[f.id].count}
+              </div>
+              <div className="mt-1 text-[11px] opacity-80 truncate">
+                {formatBRL(faixas[f.id].valor)}
+              </div>
+            </div>
+          ))}
+        </div>
+        <p className="mt-2 text-[11px] text-muted-foreground">Tempo sem contato por lead ativo</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Faturamento fechado: mês atual x mês anterior, com o histórico como legenda. */
+function FaturamentoFechadoCard({
+  mesAtual,
+  mesAnterior,
+  variacao,
+  historico,
+}: {
+  mesAtual: number;
+  mesAnterior: number;
+  variacao: number | null;
+  historico: number;
+}) {
+  const subiu = (variacao ?? 0) >= 0;
+  return (
+    <Card className="relative overflow-hidden">
+      <CardContent className="p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-xs uppercase tracking-wider text-muted-foreground">
+              Faturamento fechado
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              <div className="min-w-0">
+                <div className="text-[11px] text-muted-foreground">Mês atual</div>
+                <div className="font-display text-2xl font-semibold truncate">
+                  {formatBRL(mesAtual)}
+                </div>
+              </div>
+              <div className="min-w-0">
+                <div className="text-[11px] text-muted-foreground">Mês anterior</div>
+                <div className="font-display text-2xl font-semibold truncate text-muted-foreground">
+                  {formatBRL(mesAnterior)}
+                </div>
+              </div>
+            </div>
+            {variacao !== null && (
+              <div
+                className={`mt-2 inline-flex items-center gap-1 text-xs font-medium ${
+                  subiu ? "text-[color:var(--success)]" : "text-destructive"
+                }`}
+              >
+                {subiu ? (
+                  <TrendingUp className="h-3.5 w-3.5" />
+                ) : (
+                  <TrendingDown className="h-3.5 w-3.5" />
+                )}
+                {`${subiu ? "▲" : "▼"} ${Math.abs(variacao).toFixed(0)}% vs mês anterior`}
+              </div>
+            )}
+            <div className="mt-2 text-[11px] text-muted-foreground">
+              Total histórico: {formatBRL(historico)}
+            </div>
+          </div>
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[color:var(--success)]/15 text-[color:var(--success)] shrink-0">
+            <CheckCircle2 className="h-5 w-5" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function Kpi({
+
   label,
   value,
   hint,
