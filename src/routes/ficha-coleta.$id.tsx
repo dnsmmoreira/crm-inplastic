@@ -238,6 +238,19 @@ function FichaColetaPage() {
           <CardTitle className="text-base">Dados da coleta</CardTitle>
         </CardHeader>
         <CardContent className="grid md:grid-cols-2 gap-3">
+          <div className="md:col-span-2 rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+            <div>
+              Endereço de coleta:{" "}
+              {((ficha.snapshot as any)?.emitente ?? (q.data?.emitente as any))?.endereco_coleta ??
+                ((ficha.snapshot as any)?.emitente ?? (q.data?.emitente as any))?.address ??
+                "—"}
+            </div>
+            <div>
+              Horário de coleta:{" "}
+              {((ficha.snapshot as any)?.emitente ?? (q.data?.emitente as any))?.horario_coleta ??
+                "—"}
+            </div>
+          </div>
           <div>
             <Label>Transportadora</Label>
             <Input
