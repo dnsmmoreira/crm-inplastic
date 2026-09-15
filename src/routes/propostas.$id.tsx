@@ -1396,7 +1396,15 @@ function PropostaDetalhe() {
             </div>
           )}
 
+          <EditarClienteDialog
+            open={clienteDialogOpen}
+            onOpenChange={setClienteDialogOpen}
+            clienteId={clienteId}
+            onSaved={(updated) => setClienteRow(updated)}
+          />
+
           <LostReasonDialog
+
             open={recusaOpen}
             alvo="proposta"
             leadLabel={lead?.company}
