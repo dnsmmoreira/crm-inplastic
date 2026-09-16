@@ -3858,6 +3858,34 @@ export type Database = {
         Args: { _outro_user_id: string }
         Returns: string
       }
+      chat_supervisao_conversas: {
+        Args: never
+        Returns: {
+          canal_id: string
+          nome: string
+          participantes: string[]
+          tipo: string
+          total_mensagens: number
+          ultima_em: string
+          ultima_previa: string
+        }[]
+      }
+      chat_supervisao_mensagens: {
+        Args: { _antes?: string; _canal_id: string; _limite?: number }
+        Returns: {
+          anexo_nome: string
+          anexo_path: string
+          anexo_tamanho_bytes: number
+          anexo_tipo: string
+          autor_nome: string
+          autor_user_id: string
+          canal_id: string
+          conteudo: string
+          criado_em: string
+          id: string
+        }[]
+      }
+      chat_supervisor_id: { Args: never; Returns: string }
       cnpj_status:
         | {
             Args: { _cnpj: string }
