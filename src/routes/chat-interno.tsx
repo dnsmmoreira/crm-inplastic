@@ -37,6 +37,17 @@ import {
   type ChatTipoCanal,
 } from "@/lib/chat-interno";
 import { enviarAnexoComProgresso } from "@/lib/chat-anexo-upload";
+import {
+  listarConversasSupervisao,
+  mensagensSupervisao,
+} from "@/lib/chat-supervisao.functions";
+import {
+  PAGINA_SUPERVISAO,
+  previaConversa,
+  tituloConversaSupervisao,
+  type ConversaSupervisao,
+  type MensagemSupervisao,
+} from "@/lib/chat-supervisao";
 import { CHAT_QUERY_KEY } from "@/lib/chat-interno.query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -237,6 +248,184 @@ function PreviaComposer({ arquivo }: { arquivo: File }) {
 
 type Resultado = Mensagem & { canalTitulo: string };
 
+/**
+ * Lente de leitura do "Geral": lista todas as conversas do time e abre cada
+ * uma só para ler. Nada de escrever, responder ou marcar como lida — o banco
+ * também recusa quem não é o usuário supervisor.
+ */
+function PainelSupervisao() {
+  const listar = useServerFn(listarConversasSupervisao);
+  const buscarMensagens = useServerFn(mensagensSupervisao);
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["chat-supervisao", "conversas"],
+    queryFn: () => listar(),
+    staleTime: 15_000,
+    retry: false,
+  });
+  const conversas = useMemo<ConversaSupervisao[]>(() => data?.conversas ?? [], [data]);
+
+  const [aberta, setAberta] = useState<ConversaSupervisao | null>(null);
+  const [mensagens, setMensagens] = useState<MensagemSupervisao[]>([]);
+  const [carregando, setCarregando] = useState(false);
+  const [temMais, setTemMais] = useState(false);
+  const listaRef = useRef<HTMLDivElement>(null);
+
+  const carregar = useCallback(
+    async (canal: string, antes: string | null) => {
+      setCarregando(true);
+      try {
+        const r = await buscarMensagens({ data: { canalId: canal, antes } });
+        const lote = r.mensagens;
+        setTemMais(lote.length === PAGINA_SUPERVISAO);
+        setMensagens((prev) =>
+          mesclarHistorico<MensagemSupervisao>(antes ? prev : [], lote),
+        );
+      } catch (e) {
+        console.error(e);
+        toast.error("Não consegui carregar essa conversa.");
+      } finally {
+        setCarregando(false);
+      }
+    },
+    [buscarMensagens],
+  );
+
+  const abrirConversa = useCallback(
+    (c: ConversaSupervisao) => {
+      setAberta(c);
+      setMensagens([]);
+      setTemMais(false);
+      void carregar(c.canal_id, null);
+    },
+    [carregar],
+  );
+
+  if (error) {
+    return (
+      <section className="flex min-h-0 flex-col items-center justify-center rounded-lg border bg-card p-6 text-center text-sm text-muted-foreground">
+        <AlertTriangle className="mb-2 h-5 w-5 text-destructive" />
+        Este acompanhamento não está disponível para o seu usuário.
+      </section>
+    );
+  }
+
+  return (
+    <section className="grid min-h-0 grid-cols-1 gap-3 rounded-lg md:grid-cols-[260px_1fr]">
+      <div className="min-h-0 overflow-y-auto rounded-lg border bg-card">
+        <header className="border-b px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Conversas do time
+        </header>
+        {isLoading && (
+          <div className="flex items-center gap-2 p-3 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" /> Carregando…
+          </div>
+        )}
+        {!isLoading && conversas.length === 0 && (
+          <p className="p-3 text-sm text-muted-foreground">Nenhuma conversa por aqui ainda.</p>
+        )}
+        {conversas.map((c) => (
+          <button
+            key={c.canal_id}
+            type="button"
+            onClick={() => abrirConversa(c)}
+            className={cn(
+              "flex w-full items-start gap-2 border-b px-3 py-2 text-left transition-colors hover:bg-muted/60",
+              aberta?.canal_id === c.canal_id && "bg-muted",
+            )}
+          >
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-medium">
+                {tituloConversaSupervisao(c)}
+              </span>
+              <span className="block truncate text-xs text-muted-foreground">
+                {previaConversa(c.ultima_previa)}
+              </span>
+            </span>
+            {c.ultima_em && (
+              <span className="shrink-0 text-[10px] text-muted-foreground">
+                {dataHora(c.ultima_em)}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex min-h-0 flex-col rounded-lg border bg-card">
+        <header className="flex items-center justify-between gap-2 border-b px-4 py-2 text-sm font-medium">
+          <span className="truncate">
+            {aberta ? tituloConversaSupervisao(aberta) : "Selecione uma conversa"}
+          </span>
+          <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+            Somente leitura
+          </span>
+        </header>
+        <div ref={listaRef} className="min-h-0 flex-1 space-y-2 overflow-y-auto p-4">
+          {carregando && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" /> Carregando…
+            </div>
+          )}
+          {!carregando && aberta && temMais && (
+            <div className="flex justify-center pb-1">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  const maisAntiga = mensagens[0];
+                  if (maisAntiga) void carregar(aberta.canal_id, maisAntiga.criado_em);
+                }}
+              >
+                Carregar mensagens anteriores
+              </Button>
+            </div>
+          )}
+          {!carregando && !aberta && (
+            <p className="text-sm text-muted-foreground">
+              Escolha uma conversa à esquerda para acompanhar o que foi conversado.
+            </p>
+          )}
+          {!carregando && aberta && mensagens.length === 0 && (
+            <p className="text-sm text-muted-foreground">Nenhuma mensagem nesta conversa.</p>
+          )}
+          {mensagens.map((m) => (
+            <div key={m.id} className="flex justify-start">
+              <div className="min-w-0 max-w-[78%] rounded-2xl rounded-bl-sm bg-muted px-3 py-2 text-sm text-foreground shadow-sm">
+                <div className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide opacity-70">
+                  {primeiroNome(m.autor_nome)}
+                </div>
+                {m.conteudo?.trim() && (
+                  <div className="whitespace-pre-wrap break-words">
+                    {dividirTextoComLinks(m.conteudo).map((p, i) =>
+                      p.tipo === "link" ? (
+                        <a
+                          key={i}
+                          href={p.valor}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="underline underline-offset-2 break-all"
+                        >
+                          {p.valor}
+                        </a>
+                      ) : (
+                        <span key={i}>{p.valor}</span>
+                      ),
+                    )}
+                  </div>
+                )}
+                {(m.anexo_path || m.anexo_nome) && <AnexoMensagem m={m as Mensagem} />}
+                <div className="mt-1 text-right text-[10px] opacity-60">
+                  {dataHora(m.criado_em)}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function ChatInternoPage() {
   const { user } = useAuth();
   const euId = user?.id ?? null;
@@ -276,7 +465,11 @@ function ChatInternoPage() {
   const [carregandoThread, setCarregandoThread] = useState(false);
   const [temMaisAntigas, setTemMaisAntigas] = useState(false);
   const [carregandoAntigas, setCarregandoAntigas] = useState(false);
-  const canalId = selecionado?.canalId ?? null;
+  // "Geral" deixou de ser canal de postagem: virou a lente de leitura das
+  // conversas do time (só o supervisor é membro desse canal, e o banco recusa
+  // qualquer outro). Com canalId nulo, nada de thread, realtime ou leitura.
+  const modoSupervisao = selecionado?.tipo === "geral";
+  const canalId = modoSupervisao ? null : (selecionado?.canalId ?? null);
   const listaRef = useRef<HTMLDivElement>(null);
   const { onScroll } = useAutoScrollMensagens(listaRef, canalId, mensagens);
 
@@ -621,7 +814,9 @@ function ChatInternoPage() {
           })}
         </aside>
 
-        {/* Thread */}
+        {/* Thread (ou acompanhamento, quando o item selecionado é o "Geral") */}
+        {modoSupervisao && <PainelSupervisao />}
+        {!modoSupervisao && (
         <section className="flex min-h-0 flex-col rounded-lg border bg-card">
           <header className="flex items-center justify-between gap-2 border-b px-4 py-2 text-sm font-medium">
             <span className="truncate">{selecionado?.titulo ?? "Selecione uma conversa"}</span>
@@ -899,6 +1094,7 @@ function ChatInternoPage() {
             </div>
           </div>
         </section>
+        )}
       </div>
     </div>
   );
