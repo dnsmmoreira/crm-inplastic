@@ -1094,6 +1094,7 @@ function ChatInternoPage() {
             </div>
           </div>
         </section>
+        )}
       </div>
     </div>
   );
