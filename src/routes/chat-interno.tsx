@@ -24,6 +24,7 @@ import {
   PAGINA_BUSCA_CHAT,
   PAGINA_HISTORICO_CHAT,
   caminhoAnexoChat,
+  dividirTextoComLinks,
   ehImagemAnexo,
   ehPdfAnexo,
   formatarTamanhoAnexo,
