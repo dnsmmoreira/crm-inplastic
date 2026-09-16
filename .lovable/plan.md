@@ -1,115 +1,61 @@
-# Ficha de Coleta — arquitetura proposta
+# "Geral" vira painel de acompanhamento da diretoria
 
-Módulo novo de autorização de coleta, sempre nascido de um pedido, com numeração
-própria, congelamento de dados na emissão, histórico e impressão.
+Hoje o canal "Geral" tem só o Denis como membro, então nunca chega mensagem lá e o item abre um canal vazio. A proposta troca esse canal vazio por uma **lente de leitura**: quem tem a permissão de administração vê, dentro de `/chat-interno`, todas as conversas do time (DMs entre outras pessoas + Grupo Comercial) e pode ler cada uma inteira, sem responder e sem interferir.
 
-## Correção de um ponto do briefing (verificado no banco)
+Nada muda para quem só usa o chat normalmente.
 
-O item 6 diz que não existe cadastro de empresa. **Existe**: a tabela `emitters`
-(razão social, CNPJ, IE, endereço, telefone, WhatsApp, e-mail, site, dados
-bancários, marca padrão) já alimenta a tela **Empresas do grupo** (`/empresas`,
-restrita a `empresas.editar`) e é a fonte do cabeçalho das propostas.
+## Quem pode ver
 
-Proposta: **não criar tabela nova de empresa**. Em vez disso, acrescentar a
-`emitters` os campos que faltam para a ficha — contato padrão (nome + telefone,
-pré-preenchido com "Bruna" / "(11) 2574-1360") e endereço de coleta/remetente
-quando diferente do fiscal. Cada linha de `emitters` já é uma unidade, então
-"mais de uma filial no futuro" já está contemplado sem mudança de modelo. A tela
-`/empresas` ganha esses campos numa seção "Coleta / expedição".
+Gate pela permissão já existente `usuarios.gerenciar` (a mesma usada em Equipe, Usuários, Perfis e nas escalações do Xerife). Nada preso ao id do Denis — se outra pessoa receber essa permissão, passa a enxergar também.
 
-Se você preferir mesmo uma tabela separada de unidades, diga — mas duplicaria
-razão social/CNPJ/endereço que já existem.
+O gate é verificado **no servidor**, dentro das funções novas (`tem_permissao(auth.uid(), 'usuarios.gerenciar')`), e repetido na tela só para decidir o que desenhar. Sem a permissão, o item "Geral" continua se comportando como hoje.
 
-## Tabelas novas
+## Como fica a tela
 
-**`fichas_coleta`**
-- `numero` (COL-AAAA-NNNNNN, único), `pedido_id`, `emitter_id`
-- `status`: rascunho | emitida | em_coleta | coletada | cancelada
-- transportadora (`transportadora_id` + nome congelado), `modalidade_entrega`
-- contato responsável (nome, telefone) — default vindo do emitter, editável
-- campos manuais: previsão de data/horário de coleta, observações de
-  carregamento, motorista, placa, volumes/embalagem
-- `snapshot` JSONB (preenchido na emissão), `emitida_em/_por`,
-  `coletada_em/_por`, `cancelada_em/_por`, `cancelamento_motivo`
-- `peso_total_kg`, `cubagem_m3` (calculados, congelados no snapshot)
-- `created_by`, `created_at`, `updated_at`
+Ao clicar em "Geral" na coluna da esquerda, em vez do canal de postagem:
 
-**`ficha_coleta_itens`** (só enquanto rascunho; depois vale o snapshot)
-- `ficha_id`, `produto_id`, sku/descrição, quantidade, unidade
-- `peso_kg`, `cubagem_m3`
-- `peso_manual` / `cubagem_manual` (boolean) — marca "informado manualmente",
-  para o fallback quando `produtos.weight_kg` ou as dimensões vierem zeradas
+```text
+Geral (acompanhamento)
+┌───────────────────────────┬──────────────────────────────┐
+│ Conversas do time         │ Pamela ↔ Renata              │
+│ • Pamela ↔ Renata   15/09 │ (somente leitura)            │
+│ • Grupo Comercial   15/09 │  ...histórico da conversa... │
+│ • Kelly ↔ Bruna     12/09 │                              │
+└───────────────────────────┴──────────────────────────────┘
+```
 
-**`ficha_coleta_historico`** (espelho de `pedido_ocorrencias`)
-- `ficha_id`, `tipo` (criada, editada, status, impressa, cancelada), `descricao`,
-  `status_anterior`, `status_novo`, `criada_por`, `created_at`
+- Lista de conversas ativas com participantes, data e prévia da última mensagem, mais recente no topo. O próprio "Geral" não entra na lista.
+- Clicar abre a conversa inteira em modo leitura, com paginação igual à do chat normal (últimas mensagens primeiro, "carregar anteriores" ao subir).
+- **Sem caixa de digitar, sem anexar, sem marcar como lida.** Nenhuma escrita: o `last_read_at` de terceiros não é tocado, nada de badge ou som para essas conversas (contagem de não lidas continua só das conversas de quem está logado).
+- Rótulo visível de "somente leitura / acompanhamento" no topo, para não dar a impressão de que dá para responder.
 
-Todas com GRANT explícito + RLS: leitura/escrita para quem já pode ver o pedido
-(vendedor dono, `pedidos.operar_producao`, `pedidos.movimentar`,
-`pedidos.ver_todos`, admin) — o escopo amplo do item 14, não a trava comercial.
+## Anexos
 
-## Colunas novas em `transportadoras`
+Mesmo padrão de hoje: a URL assinada é gerada só quando a bolha entra na tela, uma por vez, e vale ~1h. Não existe endpoint que liste anexos em lote.
 
-`cnpj`, `razao_social`, `ie`, endereço (cep/logradouro/número/bairro/cidade/uf),
-telefone, e-mail, `abrangencia_ufs text[]`. A busca por CNPJ reaproveita
-`consultarCnpj` de `src/lib/cnpj.functions.ts` (CNPJá), a mesma usada em clientes
-e leads — sem nova integração. "Abrangência" vira multi-select de UFs.
+Ponto que exige mudança: a regra de acesso ao arquivo hoje é `pode_acessar_anexo_chat()`, que exige ser membro do canal — sem ajuste, o preview de anexo nas conversas de terceiros falharia. A função ganha uma segunda condição: membro do canal **ou** portador de `usuarios.gerenciar`. Continua sendo arquivo por arquivo, sob demanda.
 
-## Função de numeração
+## O que não muda
 
-`public.next_ficha_coleta_number(_year int)` SECURITY DEFINER, cópia fiel de
-`next_pedido_number`: `pg_advisory_xact_lock`, MAX do sufixo, `lpad(...,6,'0')`,
-prefixo `COL-AAAA-`, EXECUTE revogado de PUBLIC/anon. Número gerado na **criação
-do rascunho** e nunca reaproveitado — cancelar não libera o número.
-
-## Lifecycle e imutabilidade
-
-rascunho → emitida → em_coleta → coletada; cancelada a partir de qualquer uma
-antes de coletada. Só rascunho é editável. Na transição rascunho→emitida o
-servidor monta o snapshot (pedido, cliente, endereço de entrega, itens com peso
-e cubagem, transportadora, vendedor, emitente, contato) e a partir daí toda
-leitura/impressão usa o snapshot — o pedido pode mudar, a ficha impressa não.
-Regras puras em `src/lib/ficha-coleta.ts` (transições válidas, cálculo de peso e
-cubagem, detecção de dado faltante → fallback manual) com testes.
-
-## Telas e rotas
-
-- `/fichas-coleta` — lista com filtro por status/período/transportadora
-- `/fichas-coleta/$id` — detalhe: editar (rascunho), emitir, imprimir, marcar em
-  coleta / coletada, cancelar, aba de histórico
-- `/ficha-coleta/$id/imprimir` — página de impressão no padrão do
-  `romaneio/$pedidoId/$tipo` (bloco `@media print`, A4, sem lib de PDF)
-- `/ficha-coleta-publica/$id` — consulta pública somente leitura, padrão de
-  `proposta-publica.$id`, destino do QR code
-- `PedidoDetailDrawer` ganha "Gerar Ficha de Coleta" + lista das fichas do pedido
-- `/transportadoras` ganha os campos novos e o botão de buscar por CNPJ
-- `/empresas` ganha a seção "Coleta / expedição"
-- Item de menu em Cadastro/Operação conforme a matriz de visibilidade já existente
-
-## Dependência nova
-
-`qrcode.react` (leve, sem binário) — única lib adicionada, só para o QR do PDF.
+DM e Grupo Comercial seguem idênticos: envio, realtime, leitura, notificações, expurgo de anexos em 15 dias. A RLS normal de `chat_mensagens` / `chat_canais` / `chat_canal_membros` continua exatamente como está, via `chat_e_membro()`. A lente nova não afrouxa nada dela — ela passa por funções separadas que checam a permissão.
 
 ## Detalhes técnicos
 
-- Server functions em `src/lib/ficha-coleta.functions.ts` com
-  `requireSupabaseAuth`; o guard de acesso resolve o papel no servidor
-  (reaproveitando o resolvedor já usado em `pedidos.functions.ts`) e rejeita
-  update em ficha não-rascunho independentemente do papel.
-- A rota pública lê por um server fn público com projeção reduzida (sem valores
-  financeiros) e policy `TO anon` restrita ao snapshot da ficha emitida.
-- Peso/cubagem: `produtos.weight_kg`, `height_cm`, `width_cm`, `length_cm`;
-  zero ou nulo conta como ausente e exige entrada manual, marcada como tal na
-  ficha e no histórico.
-- Migrações em PT-BR, GRANT + RLS em toda tabela nova, sem tocar em
-  `pedidos`/`propostas`/`produtos` além de leitura.
-- Ao final: `bunx vitest run` + `bunx tsgo --noEmit` e diff completo, sem publicar.
+**Migration** (sem alterar tabela nem policy existente):
 
-## Ordem de implementação sugerida
+1. `chat_supervisao_conversas()` — SECURITY DEFINER, `GRANT EXECUTE TO authenticated`, `REVOKE FROM public, anon`. Primeira linha: se `NOT tem_permissao(auth.uid(),'usuarios.gerenciar')` então `RAISE EXCEPTION`. Retorna, para todo canal com `tipo <> 'geral'`: `canal_id, tipo, nome, participantes (array de nome), ultima_em, ultima_previa (conteúdo ou 📎 nome do anexo), total_mensagens`. Ordena por `ultima_em desc`.
+2. `chat_supervisao_mensagens(_canal_id uuid, _antes timestamptz default null, _limite int default 40)` — mesmo gate e mesmos grants; recusa `tipo = 'geral'`; devolve as colunas já usadas na tela (`id, canal_id, autor_user_id, autor_nome, conteudo, criado_em, anexo_path, anexo_nome, anexo_tipo, anexo_tamanho_bytes`) em ordem decrescente, com `limite` teto de 100.
+3. `CREATE OR REPLACE FUNCTION pode_acessar_anexo_chat(_name text)` — acrescenta `OR tem_permissao(auth.uid(),'usuarios.gerenciar')` ao retorno.
 
-1. `emitters` (contato/coleta) + tela `/empresas`
-2. `transportadoras` (CNPJ, endereço, abrangência) + tela
-3. Tabelas da ficha, numeração, RLS, puras + testes
-4. Server functions e lifecycle
-5. Telas de lista/detalhe e botão no pedido
-6. Impressão, rota pública e QR code
+**Server functions** em `src/lib/chat-supervisao.functions.ts`, ambas com `requireSupabaseAuth`, chamando as RPCs pelo client do usuário (o gate real fica no banco, fail-closed):
+`listarConversasSupervisao()` e `mensagensSupervisao({ canalId, antes })`.
+
+**Puras** em `src/lib/chat-supervisao.ts`: montar o título da conversa a partir dos participantes (`"Pamela ↔ Renata"`, nome do grupo quando houver), ordenação e recorte da prévia — com testes.
+
+**Tela**: em `src/routes/chat-interno.tsx`, quando o item selecionado é `tipo === "geral"` e a pessoa tem a permissão, renderiza um componente novo `PainelSupervisao` no lugar da thread + composer. Reaproveita `AnexoMensagem`, `mesclarHistorico` e a rolagem existente. Sem permissão, o comportamento atual permanece.
+
+**Testes**: puras de título/ordenação; verificação no banco de que um usuário sem `usuarios.gerenciar` recebe erro ao chamar as duas funções e que um com a permissão recebe as conversas.
+
+## Fora do escopo
+
+Busca dentro do painel de acompanhamento, exportação de conversas, registro de auditoria de "quem leu o quê" e atualização em tempo real do painel (será leitura sob demanda, com refresh ao abrir). Dá para incluir depois se o Denis pedir.
