@@ -782,7 +782,23 @@ function ChatInternoPage() {
                       </div>
                     )}
                     {m.conteudo.trim() && (
-                      <div className="whitespace-pre-wrap break-words">{m.conteudo}</div>
+                      <div className="whitespace-pre-wrap break-words">
+                        {dividirTextoComLinks(m.conteudo).map((p, i) =>
+                          p.tipo === "link" ? (
+                            <a
+                              key={i}
+                              href={p.valor}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="underline underline-offset-2 break-all"
+                            >
+                              {p.valor}
+                            </a>
+                          ) : (
+                            <span key={i}>{p.valor}</span>
+                          ),
+                        )}
+                      </div>
                     )}
                     {(m.anexo_path || m.anexo_nome) && <AnexoMensagem m={m} />}
                     <div className="mt-1 text-right text-[10px] opacity-60">
