@@ -770,7 +770,7 @@ function ChatInternoPage() {
                 <div key={m.id} className={cn("flex", minha ? "justify-end" : "justify-start")}>
                   <div
                     className={cn(
-                      "max-w-[78%] rounded-2xl px-3 py-2 text-sm shadow-sm",
+                      "min-w-0 max-w-[78%] rounded-2xl px-3 py-2 text-sm shadow-sm",
                       minha
                         ? "rounded-br-sm bg-primary text-primary-foreground"
                         : "rounded-bl-sm bg-muted text-foreground",
