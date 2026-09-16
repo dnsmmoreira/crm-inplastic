@@ -24,6 +24,7 @@ import {
   PAGINA_BUSCA_CHAT,
   PAGINA_HISTORICO_CHAT,
   caminhoAnexoChat,
+  dividirTextoComLinks,
   ehImagemAnexo,
   ehPdfAnexo,
   formatarTamanhoAnexo,
@@ -769,7 +770,7 @@ function ChatInternoPage() {
                 <div key={m.id} className={cn("flex", minha ? "justify-end" : "justify-start")}>
                   <div
                     className={cn(
-                      "max-w-[78%] rounded-2xl px-3 py-2 text-sm shadow-sm",
+                      "min-w-0 max-w-[78%] rounded-2xl px-3 py-2 text-sm shadow-sm",
                       minha
                         ? "rounded-br-sm bg-primary text-primary-foreground"
                         : "rounded-bl-sm bg-muted text-foreground",
@@ -781,7 +782,23 @@ function ChatInternoPage() {
                       </div>
                     )}
                     {m.conteudo.trim() && (
-                      <div className="whitespace-pre-wrap break-words">{m.conteudo}</div>
+                      <div className="whitespace-pre-wrap break-words">
+                        {dividirTextoComLinks(m.conteudo).map((p, i) =>
+                          p.tipo === "link" ? (
+                            <a
+                              key={i}
+                              href={p.valor}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="underline underline-offset-2 break-all"
+                            >
+                              {p.valor}
+                            </a>
+                          ) : (
+                            <span key={i}>{p.valor}</span>
+                          ),
+                        )}
+                      </div>
                     )}
                     {(m.anexo_path || m.anexo_nome) && <AnexoMensagem m={m} />}
                     <div className="mt-1 text-right text-[10px] opacity-60">

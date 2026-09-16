@@ -15,8 +15,55 @@ import {
   mesclarHistorico,
   prepararBusca,
   escaparCuringaBusca,
+  dividirTextoComLinks,
   type ChatCanalResumo,
 } from "./chat-interno";
+
+describe("dividirTextoComLinks", () => {
+  it("texto sem link vira um pedaço só", () => {
+    expect(dividirTextoComLinks("bom dia, tudo bem?")).toEqual([
+      { tipo: "texto", valor: "bom dia, tudo bem?" },
+    ]);
+  });
+
+  it("link sozinho", () => {
+    expect(dividirTextoComLinks("https://a.com/x?y=1")).toEqual([
+      { tipo: "link", valor: "https://a.com/x?y=1" },
+    ]);
+  });
+
+  it("link no meio da frase", () => {
+    expect(dividirTextoComLinks("veja http://a.com/x aqui")).toEqual([
+      { tipo: "texto", valor: "veja " },
+      { tipo: "link", valor: "http://a.com/x" },
+      { tipo: "texto", valor: " aqui" },
+    ]);
+  });
+
+  it("dois links na mesma mensagem", () => {
+    expect(dividirTextoComLinks("https://a.com e https://b.com")).toEqual([
+      { tipo: "link", valor: "https://a.com" },
+      { tipo: "texto", valor: " e " },
+      { tipo: "link", valor: "https://b.com" },
+    ]);
+  });
+
+  it("corta o ponto final e o parêntese sobrando", () => {
+    expect(dividirTextoComLinks("abre https://a.com/x.")).toEqual([
+      { tipo: "texto", valor: "abre " },
+      { tipo: "link", valor: "https://a.com/x" },
+      { tipo: "texto", valor: "." },
+    ]);
+    expect(dividirTextoComLinks("(https://a.com/x)")).toEqual([
+      { tipo: "texto", valor: "(" },
+      { tipo: "link", valor: "https://a.com/x" },
+      { tipo: "texto", valor: ")" },
+    ]);
+    expect(dividirTextoComLinks("https://a.com/x_(y)")).toEqual([
+      { tipo: "link", valor: "https://a.com/x_(y)" },
+    ]);
+  });
+});
 
 describe("preview e busca", () => {
   it("reconhece PDF por mime e por extensão", () => {

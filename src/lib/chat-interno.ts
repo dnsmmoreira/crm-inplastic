@@ -296,6 +296,63 @@ export function totalNaoLidas(itens: readonly ChatItemLista[]): number {
   return itens.reduce((acc, i) => acc + i.naoLidas, 0);
 }
 
+/* ------------------------------------------------- links dentro do texto */
+
+export type PedacoTexto = { tipo: "texto" | "link"; valor: string };
+
+const RE_LINK = /https?:\/\/[^\s]+/g;
+
+/** Pontuação de fechamento que costuma vir depois do link, não dentro dele. */
+function aparharFimDoLink(bruto: string): { link: string; sobra: string } {
+  let link = bruto;
+  while (link.length > 0) {
+    const ultimo = link[link.length - 1]!;
+    if (".,;:!?".includes(ultimo)) {
+      link = link.slice(0, -1);
+      continue;
+    }
+    if (")]}".includes(ultimo)) {
+      const abre = ultimo === ")" ? "(" : ultimo === "]" ? "[" : "{";
+      const qtdAbre = link.split(abre).length - 1;
+      const qtdFecha = link.split(ultimo).length - 1;
+      if (qtdFecha > qtdAbre) {
+        link = link.slice(0, -1);
+        continue;
+      }
+    }
+    break;
+  }
+  return { link, sobra: bruto.slice(link.length) };
+}
+
+/**
+ * Separa o texto em pedaços de texto puro e links clicáveis (`http`/`https`).
+ * A pontuação final que não faz parte da URL volta para o texto.
+ */
+export function dividirTextoComLinks(texto: string): PedacoTexto[] {
+  const entrada = texto ?? "";
+  const out: PedacoTexto[] = [];
+  let cursor = 0;
+  const empurraTexto = (valor: string) => {
+    if (!valor) return;
+    const ultimo = out[out.length - 1];
+    if (ultimo && ultimo.tipo === "texto") ultimo.valor += valor;
+    else out.push({ tipo: "texto", valor });
+  };
+
+  for (const m of entrada.matchAll(RE_LINK)) {
+    const inicio = m.index ?? 0;
+    const { link, sobra } = aparharFimDoLink(m[0]);
+    empurraTexto(entrada.slice(cursor, inicio));
+    if (link) out.push({ tipo: "link", valor: link });
+    else empurraTexto(m[0]);
+    empurraTexto(sobra);
+    cursor = inicio + m[0].length;
+  }
+  empurraTexto(entrada.slice(cursor));
+  return out;
+}
+
 /** Valida o texto antes de enviar. Retorna o texto pronto ou `null`. */
 export function prepararTexto(bruto: string): string | null {
   const t = bruto.trim();
