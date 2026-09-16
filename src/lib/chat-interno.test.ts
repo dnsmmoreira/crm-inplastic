@@ -15,6 +15,7 @@ import {
   mesclarHistorico,
   prepararBusca,
   escaparCuringaBusca,
+  dividirTextoComLinks,
   type ChatCanalResumo,
 } from "./chat-interno";
 
