@@ -465,7 +465,11 @@ function ChatInternoPage() {
   const [carregandoThread, setCarregandoThread] = useState(false);
   const [temMaisAntigas, setTemMaisAntigas] = useState(false);
   const [carregandoAntigas, setCarregandoAntigas] = useState(false);
-  const canalId = selecionado?.canalId ?? null;
+  // "Geral" deixou de ser canal de postagem: virou a lente de leitura das
+  // conversas do time (só o supervisor é membro desse canal, e o banco recusa
+  // qualquer outro). Com canalId nulo, nada de thread, realtime ou leitura.
+  const modoSupervisao = selecionado?.tipo === "geral";
+  const canalId = modoSupervisao ? null : (selecionado?.canalId ?? null);
   const listaRef = useRef<HTMLDivElement>(null);
   const { onScroll } = useAutoScrollMensagens(listaRef, canalId, mensagens);
 
