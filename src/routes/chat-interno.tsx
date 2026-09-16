@@ -814,7 +814,9 @@ function ChatInternoPage() {
           })}
         </aside>
 
-        {/* Thread */}
+        {/* Thread (ou acompanhamento, quando o item selecionado é o "Geral") */}
+        {modoSupervisao && <PainelSupervisao />}
+        {!modoSupervisao && (
         <section className="flex min-h-0 flex-col rounded-lg border bg-card">
           <header className="flex items-center justify-between gap-2 border-b px-4 py-2 text-sm font-medium">
             <span className="truncate">{selecionado?.titulo ?? "Selecione uma conversa"}</span>
