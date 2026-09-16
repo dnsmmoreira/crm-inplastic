@@ -37,6 +37,17 @@ import {
   type ChatTipoCanal,
 } from "@/lib/chat-interno";
 import { enviarAnexoComProgresso } from "@/lib/chat-anexo-upload";
+import {
+  listarConversasSupervisao,
+  mensagensSupervisao,
+} from "@/lib/chat-supervisao.functions";
+import {
+  PAGINA_SUPERVISAO,
+  previaConversa,
+  tituloConversaSupervisao,
+  type ConversaSupervisao,
+  type MensagemSupervisao,
+} from "@/lib/chat-supervisao";
 import { CHAT_QUERY_KEY } from "@/lib/chat-interno.query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
