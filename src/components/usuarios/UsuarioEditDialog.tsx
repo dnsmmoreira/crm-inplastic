@@ -444,6 +444,43 @@ export function UsuarioEditDialog({
               </div>
 
               <div className="space-y-1">
+                <Label htmlFor="ue-equipe">Equipe</Label>
+                <select
+                  id="ue-equipe"
+                  value={equipeId}
+                  onChange={(e) => setEquipeId(e.target.value)}
+                  className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                >
+                  <option value="">— sem equipe —</option>
+                  {equipes.map((e) => (
+                    <option key={e.id} value={e.id}>{e.nome}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground">
+                  Define o que um Supervisor ADM da mesma equipe consegue acompanhar.
+                </p>
+              </div>
+
+              {ehSupervisorEquipe && (
+                <div className="space-y-1">
+                  <Label htmlFor="ue-supervisor-escopo">Alcance da supervisão</Label>
+                  <select
+                    id="ue-supervisor-escopo"
+                    value={supervisorEscopo}
+                    onChange={(e) => setSupervisorEscopo(e.target.value as SupervisorEscopo)}
+                    className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                  >
+                    <option value="equipe">Somente a própria equipe</option>
+                    <option value="global">Todas as equipes</option>
+                  </select>
+                  <p className="text-xs text-muted-foreground">
+                    Vale só para leitura. Não libera mover pedido, aprovar proposta ou qualquer
+                    alteração.
+                  </p>
+                </div>
+              )}
+
+              <div className="space-y-1">
                 <Label htmlFor="ue-fuso">Fuso horário</Label>
                 <select
                   id="ue-fuso"
