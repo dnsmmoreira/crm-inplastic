@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
 import { assertNoError, assertRpcPermissao } from "@/lib/guard-erros";
+import { normalizarSupervisorEscopo, type SupervisorEscopo } from "@/lib/equipes-escopo";
 import { requireSupabaseAuth as requireSupabaseAuthBase } from "@/integrations/supabase/auth-middleware";
 
 /* ------------------------------------------------------------------ */
