@@ -27,6 +27,8 @@ import {
 } from "@/lib/usuarios.functions";
 import { getPerfilDoUsuario, setPerfilDoUsuario } from "@/lib/perfis.functions";
 import { listCargos, type CargoRow } from "@/lib/cargos.functions";
+import { listEquipes, type EquipeRow } from "@/lib/equipes.functions";
+import { type SupervisorEscopo } from "@/lib/equipes-escopo";
 import {
   ARENA_TIPOS,
   ARENA_PARTICIPACAO_PADRAO,
@@ -44,6 +46,8 @@ type PerfilOpcao = {
   papel: string;
   baseRole: "admin" | "vendedor";
   ativo: boolean;
+  /** Perfil com permissões `*.ver_equipe` (supervisão por equipe). */
+  verEquipe?: boolean;
 };
 
 const FUSOS = [
@@ -112,6 +116,7 @@ export function UsuarioEditDialog({
   const savePerfilVinculo = useServerFn(setPerfilDoUsuario);
   const loadArena = useServerFn(getArenaParticipacao);
   const loadCargos = useServerFn(listCargos);
+  const loadEquipes = useServerFn(listEquipes);
   const saveArena = useServerFn(saveArenaParticipacao);
 
   const isSelf = usuario?.id === currentUserId;
@@ -121,6 +126,9 @@ export function UsuarioEditDialog({
   const [cargo, setCargo] = useState("");
   const [cargoId, setCargoId] = useState("");
   const [gestorId, setGestorId] = useState("");
+  const [equipeId, setEquipeId] = useState("");
+  const [equipes, setEquipes] = useState<EquipeRow[]>([]);
+  const [supervisorEscopo, setSupervisorEscopo] = useState<SupervisorEscopo>("equipe");
 
   const [telefone, setTelefone] = useState("");
   const [fuso, setFuso] = useState("America/Sao_Paulo");
@@ -153,6 +161,9 @@ export function UsuarioEditDialog({
     setCargo(usuario.cargo ?? "");
     setCargoId(usuario.cargoId ?? "");
     setGestorId(usuario.gestorId ?? "");
+    setEquipeId(usuario.equipeId ?? "");
+    setSupervisorEscopo(usuario.supervisorEscopo ?? "equipe");
+
 
     setTelefone(usuario.telefoneWhatsapp ?? "");
     setFuso(usuario.fusoHorario);
@@ -180,6 +191,13 @@ export function UsuarioEditDialog({
     })();
     void (async () => {
       try {
+        setEquipes((await loadEquipes({})) as EquipeRow[]);
+      } catch (e) {
+        console.error("listEquipes", e);
+      }
+    })();
+    void (async () => {
+      try {
         const res = (await loadPerfil({ data: { userId: usuario.id } })) as {
           perfilId: string | null;
           perfis: PerfilOpcao[];
@@ -202,7 +220,7 @@ export function UsuarioEditDialog({
         }
       })();
     }
-  }, [usuario, loadPerfil, loadArena, loadCargos, isAdmin]);
+  }, [usuario, loadPerfil, loadArena, loadCargos, loadEquipes, isAdmin]);
 
 
   const carregarAuditoria = useCallback(async () => {
@@ -236,6 +254,10 @@ export function UsuarioEditDialog({
     [usuarios, usuario?.id],
   );
 
+  // O toggle de escopo só faz sentido para perfis de supervisão por equipe.
+  // Detectado pelas permissões `*.ver_equipe`, nunca pelo nome do perfil.
+  const ehSupervisorEquipe = perfis.some((p) => p.id === perfilId && p.verEquipe);
+
   if (!usuario || !perms) return null;
 
   const handleSave = async () => {
@@ -256,6 +278,9 @@ export function UsuarioEditDialog({
             cargo: cargoNome.trim() || null,
             cargoId: cargoId || null,
             gestorId: gestorId || null,
+            equipeId: equipeId || null,
+            supervisorEscopo,
+
 
             telefoneWhatsapp: telefone.trim() || null,
             fusoHorario: fuso,
@@ -417,6 +442,43 @@ export function UsuarioEditDialog({
                     : "Opcional. O gestor recebe cópia informativa dos alertas desta pessoa."}
                 </p>
               </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="ue-equipe">Equipe</Label>
+                <select
+                  id="ue-equipe"
+                  value={equipeId}
+                  onChange={(e) => setEquipeId(e.target.value)}
+                  className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                >
+                  <option value="">— sem equipe —</option>
+                  {equipes.map((e) => (
+                    <option key={e.id} value={e.id}>{e.nome}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground">
+                  Define o que um Supervisor ADM da mesma equipe consegue acompanhar.
+                </p>
+              </div>
+
+              {ehSupervisorEquipe && (
+                <div className="space-y-1">
+                  <Label htmlFor="ue-supervisor-escopo">Alcance da supervisão</Label>
+                  <select
+                    id="ue-supervisor-escopo"
+                    value={supervisorEscopo}
+                    onChange={(e) => setSupervisorEscopo(e.target.value as SupervisorEscopo)}
+                    className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                  >
+                    <option value="equipe">Somente a própria equipe</option>
+                    <option value="global">Todas as equipes</option>
+                  </select>
+                  <p className="text-xs text-muted-foreground">
+                    Vale só para leitura. Não libera mover pedido, aprovar proposta ou qualquer
+                    alteração.
+                  </p>
+                </div>
+              )}
 
               <div className="space-y-1">
                 <Label htmlFor="ue-fuso">Fuso horário</Label>

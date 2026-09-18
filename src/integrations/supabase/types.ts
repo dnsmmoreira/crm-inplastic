@@ -996,6 +996,30 @@ export type Database = {
         }
         Relationships: []
       }
+      equipes: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: string
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       falhas_sistema: {
         Row: {
           contexto: Json | null
@@ -2605,12 +2629,14 @@ export type Database = {
           deleted_at: string | null
           deleted_by: string | null
           email_cache: string | null
+          equipe_id: string | null
           fuso_horario: string
           gestor_id: string | null
           id: string
           limite_leads_simultaneos: number | null
           name: string
           senha_reset_exigido: boolean
+          supervisor_escopo: string
           telefone_whatsapp: string | null
           telegram_chat_id: string | null
           telegram_vinculo_codigo: string | null
@@ -2628,12 +2654,14 @@ export type Database = {
           deleted_at?: string | null
           deleted_by?: string | null
           email_cache?: string | null
+          equipe_id?: string | null
           fuso_horario?: string
           gestor_id?: string | null
           id: string
           limite_leads_simultaneos?: number | null
           name?: string
           senha_reset_exigido?: boolean
+          supervisor_escopo?: string
           telefone_whatsapp?: string | null
           telegram_chat_id?: string | null
           telegram_vinculo_codigo?: string | null
@@ -2651,12 +2679,14 @@ export type Database = {
           deleted_at?: string | null
           deleted_by?: string | null
           email_cache?: string | null
+          equipe_id?: string | null
           fuso_horario?: string
           gestor_id?: string | null
           id?: string
           limite_leads_simultaneos?: number | null
           name?: string
           senha_reset_exigido?: boolean
+          supervisor_escopo?: string
           telefone_whatsapp?: string | null
           telegram_chat_id?: string | null
           telegram_vinculo_codigo?: string | null
@@ -2670,6 +2700,13 @@ export type Database = {
             columns: ["cargo_id"]
             isOneToOne: false
             referencedRelation: "cargos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_equipe_id_fkey"
+            columns: ["equipe_id"]
+            isOneToOne: false
+            referencedRelation: "equipes"
             referencedColumns: ["id"]
           },
           {
@@ -3968,6 +4005,7 @@ export type Database = {
         Args: { _contexto: Json; _mensagem: string; _origem: string }
         Returns: undefined
       }
+      mesma_equipe: { Args: { _a: string; _b: string }; Returns: boolean }
       mover_etapa_lead: {
         Args: { _lead_id: string; _origem?: string; _stage: string }
         Returns: Json
@@ -4039,6 +4077,7 @@ export type Database = {
         Args: { _ano: number; _mes: number }
         Returns: number
       }
+      supervisor_ve_tudo: { Args: { _user_id: string }; Returns: boolean }
       tel_chave: { Args: { _v: string }; Returns: string }
       tem_permissao: {
         Args: { _chave: string; _user_id: string }
