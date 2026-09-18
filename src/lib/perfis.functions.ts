@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
+import { perfilEhSupervisorEquipe } from "@/lib/equipes-escopo";
 
 /* ------------------------------------------------------------------ */
 /* Tipos                                                               */
