@@ -188,6 +188,13 @@ export function UsuarioEditDialog({
     })();
     void (async () => {
       try {
+        setEquipes((await loadEquipes({})) as EquipeRow[]);
+      } catch (e) {
+        console.error("listEquipes", e);
+      }
+    })();
+    void (async () => {
+      try {
         const res = (await loadPerfil({ data: { userId: usuario.id } })) as {
           perfilId: string | null;
           perfis: PerfilOpcao[];
