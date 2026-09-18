@@ -44,6 +44,8 @@ type PerfilOpcao = {
   papel: string;
   baseRole: "admin" | "vendedor";
   ativo: boolean;
+  /** Perfil com permissões `*.ver_equipe` (supervisão por equipe). */
+  verEquipe?: boolean;
 };
 
 const FUSOS = [
@@ -121,6 +123,9 @@ export function UsuarioEditDialog({
   const [cargo, setCargo] = useState("");
   const [cargoId, setCargoId] = useState("");
   const [gestorId, setGestorId] = useState("");
+  const [equipeId, setEquipeId] = useState("");
+  const [equipes, setEquipes] = useState<EquipeRow[]>([]);
+  const [supervisorEscopo, setSupervisorEscopo] = useState<SupervisorEscopo>("equipe");
 
   const [telefone, setTelefone] = useState("");
   const [fuso, setFuso] = useState("America/Sao_Paulo");
