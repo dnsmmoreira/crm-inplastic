@@ -254,6 +254,10 @@ export function UsuarioEditDialog({
     [usuarios, usuario?.id],
   );
 
+  // O toggle de escopo só faz sentido para perfis de supervisão por equipe.
+  // Detectado pelas permissões `*.ver_equipe`, nunca pelo nome do perfil.
+  const ehSupervisorEquipe = perfis.some((p) => p.id === perfilId && p.verEquipe);
+
   if (!usuario || !perms) return null;
 
   const handleSave = async () => {
@@ -274,6 +278,9 @@ export function UsuarioEditDialog({
             cargo: cargoNome.trim() || null,
             cargoId: cargoId || null,
             gestorId: gestorId || null,
+            equipeId: equipeId || null,
+            supervisorEscopo,
+
 
             telefoneWhatsapp: telefone.trim() || null,
             fusoHorario: fuso,
