@@ -27,6 +27,8 @@ import {
 } from "@/lib/usuarios.functions";
 import { getPerfilDoUsuario, setPerfilDoUsuario } from "@/lib/perfis.functions";
 import { listCargos, type CargoRow } from "@/lib/cargos.functions";
+import { listEquipes, type EquipeRow } from "@/lib/equipes.functions";
+import { type SupervisorEscopo } from "@/lib/equipes-escopo";
 import {
   ARENA_TIPOS,
   ARENA_PARTICIPACAO_PADRAO,
@@ -114,6 +116,7 @@ export function UsuarioEditDialog({
   const savePerfilVinculo = useServerFn(setPerfilDoUsuario);
   const loadArena = useServerFn(getArenaParticipacao);
   const loadCargos = useServerFn(listCargos);
+  const loadEquipes = useServerFn(listEquipes);
   const saveArena = useServerFn(saveArenaParticipacao);
 
   const isSelf = usuario?.id === currentUserId;
