@@ -38,6 +38,10 @@ export type UsuarioRow = {
   cargo: string | null;
   cargoId: string | null;
   gestorId: string | null;
+  /** Equipe comercial — usada pela RLS para o escopo do Supervisor ADM. */
+  equipeId: string | null;
+  /** "equipe" (padrão) ou "global" para supervisores que enxergam tudo. */
+  supervisorEscopo: SupervisorEscopo;
 
   telefoneWhatsapp: string | null;
   telegramVinculado: boolean;
@@ -195,6 +199,8 @@ export const listUsuarios = createServerFn({ method: "POST" })
           cargo: p.cargo ?? null,
           cargoId: p.cargo_id ?? null,
           gestorId: p.gestor_id ?? null,
+          equipeId: p.equipe_id ?? null,
+          supervisorEscopo: normalizarSupervisorEscopo(p.supervisor_escopo),
 
           telefoneWhatsapp: p.telefone_whatsapp ?? null,
           telegramVinculado: !!String(p.telegram_chat_id ?? "").trim(),
@@ -286,6 +292,8 @@ const updateSchema = z.object({
       cargo: z.string().trim().max(120).nullable(),
       cargoId: z.string().uuid().nullable().optional(),
       gestorId: z.string().uuid().nullable().optional(),
+      equipeId: z.string().uuid().nullable().optional(),
+      supervisorEscopo: z.enum(["equipe", "global"]).optional(),
 
       telefoneWhatsapp: z.string().trim().max(30).nullable(),
       fusoHorario: z.string().trim().max(64),
