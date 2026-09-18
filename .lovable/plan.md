@@ -1,61 +1,103 @@
-# "Geral" vira painel de acompanhamento da diretoria
+# Equipes comerciais + cargo/perfil "Supervisor ADM" (somente leitura, escopo por equipe)
 
-Hoje o canal "Geral" tem só o Denis como membro, então nunca chega mensagem lá e o item abre um canal vazio. A proposta troca esse canal vazio por uma **lente de leitura**: quem tem a permissão de administração vê, dentro de `/chat-interno`, todas as conversas do time (DMs entre outras pessoas + Grupo Comercial) e pode ler cada uma inteira, sem responder e sem interferir.
+Segunda equipe comercial entra no sistema sem enxergar a carteira atual. O supervisor da equipe nova vê apenas leads, clientes, propostas e pedidos cujo dono está na mesma equipe que ele — e isso é configurável pessoa a pessoa (equipe dele ou empresa toda).
 
-Nada muda para quem só usa o chat normalmente.
+Nada do que existe hoje muda de comportamento: todas as regras de acesso atuais (dono, `ver_todos`/`ver_todas`, admin) ficam intactas. As regras novas são **adicionais** — só ampliam a visão de quem tiver a permissão nova.
 
-## Quem pode ver
+## 1. Equipes
 
-Gate pela permissão já existente `usuarios.gerenciar` (a mesma usada em Equipe, Usuários, Perfis e nas escalações do Xerife). Nada preso ao id do Denis — se outra pessoa receber essa permissão, passa a enxergar também.
+Tabela `equipes`: `id`, `nome`, `ativo` (default true), `created_at`, `updated_at` (com o trigger padrão). Grants: `SELECT` para `authenticated` (todo mundo precisa ler o nome da equipe nas telas), escrita só para quem gerencia usuários; `ALL` para `service_role`. RLS ligada, com política de leitura para `authenticated` e de escrita condicionada a `tem_permissao(auth.uid(),'usuarios.gerenciar')`.
 
-O gate é verificado **no servidor**, dentro das funções novas (`tem_permissao(auth.uid(), 'usuarios.gerenciar')`), e repetido na tela só para decidir o que desenhar. Sem a permissão, o item "Geral" continua se comportando como hoje.
+Coluna `profiles.equipe_id uuid null references public.equipes(id)`, com índice.
 
-## Como fica a tela
+Seed de duas linhas: **Equipe INPLASTIC** e **Equipe Nova**. Todos os 9 perfis existentes (Denis, Wagner, Renata, Kelly, Bruna, Beatriz, Bianca, Daniel, Pamela) recebem `equipe_id` da Equipe INPLASTIC no mesmo migration. O nome é só rótulo — nenhuma lógica depende do texto, então renomear é seguro.
 
-Ao clicar em "Geral" na coluna da esquerda, em vez do canal de postagem:
+## 2. Escopo do supervisor
 
-```text
-Geral (acompanhamento)
-┌───────────────────────────┬──────────────────────────────┐
-│ Conversas do time         │ Pamela ↔ Renata              │
-│ • Pamela ↔ Renata   15/09 │ (somente leitura)            │
-│ • Grupo Comercial   15/09 │  ...histórico da conversa... │
-│ • Kelly ↔ Bruna     12/09 │                              │
-└───────────────────────────┴──────────────────────────────┘
+Coluna `profiles.supervisor_escopo text not null default 'equipe'`, com `CHECK (supervisor_escopo in ('equipe','global'))`. Só produz efeito para quem tem alguma permissão `*.ver_equipe`; para o resto é campo inerte.
+
+## 3. Cargo, perfil e permissões novas
+
+- Cargo **Supervisor ADM** em `cargos` (informativo, igual aos demais — não concede nada).
+- 4 permissões novas em `permissoes`, grupo correspondente, tipo booleana: `leads.ver_equipe`, `clientes.ver_equipe`, `propostas.ver_equipe`, `pedidos.ver_equipe`.
+- Perfil **Supervisor ADM** em `perfis` (papel Vendas, base role vendedor, não protegido) com exatamente essas 4 permissões em `perfil_permissoes`. Sem `ver_todos`/`ver_todas`, sem permissão de edição, sem `relatorios.ver`.
+
+Nenhum perfil existente é alterado.
+
+## 4. Funções de apoio (SECURITY DEFINER, `search_path = public`, EXECUTE só para `authenticated`)
+
+```sql
+create or replace function public.mesma_equipe(_a uuid, _b uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1
+    from public.profiles pa
+    join public.profiles pb on pb.id = _b
+    where pa.id = _a
+      and pa.equipe_id is not null
+      and pa.equipe_id = pb.equipe_id
+  )
+$$;
 ```
 
-- Lista de conversas ativas com participantes, data e prévia da última mensagem, mais recente no topo. O próprio "Geral" não entra na lista.
-- Clicar abre a conversa inteira em modo leitura, com paginação igual à do chat normal (últimas mensagens primeiro, "carregar anteriores" ao subir).
-- **Sem caixa de digitar, sem anexar, sem marcar como lida.** Nenhuma escrita: o `last_read_at` de terceiros não é tocado, nada de badge ou som para essas conversas (contagem de não lidas continua só das conversas de quem está logado).
-- Rótulo visível de "somente leitura / acompanhamento" no topo, para não dar a impressão de que dá para responder.
+`null = null` retorna `false` porque a condição exige `equipe_id is not null` nos dois lados (o join iguala os valores). Pessoa sem equipe não casa com ninguém.
 
-## Anexos
+```sql
+create or replace function public.supervisor_ve_tudo(_user_id uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from public.profiles
+    where id = _user_id and supervisor_escopo = 'global'
+  )
+$$;
+```
 
-Mesmo padrão de hoje: a URL assinada é gerada só quando a bolha entra na tela, uma por vez, e vale ~1h. Não existe endpoint que liste anexos em lote.
+## 5. As 4 policies novas de SELECT (aditivas)
 
-Ponto que exige mudança: a regra de acesso ao arquivo hoje é `pode_acessar_anexo_chat()`, que exige ser membro do canal — sem ajuste, o preview de anexo nas conversas de terceiros falharia. A função ganha uma segunda condição: membro do canal **ou** portador de `usuarios.gerenciar`. Continua sendo arquivo por arquivo, sob demanda.
+Nenhuma policy existente é tocada, renomeada ou recriada. Cada tabela ganha uma policy a mais, para `authenticated`:
 
-## O que não muda
+```sql
+create policy "leads select ver_equipe" on public.leads
+for select to authenticated using (
+  tem_permissao(auth.uid(), 'leads.ver_equipe')
+  and (supervisor_ve_tudo(auth.uid()) or mesma_equipe(auth.uid(), owner_id))
+);
 
-DM e Grupo Comercial seguem idênticos: envio, realtime, leitura, notificações, expurgo de anexos em 15 dias. A RLS normal de `chat_mensagens` / `chat_canais` / `chat_canal_membros` continua exatamente como está, via `chat_e_membro()`. A lente nova não afrouxa nada dela — ela passa por funções separadas que checam a permissão.
+create policy "clientes select ver_equipe" on public.clientes
+for select to authenticated using (
+  tem_permissao(auth.uid(), 'clientes.ver_equipe')
+  and (supervisor_ve_tudo(auth.uid()) or mesma_equipe(auth.uid(), vendedor_id))
+);
 
-## Detalhes técnicos
+create policy "propostas select ver_equipe" on public.propostas
+for select to authenticated using (
+  tem_permissao(auth.uid(), 'propostas.ver_equipe')
+  and (supervisor_ve_tudo(auth.uid()) or mesma_equipe(auth.uid(), owner_id))
+);
 
-**Migration** (sem alterar tabela nem policy existente):
+create policy "pedidos select ver_equipe" on public.pedidos
+for select to authenticated using (
+  tem_permissao(auth.uid(), 'pedidos.ver_equipe')
+  and (supervisor_ve_tudo(auth.uid()) or mesma_equipe(auth.uid(), owner_id))
+);
+```
 
-1. `chat_supervisao_conversas()` — SECURITY DEFINER, `GRANT EXECUTE TO authenticated`, `REVOKE FROM public, anon`. Primeira linha: se `NOT tem_permissao(auth.uid(),'usuarios.gerenciar')` então `RAISE EXCEPTION`. Retorna, para todo canal com `tipo <> 'geral'`: `canal_id, tipo, nome, participantes (array de nome), ultima_em, ultima_previa (conteúdo ou 📎 nome do anexo), total_mensagens`. Ordena por `ultima_em desc`.
-2. `chat_supervisao_mensagens(_canal_id uuid, _antes timestamptz default null, _limite int default 40)` — mesmo gate e mesmos grants; recusa `tipo = 'geral'`; devolve as colunas já usadas na tela (`id, canal_id, autor_user_id, autor_nome, conteudo, criado_em, anexo_path, anexo_nome, anexo_tipo, anexo_tamanho_bytes`) em ordem decrescente, com `limite` teto de 100.
-3. `CREATE OR REPLACE FUNCTION pode_acessar_anexo_chat(_name text)` — acrescenta `OR tem_permissao(auth.uid(),'usuarios.gerenciar')` ao retorno.
+Como policies de SELECT são somadas por OR, quem não tem a permissão nova continua exatamente com a visão de hoje. Registro sem dono (`owner_id`/`vendedor_id` null) não aparece para o supervisor de equipe — `mesma_equipe` devolve false. Transferência de carteira é acompanhada automaticamente: a visão segue a coluna de dono.
 
-**Server functions** em `src/lib/chat-supervisao.functions.ts`, ambas com `requireSupabaseAuth`, chamando as RPCs pelo client do usuário (o gate real fica no banco, fail-closed):
-`listarConversasSupervisao()` e `mensagensSupervisao({ canalId, antes })`.
+Nenhuma policy de INSERT/UPDATE/DELETE é criada — o Supervisor ADM é leitura pura. As server functions de escrita continuam barrando por permissão, e a RLS de escrita já não o contempla.
 
-**Puras** em `src/lib/chat-supervisao.ts`: montar o título da conversa a partir dos participantes (`"Pamela ↔ Renata"`, nome do grupo quando houver), ordenação e recorte da prévia — com testes.
+## 6. Telas de administração
 
-**Tela**: em `src/routes/chat-interno.tsx`, quando o item selecionado é `tipo === "geral"` e a pessoa tem a permissão, renderiza um componente novo `PainelSupervisao` no lugar da thread + composer. Reaproveita `AnexoMensagem`, `mesclarHistorico` e a rolagem existente. Sem permissão, o comportamento atual permanece.
+**Ficha do usuário** (`UsuarioEditDialog`): novo seletor **Equipe** (lista de equipes ativas, mais "Sem equipe"), ao lado de Cargo/Gestor. E, apenas quando o perfil selecionado for o Supervisor ADM (detectado pelas permissões `*.ver_equipe` do perfil, não pelo nome), aparece o toggle **Escopo — Somente a equipe dele / Empresa toda**, gravando `supervisor_escopo`. `updateUsuario` passa a aceitar e validar os dois campos (equipe existente e ativa; escopo dentro dos dois valores) e registra os dois no log de auditoria, igual a cargo e gestor.
 
-**Testes**: puras de título/ordenação; verificação no banco de que um usuário sem `usuarios.gerenciar` recebe erro ao chamar as duas funções e que um com a permissão recebe as conversas.
+**CRUD de Equipes**: nova aba "Equipes" em `/usuarios`, no mesmo padrão visual e de código da aba Cargos — listar, criar, renomear, ativar/desativar, com contagem de pessoas por equipe e bloqueio de desativação enquanto houver gente vinculada. Server functions em `src/lib/equipes.functions.ts`, guardadas por `usuarios.gerenciar`.
+
+## 7. Verificações antes de entregar
+
+- Testes puros das regras novas de visibilidade e da detecção do perfil supervisor na tela.
+- Conferência no banco, com usuário de teste: supervisor da Equipe Nova não enxerga nada da Equipe INPLASTIC nas 4 tabelas; com escopo `global` passa a enxergar; vendedor comum e os perfis atuais mantêm exatamente a mesma contagem de linhas de antes.
+- `user_permissions` confirmada como morta (nenhuma policy ou função a lê) — apenas registrado, sem nenhuma alteração nela.
 
 ## Fora do escopo
 
-Busca dentro do painel de acompanhamento, exportação de conversas, registro de auditoria de "quem leu o quê" e atualização em tempo real do painel (será leitura sob demanda, com refresh ao abrir). Dá para incluir depois se o Denis pedir.
+Relatórios, dashboard, Placar e Arena com noção de equipe; Chat Interno; qualquer permissão de escrita para o Supervisor ADM.
