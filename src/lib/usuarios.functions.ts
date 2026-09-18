@@ -422,11 +422,30 @@ export const updateUsuario = createServerFn({ method: "POST" })
         }
       }
 
+      // Equipe: campo opcional no payload. Se não vier, preserva o valor atual
+      // (nunca zera a equipe de alguém por omissão).
+      const equipeId = d.equipeId === undefined ? (profile.equipe_id ?? null) : d.equipeId;
+      if (equipeId && equipeId !== profile.equipe_id) {
+        const { data: eq, error: eErr } = await sb
+          .from("equipes")
+          .select("id, ativo")
+          .eq("id", equipeId)
+          .maybeSingle();
+        if (eErr) throw new Error(eErr.message);
+        if (!eq || eq.ativo === false) throw new Error("A equipe escolhida é inválida ou inativa.");
+      }
+      const supervisorEscopo =
+        d.supervisorEscopo === undefined
+          ? normalizarSupervisorEscopo(profile.supervisor_escopo)
+          : d.supervisorEscopo;
+
       const patch = {
         name: d.name,
         cargo: cargoTexto,
         cargo_id: cargoId,
         gestor_id: gestorId,
+        equipe_id: equipeId,
+        supervisor_escopo: supervisorEscopo,
         telefone_whatsapp: d.telefoneWhatsapp,
         fuso_horario: d.fusoHorario,
         avatar_color: d.avatarColor,
@@ -436,6 +455,12 @@ export const updateUsuario = createServerFn({ method: "POST" })
         { campo: "nome", anterior: profile.name, novo: d.name },
         { campo: "cargo", anterior: profile.cargo, novo: cargoTexto },
         { campo: "gestor", anterior: profile.gestor_id, novo: gestorId },
+        { campo: "equipe", anterior: profile.equipe_id, novo: equipeId },
+        {
+          campo: "supervisor_escopo",
+          anterior: normalizarSupervisorEscopo(profile.supervisor_escopo),
+          novo: supervisorEscopo,
+        },
         { campo: "telefone", anterior: profile.telefone_whatsapp, novo: d.telefoneWhatsapp },
         { campo: "fuso_horario", anterior: profile.fuso_horario, novo: d.fusoHorario },
         { campo: "avatar_color", anterior: profile.avatar_color, novo: d.avatarColor },
