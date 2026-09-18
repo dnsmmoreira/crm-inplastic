@@ -158,6 +158,9 @@ export function UsuarioEditDialog({
     setCargo(usuario.cargo ?? "");
     setCargoId(usuario.cargoId ?? "");
     setGestorId(usuario.gestorId ?? "");
+    setEquipeId(usuario.equipeId ?? "");
+    setSupervisorEscopo(usuario.supervisorEscopo ?? "equipe");
+
 
     setTelefone(usuario.telefoneWhatsapp ?? "");
     setFuso(usuario.fusoHorario);
