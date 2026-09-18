@@ -220,7 +220,7 @@ export function UsuarioEditDialog({
         }
       })();
     }
-  }, [usuario, loadPerfil, loadArena, loadCargos, isAdmin]);
+  }, [usuario, loadPerfil, loadArena, loadCargos, loadEquipes, isAdmin]);
 
 
   const carregarAuditoria = useCallback(async () => {
