@@ -25,6 +25,7 @@ import { ExcluirUsuarioDialog } from "@/components/usuarios/ExcluirUsuarioDialog
 import { TelegramVinculoButton } from "@/components/usuarios/TelegramVinculoButton";
 import { PerfisPermissoesPanel } from "@/components/usuarios/PerfisPermissoesPanel";
 import { CargosPanel } from "@/components/usuarios/CargosPanel";
+import { EquipesPanel } from "@/components/usuarios/EquipesPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export const Route = createFileRoute("/usuarios")({
@@ -168,6 +169,7 @@ function UsuariosPage() {
           <TabsTrigger value="equipe">Equipe</TabsTrigger>
           <TabsTrigger value="perfis">Perfis e Permissões</TabsTrigger>
           <TabsTrigger value="cargos">Cargos</TabsTrigger>
+          <TabsTrigger value="equipes">Equipes</TabsTrigger>
         </TabsList>
 
         <TabsContent value="perfis" className="pt-4">
@@ -176,6 +178,10 @@ function UsuariosPage() {
 
         <TabsContent value="cargos" className="pt-4">
           <CargosPanel />
+        </TabsContent>
+
+        <TabsContent value="equipes" className="pt-4">
+          <EquipesPanel />
         </TabsContent>
 
 

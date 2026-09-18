@@ -160,12 +160,21 @@ export const getPerfilDoUsuario = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertGerenciaUsuarios(context.supabase, context.userId);
     const sb = await admin();
-    const [perfisRes, vincRes] = await Promise.all([
+    const [perfisRes, vincRes, permsRes] = await Promise.all([
       sb.from("perfis").select("id, nome, papel, base_role, ativo").order("nome"),
       sb.from("user_perfis").select("perfil_id").eq("user_id", data.userId),
+      sb.from("perfil_permissoes").select("perfil_id, permissao_chave"),
     ]);
     if (perfisRes.error) throw new Error(perfisRes.error.message);
     const atual = (vincRes.data ?? [])[0]?.perfil_id ?? null;
+    // Detecta o perfil de supervisor pelas CHAVES (`*.ver_equipe`), nunca pelo
+    // nome — o nome do perfil é editável.
+    const chavesPorPerfil = new Map<string, string[]>();
+    for (const r of permsRes.data ?? []) {
+      const arr = chavesPorPerfil.get(r.perfil_id) ?? [];
+      arr.push(r.permissao_chave);
+      chavesPorPerfil.set(r.perfil_id, arr);
+    }
     return {
       perfilId: atual as string | null,
       perfis: (perfisRes.data ?? [])
@@ -176,6 +185,7 @@ export const getPerfilDoUsuario = createServerFn({ method: "POST" })
           papel: (p.papel ?? "Vendas") as PapelRotulo,
           baseRole: p.base_role as "admin" | "vendedor",
           ativo: p.ativo !== false,
+          verEquipe: perfilEhSupervisorEquipe(chavesPorPerfil.get(p.id) ?? []),
         })),
     };
   });
