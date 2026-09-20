@@ -55,7 +55,7 @@ export const CADENCIA_PEDIDO: Record<string, CadenciaEtapa> = {
     dias: [2, 4],
     grupo: "operacional",
     tipo: "cadencia_em_transito",
-    acao: "Confirmar que a transportadora retirou a carga e está a caminho",
+    acao: "Acompanhar a transferência da fábrica até o estoque de SP e confirmar o recebimento",
   },
   pronto: {
     dias: [1, 2, 4],

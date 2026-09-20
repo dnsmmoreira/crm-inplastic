@@ -653,7 +653,7 @@ export async function aoEntrarNaEtapa(
     if (stage === "em_transito") {
       await notificarUsuarios(sb, p.vendedor_proprietario_id ? [p.vendedor_proprietario_id] : [], {
         tipo: "pedido_em_transito",
-        titulo: `Pedido ${p.number} coletado — a caminho do cliente`,
+        titulo: `Pedido ${p.number} em trânsito da fábrica para o estoque de SP`,
         pedidoId,
         usarClienteDeServico: usarServico,
       });
