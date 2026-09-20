@@ -407,62 +407,9 @@ export const setPerfilDoUsuario = createServerFn({ method: "POST" })
       throw new Error("Você não pode alterar o próprio perfil de acesso.");
     }
     const sb = await admin();
-
-    const { data: atuais } = await sb
-      .from("user_perfis")
-      .select("perfil_id")
-      .eq("user_id", data.userId);
-    const anteriorId = (atuais ?? [])[0]?.perfil_id ?? null;
-    if (anteriorId === data.perfilId) return { ok: true as const };
-
-    const nomes = new Map<string, string>();
-    const baseRoles = new Map<string, "admin" | "vendedor">();
-    const ids = [anteriorId, data.perfilId].filter((v): v is string => !!v);
-    if (ids.length) {
-      const { data: ps } = await sb.from("perfis").select("id, nome, base_role").in("id", ids);
-      (ps ?? []).forEach((p) => {
-        nomes.set(p.id, p.nome);
-        baseRoles.set(p.id, p.base_role as "admin" | "vendedor");
-      });
-    }
-    if (data.perfilId && !nomes.has(data.perfilId)) throw new Error("Perfil não encontrado.");
-
-    const { error: delErr } = await sb.from("user_perfis").delete().eq("user_id", data.userId);
-    if (delErr) throw new Error(delErr.message);
-    if (data.perfilId) {
-      const { error } = await sb
-        .from("user_perfis")
-        .insert({ user_id: data.userId, perfil_id: data.perfilId });
-      if (error) throw new Error(error.message);
-    }
-
-    // Papel (user_roles) é DERIVADO do base_role do perfil escolhido.
-    const { data: rolesAtuais } = await sb
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", data.userId);
-    const papelAtual: "admin" | "vendedor" = (rolesAtuais ?? []).some((r) => r.role === "admin")
-      ? "admin"
-      : "vendedor";
-    const papelNovo: "admin" | "vendedor" = data.perfilId
-      ? (baseRoles.get(data.perfilId) ?? "vendedor")
-      : "vendedor";
-    if (papelNovo !== papelAtual) {
-      const { error: delRoleErr } = await sb.from("user_roles").delete().eq("user_id", data.userId);
-      if (delRoleErr) throw new Error(delRoleErr.message);
-      const { error: insRoleErr } = await sb
-        .from("user_roles")
-        .insert({ user_id: data.userId, role: papelNovo });
-      if (insRoleErr) throw new Error(insRoleErr.message);
-    }
-
-    await logAudit(sb, data.userId, context.userId, [
-      { campo: "papel", anterior: papelAtual, novo: papelNovo },
-      {
-        campo: "perfil",
-        anterior: anteriorId ? nomes.get(anteriorId) : "nenhum",
-        novo: data.perfilId ? nomes.get(data.perfilId) : "nenhum",
-      },
-    ]);
+    const { aplicarPerfilNoUsuario } = await import("@/lib/perfil-vinculo.server");
+    const res = await aplicarPerfilNoUsuario(sb, data.userId, data.perfilId);
+    if (!res.mudou) return { ok: true as const };
+    await logAudit(sb, data.userId, context.userId, res.audit);
     return { ok: true as const };
   });
