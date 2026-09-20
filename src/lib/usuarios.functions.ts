@@ -600,28 +600,12 @@ export const updateUsuario = createServerFn({ method: "POST" })
       );
     }
 
-    /* ---- Permissões ---- */
-    if (data.permissoes) {
-      const perms = { ...data.permissoes };
-      if (isSelf && !perms.gerenciar_usuarios) {
-        throw new Error("Você não pode remover a própria permissão de gerenciar usuários.");
-      }
-      const { data: permAtual } = await sb
-        .from("user_permissions")
-        .select("*")
-        .eq("user_id", data.userId)
-        .maybeSingle();
-      const { error } = await sb
-        .from("user_permissions")
-        .upsert({ user_id: data.userId, ...perms }, { onConflict: "user_id" });
-      if (error) throw new Error(error.message);
-      for (const k of PERMISSAO_KEYS) {
-        audit.push({
-          campo: `permissao:${k}`,
-          anterior: permAtual ? (permAtual[k] ? "sim" : "não") : undefined,
-          novo: perms[k] ? "sim" : "não",
-        });
-      }
+    /* ---- Permissões ----
+       A antiga tabela user_permissions foi removida: as permissões vêm dos
+       perfis (perfil_permissoes). Campo mantido na entrada apenas por
+       compatibilidade e ignorado aqui. */
+    if (data.permissoes && isSelf && !data.permissoes.gerenciar_usuarios) {
+      throw new Error("Você não pode remover a própria permissão de gerenciar usuários.");
     }
 
     await logAudit(sb, data.userId, ator, audit);
