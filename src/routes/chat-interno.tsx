@@ -508,6 +508,14 @@ function ChatInternoPage() {
         console.error("chat: marcar lido falhou", error);
         return;
       }
+      // O sino recebe uma notificação por DM; ninguém mais a baixava.
+      const { error: errNotif } = await supabase
+        .from("notificacoes")
+        .update({ lida_em: new Date().toISOString() })
+        .eq("user_id", euId)
+        .eq("tipo", "chat_interno_dm")
+        .is("lida_em", null);
+      if (errNotif) console.error("chat: baixar notificação falhou", errNotif);
       void queryClient.invalidateQueries({ queryKey: CHAT_QUERY_KEY });
     },
     [euId, queryClient],
