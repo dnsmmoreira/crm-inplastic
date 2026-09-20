@@ -68,3 +68,11 @@
 - [x] Tela /chat-interno + item no menu com badge de não lidas
 - [x] Sino leva ao chat só quando tipo = 'chat_interno_dm'
 - [x] Testado no navegador (Geral e DM) + 742 testes verdes; não publicado
+
+## Coerência do acesso (cargo/perfil/permissão/equipe) — em curso, não publicar
+- [ ] leads.ver_todos + policy + backfill Administrador/Gestor Comercial
+- [ ] Remover bypass has_role(admin) das 4 policies de SELECT-dono
+- [ ] perfis.protegido como dado (sai PERFIS_PROTEGIDOS)
+- [ ] Perfil obrigatório na criação de usuário (reaproveita setPerfilDoUsuario)
+- [ ] Aba "Equipe" → "Usuários"
+- [ ] Drop user_permissions
