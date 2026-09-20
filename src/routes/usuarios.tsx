@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useAuth, hasPerm, type AppRole } from "@/hooks/use-auth";
 import { createUser } from "@/lib/invites.functions";
+import { listPerfis } from "@/lib/perfis.functions";
 import { listFila, addFilaMember, removeFilaMember, toggleFilaAtivo, reorderFila } from "@/lib/fila.functions";
 import {
   listUsuarios, setUsuarioAtivo, type UsuarioRow,
@@ -166,7 +167,7 @@ function UsuariosPage() {
 
       <Tabs defaultValue="equipe">
         <TabsList>
-          <TabsTrigger value="equipe">Equipe</TabsTrigger>
+          <TabsTrigger value="equipe">Usuários</TabsTrigger>
           <TabsTrigger value="perfis">Perfis e Permissões</TabsTrigger>
           <TabsTrigger value="cargos">Cargos</TabsTrigger>
           <TabsTrigger value="equipes">Equipes</TabsTrigger>
@@ -382,22 +383,48 @@ function UsuariosPage() {
 
 function CreateUserCard({ onCreated }: { onCreated: () => Promise<void> | void }) {
   const create = useServerFn(createUser);
+  const carregarPerfis = useServerFn(listPerfis);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
-  const [role, setRole] = useState<AppRole>("vendedor");
+  const [perfilId, setPerfilId] = useState("");
+  const [perfis, setPerfis] = useState<Array<{ id: string; nome: string }>>([]);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let vivo = true;
+    void (async () => {
+      try {
+        const rows = await carregarPerfis();
+        if (!vivo) return;
+        setPerfis(
+          (rows ?? [])
+            .filter((p) => p.ativo !== false)
+            .map((p) => ({ id: p.id, nome: p.nome })),
+        );
+      } catch {
+        if (vivo) setPerfis([]);
+      }
+    })();
+    return () => {
+      vivo = false;
+    };
+  }, [carregarPerfis]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!perfilId) {
+      toast.error("Selecione o perfil de acesso do novo usuário.");
+      return;
+    }
     setBusy(true);
     try {
-      await create({ data: { email, name, role } });
+      await create({ data: { email, name, perfilId } });
       toast.success(`Convite enviado para ${email}`, {
         description: "O usuário define a própria senha pelo link recebido por e-mail.",
       });
       setEmail("");
       setName("");
-      setRole("vendedor");
+      setPerfilId("");
       await onCreated();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Falha ao criar usuário");
@@ -430,16 +457,24 @@ function CreateUserCard({ onCreated }: { onCreated: () => Promise<void> | void }
             </p>
           </div>
           <div className="space-y-1">
-            <Label htmlFor="cu-role">Papel</Label>
+            <Label htmlFor="cu-perfil">Perfil de acesso</Label>
             <select
-              id="cu-role"
-              value={role}
-              onChange={(e) => setRole(e.target.value as AppRole)}
+              id="cu-perfil"
+              required
+              value={perfilId}
+              onChange={(e) => setPerfilId(e.target.value)}
               className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
             >
-              <option value="vendedor">Vendedor</option>
-              <option value="admin">Administrador</option>
+              <option value="">Selecione o perfil…</option>
+              {perfis.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nome}
+                </option>
+              ))}
             </select>
+            <p className="text-xs text-muted-foreground">
+              O papel (administrador ou vendedor) vem do perfil escolhido.
+            </p>
           </div>
           <div className="md:col-span-2 flex justify-end">
             <Button type="submit" disabled={busy} className="gap-1">

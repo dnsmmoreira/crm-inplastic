@@ -80,7 +80,8 @@ async function auditar(
 const createUserSchema = z.object({
   email: z.string().trim().email("E-mail inválido").max(255),
   name: z.string().trim().min(1, "Nome obrigatório").max(120),
-  role: z.enum(["admin", "vendedor"]).default("vendedor"),
+  /** Obrigatório: conta nunca nasce sem perfil de acesso. O papel vem do perfil. */
+  perfilId: z.string().uuid("Selecione o perfil de acesso"),
 });
 
 export const createUser = createServerFn({ method: "POST" })
@@ -96,8 +97,19 @@ export const createUser = createServerFn({ method: "POST" })
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
+    // O perfil precisa existir e estar ativo ANTES de convidar — evita conta órfã.
+    const { data: perfil, error: perfilErr } = await supabaseAdmin
+      .from("perfis")
+      .select("id, nome, base_role, ativo")
+      .eq("id", data.perfilId)
+      .maybeSingle();
+    if (perfilErr) throw new Error(perfilErr.message);
+    if (!perfil || perfil.ativo === false) {
+      throw new Error("Perfil de acesso inválido ou inativo.");
+    }
+
     const { data: created, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(data.email, {
-      data: { name: data.name, role: data.role },
+      data: { name: data.name, role: perfil.base_role },
       redirectTo: redirectDefinirSenha(),
     });
 
@@ -115,7 +127,30 @@ export const createUser = createServerFn({ method: "POST" })
       "convite enviado por e-mail",
     );
 
-    return { ok: true as const, email: data.email, convidado: true as const };
+    // Mesma regra da edição: grava user_perfis e deriva user_roles do perfil.
+    const novoId = created.user?.id ?? null;
+    if (!novoId) {
+      throw new Error(
+        "Convite enviado, mas o sistema não recebeu o identificador do usuário. Abra a ficha dele e defina o perfil de acesso.",
+      );
+    }
+    const { aplicarPerfilNoUsuario } = await import("@/lib/perfil-vinculo.server");
+    try {
+      await aplicarPerfilNoUsuario(supabaseAdmin, novoId, data.perfilId);
+    } catch (e) {
+      const motivo = e instanceof Error ? e.message : String(e);
+      throw new Error(
+        `Convite enviado para ${data.email}, mas o perfil "${perfil.nome}" não pôde ser aplicado (${motivo}). Abra a ficha do usuário e defina o perfil de acesso.`,
+      );
+    }
+    await auditar(novoId, context.userId, "perfil", `perfil "${perfil.nome}" na criação`);
+
+    return {
+      ok: true as const,
+      email: data.email,
+      convidado: true as const,
+      perfil: perfil.nome as string,
+    };
   });
 
 /** Reenvia o convite / link de definição de senha. Somente admin. */

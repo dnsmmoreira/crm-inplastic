@@ -164,10 +164,9 @@ export const listUsuarios = createServerFn({ method: "POST" })
     await assertGerenciarUsuarios(context.supabase, context.userId);
     const sb = await admin();
 
-    const [profilesRes, rolesRes, permsRes, filaRes, metasRes, authMap] = await Promise.all([
+    const [profilesRes, rolesRes, filaRes, metasRes, authMap] = await Promise.all([
       sb.from("profiles").select("*").order("created_at", { ascending: true }),
       sb.from("user_roles").select("user_id, role"),
-      sb.from("user_permissions").select("*"),
       sb.from("fila_vendedores").select("user_id, posicao, ativo"),
       sb.from("vendedor_metas").select("user_id, meta_valor_mensal"),
       listAuthUsers(sb),
@@ -179,7 +178,6 @@ export const listUsuarios = createServerFn({ method: "POST" })
       if (roleByUser.get(r.user_id) === "admin") return;
       roleByUser.set(r.user_id, r.role as AppRoleName);
     });
-    const permByUser = new Map((permsRes.data ?? []).map((p) => [p.user_id, p]));
     const filaByUser = new Map((filaRes.data ?? []).map((f) => [f.user_id, f]));
     const metaByUser = new Map((metasRes.data ?? []).map((m) => [m.user_id, m.meta_valor_mensal]));
 
@@ -190,7 +188,6 @@ export const listUsuarios = createServerFn({ method: "POST" })
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .map((p: any) => {
         const fila = filaByUser.get(p.id);
-        const perm = permByUser.get(p.id);
         const auth = authMap.get(p.id);
         return {
           id: p.id,
@@ -218,11 +215,7 @@ export const listUsuarios = createServerFn({ method: "POST" })
           naFila: !!fila,
           filaPosicao: fila?.posicao ?? null,
           filaAtivo: fila?.ativo ?? false,
-          permissoes: perm
-            ? (Object.fromEntries(
-                PERMISSAO_KEYS.map((k) => [k, !!perm[k]]),
-              ) as unknown as PermissoesUsuario)
-            : { ...DEFAULT_PERMS },
+          permissoes: { ...DEFAULT_PERMS },
         } satisfies UsuarioRow;
       });
 
@@ -602,28 +595,12 @@ export const updateUsuario = createServerFn({ method: "POST" })
       );
     }
 
-    /* ---- Permissões ---- */
-    if (data.permissoes) {
-      const perms = { ...data.permissoes };
-      if (isSelf && !perms.gerenciar_usuarios) {
-        throw new Error("Você não pode remover a própria permissão de gerenciar usuários.");
-      }
-      const { data: permAtual } = await sb
-        .from("user_permissions")
-        .select("*")
-        .eq("user_id", data.userId)
-        .maybeSingle();
-      const { error } = await sb
-        .from("user_permissions")
-        .upsert({ user_id: data.userId, ...perms }, { onConflict: "user_id" });
-      if (error) throw new Error(error.message);
-      for (const k of PERMISSAO_KEYS) {
-        audit.push({
-          campo: `permissao:${k}`,
-          anterior: permAtual ? (permAtual[k] ? "sim" : "não") : undefined,
-          novo: perms[k] ? "sim" : "não",
-        });
-      }
+    /* ---- Permissões ----
+       A antiga tabela user_permissions foi removida: as permissões vêm dos
+       perfis (perfil_permissoes). Campo mantido na entrada apenas por
+       compatibilidade e ignorado aqui. */
+    if (data.permissoes && isSelf && !data.permissoes.gerenciar_usuarios) {
+      throw new Error("Você não pode remover a própria permissão de gerenciar usuários.");
     }
 
     await logAudit(sb, data.userId, ator, audit);

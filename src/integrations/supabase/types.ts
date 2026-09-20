@@ -2507,6 +2507,7 @@ export type Database = {
           id: string
           nome: string
           papel: string
+          protegido: boolean
         }
         Insert: {
           ativo?: boolean
@@ -2516,6 +2517,7 @@ export type Database = {
           id?: string
           nome: string
           papel: string
+          protegido?: boolean
         }
         Update: {
           ativo?: boolean
@@ -2525,6 +2527,7 @@ export type Database = {
           id?: string
           nome?: string
           papel?: string
+          protegido?: boolean
         }
         Relationships: []
       }
@@ -3240,45 +3243,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      user_permissions: {
-        Row: {
-          configurar_integracoes: boolean
-          created_at: string
-          editar_propostas: boolean
-          excluir_propostas: boolean
-          exportar_dados: boolean
-          gerenciar_usuarios: boolean
-          updated_at: string
-          user_id: string
-          ver_relatorios: boolean
-          ver_todos_leads: boolean
-        }
-        Insert: {
-          configurar_integracoes?: boolean
-          created_at?: string
-          editar_propostas?: boolean
-          excluir_propostas?: boolean
-          exportar_dados?: boolean
-          gerenciar_usuarios?: boolean
-          updated_at?: string
-          user_id: string
-          ver_relatorios?: boolean
-          ver_todos_leads?: boolean
-        }
-        Update: {
-          configurar_integracoes?: boolean
-          created_at?: string
-          editar_propostas?: boolean
-          excluir_propostas?: boolean
-          exportar_dados?: boolean
-          gerenciar_usuarios?: boolean
-          updated_at?: string
-          user_id?: string
-          ver_relatorios?: boolean
-          ver_todos_leads?: boolean
-        }
-        Relationships: []
       }
       user_roles: {
         Row: {

@@ -104,14 +104,13 @@ function colorFor(id: string) {
 }
 
 async function loadAuthUser(supaUser: SupaUser): Promise<AuthUser> {
-  const [{ data: profile }, { data: roles }, { data: perms }] = await Promise.all([
+  const [{ data: profile }, { data: roles }] = await Promise.all([
     supabase
       .from("profiles")
       .select("name, avatar_color, ativo, deleted_at, senha_reset_exigido")
       .eq("id", supaUser.id)
       .maybeSingle(),
     supabase.from("user_roles").select("role").eq("user_id", supaUser.id),
-    supabase.from("user_permissions").select("*").eq("user_id", supaUser.id).maybeSingle(),
   ]);
   if (profile && (profile.ativo === false || profile.deleted_at)) throw new ContaInativaError();
   const role: AppRole = (roles ?? []).some((r) => r.role === "admin") ? "admin" : "vendedor";
@@ -122,11 +121,8 @@ async function loadAuthUser(supaUser: SupaUser): Promise<AuthUser> {
     "Usuário";
   const avatarColor = profile?.avatar_color || colorFor(supaUser.id);
   const base = role === "admin" ? ADMIN_PERMISSIONS : VENDEDOR_PERMISSIONS;
-  const permissions: UserPermissions = perms
-    ? (Object.fromEntries(
-        (Object.keys(base) as Array<keyof UserPermissions>).map((k) => [k, !!perms[k]]),
-      ) as UserPermissions)
-    : { ...base };
+  // Permissões amplas por papel; as granulares vêm dos perfis (abaixo).
+  const permissions: UserPermissions = { ...base };
   // Administrador nunca perde o acesso à gestão de usuários.
   if (role === "admin") permissions.gerenciar_usuarios = true;
 
