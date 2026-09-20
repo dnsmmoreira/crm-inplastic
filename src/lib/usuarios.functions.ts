@@ -178,7 +178,6 @@ export const listUsuarios = createServerFn({ method: "POST" })
       if (roleByUser.get(r.user_id) === "admin") return;
       roleByUser.set(r.user_id, r.role as AppRoleName);
     });
-    const permByUser = new Map((permsRes.data ?? []).map((p) => [p.user_id, p]));
     const filaByUser = new Map((filaRes.data ?? []).map((f) => [f.user_id, f]));
     const metaByUser = new Map((metasRes.data ?? []).map((m) => [m.user_id, m.meta_valor_mensal]));
 
