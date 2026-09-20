@@ -400,7 +400,9 @@ export function leadToInsert(l: Lead, opts?: { novo?: boolean }): LeadInsert {
     last_contact: l.lastContact ?? null,
     next_followup: l.nextFollowUp ?? null,
     notes: l.notes ?? "",
-    owner_id: l.ownerId || null,
+    // Sem responsável definido o INSERT bate na RLS ("leads owner insert").
+    // Quem está salvando assume o lead — nunca grava dono nulo.
+    owner_id: l.ownerId || currentUserId || null,
     cliente_id: l.clienteId ?? null,
     cnpj: l.cnpj ?? null,
     razao_social: l.razaoSocial ? normalizarTexto(l.razaoSocial) : null,

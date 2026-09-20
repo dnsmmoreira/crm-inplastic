@@ -274,6 +274,8 @@ function PainelSupervisao() {
   const carregar = useCallback(
     async (canal: string, antes: string | null) => {
       setCarregando(true);
+      const el = listaRef.current;
+      const alturaAntes = antes ? (el?.scrollHeight ?? 0) : 0;
       try {
         const r = await buscarMensagens({ data: { canalId: canal, antes } });
         const lote = r.mensagens;
@@ -281,6 +283,14 @@ function PainelSupervisao() {
         setMensagens((prev) =>
           mesclarHistorico<MensagemSupervisao>(antes ? prev : [], lote),
         );
+        // Abrir = última mensagem à vista. Paginar = manter o ponto de leitura.
+        requestAnimationFrame(() => {
+          const lista = listaRef.current;
+          if (!lista) return;
+          lista.scrollTop = antes
+            ? lista.scrollHeight - alturaAntes
+            : lista.scrollHeight;
+        });
       } catch (e) {
         console.error(e);
         toast.error("Não consegui carregar essa conversa.");
@@ -498,6 +508,14 @@ function ChatInternoPage() {
         console.error("chat: marcar lido falhou", error);
         return;
       }
+      // O sino recebe uma notificação por DM; ninguém mais a baixava.
+      const { error: errNotif } = await supabase
+        .from("notificacoes")
+        .update({ lida_em: new Date().toISOString() })
+        .eq("user_id", euId)
+        .eq("tipo", "chat_interno_dm")
+        .is("lida_em", null);
+      if (errNotif) console.error("chat: baixar notificação falhou", errNotif);
       void queryClient.invalidateQueries({ queryKey: CHAT_QUERY_KEY });
     },
     [euId, queryClient],
