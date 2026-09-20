@@ -616,7 +616,7 @@ export const updatePedidoStage = createServerFn({ method: "POST" })
     // Pedido LEGADO sem decisão de entrega: não abre formulário para o
     // operacional — trava o avanço e manda devolver ao vendedor.
     if (
-      to === "pronto" &&
+      (to === "em_transito" || to === "pronto") &&
       !entregaDefinida({
         modalidade_entrega: current.modalidade_entrega as string | null,
         transportadora: current.transportadora as string | null,
