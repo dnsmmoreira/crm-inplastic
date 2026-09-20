@@ -11,6 +11,7 @@
  */
 
 import { toast } from "sonner";
+import { mensagemFalhaLead } from "./lead-falha";
 
 const ROTULOS: Record<string, string> = {
   products: "produtos",
@@ -59,6 +60,13 @@ export function reportarFalhaSync(
   const anterior = ultimoAviso.get(colecao) ?? 0;
   if (agora - anterior < INTERVALO_MS) return;
   ultimoAviso.set(colecao, agora);
+
+  // Lead tem mensagem própria: o vendedor precisa saber se é dono, duplicidade
+  // ou dado faltando — "falha ao salvar leads" não ajuda ninguém.
+  if (colecao === "leads") {
+    toast.error(mensagemFalhaLead(erro), { duration: 12_000 });
+    return;
+  }
 
   // Erro permanente (RLS/FK/check): o motor já limpou o pendente e está
   // recarregando do servidor — o usuário não precisa recarregar a página.
