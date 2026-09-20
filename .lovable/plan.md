@@ -1,103 +1,128 @@
-# Equipes comerciais + cargo/perfil "Supervisor ADM" (somente leitura, escopo por equipe)
+# Coerência do sistema de acesso (cargo / perfil / permissão / equipe)
 
-Segunda equipe comercial entra no sistema sem enxergar a carteira atual. O supervisor da equipe nova vê apenas leads, clientes, propostas e pedidos cujo dono está na mesma equipe que ele — e isso é configurável pessoa a pessoa (equipe dele ou empresa toda).
+Cinco frentes independentes. Nada de relatórios, Placar/Arena, `profiles.cargo` x `cargo_id` ou simplificação de `perfis.papel` nesta rodada.
 
-Nada do que existe hoje muda de comportamento: todas as regras de acesso atuais (dono, `ver_todos`/`ver_todas`, admin) ficam intactas. As regras novas são **adicionais** — só ampliam a visão de quem tiver a permissão nova.
+## Correção de uma premissa do escopo
 
-## 1. Equipes
+Conferi no banco antes de planejar: **`propostas.ver_todas` JÁ está concedida** a "Administrador" e a "Gestor Comercial" (assim como `clientes.ver_todos` e `pedidos.ver_todos`). O que falta mesmo é só `leads.ver_todos` — essa permissão nem existe ainda, e hoje leads é o único caso em que a visão ampla vem 100% do atalho de administrador. O backfill do item 1c fica, portanto, menor do que o descrito, e inclui `propostas.ver_todas` apenas como garantia idempotente.
 
-Tabela `equipes`: `id`, `nome`, `ativo` (default true), `created_at`, `updated_at` (com o trigger padrão). Grants: `SELECT` para `authenticated` (todo mundo precisa ler o nome da equipe nas telas), escrita só para quem gerencia usuários; `ALL` para `service_role`. RLS ligada, com política de leitura para `authenticated` e de escrita condicionada a `tem_permissao(auth.uid(),'usuarios.gerenciar')`.
+Estado hoje (verificado):
 
-Coluna `profiles.equipe_id uuid null references public.equipes(id)`, com índice.
+| Perfil | base_role | ver_* concedidas |
+| --- | --- | --- |
+| Administrador | admin | clientes.ver_todos, pedidos.ver_todos, propostas.ver_todas |
+| Gestor Comercial | admin | clientes.ver_todos, pedidos.ver_todos, propostas.ver_todas |
+| Operacional | vendedor | clientes.ver_todos, pedidos.ver_todos, propostas.ver_todas |
+| Financeiro | vendedor | pedidos.ver_todos, propostas.ver_todas |
+| Supervisor ADM | vendedor | os quatro `*.ver_equipe` |
+| Vendedor | vendedor | nenhuma |
 
-Seed de duas linhas: **Equipe INPLASTIC** e **Equipe Nova**. Todos os 9 perfis existentes (Denis, Wagner, Renata, Kelly, Bruna, Beatriz, Bianca, Daniel, Pamela) recebem `equipe_id` da Equipe INPLASTIC no mesmo migration. O nome é só rótulo — nenhuma lógica depende do texto, então renomear é seguro.
+Quem tem papel de administrador no sistema: Denis e Wagner (perfil Administrador) e Kelly (Gestor Comercial). São exatamente os três que hoje dependem do atalho para enxergar leads de terceiros — e os três recebem `leads.ver_todos` no backfill, então ninguém perde visão.
 
-## 2. Escopo do supervisor
+## 1. Permissão granular como única fonte de verdade
 
-Coluna `profiles.supervisor_escopo text not null default 'equipe'`, com `CHECK (supervisor_escopo in ('equipe','global'))`. Só produz efeito para quem tem alguma permissão `*.ver_equipe`; para o resto é campo inerte.
+a) Nova permissão `leads.ver_todos`, grupo `leads`, no padrão das outras.
+b) Nova policy de SELECT em `leads`.
+c) Backfill em `perfil_permissoes` para Administrador e Gestor Comercial.
+d) Remoção do `OR has_role(...,'admin')` das quatro policies de SELECT-dono.
 
-## 3. Cargo, perfil e permissões novas
+Não encosta em nenhuma outra policy: DELETE e telas administrativas continuam exigindo administrador de verdade, e só as tabelas leads/clientes/pedidos/propostas entram.
 
-- Cargo **Supervisor ADM** em `cargos` (informativo, igual aos demais — não concede nada).
-- 4 permissões novas em `permissoes`, grupo correspondente, tipo booleana: `leads.ver_equipe`, `clientes.ver_equipe`, `propostas.ver_equipe`, `pedidos.ver_equipe`.
-- Perfil **Supervisor ADM** em `perfis` (papel Vendas, base role vendedor, não protegido) com exatamente essas 4 permissões em `perfil_permissoes`. Sem `ver_todos`/`ver_todas`, sem permissão de edição, sem `relatorios.ver`.
+## 2. "Perfil protegido" vira dado
 
-Nenhum perfil existente é alterado.
+Coluna `perfis.protegido boolean not null default false`, marcada `true` para "Administrador" e "Vendedor". `listPerfis`, `savePerfil`, `deletePerfil` e `setPerfilPermissoes` passam a ler a coluna; a constante `PERFIS_PROTEGIDOS` sai do código. Renomear um perfil deixa de destravar a proteção.
 
-## 4. Funções de apoio (SECURITY DEFINER, `search_path = public`, EXECUTE só para `authenticated`)
+## 3. Perfil obrigatório na criação do usuário
 
-```sql
-create or replace function public.mesma_equipe(_a uuid, _b uuid)
-returns boolean language sql stable security definer set search_path = public as $$
-  select exists (
-    select 1
-    from public.profiles pa
-    join public.profiles pb on pb.id = _b
-    where pa.id = _a
-      and pa.equipe_id is not null
-      and pa.equipe_id = pb.equipe_id
-  )
-$$;
-```
+O formulário de cadastro passa a exigir a escolha de um perfil (lista dos perfis ativos), e o campo "Papel" some do formulário — ele passa a ser derivado do perfil escolhido, como já acontece na edição. Depois do convite criado, o vínculo é gravado reaproveitando a lógica existente de `setPerfilDoUsuario`, nunca duplicando-a. Se o vínculo falhar, o erro aparece na tela com o convite já enviado identificado, para não deixar conta órfã em silêncio.
 
-`null = null` retorna `false` porque a condição exige `equipe_id is not null` nos dois lados (o join iguala os valores). Pessoa sem equipe não casa com ninguém.
+## 4. Aba "Equipe" vira "Usuários"
 
-```sql
-create or replace function public.supervisor_ve_tudo(_user_id uuid)
-returns boolean language sql stable security definer set search_path = public as $$
-  select exists (
-    select 1 from public.profiles
-    where id = _user_id and supervisor_escopo = 'global'
-  )
-$$;
-```
+Só o rótulo da aba de lista/CRUD de usuários. A aba "Equipes" e a tabela `equipes` ficam intocadas.
 
-## 5. As 4 policies novas de SELECT (aditivas)
+## 5. Tabela morta
 
-Nenhuma policy existente é tocada, renomeada ou recriada. Cada tabela ganha uma policy a mais, para `authenticated`:
+`public.user_permissions` é removida. Ela tem 11 linhas residuais e nenhuma policy, função ou código a lê — as linhas vão embora junto, sem impacto.
+
+---
+
+## Detalhes técnicos
+
+### 1a/1b — permissão e policy de leads
 
 ```sql
-create policy "leads select ver_equipe" on public.leads
-for select to authenticated using (
-  tem_permissao(auth.uid(), 'leads.ver_equipe')
-  and (supervisor_ve_tudo(auth.uid()) or mesma_equipe(auth.uid(), owner_id))
-);
+insert into public.permissoes (chave, grupo, rotulo, descricao, tipo)
+values ('leads.ver_todos', 'leads', 'Ver todos os leads',
+        'Enxergar leads de todos os vendedores da empresa.', 'booleana')
+on conflict (chave) do nothing;
 
-create policy "clientes select ver_equipe" on public.clientes
-for select to authenticated using (
-  tem_permissao(auth.uid(), 'clientes.ver_equipe')
-  and (supervisor_ve_tudo(auth.uid()) or mesma_equipe(auth.uid(), vendedor_id))
-);
-
-create policy "propostas select ver_equipe" on public.propostas
-for select to authenticated using (
-  tem_permissao(auth.uid(), 'propostas.ver_equipe')
-  and (supervisor_ve_tudo(auth.uid()) or mesma_equipe(auth.uid(), owner_id))
-);
-
-create policy "pedidos select ver_equipe" on public.pedidos
-for select to authenticated using (
-  tem_permissao(auth.uid(), 'pedidos.ver_equipe')
-  and (supervisor_ve_tudo(auth.uid()) or mesma_equipe(auth.uid(), owner_id))
-);
+create policy "leads select ver_todos" on public.leads
+  for select to authenticated
+  using (tem_permissao(auth.uid(), 'leads.ver_todos'));
 ```
 
-Como policies de SELECT são somadas por OR, quem não tem a permissão nova continua exatamente com a visão de hoje. Registro sem dono (`owner_id`/`vendedor_id` null) não aparece para o supervisor de equipe — `mesma_equipe` devolve false. Transferência de carteira é acompanhada automaticamente: a visão segue a coluna de dono.
+### 1c — concessões (exatamente estas)
 
-Nenhuma policy de INSERT/UPDATE/DELETE é criada — o Supervisor ADM é leitura pura. As server functions de escrita continuam barrando por permissão, e a RLS de escrita já não o contempla.
+| Perfil | Permissão | Situação |
+| --- | --- | --- |
+| Administrador | `leads.ver_todos` | nova |
+| Administrador | `propostas.ver_todas` | já existe (insert idempotente) |
+| Gestor Comercial | `leads.ver_todos` | nova |
+| Gestor Comercial | `propostas.ver_todas` | já existe (insert idempotente) |
 
-## 6. Telas de administração
+```sql
+insert into public.perfil_permissoes (perfil_id, permissao_chave)
+select p.id, c.chave
+from public.perfis p
+cross join (values ('leads.ver_todos'), ('propostas.ver_todas')) as c(chave)
+where p.nome in ('Administrador', 'Gestor Comercial')
+on conflict do nothing;
+```
 
-**Ficha do usuário** (`UsuarioEditDialog`): novo seletor **Equipe** (lista de equipes ativas, mais "Sem equipe"), ao lado de Cargo/Gestor. E, apenas quando o perfil selecionado for o Supervisor ADM (detectado pelas permissões `*.ver_equipe` do perfil, não pelo nome), aparece o toggle **Escopo — Somente a equipe dele / Empresa toda**, gravando `supervisor_escopo`. `updateUsuario` passa a aceitar e validar os dois campos (equipe existente e ativa; escopo dentro dos dois valores) e registra os dois no log de auditoria, igual a cargo e gestor.
+### 1d — policies de SELECT-dono, texto final
 
-**CRUD de Equipes**: nova aba "Equipes" em `/usuarios`, no mesmo padrão visual e de código da aba Cargos — listar, criar, renomear, ativar/desativar, com contagem de pessoas por equipe e bloqueio de desativação enquanto houver gente vinculada. Server functions em `src/lib/equipes.functions.ts`, guardadas por `usuarios.gerenciar`.
+```sql
+drop policy "leads owner select" on public.leads;
+create policy "leads owner select" on public.leads
+  for select to authenticated using (owner_id = auth.uid());
 
-## 7. Verificações antes de entregar
+drop policy "clientes_select_dono_ou_admin" on public.clientes;
+create policy "clientes_select_dono_ou_admin" on public.clientes
+  for select to authenticated using (vendedor_id = auth.uid());
 
-- Testes puros das regras novas de visibilidade e da detecção do perfil supervisor na tela.
-- Conferência no banco, com usuário de teste: supervisor da Equipe Nova não enxerga nada da Equipe INPLASTIC nas 4 tabelas; com escopo `global` passa a enxergar; vendedor comum e os perfis atuais mantêm exatamente a mesma contagem de linhas de antes.
-- `user_permissions` confirmada como morta (nenhuma policy ou função a lê) — apenas registrado, sem nenhuma alteração nela.
+drop policy "pedidos owner select" on public.pedidos;
+create policy "pedidos owner select" on public.pedidos
+  for select to authenticated using (owner_id = auth.uid());
 
-## Fora do escopo
+drop policy "propostas owner select" on public.propostas;
+create policy "propostas owner select" on public.propostas
+  for select to authenticated using (owner_id = auth.uid());
+```
 
-Relatórios, dashboard, Placar e Arena com noção de equipe; Chat Interno; qualquer permissão de escrita para o Supervisor ADM.
+As policies `* select ver_todos` / `ver_todas` / `ver_equipe` já existentes continuam iguais e passam a ser o único caminho de visão ampla.
+
+### 2 — coluna e código
+
+```sql
+alter table public.perfis add column protegido boolean not null default false;
+update public.perfis set protegido = true where nome in ('Administrador', 'Vendedor');
+```
+
+`src/lib/perfis.functions.ts`: `listPerfis` devolve `protegido: p.protegido`; `savePerfil`/`deletePerfil`/`setPerfilPermissoes` carregam a coluna e barram pelo dado. Remoção do export `PERFIS_PROTEGIDOS` após conferir que nenhum outro arquivo o usa.
+
+### 3 — createUser
+
+`createUserSchema` ganha `perfilId: z.string().uuid()` obrigatório e perde `role` (derivado do `base_role` do perfil). Após `inviteUserByEmail`, o handler chama o helper compartilhado extraído de `setPerfilDoUsuario` (grava `user_perfis` + sincroniza `user_roles`), de modo que o servidor continue sendo a única autoridade. `CreateUserCard` em `src/routes/usuarios.tsx` troca o `<select>` de papel por um de perfis ativos, obrigatório.
+
+### 5 — drop
+
+```sql
+drop table public.user_permissions;
+```
+
+### Verificação após implementar
+
+- Suíte, typecheck e build.
+- Simulação por usuário (sem alterar dados) confirmando que Denis, Wagner e Kelly continuam vendo leads/clientes/propostas/pedidos de terceiros pelas permissões, e que vendedores e Supervisor ADM não mudam de escopo.
+- Novo usuário de teste criado pelo formulário nasce com perfil e papel corretos.
+- Nada publicado: diff completo (migrations incluídas) para revisão.
