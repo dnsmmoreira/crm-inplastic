@@ -1039,7 +1039,10 @@ export async function persistLeadNow(leadId: string): Promise<void> {
   const payload = leadPayload(lead);
   const { error } = await supabase.from("leads").upsert(payload, { onConflict: "id" });
   if (error) {
-    throw new Error(error.message || "Falha ao salvar o lead no banco");
+    // Mensagem no idioma do vendedor, não o texto cru do banco.
+    const { mensagemFalhaLead } = await import("@/lib/lead-falha");
+    console.error("[crm-sync] persistLeadNow falhou", { leadId, error });
+    throw new Error(mensagemFalhaLead(error));
   }
   snapshot.leads.set(lead.id, JSON.stringify(payload));
 }
