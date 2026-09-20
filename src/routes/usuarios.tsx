@@ -166,7 +166,7 @@ function UsuariosPage() {
 
       <Tabs defaultValue="equipe">
         <TabsList>
-          <TabsTrigger value="equipe">Equipe</TabsTrigger>
+          <TabsTrigger value="equipe">Usuários</TabsTrigger>
           <TabsTrigger value="perfis">Perfis e Permissões</TabsTrigger>
           <TabsTrigger value="cargos">Cargos</TabsTrigger>
           <TabsTrigger value="equipes">Equipes</TabsTrigger>
