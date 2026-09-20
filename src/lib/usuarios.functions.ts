@@ -188,7 +188,6 @@ export const listUsuarios = createServerFn({ method: "POST" })
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .map((p: any) => {
         const fila = filaByUser.get(p.id);
-        const perm = permByUser.get(p.id);
         const auth = authMap.get(p.id);
         return {
           id: p.id,
@@ -216,11 +215,7 @@ export const listUsuarios = createServerFn({ method: "POST" })
           naFila: !!fila,
           filaPosicao: fila?.posicao ?? null,
           filaAtivo: fila?.ativo ?? false,
-          permissoes: perm
-            ? (Object.fromEntries(
-                PERMISSAO_KEYS.map((k) => [k, !!perm[k]]),
-              ) as unknown as PermissoesUsuario)
-            : { ...DEFAULT_PERMS },
+          permissoes: { ...DEFAULT_PERMS },
         } satisfies UsuarioRow;
       });
 
