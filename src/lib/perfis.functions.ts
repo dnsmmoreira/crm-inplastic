@@ -244,7 +244,7 @@ export const savePerfil = createServerFn({ method: "POST" })
 
     const { data: atual, error: aErr } = await sb
       .from("perfis")
-      .select("nome, descricao, papel, base_role, ativo")
+      .select("nome, descricao, papel, base_role, ativo, protegido")
       .eq("id", data.id)
       .maybeSingle();
     if (aErr) throw new Error(aErr.message);
@@ -291,7 +291,7 @@ export const deletePerfil = createServerFn({ method: "POST" })
     const sb = await admin();
     const { data: perfil } = await sb
       .from("perfis")
-      .select("nome")
+      .select("nome, protegido")
       .eq("id", data.perfilId)
       .maybeSingle();
     if (!perfil) throw new Error("Perfil não encontrado.");
@@ -337,7 +337,7 @@ export const setPerfilPermissoes = createServerFn({ method: "POST" })
     const sb = await admin();
     const { data: perfil } = await sb
       .from("perfis")
-      .select("nome")
+      .select("nome, protegido")
       .eq("id", data.perfilId)
       .maybeSingle();
     if (!perfil) throw new Error("Perfil não encontrado.");
