@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useAuth, hasPerm, type AppRole } from "@/hooks/use-auth";
 import { createUser } from "@/lib/invites.functions";
+import { listPerfis } from "@/lib/perfis.functions";
 import { listFila, addFilaMember, removeFilaMember, toggleFilaAtivo, reorderFila } from "@/lib/fila.functions";
 import {
   listUsuarios, setUsuarioAtivo, type UsuarioRow,
