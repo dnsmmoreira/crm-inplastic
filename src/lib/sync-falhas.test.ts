@@ -12,9 +12,17 @@ describe("reportarFalhaSync", () => {
   });
 
   it("avisa o usuário com o rótulo da coleção", () => {
-    reportarFalhaSync("leads", "upsert", { message: "rls" });
+    reportarFalhaSync("products", "upsert", { message: "x" });
     expect(toast.error).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(toast.error).mock.calls[0]?.[0]).toContain("Falha ao salvar leads");
+    expect(vi.mocked(toast.error).mock.calls[0]?.[0]).toContain("Falha ao salvar produtos");
+  });
+
+  it("lead recusado pela RLS explica que o dono é outro", () => {
+    reportarFalhaSync("leads", "upsert", {
+      code: "42501",
+      message: 'new row violates row-level security policy for table "leads"',
+    });
+    expect(vi.mocked(toast.error).mock.calls[0]?.[0]).toMatch(/outro vendedor/i);
   });
 
   it("não empilha o mesmo toast em ciclos seguidos", () => {
