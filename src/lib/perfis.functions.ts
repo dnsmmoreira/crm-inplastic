@@ -38,8 +38,11 @@ export type PerfilRow = {
 
 export type PerfilPermissaoRow = { chave: string; valorNumerico: number | null };
 
-/** Perfis seed de compatibilidade: não podem ser editados/desativados/excluídos. */
-export const PERFIS_PROTEGIDOS = ["Administrador", "Vendedor"];
+/**
+ * Perfis seed de compatibilidade: não podem ser editados/desativados/excluídos.
+ * A proteção é um DADO (`perfis.protegido`), nunca o nome — renomear um perfil
+ * não pode destravar a proteção.
+ */
 
 /* ------------------------------------------------------------------ */
 /* Helpers                                                             */
@@ -111,7 +114,10 @@ export const listPerfis = createServerFn({ method: "POST" })
     await assertGerenciaUsuarios(context.supabase, context.userId);
     const sb = await admin();
     const [perfisRes, vincRes, permsRes] = await Promise.all([
-      sb.from("perfis").select("id, nome, descricao, papel, base_role, ativo").order("nome"),
+      sb
+        .from("perfis")
+        .select("id, nome, descricao, papel, base_role, ativo, protegido")
+        .order("nome"),
       sb.from("user_perfis").select("perfil_id"),
       sb.from("perfil_permissoes").select("perfil_id"),
     ]);
