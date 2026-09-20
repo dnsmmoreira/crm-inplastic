@@ -104,14 +104,13 @@ function colorFor(id: string) {
 }
 
 async function loadAuthUser(supaUser: SupaUser): Promise<AuthUser> {
-  const [{ data: profile }, { data: roles }, { data: perms }] = await Promise.all([
+  const [{ data: profile }, { data: roles }] = await Promise.all([
     supabase
       .from("profiles")
       .select("name, avatar_color, ativo, deleted_at, senha_reset_exigido")
       .eq("id", supaUser.id)
       .maybeSingle(),
     supabase.from("user_roles").select("role").eq("user_id", supaUser.id),
-    supabase.from("user_permissions").select("*").eq("user_id", supaUser.id).maybeSingle(),
   ]);
   if (profile && (profile.ativo === false || profile.deleted_at)) throw new ContaInativaError();
   const role: AppRole = (roles ?? []).some((r) => r.role === "admin") ? "admin" : "vendedor";
