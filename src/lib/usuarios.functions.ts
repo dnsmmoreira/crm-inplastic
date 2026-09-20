@@ -164,10 +164,9 @@ export const listUsuarios = createServerFn({ method: "POST" })
     await assertGerenciarUsuarios(context.supabase, context.userId);
     const sb = await admin();
 
-    const [profilesRes, rolesRes, permsRes, filaRes, metasRes, authMap] = await Promise.all([
+    const [profilesRes, rolesRes, filaRes, metasRes, authMap] = await Promise.all([
       sb.from("profiles").select("*").order("created_at", { ascending: true }),
       sb.from("user_roles").select("user_id, role"),
-      sb.from("user_permissions").select("*"),
       sb.from("fila_vendedores").select("user_id, posicao, ativo"),
       sb.from("vendedor_metas").select("user_id, meta_valor_mensal"),
       listAuthUsers(sb),
