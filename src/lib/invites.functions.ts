@@ -80,7 +80,8 @@ async function auditar(
 const createUserSchema = z.object({
   email: z.string().trim().email("E-mail inválido").max(255),
   name: z.string().trim().min(1, "Nome obrigatório").max(120),
-  role: z.enum(["admin", "vendedor"]).default("vendedor"),
+  /** Obrigatório: conta nunca nasce sem perfil de acesso. O papel vem do perfil. */
+  perfilId: z.string().uuid("Selecione o perfil de acesso"),
 });
 
 export const createUser = createServerFn({ method: "POST" })
