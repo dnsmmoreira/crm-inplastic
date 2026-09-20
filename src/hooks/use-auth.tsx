@@ -121,11 +121,8 @@ async function loadAuthUser(supaUser: SupaUser): Promise<AuthUser> {
     "Usuário";
   const avatarColor = profile?.avatar_color || colorFor(supaUser.id);
   const base = role === "admin" ? ADMIN_PERMISSIONS : VENDEDOR_PERMISSIONS;
-  const permissions: UserPermissions = perms
-    ? (Object.fromEntries(
-        (Object.keys(base) as Array<keyof UserPermissions>).map((k) => [k, !!perms[k]]),
-      ) as UserPermissions)
-    : { ...base };
+  // Permissões amplas por papel; as granulares vêm dos perfis (abaixo).
+  const permissions: UserPermissions = { ...base };
   // Administrador nunca perde o acesso à gestão de usuários.
   if (role === "admin") permissions.gerenciar_usuarios = true;
 
