@@ -48,17 +48,8 @@ export async function assertPermissao(
     { userId, perm },
   );
   if (isAdmin) return;
-  const { data, error: permErr } = await sb
-    .from("user_permissions")
-    .select(perm)
-    .eq("user_id", userId)
-    .maybeSingle();
-  await assertRpcPermissao(
-    { data: null, error: permErr },
-    "relatorios.assertPermissao/user_permissions",
-    { userId, perm },
-  );
-  if (data && data[perm] === true) return;
+  // Sem tabela de permissões por usuário: o acesso vem do papel (acima) ou da
+  // permissão granular do perfil (abaixo), mesmo modelo usado em use-auth.tsx.
   // Amplia via perfis (etapa de permissões granulares) — nunca restringe.
   const viaPerfil = await assertRpcPermissao(
     await sb.rpc("tem_permissao", { _user_id: userId, _chave: CHAVE_GRANULAR[perm] }),
