@@ -456,16 +456,24 @@ function CreateUserCard({ onCreated }: { onCreated: () => Promise<void> | void }
             </p>
           </div>
           <div className="space-y-1">
-            <Label htmlFor="cu-role">Papel</Label>
+            <Label htmlFor="cu-perfil">Perfil de acesso</Label>
             <select
-              id="cu-role"
-              value={role}
-              onChange={(e) => setRole(e.target.value as AppRole)}
+              id="cu-perfil"
+              required
+              value={perfilId}
+              onChange={(e) => setPerfilId(e.target.value)}
               className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
             >
-              <option value="vendedor">Vendedor</option>
-              <option value="admin">Administrador</option>
+              <option value="">Selecione o perfil…</option>
+              {perfis.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nome}
+                </option>
+              ))}
             </select>
+            <p className="text-xs text-muted-foreground">
+              O papel (administrador ou vendedor) vem do perfil escolhido.
+            </p>
           </div>
           <div className="md:col-span-2 flex justify-end">
             <Button type="submit" disabled={busy} className="gap-1">
