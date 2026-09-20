@@ -139,7 +139,7 @@ export const listPerfis = createServerFn({ method: "POST" })
       ativo: p.ativo !== false,
       usuarios: usuariosPorPerfil.get(p.id) ?? 0,
       permissoes: permsPorPerfil.get(p.id) ?? 0,
-      protegido: PERFIS_PROTEGIDOS.includes(p.nome),
+      protegido: p.protegido === true,
     })) satisfies PerfilRow[];
   });
 
@@ -249,7 +249,7 @@ export const savePerfil = createServerFn({ method: "POST" })
       .maybeSingle();
     if (aErr) throw new Error(aErr.message);
     if (!atual) throw new Error("Perfil não encontrado.");
-    if (PERFIS_PROTEGIDOS.includes(atual.nome)) {
+    if (atual.protegido === true) {
       throw new Error(`O perfil "${atual.nome}" é padrão do sistema e não pode ser alterado.`);
     }
 
@@ -295,7 +295,7 @@ export const deletePerfil = createServerFn({ method: "POST" })
       .eq("id", data.perfilId)
       .maybeSingle();
     if (!perfil) throw new Error("Perfil não encontrado.");
-    if (PERFIS_PROTEGIDOS.includes(perfil.nome)) {
+    if (perfil.protegido === true) {
       throw new Error(`O perfil "${perfil.nome}" é padrão do sistema e não pode ser excluído.`);
     }
     const { count } = await sb
@@ -341,7 +341,7 @@ export const setPerfilPermissoes = createServerFn({ method: "POST" })
       .eq("id", data.perfilId)
       .maybeSingle();
     if (!perfil) throw new Error("Perfil não encontrado.");
-    if (PERFIS_PROTEGIDOS.includes(perfil.nome)) {
+    if (perfil.protegido === true) {
       throw new Error(
         `O perfil "${perfil.nome}" é padrão do sistema; sua matriz é somente leitura.`,
       );
