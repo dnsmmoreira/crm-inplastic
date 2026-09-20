@@ -382,22 +382,48 @@ function UsuariosPage() {
 
 function CreateUserCard({ onCreated }: { onCreated: () => Promise<void> | void }) {
   const create = useServerFn(createUser);
+  const carregarPerfis = useServerFn(listPerfis);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
-  const [role, setRole] = useState<AppRole>("vendedor");
+  const [perfilId, setPerfilId] = useState("");
+  const [perfis, setPerfis] = useState<Array<{ id: string; nome: string }>>([]);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let vivo = true;
+    void (async () => {
+      try {
+        const rows = await carregarPerfis();
+        if (!vivo) return;
+        setPerfis(
+          (rows ?? [])
+            .filter((p) => p.ativo !== false)
+            .map((p) => ({ id: p.id, nome: p.nome })),
+        );
+      } catch {
+        if (vivo) setPerfis([]);
+      }
+    })();
+    return () => {
+      vivo = false;
+    };
+  }, [carregarPerfis]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!perfilId) {
+      toast.error("Selecione o perfil de acesso do novo usuário.");
+      return;
+    }
     setBusy(true);
     try {
-      await create({ data: { email, name, role } });
+      await create({ data: { email, name, perfilId } });
       toast.success(`Convite enviado para ${email}`, {
         description: "O usuário define a própria senha pelo link recebido por e-mail.",
       });
       setEmail("");
       setName("");
-      setRole("vendedor");
+      setPerfilId("");
       await onCreated();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Falha ao criar usuário");
