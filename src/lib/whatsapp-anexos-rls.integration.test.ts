@@ -81,7 +81,7 @@ describe.skipIf(!TEM_BANCO)("banco: RLS do bucket whatsapp-anexos", () => {
 
   it("whatsapp_anexo_visivel é STABLE SECURITY DEFINER com search_path fixo", () => {
     const meta = consulta(
-      `SELECT p.provolatile || '|' || p.prosecdef || '|' || coalesce(array_to_string(p.proconfig,','),'')
+      `SELECT p.provolatile::text || '|' || p.prosecdef::text || '|' || coalesce(array_to_string(p.proconfig,','),'')
          FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
         WHERE n.nspname='public' AND p.proname='whatsapp_anexo_visivel'`,
     );
