@@ -43,7 +43,9 @@ export const resumoEquipe = createServerFn({ method: "GET" })
     const userId = context.userId as string;
     const ctx = await contexto(sb, userId);
     if (!ctx.admin && !ctx.gerencia && ctx.liderados.length === 0) {
-      throw new Error("Sem acesso ao painel da equipe.");
+      throw new Error(
+        "Você ainda não lidera ninguém no sistema, por isso o painel da equipe está vazio. Fale com a gestão se precisar acompanhar alguém aqui.",
+      );
     }
     const { coletarResumoEquipe } = await import("@/lib/equipe.server");
     const resumo = await coletarResumoEquipe(sb, {
@@ -133,7 +135,9 @@ export const relatorioCarteira = createServerFn({ method: "GET" })
     const userId = context.userId as string;
     const ctx = await contexto(sb, userId);
     if (!ctx.admin && !ctx.gerencia && ctx.liderados.length === 0) {
-      throw new Error("Sem acesso ao painel da equipe.");
+      throw new Error(
+        "Você ainda não lidera ninguém no sistema, por isso o painel da equipe está vazio. Fale com a gestão se precisar acompanhar alguém aqui.",
+      );
     }
 
     const desde = new Date(Date.now() - 30 * 86400_000).toISOString();
