@@ -4017,6 +4017,13 @@ export type Database = {
       }
       equipe_do_usuario: { Args: { _user_id: string }; Returns: string }
       equipe_dona_canal_whatsapp: { Args: never; Returns: string }
+      equipe_listar_colegas: {
+        Args: never
+        Returns: {
+          id: string
+          name: string
+        }[]
+      }
       ganhos_fora_do_placar: {
         Args: { _periodo?: string }
         Returns: {
