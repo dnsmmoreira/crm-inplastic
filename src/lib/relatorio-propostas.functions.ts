@@ -1,7 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
-import { assertNoError, assertRpcPermissao } from "@/lib/guard-erros";
+import { assertNoError } from "@/lib/guard-erros";
+import { resolverEscopo, type EscopoRelatorio } from "@/lib/relatorios.functions";
 import {
   agruparMotivos,
   resumirPorVendedor,
@@ -16,7 +17,8 @@ export type PeriodoPropostas = "30" | "90" | "180" | "ano";
 export type RelatorioPropostasResult = {
   periodo: PeriodoPropostas;
   desde: string;
-  isAdmin: boolean;
+  /** "todos" = empresa toda; "equipe" = vendedores da equipe (via RLS); "proprio" = só as suas. */
+  escopo: EscopoRelatorio;
   resumo: ResumoPropostas;
   motivos: MotivoRecusaAgregado[];
   vendedores: { owner_id: string; nome: string; resumo: ResumoPropostas }[];
@@ -43,12 +45,10 @@ export const getRelatorioPropostas = createServerFn({ method: "GET" })
   .inputValidator((data: unknown) => inputSchema.parse(data ?? {}))
   .handler(async ({ data, context }): Promise<RelatorioPropostasResult> => {
     const { supabase, userId } = context;
-    const isAdmin =
-      (await assertRpcPermissao(
-        await supabase.rpc("has_role", { _user_id: userId, _role: "admin" }),
-        "relatorio-propostas/has_role",
-        { userId },
-      )) === true;
+    // Escopo pela permissão (não por papel), igual ao resto do sistema.
+    // "equipe": sem filtro de dono — a policy `propostas select ver_equipe`
+    // já restringe às propostas da equipe do usuário.
+    const escopo = await resolverEscopo(supabase, userId);
 
     const desde = desdeISO(data.periodo);
     let q = supabase
@@ -57,7 +57,7 @@ export const getRelatorioPropostas = createServerFn({ method: "GET" })
         "id, owner_id, status, created_at, sent_at, recusada_em, order_created_at, motivo_recusa, discount_percent, acrescimo_percent",
       )
       .gte("created_at", desde);
-    if (!isAdmin) q = q.eq("owner_id", userId);
+    if (escopo === "proprio") q = q.eq("owner_id", userId);
     else if (data.vendedorId) q = q.eq("owner_id", data.vendedorId);
 
     const propRes = await q;
@@ -113,7 +113,7 @@ export const getRelatorioPropostas = createServerFn({ method: "GET" })
     return {
       periodo: data.periodo,
       desde,
-      isAdmin,
+      escopo,
       resumo: resumirPropostas(rows),
       motivos: agruparMotivos(rows),
       vendedores: porVendedor.map((v) => ({
