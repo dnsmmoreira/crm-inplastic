@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import { LeadDrawer } from "@/components/crm/LeadDrawer";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/tarefas")({
@@ -30,6 +31,7 @@ export const Route = createFileRoute("/tarefas")({
 });
 
 function TasksPage() {
+  const { user } = useAuth();
   const tasks = useVisibleTasks();
   const leads = useVisibleLeads();
   const addTask = useCrm((s) => s.addTask);
@@ -117,6 +119,7 @@ function TasksPage() {
         onToggle={alternar}
         onRemove={removeTask}
         onOpen={setOpenLead}
+        currentUserId={user?.id ?? null}
       />
       <TaskGroup
         title="Hoje"
@@ -127,6 +130,7 @@ function TasksPage() {
         onToggle={alternar}
         onRemove={removeTask}
         onOpen={setOpenLead}
+        currentUserId={user?.id ?? null}
       />
       <TaskGroup
         title="Próximas"
@@ -137,6 +141,7 @@ function TasksPage() {
         onToggle={alternar}
         onRemove={removeTask}
         onOpen={setOpenLead}
+        currentUserId={user?.id ?? null}
       />
       {groups.done.length > 0 && (
         <TaskGroup
@@ -148,6 +153,7 @@ function TasksPage() {
           onToggle={alternar}
           onRemove={removeTask}
           onOpen={setOpenLead}
+          currentUserId={user?.id ?? null}
         />
       )}
 
@@ -159,7 +165,7 @@ function TasksPage() {
 }
 
 function TaskGroup({
-  title, description, tone, tasks, leads, onToggle, onRemove, onOpen,
+  title, description, tone, tasks, leads, onToggle, onRemove, onOpen, currentUserId,
 }: {
   title: string;
   description: string;
@@ -169,6 +175,8 @@ function TaskGroup({
   onToggle: (t: ReturnType<typeof useCrm.getState>["tasks"][number], stageAtual: string | null) => void;
   onRemove: (id: string) => void;
   onOpen: (id: string) => void;
+  /** Tarefa de colega (auditoria) fica somente leitura: sem concluir e sem excluir. */
+  currentUserId: string | null;
 }) {
   if (tasks.length === 0) return null;
   const toneMap = {
@@ -189,6 +197,7 @@ function TaskGroup({
       <CardContent className="space-y-2">
         {tasks.map((t) => {
           const lead = leads.find((l) => l.id === t.leadId);
+          const souDono = !t.ownerId || (!!currentUserId && t.ownerId === currentUserId);
           const d = new Date(t.dueDate);
           const dueLabel = isToday(d)
             ? "Hoje"
@@ -199,7 +208,12 @@ function TaskGroup({
                 : format(d, "dd MMM yyyy", { locale: ptBR });
           return (
             <div key={t.id} className="flex items-center gap-3 rounded-md border p-3 hover:bg-accent/30 transition-colors">
-              <button onClick={() => onToggle(t, lead?.stage ?? null)} className="shrink-0">
+              <button
+                onClick={() => souDono && onToggle(t, lead?.stage ?? null)}
+                disabled={!souDono}
+                title={souDono ? undefined : "Tarefa de outra pessoa — somente leitura"}
+                className="shrink-0 disabled:cursor-not-allowed disabled:opacity-50"
+              >
                 {tarefaConcluida(t) ? (
                   <CheckCircle2 className="h-5 w-5 text-[color:var(--success)]" />
                 ) : (
@@ -221,9 +235,11 @@ function TaskGroup({
                 </div>
               </button>
               <Badge variant={tone === "destructive" ? "destructive" : "outline"}>{dueLabel}</Badge>
-              <button onClick={() => onRemove(t.id)} className="text-muted-foreground hover:text-destructive shrink-0">
-                <Trash2 className="h-4 w-4" />
-              </button>
+              {souDono && (
+                <button onClick={() => onRemove(t.id)} className="text-muted-foreground hover:text-destructive shrink-0">
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              )}
             </div>
           );
         })}
