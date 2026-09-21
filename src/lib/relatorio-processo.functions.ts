@@ -9,7 +9,7 @@ import { requireSupabaseAuth } from "@/lib/auth.middleware";
 import { assertNoError } from "@/lib/guard-erros";
 import {
   assertPermissao,
-  escopoProprio,
+  resolverEscopo,
   type LooseClient,
 } from "@/lib/relatorios.functions";
 import {
@@ -91,7 +91,8 @@ export const getRelatorioProcesso = createServerFn({ method: "POST" })
       "ver_relatorios",
       "Você não tem permissão para ver relatórios.",
     );
-    const proprio = await escopoProprio(sb, userId);
+    // "equipe": sem filtro de dono aqui — a RLS já limita à equipe do usuário.
+    const proprio = (await resolverEscopo(sb, userId)) === "proprio";
     const periodoDias = data.periodoDias ?? PERIODO_PADRAO;
     const agora = new Date();
     const cutoff = new Date(agora.getTime() - periodoDias * 86_400_000).toISOString();
