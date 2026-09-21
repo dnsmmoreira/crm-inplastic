@@ -3,7 +3,7 @@ import { registrarFalhaSegura } from "@/lib/guard-erros";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
 import { PERM_WHATSAPP_ATENDER } from "@/lib/atendimento-espera";
-import { assertPodeAtuarNaConversa } from "@/lib/whatsapp-guard";
+import { assertPodeAtuarNaConversa, type SupabaseLike } from "@/lib/whatsapp-guard";
 
 /**
  * Marca a conversa como "humano_atendendo", desliga a IA, garante a atribuição
