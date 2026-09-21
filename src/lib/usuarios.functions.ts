@@ -234,6 +234,16 @@ export const listUsuarios = createServerFn({ method: "POST" })
           createdAt: p.created_at,
           ultimoAcesso: auth?.lastSignInAt ?? p.ultimo_acesso_em ?? null,
           role: roleByUser.get(p.id) ?? "vendedor",
+          perfilNome: (() => {
+            const pf = perfisByUser.get(p.id);
+            if (!pf || pf.nomes.length === 0) return null;
+            return [...pf.nomes].sort((a, b) => a.localeCompare(b, "pt-BR")).join(", ");
+          })(),
+          perfilBaseRole: perfisByUser.has(p.id)
+            ? perfisByUser.get(p.id)!.admin
+              ? ("admin" as const)
+              : ("vendedor" as const)
+            : null,
           metaMensal: Number(metaByUser.get(p.id) ?? 0),
           naFila: !!fila,
           filaPosicao: fila?.posicao ?? null,
