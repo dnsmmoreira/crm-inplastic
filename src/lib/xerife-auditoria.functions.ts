@@ -32,6 +32,19 @@ async function ehAdmin(supabase: Sb, userId: string): Promise<boolean> {
   return data === true;
 }
 
+/**
+ * Colegas visíveis (id + nome) pela RPC `equipe_listar_colegas` (SECURITY
+ * DEFINER): a policy de SELECT de `profiles` continua fechada — um não-admin
+ * só lê o próprio perfil —, então sem esta RPC o auditor veria nomes em
+ * branco e filtros vazios.
+ */
+async function colegasDaEquipe(supabase: Sb): Promise<Array<{ id: string; nome: string }>> {
+  const { data, error } = await supabase.rpc("equipe_listar_colegas");
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as Sb[]).map((p) => ({ id: p.id as string, nome: (p.name as string) ?? "—" }));
+}
+
+
 export type AcaoXerife = {
   id: string;
   regra: string;
@@ -75,12 +88,9 @@ export const listarAcoesXerife = createServerFn({ method: "POST" })
     const linhas = logs ?? [];
     if (linhas.length === 0) return [] as AcaoXerife[];
 
-    const vendIds = [...new Set(linhas.map((l: Sb) => l.vendedor_id).filter(Boolean))];
     const leadIds = [...new Set(linhas.map((l: Sb) => l.lead_id).filter(Boolean))];
-    const [{ data: perfis }, { data: leads }, { data: avals }] = await Promise.all([
-      vendIds.length
-        ? supabase.from("profiles").select("id, name").in("id", vendIds)
-        : Promise.resolve({ data: [] }),
+    const [colegas, { data: leads }, { data: avals }] = await Promise.all([
+      colegasDaEquipe(supabase),
       leadIds.length
         ? supabase.from("leads").select("id, company").in("id", leadIds)
         : Promise.resolve({ data: [] }),
@@ -93,7 +103,7 @@ export const listarAcoesXerife = createServerFn({ method: "POST" })
         ),
     ]);
 
-    const nomeDe = new Map((perfis ?? []).map((p: Sb) => [p.id, p.name as string]));
+    const nomeDe = new Map(colegas.map((p) => [p.id, p.nome]));
     const empresaDe = new Map((leads ?? []).map((l: Sb) => [l.id, l.company as string]));
     const avalDe = new Map((avals ?? []).map((a: Sb) => [a.xerife_log_id, a]));
 
@@ -128,13 +138,11 @@ export const opcoesAuditoriaXerife = createServerFn({ method: "GET" })
       .order("created_at", { ascending: false })
       .limit(2000);
     const regras = [...new Set((logs ?? []).map((l: Sb) => l.regra as string))].sort();
-    const vendIds = [...new Set((logs ?? []).map((l: Sb) => l.vendedor_id).filter(Boolean))];
-    const { data: perfis } = vendIds.length
-      ? await supabase.from("profiles").select("id, name").in("id", vendIds)
-      : { data: [] };
-    const vendedores = (perfis ?? [])
-      .map((p: Sb) => ({ id: p.id as string, nome: (p.name as string) ?? "—" }))
-      .sort((a: Sb, b: Sb) => a.nome.localeCompare(b.nome, "pt-BR"));
+    // Lista TODOS os vendedores ativos da equipe (inclusive quem nunca foi
+    // cobrado), porque o "deixou passar" precisa deles.
+    const vendedores = (await colegasDaEquipe(supabase)).sort((a, b) =>
+      a.nome.localeCompare(b.nome, "pt-BR"),
+    );
     const podeAvaliar = await supabase
       .rpc("tem_permissao", { _user_id: userId, _chave: PERM_XERIFE_AVALIAR })
       .then((r: Sb) => r.data === true);
