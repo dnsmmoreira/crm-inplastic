@@ -19,8 +19,36 @@ export type ChecagemContato =
       vendedorNome: string | null;
       empresa: string | null;
       origem: string;
+      /** true quando o registro é de OUTRA equipe: nome/dono são omitidos. */
+      restrito: boolean;
     }
-  | { situacao: "suspeita"; leadId: string; empresa: string | null };
+  | { situacao: "suspeita"; leadId: string; empresa: string | null; restrito: boolean };
+
+/**
+ * Espelho da visibilidade do resto do sistema: admin, supervisor global e
+ * `leads.ver_todos` enxergam o dono; os demais só na MESMA equipe.
+ */
+async function podeVerDono(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  sb: any,
+  userId: string,
+  donoId: string | null,
+): Promise<boolean> {
+  const { data: admin } = await sb.rpc("has_role", { _user_id: userId, _role: "admin" });
+  if (admin === true) return true;
+  const { data: global } = await sb.rpc("supervisor_ve_tudo", { _user_id: userId });
+  if (global === true) return true;
+  const { data: verTodos } = await sb.rpc("tem_permissao", {
+    _user_id: userId,
+    _chave: "leads.ver_todos",
+  });
+  if (verTodos === true) return true;
+  if (!donoId) return false;
+  if (donoId === userId) return true;
+  const { data: mesma } = await sb.rpc("mesma_equipe", { _a: userId, _b: donoId });
+  return mesma === true;
+}
+
 
 export const verificarContatoEntrada = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
