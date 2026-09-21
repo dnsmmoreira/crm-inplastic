@@ -138,6 +138,19 @@ function EquipePage() {
         <h1 className="text-xl font-semibold flex items-center gap-2">
           <Users className="h-5 w-5" /> Equipe
         </h1>
+        <select
+          value={equipeId}
+          onChange={(e) => setEquipeId(e.target.value)}
+          aria-label="Filtrar por equipe"
+          className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+        >
+          <option value="">Todas as equipes</option>
+          {(equipesQ.data ?? []).map((eq) => (
+            <option key={eq.id} value={eq.id}>
+              {eq.nome}
+            </option>
+          ))}
+        </select>
         {data?.podeCobrarTodos && comVencidos.length > 0 && (
           <Button
             variant="outline"
