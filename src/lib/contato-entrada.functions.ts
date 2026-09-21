@@ -77,6 +77,20 @@ export const verificarContatoEntrada = createServerFn({ method: "POST" })
     if (entrada.acao === "carteira" || entrada.acao === "lead_existente") {
       const vendedorId =
         entrada.acao === "carteira" ? entrada.vendedorId : (entrada.vendedorId ?? null);
+      // Registro de OUTRA equipe nunca devolve dono nem nome da empresa.
+      const visivel = await podeVerDono(supabaseAdmin, context.userId, vendedorId);
+      if (!visivel) {
+        return {
+          situacao: "duplicado",
+          leadId: null,
+          clienteId: null,
+          vendedorId: null,
+          vendedorNome: null,
+          empresa: null,
+          origem: entrada.origem,
+          restrito: true,
+        };
+      }
       let vendedorNome: string | null = null;
       if (vendedorId) {
         const { data: perfil } = await supabaseAdmin
@@ -103,6 +117,7 @@ export const verificarContatoEntrada = createServerFn({ method: "POST" })
         vendedorNome,
         empresa,
         origem: entrada.origem,
+        restrito: false,
       };
     }
 
@@ -110,9 +125,27 @@ export const verificarContatoEntrada = createServerFn({ method: "POST" })
     if (data.empresa) {
       const parecido = await avisoDuplicidadePorNome(supabaseAdmin, data.empresa);
       if (parecido) {
-        return { situacao: "suspeita", leadId: parecido.leadId, empresa: parecido.company };
+        const { data: dono } = await supabaseAdmin
+          .from("leads")
+          .select("owner_id")
+          .eq("id", parecido.leadId)
+          .maybeSingle();
+        const visivel = await podeVerDono(
+          supabaseAdmin,
+          context.userId,
+          (dono?.owner_id as string | null) ?? null,
+        );
+        return visivel
+          ? {
+              situacao: "suspeita",
+              leadId: parecido.leadId,
+              empresa: parecido.company,
+              restrito: false,
+            }
+          : { situacao: "suspeita", leadId: "", empresa: null, restrito: true };
       }
     }
+
 
     // `context.userId` fica registrado apenas pelo middleware de auth.
     void context.userId;
