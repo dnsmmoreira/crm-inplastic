@@ -1000,6 +1000,7 @@ export type Database = {
         Row: {
           ativo: boolean
           created_at: string
+          dona_canal_whatsapp: boolean
           id: string
           nome: string
           updated_at: string
@@ -1007,6 +1008,7 @@ export type Database = {
         Insert: {
           ativo?: boolean
           created_at?: string
+          dona_canal_whatsapp?: boolean
           id?: string
           nome: string
           updated_at?: string
@@ -1014,6 +1016,7 @@ export type Database = {
         Update: {
           ativo?: boolean
           created_at?: string
+          dona_canal_whatsapp?: boolean
           id?: string
           nome?: string
           updated_at?: string
@@ -3921,6 +3924,8 @@ export type Database = {
           reaproveitada: boolean
         }[]
       }
+      equipe_do_usuario: { Args: { _user_id: string }; Returns: string }
+      equipe_dona_canal_whatsapp: { Args: never; Returns: string }
       ganhos_fora_do_placar: {
         Args: { _periodo?: string }
         Returns: {
@@ -4059,6 +4064,11 @@ export type Database = {
         Args: { _chave: string; _user_id: string }
         Returns: number
       }
+      whatsapp_conversa_visivel: {
+        Args: { _atribuido: string; _lead_owner: string }
+        Returns: boolean
+      }
+      whatsapp_pode_atuar: { Args: { _conversa_id: string }; Returns: boolean }
     }
     Enums: {
       ai_action_type:
