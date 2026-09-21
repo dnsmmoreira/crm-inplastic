@@ -15,3 +15,9 @@
 - [x] Provas: contagens antes/depois, Grupo Comercial sem Maxicaixa, typecheck/suíte/build
 
 Pendente com o Denis: senha do Luciano; catálogo/estoque/transportadoras/DIFAL seguem compartilhados.
+
+## Cadastro de leads/clientes por Lais e Ana (set/2026)
+- [ ] Permissões leads.criar / clientes.criar por alcance real (não lista fixa)
+- [ ] Botão "Novo lead" no Início passa a exigir leads.criar (aguardando decisão sobre Renata/Bruna)
+- [ ] Corte de dados de outra equipe no aviso de duplicidade
+- [ ] Provas: contagens iguais para Lais, Ana, Pamela e admin; typecheck/suíte/build
