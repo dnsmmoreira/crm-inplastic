@@ -63,6 +63,8 @@ export type AuthUser = {
   permKeys: string[];
   /** Se o usuário tem ao menos um perfil de acesso ATIVO vinculado. */
   temPerfilAtivo: boolean;
+  /** Nome do(s) perfil(is) de acesso ativo(s); null quando não há nenhum. */
+  perfilNome: string | null;
   mustChangePassword: boolean;
 };
 
@@ -167,6 +169,7 @@ async function loadAuthUser(supaUser: SupaUser): Promise<AuthUser> {
     permissions,
     permKeys,
     temPerfilAtivo,
+    perfilNome,
     mustChangePassword: !!profile?.senha_reset_exigido,
   };
 }
