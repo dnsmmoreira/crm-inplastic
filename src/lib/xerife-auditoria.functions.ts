@@ -138,13 +138,11 @@ export const opcoesAuditoriaXerife = createServerFn({ method: "GET" })
       .order("created_at", { ascending: false })
       .limit(2000);
     const regras = [...new Set((logs ?? []).map((l: Sb) => l.regra as string))].sort();
-    const vendIds = [...new Set((logs ?? []).map((l: Sb) => l.vendedor_id).filter(Boolean))];
-    const { data: perfis } = vendIds.length
-      ? await supabase.from("profiles").select("id, name").in("id", vendIds)
-      : { data: [] };
-    const vendedores = (perfis ?? [])
-      .map((p: Sb) => ({ id: p.id as string, nome: (p.name as string) ?? "—" }))
-      .sort((a: Sb, b: Sb) => a.nome.localeCompare(b.nome, "pt-BR"));
+    // Lista TODOS os vendedores ativos da equipe (inclusive quem nunca foi
+    // cobrado), porque o "deixou passar" precisa deles.
+    const vendedores = (await colegasDaEquipe(supabase)).sort((a, b) =>
+      a.nome.localeCompare(b.nome, "pt-BR"),
+    );
     const podeAvaliar = await supabase
       .rpc("tem_permissao", { _user_id: userId, _chave: PERM_XERIFE_AVALIAR })
       .then((r: Sb) => r.data === true);
