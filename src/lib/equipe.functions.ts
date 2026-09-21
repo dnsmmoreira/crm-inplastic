@@ -208,12 +208,13 @@ export const relatorioCarteira = createServerFn({ method: "GET" })
       }
     }
 
-    const { data: logs, error: errLog } = await sb
+    let qLogs = sb
       .from("xerife_log")
       .select("vendedor_id, regra, created_at")
       .gte("created_at", desde)
-      .like("regra", "D1_abandono%")
-      .limit(1000);
+      .like("regra", "D1_abandono%");
+    if (idsEquipe) qLogs = qLogs.in("vendedor_id", idsEquipe);
+    const { data: logs, error: errLog } = await qLogs.limit(1000);
     if (errLog) throw new Error(`Falha ao ler histórico: ${errLog.message}`);
     const porVendedor = new Map<string, number>();
     for (const r of (logs ?? []) as any[]) {
