@@ -4123,6 +4123,10 @@ export type Database = {
         Args: { _atribuido: string; _lead_owner: string }
         Returns: boolean
       }
+      whatsapp_conversa_visivel_auditor: {
+        Args: { _atribuido: string; _lead_owner: string }
+        Returns: boolean
+      }
       whatsapp_pode_atuar: { Args: { _conversa_id: string }; Returns: boolean }
     }
     Enums: {
