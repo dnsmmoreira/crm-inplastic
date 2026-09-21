@@ -3936,6 +3936,16 @@ export type Database = {
           vendedor_id: string
         }[]
       }
+      ganhos_fora_do_placar_escopo: {
+        Args: { _periodo?: string }
+        Returns: {
+          avatar_color: string
+          ganhos_qtd: number
+          ganhos_valor: number
+          nome: string
+          vendedor_id: string
+        }[]
+      }
       ganhos_por_vendedor: {
         Args: { _end: string; _start: string }
         Returns: {
@@ -3982,7 +3992,37 @@ export type Database = {
       next_ficha_coleta_number: { Args: { _year: number }; Returns: string }
       next_pedido_number: { Args: { _year: number }; Returns: string }
       next_proposta_number: { Args: { _year: number }; Returns: string }
+      placar_ve_tudo: { Args: { _user_id: string }; Returns: boolean }
       placar_vendedores: {
+        Args: { _periodo?: string }
+        Returns: {
+          avatar_color: string
+          carteira_45_60: number
+          carteira_60_mais: number
+          conversao: number
+          dias_sem_proposta: number
+          dias_sem_proposta_limite: number
+          ganhos_qtd: number
+          ganhos_valor: number
+          leads_contatados: number
+          meta_batida: boolean
+          meta_faixa: number
+          meta_pace_esperado_pct: number
+          meta_pct: number
+          meta_valor: number
+          nome: string
+          perdas_qtd: number
+          pos_venda_no_prazo_pct: number
+          posicao: number
+          propostas_qtd: number
+          score: number
+          score_periodo_anterior: number
+          slas_estourados: number
+          tempo_medio_primeira_resposta_min: number
+          vendedor_id: string
+        }[]
+      }
+      placar_vendedores_escopo: {
         Args: { _periodo?: string }
         Returns: {
           avatar_color: string
