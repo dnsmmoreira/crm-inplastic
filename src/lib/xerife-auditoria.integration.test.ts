@@ -127,3 +127,59 @@ describe.skipIf(!TEM_BANCO)("banco: Xerife Humano", () => {
     expect(chaves.filter((c) => c.startsWith("xerife."))).toEqual([]);
   });
 });
+
+describe.skipIf(!TEM_BANCO)("banco: lista de colegas da equipe", () => {
+  it("a função equipe_listar_colegas é SECURITY DEFINER e executável só por authenticated", () => {
+    expect(
+      consulta(
+        `SELECT prosecdef::text FROM pg_proc WHERE proname = 'equipe_listar_colegas'`,
+      ),
+    ).toBe("true");
+    const acl = consulta(
+      `SELECT proacl::text FROM pg_proc WHERE proname = 'equipe_listar_colegas'`,
+    );
+    expect(acl).toContain("authenticated=X");
+    expect(acl).not.toMatch(/\banon=X/);
+    expect(acl).not.toMatch(/^\{=X/);
+  });
+
+  it("filtra por equipe: só perfis ativos que passam em supervisor_ve_tudo OU mesma_equipe", () => {
+    const def = consulta(
+      `SELECT prosrc FROM pg_proc WHERE proname = 'equipe_listar_colegas'`,
+    );
+    expect(def).toMatch(/supervisor_ve_tudo\(auth\.uid\(\)\)/);
+    expect(def).toMatch(/mesma_equipe\(auth\.uid\(\), p\.id\)/);
+    expect(def).toMatch(/p\.ativo = true/);
+    expect(def).toMatch(/p\.deleted_at IS NULL/);
+  });
+
+  it("a policy de SELECT de profiles continua fechada (só o próprio perfil ou admin)", () => {
+    const quals = consulta(
+      `SELECT string_agg(qual, ' ;; ') FROM pg_policies
+       WHERE tablename = 'profiles' AND cmd = 'SELECT'`,
+    );
+    expect(quals).not.toContain("mesma_equipe");
+    expect(quals).toContain("auth.uid() = id");
+  });
+
+  it("para a auditora da Maxicaixa a lista traz só a própria equipe", () => {
+    const nomes = consulta(
+      `SELECT string_agg(p.name, ',' ORDER BY p.name) FROM public.profiles p
+       WHERE p.ativo = true AND p.deleted_at IS NULL
+         AND p.equipe_id = (SELECT equipe_id FROM public.profiles
+                            WHERE id = 'd714421e-49e1-42c3-874c-bcb9681407e3')`,
+    ).split(",");
+    for (const esperado of [
+      "Lais",
+      "Kelly Maxicaixa",
+      "Carol Maxicaixa",
+      "Bertuolo Maxicaixa",
+      "Luciano Maxicaixa",
+    ]) {
+      expect(nomes).toContain(esperado);
+    }
+    expect(nomes).not.toContain("Denis");
+    expect(nomes).not.toContain("PAMELA");
+    expect(nomes).not.toContain("BEATRIZ");
+  });
+});
