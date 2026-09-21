@@ -1007,6 +1007,9 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
     }
   };
 
+  // Sem a chave de cadastro o gatilho some (RLS de INSERT continua sendo o bloqueio real).
+  if (!podeCriar) return null;
+
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setForm(initial); }}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
