@@ -22,12 +22,6 @@ export type PermissaoCatalogo = {
  */
 export type PapelRotulo = "Vendas" | "Operacional" | "Administrador";
 
-export const PAPEIS: PapelRotulo[] = ["Vendas", "Operacional", "Administrador"];
-
-export function baseRoleDoPapel(papel: PapelRotulo): "admin" | "vendedor" {
-  return papel === "Administrador" ? "admin" : "vendedor";
-}
-
 /** Resposta binária da UI → valores gravados em `perfis`. */
 export function papelDoAdmin(admin: boolean): PapelRotulo {
   return admin ? "Administrador" : "Operacional";
