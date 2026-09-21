@@ -119,7 +119,7 @@ export const listPedidosRelatorio = createServerFn({ method: "GET" })
           "leads:lead_id(company)",
         ].join(", "),
       );
-    if (await escopoProprio(sb, context.userId)) {
+    if ((await resolverEscopo(sb, context.userId)) === "proprio") {
       q = q.or(`owner_id.eq.${context.userId},vendedor_proprietario_id.eq.${context.userId}`);
     }
     const { data, error } = await q.order("created_at", { ascending: false }).limit(1000);
@@ -238,7 +238,9 @@ export const listPedidosEmAberto = createServerFn({ method: "GET" })
       )
       .is("encerrado_em", null)
       .not("stage", "in", `(${PEDIDO_STAGES_FECHADOS.join(",")})`);
-    if (await escopoProprio(sb, context.userId)) {
+    // "Pedidos em Aberto" é visão global: só `pedidos.ver_todos` amplia. O
+    // escopo "equipe" cai no mesmo filtro de "proprio".
+    if ((await resolverEscopo(sb, context.userId)) !== "todos") {
       q = q.or(`owner_id.eq.${context.userId},vendedor_proprietario_id.eq.${context.userId}`);
     }
     const { data, error } = await q.order("created_at", { ascending: false }).limit(1000);
