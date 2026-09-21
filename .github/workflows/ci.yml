@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  verificacao:
+    runs-on: ubuntu-latest
+    env:
+      CI: "true"
+      # Banco usado pelo teste de integração do cargo (src/lib/cargo-sync.integration.test.ts).
+      # Sem essas variáveis o teste FALHA em CI — ele nunca é pulado silenciosamente.
+      PGHOST: ${{ secrets.PGHOST }}
+      PGPORT: ${{ secrets.PGPORT }}
+      PGUSER: ${{ secrets.PGUSER }}
+      PGPASSWORD: ${{ secrets.PGPASSWORD }}
+      PGDATABASE: ${{ secrets.PGDATABASE }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Cliente do banco (psql)
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Instalar dependências
+        run: bun install --frozen-lockfile
+
+      - name: Guarda de profiles.cargo
+        run: bun run test:guard
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Suíte de testes
+        run: bun run test
+
+      - name: Build (derruba se houver leitura direta de profiles.cargo)
+        run: bun run build
