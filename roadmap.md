@@ -83,3 +83,11 @@
 - [x] Perfil obrigatório na criação de usuário (reaproveita setPerfilDoUsuario)
 - [x] Aba "Equipe" → "Usuários"
 - [x] Drop user_permissions
+
+## Filtro por equipe em /equipe + selo de perfil (concluído, não publicado)
+- [x] resumoEquipe/coletarResumoEquipe com equipeId (AND com a restrição de acesso)
+- [x] relatorioCarteira filtrado por dono atual do lead / vendedor da devolução
+- [x] <select> de equipes ativas no cabeçalho de /equipe
+- [x] listUsuarios expõe perfilNome/perfilBaseRole (N:N: mostra todos os perfis)
+- [x] Selo de perfil + "Sem perfil" (vermelho), filtro por perfil, fila só com o nome
+- [x] UserBadge do rodapé mostra o perfil (AuthUser.perfilNome)
