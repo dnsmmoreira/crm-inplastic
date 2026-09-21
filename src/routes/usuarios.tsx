@@ -57,7 +57,9 @@ function UsuariosPage() {
     if (q) setBusca(q);
   }, []);
 
-  const [filtroPapel, setFiltroPapel] = useState<"todos" | AppRole>("todos");
+  // Filtro por PERFIL de acesso (não pelo papel binário admin/vendedor).
+  // "" = todos; "__sem__" = contas sem perfil vinculado.
+  const [filtroPerfil, setFiltroPerfil] = useState<string>("");
   const [filtroStatus, setFiltroStatus] = useState<"todos" | "ativos" | "inativos" | "excluidos">("ativos");
   const [sort, setSort] = useState<SortKey>("nome");
   const [saving, setSaving] = useState<string | null>(null);
@@ -75,6 +77,22 @@ function UsuariosPage() {
   }, [listar]);
 
   const podeGerenciar = hasPerm(user, "usuarios.gerenciar");
+
+  // Perfis ativos, só para popular o filtro da lista.
+  const carregarPerfisFiltro = useServerFn(listPerfis);
+  const [perfisAtivos, setPerfisAtivos] = useState<Array<{ id: string; nome: string }>>([]);
+  useEffect(() => {
+    if (!podeGerenciar) return;
+    void carregarPerfisFiltro()
+      .then((ps) =>
+        setPerfisAtivos(
+          (ps as Array<{ id: string; nome: string; ativo: boolean }>)
+            .filter((p) => p.ativo)
+            .map((p) => ({ id: p.id, nome: p.nome })),
+        ),
+      )
+      .catch(() => setPerfisAtivos([]));
+  }, [podeGerenciar, carregarPerfisFiltro]);
 
   useEffect(() => { if (podeGerenciar) void load(); }, [podeGerenciar, load]);
 
@@ -97,7 +115,8 @@ function UsuariosPage() {
     const q = busca.trim().toLowerCase();
     const list = (rows ?? []).filter((r) => {
       if (q && !`${r.name} ${r.email}`.toLowerCase().includes(q)) return false;
-      if (filtroPapel !== "todos" && r.role !== filtroPapel) return false;
+      if (filtroPerfil === "__sem__" && r.perfilNome) return false;
+      if (filtroPerfil && filtroPerfil !== "__sem__" && r.perfilNome !== filtroPerfil) return false;
       if (filtroStatus === "excluidos") return !!r.deletedAt;
       if (r.deletedAt) return false;
       if (filtroStatus === "ativos") return r.ativo;
@@ -109,7 +128,7 @@ function UsuariosPage() {
       if (sort === "cadastro") return a.createdAt.localeCompare(b.createdAt);
       return (b.ultimoAcesso ?? "").localeCompare(a.ultimoAcesso ?? "");
     });
-  }, [rows, busca, filtroPapel, filtroStatus, sort]);
+  }, [rows, busca, filtroPerfil, filtroStatus, sort]);
 
   const vendedoresParaFila: Row[] = useMemo(
     () =>
@@ -203,14 +222,18 @@ function UsuariosPage() {
               />
             </div>
             <select
-              value={filtroPapel}
-              onChange={(e) => setFiltroPapel(e.target.value as "todos" | AppRole)}
-              aria-label="Filtrar por papel"
+              value={filtroPerfil}
+              onChange={(e) => setFiltroPerfil(e.target.value)}
+              aria-label="Filtrar por perfil"
               className="h-9 rounded-md border border-input bg-background px-2 text-sm"
             >
-              <option value="todos">Todos os papéis</option>
-              <option value="admin">Administradores</option>
-              <option value="vendedor">Vendedores</option>
+              <option value="">Todos os perfis</option>
+              {perfisAtivos.map((p) => (
+                <option key={p.id} value={p.nome}>
+                  {p.nome}
+                </option>
+              ))}
+              <option value="__sem__">Sem perfil</option>
             </select>
             <select
               value={filtroStatus}
@@ -607,7 +630,7 @@ function FilaVendedoresCard({ vendedores }: { vendedores: Row[] }) {
             >
               <option value="">Selecione…</option>
               {disponiveis.map((v) => (
-                <option key={v.id} value={v.id}>{v.name} ({v.role})</option>
+                <option key={v.id} value={v.id}>{v.name}</option>
               ))}
             </select>
           </div>
