@@ -84,7 +84,7 @@ export default defineConfig({
     server: { entry: "server" },
   },
   vite: {
-    plugins: [mcpPlugin(), buildVersionPlugin()],
+    plugins: [mcpPlugin(), cargoGuardPlugin(), buildVersionPlugin()],
     resolve: {
       alias: {
         "entities/lib/decode.js": path.resolve(__dirname, "node_modules/entities/lib/decode.js"),
