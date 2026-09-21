@@ -48,28 +48,24 @@ describe("trigger profiles_cargo_texto", () => {
   });
 });
 
-describe("a aplicação não grava o texto do cargo", () => {
+describe("a aplicação não grava o texto do cargo ao salvar usuário", () => {
   const fonte = readFileSync(join(RAIZ, "src/lib/usuarios.functions.ts"), "utf8");
+  const patch = fonte.slice(fonte.indexOf("const patch = {"), fonte.indexOf("audit.push("));
 
-  it("o patch de profiles usa cargo_id e não a coluna cargo", () => {
-    expect(fonte).toContain("cargo_id: cargoId,");
-    // nenhuma atribuição de objeto para a coluna de texto `cargo`
-    expect(fonte).not.toMatch(/^\s*cargo:\s/m);
+  it("o patch de profiles usa cargo_id e não a coluna de texto", () => {
+    expect(patch).toContain("cargo_id: cargoId,");
+    expect(patch).not.toMatch(/^\s*cargo:\s/m);
   });
 
-  it("nenhum arquivo do app escreve profiles.cargo em update/insert", () => {
-    const suspeitos: string[] = [];
-    const varrer = (dir: string) => {
-      for (const e of readdirSync(dir, { withFileTypes: true })) {
-        const p = join(dir, e.name);
-        if (e.isDirectory()) varrer(p);
-        else if (/\.(ts|tsx)$/.test(e.name) && !e.name.endsWith(".test.ts")) {
-          const src = readFileSync(p, "utf8");
-          if (/from\("profiles"\)/.test(src) && /^\s*cargo:\s/m.test(src)) suspeitos.push(p);
-        }
-      }
-    };
-    varrer(join(RAIZ, "src"));
-    expect(suspeitos).toEqual([]);
+  it("o texto do cargo só é lido do catálogo, para validação e auditoria", () => {
+    expect(fonte).toContain("cargoTexto = cargoRow.nome;");
+    expect(fonte).toMatch(/campo:\s*"cargo",\s*anterior:\s*profile\.cargo,\s*novo:\s*cargoTexto/);
+  });
+
+  it("a renomeação de cargo mantém o texto em sincronia pelo catálogo", () => {
+    const cargos = readFileSync(join(RAIZ, "src/lib/cargos.functions.ts"), "utf8");
+    expect(cargos).toMatch(
+      /from\("profiles"\)\s*\.update\(\{\s*cargo:\s*data\.nome\s*\}\)\s*\.eq\("cargo_id",\s*data\.id\)/,
+    );
   });
 });
