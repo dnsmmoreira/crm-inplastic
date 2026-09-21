@@ -88,12 +88,9 @@ export const listarAcoesXerife = createServerFn({ method: "POST" })
     const linhas = logs ?? [];
     if (linhas.length === 0) return [] as AcaoXerife[];
 
-    const vendIds = [...new Set(linhas.map((l: Sb) => l.vendedor_id).filter(Boolean))];
     const leadIds = [...new Set(linhas.map((l: Sb) => l.lead_id).filter(Boolean))];
-    const [{ data: perfis }, { data: leads }, { data: avals }] = await Promise.all([
-      vendIds.length
-        ? supabase.from("profiles").select("id, name").in("id", vendIds)
-        : Promise.resolve({ data: [] }),
+    const [colegas, { data: leads }, { data: avals }] = await Promise.all([
+      colegasDaEquipe(supabase),
       leadIds.length
         ? supabase.from("leads").select("id, company").in("id", leadIds)
         : Promise.resolve({ data: [] }),
@@ -106,7 +103,7 @@ export const listarAcoesXerife = createServerFn({ method: "POST" })
         ),
     ]);
 
-    const nomeDe = new Map((perfis ?? []).map((p: Sb) => [p.id, p.name as string]));
+    const nomeDe = new Map(colegas.map((p) => [p.id, p.nome]));
     const empresaDe = new Map((leads ?? []).map((l: Sb) => [l.id, l.company as string]));
     const avalDe = new Map((avals ?? []).map((a: Sb) => [a.xerife_log_id, a]));
 
