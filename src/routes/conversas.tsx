@@ -66,7 +66,7 @@ import {
   rotuloTempo,
   textoBolhaEspera,
 } from "@/lib/atendimento-espera";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth, hasPerm } from "@/hooks/use-auth";
 import { podeEscreverConversa } from "@/lib/permissoes";
 import { usePoll } from "@/hooks/use-poll";
 import { useAutoScrollMensagens } from "@/hooks/use-auto-scroll-mensagens";
@@ -791,6 +791,8 @@ function ChatPanel({
   // Escrita manual só em conversas aguardando humano ou em atendimento humano
   // (admin não é limitado). Mesmo guard existe no servidor.
   const bloqueadoPorStatus = user?.role !== "admin" && !podeEscreverConversa(conversa.status);
+  // Auditor (só `whatsapp.ver_equipe`): acompanha a conversa sem poder agir.
+  const somenteLeitura = !isAdmin && !hasPerm(user, "whatsapp.atender");
   const temInbound = mensagens.some((m) => m.direcao === "entrada");
   const agoraSP = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
   const dentroDaJanela =
@@ -1013,6 +1015,7 @@ function ChatPanel({
           </div>
         </div>
 
+        {!somenteLeitura && (
         <div className="mt-2 flex flex-wrap items-center gap-2">
           {iaNoControle && (
             <Button
@@ -1092,6 +1095,7 @@ function ChatPanel({
             </Button>
           )}
         </div>
+        )}
 
         {emEspera && (
           <div className="mt-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-700">
@@ -1166,6 +1170,12 @@ function ChatPanel({
         )}
       </div>
 
+      {somenteLeitura ? (
+        <div className="border-t bg-muted/40 p-3 text-[11px] text-muted-foreground">
+          Somente leitura — você acompanha esta conversa para auditoria e não pode
+          enviar mensagens nem agir sobre o atendimento.
+        </div>
+      ) : (
       <div className="space-y-2 border-t p-3">
         <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
           <span
@@ -1360,6 +1370,7 @@ function ChatPanel({
           }}
         />
       </div>
+      )}
 
     </div>
   );
