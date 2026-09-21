@@ -308,7 +308,9 @@ const NAV_GROUPS: NavGroup[] = [
     accent: "blue",
     label: "Pipeline",
     icon: KanbanSquare,
-    items: [{ to: "/pipeline", label: "Funil de Vendas", icon: KanbanSquare, show: vendas }],
+    items: [
+      { to: "/pipeline", label: "Funil de Vendas", icon: KanbanSquare, show: leadsVisivel },
+    ],
   },
   {
     id: "cadastros",
