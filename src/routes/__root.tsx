@@ -269,6 +269,17 @@ const key = (chave: string) => (c: NavCtx) => hasPerm(c.user, chave);
 const always = () => true;
 const vendas = (c: NavCtx) => c.isAdmin || isVendedorComum(c);
 const vendasOu = (chave: string) => (c: NavCtx) => vendas(c) || hasPerm(c.user, chave);
+/** Só AMPLIA: qualquer uma das chaves basta. */
+const vendasOuAlguma =
+  (...chaves: string[]) =>
+  (c: NavCtx) =>
+    vendas(c) || chaves.some((chave) => hasPerm(c.user, chave));
+const leadsVisivel = vendasOuAlguma("leads.ver_todos", "leads.ver_equipe", "leads.criar");
+const clientesVisivel = vendasOuAlguma(
+  "clientes.ver_todos",
+  "clientes.ver_equipe",
+  "clientes.criar",
+);
 
 const NAV_ROOT: NavItem[] = [
   { to: "/", label: "Início", icon: LayoutDashboard, show: always },
@@ -297,7 +308,9 @@ const NAV_GROUPS: NavGroup[] = [
     accent: "blue",
     label: "Pipeline",
     icon: KanbanSquare,
-    items: [{ to: "/pipeline", label: "Funil de Vendas", icon: KanbanSquare, show: vendas }],
+    items: [
+      { to: "/pipeline", label: "Funil de Vendas", icon: KanbanSquare, show: leadsVisivel },
+    ],
   },
   {
     id: "cadastros",
@@ -305,8 +318,8 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Cadastros",
     icon: Building2,
     items: [
-      { to: "/leads", label: "Leads", icon: Users, show: vendas },
-      { to: "/clientes", label: "Clientes", icon: Building2, show: vendasOu("clientes.ver_todos") },
+      { to: "/leads", label: "Leads", icon: Users, show: leadsVisivel },
+      { to: "/clientes", label: "Clientes", icon: Building2, show: clientesVisivel },
       { to: "/contatos", label: "Contatos", icon: Users, show: vendasOu("clientes.ver_todos") },
       { to: "/empresas", label: "Empresas", icon: Building2, show: vendasOu("clientes.ver_todos") },
       { to: "/produtos", label: "Produtos", icon: Package, show: vendasOu("clientes.ver_todos") },

@@ -2,7 +2,8 @@ import React, { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { lookupCnpj } from "@/lib/cnpj.functions";
 import { isValidCnpj, friendlyCnpjError } from "@/lib/cnpj";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth, hasPerm } from "@/hooks/use-auth";
+import { PERM_LEADS_CRIAR } from "@/lib/cadastro-permissoes";
 import { dateInputToISO } from "@/lib/format";
 import { semInscricaoEstadual, normalizarUf, UF_ORIGEM_DIFAL } from "@/lib/difal";
 import { ProdutoFamiliaField } from "@/components/crm/ProdutoFamiliaField";
@@ -858,6 +859,8 @@ import {
 } from "@/components/ui/dialog";
 
 export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
+  const { user } = useAuth();
+  const podeCriar = hasPerm(user, PERM_LEADS_CRIAR);
   const addLead = useCrm((s) => s.addLead);
   const products = useCrm((s) => s.products);
   const leadTags = useCrm((s) => s.leadTags);
@@ -1003,6 +1006,9 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
       setLookingUp(false);
     }
   };
+
+  // Sem a chave de cadastro o gatilho some (RLS de INSERT continua sendo o bloqueio real).
+  if (!podeCriar) return null;
 
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setForm(initial); }}>
@@ -1322,15 +1328,19 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
                 });
                 if (check.situacao === "duplicado") {
                   toast.error(
-                    `Este contato já é de ${check.vendedorNome ?? "outro vendedor"}${
-                      check.empresa ? ` (${check.empresa})` : ""
-                    }. Continue o atendimento no cadastro existente.`,
+                    check.restrito
+                      ? "Já existe cadastro deste CNPJ. Fale com o administrador."
+                      : `Este contato já é de ${check.vendedorNome ?? "outro vendedor"}${
+                          check.empresa ? ` (${check.empresa})` : ""
+                        }. Continue o atendimento no cadastro existente.`,
                   );
                   return;
                 }
                 if (check.situacao === "suspeita") {
                   toast.warning(
-                    `Existe um cadastro com nome parecido${check.empresa ? `: "${check.empresa}"` : ""}. Confira antes de duplicar.`,
+                    check.restrito
+                      ? "Já existe cadastro com nome parecido. Fale com o administrador."
+                      : `Existe um cadastro com nome parecido${check.empresa ? `: "${check.empresa}"` : ""}. Confira antes de duplicar.`,
                   );
                 }
               } catch {

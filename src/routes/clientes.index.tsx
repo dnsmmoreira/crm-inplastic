@@ -28,6 +28,7 @@ import { relativeTimeShort, displayValue } from "@/lib/format";
 import { listClientes, listVendedores } from "@/lib/clientes.functions";
 import { useAuth, hasPerm } from "@/hooks/use-auth";
 import { NovoClienteDialog } from "@/components/clientes/NovoClienteDialog";
+import { PERM_CLIENTES_CRIAR } from "@/lib/cadastro-permissoes";
 
 export const Route = createFileRoute("/clientes/")({
   head: () => ({
@@ -119,9 +120,11 @@ function ClientesListPage() {
             {total} cliente(s) cadastrado(s){somenteAtivos ? " (ativos)" : ""}
           </p>
         </div>
-        <Button onClick={() => setOpenNovo(true)} className="gap-2">
-          <Plus className="h-4 w-4" /> Novo cliente
-        </Button>
+        {hasPerm(user, PERM_CLIENTES_CRIAR) && (
+          <Button onClick={() => setOpenNovo(true)} className="gap-2">
+            <Plus className="h-4 w-4" /> Novo cliente
+          </Button>
+        )}
       </div>
 
       <Card>

@@ -19,8 +19,36 @@ export type ChecagemContato =
       vendedorNome: string | null;
       empresa: string | null;
       origem: string;
+      /** true quando o registro é de OUTRA equipe: nome/dono são omitidos. */
+      restrito: boolean;
     }
-  | { situacao: "suspeita"; leadId: string; empresa: string | null };
+  | { situacao: "suspeita"; leadId: string; empresa: string | null; restrito: boolean };
+
+/**
+ * Espelho da visibilidade do resto do sistema: admin, supervisor global e
+ * `leads.ver_todos` enxergam o dono; os demais só na MESMA equipe.
+ */
+async function podeVerDono(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  sb: any,
+  userId: string,
+  donoId: string | null,
+): Promise<boolean> {
+  const { data: admin } = await sb.rpc("has_role", { _user_id: userId, _role: "admin" });
+  if (admin === true) return true;
+  const { data: global } = await sb.rpc("supervisor_ve_tudo", { _user_id: userId });
+  if (global === true) return true;
+  const { data: verTodos } = await sb.rpc("tem_permissao", {
+    _user_id: userId,
+    _chave: "leads.ver_todos",
+  });
+  if (verTodos === true) return true;
+  if (!donoId) return false;
+  if (donoId === userId) return true;
+  const { data: mesma } = await sb.rpc("mesma_equipe", { _a: userId, _b: donoId });
+  return mesma === true;
+}
+
 
 export const verificarContatoEntrada = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -49,6 +77,20 @@ export const verificarContatoEntrada = createServerFn({ method: "POST" })
     if (entrada.acao === "carteira" || entrada.acao === "lead_existente") {
       const vendedorId =
         entrada.acao === "carteira" ? entrada.vendedorId : (entrada.vendedorId ?? null);
+      // Registro de OUTRA equipe nunca devolve dono nem nome da empresa.
+      const visivel = await podeVerDono(supabaseAdmin, context.userId, vendedorId);
+      if (!visivel) {
+        return {
+          situacao: "duplicado",
+          leadId: null,
+          clienteId: null,
+          vendedorId: null,
+          vendedorNome: null,
+          empresa: null,
+          origem: entrada.origem,
+          restrito: true,
+        };
+      }
       let vendedorNome: string | null = null;
       if (vendedorId) {
         const { data: perfil } = await supabaseAdmin
@@ -75,6 +117,7 @@ export const verificarContatoEntrada = createServerFn({ method: "POST" })
         vendedorNome,
         empresa,
         origem: entrada.origem,
+        restrito: false,
       };
     }
 
@@ -82,9 +125,27 @@ export const verificarContatoEntrada = createServerFn({ method: "POST" })
     if (data.empresa) {
       const parecido = await avisoDuplicidadePorNome(supabaseAdmin, data.empresa);
       if (parecido) {
-        return { situacao: "suspeita", leadId: parecido.leadId, empresa: parecido.company };
+        const { data: dono } = await supabaseAdmin
+          .from("leads")
+          .select("owner_id")
+          .eq("id", parecido.leadId)
+          .maybeSingle();
+        const visivel = await podeVerDono(
+          supabaseAdmin,
+          context.userId,
+          (dono?.owner_id as string | null) ?? null,
+        );
+        return visivel
+          ? {
+              situacao: "suspeita",
+              leadId: parecido.leadId,
+              empresa: parecido.company,
+              restrito: false,
+            }
+          : { situacao: "suspeita", leadId: "", empresa: null, restrito: true };
       }
     }
+
 
     // `context.userId` fica registrado apenas pelo middleware de auth.
     void context.userId;
