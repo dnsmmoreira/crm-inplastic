@@ -316,7 +316,8 @@ const updateSchema = z.object({
     .object({
       name: z.string().trim().min(1).max(120),
       email: z.string().trim().email().max(255),
-      cargo: z.string().trim().max(120).nullable(),
+      /** Legado: aceito por compatibilidade, mas NÃO é gravado (derivado de cargo_id). */
+      cargo: z.string().trim().max(120).nullable().optional(),
       cargoId: z.string().uuid().nullable().optional(),
       gestorId: z.string().uuid().nullable().optional(),
       equipeId: z.string().uuid().nullable().optional(),

@@ -275,7 +275,6 @@ export function UsuarioEditDialog({
           dados: {
             name: name.trim(),
             email: email.trim(),
-            cargo: cargoNome.trim() || null,
             cargoId: cargoId || null,
             gestorId: gestorId || null,
             equipeId: equipeId || null,
