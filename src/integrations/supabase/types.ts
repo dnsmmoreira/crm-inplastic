@@ -504,6 +504,7 @@ export type Database = {
       chat_canais: {
         Row: {
           criado_em: string
+          equipe_id: string | null
           id: string
           nome: string | null
           par_chave: string | null
@@ -511,6 +512,7 @@ export type Database = {
         }
         Insert: {
           criado_em?: string
+          equipe_id?: string | null
           id?: string
           nome?: string | null
           par_chave?: string | null
@@ -518,12 +520,21 @@ export type Database = {
         }
         Update: {
           criado_em?: string
+          equipe_id?: string | null
           id?: string
           nome?: string | null
           par_chave?: string | null
           tipo?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "chat_canais_equipe_id_fkey"
+            columns: ["equipe_id"]
+            isOneToOne: false
+            referencedRelation: "equipes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       chat_canal_membros: {
         Row: {
@@ -3861,6 +3872,10 @@ export type Database = {
       chat_obter_ou_criar_canal_direto: {
         Args: { _outro_user_id: string }
         Returns: string
+      }
+      chat_pode_conversar: {
+        Args: { _a: string; _b: string }
+        Returns: boolean
       }
       chat_supervisao_conversas: {
         Args: never
