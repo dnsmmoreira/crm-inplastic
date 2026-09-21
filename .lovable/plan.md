@@ -1,87 +1,94 @@
-# Isolar a Maxicaixa da INPLASTIC
+# Troca do endereço do CRM para crm.aginext.com.br — preparação
 
-## Como foi verificado
+Objetivo desta etapa: deixar o sistema pronto para a troca **sem mudar o endereço ainda**. O CRM continua respondendo em `crm.inplastic.com.br`, a marca continua INPLASTIC (tela de entrada, remetente de e-mail, nomes) e nada é publicado.
 
-Entrei no sistema com as contas reais (Lais e Carol) e medi, tela por tela, o que cada uma
-enxerga hoje. Não é estimativa: é o que apareceu na tela e o que o banco devolveu para o
-login delas.
+Ordem obrigatória: primeiro a fonte única de endereço, depois liberar o endereço novo na entrada, depois tirar WhatsApp e Telegram do domínio. Só quando o Denis confirmar que `crm.aginext.com.br` abre o CRM é que o endereço muda de fato.
 
-## Varredura — o que vaza hoje
+---
 
-| Tela / recurso | Vaza? | Por quê |
-| --- | --- | --- |
-| Início (dashboard) — card Placar | **SIM** | O placar é montado por uma rotina do banco que roda com poderes elevados e não olha equipe. Lais vê BIANCA, DANIEL, BEATRIZ, PAMELA. |
-| Início — pipeline, faturamento, conversão, funil, mix, tendência, tarefas, agenda | Não | Tudo zerado para a Lais: as regras de acesso por dono/equipe funcionam. |
-| Placar de Vendedores (`/placar`) | **SIM** | Mesma rotina do card. Ranking completo da INPLASTIC, com valores fechados. |
-| Chat Interno | **SIM** | Os 5 da Maxicaixa estão no canal "Grupo Comercial" (li as mensagens internas da INPLASTIC na tela da Lais) e a lista de conversas diretas oferece as 13 pessoas da empresa. Causa: o gatilho que põe todo mundo no mesmo grupo e a rotina que lista colegas sem filtrar equipe. |
-| WhatsApp — `/conversas` e `/atendimento-ia` | **SIM, e é o pior caso** | O perfil Vendedor tem a permissão de atender WhatsApp, e a regra de acesso libera **todas** as conversas para quem tem essa permissão. Medido com a conta da Carol: **231 conversas e 3.381 mensagens** de clientes da INPLASTIC. Lais não tem essa permissão, por isso vê zero — mas Carol, Bertuolo, Luciano e Kelly Maxicaixa veem tudo. |
-| Pendências de cadastro (`/pendencias`) | **Não vaza hoje** | Abri a tela logada como Lais: todas as seções em 0. A consulta usa o acesso da própria pessoa e as regras de equipe bloqueiam. Os 102 leads de Daniel/Beatriz não apareceram para ela. Provavelmente o que foi visto era a tela de um administrador. Ainda assim vamos amarrar o escopo explícito, como pedido. |
-| Funil de vendas, Leads, Clientes, Propostas, Pedidos, Contatos, Fichas de Coleta, Tarefas, Minha Agenda, Relatórios | Não | Todos vazios para a Lais — regras por dono/equipe cobrem. |
-| `/equipe` | Não vaza, mas **trava** | Fica em "Carregando a equipe…" para sempre, porque a Lais não tem liderados e a função recusa o acesso sem mensagem. |
-| Representantes, Licitações, ARENA | Não | Bloqueiam por permissão, com aviso correto. |
-| Notificações (sino) | Não | Cada pessoa só vê as próprias. |
-| Estoque / catálogo de produtos | Vê o catálogo da INPLASTIC (98 itens) | Catálogo é liberado para qualquer pessoa logada. **Precisa de decisão sua** (ver abaixo). |
-| Transportadoras (6), lista de equipes (3), condições de pagamento, tabela DIFAL | Vê tudo | Cadastros compartilhados, liberados para qualquer pessoa logada. **Decisão sua.** |
-| Busca global | Não existe no sistema | — |
+## 1. Um único lugar que define o endereço
 
-## O que vamos fazer
+Hoje o endereço está escrito à mão em oito pontos do sistema. Criar um único ponto de verdade e apontar todos eles para lá.
 
-### 1. Placar por equipe
-A rotina do placar passa a usar a equipe de quem está olhando: quem tem visão de empresa
-(administrador ou permissão de ver tudo) continua vendo todo mundo; quem é de uma equipe vê
-só os vendedores da própria equipe. Vale para o card do Início e para a tela do placar.
+Novo arquivo `src/lib/app-url.server.ts`:
+- `appBaseUrl()` — lê `APP_PUBLIC_URL`, valida contra a lista de endereços permitidos, cai em `https://crm.inplastic.com.br` se vier algo estranho (mesma regra de segurança que já existe hoje nos convites: endereço nunca vem do navegador).
+- `appUrl(caminho)` — monta o endereço completo.
+- `appHost()` — versão sem `https://`, para os textos do Telegram que hoje mostram "crm.inplastic.com.br/equipe".
 
-**Como fica a Maxicaixa:** hoje nenhum dos 5 está inscrito na ARENA, então o placar deles
-fica **vazio** — e é isso que queremos, em vez da INPLASTIC. Estado vazio proposto:
-"O placar da sua equipe ainda não está ativo. Fale com a gestão para entrar na ARENA." —
-sem tabela, sem pódio, sem número de outra equipe.
+Pontos que passam a usar o helper:
 
-### 2. Chat Interno
-- Criar o grupo "Grupo Maxicaixa" e colocar os 5 nele.
-- Tirar os 5 da lista de membros do "Grupo Comercial" (só a participação; **nenhuma mensagem
-  é apagada**).
-- O gatilho de entrada automática passa a colocar a pessoa no grupo da própria equipe
-  (cada equipe ganha o seu grupo; quem não tem equipe não entra em grupo nenhum).
-- A lista de conversas diretas passa a mostrar: colegas da mesma equipe **+ o gestor da
-  pessoa**. Abrir conversa direta com quem está fora dessa lista passa a ser recusado.
-- O painel de supervisão do Denis continua vendo tudo, sem mudança.
+| Onde | O que é hoje |
+| --- | --- |
+| `src/lib/propostas-email.server.ts` | link da proposta no e-mail |
+| `src/lib/propostas.functions.ts` | link da proposta (WhatsApp) |
+| `src/lib/email-templates/proposta.tsx` | valor padrão e exemplo do modelo de e-mail |
+| `src/lib/xerife/notify.server.ts` | link do lead no Telegram |
+| `src/lib/xerife/watchdog-conversa.server.ts` | link da conversa no Telegram |
+| `src/lib/whatsapp-inbound.server.ts` | link da conversa no aviso |
+| `src/routes/api/public/hooks/ia-handoff.ts` | link da conversa |
+| `src/routes/api/public/hooks/ia-urgente.ts` | link da conversa |
+| `src/routes/api/public/hooks/xerife-fechamento.ts` | "crm.inplastic.com.br/equipe" |
+| `src/lib/invites.functions.ts` | passa a reusar o helper em vez de ter a lista própria |
 
-### 3. WhatsApp (novo achado, mais grave)
-A liberação de conversas deixa de ser "tem permissão de atender → vê tudo" e passa a ser
-"tem permissão de atender **e** a conversa é da própria equipe" (pelo dono do lead ou pelo
-responsável da conversa), com visão de empresa preservada para administradores. Mesma regra
-para as mensagens.
+**`APP_PUBLIC_URL` continua `https://crm.inplastic.com.br`.** Nada muda de comportamento nesta etapa — é só troca de origem do valor. Testes novos garantem: valor válido é usado; valor não permitido cai no endereço atual; o helper monta o caminho certo.
 
-### 4. Pendências de cadastro
-Passa a usar o mesmo escopo de três estados dos Relatórios (empresa / equipe / próprio),
-filtrando explicitamente por dono, além das regras do banco.
+Materiais estáticos (`public/manual.html`, `public/apresentacao.html`, `LEADS_API.md`, `HANDOVER.md`) ficam para depois da virada.
 
-### 5. `/equipe`
-Trocar o carregamento infinito por um aviso claro quando a pessoa não tem equipe sob sua
-responsabilidade.
+## 2. Liberar o endereço novo na entrada, sem tirar os antigos
 
-## Decisão sua antes de implementar
+- Incluir `https://crm.aginext.com.br` na lista de endereços de retorno permitidos da autenticação, mantendo `crm.inplastic.com.br`, `crm-inplastic.lovable.app` e o endereço de desenvolvimento.
+- Incluir o mesmo endereço na lista do helper (item 1).
 
-1. **Catálogo, estoque, transportadoras, condições de pagamento e DIFAL**: hoje a Maxicaixa
-   vê tudo da INPLASTIC. Separo também (cada equipe com o seu), deixo compartilhado, ou só o
-   catálogo de produtos fica compartilhado?
-2. **Lista de equipes**: a Maxicaixa consegue ver que existem 3 equipes (só os nomes). Ocultar?
+Isso só autoriza — não passa a usar. Convites continuam saindo com o endereço atual.
+
+## 3. Tirar WhatsApp e Telegram do domínio (item crítico)
+
+Motivo: quando `crm.aginext.com.br` virar o principal, `crm.inplastic.com.br` passa a redirecionar. Meta e Telegram **não seguem redirecionamento** — as mensagens de cliente parariam de chegar. Os dois passam a entregar no endereço técnico permanente `https://project--485ac5c1-f718-452a-bd55-8c46d65a25ea.lovable.app`, que não depende de domínio nenhum e já é usado por 8 dos 9 agendamentos.
+
+Cada troca segue o mesmo rito: **provar antes → trocar → provar depois → guardar o comando de volta**.
+
+### 3.1 Telegram (primeiro, risco menor)
+1. Ler a configuração atual (`getWebhookInfo`) e registrar por escrito a URL atual e se existe token de verificação.
+2. Provar que o endereço técnico responde na rota do Telegram.
+3. `setWebhook` para o endereço técnico, **reaproveitando o mesmo token de verificação** e as mesmas categorias de atualização.
+4. Conferir com `getWebhookInfo` e esperar uma mensagem real chegar (contador de pendências zerado, sem erro registrado).
+5. Volta: `setWebhook` com a URL anterior e o mesmo token — comando escrito no relatório final.
+
+### 3.2 WhatsApp / Meta (só depois do Telegram fechado)
+1. Ler a configuração atual do aplicativo na Meta: URL de retorno, token de verificação e campos assinados. Registrar tudo.
+2. **Prova prévia obrigatória:** chamar o endereço técnico com o handshake de verificação da Meta e confirmar que devolve o desafio esperado. Se não devolver exatamente isso, a troca não acontece.
+3. Trocar a URL de retorno para o endereço técnico, com o mesmo token de verificação e os mesmos campos assinados.
+4. Confirmar que a Meta aceitou e que os campos continuam assinados.
+5. **Prova real:** mandar uma mensagem de teste de um número real e confirmar que ela aparece nas conversas do CRM. Enquanto essa prova não vier, o item não é considerado concluído.
+6. Volta: a chamada exata para restaurar a URL anterior com o mesmo token — escrita no relatório e testada mentalmente antes da troca.
+
+Janela sugerida: fora do horário comercial, porque entre a troca e a confirmação existem alguns segundos em que uma mensagem pode ficar pendente (a Meta reentrega).
+
+## 4. Agendamento fora do padrão
+
+`xerife-pedidos-hourly` ainda chama `crm-inplastic.lovable.app`. Passar para o endereço técnico, igual aos outros oito. Conferir depois que a próxima execução saiu com sucesso.
+
+## 5. A virada (só quando o Denis avisar)
+
+Quando `crm.aginext.com.br` abrir o CRM com certificado válido:
+- `APP_PUBLIC_URL` passa a `https://crm.aginext.com.br` (um valor só, graças ao item 1);
+- atualizar os materiais estáticos (manual, apresentação, documentos);
+- conferir um convite novo, um link de proposta novo e um aviso do Telegram.
+
+O endereço antigo continua funcionando e passa a redirecionar para o novo.
+
+---
 
 ## Detalhes técnicos
 
-- `placar_vendedores` e `ganhos_fora_do_placar` (SECURITY DEFINER) ganham filtro por
-  `profiles.equipe_id` do `auth.uid()`, com bypass para `has_role(admin)`, permissão
-  `pedidos.ver_todos` ou `supervisor_ve_tudo`.
-- `chat_canais` ganha `equipe_id`; `tg_profiles_entra_no_grupo_comercial` passa a resolver o
-  canal pelo `equipe_id` do profile; `chat_listar_colegas` filtra por `mesma_equipe` +
-  `gestor_id` + `chat_supervisor_id()`; `chat_obter_ou_criar_canal_direto` valida a mesma
-  regra antes de criar o canal. `DELETE` só em `chat_canal_membros` — nunca em
-  `chat_mensagens`.
-- Policies `conversas select atendentes` e `mensagens select atendentes` passam a exigir
-  `mesma_equipe(auth.uid(), <dono do lead ou atribuído>)` além da permissão.
-- `listarPendenciasCadastro` usa `resolverEscopo` (chaves `leads.ver_todos` /
-  `leads.ver_equipe`) e aplica `in(owner_id, ...)` conforme o escopo.
-- Testes: casos de regressão para o filtro do placar, para a lista de colegas do chat e para
-  o escopo de pendências; e um teste que roda contra o banco conferindo que nenhum membro da
-  Maxicaixa é membro do Grupo Comercial.
-- Entrego typecheck, suíte e build com a saída real. Não publico nada.
+- Helper novo: `src/lib/app-url.server.ts`, exportando `appBaseUrl()`, `appUrl(path)`, `appHost()`; lista permitida `crm.inplastic.com.br`, `crm.aginext.com.br`, `crm-inplastic.lovable.app`, `http://localhost:8080`. `invites.functions.ts` remove `URLS_PERMITIDAS`/`appBaseUrl` locais e reexporta pelo helper, preservando `__test__` usado em `seguranca-p0.test.ts`.
+- Regra mantida: base nunca vem de `Host`/`Origin`/`Referer`.
+- Endereço técnico: `https://project--485ac5c1-f718-452a-bd55-8c46d65a25ea.lovable.app`; rotas `/api/public/hooks/whatsapp-cloud` e `/api/public/telegram/webhook`.
+- Telegram via gateway do conector (`setWebhook`/`getWebhookInfo`), preservando `secret_token` e `allowed_updates`.
+- Meta: atualizar `callback_url` do campo de assinatura, preservando `verify_token` e as assinaturas já ativas; validar antes com `hub.mode=subscribe&hub.challenge=...`.
+- Sem migração de banco: nenhuma tabela guarda endereço do app.
+- Fechamento: `bunx tsgo --noEmit`, `bunx vitest run`, `bun run build` com saída real colada; nada publicado.
+
+## Fora do escopo
+
+Marca e identidade visual, remetente de e-mail (`notify.inplastic.com.br`), conexão do domínio e DNS (Denis faz no painel), e qualquer troca de valor de `APP_PUBLIC_URL` nesta etapa.
