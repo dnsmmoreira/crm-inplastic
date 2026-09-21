@@ -42,7 +42,7 @@ describe("pré-requisito: acesso ao banco", () => {
   });
 });
 
-const POLICIES = `SELECT policyname, cmd, coalesce(qual,'') || '|' || coalesce(with_check,'')
+const POLICIES = `SELECT replace(policyname || '|' || cmd || '|' || coalesce(qual,'') || coalesce(with_check,''), chr(10), ' ')
   FROM pg_policies WHERE schemaname='storage' AND tablename='objects'
     AND coalesce(qual,'') || coalesce(with_check,'') LIKE '%whatsapp-anexos%'`;
 
