@@ -243,7 +243,7 @@ export const savePerfil = createServerFn({ method: "POST" })
         .insert({
           nome: data.nome,
           descricao: data.descricao,
-          papel: data.papel,
+          papel,
           base_role: baseRole,
           ativo: data.ativo,
         })
@@ -276,7 +276,7 @@ export const savePerfil = createServerFn({ method: "POST" })
       .update({
         nome: data.nome,
         descricao: data.descricao,
-        papel: data.papel,
+        papel,
         base_role: baseRole,
         ativo: data.ativo,
       })
@@ -290,7 +290,7 @@ export const savePerfil = createServerFn({ method: "POST" })
     await logAudit(sb, ator, ator, [
       { campo: `perfil:${atual.nome}:nome`, anterior: atual.nome, novo: data.nome },
       { campo: `perfil:${atual.nome}:descricao`, anterior: atual.descricao, novo: data.descricao },
-      { campo: `perfil:${atual.nome}:papel`, anterior: atual.papel, novo: data.papel },
+      { campo: `perfil:${atual.nome}:papel`, anterior: atual.papel, novo: papel },
       { campo: `perfil:${atual.nome}:base_role`, anterior: atual.base_role, novo: baseRole },
       {
         campo: `perfil:${atual.nome}:ativo`,
