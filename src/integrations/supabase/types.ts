@@ -4202,6 +4202,7 @@ export type Database = {
         Args: { _chave: string; _user_id: string }
         Returns: number
       }
+      whatsapp_anexo_visivel: { Args: { _name: string }; Returns: boolean }
       whatsapp_conversa_visivel: {
         Args: { _atribuido: string; _lead_owner: string }
         Returns: boolean
