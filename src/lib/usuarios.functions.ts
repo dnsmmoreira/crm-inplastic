@@ -55,6 +55,14 @@ export type UsuarioRow = {
   createdAt: string;
   ultimoAcesso: string | null;
   role: AppRoleName;
+  /**
+   * Nome do(s) perfil(is) de acesso ATIVO(s). `user_perfis` é N:N, então quem
+   * tiver mais de um aparece com todos separados por vírgula — nunca escolhemos
+   * um em silêncio. `null` = sem perfil nenhum (estado que a tela denuncia).
+   */
+  perfilNome: string | null;
+  /** admin se QUALQUER perfil ativo for admin; senão vendedor; null sem perfil. */
+  perfilBaseRole: AppRoleName | null;
   metaMensal: number;
   naFila: boolean;
   filaPosicao: number | null;
