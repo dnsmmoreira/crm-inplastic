@@ -1,94 +1,69 @@
-# Troca do endereço do CRM para crm.aginext.com.br — preparação
+# Xerife Humano — auditoria das ações do Xerife (piloto Maxicaixa)
 
-Objetivo desta etapa: deixar o sistema pronto para a troca **sem mudar o endereço ainda**. O CRM continua respondendo em `crm.inplastic.com.br`, a marca continua INPLASTIC (tela de entrada, remetente de e-mail, nomes) e nada é publicado.
+Nova função de observação: uma pessoa acompanha o trabalho dos vendedores da própria equipe e avalia cada cobrança do Xerife (justa / indevida / deixou passar). Só leitura e avaliação — nenhum poder de cobrar, atender, editar ou configurar.
 
-Ordem obrigatória: primeiro a fonte única de endereço, depois liberar o endereço novo na entrada, depois tirar WhatsApp e Telegram do domínio. Só quando o Denis confirmar que `crm.aginext.com.br` abre o CRM é que o endereço muda de fato.
+## 1. Cinco permissões novas (leitura, escopo de equipe)
 
----
+No mesmo padrão dos `*.ver_equipe` já existentes: `tem_permissao(auth.uid(), <chave>) AND (supervisor_ve_tudo(auth.uid()) OR mesma_equipe(auth.uid(), <dono>))`.
 
-## 1. Um único lugar que define o endereço
+| Chave | Abre |
+|---|---|
+| `tarefas.ver_equipe` | tarefas cujo `owner_id` é da equipe |
+| `interacoes.ver_equipe` | `lead_interactions` de leads cujo dono é da equipe |
+| `whatsapp.ver_equipe` | conversas e mensagens da equipe, só leitura |
+| `xerife.ver_equipe` | `xerife_log` cujo `vendedor_id` é da equipe |
+| `xerife.avaliar` | registrar avaliação (item 3) |
 
-Hoje o endereço está escrito à mão em oito pontos do sistema. Criar um único ponto de verdade e apontar todos eles para lá.
+Policies novas e **aditivas**, só de SELECT. Nenhuma policy existente é tocada, nenhum comportamento da INPLASTIC muda (quem não tiver as chaves não enxerga nada a mais).
 
-Novo arquivo `src/lib/app-url.server.ts`:
-- `appBaseUrl()` — lê `APP_PUBLIC_URL`, valida contra a lista de endereços permitidos, cai em `https://crm.inplastic.com.br` se vier algo estranho (mesma regra de segurança que já existe hoje nos convites: endereço nunca vem do navegador).
-- `appUrl(caminho)` — monta o endereço completo.
-- `appHost()` — versão sem `https://`, para os textos do Telegram que hoje mostram "crm.inplastic.com.br/equipe".
+Detalhe do WhatsApp: a função `whatsapp_conversa_visivel` hoje exige `whatsapp.atender`. Em vez de alterá-la, entram duas policies SELECT separadas (conversas e mensagens) baseadas em `whatsapp.ver_equipe` — leitura pura, sem tocar em UPDATE nem em INSERT.
 
-Pontos que passam a usar o helper:
+## 2. Risco de escrita no WhatsApp — tratado explicitamente
 
-| Onde | O que é hoje |
-| --- | --- |
-| `src/lib/propostas-email.server.ts` | link da proposta no e-mail |
-| `src/lib/propostas.functions.ts` | link da proposta (WhatsApp) |
-| `src/lib/email-templates/proposta.tsx` | valor padrão e exemplo do modelo de e-mail |
-| `src/lib/xerife/notify.server.ts` | link do lead no Telegram |
-| `src/lib/xerife/watchdog-conversa.server.ts` | link da conversa no Telegram |
-| `src/lib/whatsapp-inbound.server.ts` | link da conversa no aviso |
-| `src/routes/api/public/hooks/ia-handoff.ts` | link da conversa |
-| `src/routes/api/public/hooks/ia-urgente.ts` | link da conversa |
-| `src/routes/api/public/hooks/xerife-fechamento.ts` | "crm.inplastic.com.br/equipe" |
-| `src/lib/invites.functions.ts` | passa a reusar o helper em vez de ter a lista própria |
+Verificação feita no banco antes deste plano:
 
-**`APP_PUBLIC_URL` continua `https://crm.inplastic.com.br`.** Nada muda de comportamento nesta etapa — é só troca de origem do valor. Testes novos garantem: valor válido é usado; valor não permitido cai no endereço atual; o helper monta o caminho certo.
+- `assumir`, `devolver para a IA`, `encerrar`, `transferir`, `espera` e `retomada` já chamam `whatsapp_pode_atuar`, que depende de `whatsapp.atender`. Continuam bloqueados para o auditor mesmo com a conversa visível.
+- **O buraco real:** `sendConversaMessage`, `sendConversaAnexo`, `enviarTemplateConversa`, `posseConversa`, `statusJanelaConversa`, `createLeadFromConversa` e `iniciarConversaCliente` se protegem **apenas** pelo fato de a conversa não aparecer no SELECT. Com a leitura liberada, o auditor conseguiria enviar mensagem ao cliente.
+- A gravação da mensagem usa acesso administrativo, então a policy de INSERT não segura nada.
 
-Materiais estáticos (`public/manual.html`, `public/apresentacao.html`, `LEADS_API.md`, `HANDOVER.md`) ficam para depois da virada.
+Correção: cada uma dessas funções passa a exigir, logo no início, uma checagem explícita — `whatsapp_pode_atuar` (que já embute `whatsapp.atender` + mesma equipe) — antes de qualquer outra lógica. Erro claro: "Você tem acesso somente de leitura a esta conversa."
 
-## 2. Liberar o endereço novo na entrada, sem tirar os antigos
+Provas (testes automatizados): usuário só com `whatsapp.ver_equipe` **lê** a conversa e as mensagens, e recebe erro ao tentar enviar texto, enviar anexo, enviar modelo, assumir, transferir, encerrar e devolver para a IA. Usuário com `whatsapp.atender` da equipe continua fazendo tudo igual (teste de não-regressão).
 
-- Incluir `https://crm.aginext.com.br` na lista de endereços de retorno permitidos da autenticação, mantendo `crm.inplastic.com.br`, `crm-inplastic.lovable.app` e o endereço de desenvolvimento.
-- Incluir o mesmo endereço na lista do helper (item 1).
+## 3. Avaliação das ações do Xerife
 
-Isso só autoriza — não passa a usar. Convites continuam saindo com o endereço atual.
+Duas tabelas novas:
 
-## 3. Tirar WhatsApp e Telegram do domínio (item crítico)
+- `xerife_avaliacoes` — uma avaliação por ação do Xerife: `xerife_log_id`, `veredito` (`justa` | `indevida`), `nota` (texto), `avaliador_id`, datas. Única por (log, avaliador).
+- `xerife_deixou_passar` — situação que o Xerife deveria ter cobrado e não cobrou: `vendedor_id`, `lead_id` (opcional), `descricao`, `avaliador_id`, datas.
 
-Motivo: quando `crm.aginext.com.br` virar o principal, `crm.inplastic.com.br` passa a redirecionar. Meta e Telegram **não seguem redirecionamento** — as mensagens de cliente parariam de chegar. Os dois passam a entregar no endereço técnico permanente `https://project--485ac5c1-f718-452a-bd55-8c46d65a25ea.lovable.app`, que não depende de domínio nenhum e já é usado por 8 dos 9 agendamentos.
+RLS: grava/edita quem tem `xerife.avaliar` **e** o item é da própria equipe (avaliação: equipe do `vendedor_id` do log). Lê o próprio avaliador e os administradores. Sem exclusão para o avaliador. Toda gravação registra linha em `user_audit_log`.
 
-Cada troca segue o mesmo rito: **provar antes → trocar → provar depois → guardar o comando de volta**.
+## 4. Tela "Auditoria do Xerife"
 
-### 3.1 Telegram (primeiro, risco menor)
-1. Ler a configuração atual (`getWebhookInfo`) e registrar por escrito a URL atual e se existe token de verificação.
-2. Provar que o endereço técnico responde na rota do Telegram.
-3. `setWebhook` para o endereço técnico, **reaproveitando o mesmo token de verificação** e as mesmas categorias de atualização.
-4. Conferir com `getWebhookInfo` e esperar uma mensagem real chegar (contador de pendências zerado, sem erro registrado).
-5. Volta: `setWebhook` com a URL anterior e o mesmo token — comando escrito no relatório final.
+Visível para quem tem `xerife.ver_equipe`.
 
-### 3.2 WhatsApp / Meta (só depois do Telegram fechado)
-1. Ler a configuração atual do aplicativo na Meta: URL de retorno, token de verificação e campos assinados. Registrar tudo.
-2. **Prova prévia obrigatória:** chamar o endereço técnico com o handshake de verificação da Meta e confirmar que devolve o desafio esperado. Se não devolver exatamente isso, a troca não acontece.
-3. Trocar a URL de retorno para o endereço técnico, com o mesmo token de verificação e os mesmos campos assinados.
-4. Confirmar que a Meta aceitou e que os campos continuam assinados.
-5. **Prova real:** mandar uma mensagem de teste de um número real e confirmar que ela aparece nas conversas do CRM. Enquanto essa prova não vier, o item não é considerado concluído.
-6. Volta: a chamada exata para restaurar a URL anterior com o mesmo token — escrita no relatório e testada mentalmente antes da troca.
+- Lista das ações do Xerife da equipe: vendedor, regra, quando, o que foi cobrado, desfecho da tarefa ligada.
+- Filtros por vendedor, regra e período.
+- Botões "cobrança justa" / "cobrança indevida" + nota, e botão "registrar deixou passar" — só para quem tem `xerife.avaliar`.
+- Para administrador: resumo por regra com contagem de justas, indevidas e deixou passar — base para ajustar o Xerife.
 
-Janela sugerida: fora do horário comercial, porque entre a troca e a confirmação existem alguns segundos em que uma mensagem pode ficar pendente (a Meta reentrega).
+Entrada no menu lateral junto de Xerife/Gestão, condicionada à permissão.
 
-## 4. Agendamento fora do padrão
+## 5. Cargo e perfis
 
-`xerife-pedidos-hourly` ainda chama `crm-inplastic.lovable.app`. Passar para o endereço técnico, igual aos outros oito. Conferir depois que a próxima execução saiu com sucesso.
+- Cargo novo: **Analista de Qualidade Comercial**.
+- Perfil novo: **Auditor Xerife**, `base_role` vendedor (nunca admin), com `leads/clientes/propostas/pedidos.ver_equipe`, `relatorios.ver`, `tarefas.ver_equipe`, `interacoes.ver_equipe`, `whatsapp.ver_equipe`, `xerife.ver_equipe`, `xerife.avaliar`.
+- Perfil **Supervisor ADM** (Lais) ganha `tarefas.ver_equipe`, `interacoes.ver_equipe`, `whatsapp.ver_equipe`. Nada de Xerife.
 
-## 5. A virada (só quando o Denis avisar)
-
-Quando `crm.aginext.com.br` abrir o CRM com certificado válido:
-- `APP_PUBLIC_URL` passa a `https://crm.aginext.com.br` (um valor só, graças ao item 1);
-- atualizar os materiais estáticos (manual, apresentação, documentos);
-- conferir um convite novo, um link de proposta novo e um aviso do Telegram.
-
-O endereço antigo continua funcionando e passa a redirecionar para o novo.
-
----
+Nenhum usuário é vinculado automaticamente ao perfil novo — o vínculo é feito na tela de Usuários quando você indicar a pessoa.
 
 ## Detalhes técnicos
 
-- Helper novo: `src/lib/app-url.server.ts`, exportando `appBaseUrl()`, `appUrl(path)`, `appHost()`; lista permitida `crm.inplastic.com.br`, `crm.aginext.com.br`, `crm-inplastic.lovable.app`, `http://localhost:8080`. `invites.functions.ts` remove `URLS_PERMITIDAS`/`appBaseUrl` locais e reexporta pelo helper, preservando `__test__` usado em `seguranca-p0.test.ts`.
-- Regra mantida: base nunca vem de `Host`/`Origin`/`Referer`.
-- Endereço técnico: `https://project--485ac5c1-f718-452a-bd55-8c46d65a25ea.lovable.app`; rotas `/api/public/hooks/whatsapp-cloud` e `/api/public/telegram/webhook`.
-- Telegram via gateway do conector (`setWebhook`/`getWebhookInfo`), preservando `secret_token` e `allowed_updates`.
-- Meta: atualizar `callback_url` do campo de assinatura, preservando `verify_token` e as assinaturas já ativas; validar antes com `hub.mode=subscribe&hub.challenge=...`.
-- Sem migração de banco: nenhuma tabela guarda endereço do app.
-- Fechamento: `bunx tsgo --noEmit`, `bunx vitest run`, `bun run build` com saída real colada; nada publicado.
+- Migrações: (a) catálogo `permissoes` + policies SELECT aditivas nas 5 tabelas; (b) tabelas `xerife_avaliacoes` e `xerife_deixou_passar` com GRANT → RLS → policies e trigger de `updated_at`; (c) seed de cargo, perfil `Auditor Xerife` (protegido = false) e as 3 chaves novas no Supervisor ADM.
+- Código: constantes em `src/lib/equipes-escopo.ts` (novas chaves ficam **fora** de `PERMS_VER_EQUIPE` para não mudar a detecção de "supervisor de equipe"), guard explícito nas 7 funções de conversa listadas no item 2, `src/lib/xerife-auditoria.functions.ts` (listagem + avaliação + resumo), rota `src/routes/auditoria-xerife.tsx`, item de menu em `__root.tsx`.
+- Testes: guard de envio (item 2), regras puras de escopo da auditoria, e verificação em banco das novas policies. Fecho com typecheck, suíte completa e build, com saída real.
 
 ## Fora do escopo
 
-Marca e identidade visual, remetente de e-mail (`notify.inplastic.com.br`), conexão do domínio e DNS (Denis faz no painel), e qualquer troca de valor de `APP_PUBLIC_URL` nesta etapa.
+Qualquer poder de cobrar, configurar o Xerife, editar ou excluir. Nenhuma mudança de comportamento para a INPLASTIC. Nada publicado.
