@@ -858,6 +858,8 @@ import {
 } from "@/components/ui/dialog";
 
 export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
+  const { user } = useAuth();
+  const podeCriar = hasPerm(user, PERM_LEADS_CRIAR);
   const addLead = useCrm((s) => s.addLead);
   const products = useCrm((s) => s.products);
   const leadTags = useCrm((s) => s.leadTags);
