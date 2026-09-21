@@ -20,6 +20,21 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const BUILD_ID = process.env["VITE_BUILD_ID"] ?? String(Date.now());
 const VERSION_JSON = JSON.stringify({ buildId: BUILD_ID });
 
+/**
+ * Derruba o build quando aparece leitura direta do texto `profiles.cargo`.
+ * A fonte da verdade é `profiles.cargo_id` — ver docs/profiles-cargo.md.
+ */
+function cargoGuardPlugin() {
+  return {
+    name: "crm-cargo-guard",
+    apply: "build" as const,
+    buildStart() {
+      const msg = mensagemDeFalha(verificarCargoGuard(__dirname));
+      if (msg) throw new Error(msg);
+    },
+  };
+}
+
 function buildVersionPlugin() {
   return {
     name: "crm-build-version",
