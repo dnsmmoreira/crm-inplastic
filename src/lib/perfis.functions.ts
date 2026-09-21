@@ -148,6 +148,8 @@ export const listPerfis = createServerFn({ method: "POST" })
       descricao: p.descricao,
       papel: (p.papel ?? "Vendas") as PapelRotulo,
       baseRole: p.base_role as "admin" | "vendedor",
+      admin: p.base_role === "admin",
+
       ativo: p.ativo !== false,
       usuarios: usuariosPorPerfil.get(p.id) ?? 0,
       permissoes: permsPorPerfil.get(p.id) ?? 0,
