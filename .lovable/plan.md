@@ -1,128 +1,39 @@
-# Coerência do sistema de acesso (cargo / perfil / permissão / equipe)
+# Relatórios por equipe para o Supervisor ADM
 
-Cinco frentes independentes. Nada de relatórios, Placar/Arena, `profiles.cargo` x `cargo_id` ou simplificação de `perfis.papel` nesta rodada.
+Dar acesso a Relatórios ao perfil "Supervisor ADM", enxergando apenas os vendedores da própria equipe, sem aba global de Pedidos em Aberto.
 
-## Correção de uma premissa do escopo
+## O que muda
 
-Conferi no banco antes de planejar: **`propostas.ver_todas` JÁ está concedida** a "Administrador" e a "Gestor Comercial" (assim como `clientes.ver_todos` e `pedidos.ver_todos`). O que falta mesmo é só `leads.ver_todos` — essa permissão nem existe ainda, e hoje leads é o único caso em que a visão ampla vem 100% do atalho de administrador. O backfill do item 1c fica, portanto, menor do que o descrito, e inclui `propostas.ver_todas` apenas como garantia idempotente.
+1. **Permissão** — conceder `relatorios.ver` ao perfil "Supervisor ADM". (Ele já tem as quatro permissões `*.ver_equipe`; hoje não tem nenhuma de relatórios, por isso a tela fica bloqueada.)
+2. **Escopo com três estados** em vez do booleano atual: `todos` (tem `pedidos.ver_todos`) → `equipe` (tem `pedidos.ver_equipe`) → `proprio`.
+3. **Relatórios de Pedidos, Propostas e Processo** passam a respeitar os três estados. No estado `equipe` nenhum filtro de dono é aplicado no código: as regras de acesso do banco (`pedidos select ver_equipe`, `propostas select ver_equipe`, e a equivalente de leads) já limitam à equipe, e a consulta roda com o token do próprio usuário. Conferido no banco: essas regras existem e filtram por `mesma_equipe(auth.uid(), owner_id)`.
+4. **Pedidos em Aberto** continua exigindo `pedidos.ver_todos` puro — nada muda ali. A aba já é escondida por essa mesma permissão em `relatorios.tsx`, então o item 5 do pedido já está satisfeito; só será confirmado por teste, sem alteração de código.
+5. **Filtro por vendedor no relatório de Propostas** passa a aparecer também no escopo `equipe`.
 
-Estado hoje (verificado):
+## Ponto que precisa da sua confirmação
 
-| Perfil | base_role | ver_* concedidas |
-| --- | --- | --- |
-| Administrador | admin | clientes.ver_todos, pedidos.ver_todos, propostas.ver_todas |
-| Gestor Comercial | admin | clientes.ver_todos, pedidos.ver_todos, propostas.ver_todas |
-| Operacional | vendedor | clientes.ver_todos, pedidos.ver_todos, propostas.ver_todas |
-| Financeiro | vendedor | pedidos.ver_todos, propostas.ver_todas |
-| Supervisor ADM | vendedor | os quatro `*.ver_equipe` |
-| Vendedor | vendedor | nenhuma |
-
-Quem tem papel de administrador no sistema: Denis e Wagner (perfil Administrador) e Kelly (Gestor Comercial). São exatamente os três que hoje dependem do atalho para enxergar leads de terceiros — e os três recebem `leads.ver_todos` no backfill, então ninguém perde visão.
-
-## 1. Permissão granular como única fonte de verdade
-
-a) Nova permissão `leads.ver_todos`, grupo `leads`, no padrão das outras.
-b) Nova policy de SELECT em `leads`.
-c) Backfill em `perfil_permissoes` para Administrador e Gestor Comercial.
-d) Remoção do `OR has_role(...,'admin')` das quatro policies de SELECT-dono.
-
-Não encosta em nenhuma outra policy: DELETE e telas administrativas continuam exigindo administrador de verdade, e só as tabelas leads/clientes/pedidos/propostas entram.
-
-## 2. "Perfil protegido" vira dado
-
-Coluna `perfis.protegido boolean not null default false`, marcada `true` para "Administrador" e "Vendedor". `listPerfis`, `savePerfil`, `deletePerfil` e `setPerfilPermissoes` passam a ler a coluna; a constante `PERFIS_PROTEGIDOS` sai do código. Renomear um perfil deixa de destravar a proteção.
-
-## 3. Perfil obrigatório na criação do usuário
-
-O formulário de cadastro passa a exigir a escolha de um perfil (lista dos perfis ativos), e o campo "Papel" some do formulário — ele passa a ser derivado do perfil escolhido, como já acontece na edição. Depois do convite criado, o vínculo é gravado reaproveitando a lógica existente de `setPerfilDoUsuario`, nunca duplicando-a. Se o vínculo falhar, o erro aparece na tela com o convite já enviado identificado, para não deixar conta órfã em silêncio.
-
-## 4. Aba "Equipe" vira "Usuários"
-
-Só o rótulo da aba de lista/CRUD de usuários. A aba "Equipes" e a tabela `equipes` ficam intocadas.
-
-## 5. Tabela morta
-
-`public.user_permissions` é removida. Ela tem 11 linhas residuais e nenhuma policy, função ou código a lê — as linhas vão embora junto, sem impacto.
-
----
+O relatório de **Propostas** hoje não usa permissão nenhuma para decidir escopo: ele libera visão ampla só para quem tem **papel de administrador** (Denis e Wagner). Trocar pelo resolvedor de permissões — como o pedido descreve — faz a **Kelly (Gestor Comercial)** passar a ver as propostas de toda a empresa nesse relatório, já que ela tem `propostas.ver_todas`. Isso é coerente com o resto do sistema (ela já vê todas as propostas na tela de Propostas), mas é uma mudança de quem vê o quê. Sigo assim, salvo instrução contrária.
 
 ## Detalhes técnicos
 
-### 1a/1b — permissão e policy de leads
+**Banco (uma migração):** inserir em `perfil_permissoes` a chave `relatorios.ver` para o perfil "Supervisor ADM", idempotente (`ON CONFLICT DO NOTHING`). Nada mais.
 
-```sql
-insert into public.permissoes (chave, grupo, rotulo, descricao, tipo)
-values ('leads.ver_todos', 'leads', 'Ver todos os leads',
-        'Enxergar leads de todos os vendedores da empresa.', 'booleana')
-on conflict (chave) do nothing;
+**`src/lib/relatorios.functions.ts`**
+- Nova função `resolverEscopo(sb, userId): Promise<"todos" | "equipe" | "proprio">`, usando `tem_permissao` via RPC com as chaves `pedidos.ver_todos` e `pedidos.ver_equipe`, no mesmo padrão de erro (`assertRpcPermissao`) já usado.
+- `escopoProprio` é substituída pelo novo resolvedor em todos os chamadores; removida para não deixar dois caminhos.
+- `listPedidosRelatorio`: aplica o filtro `owner_id/vendedor_proprietario_id` apenas quando o escopo é `proprio`.
+- `listPedidosEmAberto`: passa a checar explicitamente `pedidos.ver_todos`; com escopo `equipe` cai no mesmo filtro de `proprio` (nunca ganha visão de equipe).
 
-create policy "leads select ver_todos" on public.leads
-  for select to authenticated
-  using (tem_permissao(auth.uid(), 'leads.ver_todos'));
-```
+**`src/lib/relatorio-processo.functions.ts`** — troca `escopoProprio` pelo resolvedor; filtro por `owner_id` só em `proprio`.
 
-### 1c — concessões (exatamente estas)
+**`src/lib/relatorio-propostas.functions.ts`** — substitui a checagem `has_role('admin')` pelo resolvedor; filtra `owner_id = userId` só em `proprio`; aplica `data.vendedorId` quando informado nos escopos `todos` e `equipe`. O retorno troca `isAdmin: boolean` por `escopo: "todos" | "equipe" | "proprio"` (mantendo `isAdmin` derivado apenas se algum outro consumidor precisar — `MotivosRecusaCard` usa o resultado e será verificado).
 
-| Perfil | Permissão | Situação |
-| --- | --- | --- |
-| Administrador | `leads.ver_todos` | nova |
-| Administrador | `propostas.ver_todas` | já existe (insert idempotente) |
-| Gestor Comercial | `leads.ver_todos` | nova |
-| Gestor Comercial | `propostas.ver_todas` | já existe (insert idempotente) |
+**`src/components/relatorios/PropostasReport.tsx`** — o seletor de vendedor aparece quando `escopo !== "proprio"`. A lista de vendedores já é derivada das próprias propostas retornadas, que no escopo `equipe` só contêm a equipe do usuário — portanto não é preciso consultar `profiles` por `equipe_id`; sai mais simples e sem risco de listar alguém de fora.
 
-```sql
-insert into public.perfil_permissoes (perfil_id, permissao_chave)
-select p.id, c.chave
-from public.perfis p
-cross join (values ('leads.ver_todos'), ('propostas.ver_todas')) as c(chave)
-where p.nome in ('Administrador', 'Gestor Comercial')
-on conflict do nothing;
-```
+**`src/routes/relatorios.tsx`** — sem alteração; a aba "Pedidos em Aberto" já depende de `pedidos.ver_todos`.
 
-### 1d — policies de SELECT-dono, texto final
+## Verificação
 
-```sql
-drop policy "leads owner select" on public.leads;
-create policy "leads owner select" on public.leads
-  for select to authenticated using (owner_id = auth.uid());
-
-drop policy "clientes_select_dono_ou_admin" on public.clientes;
-create policy "clientes_select_dono_ou_admin" on public.clientes
-  for select to authenticated using (vendedor_id = auth.uid());
-
-drop policy "pedidos owner select" on public.pedidos;
-create policy "pedidos owner select" on public.pedidos
-  for select to authenticated using (owner_id = auth.uid());
-
-drop policy "propostas owner select" on public.propostas;
-create policy "propostas owner select" on public.propostas
-  for select to authenticated using (owner_id = auth.uid());
-```
-
-As policies `* select ver_todos` / `ver_todas` / `ver_equipe` já existentes continuam iguais e passam a ser o único caminho de visão ampla.
-
-### 2 — coluna e código
-
-```sql
-alter table public.perfis add column protegido boolean not null default false;
-update public.perfis set protegido = true where nome in ('Administrador', 'Vendedor');
-```
-
-`src/lib/perfis.functions.ts`: `listPerfis` devolve `protegido: p.protegido`; `savePerfil`/`deletePerfil`/`setPerfilPermissoes` carregam a coluna e barram pelo dado. Remoção do export `PERFIS_PROTEGIDOS` após conferir que nenhum outro arquivo o usa.
-
-### 3 — createUser
-
-`createUserSchema` ganha `perfilId: z.string().uuid()` obrigatório e perde `role` (derivado do `base_role` do perfil). Após `inviteUserByEmail`, o handler chama o helper compartilhado extraído de `setPerfilDoUsuario` (grava `user_perfis` + sincroniza `user_roles`), de modo que o servidor continue sendo a única autoridade. `CreateUserCard` em `src/routes/usuarios.tsx` troca o `<select>` de papel por um de perfis ativos, obrigatório.
-
-### 5 — drop
-
-```sql
-drop table public.user_permissions;
-```
-
-### Verificação após implementar
-
-- Suíte, typecheck e build.
-- Simulação por usuário (sem alterar dados) confirmando que Denis, Wagner e Kelly continuam vendo leads/clientes/propostas/pedidos de terceiros pelas permissões, e que vendedores e Supervisor ADM não mudam de escopo.
-- Novo usuário de teste criado pelo formulário nasce com perfil e papel corretos.
-- Nada publicado: diff completo (migrations incluídas) para revisão.
+- Testes unitários novos para o resolvedor de três estados e para a decisão de filtro de cada relatório.
+- Simulação no banco, sem alterar dados, confirmando: Lais vê pedidos/propostas/leads apenas da equipe Maxicaixa e zero de terceiros; vendedor comum continua vendo só o próprio; Denis/Wagner/Bruna seguem com a visão atual.
+- Suíte completa, verificação de tipos e compilação. Nada publicado.
