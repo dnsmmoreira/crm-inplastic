@@ -86,7 +86,7 @@ describe.skipIf(!TEM_BANCO)("banco: RLS do bucket whatsapp-anexos", () => {
         WHERE n.nspname='public' AND p.proname='whatsapp_anexo_visivel'`,
     );
     expect(meta.split("|")[0]).toBe("s");
-    expect(meta.split("|")[1]).toBe("t");
+    expect(meta.split("|")[1]).toBe("true");
     expect(meta).toContain("search_path=public");
   });
 
