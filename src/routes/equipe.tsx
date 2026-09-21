@@ -8,6 +8,7 @@ import { ptBR } from "date-fns/locale";
 import { AlertTriangle, ChevronDown, ChevronRight, Loader2, Megaphone, Users } from "lucide-react";
 
 import { cobrarPessoa, relatorioCarteira, resumoEquipe } from "@/lib/equipe.functions";
+import { listEquipes } from "@/lib/equipes.functions";
 import type { LinhaCarteira } from "@/lib/equipe.functions";
 import { TransferirLeadDialog } from "@/components/crm/TransferirLeadDialog";
 import type { LinhaEquipe } from "@/lib/equipe.server";
@@ -275,7 +276,7 @@ function EquipePage() {
         )}
       </div>
 
-      <SecaoCarteira />
+      <SecaoCarteira equipeId={equipeId} />
 
       <Dialog open={!!cobranca} onOpenChange={(o) => !o && setCobranca(null)}>
         <DialogContent>
@@ -316,7 +317,7 @@ function Contagem({ label, valor }: { label: string; valor: number }) {
 }
 
 /** Onde a carteira e o atendimento não batem — com transferência na mesma tela. */
-function SecaoCarteira() {
+function SecaoCarteira({ equipeId }: { equipeId: string }) {
   const qc = useQueryClient();
   const carregar = useServerFn(relatorioCarteira);
   const q = useQuery({
