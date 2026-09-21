@@ -286,10 +286,28 @@ function UsuariosPage() {
                     </div>
 
                   </div>
-                  <Badge variant={r.role === "admin" ? "default" : "secondary"} className="gap-1">
-                    {r.role === "admin" ? <Shield className="h-3 w-3" /> : <UserIcon className="h-3 w-3" />}
-                    {r.role === "admin" ? "Administrador" : "Vendedor"}
-                  </Badge>
+                  {r.perfilNome ? (
+                    <Badge
+                      variant={r.perfilBaseRole === "admin" ? "default" : "secondary"}
+                      className="gap-1"
+                    >
+                      {r.perfilBaseRole === "admin" ? (
+                        <Shield className="h-3 w-3" />
+                      ) : (
+                        <UserIcon className="h-3 w-3" />
+                      )}
+                      {r.perfilNome}
+                    </Badge>
+                  ) : (
+                    <Badge
+                      variant="destructive"
+                      className="gap-1"
+                      title="Esta conta não tem perfil de acesso vinculado"
+                    >
+                      <ShieldAlert className="h-3 w-3" />
+                      Sem perfil
+                    </Badge>
+                  )}
                   <div className="flex gap-1">
                     <Button size="sm" variant="outline" className="gap-1" onClick={() => setEditando(r)}>
                       <Pencil className="h-3.5 w-3.5" /> Editar

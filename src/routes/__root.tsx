@@ -1071,7 +1071,7 @@ function UserBadge({ collapsed = false }: { collapsed?: boolean }) {
         <div className="min-w-0 flex-1">
           <div className="text-xs font-medium truncate text-sidebar-foreground">{user.name}</div>
           <div className="text-[10px] uppercase tracking-wider text-sidebar-foreground/60">
-            {user.role === "admin" ? "Administrador" : "Vendedor"}
+            {user.perfilNome ?? "Sem perfil"}
           </div>
         </div>
         <NotificacoesBell />
