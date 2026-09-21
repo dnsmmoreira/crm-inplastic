@@ -367,13 +367,24 @@ export async function criarClienteCore(
   }
 }
 
+/** Reforço de SERVIDOR do cadastro manual: exige `clientes.criar` (admin passa sempre). */
+async function assertPodeCriarCliente(supabase: LooseDb, userId: string) {
+  const { data: admin } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
+  if (admin === true) return;
+  const { data: pode } = await supabase.rpc("tem_permissao", {
+    _user_id: userId,
+    _chave: "clientes.criar",
+  });
+  if (pode !== true) throw new Error("Você não tem permissão para cadastrar clientes.");
+}
+
 export const createCliente = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: ClienteInput) => data)
-  .handler(
-    async ({ data, context }): Promise<CreateClienteResult> =>
-      criarClienteCore(context.supabase, context.userId, data),
-  );
+  .handler(async ({ data, context }): Promise<CreateClienteResult> => {
+    await assertPodeCriarCliente(context.supabase, context.userId);
+    return criarClienteCore(context.supabase, context.userId, data);
+  });
 
 // ==========================
 // REATIVAR CLIENTE (dono ou admin, via RLS de UPDATE)
