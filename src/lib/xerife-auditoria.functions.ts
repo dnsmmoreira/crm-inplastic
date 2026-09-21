@@ -32,6 +32,19 @@ async function ehAdmin(supabase: Sb, userId: string): Promise<boolean> {
   return data === true;
 }
 
+/**
+ * Colegas visíveis (id + nome) pela RPC `equipe_listar_colegas` (SECURITY
+ * DEFINER): a policy de SELECT de `profiles` continua fechada — um não-admin
+ * só lê o próprio perfil —, então sem esta RPC o auditor veria nomes em
+ * branco e filtros vazios.
+ */
+async function colegasDaEquipe(supabase: Sb): Promise<Array<{ id: string; nome: string }>> {
+  const { data, error } = await supabase.rpc("equipe_listar_colegas");
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as Sb[]).map((p) => ({ id: p.id as string, nome: (p.name as string) ?? "—" }));
+}
+
+
 export type AcaoXerife = {
   id: string;
   regra: string;
