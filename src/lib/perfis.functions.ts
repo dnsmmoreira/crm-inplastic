@@ -15,7 +15,11 @@ export type PermissaoCatalogo = {
   tipo: "booleana" | "numerica";
 };
 
-/** Rótulo de papel exibido na UI. O base_role (escopo de dados) é derivado dele. */
+/**
+ * Rótulo de papel legado (coluna `perfis.papel`). Mantido por compatibilidade:
+ * a UI hoje pergunta apenas se o perfil tem poderes de administrador, e o
+ * `papel` é preenchido automaticamente a partir dessa resposta.
+ */
 export type PapelRotulo = "Vendas" | "Operacional" | "Administrador";
 
 export const PAPEIS: PapelRotulo[] = ["Vendas", "Operacional", "Administrador"];
@@ -24,17 +28,25 @@ export function baseRoleDoPapel(papel: PapelRotulo): "admin" | "vendedor" {
   return papel === "Administrador" ? "admin" : "vendedor";
 }
 
+/** Resposta binária da UI → valores gravados em `perfis`. */
+export function papelDoAdmin(admin: boolean): PapelRotulo {
+  return admin ? "Administrador" : "Operacional";
+}
+
 export type PerfilRow = {
   id: string;
   nome: string;
   descricao: string | null;
   papel: PapelRotulo;
   baseRole: "admin" | "vendedor";
+  /** true quando o perfil concede poderes de administrador (base_role = admin). */
+  admin: boolean;
   ativo: boolean;
   usuarios: number;
   permissoes: number;
   protegido: boolean;
 };
+
 
 export type PerfilPermissaoRow = { chave: string; valorNumerico: number | null };
 
