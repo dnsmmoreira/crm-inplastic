@@ -1328,15 +1328,19 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
                 });
                 if (check.situacao === "duplicado") {
                   toast.error(
-                    `Este contato já é de ${check.vendedorNome ?? "outro vendedor"}${
-                      check.empresa ? ` (${check.empresa})` : ""
-                    }. Continue o atendimento no cadastro existente.`,
+                    check.restrito
+                      ? "Já existe cadastro deste CNPJ. Fale com o administrador."
+                      : `Este contato já é de ${check.vendedorNome ?? "outro vendedor"}${
+                          check.empresa ? ` (${check.empresa})` : ""
+                        }. Continue o atendimento no cadastro existente.`,
                   );
                   return;
                 }
                 if (check.situacao === "suspeita") {
                   toast.warning(
-                    `Existe um cadastro com nome parecido${check.empresa ? `: "${check.empresa}"` : ""}. Confira antes de duplicar.`,
+                    check.restrito
+                      ? "Já existe cadastro com nome parecido. Fale com o administrador."
+                      : `Existe um cadastro com nome parecido${check.empresa ? `: "${check.empresa}"` : ""}. Confira antes de duplicar.`,
                   );
                 }
               } catch {
