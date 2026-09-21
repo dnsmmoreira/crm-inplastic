@@ -129,14 +129,24 @@ async function loadAuthUser(supaUser: SupaUser): Promise<AuthUser> {
   // Chaves granulares dos perfis ATIVOS do usuário.
   let permKeys: string[] = [];
   let temPerfilAtivo = false;
+  let perfilNome: string | null = null;
   try {
     const { data: vinculos } = await supabase
       .from("user_perfis")
-      .select("perfil_id, perfis!inner(ativo)")
+      .select("perfil_id, perfis!inner(nome, base_role, ativo)")
       .eq("user_id", supaUser.id)
       .eq("perfis.ativo", true);
     const perfilIds = (vinculos ?? []).map((v) => v.perfil_id);
     temPerfilAtivo = perfilIds.length > 0;
+    // `user_perfis` é N:N. Com mais de um perfil ativo mostramos TODOS, em
+    // ordem alfabética, em vez de esconder algum escolhendo um em silêncio.
+    const nomes = (vinculos ?? [])
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .map((v: any) => (Array.isArray(v.perfis) ? v.perfis[0] : v.perfis))
+      .filter(Boolean)
+      .map((p: { nome: string }) => p.nome)
+      .sort((a: string, b: string) => a.localeCompare(b, "pt-BR"));
+    perfilNome = nomes.length > 0 ? nomes.join(", ") : null;
     if (perfilIds.length > 0) {
       const { data: chaves } = await supabase
         .from("perfil_permissoes")
