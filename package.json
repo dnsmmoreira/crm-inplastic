@@ -12,7 +12,7 @@
     "format": "prettier --write .",
     "test": "vitest run",
     "test:guard": "vitest run src/lib/cargo-guard.test.ts src/lib/cargo-sync.test.ts",
-    "test:db": "CARGO_DB_OBRIGATORIO=1 vitest run src/lib/cargo-sync.integration.test.ts",
+    "test:db": "CARGO_DB_OBRIGATORIO=1 vitest run src/lib/cargo-sync.integration.test.ts src/lib/xerife-auditoria.integration.test.ts",
     "typecheck": "tsgo --noEmit",
     "ci": "bun run test:guard && bun run typecheck && bun run test && bun run build"
   },

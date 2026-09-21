@@ -39,6 +39,7 @@ import { Route as ChatInternoRouteImport } from './routes/chat-interno'
 import { Route as CanaisRouteImport } from './routes/canais'
 import { Route as CadenciaSimuladorRouteImport } from './routes/cadencia-simulador'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuditoriaXerifeRouteImport } from './routes/auditoria-xerife'
 import { Route as AtendimentoIaRouteImport } from './routes/atendimento-ia'
 import { Route as ArenaRouteImport } from './routes/arena'
 import { Route as AgenteIaRouteImport } from './routes/agente-ia'
@@ -225,6 +226,11 @@ const CadenciaSimuladorRoute = CadenciaSimuladorRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuditoriaXerifeRoute = AuditoriaXerifeRouteImport.update({
+  id: '/auditoria-xerife',
+  path: '/auditoria-xerife',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AtendimentoIaRoute = AtendimentoIaRouteImport.update({
@@ -438,6 +444,7 @@ export interface FileRoutesByFullPath {
   '/agente-ia': typeof AgenteIaRoute
   '/arena': typeof ArenaRoute
   '/atendimento-ia': typeof AtendimentoIaRoute
+  '/auditoria-xerife': typeof AuditoriaXerifeRoute
   '/auth': typeof AuthRoute
   '/cadencia-simulador': typeof CadenciaSimuladorRoute
   '/canais': typeof CanaisRoute
@@ -507,6 +514,7 @@ export interface FileRoutesByTo {
   '/agente-ia': typeof AgenteIaRoute
   '/arena': typeof ArenaRoute
   '/atendimento-ia': typeof AtendimentoIaRoute
+  '/auditoria-xerife': typeof AuditoriaXerifeRoute
   '/auth': typeof AuthRoute
   '/cadencia-simulador': typeof CadenciaSimuladorRoute
   '/canais': typeof CanaisRoute
@@ -577,6 +585,7 @@ export interface FileRoutesById {
   '/agente-ia': typeof AgenteIaRoute
   '/arena': typeof ArenaRoute
   '/atendimento-ia': typeof AtendimentoIaRoute
+  '/auditoria-xerife': typeof AuditoriaXerifeRoute
   '/auth': typeof AuthRoute
   '/cadencia-simulador': typeof CadenciaSimuladorRoute
   '/canais': typeof CanaisRoute
@@ -648,6 +657,7 @@ export interface FileRouteTypes {
     | '/agente-ia'
     | '/arena'
     | '/atendimento-ia'
+    | '/auditoria-xerife'
     | '/auth'
     | '/cadencia-simulador'
     | '/canais'
@@ -717,6 +727,7 @@ export interface FileRouteTypes {
     | '/agente-ia'
     | '/arena'
     | '/atendimento-ia'
+    | '/auditoria-xerife'
     | '/auth'
     | '/cadencia-simulador'
     | '/canais'
@@ -786,6 +797,7 @@ export interface FileRouteTypes {
     | '/agente-ia'
     | '/arena'
     | '/atendimento-ia'
+    | '/auditoria-xerife'
     | '/auth'
     | '/cadencia-simulador'
     | '/canais'
@@ -856,6 +868,7 @@ export interface RootRouteChildren {
   AgenteIaRoute: typeof AgenteIaRoute
   ArenaRoute: typeof ArenaRoute
   AtendimentoIaRoute: typeof AtendimentoIaRoute
+  AuditoriaXerifeRoute: typeof AuditoriaXerifeRoute
   AuthRoute: typeof AuthRoute
   CadenciaSimuladorRoute: typeof CadenciaSimuladorRoute
   CanaisRoute: typeof CanaisRoute
@@ -1132,6 +1145,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auditoria-xerife': {
+      id: '/auditoria-xerife'
+      path: '/auditoria-xerife'
+      fullPath: '/auditoria-xerife'
+      preLoaderRoute: typeof AuditoriaXerifeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/atendimento-ia': {
       id: '/atendimento-ia'
       path: '/atendimento-ia'
@@ -1400,6 +1420,7 @@ const rootRouteChildren: RootRouteChildren = {
   AgenteIaRoute: AgenteIaRoute,
   ArenaRoute: ArenaRoute,
   AtendimentoIaRoute: AtendimentoIaRoute,
+  AuditoriaXerifeRoute: AuditoriaXerifeRoute,
   AuthRoute: AuthRoute,
   CadenciaSimuladorRoute: CadenciaSimuladorRoute,
   CanaisRoute: CanaisRoute,

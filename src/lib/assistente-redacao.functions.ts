@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
+import { assertPodeAtuarNaConversa } from "@/lib/whatsapp-guard";
 
 /**
  * Assistente de redação do chat do vendedor.
@@ -20,6 +21,8 @@ export const assistenteRedacao = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    // Ajuda a redigir mensagem de cliente: mesma regra das ações de escrita.
+    await assertPodeAtuarNaConversa(supabase, data.conversaId);
     const {
       LIMITE_CHAMADAS_HORA,
       promptDoModo,

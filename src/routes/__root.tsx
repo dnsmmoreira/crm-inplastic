@@ -43,6 +43,7 @@ import {
   FlaskConical,
   Menu,
   X,
+  ShieldCheck,
 } from "lucide-react";
 
 import appCss from "../styles.css?url";
@@ -276,7 +277,7 @@ const NAV_ROOT: NavItem[] = [
     to: "/conversas",
     label: "Conversas",
     icon: MessageSquare,
-    show: key("whatsapp.atender"),
+    show: (c: NavCtx) => hasPerm(c.user, "whatsapp.atender") || hasPerm(c.user, "whatsapp.ver_equipe"),
     accent: "emerald",
   },
   {
@@ -371,6 +372,12 @@ const NAV_GROUPS: NavGroup[] = [
     icon: BarChart3,
     items: [
       { to: "/relatorios", label: "Relatórios", icon: BarChart3, show: key("relatorios.ver") },
+      {
+        to: "/auditoria-xerife",
+        label: "Auditoria do Xerife",
+        icon: ShieldCheck,
+        show: key("xerife.ver_equipe"),
+      },
       { to: "/equipe", label: "Equipe", icon: Users, show: key("usuarios.gerenciar") },
       {
         to: "/representantes",
