@@ -3542,6 +3542,44 @@ export type Database = {
         }
         Relationships: []
       }
+      xerife_avaliacoes: {
+        Row: {
+          avaliador_id: string
+          created_at: string
+          id: string
+          nota: string | null
+          updated_at: string
+          veredito: string
+          xerife_log_id: string
+        }
+        Insert: {
+          avaliador_id?: string
+          created_at?: string
+          id?: string
+          nota?: string | null
+          updated_at?: string
+          veredito: string
+          xerife_log_id: string
+        }
+        Update: {
+          avaliador_id?: string
+          created_at?: string
+          id?: string
+          nota?: string | null
+          updated_at?: string
+          veredito?: string
+          xerife_log_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "xerife_avaliacoes_xerife_log_id_fkey"
+            columns: ["xerife_log_id"]
+            isOneToOne: false
+            referencedRelation: "xerife_log"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       xerife_config: {
         Row: {
           ativo: boolean
@@ -3682,6 +3720,44 @@ export type Database = {
           whatsapp_interno_ativo?: boolean
         }
         Relationships: []
+      }
+      xerife_deixou_passar: {
+        Row: {
+          avaliador_id: string
+          created_at: string
+          descricao: string
+          id: string
+          lead_id: string | null
+          updated_at: string
+          vendedor_id: string
+        }
+        Insert: {
+          avaliador_id?: string
+          created_at?: string
+          descricao: string
+          id?: string
+          lead_id?: string | null
+          updated_at?: string
+          vendedor_id: string
+        }
+        Update: {
+          avaliador_id?: string
+          created_at?: string
+          descricao?: string
+          id?: string
+          lead_id?: string | null
+          updated_at?: string
+          vendedor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "xerife_deixou_passar_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       xerife_log: {
         Row: {
