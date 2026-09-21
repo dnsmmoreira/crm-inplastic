@@ -69,16 +69,61 @@ describe.skipIf(!TEM_BANCO)("banco: RLS do bucket whatsapp-anexos", () => {
     expect(cmds).not.toContain("DELETE");
   });
 
-  it("a leitura depende da conversa do caminho (id ou telefone do inbound)", () => {
+  it("a leitura usa a função indexada whatsapp_anexo_visivel (sem varrer conversas)", () => {
     const qual = consulta(
       `SELECT qual FROM pg_policies WHERE schemaname='storage' AND tablename='objects'
          AND policyname = 'whatsapp anexos leitura por conversa'`,
     );
-    expect(qual).toContain("whatsapp_conversas");
-    expect(qual).toContain("split_part");
-    expect(qual).toContain("inbound");
-    expect(qual).toContain("has_role");
+    expect(qual).toContain("whatsapp_anexo_visivel");
+    expect(qual).not.toContain("EXISTS");
+    expect(qual).not.toContain("split_part");
   });
+
+  it("whatsapp_anexo_visivel é STABLE SECURITY DEFINER com search_path fixo", () => {
+    const meta = consulta(
+      `SELECT p.provolatile::text || '|' || p.prosecdef::text || '|' || coalesce(array_to_string(p.proconfig,','),'')
+         FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+        WHERE n.nspname='public' AND p.proname='whatsapp_anexo_visivel'`,
+    );
+    expect(meta.split("|")[0]).toBe("s");
+    expect(meta.split("|")[1]).toBe("true");
+    expect(meta).toContain("search_path=public");
+  });
+
+  it("whatsapp_anexo_visivel só pode ser executada por usuários autenticados", () => {
+    const anon = consulta(
+      `SELECT has_function_privilege('anon','public.whatsapp_anexo_visivel(text)','EXECUTE')`,
+    );
+    const auth = consulta(
+      `SELECT has_function_privilege('authenticated','public.whatsapp_anexo_visivel(text)','EXECUTE')`,
+    );
+    expect(anon).toBe("f");
+    expect(auth).toBe("t");
+  });
+
+  it("a função localiza uma única conversa e repete as 3 regras de SELECT da conversa", () => {
+    const corpo = consulta(
+      `SELECT replace(prosrc, chr(10), ' ') FROM pg_proc p
+         JOIN pg_namespace n ON n.oid=p.pronamespace
+        WHERE n.nspname='public' AND p.proname='whatsapp_anexo_visivel'`,
+    );
+    expect(corpo).toContain("c.id = _seg::uuid");
+    expect(corpo).toContain("c.phone = split_part(_name, '/', 2)");
+    expect(corpo).toContain("has_role(auth.uid(), 'admin'");
+    expect(corpo).toContain("atribuido_para = auth.uid()");
+    expect(corpo).toContain("_owner = auth.uid()");
+    expect(corpo).toContain("whatsapp_conversa_visivel(");
+    expect(corpo).toContain("whatsapp_conversa_visivel_auditor(");
+  });
+
+  it("whatsapp_conversas tem índice por telefone", () => {
+    const idx = consulta(
+      `SELECT count(*) FROM pg_indexes WHERE schemaname='public'
+         AND tablename='whatsapp_conversas' AND indexdef LIKE '%(phone)%'`,
+    );
+    expect(Number(idx)).toBeGreaterThan(0);
+  });
+
 
   it("o envio exige poder atuar na conversa, com caminho em formato de id", () => {
     const check = consulta(
