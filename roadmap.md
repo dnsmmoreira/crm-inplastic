@@ -1,14 +1,17 @@
 # Isolamento Maxicaixa × INPLASTIC
 
-- [ ] Baseline: contagem de conversas/mensagens WhatsApp visíveis por atendente (antes)
-- [ ] Equipe dona do canal: coluna explícita em `equipes` (INPLASTIC marcada)
-- [ ] WhatsApp leitura: policies por equipe do dono; conversa sem dono → equipe dona do canal; admin vê tudo
-- [ ] WhatsApp escrita: assumir/transferir/devolver IA/enviar — bloquear cross-equipe; destinos de transferência só da equipe
-- [ ] Fila de distribuição: `fila_vendedores` + `atribuir_proximo_vendedor` só aceitam equipe dona do canal
-- [ ] Placar: filtro por equipe (equipe nula → só a própria pessoa); estado vazio decente
-- [ ] Chat: grupo por equipe, remover 5 da Maxicaixa do Grupo Comercial (sem apagar mensagens), trigger por equipe
-- [ ] Chat: colegas = mesma equipe OU meu gestor OU sou gestor dele; supervisão do Denis intacta
-- [ ] Pendências: escopo todos/equipe/próprio
-- [ ] /equipe: aviso em vez de carregamento infinito
-- [ ] Testes de regressão + integração no banco
-- [ ] Provas: contagens antes/depois por pessoa, zero Maxicaixa no Grupo Comercial, typecheck/suíte/build
+- [x] Baseline de conversas/mensagens por atendente (antes)
+- [x] Equipe dona do canal marcada em `equipes` (INPLASTIC)
+- [x] WhatsApp leitura por equipe; conversa sem dono → equipe dona do canal; admin vê tudo
+- [x] WhatsApp escrita: trava por equipe em assumir/devolver/transferir/encerrar/espera/retomar
+- [x] Destinos de transferência limitados à equipe do ator (admin vê todos)
+- [x] Fila de distribuição restrita à equipe dona do canal (trava + escolha)
+- [x] Placar por equipe (equipe nula → só a própria pessoa) + estado vazio
+- [x] Chat: Grupo Comercial só INPLASTIC, Grupo Maxicaixa criado, trigger por equipe
+- [x] Chat: colegas = mesma equipe OU meu gestor OU quem eu lidero; supervisão intacta
+- [x] Pendências com escopo empresa/equipe/próprio
+- [x] /equipe com aviso claro em vez de carregamento infinito
+- [x] Teste de integração do isolamento contra o banco
+- [x] Provas: contagens antes/depois, Grupo Comercial sem Maxicaixa, typecheck/suíte/build
+
+Pendente com o Denis: senha do Luciano; catálogo/estoque/transportadoras/DIFAL seguem compartilhados.
