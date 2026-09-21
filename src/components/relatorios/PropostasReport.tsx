@@ -178,7 +178,8 @@ export function PropostasReport() {
               ))}
             </SelectContent>
           </Select>
-          {data?.isAdmin ? (
+          {/* No escopo "equipe" a lista já vem só com os vendedores da equipe. */}
+          {data && data.escopo !== "proprio" ? (
             <Select value={vendedorId} onValueChange={setVendedorId}>
               <SelectTrigger className="w-[200px]">
                 <SelectValue />

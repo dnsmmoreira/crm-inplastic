@@ -113,7 +113,7 @@ export const getRelatorioPropostas = createServerFn({ method: "GET" })
     return {
       periodo: data.periodo,
       desde,
-      isAdmin,
+      escopo,
       resumo: resumirPropostas(rows),
       motivos: agruparMotivos(rows),
       vendedores: porVendedor.map((v) => ({
