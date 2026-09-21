@@ -332,20 +332,36 @@ export const listarAtendentesParaTransferencia = createServerFn({ method: "GET" 
     }
     if (ids.length === 0) return [] as Array<{ id: string; name: string }>;
 
-    const perfisRes = await supabaseAdmin
+    // Só quem é da mesma equipe do ator pode aparecer como destino
+    // (administrador enxerga todos os atendentes).
+    const { data: souAdmin } = await supabase.rpc("has_role", {
+      _user_id: userId,
+      _role: "admin",
+    });
+    const { data: minhaEquipe } = await supabaseAdmin
+      .from("profiles")
+      .select("equipe_id")
+      .eq("id", userId)
+      .maybeSingle();
+
+    let query = supabaseAdmin
       .from("profiles")
       .select("id, name")
       .in("id", ids)
       .eq("ativo", true)
-      .is("deleted_at", null)
-      .order("name");
+      .is("deleted_at", null);
+    if (souAdmin !== true) {
+      const equipe = (minhaEquipe as { equipe_id: string | null } | null)?.equipe_id ?? null;
+      if (!equipe) return [] as Array<{ id: string; name: string }>;
+      query = query.eq("equipe_id", equipe);
+    }
+    const perfisRes = await query.order("name");
     if (perfisRes.error) {
       await registrarFalhaSegura("atendimento/listar-atendentes", perfisRes.error, {
         user_id: userId,
       });
       return [] as Array<{ id: string; name: string }>;
     }
-    void supabase;
     return (perfisRes.data ?? []).map((p) => ({ id: p.id, name: p.name as string }));
   });
 
@@ -506,6 +522,7 @@ export const retomarConversa = createServerFn({ method: "POST" })
   .inputValidator((data) => z.object({ conversaId: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    await assertPodeAtuarNaConversa(supabase, data.conversaId);
     const { podeGerenciarEspera } = await import("@/lib/atendimento-espera");
 
     const { data: conversa, error: cErr } = await supabase
