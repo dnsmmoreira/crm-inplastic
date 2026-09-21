@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
+import { assertPodeAtuarNaConversa, assertPodeAtender } from "@/lib/whatsapp-guard";
 import { podeEscreverConversa } from "@/lib/permissoes";
 import { assertNoError, registrarFalhaSegura } from "@/lib/guard-erros";
 
