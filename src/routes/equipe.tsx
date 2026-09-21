@@ -8,6 +8,7 @@ import { ptBR } from "date-fns/locale";
 import { AlertTriangle, ChevronDown, ChevronRight, Loader2, Megaphone, Users } from "lucide-react";
 
 import { cobrarPessoa, relatorioCarteira, resumoEquipe } from "@/lib/equipe.functions";
+import { listEquipes } from "@/lib/equipes.functions";
 import type { LinhaCarteira } from "@/lib/equipe.functions";
 import { TransferirLeadDialog } from "@/components/crm/TransferirLeadDialog";
 import type { LinhaEquipe } from "@/lib/equipe.server";
@@ -68,9 +69,17 @@ function resumoTexto(l: LinhaEquipe): string {
 function EquipePage() {
   const qc = useQueryClient();
   const carregar = useServerFn(resumoEquipe);
+  const carregarEquipes = useServerFn(listEquipes);
+  // "" = todas as equipes (comportamento padrão, igual ao de antes).
+  const [equipeId, setEquipeId] = useState("");
+  const equipesQ = useQuery({
+    queryKey: ["equipe-lista-ativas"],
+    queryFn: () => carregarEquipes(),
+    staleTime: 300_000,
+  });
   const { data, isLoading, error } = useQuery({
-    queryKey: ["equipe-resumo"],
-    queryFn: () => carregar(),
+    queryKey: ["equipe-resumo", equipeId],
+    queryFn: () => carregar({ data: { equipeId: equipeId || null } }),
     staleTime: 60_000,
   });
   const [aberta, setAberta] = useState<string | null>(null);
@@ -129,6 +138,19 @@ function EquipePage() {
         <h1 className="text-xl font-semibold flex items-center gap-2">
           <Users className="h-5 w-5" /> Equipe
         </h1>
+        <select
+          value={equipeId}
+          onChange={(e) => setEquipeId(e.target.value)}
+          aria-label="Filtrar por equipe"
+          className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+        >
+          <option value="">Todas as equipes</option>
+          {(equipesQ.data ?? []).map((eq) => (
+            <option key={eq.id} value={eq.id}>
+              {eq.nome}
+            </option>
+          ))}
+        </select>
         {data?.podeCobrarTodos && comVencidos.length > 0 && (
           <Button
             variant="outline"
@@ -267,7 +289,7 @@ function EquipePage() {
         )}
       </div>
 
-      <SecaoCarteira />
+      <SecaoCarteira equipeId={equipeId} />
 
       <Dialog open={!!cobranca} onOpenChange={(o) => !o && setCobranca(null)}>
         <DialogContent>
@@ -308,10 +330,13 @@ function Contagem({ label, valor }: { label: string; valor: number }) {
 }
 
 /** Onde a carteira e o atendimento não batem — com transferência na mesma tela. */
-function SecaoCarteira() {
+function SecaoCarteira({ equipeId }: { equipeId: string }) {
   const qc = useQueryClient();
   const carregar = useServerFn(relatorioCarteira);
-  const q = useQuery({ queryKey: ["carteira-equipe"], queryFn: () => carregar() });
+  const q = useQuery({
+    queryKey: ["carteira-equipe", equipeId],
+    queryFn: () => carregar({ data: { equipeId: equipeId || null } }),
+  });
   const [alvo, setAlvo] = useState<LinhaCarteira | null>(null);
 
   if (q.isLoading) {

@@ -55,6 +55,14 @@ export type UsuarioRow = {
   createdAt: string;
   ultimoAcesso: string | null;
   role: AppRoleName;
+  /**
+   * Nome do(s) perfil(is) de acesso ATIVO(s). `user_perfis` é N:N, então quem
+   * tiver mais de um aparece com todos separados por vírgula — nunca escolhemos
+   * um em silêncio. `null` = sem perfil nenhum (estado que a tela denuncia).
+   */
+  perfilNome: string | null;
+  /** admin se QUALQUER perfil ativo for admin; senão vendedor; null sem perfil. */
+  perfilBaseRole: AppRoleName | null;
   metaMensal: number;
   naFila: boolean;
   filaPosicao: number | null;
@@ -164,9 +172,10 @@ export const listUsuarios = createServerFn({ method: "POST" })
     await assertGerenciarUsuarios(context.supabase, context.userId);
     const sb = await admin();
 
-    const [profilesRes, rolesRes, filaRes, metasRes, authMap] = await Promise.all([
+    const [profilesRes, rolesRes, perfisRes, filaRes, metasRes, authMap] = await Promise.all([
       sb.from("profiles").select("*").order("created_at", { ascending: true }),
       sb.from("user_roles").select("user_id, role"),
+      sb.from("user_perfis").select("user_id, perfis!inner(nome, base_role, ativo)"),
       sb.from("fila_vendedores").select("user_id, posicao, ativo"),
       sb.from("vendedor_metas").select("user_id, meta_valor_mensal"),
       listAuthUsers(sb),
@@ -178,6 +187,20 @@ export const listUsuarios = createServerFn({ method: "POST" })
       if (roleByUser.get(r.user_id) === "admin") return;
       roleByUser.set(r.user_id, r.role as AppRoleName);
     });
+
+    // Perfis de acesso ATIVOS por pessoa. `user_perfis` é N:N: se alguém tiver
+    // mais de um perfil, acumulamos TODOS (ordem alfabética, determinística) em
+    // vez de escolher um arbitrariamente e esconder o resto.
+    const perfisByUser = new Map<string, { nomes: string[]; admin: boolean }>();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const v of (perfisRes.data ?? []) as any[]) {
+      const p = Array.isArray(v.perfis) ? v.perfis[0] : v.perfis;
+      if (!p || p.ativo === false) continue;
+      const atual = perfisByUser.get(v.user_id) ?? { nomes: [], admin: false };
+      atual.nomes.push(String(p.nome));
+      if (p.base_role === "admin") atual.admin = true;
+      perfisByUser.set(v.user_id, atual);
+    }
     const filaByUser = new Map((filaRes.data ?? []).map((f) => [f.user_id, f]));
     const metaByUser = new Map((metasRes.data ?? []).map((m) => [m.user_id, m.meta_valor_mensal]));
 
@@ -211,6 +234,16 @@ export const listUsuarios = createServerFn({ method: "POST" })
           createdAt: p.created_at,
           ultimoAcesso: auth?.lastSignInAt ?? p.ultimo_acesso_em ?? null,
           role: roleByUser.get(p.id) ?? "vendedor",
+          perfilNome: (() => {
+            const pf = perfisByUser.get(p.id);
+            if (!pf || pf.nomes.length === 0) return null;
+            return [...pf.nomes].sort((a, b) => a.localeCompare(b, "pt-BR")).join(", ");
+          })(),
+          perfilBaseRole: perfisByUser.has(p.id)
+            ? perfisByUser.get(p.id)!.admin
+              ? ("admin" as const)
+              : ("vendedor" as const)
+            : null,
           metaMensal: Number(metaByUser.get(p.id) ?? 0),
           naFila: !!fila,
           filaPosicao: fila?.posicao ?? null,

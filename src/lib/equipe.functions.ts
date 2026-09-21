@@ -30,9 +30,15 @@ async function contexto(sb: LooseClient, userId: string) {
   };
 }
 
+const filtroEquipe = z
+  .object({ equipeId: z.string().uuid().nullish() })
+  .nullish()
+  .transform((v) => ({ equipeId: v?.equipeId ?? null }));
+
 export const resumoEquipe = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<ResumoEquipe & { podeCobrarTodos: boolean }> => {
+  .inputValidator((input: { equipeId?: string | null } | undefined) => filtroEquipe.parse(input))
+  .handler(async ({ data, context }): Promise<ResumoEquipe & { podeCobrarTodos: boolean }> => {
     const sb: LooseClient = context.supabase;
     const userId = context.userId as string;
     const ctx = await contexto(sb, userId);
@@ -41,7 +47,10 @@ export const resumoEquipe = createServerFn({ method: "GET" })
     }
     const { coletarResumoEquipe } = await import("@/lib/equipe.server");
     const resumo = await coletarResumoEquipe(sb, {
+      // Restrição de acesso: continua mandando em quem pode ser visto.
       userIds: ctx.admin || ctx.gerencia ? null : ctx.liderados,
+      // Filtro da tela: AND com a restrição acima; só reduz, nunca amplia.
+      equipeId: data.equipeId,
     });
     return { ...resumo, podeCobrarTodos: ctx.admin };
   });
@@ -118,7 +127,8 @@ export type RelatorioCarteira = {
 /** Painel do gestor: onde a carteira e o atendimento não batem. */
 export const relatorioCarteira = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<RelatorioCarteira> => {
+  .inputValidator((input: { equipeId?: string | null } | undefined) => filtroEquipe.parse(input))
+  .handler(async ({ data: entrada, context }): Promise<RelatorioCarteira> => {
     const sb: LooseClient = context.supabase;
     const userId = context.userId as string;
     const ctx = await contexto(sb, userId);
@@ -128,11 +138,28 @@ export const relatorioCarteira = createServerFn({ method: "GET" })
 
     const desde = new Date(Date.now() - 30 * 86400_000).toISOString();
 
-    const { data: leads, error: errLeads } = await sb
+    // Carteira não tem equipe na linha: o recorte é pela PESSOA RESPONSÁVEL
+    // (dono atual do lead / vendedor da devolução), igual ao resto da tela.
+    // Só reduz o conjunto — a restrição de acesso continua valendo pela RLS.
+    let idsEquipe: string[] | null = null;
+    if (entrada.equipeId) {
+      const { data: pessoas, error } = await sb
+        .from("profiles")
+        .select("id")
+        .eq("equipe_id", entrada.equipeId)
+        .eq("ativo", true)
+        .is("deleted_at", null);
+      if (error) throw new Error(`Falha ao carregar a equipe: ${error.message}`);
+      idsEquipe = ((pessoas ?? []) as { id: string }[]).map((p) => p.id);
+      if (idsEquipe.length === 0) return { donoDivergente: [], clienteExistente: [], devolucoes: [] };
+    }
+
+    let qLeads = sb
       .from("leads")
       .select("id, company, owner_id, cliente_id, tags, created_at, stage")
-      .not("stage", "in", "(ganho,perdido)")
-      .limit(1000);
+      .not("stage", "in", "(ganho,perdido)");
+    if (idsEquipe) qLeads = qLeads.in("owner_id", idsEquipe);
+    const { data: leads, error: errLeads } = await qLeads.limit(1000);
     if (errLeads) throw new Error(`Falha ao ler atendimentos: ${errLeads.message}`);
 
     const idsClientes = [
@@ -181,12 +208,13 @@ export const relatorioCarteira = createServerFn({ method: "GET" })
       }
     }
 
-    const { data: logs, error: errLog } = await sb
+    let qLogs = sb
       .from("xerife_log")
       .select("vendedor_id, regra, created_at")
       .gte("created_at", desde)
-      .like("regra", "D1_abandono%")
-      .limit(1000);
+      .like("regra", "D1_abandono%");
+    if (idsEquipe) qLogs = qLogs.in("vendedor_id", idsEquipe);
+    const { data: logs, error: errLog } = await qLogs.limit(1000);
     if (errLog) throw new Error(`Falha ao ler histórico: ${errLog.message}`);
     const porVendedor = new Map<string, number>();
     for (const r of (logs ?? []) as any[]) {
