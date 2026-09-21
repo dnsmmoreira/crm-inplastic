@@ -30,9 +30,15 @@ async function contexto(sb: LooseClient, userId: string) {
   };
 }
 
+const filtroEquipe = z
+  .object({ equipeId: z.string().uuid().nullish() })
+  .nullish()
+  .transform((v) => ({ equipeId: v?.equipeId ?? null }));
+
 export const resumoEquipe = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<ResumoEquipe & { podeCobrarTodos: boolean }> => {
+  .inputValidator((input: { equipeId?: string | null } | undefined) => filtroEquipe.parse(input))
+  .handler(async ({ data, context }): Promise<ResumoEquipe & { podeCobrarTodos: boolean }> => {
     const sb: LooseClient = context.supabase;
     const userId = context.userId as string;
     const ctx = await contexto(sb, userId);
@@ -41,7 +47,10 @@ export const resumoEquipe = createServerFn({ method: "GET" })
     }
     const { coletarResumoEquipe } = await import("@/lib/equipe.server");
     const resumo = await coletarResumoEquipe(sb, {
+      // Restrição de acesso: continua mandando em quem pode ser visto.
       userIds: ctx.admin || ctx.gerencia ? null : ctx.liderados,
+      // Filtro da tela: AND com a restrição acima; só reduz, nunca amplia.
+      equipeId: data.equipeId,
     });
     return { ...resumo, podeCobrarTodos: ctx.admin };
   });

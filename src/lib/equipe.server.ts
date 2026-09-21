@@ -261,7 +261,7 @@ export function agregarEquipe(e: EntradaEquipe): ResumoEquipe {
 
 export async function coletarResumoEquipe(
   sb: SB,
-  opts?: { userIds?: string[] | null; now?: Date },
+  opts?: { userIds?: string[] | null; equipeId?: string | null; now?: Date },
 ): Promise<ResumoEquipe> {
   const now = opts?.now ?? new Date();
   const nowIso = now.toISOString();
@@ -271,7 +271,11 @@ export async function coletarResumoEquipe(
     .select("id, name, gestor_id, telegram_chat_id, ativo, deleted_at")
     .eq("ativo", true)
     .is("deleted_at", null);
+  // Restrição de ACESSO (quem a pessoa pode enxergar). Aplicada SEMPRE.
   if (opts?.userIds) qPessoas = qPessoas.in("id", opts.userIds.length ? opts.userIds : [""]);
+  // Filtro de VISUALIZAÇÃO escolhido na tela. É um AND com a restrição acima:
+  // só reduz o conjunto, nunca amplia o que a pessoa pode ver.
+  if (opts?.equipeId) qPessoas = qPessoas.eq("equipe_id", opts.equipeId);
   const { data: pessoasRaw, error: errPessoas } = await qPessoas;
   if (errPessoas) throw new Error(`Falha ao carregar pessoas: ${errPessoas.message}`);
 
