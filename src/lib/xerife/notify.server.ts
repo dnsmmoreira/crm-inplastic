@@ -5,6 +5,7 @@
  * NUNCA envia para leads e NUNCA cai nas credenciais comerciais.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { appUrl } from "@/lib/app-url";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SB = SupabaseClient<any, any, any>;
@@ -282,5 +283,5 @@ export async function notifyFinanceiro(msg: string): Promise<boolean> {
 }
 
 export function crmLeadLink(leadId: string): string {
-  return `https://crm.inplastic.com.br/pipeline?lead=${leadId}`;
+  return appUrl(`/pipeline?lead=${leadId}`);
 }

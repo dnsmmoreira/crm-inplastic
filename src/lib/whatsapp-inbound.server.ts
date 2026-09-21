@@ -10,6 +10,7 @@
  */
 
 import type { MensagemTipo } from "@/lib/zapi-normalize";
+import { appUrl } from "@/lib/app-url";
 
 function onlyDigits(s: string) {
   return String(s ?? "").replace(/\D/g, "");
@@ -265,7 +266,7 @@ export async function processarEntradaWhatsapp(
       .eq("id", conversaId)
       .maybeSingle();
     const quem = convHo?.name?.trim() || convHo?.phone || phone;
-    const link = `https://crm.inplastic.com.br/conversas?c=${conversaId}`;
+    const link = appUrl(`/conversas?c=${conversaId}`);
     const titulo = `Mídia (${tipo}) aguardando atendimento — ${quem}`;
     const corpo =
       `📎 Conversa aguardando especialista\n\n` +

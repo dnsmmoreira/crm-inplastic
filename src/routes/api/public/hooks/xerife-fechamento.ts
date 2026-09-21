@@ -9,6 +9,7 @@ import { registrarFalhaSegura } from "@/lib/guard-erros";
 import { requireXerifeCronAuth, cronJsonResponse } from "@/lib/xerife/cron-auth.server";
 import { alreadyActed, logAction } from "@/lib/xerife/dedupe.server";
 import { notifyOwner, notifyDiretoria } from "@/lib/xerife/notify.server";
+import { appHost } from "@/lib/app-url";
 import {
   endOfTodaySpIso,
   startOfTodaySpIso,
@@ -234,7 +235,7 @@ async function runFechamento(force = false): Promise<{
       comVencidas.forEach((l) => dLines.push(`• ${l.nome}: ${l.tarefasVencidas}`));
     }
     dLines.push("");
-    dLines.push("👉 crm.inplastic.com.br/equipe");
+    dLines.push(`👉 ${appHost("/equipe")}`);
   } catch (e) {
     await registrarFalhaSegura("xerife-fechamento.sem_proximo_ato", e);
   }

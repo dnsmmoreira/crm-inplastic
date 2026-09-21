@@ -4,9 +4,10 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { tratativaValida, MSG_TRATATIVA_OBRIGATORIA } from "@/lib/tratativa-comercial";
+import { appUrl } from "@/lib/app-url";
 
 
-const LINK_BASE = "https://crm.inplastic.com.br/proposta-publica";
+const LINK_BASE_PATH = "/proposta-publica";
 
 const brl = (n: number) =>
   n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -99,7 +100,7 @@ export async function enviarPropostaEmailImpl(
     (emitterRes.data as { legal_name?: string } | null)?.legal_name ??
     "Inplastic";
 
-  const link = `${LINK_BASE}/${proposta.id}`;
+  const link = appUrl(`${LINK_BASE_PATH}/${proposta.id}`);
   const dados = {
     numero: String(proposta.number ?? ""),
     cliente: nomeCliente ?? "Cliente",

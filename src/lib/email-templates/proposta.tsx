@@ -12,6 +12,7 @@ import {
   Text,
 } from "@react-email/components";
 import type { TemplateEntry } from "./registry";
+import { appUrl } from "@/lib/app-url";
 
 export interface PropostaEmailProps {
   numero?: string;
@@ -30,7 +31,7 @@ function PropostaEmail({
   contato = "",
   total = "",
   validade = "",
-  link = "https://crm.inplastic.com.br",
+  link = appUrl(),
   vendedor = "",
   emitente = "Inplastic",
 }: PropostaEmailProps) {
@@ -108,7 +109,7 @@ export const template = {
     contato: "João",
     total: "R$ 12.480,00",
     validade: "15 dias",
-    link: "https://crm.inplastic.com.br/proposta-publica/00000000-0000-0000-0000-000000000000",
+    link: appUrl("/proposta-publica/00000000-0000-0000-0000-000000000000"),
     vendedor: "Equipe comercial",
     emitente: "Inplastic",
   },

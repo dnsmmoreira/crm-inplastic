@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { registrarFalhaSegura } from "@/lib/guard-erros";
+import { appUrl } from "@/lib/app-url";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -122,7 +123,7 @@ export const Route = createFileRoute("/api/public/hooks/ia-handoff")({
         }
 
         const quem = conv.name?.trim() || conv.phone;
-        const link = `https://crm.inplastic.com.br/conversas?c=${conversaId}`;
+        const link = appUrl(`/conversas?c=${conversaId}`);
         const titulo = `Assunto ${motivo} aguardando atendimento — ${quem}`;
         const corpo = `📨 Conversa aguardando time humano\n\nCliente: ${quem}\nMotivo: ${motivo}\n${
           observacao ? `Obs.: ${observacao}\n` : ""
