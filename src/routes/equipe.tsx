@@ -81,6 +81,9 @@ function EquipePage() {
     queryKey: ["equipe-resumo", equipeId],
     queryFn: () => carregar({ data: { equipeId: equipeId || null } }),
     staleTime: 60_000,
+    // Sem acesso, a resposta é um "não" definitivo: repetir só prende a tela
+    // em "Carregando a equipe…".
+    retry: false,
   });
   const [aberta, setAberta] = useState<string | null>(null);
   const [cobranca, setCobranca] = useState<{ ids: string[]; texto: string } | null>(null);
