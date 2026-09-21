@@ -269,6 +269,17 @@ const key = (chave: string) => (c: NavCtx) => hasPerm(c.user, chave);
 const always = () => true;
 const vendas = (c: NavCtx) => c.isAdmin || isVendedorComum(c);
 const vendasOu = (chave: string) => (c: NavCtx) => vendas(c) || hasPerm(c.user, chave);
+/** Só AMPLIA: qualquer uma das chaves basta. */
+const vendasOuAlguma =
+  (...chaves: string[]) =>
+  (c: NavCtx) =>
+    vendas(c) || chaves.some((chave) => hasPerm(c.user, chave));
+const leadsVisivel = vendasOuAlguma("leads.ver_todos", "leads.ver_equipe", "leads.criar");
+const clientesVisivel = vendasOuAlguma(
+  "clientes.ver_todos",
+  "clientes.ver_equipe",
+  "clientes.criar",
+);
 
 const NAV_ROOT: NavItem[] = [
   { to: "/", label: "Início", icon: LayoutDashboard, show: always },
