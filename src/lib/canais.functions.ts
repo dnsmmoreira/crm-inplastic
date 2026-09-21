@@ -159,6 +159,9 @@ export const sendConversaMessage = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
 
 
+    // Escrita no WhatsApp: exige explicitamente poder ATUAR na conversa.
+    await assertPodeAtuarNaConversa(supabase, data.conversaId);
+
     const { data: conversa, error: cErr } = await supabase
       .from("whatsapp_conversas")
       .select("id, phone, atribuido_para, status")
@@ -323,6 +326,9 @@ export const sendConversaAnexo = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
+    // Escrita no WhatsApp: exige explicitamente poder ATUAR na conversa.
+    await assertPodeAtuarNaConversa(supabase, data.conversaId);
+
     const { data: conversa, error: cErr } = await supabase
       .from("whatsapp_conversas")
       .select("id, phone, atribuido_para, status")
@@ -465,6 +471,9 @@ export const createLeadFromConversa = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
+    // Escrita no WhatsApp: exige explicitamente poder ATUAR na conversa.
+    await assertPodeAtuarNaConversa(supabase, data.conversaId);
+
     const { data: conversa, error: cErr } = await supabase
       .from("whatsapp_conversas")
       .select("id, phone, name, lead_id, last_message_preview")
@@ -555,6 +564,9 @@ export const iniciarConversaCliente = createServerFn({ method: "POST" })
   .inputValidator((data) => z.object({ clienteId: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+
+    // Escrita no WhatsApp: iniciar conversa exige a permissão de atender.
+    await assertPodeAtender(supabase, userId);
 
     const { data: cliente, error: cErr } = await supabase
       .from("clientes")
@@ -711,6 +723,9 @@ export const enviarTemplateConversa = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+
+    // Escrita no WhatsApp: exige explicitamente poder ATUAR na conversa.
+    await assertPodeAtuarNaConversa(supabase, data.conversaId);
 
     const { data: conversa, error: cErr } = await supabase
       .from("whatsapp_conversas")
