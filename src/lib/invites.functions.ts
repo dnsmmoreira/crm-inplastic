@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
+import { appBaseUrl, appUrl } from "@/lib/app-url";
 import { assertRpcPermissao, registrarFalhaSegura } from "@/lib/guard-erros";
 
 /**
@@ -19,22 +20,10 @@ import { assertRpcPermissao, registrarFalhaSegura } from "@/lib/guard-erros";
  *  • auditoria nunca registra senha nem token.
  */
 
-// ───────────────────────── URL pública (allowlist fixa) ─────────────────────
-const URLS_PERMITIDAS = [
-  "https://crm.inplastic.com.br",
-  "https://crm-inplastic.lovable.app",
-  "http://localhost:8080",
-] as const;
-
-function appBaseUrl(): string {
-  const env = (process.env.APP_PUBLIC_URL ?? "").replace(/\/+$/, "");
-  const permitida = URLS_PERMITIDAS.find((u) => u === env);
-  return permitida ?? URLS_PERMITIDAS[0];
-}
-
+// ── URL pública: fonte única em `@/lib/app-url` (allowlist fixa, nunca cliente) ──
 /** Destino do link de convite / recuperação: rota que só troca a própria senha. */
 function redirectDefinirSenha(): string {
-  return `${appBaseUrl()}/definir-senha`;
+  return appUrl("/definir-senha");
 }
 
 // ───────────────────────────── Rate limit simples ───────────────────────────

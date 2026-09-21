@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { registrarFalhaSegura } from "@/lib/guard-erros";
+import { appHost } from "@/lib/app-url";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -153,7 +154,7 @@ export const Route = createFileRoute("/api/public/hooks/ia-urgente")({
           `Contato: ${contato}\n` +
           `Precisa de: ${produto}${quantidade ? " " + quantidade : ""}\n` +
           `Urgência: ${motivo || dados.urgencia || "—"}\n` +
-          `Conversa no CRM: crm.inplastic.com.br`;
+          `Conversa no CRM: ${appHost()}`;
 
         // O alerta NÃO vai mais para o grupo da diretoria (Telegram/WhatsApp).
         // Fica registrado em `lead_ai_actions` e visível no CRM; a notificação

@@ -7,6 +7,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
 import { tratativaValida, MSG_TRATATIVA_OBRIGATORIA } from "@/lib/tratativa-comercial";
+import { appUrl } from "@/lib/app-url";
 
 function onlyDigits(s: string) {
   return String(s ?? "").replace(/\D/g, "");
@@ -252,7 +253,7 @@ export const getPropostaPublica = createServerFn({ method: "POST" })
     };
   });
 
-const LINK_BASE = "https://crm.inplastic.com.br/proposta-publica";
+const LINK_BASE_PATH = "/proposta-publica";
 
 /** Envia o link da proposta pública ao cliente por e-mail. */
 export const enviarPropostaEmail = createServerFn({ method: "POST" })
@@ -292,7 +293,7 @@ export const enviarPropostaWhatsapp = createServerFn({ method: "POST" })
     const phone = normalizePhoneBR(raw);
     if (phone.length < 12) throw new Error("Lead sem telefone de WhatsApp cadastrado.");
 
-    const link = `${LINK_BASE}/${proposta.id}`;
+    const link = appUrl(`${LINK_BASE_PATH}/${proposta.id}`);
     const mensagem = `Olá! Segue sua proposta comercial nº ${proposta.number}: ${link}`;
 
     // Conversa: reaproveita a existente ou cria (whatsapp_conversas não aceita
