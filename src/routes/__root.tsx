@@ -43,6 +43,7 @@ import {
   FlaskConical,
   Menu,
   X,
+  ShieldCheck,
 } from "lucide-react";
 
 import appCss from "../styles.css?url";
