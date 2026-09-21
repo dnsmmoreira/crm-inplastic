@@ -219,7 +219,8 @@ const perfilSchema = z.object({
   id: z.string().uuid().optional(),
   nome: z.string().trim().min(2).max(80),
   descricao: z.string().trim().max(300).nullable(),
-  papel: z.enum(["Vendas", "Operacional", "Administrador"]),
+  /** Pergunta binária da UI: o perfil tem poderes de administrador? */
+  admin: z.boolean(),
   ativo: z.boolean(),
 });
 
@@ -230,8 +231,11 @@ export const savePerfil = createServerFn({ method: "POST" })
     await assertGerenciaUsuarios(context.supabase, context.userId);
     const sb = await admin();
     const ator = context.userId;
-    // base_role é DERIVADO do papel — nunca escolhido manualmente.
-    const baseRole = baseRoleDoPapel(data.papel);
+    // `base_role` vem direto da resposta binária; `papel` é mantido preenchido
+    // apenas por compatibilidade com a coluna legada.
+    const baseRole: "admin" | "vendedor" = data.admin ? "admin" : "vendedor";
+    const papel = papelDoAdmin(data.admin);
+
 
     if (!data.id) {
       const { data: novo, error } = await sb
