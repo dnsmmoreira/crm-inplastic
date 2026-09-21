@@ -275,7 +275,6 @@ export function UsuarioEditDialog({
           dados: {
             name: name.trim(),
             email: email.trim(),
-            cargo: cargoNome.trim() || null,
             cargoId: cargoId || null,
             gestorId: gestorId || null,
             equipeId: equipeId || null,
@@ -543,15 +542,6 @@ export function UsuarioEditDialog({
               )}
             </div>
 
-            <div className="space-y-1">
-              <Label>Papel</Label>
-              <div className="h-9 flex items-center rounded-md border border-input bg-muted/40 px-2 text-sm">
-                {perfis.find((p) => p.id === perfilId)?.papel ?? "—"}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Definido automaticamente pelo perfil de permissões.
-              </p>
-            </div>
 
             <div className="flex items-center justify-between rounded-lg border p-3">
               <div>

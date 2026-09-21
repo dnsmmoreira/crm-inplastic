@@ -316,7 +316,8 @@ const updateSchema = z.object({
     .object({
       name: z.string().trim().min(1).max(120),
       email: z.string().trim().email().max(255),
-      cargo: z.string().trim().max(120).nullable(),
+      /** Legado: aceito por compatibilidade, mas NÃO é gravado (derivado de cargo_id). */
+      cargo: z.string().trim().max(120).nullable().optional(),
       cargoId: z.string().uuid().nullable().optional(),
       gestorId: z.string().uuid().nullable().optional(),
       equipeId: z.string().uuid().nullable().optional(),
@@ -415,10 +416,11 @@ export const updateUsuario = createServerFn({ method: "POST" })
         audit.push({ campo: "email", anterior: atual.email, novo: emailNovo });
       }
 
-      // Cargo do catálogo manda no texto: `profiles.cargo` fica sempre em
-      // sincronia com `cargos.nome`. O cargo é informativo — não dá acesso.
-      let cargoTexto = d.cargo;
+      // `cargo_id` é a ÚNICA fonte de verdade. O texto `profiles.cargo` é
+      // derivado pelo trigger `profiles_cargo_texto` no banco — a aplicação
+      // não grava mais esse texto. O cargo é informativo — não dá acesso.
       const cargoId = d.cargoId ?? null;
+      let cargoTexto: string | null = null;
       if (cargoId) {
         const { data: cargoRow, error: cErr } = await sb
           .from("cargos")
@@ -429,6 +431,7 @@ export const updateUsuario = createServerFn({ method: "POST" })
         if (!cargoRow) throw new Error("Cargo inválido.");
         cargoTexto = cargoRow.nome;
       }
+
 
       // Representante precisa de gestor responsável (só para cópia de alertas).
       const gestorId = d.gestorId ?? null;
@@ -468,8 +471,9 @@ export const updateUsuario = createServerFn({ method: "POST" })
 
       const patch = {
         name: d.name,
-        cargo: cargoTexto,
+        // `cargo` (texto) NÃO é gravado: o trigger do banco o deriva de cargo_id.
         cargo_id: cargoId,
+
         gestor_id: gestorId,
         equipe_id: equipeId,
         supervisor_escopo: supervisorEscopo,

@@ -15,7 +15,11 @@ export type PermissaoCatalogo = {
   tipo: "booleana" | "numerica";
 };
 
-/** Rótulo de papel exibido na UI. O base_role (escopo de dados) é derivado dele. */
+/**
+ * Rótulo de papel legado (coluna `perfis.papel`). Mantido por compatibilidade:
+ * a UI hoje pergunta apenas se o perfil tem poderes de administrador, e o
+ * `papel` é preenchido automaticamente a partir dessa resposta.
+ */
 export type PapelRotulo = "Vendas" | "Operacional" | "Administrador";
 
 export const PAPEIS: PapelRotulo[] = ["Vendas", "Operacional", "Administrador"];
@@ -24,17 +28,25 @@ export function baseRoleDoPapel(papel: PapelRotulo): "admin" | "vendedor" {
   return papel === "Administrador" ? "admin" : "vendedor";
 }
 
+/** Resposta binária da UI → valores gravados em `perfis`. */
+export function papelDoAdmin(admin: boolean): PapelRotulo {
+  return admin ? "Administrador" : "Operacional";
+}
+
 export type PerfilRow = {
   id: string;
   nome: string;
   descricao: string | null;
   papel: PapelRotulo;
   baseRole: "admin" | "vendedor";
+  /** true quando o perfil concede poderes de administrador (base_role = admin). */
+  admin: boolean;
   ativo: boolean;
   usuarios: number;
   permissoes: number;
   protegido: boolean;
 };
+
 
 export type PerfilPermissaoRow = { chave: string; valorNumerico: number | null };
 
@@ -136,6 +148,8 @@ export const listPerfis = createServerFn({ method: "POST" })
       descricao: p.descricao,
       papel: (p.papel ?? "Vendas") as PapelRotulo,
       baseRole: p.base_role as "admin" | "vendedor",
+      admin: p.base_role === "admin",
+
       ativo: p.ativo !== false,
       usuarios: usuariosPorPerfil.get(p.id) ?? 0,
       permissoes: permsPorPerfil.get(p.id) ?? 0,
@@ -205,7 +219,8 @@ const perfilSchema = z.object({
   id: z.string().uuid().optional(),
   nome: z.string().trim().min(2).max(80),
   descricao: z.string().trim().max(300).nullable(),
-  papel: z.enum(["Vendas", "Operacional", "Administrador"]),
+  /** Pergunta binária da UI: o perfil tem poderes de administrador? */
+  admin: z.boolean(),
   ativo: z.boolean(),
 });
 
@@ -216,8 +231,11 @@ export const savePerfil = createServerFn({ method: "POST" })
     await assertGerenciaUsuarios(context.supabase, context.userId);
     const sb = await admin();
     const ator = context.userId;
-    // base_role é DERIVADO do papel — nunca escolhido manualmente.
-    const baseRole = baseRoleDoPapel(data.papel);
+    // `base_role` vem direto da resposta binária; `papel` é mantido preenchido
+    // apenas por compatibilidade com a coluna legada.
+    const baseRole: "admin" | "vendedor" = data.admin ? "admin" : "vendedor";
+    const papel = papelDoAdmin(data.admin);
+
 
     if (!data.id) {
       const { data: novo, error } = await sb
@@ -225,7 +243,7 @@ export const savePerfil = createServerFn({ method: "POST" })
         .insert({
           nome: data.nome,
           descricao: data.descricao,
-          papel: data.papel,
+          papel,
           base_role: baseRole,
           ativo: data.ativo,
         })
@@ -258,7 +276,7 @@ export const savePerfil = createServerFn({ method: "POST" })
       .update({
         nome: data.nome,
         descricao: data.descricao,
-        papel: data.papel,
+        papel,
         base_role: baseRole,
         ativo: data.ativo,
       })
@@ -272,7 +290,7 @@ export const savePerfil = createServerFn({ method: "POST" })
     await logAudit(sb, ator, ator, [
       { campo: `perfil:${atual.nome}:nome`, anterior: atual.nome, novo: data.nome },
       { campo: `perfil:${atual.nome}:descricao`, anterior: atual.descricao, novo: data.descricao },
-      { campo: `perfil:${atual.nome}:papel`, anterior: atual.papel, novo: data.papel },
+      { campo: `perfil:${atual.nome}:papel`, anterior: atual.papel, novo: papel },
       { campo: `perfil:${atual.nome}:base_role`, anterior: atual.base_role, novo: baseRole },
       {
         campo: `perfil:${atual.nome}:ativo`,
