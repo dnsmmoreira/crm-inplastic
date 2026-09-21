@@ -1,7 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
-import { assertNoError, assertRpcPermissao } from "@/lib/guard-erros";
+import { assertNoError } from "@/lib/guard-erros";
+import { resolverEscopo, type EscopoRelatorio } from "@/lib/relatorios.functions";
 import {
   agruparMotivos,
   resumirPorVendedor,
@@ -16,7 +17,8 @@ export type PeriodoPropostas = "30" | "90" | "180" | "ano";
 export type RelatorioPropostasResult = {
   periodo: PeriodoPropostas;
   desde: string;
-  isAdmin: boolean;
+  /** "todos" = empresa toda; "equipe" = vendedores da equipe (via RLS); "proprio" = só as suas. */
+  escopo: EscopoRelatorio;
   resumo: ResumoPropostas;
   motivos: MotivoRecusaAgregado[];
   vendedores: { owner_id: string; nome: string; resumo: ResumoPropostas }[];
