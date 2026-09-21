@@ -144,6 +144,24 @@ async function clientesPorLead(sb: LooseClient, ids: (string | null)[]) {
   return mapa;
 }
 
+/**
+ * Escopo explícito da faxina: empresa (null = sem filtro), equipe (ids da
+ * própria equipe) ou próprio (só o usuário). O RLS continua valendo por baixo;
+ * este filtro é a segunda tranca, para a tela nunca depender só da política.
+ */
+async function donosDoEscopo(sb: LooseClient, userId: string): Promise<string[] | null> {
+  const { resolverEscopo } = await import("@/lib/relatorios.functions");
+  const escopo = await resolverEscopo(sb, userId);
+  if (escopo === "todos") return null;
+  if (escopo === "proprio") return [userId];
+  const eu = await sb.from("profiles").select("equipe_id").eq("id", userId).maybeSingle();
+  const equipe = (eu?.data as { equipe_id: string | null } | null)?.equipe_id ?? null;
+  if (!equipe) return [userId];
+  const res = await sb.from("profiles").select("id").eq("equipe_id", equipe);
+  const ids = ((res?.data ?? []) as { id: string }[]).map((r) => r.id);
+  return ids.length > 0 ? ids : [userId];
+}
+
 export const listarPendenciasCadastro = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<PendenciasCadastro> => {
@@ -158,11 +176,16 @@ export const listarPendenciasCadastro = createServerFn({ method: "GET" })
       ),
     );
 
+    const donos = await donosDoEscopo(sb, userId);
+    /** Aplica o escopo de dono na consulta, quando ele não é de empresa. */
+    const comDono = (q: LooseClient, coluna: string) => (donos ? q.in(coluna, donos) : q);
+
     const agora = Date.now();
 
     // 1) Leads abertos sem CNPJ e sem cliente vinculado.
     const leadsP = secaoSegura<PendenciaLead>("pendencias.leads", async () => {
-      const res = await sb
+      const res = await comDono(
+        sb
         .from("leads")
         .select("id, company, contact_name, stage, owner_id, created_at, etapa_changed_at", {
           count: "exact",
@@ -171,7 +194,9 @@ export const listarPendenciasCadastro = createServerFn({ method: "GET" })
         .is("cliente_id", null)
         .or("cnpj.is.null,cnpj.eq.")
         .order("created_at", { ascending: true })
-        .limit(LIMITE);
+        .limit(LIMITE),
+        "owner_id",
+      );
       await assertNoError(res, "pendencias.leads");
       const raw = (res.data ?? []) as {
         id: string;
@@ -202,7 +227,8 @@ export const listarPendenciasCadastro = createServerFn({ method: "GET" })
 
     // 1b) Leads abertos cujo produto de interesse não está ligado ao catálogo.
     const leadsProdutoP = secaoSegura<PendenciaLeadProduto>("pendencias.leadsProduto", async () => {
-      const res = await sb
+      const res = await comDono(
+        sb
         .from("leads")
         .select("id, company, product, owner_id, created_at", { count: "exact" })
         .not("stage", "in", "(ganho,perdido)")
@@ -210,7 +236,9 @@ export const listarPendenciasCadastro = createServerFn({ method: "GET" })
         .not("product", "is", null)
         .neq("product", "")
         .order("created_at", { ascending: true })
-        .limit(LIMITE);
+        .limit(LIMITE),
+        "owner_id",
+      );
       await assertNoError(res, "pendencias.leadsProduto");
       const raw = (res.data ?? []) as {
         id: string;
@@ -264,13 +292,16 @@ export const listarPendenciasCadastro = createServerFn({ method: "GET" })
 
     // 3) Clientes ativos sem e-mail de NF.
     const clientesP = secaoSegura<PendenciaCliente>("pendencias.clientes", async () => {
-      const res = await sb
+      const res = await comDono(
+        sb
         .from("clientes")
         .select("id, razao_social, cnpj, vendedor_id, criado_em", { count: "exact" })
         .eq("ativo", true)
         .or("email_nf.is.null,email_nf.eq.")
         .order("criado_em", { ascending: true })
-        .limit(LIMITE);
+        .limit(LIMITE),
+        "vendedor_id",
+      );
       await assertNoError(res, "pendencias.clientes");
       const raw = (res.data ?? []) as {
         id: string;
@@ -322,7 +353,8 @@ export const listarPendenciasCadastro = createServerFn({ method: "GET" })
     // 4) Propostas em rascunho paradas há mais de 7 dias.
     const propostasP = secaoSegura<PendenciaProposta>("pendencias.propostas", async () => {
       const corte = new Date(agora - 7 * 86_400_000).toISOString();
-      const res = await sb
+      const res = await comDono(
+        sb
         .from("propostas")
         .select(
           "id, number, lead_id, owner_id, updated_at, discount_percent, acrescimo_percent",
@@ -331,7 +363,9 @@ export const listarPendenciasCadastro = createServerFn({ method: "GET" })
         .eq("status", "rascunho")
         .lt("updated_at", corte)
         .order("updated_at", { ascending: true })
-        .limit(LIMITE);
+        .limit(LIMITE),
+        "owner_id",
+      );
       await assertNoError(res, "pendencias.propostas");
       const raw = (res.data ?? []) as {
         id: string;
@@ -401,7 +435,8 @@ export const listarPendenciasCadastro = createServerFn({ method: "GET" })
     // última linha de `pedido_stage_history` com to_stage = 'pos_venda'
     // (fallback: `pedidos.updated_at`).
     const entregasP = secaoSegura<PendenciaEntrega>("pendencias.entregas", async () => {
-      const res = await sb
+      const res = await comDono(
+        sb
         .from("pedidos")
         .select(
           "id, number, lead_id, responsavel_atual_id, equipe_responsavel, created_at, updated_at",
@@ -411,7 +446,9 @@ export const listarPendenciasCadastro = createServerFn({ method: "GET" })
         .is("entrega_comprovada_em", null)
         .is("comprovacao_dispensada_em", null)
         .order("created_at", { ascending: true })
-        .limit(LIMITE);
+        .limit(LIMITE),
+        "responsavel_atual_id",
+      );
       await assertNoError(res, "pendencias.entregas");
       const base = (res.data ?? []) as {
         id: string;

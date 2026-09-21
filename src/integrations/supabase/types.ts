@@ -504,6 +504,7 @@ export type Database = {
       chat_canais: {
         Row: {
           criado_em: string
+          equipe_id: string | null
           id: string
           nome: string | null
           par_chave: string | null
@@ -511,6 +512,7 @@ export type Database = {
         }
         Insert: {
           criado_em?: string
+          equipe_id?: string | null
           id?: string
           nome?: string | null
           par_chave?: string | null
@@ -518,12 +520,21 @@ export type Database = {
         }
         Update: {
           criado_em?: string
+          equipe_id?: string | null
           id?: string
           nome?: string | null
           par_chave?: string | null
           tipo?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "chat_canais_equipe_id_fkey"
+            columns: ["equipe_id"]
+            isOneToOne: false
+            referencedRelation: "equipes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       chat_canal_membros: {
         Row: {
@@ -1000,6 +1011,7 @@ export type Database = {
         Row: {
           ativo: boolean
           created_at: string
+          dona_canal_whatsapp: boolean
           id: string
           nome: string
           updated_at: string
@@ -1007,6 +1019,7 @@ export type Database = {
         Insert: {
           ativo?: boolean
           created_at?: string
+          dona_canal_whatsapp?: boolean
           id?: string
           nome: string
           updated_at?: string
@@ -1014,6 +1027,7 @@ export type Database = {
         Update: {
           ativo?: boolean
           created_at?: string
+          dona_canal_whatsapp?: boolean
           id?: string
           nome?: string
           updated_at?: string
@@ -3859,6 +3873,10 @@ export type Database = {
         Args: { _outro_user_id: string }
         Returns: string
       }
+      chat_pode_conversar: {
+        Args: { _a: string; _b: string }
+        Returns: boolean
+      }
       chat_supervisao_conversas: {
         Args: never
         Returns: {
@@ -3921,7 +3939,19 @@ export type Database = {
           reaproveitada: boolean
         }[]
       }
+      equipe_do_usuario: { Args: { _user_id: string }; Returns: string }
+      equipe_dona_canal_whatsapp: { Args: never; Returns: string }
       ganhos_fora_do_placar: {
+        Args: { _periodo?: string }
+        Returns: {
+          avatar_color: string
+          ganhos_qtd: number
+          ganhos_valor: number
+          nome: string
+          vendedor_id: string
+        }[]
+      }
+      ganhos_fora_do_placar_escopo: {
         Args: { _periodo?: string }
         Returns: {
           avatar_color: string
@@ -3977,7 +4007,37 @@ export type Database = {
       next_ficha_coleta_number: { Args: { _year: number }; Returns: string }
       next_pedido_number: { Args: { _year: number }; Returns: string }
       next_proposta_number: { Args: { _year: number }; Returns: string }
+      placar_ve_tudo: { Args: { _user_id: string }; Returns: boolean }
       placar_vendedores: {
+        Args: { _periodo?: string }
+        Returns: {
+          avatar_color: string
+          carteira_45_60: number
+          carteira_60_mais: number
+          conversao: number
+          dias_sem_proposta: number
+          dias_sem_proposta_limite: number
+          ganhos_qtd: number
+          ganhos_valor: number
+          leads_contatados: number
+          meta_batida: boolean
+          meta_faixa: number
+          meta_pace_esperado_pct: number
+          meta_pct: number
+          meta_valor: number
+          nome: string
+          perdas_qtd: number
+          pos_venda_no_prazo_pct: number
+          posicao: number
+          propostas_qtd: number
+          score: number
+          score_periodo_anterior: number
+          slas_estourados: number
+          tempo_medio_primeira_resposta_min: number
+          vendedor_id: string
+        }[]
+      }
+      placar_vendedores_escopo: {
         Args: { _periodo?: string }
         Returns: {
           avatar_color: string
@@ -4059,6 +4119,11 @@ export type Database = {
         Args: { _chave: string; _user_id: string }
         Returns: number
       }
+      whatsapp_conversa_visivel: {
+        Args: { _atribuido: string; _lead_owner: string }
+        Returns: boolean
+      }
+      whatsapp_pode_atuar: { Args: { _conversa_id: string }; Returns: boolean }
     }
     Enums: {
       ai_action_type:

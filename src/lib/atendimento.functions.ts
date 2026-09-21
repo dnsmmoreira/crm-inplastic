@@ -9,6 +9,22 @@ import { PERM_WHATSAPP_ATENDER } from "@/lib/atendimento-espera";
 type SupabaseLike = any;
 
 /**
+ * Trava por equipe: a conversa só pode ser trabalhada por quem a enxerga pela
+ * regra do canal (mesma equipe do responsável; sem responsável, a equipe dona
+ * do canal de WhatsApp). Administrador passa sempre.
+ */
+async function assertPodeAtuarNaConversa(supabase: SupabaseLike, conversaId: string) {
+  const { data, error } = await supabase.rpc("whatsapp_pode_atuar", { _conversa_id: conversaId });
+  if (error) {
+    await registrarFalhaSegura("atendimento/whatsapp_pode_atuar", error, { conversa_id: conversaId });
+    throw new Error("Não foi possível confirmar o seu acesso a esta conversa.");
+  }
+  if (data !== true) {
+    throw new Error("Esta conversa não pertence à sua equipe.");
+  }
+}
+
+/**
  * Marca a conversa como "humano_atendendo", desliga a IA, garante a atribuição
  * ao usuário que assumiu e marca as notificações dessa conversa como lidas.
  * RLS: admin sempre pode; vendedor só se for dono do lead ou o atribuído.
@@ -18,6 +34,7 @@ export const assumirConversa = createServerFn({ method: "POST" })
   .inputValidator((data) => z.object({ conversaId: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    await assertPodeAtuarNaConversa(supabase, data.conversaId);
     const { data: atual } = await supabase
       .from("whatsapp_conversas")
       .select("atribuido_para")
@@ -63,6 +80,7 @@ export const devolverParaIA = createServerFn({ method: "POST" })
   .inputValidator((data) => z.object({ conversaId: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    await assertPodeAtuarNaConversa(supabase, data.conversaId);
 
     const { data: conversa, error: cErr } = await supabase
       .from("whatsapp_conversas")
@@ -124,6 +142,7 @@ export const encerrarConversa = createServerFn({ method: "POST" })
   .inputValidator((data) => z.object({ conversaId: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    await assertPodeAtuarNaConversa(supabase, data.conversaId);
     const { error } = await supabase
       .from("whatsapp_conversas")
       .update({ status: "encerrado", ia_ativa: false, requer_humano: false })
@@ -313,20 +332,36 @@ export const listarAtendentesParaTransferencia = createServerFn({ method: "GET" 
     }
     if (ids.length === 0) return [] as Array<{ id: string; name: string }>;
 
-    const perfisRes = await supabaseAdmin
+    // Só quem é da mesma equipe do ator pode aparecer como destino
+    // (administrador enxerga todos os atendentes).
+    const { data: souAdmin } = await supabase.rpc("has_role", {
+      _user_id: userId,
+      _role: "admin",
+    });
+    const { data: minhaEquipe } = await supabaseAdmin
+      .from("profiles")
+      .select("equipe_id")
+      .eq("id", userId)
+      .maybeSingle();
+
+    let query = supabaseAdmin
       .from("profiles")
       .select("id, name")
       .in("id", ids)
       .eq("ativo", true)
-      .is("deleted_at", null)
-      .order("name");
+      .is("deleted_at", null);
+    if (souAdmin !== true) {
+      const equipe = (minhaEquipe as { equipe_id: string | null } | null)?.equipe_id ?? null;
+      if (!equipe) return [] as Array<{ id: string; name: string }>;
+      query = query.eq("equipe_id", equipe);
+    }
+    const perfisRes = await query.order("name");
     if (perfisRes.error) {
       await registrarFalhaSegura("atendimento/listar-atendentes", perfisRes.error, {
         user_id: userId,
       });
       return [] as Array<{ id: string; name: string }>;
     }
-    void supabase;
     return (perfisRes.data ?? []).map((p) => ({ id: p.id, name: p.name as string }));
   });
 
@@ -367,6 +402,7 @@ export const transferirConversa = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    await assertPodeAtuarNaConversa(supabase, data.conversaId);
     const { podeTransferirConversa } = await import("@/lib/atendimento-espera");
 
     const { data: conversa, error: cErr } = await supabase
@@ -451,6 +487,7 @@ export const colocarConversaEmEspera = createServerFn({ method: "POST" })
   .inputValidator((data) => z.object({ conversaId: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    await assertPodeAtuarNaConversa(supabase, data.conversaId);
     const { podeGerenciarEspera } = await import("@/lib/atendimento-espera");
 
     const { data: conversa, error: cErr } = await supabase
@@ -485,6 +522,7 @@ export const retomarConversa = createServerFn({ method: "POST" })
   .inputValidator((data) => z.object({ conversaId: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    await assertPodeAtuarNaConversa(supabase, data.conversaId);
     const { podeGerenciarEspera } = await import("@/lib/atendimento-espera");
 
     const { data: conversa, error: cErr } = await supabase
