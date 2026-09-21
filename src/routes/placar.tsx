@@ -146,7 +146,12 @@ function PlacarPage() {
           {isLoading ? (
             <div className="p-6 text-sm text-muted-foreground">Carregando placar…</div>
           ) : vendedores.length === 0 ? (
-            <div className="p-6 text-sm text-muted-foreground">Nenhum vendedor cadastrado.</div>
+            <div className="space-y-1 p-6 text-sm text-muted-foreground">
+              <p className="font-medium text-foreground">
+                O placar da sua equipe ainda não está ativo.
+              </p>
+              <p>Fale com a gestão para entrar na ARENA e acompanhar o seu desempenho aqui.</p>
+            </div>
           ) : (
             <table className="w-full text-sm">
               <thead className="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground">
