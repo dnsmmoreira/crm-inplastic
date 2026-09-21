@@ -50,7 +50,8 @@ describe("trigger profiles_cargo_texto", () => {
 
 describe("a aplicação não grava o texto do cargo ao salvar usuário", () => {
   const fonte = readFileSync(join(RAIZ, "src/lib/usuarios.functions.ts"), "utf8");
-  const patch = fonte.slice(fonte.indexOf("const patch = {"), fonte.indexOf("audit.push("));
+  const iPatch = fonte.indexOf("const patch = {");
+  const patch = fonte.slice(iPatch, fonte.indexOf("};", iPatch));
 
   it("o patch de profiles usa cargo_id e não a coluna de texto", () => {
     expect(patch).toContain("cargo_id: cargoId,");
