@@ -1,35 +1,87 @@
-# Filtro por equipe em /equipe + selo de perfil no lugar do papel binário
+# Isolar a Maxicaixa da INPLASTIC
 
-## 1. Filtro por equipe na tela /equipe
+## Como foi verificado
 
-- `resumoEquipe` (`src/lib/equipe.functions.ts`) passa a aceitar `{ equipeId?: string }` (validado com zod, uuid opcional) e repassa para `coletarResumoEquipe`.
-- `coletarResumoEquipe` (`src/lib/equipe.server.ts`) ganha `opts.equipeId`; quando informado, adiciona `.eq("equipe_id", equipeId)` na query `qPessoas`.
-- **AND com a restrição de acesso:** o `.in("id", opts.userIds)` já existente continua sendo aplicado sempre. O filtro de equipe é encadeado depois, nunca substitui nem condiciona o `userIds` — comentário explícito no código dizendo que o filtro só reduz, jamais amplia o que a pessoa enxerga.
-- Filtro é server-side: a tela passa o `equipeId` na `queryKey` (`["equipe-resumo", equipeId]`) e refaz a busca, mantendo `data.totais` coerente.
-- `<select>` no cabeçalho de `EquipePage`, dentro do `div flex items-center justify-between gap-3 flex-wrap`, entre o `<h1>` e o botão "Cobrar todos com vencidos", classes `h-9 rounded-md border border-input bg-background px-2 text-sm`. Opções: "Todas as equipes" (valor vazio, padrão) + cada equipe ativa de `listEquipes`.
+Entrei no sistema com as contas reais (Lais e Carol) e medi, tela por tela, o que cada uma
+enxerga hoje. Não é estimativa: é o que apareceu na tela e o que o banco devolveu para o
+login delas.
 
-### Seção "Carteira" — como o filtro mapeia (ponto que você pediu para eu avisar)
+## Varredura — o que vaza hoje
 
-`relatorioCarteira` não lista pessoas: lista leads (por `owner_id`) e devoluções do `xerife_log` (por `vendedor_id`). Não existe `equipe_id` nessas linhas, então o filtro não é um `.eq` direto. Proposta: quando `equipeId` vier, resolver primeiro os ids das pessoas daquela equipe (mesma query de `profiles`, ativa e não excluída, já cruzada com a restrição de acesso) e filtrar os leads por `owner_id in (ids)` e as devoluções por `vendedor_id in (ids)`.
+| Tela / recurso | Vaza? | Por quê |
+| --- | --- | --- |
+| Início (dashboard) — card Placar | **SIM** | O placar é montado por uma rotina do banco que roda com poderes elevados e não olha equipe. Lais vê BIANCA, DANIEL, BEATRIZ, PAMELA. |
+| Início — pipeline, faturamento, conversão, funil, mix, tendência, tarefas, agenda | Não | Tudo zerado para a Lais: as regras de acesso por dono/equipe funcionam. |
+| Placar de Vendedores (`/placar`) | **SIM** | Mesma rotina do card. Ranking completo da INPLASTIC, com valores fechados. |
+| Chat Interno | **SIM** | Os 5 da Maxicaixa estão no canal "Grupo Comercial" (li as mensagens internas da INPLASTIC na tela da Lais) e a lista de conversas diretas oferece as 13 pessoas da empresa. Causa: o gatilho que põe todo mundo no mesmo grupo e a rotina que lista colegas sem filtrar equipe. |
+| WhatsApp — `/conversas` e `/atendimento-ia` | **SIM, e é o pior caso** | O perfil Vendedor tem a permissão de atender WhatsApp, e a regra de acesso libera **todas** as conversas para quem tem essa permissão. Medido com a conta da Carol: **231 conversas e 3.381 mensagens** de clientes da INPLASTIC. Lais não tem essa permissão, por isso vê zero — mas Carol, Bertuolo, Luciano e Kelly Maxicaixa veem tudo. |
+| Pendências de cadastro (`/pendencias`) | **Não vaza hoje** | Abri a tela logada como Lais: todas as seções em 0. A consulta usa o acesso da própria pessoa e as regras de equipe bloqueiam. Os 102 leads de Daniel/Beatriz não apareceram para ela. Provavelmente o que foi visto era a tela de um administrador. Ainda assim vamos amarrar o escopo explícito, como pedido. |
+| Funil de vendas, Leads, Clientes, Propostas, Pedidos, Contatos, Fichas de Coleta, Tarefas, Minha Agenda, Relatórios | Não | Todos vazios para a Lais — regras por dono/equipe cobrem. |
+| `/equipe` | Não vaza, mas **trava** | Fica em "Carregando a equipe…" para sempre, porque a Lais não tem liderados e a função recusa o acesso sem mensagem. |
+| Representantes, Licitações, ARENA | Não | Bloqueiam por permissão, com aviso correto. |
+| Notificações (sino) | Não | Cada pessoa só vê as próprias. |
+| Estoque / catálogo de produtos | Vê o catálogo da INPLASTIC (98 itens) | Catálogo é liberado para qualquer pessoa logada. **Precisa de decisão sua** (ver abaixo). |
+| Transportadoras (6), lista de equipes (3), condições de pagamento, tabela DIFAL | Vê tudo | Cadastros compartilhados, liberados para qualquer pessoa logada. **Decisão sua.** |
+| Busca global | Não existe no sistema | — |
 
-Consequência a registrar: em "dono divergente", o par lead/cliente pode atravessar equipes (lead de um vendedor da equipe A com cliente na carteira de alguém da equipe B). Com o filtro, a linha aparece quando o **dono atual do lead** é da equipe selecionada — é o critério coerente com o resto da tela (que é sempre "por pessoa responsável"). Se você preferir o critério pelo dono da carteira, diga e eu inverto.
+## O que vamos fazer
 
-## 2. Selo mostra o perfil de acesso, não o papel binário
+### 1. Placar por equipe
+A rotina do placar passa a usar a equipe de quem está olhando: quem tem visão de empresa
+(administrador ou permissão de ver tudo) continua vendo todo mundo; quem é de uma equipe vê
+só os vendedores da própria equipe. Vale para o card do Início e para a tela do placar.
 
-**a) `listUsuarios` (`src/lib/usuarios.functions.ts`)** — adicionar ao `Promise.all` uma consulta em `user_perfis` com join `perfis(nome, base_role, ativo)`, mapa por `user_id` considerando só perfis ativos. `UsuarioRow` ganha `perfilNome: string | null` e `perfilBaseRole: "admin" | "vendedor" | null`. O campo `role` existente permanece intocado.
+**Como fica a Maxicaixa:** hoje nenhum dos 5 está inscrito na ARENA, então o placar deles
+fica **vazio** — e é isso que queremos, em vez da INPLASTIC. Estado vazio proposto:
+"O placar da sua equipe ainda não está ativo. Fale com a gestão para entrar na ARENA." —
+sem tabela, sem pódio, sem número de outra equipe.
 
-**b) `src/routes/usuarios.tsx`, selo na lista** — passa a exibir `r.perfilNome`; ícone `Shield` quando `perfilBaseRole === "admin"`, senão `UserIcon`. Sem perfil: `Badge variant="destructive"` com "Sem perfil" e ícone de alerta.
+### 2. Chat Interno
+- Criar o grupo "Grupo Maxicaixa" e colocar os 5 nele.
+- Tirar os 5 da lista de membros do "Grupo Comercial" (só a participação; **nenhuma mensagem
+  é apagada**).
+- O gatilho de entrada automática passa a colocar a pessoa no grupo da própria equipe
+  (cada equipe ganha o seu grupo; quem não tem equipe não entra em grupo nenhum).
+- A lista de conversas diretas passa a mostrar: colegas da mesma equipe **+ o gestor da
+  pessoa**. Abrir conversa direta com quem está fora dessa lista passa a ser recusado.
+- O painel de supervisão do Denis continua vendo tudo, sem mudança.
 
-**c) Filtro do topo** — o `<select>` de papéis vira filtro por perfil: "Todos os perfis" + um item por perfil ativo (mesma fonte já usada na criação de usuário) + "Sem perfil". O predicado em `filtrados` compara `r.perfilNome` em vez de `r.role`.
+### 3. WhatsApp (novo achado, mais grave)
+A liberação de conversas deixa de ser "tem permissão de atender → vê tudo" e passa a ser
+"tem permissão de atender **e** a conversa é da própria equipe" (pelo dono do lead ou pelo
+responsável da conversa), com visão de empresa preservada para administradores. Mesma regra
+para as mensagens.
 
-**d) `FilaVendedoresCard`** — `<option>{v.name} ({v.role})</option>` passa a mostrar só o nome da pessoa (o perfil não agrega nada na escolha de quem entra na fila). O tipo local `Row` dessa parte carrega o que for necessário.
+### 4. Pendências de cadastro
+Passa a usar o mesmo escopo de três estados dos Relatórios (empresa / equipe / próprio),
+filtrando explicitamente por dono, além das regras do banco.
 
-**e) `UserBadge` em `src/routes/__root.tsx`** — mostra `user.perfilNome` (fallback "Sem perfil"). Em `src/hooks/use-auth.tsx`, o select já existente em `user_perfis` (`perfis!inner(ativo)`) passa a trazer `perfis(nome, base_role, ativo)`; `AuthUser` ganha `perfilNome: string | null`. Nenhuma consulta nova.
+### 5. `/equipe`
+Trocar o carregamento infinito por um aviso claro quando a pessoa não tem equipe sob sua
+responsabilidade.
 
-## Fora do escopo
+## Decisão sua antes de implementar
 
-Campo "Papel" do `UsuarioEditDialog` intocado. Nenhuma mudança de permissão, RLS ou banco — nada é necessário.
+1. **Catálogo, estoque, transportadoras, condições de pagamento e DIFAL**: hoje a Maxicaixa
+   vê tudo da INPLASTIC. Separo também (cada equipe com o seu), deixo compartilhado, ou só o
+   catálogo de produtos fica compartilhado?
+2. **Lista de equipes**: a Maxicaixa consegue ver que existem 3 equipes (só os nomes). Ocultar?
 
-## Verificação
+## Detalhes técnicos
 
-Suíte completa, typecheck e build. Nada publicado.
+- `placar_vendedores` e `ganhos_fora_do_placar` (SECURITY DEFINER) ganham filtro por
+  `profiles.equipe_id` do `auth.uid()`, com bypass para `has_role(admin)`, permissão
+  `pedidos.ver_todos` ou `supervisor_ve_tudo`.
+- `chat_canais` ganha `equipe_id`; `tg_profiles_entra_no_grupo_comercial` passa a resolver o
+  canal pelo `equipe_id` do profile; `chat_listar_colegas` filtra por `mesma_equipe` +
+  `gestor_id` + `chat_supervisor_id()`; `chat_obter_ou_criar_canal_direto` valida a mesma
+  regra antes de criar o canal. `DELETE` só em `chat_canal_membros` — nunca em
+  `chat_mensagens`.
+- Policies `conversas select atendentes` e `mensagens select atendentes` passam a exigir
+  `mesma_equipe(auth.uid(), <dono do lead ou atribuído>)` além da permissão.
+- `listarPendenciasCadastro` usa `resolverEscopo` (chaves `leads.ver_todos` /
+  `leads.ver_equipe`) e aplica `in(owner_id, ...)` conforme o escopo.
+- Testes: casos de regressão para o filtro do placar, para a lista de colegas do chat e para
+  o escopo de pendências; e um teste que roda contra o banco conferindo que nenhum membro da
+  Maxicaixa é membro do Grupo Comercial.
+- Entrego typecheck, suíte e build com a saída real. Não publico nada.
