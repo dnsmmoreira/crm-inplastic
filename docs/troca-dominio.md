@@ -39,9 +39,24 @@ curl -sS "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/getWebhookInfo"
 
 ## WhatsApp / Meta (NÃO executado — fazer junto com o Denis)
 
-Estado lido: o app "CRM INPLASTIC" (id `1510929654051780`) está inscrito na conta
-WhatsApp Business; o token de verificação existe (`META_WEBHOOK_VERIFY_TOKEN`) e o
-handshake contra o endereço técnico já foi provado (devolveu o desafio, HTTP 200).
+Estado lido em 21/09 (`GET /1510929654051780/subscriptions`): objeto
+`whatsapp_business_account`, assinatura ativa em
+`https://crm.inplastic.com.br/api/public/hooks/whatsapp-cloud`, com **três** campos
+assinados (todos na versão v26.0):
+
+- `messages`
+- `message_template_status_update`
+- `phone_number_quality_update`
+
+Os comandos abaixo reenviam exatamente esses três campos — enviar só `messages`
+derrubaria os outros dois. Reler a lista antes de trocar:
+
+```bash
+curl -sS "https://graph.facebook.com/$META_GRAPH_VERSION/1510929654051780/subscriptions?access_token=1510929654051780|$META_APP_SECRET"
+```
+
+O token de verificação existe (`META_WEBHOOK_VERIFY_TOKEN`) e o handshake contra o
+endereço técnico já foi provado (devolveu o desafio, HTTP 200).
 
 Antes de trocar, repetir a prova:
 
@@ -58,8 +73,8 @@ curl -sS -X POST "https://graph.facebook.com/$META_GRAPH_VERSION/151092965405178
   -d "object=whatsapp_business_account" \
   -d "callback_url=https://project--485ac5c1-f718-452a-bd55-8c46d65a25ea.lovable.app/api/public/hooks/whatsapp-cloud" \
   -d "verify_token=$META_WEBHOOK_VERIFY_TOKEN" \
-  -d "fields=messages" \
-  -d "access_token=$META_APP_ID|$META_APP_SECRET"
+  -d "fields=messages,message_template_status_update,phone_number_quality_update" \
+  -d "access_token=1510929654051780|$META_APP_SECRET"
 ```
 
 VOLTA (mesmo comando com o endereço antigo):
@@ -69,8 +84,8 @@ curl -sS -X POST "https://graph.facebook.com/$META_GRAPH_VERSION/151092965405178
   -d "object=whatsapp_business_account" \
   -d "callback_url=https://crm.inplastic.com.br/api/public/hooks/whatsapp-cloud" \
   -d "verify_token=$META_WEBHOOK_VERIFY_TOKEN" \
-  -d "fields=messages" \
-  -d "access_token=$META_APP_ID|$META_APP_SECRET"
+  -d "fields=messages,message_template_status_update,phone_number_quality_update" \
+  -d "access_token=1510929654051780|$META_APP_SECRET"
 ```
 
 Conferência depois da troca: enviar uma mensagem real de cliente e ver a conversa
