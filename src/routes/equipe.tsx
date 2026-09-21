@@ -68,9 +68,17 @@ function resumoTexto(l: LinhaEquipe): string {
 function EquipePage() {
   const qc = useQueryClient();
   const carregar = useServerFn(resumoEquipe);
+  const carregarEquipes = useServerFn(listEquipes);
+  // "" = todas as equipes (comportamento padrão, igual ao de antes).
+  const [equipeId, setEquipeId] = useState("");
+  const equipesQ = useQuery({
+    queryKey: ["equipe-lista-ativas"],
+    queryFn: () => carregarEquipes(),
+    staleTime: 300_000,
+  });
   const { data, isLoading, error } = useQuery({
-    queryKey: ["equipe-resumo"],
-    queryFn: () => carregar(),
+    queryKey: ["equipe-resumo", equipeId],
+    queryFn: () => carregar({ data: { equipeId: equipeId || null } }),
     staleTime: 60_000,
   });
   const [aberta, setAberta] = useState<string | null>(null);
