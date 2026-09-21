@@ -3,26 +3,7 @@ import { registrarFalhaSegura } from "@/lib/guard-erros";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
 import { PERM_WHATSAPP_ATENDER } from "@/lib/atendimento-espera";
-
-/** Client Supabase autenticado do contexto (tipagem local, sem acoplar ao gerado). */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type SupabaseLike = any;
-
-/**
- * Trava por equipe: a conversa só pode ser trabalhada por quem a enxerga pela
- * regra do canal (mesma equipe do responsável; sem responsável, a equipe dona
- * do canal de WhatsApp). Administrador passa sempre.
- */
-async function assertPodeAtuarNaConversa(supabase: SupabaseLike, conversaId: string) {
-  const { data, error } = await supabase.rpc("whatsapp_pode_atuar", { _conversa_id: conversaId });
-  if (error) {
-    await registrarFalhaSegura("atendimento/whatsapp_pode_atuar", error, { conversa_id: conversaId });
-    throw new Error("Não foi possível confirmar o seu acesso a esta conversa.");
-  }
-  if (data !== true) {
-    throw new Error("Esta conversa não pertence à sua equipe.");
-  }
-}
+import { assertPodeAtuarNaConversa } from "@/lib/whatsapp-guard";
 
 /**
  * Marca a conversa como "humano_atendendo", desliga a IA, garante a atribuição
