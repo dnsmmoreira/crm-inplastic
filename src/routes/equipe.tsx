@@ -319,7 +319,10 @@ function Contagem({ label, valor }: { label: string; valor: number }) {
 function SecaoCarteira() {
   const qc = useQueryClient();
   const carregar = useServerFn(relatorioCarteira);
-  const q = useQuery({ queryKey: ["carteira-equipe"], queryFn: () => carregar() });
+  const q = useQuery({
+    queryKey: ["carteira-equipe", equipeId],
+    queryFn: () => carregar({ data: { equipeId: equipeId || null } }),
+  });
   const [alvo, setAlvo] = useState<LinhaCarteira | null>(null);
 
   if (q.isLoading) {
