@@ -60,17 +60,32 @@ export async function assertPermissao(
   throw new Error(mensagem);
 }
 
+/** Escopo de leitura dos relatórios. */
+export type EscopoRelatorio = "todos" | "equipe" | "proprio";
+
 /**
- * Escopo do relatório: quem não tem `pedidos.ver_todos` (vendedor comum) só
- * enxerga os próprios pedidos — o filtro é aplicado no servidor, além do RLS.
+ * Escopo do relatório, na mesma ordem das policies de RLS:
+ * `pedidos.ver_todos` → todos; senão `pedidos.ver_equipe` → equipe; senão próprio.
+ * No escopo "equipe" nenhum filtro de dono é aplicado no código — as policies
+ * `pedidos/propostas/leads select ver_equipe` já limitam à equipe do usuário,
+ * pois a consulta roda com o token dele.
  */
-export async function escopoProprio(sb: LooseClient, userId: string): Promise<boolean> {
-  const data = await assertRpcPermissao(
+export async function resolverEscopo(
+  sb: LooseClient,
+  userId: string,
+): Promise<EscopoRelatorio> {
+  const todos = await assertRpcPermissao(
     await sb.rpc("tem_permissao", { _user_id: userId, _chave: "pedidos.ver_todos" }),
-    "relatorios.escopoProprio/tem_permissao",
+    "relatorios.resolverEscopo/ver_todos",
     { userId },
   );
-  return data !== true;
+  if (todos === true) return "todos";
+  const equipe = await assertRpcPermissao(
+    await sb.rpc("tem_permissao", { _user_id: userId, _chave: "pedidos.ver_equipe" }),
+    "relatorios.resolverEscopo/ver_equipe",
+    { userId },
+  );
+  return equipe === true ? "equipe" : "proprio";
 }
 
 
