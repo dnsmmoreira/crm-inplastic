@@ -65,7 +65,7 @@ export function PerfisPermissoesPanel() {
     id?: string;
     nome: string;
     descricao: string;
-    papel: "Vendas" | "Operacional" | "Administrador";
+    admin: boolean;
     ativo: boolean;
   }>(null);
 
@@ -161,7 +161,7 @@ export function PerfisPermissoesPanel() {
           id: form.id,
           nome: form.nome.trim(),
           descricao: form.descricao.trim() || null,
-          papel: form.papel,
+          admin: form.admin,
           ativo: form.ativo,
         },
       });
@@ -195,7 +195,7 @@ export function PerfisPermissoesPanel() {
     setBusy(p.id);
     try {
       await gravarPerfil({
-        data: { id: p.id, nome: p.nome, descricao: p.descricao, papel: p.papel, ativo },
+        data: { id: p.id, nome: p.nome, descricao: p.descricao, admin: p.admin, ativo },
       });
       toast.success(ativo ? "Perfil ativado" : "Perfil desativado");
       await load();
@@ -214,7 +214,7 @@ export function PerfisPermissoesPanel() {
           <Button
             size="sm"
             variant="outline"
-            onClick={() => setForm({ nome: "", descricao: "", papel: "Vendas", ativo: true })}
+            onClick={() => setForm({ nome: "", descricao: "", admin: false, ativo: true })}
           >
             <Plus className="h-4 w-4 mr-1" /> Novo
           </Button>
@@ -239,7 +239,7 @@ export function PerfisPermissoesPanel() {
                     <Shield className="h-4 w-4 text-muted-foreground shrink-0" />
                     <span className="font-medium truncate">{p.nome}</span>
                     <Badge variant={p.baseRole === "admin" ? "default" : "secondary"} className="text-[10px]">
-                      {p.papel}
+                      {p.admin ? "Administrador" : "Padrão"}
                     </Badge>
                     {!p.ativo && <Badge variant="outline" className="text-[10px]">inativo</Badge>}
                   </div>
@@ -282,7 +282,7 @@ export function PerfisPermissoesPanel() {
                           id: perfilAtual.id,
                           nome: perfilAtual.nome,
                           descricao: perfilAtual.descricao ?? "",
-                          papel: perfilAtual.papel,
+                          admin: perfilAtual.admin,
                           ativo: perfilAtual.ativo,
                         })
                       }
@@ -371,7 +371,7 @@ export function PerfisPermissoesPanel() {
           <DialogHeader>
             <DialogTitle>{form?.id ? "Editar perfil" : "Novo perfil"}</DialogTitle>
             <DialogDescription>
-              O papel define o escopo de dados do usuário e é aplicado a quem tiver este perfil.
+              O perfil define as permissões de quem estiver vinculado a ele.
             </DialogDescription>
           </DialogHeader>
           {form && (
@@ -394,27 +394,19 @@ export function PerfisPermissoesPanel() {
                   onChange={(e) => setForm({ ...form, descricao: e.target.value })}
                 />
               </div>
-              <div className="space-y-1">
-                <Label htmlFor="pf-papel">Papel</Label>
-                <select
-                  id="pf-papel"
-                  value={form.papel}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      papel: e.target.value as "Vendas" | "Operacional" | "Administrador",
-                    })
-                  }
-                  className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
-                >
-                  <option value="Vendas">Vendas</option>
-                  <option value="Operacional">Operacional</option>
-                  <option value="Administrador">Administrador</option>
-                </select>
-                <p className="text-xs text-muted-foreground">
-                  O escopo de dados é derivado do papel: Administrador → admin; Vendas e
-                  Operacional → vendedor.
-                </p>
+              <div className="flex items-start justify-between gap-3 rounded-lg border p-3">
+                <div className="space-y-1">
+                  <Label htmlFor="pf-admin">Perfil com poderes de administrador</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Concede acesso administrativo amplo — inclusive exclusões de registros e
+                    telas de sistema. Deixe desligado para perfis operacionais e de vendas.
+                  </p>
+                </div>
+                <Switch
+                  id="pf-admin"
+                  checked={form.admin}
+                  onCheckedChange={(v) => setForm({ ...form, admin: v })}
+                />
               </div>
               <div className="flex items-center justify-between rounded-lg border p-3">
                 <div className="text-sm font-medium">Perfil ativo</div>
