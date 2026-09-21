@@ -83,7 +83,7 @@ export const getPlacar = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const [rankRes, roleRes] = await Promise.all([
-      supabase.rpc("placar_vendedores" as any, { _periodo: data.periodo }),
+      supabase.rpc("placar_vendedores_escopo" as any, { _periodo: data.periodo }),
       supabase.rpc("has_role" as any, { _user_id: userId, _role: "admin" }),
     ]);
     if (rankRes.error) throw new Error(rankRes.error.message);
@@ -339,7 +339,7 @@ export const getGanhosForaDoPlacar = createServerFn({ method: "GET" })
       { userId },
     );
     if (!isAdmin) return [];
-    const { data: rows, error } = await supabase.rpc("ganhos_fora_do_placar" as any, {
+    const { data: rows, error } = await supabase.rpc("ganhos_fora_do_placar_escopo" as any, {
       _periodo: data.periodo,
     });
     if (error) throw new Error(error.message);

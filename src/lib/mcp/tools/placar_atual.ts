@@ -3,7 +3,7 @@ import { defineTool, type ToolContext } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 
 /**
- * Placar atual — usa a RPC `placar_vendedores`, que já é SECURITY DEFINER e
+ * Placar atual — usa a RPC `placar_vendedores_escopo`, que já é SECURITY DEFINER e
  * respeita o próprio filtro interno (admin vê tudo; vendedor vê a si mesmo).
  * A regra de privacidade de metas/valores individuais é da UI; via MCP
  * autenticado como admin, todos os campos ficam disponíveis.
@@ -29,7 +29,7 @@ export default defineTool({
         auth: { persistSession: false, autoRefreshToken: false },
       },
     );
-    const { data, error } = await supabase.rpc("placar_vendedores", { _periodo: periodo ?? "mes" });
+    const { data, error } = await supabase.rpc("placar_vendedores_escopo", { _periodo: periodo ?? "mes" });
     if (error) return { content: [{ type: "text", text: `Erro: ${error.message}` }], isError: true };
 
     const rows = (data ?? []) as any[];
