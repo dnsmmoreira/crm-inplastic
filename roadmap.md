@@ -1,3 +1,10 @@
+## Relatórios por equipe (Supervisor ADM) — concluído, não publicado
+- [x] Permissão `relatorios.ver` concedida ao perfil Supervisor ADM
+- [x] Escopo de 3 estados (`todos`/`equipe`/`proprio`) em Pedidos, Propostas e Processo
+- [x] "Pedidos em Aberto" continua exigindo `pedidos.ver_todos`
+- [x] Filtro por vendedor em Propostas também no escopo equipe
+- [x] Aguardando revisão do diff (não publicar)
+
 ## Chat Interno — Grupo Comercial + anexos (concluído, não publicado)
 - [x] Canal 'grupo' + "Grupo Comercial" com todos os ativos e entrada automática
 - [x] Anexos (15 MB, imagem/PDF/office/csv) no bucket privado chat-anexos com RLS por membro
