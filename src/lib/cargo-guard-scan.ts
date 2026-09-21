@@ -20,6 +20,7 @@ const TOKEN = /(?<![A-Za-z0-9_])cargo(?![A-Za-z0-9_])/g;
 
 /** Arquivos onde `cargo` é de OUTRA tabela ou é gerado — fora do escopo. */
 export const IGNORADOS = [
+  "src/lib/cargo-guard-scan.ts", // este próprio arquivo (documenta a regra)
   "src/components/contatos/ContatosSection.tsx", // contatos.cargo
   "src/lib/contatos.functions.ts", // contatos.cargo
   "src/routes/contatos.tsx", // contatos.cargo
