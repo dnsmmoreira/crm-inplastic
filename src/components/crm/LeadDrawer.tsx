@@ -1327,21 +1327,11 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
                   },
                 });
                 if (check.situacao === "duplicado") {
-                  toast.error(
-                    check.restrito
-                      ? "Já existe cadastro deste CNPJ. Fale com o administrador."
-                      : `Este contato já é de ${check.vendedorNome ?? "outro vendedor"}${
-                          check.empresa ? ` (${check.empresa})` : ""
-                        }. Continue o atendimento no cadastro existente.`,
-                  );
+                  toast.error(mensagemDonoDuplicado(check.dono), { duration: 12_000 });
                   return;
                 }
                 if (check.situacao === "suspeita") {
-                  toast.warning(
-                    check.restrito
-                      ? "Já existe cadastro com nome parecido. Fale com o administrador."
-                      : `Existe um cadastro com nome parecido${check.empresa ? `: "${check.empresa}"` : ""}. Confira antes de duplicar.`,
-                  );
+                  toast.warning(mensagemNomeParecido(check.dono), { duration: 10_000 });
                 }
               } catch {
                 // Checagem indisponível não pode impedir o cadastro.
