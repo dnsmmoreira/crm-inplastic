@@ -47,7 +47,9 @@ const VENDEDOR_PERMISSIONS: UserPermissions = {
 
 export class ContaInativaError extends Error {
   constructor() {
-    super("Sua conta está inativa. Fale com um administrador.");
+    // Mensagem única: vale para login e para QUALQUER sessão (inclusive a
+    // criada pelo link de recuperação), que é encerrada logo em seguida.
+    super("Conta desativada. Fale com o administrador.");
     this.name = "ContaInativaError";
   }
 }
