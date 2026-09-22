@@ -619,6 +619,25 @@ export const getFichaColetaPublica = createServerFn({ method: "POST" })
 
     const snap = (f.snapshot ?? {}) as Record<string, any>;
     const itens = Array.isArray(snap.itens) ? snap.itens : [];
+
+    // Cancelada: o motorista só precisa saber que não vale mais.
+    // Nada da carga (itens, peso, cubagem, cliente, transportadora).
+    if (f.status === "cancelada") {
+      return {
+        numero: f.numero,
+        status: f.status as FichaStatus,
+        emitida_em: null,
+        pedido_numero: snap.pedido?.number ?? null,
+        cliente: null,
+        transportadora: null,
+        endereco_coleta: null,
+        horario_coleta: null,
+        peso_total_kg: 0,
+        cubagem_m3: 0,
+        itens: [],
+      };
+    }
+
     return {
       numero: f.numero,
       status: f.status as FichaStatus,

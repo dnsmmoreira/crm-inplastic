@@ -60,24 +60,32 @@ function FichaColetaPublica() {
             Situação: <Badge>{FICHA_STATUS_LABEL[f.status]}</Badge>
           </div>
           <div>Pedido: {f.pedido_numero ?? "—"}</div>
-          <div>Destinatário: {f.cliente ?? "—"}</div>
-          <div>Transportadora: {f.transportadora ?? "—"}</div>
-          {f.endereco_coleta && <div>Endereço de coleta: {f.endereco_coleta}</div>}
-          {f.horario_coleta && <div>Horário de coleta: {f.horario_coleta}</div>}
-          <div>
-            Carga: {formatarPeso(f.peso_total_kg)} · {formatarCubagem(f.cubagem_m3)}
-          </div>
-          <div>
-            <div className="font-medium mb-1">Itens</div>
-            <ul className="list-disc pl-5 space-y-0.5">
-              {f.itens.map((i, idx) => (
-                <li key={idx}>
-                  {i.quantidade} {i.unidade ?? ""} — {i.descricao}
-                  {i.sku ? ` (${i.sku})` : ""}
-                </li>
-              ))}
-            </ul>
-          </div>
+          {f.status === "cancelada" ? (
+            <p className="text-destructive font-medium">
+              Esta ficha foi cancelada e não autoriza a coleta.
+            </p>
+          ) : (
+            <>
+              <div>Destinatário: {f.cliente ?? "—"}</div>
+              <div>Transportadora: {f.transportadora ?? "—"}</div>
+              {f.endereco_coleta && <div>Endereço de coleta: {f.endereco_coleta}</div>}
+              {f.horario_coleta && <div>Horário de coleta: {f.horario_coleta}</div>}
+              <div>
+                Carga: {formatarPeso(f.peso_total_kg)} · {formatarCubagem(f.cubagem_m3)}
+              </div>
+              <div>
+                <div className="font-medium mb-1">Itens</div>
+                <ul className="list-disc pl-5 space-y-0.5">
+                  {f.itens.map((i, idx) => (
+                    <li key={idx}>
+                      {i.quantidade} {i.unidade ?? ""} — {i.descricao}
+                      {i.sku ? ` (${i.sku})` : ""}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>
