@@ -50,13 +50,14 @@ async function auditar(
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     // REGISTRAR E SEGUIR: auditoria nunca derruba o fluxo de convite, mas a
     // perda de trilha precisa ficar visível em /falhas.
+    // Colunas reais da tabela: alvo_user_id / ator_user_id (nunca user_id / alterado_por).
     const ins = await supabaseAdmin.from("user_audit_log").insert({
-      user_id: userId,
-      alterado_por: autorId,
+      alvo_user_id: userId,
+      ator_user_id: autorId,
       campo,
       valor_anterior: null,
       valor_novo: novo,
-    } as never);
+    });
     if (ins.error) {
       await registrarFalhaSegura("invites.auditoria", ins.error, { user_id: userId, campo });
     }
