@@ -23,10 +23,11 @@ Pendente com o Denis: senha do Luciano; catálogo/estoque/transportadoras/DIFAL 
 - [ ] Provas: contagens iguais para Lais, Ana, Pamela e admin; typecheck/suíte/build
 
 ## Esqueci minha senha (set/2026)
-- [ ] Link + painel de recuperação na tela de login (resposta sempre genérica)
-- [ ] /definir-senha: bloqueio de conta inativa, limpa senha_reset_exigido, entra no CRM
-- [ ] Link usado/expirado: mensagem em português + botão "Pedir novo link"
-- [ ] Sessão de conta desativada encerrada em qualquer origem
-- [ ] Limite por e-mail e por IP + auditoria em user_audit_log
-- [ ] E-mails de autenticação em português com a marca do CRM
-- [ ] Provas: typecheck, suíte e build com saída real
+- [x] Link + painel de recuperação na tela de login (resposta sempre genérica)
+- [x] /definir-senha: bloqueio de conta inativa, limpa senha_reset_exigido, entra no CRM
+- [x] Link usado/expirado: mensagem em português + botão "Pedir novo link"
+- [x] Sessão de conta desativada encerrada em qualquer origem (ContaInativaError no AuthProvider)
+- [x] Limite por e-mail (3/15min) e por IP (10/15min) + auditoria em user_audit_log
+- [x] E-mails de autenticação em português com a marca do CRM
+- [x] Provas: typecheck, suíte e build com saída real
+- [ ] Pendente com o Denis: registros de DNS do remetente próprio (entrega fora do spam)
