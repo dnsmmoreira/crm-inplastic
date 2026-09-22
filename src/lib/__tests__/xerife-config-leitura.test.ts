@@ -58,7 +58,9 @@ describe("leitura de xerife_config", () => {
   });
 
   it("os pesos do placar nunca aparecem na função operacional", () => {
-    const helper = readFileSync("src/lib/xerife-config-operacional.ts", "utf8");
+    const bruto = readFileSync("src/lib/xerife-config-operacional.ts", "utf8");
+    // ignora comentários: interessa o que o código expõe
+    const helper = bruto.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
     expect(helper).not.toMatch(/placar_peso_/);
     expect(helper).not.toMatch(/placar_dias_sem_proposta_limite/);
   });

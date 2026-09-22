@@ -200,10 +200,10 @@ export async function obterPromptAgenteIA(sb: any): Promise<string> {
     const { lerConfigOperacional } = await import("@/lib/xerife-config-operacional");
     const { data } = await lerConfigOperacional(sb);
     return montarPromptAgenteIA({
-      horarioInicio: data?.["horario_comercial_inicio"],
-      horarioFim: data?.["horario_comercial_fim"],
-      diasInicio: data?.["dias_uteis_inicio"],
-      diasFim: data?.["dias_uteis_fim"],
+      horarioInicio: data?.["horario_comercial_inicio"] as string | undefined,
+      horarioFim: data?.["horario_comercial_fim"] as string | undefined,
+      diasInicio: data?.["dias_uteis_inicio"] as string | undefined,
+      diasFim: data?.["dias_uteis_fim"] as string | undefined,
     });
   } catch {
     return montarPromptAgenteIA({});
