@@ -26,14 +26,11 @@ export type ResultadoForaHorario = {
 };
 
 export async function janelaUtilConfigurada(sb: SB): Promise<JanelaUtil> {
-  const { data } = await sb
-    .from("xerife_config")
-    .select("dias_uteis_inicio, dias_uteis_fim")
-    .eq("id", 1)
-    .maybeSingle();
+  const { lerConfigOperacional } = await import("@/lib/xerife-config-operacional");
+  const { data } = await lerConfigOperacional(sb);
   return {
-    inicio: String(data?.dias_uteis_inicio ?? "08:00:00").slice(0, 5),
-    fim: String(data?.dias_uteis_fim ?? "18:00:00").slice(0, 5),
+    inicio: String(data?.["dias_uteis_inicio"] ?? "08:00:00").slice(0, 5),
+    fim: String(data?.["dias_uteis_fim"] ?? "18:00:00").slice(0, 5),
   };
 }
 
