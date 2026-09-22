@@ -93,7 +93,6 @@ export const painelWhatsapp = createServerFn({ method: "POST" })
       optouts: {
         total: optouts.count ?? optouts.data?.length ?? 0,
         recentes: (optouts.data ?? []).map((o) => ({
-          phone: o.phone,
           phoneMascarado: mascararPhone(o.phone),
           motivo: o.motivo,
           created_at: o.created_at,
@@ -113,6 +112,22 @@ export const removerOptout = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.from("whatsapp_optout").delete().eq("phone", data.phone);
     if (error) throw new Error(error.message);
+
+    // REGISTRAR E SEGUIR: reabrir envio para quem pediu para parar não pode
+    // ficar sem rastro; a auditoria é efeito secundário da remoção.
+    const { inserirMonitorado } = await import("@/lib/rls-monitor.server");
+    await inserirMonitorado(
+      supabaseAdmin,
+      "user_audit_log",
+      {
+        alvo_user_id: userId,
+        ator_user_id: userId,
+        campo: "whatsapp_optout_removido",
+        valor_anterior: mascararPhone(String(data.phone)),
+        valor_novo: null,
+      },
+      { origem: "zapi-painel.removerOptout" },
+    );
     return { ok: true };
   });
 
