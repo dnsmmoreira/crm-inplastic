@@ -872,6 +872,36 @@ export type Database = {
           },
         ]
       }
+      correcao_documento_backup: {
+        Row: {
+          cliente_id_antigo: string | null
+          cnpj_antigo: string | null
+          criado_em: string
+          id: string
+          lote: string
+          registro_id: string
+          tabela: string
+        }
+        Insert: {
+          cliente_id_antigo?: string | null
+          cnpj_antigo?: string | null
+          criado_em?: string
+          id?: string
+          lote: string
+          registro_id: string
+          tabela: string
+        }
+        Update: {
+          cliente_id_antigo?: string | null
+          cnpj_antigo?: string | null
+          criado_em?: string
+          id?: string
+          lote?: string
+          registro_id?: string
+          tabela?: string
+        }
+        Relationships: []
+      }
       difal_aliquotas: {
         Row: {
           aliquota_interestadual: number

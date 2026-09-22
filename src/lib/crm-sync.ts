@@ -1055,11 +1055,13 @@ export async function persistLeadNow(leadId: string): Promise<void> {
     erroBruto ?? (!data || data.length === 0 ? erroRecusaSilenciosa("leads", [lead.id]) : null);
 
   if (error) {
-    // Mensagem no idioma do vendedor, não o texto cru do banco.
-    const { mensagemFalhaLead } = await import("@/lib/lead-falha");
+    // Mesmo caminho do sync: pergunta ao servidor quem é o dono de verdade,
+    // registra a recusa em /falhas e só acusa "outro vendedor" quando for.
+    const { mensagemLeadRecusado } = await import("@/lib/sync-falhas");
     console.error("[crm-sync] persistLeadNow falhou", { leadId, error });
-    throw new Error(mensagemFalhaLead(error));
+    throw new Error(await mensagemLeadRecusado([lead.id], error));
   }
+
   snapshot.leads.set(lead.id, JSON.stringify(payload));
 }
 

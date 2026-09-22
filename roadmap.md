@@ -40,3 +40,12 @@ Pendente com o Denis: senha do Luciano; catálogo/estoque/transportadoras/DIFAL 
 - [x] Documento normalizado (só dígitos) dos dois lados
 - [x] Botão "Avisar o dono" (só dentro da equipe) + link direto no chat interno
 - [x] Provas: testes em transação com ROLLBACK; typecheck/suíte/build
+
+## Consistência lead x cliente (set/2026)
+- [x] Causa de A (addLead) e B (persistLeadNow sem diagnóstico) corrigidas
+- [x] Documento só com dígitos no banco (gatilho de normalização, compatível com o site antigo)
+- [x] Vínculo automático lead->cliente por documento + recusa de vínculo com CNPJ diferente (só quando ambos preenchidos)
+- [x] Auditoria de toda mudança de cliente_id em lead
+- [x] Correção de dados com backup (39 mascarados, 18 vínculos; 2 donos diferentes na lista do Denis)
+- [x] Seletor de proposta/pedido sem duplicata por documento
+- [x] Provas: testes em ROLLBACK, typecheck, suíte e build

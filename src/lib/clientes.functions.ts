@@ -230,7 +230,7 @@ export const getClienteByCnpj = createServerFn({ method: "GET" })
 // CREATE
 // ==========================
 export type CreateClienteResult =
-  | { ok: true; cliente: ClienteRow }
+  | { ok: true; cliente: ClienteRow; reaproveitado?: boolean }
   | {
       ok: false;
       code: "duplicate_active" | "duplicate_inactive" | "duplicate_other";
@@ -238,6 +238,7 @@ export type CreateClienteResult =
       podeReativar?: boolean;
       clienteId?: string;
     };
+
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type LooseDb = any;
@@ -289,6 +290,16 @@ export async function criarClienteCore(
         | undefined;
       if (st?.existe) {
         if (st.ativo && st.mesmo_vendedor) {
+          // Mesmo dono: nunca cria outro cadastro e nunca dá erro — reaproveita
+          // o cliente que já existe para o documento (quem chamou liga ao lead).
+          const { data: existente } = await context.supabase
+            .from("clientes")
+            .select("*")
+            .eq("id", st.cliente_id ?? "")
+            .maybeSingle();
+          if (existente) {
+            return { ok: true, cliente: existente as ClienteRow, reaproveitado: true };
+          }
           return {
             ok: false,
             code: "duplicate_active",
@@ -296,6 +307,7 @@ export async function criarClienteCore(
             clienteId: st.cliente_id ?? undefined,
           };
         }
+
         if (st.ativo && !st.mesmo_vendedor) {
           return {
             ok: false,
@@ -596,13 +608,31 @@ export const vincularClienteAoLead = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { leadId: string; clienteId: string }) => data)
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
+    // Coerência de documento: um lead com CNPJ nunca pode ficar ligado a um
+    // cliente de CNPJ diferente (o banco também recusa; aqui a mensagem é clara).
+    const digitos = (v: string | null | undefined) => (v ?? "").replace(/\D/g, "");
+    const [{ data: lead }, { data: cliente }] = await Promise.all([
+      context.supabase.from("leads").select("cnpj").eq("id", data.leadId).maybeSingle(),
+      context.supabase.from("clientes").select("cnpj").eq("id", data.clienteId).maybeSingle(),
+    ]);
+    const dLead = digitos((lead as { cnpj?: string | null } | null)?.cnpj);
+    const dCliente = digitos((cliente as { cnpj?: string | null } | null)?.cnpj);
+    if (dLead && dCliente && dLead !== dCliente) {
+      throw new Error("Este cliente tem outro CNPJ — não dá para ligá-lo a este lead.");
+    }
+
+    const { data: linhas, error } = await context.supabase
       .from("leads")
       .update({ cliente_id: data.clienteId })
-      .eq("id", data.leadId);
+      .eq("id", data.leadId)
+      .select("id");
     if (error) throw new Error(error.message);
+    if (!linhas || linhas.length === 0) {
+      throw new Error("Não foi possível vincular o cliente a este lead.");
+    }
     return { ok: true };
   });
+
 
 // ==========================
 // VENDEDOR REAL DA PROPOSTA (nome + e-mail de login)
