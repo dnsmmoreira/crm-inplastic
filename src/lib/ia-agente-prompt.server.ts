@@ -203,7 +203,7 @@ export async function obterPromptAgenteIA(sb: any): Promise<string> {
       horarioInicio: data?.["horario_comercial_inicio"],
       horarioFim: data?.["horario_comercial_fim"],
       diasInicio: data?.["dias_uteis_inicio"],
-      diasFim: data?.dias_uteis_fim,
+      diasFim: data?.["dias_uteis_fim"],
     });
   } catch {
     return montarPromptAgenteIA({});
