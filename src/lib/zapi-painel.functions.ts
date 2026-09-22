@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
-import { registrarFalhaSegura } from "@/lib/guard-erros";
+import { assertRpcPermissao, registrarFalhaSegura } from "@/lib/guard-erros";
 
 /** Mascara o telefone deixando visíveis apenas os 4 últimos dígitos. */
 function mascararPhone(phone: string) {
@@ -10,12 +10,29 @@ function mascararPhone(phone: string) {
   return `${"•".repeat(Math.max(3, p.length - 4))}${p.slice(-4)}`;
 }
 
+/**
+ * Gate do painel: `canais.configurar` OU papel admin (o OR preserva o admin
+ * sem perfil). Fail-closed — erro da RPC vira incidente e bloqueia.
+ */
 async function exigirAdmin(supabase: { rpc: Function }, userId: string) {
-  const { data: isAdmin } = await (supabase as any).rpc("has_role", {
-    _user_id: userId,
-    _role: "admin",
-  });
-  if (!isAdmin) throw new Error("Acesso restrito a administradores.");
+  const viaPerfil = await assertRpcPermissao(
+    await (supabase as any).rpc("tem_permissao", {
+      _user_id: userId,
+      _chave: "canais.configurar",
+    }),
+    "zapi-painel.tem_permissao",
+    { user_id: userId, chave: "canais.configurar" },
+  );
+  if (viaPerfil === true) return;
+
+  const isAdmin = await assertRpcPermissao(
+    await (supabase as any).rpc("has_role", { _user_id: userId, _role: "admin" }),
+    "zapi-painel.has_role",
+    { user_id: userId },
+  );
+  if (isAdmin === true) return;
+
+  throw new Error("Acesso restrito a administradores.");
 }
 
 /** Painel de saúde: envios recentes, opt-outs e alertas (somente admin). */
@@ -96,6 +113,22 @@ export const removerOptout = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.from("whatsapp_optout").delete().eq("phone", data.phone);
     if (error) throw new Error(error.message);
+
+    // REGISTRAR E SEGUIR: reabrir envio para quem pediu para parar não pode
+    // ficar sem rastro; a auditoria é efeito secundário da remoção.
+    const { inserirMonitorado } = await import("@/lib/rls-monitor.server");
+    await inserirMonitorado(
+      supabaseAdmin,
+      "user_audit_log",
+      {
+        alvo_user_id: userId,
+        ator_user_id: userId,
+        campo: "whatsapp_optout_removido",
+        valor_anterior: mascararPhone(String(data.phone)),
+        valor_novo: null,
+      },
+      { origem: "zapi-painel.removerOptout" },
+    );
     return { ok: true };
   });
 
@@ -179,6 +212,13 @@ export const testarEnvioCloud = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     await exigirAdmin(supabase, userId);
+
+    // Botão de teste dispara WhatsApp real: no máximo 5 por hora, por usuário.
+    const { consumirTentativa } = await import("@/lib/rate-limit.server");
+    const limite = await consumirTentativa(`zapi.testarEnvioCloud:${userId}`, 3600, 5);
+    if (!limite.permitido) {
+      throw new Error("Limite de 5 envios de teste por hora atingido. Tente mais tarde.");
+    }
 
     const template = data.template?.trim() || "retomada_atendimento";
     const idioma = data.idioma?.trim() || "pt_BR";

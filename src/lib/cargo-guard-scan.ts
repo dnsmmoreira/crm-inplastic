@@ -40,7 +40,7 @@ export const BASE_CONHECIDA: Record<string, number> = {
   "supabase/migrations/20260803010700_6b517d4c-0e9e-42c8-810e-3d98fcb4a942.sql": 1,
   "supabase/migrations/20260824214430_304561c6-9aec-4ca5-a2e8-4aeb54b0430e.sql": 1,
   "supabase/migrations/20260921013020_1eb8f7b0-f297-4318-b488-e27d3795a2a4.sql": 2, // o derivador
-  "supabase/migrations/20260922225907_89a170cd-0a59-4cdd-a742-4752d2399247.sql": 2, // lote 1: trava auto-edição do perfil
+  "supabase/migrations/20260922225907_89a170cd-0a59-4cdd-a742-4752d2399247.sql": 3, // lote 1: trava auto-edição do perfil (guard + auditoria de cargo)
 };
 
 export function arquivosDe(dir: string, out: string[] = []): string[] {

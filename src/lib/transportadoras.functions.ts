@@ -2,7 +2,38 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
+import { assertRpcPermissao } from "@/lib/guard-erros";
 import { escolherSugestaoTransportadora, normalizarUf, type UsoTransportadora } from "@/lib/transportadoras";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ClientRpc = any;
+
+/** Fail-closed: passa quem tem QUALQUER uma das chaves, ou o papel admin. */
+async function exigirAlgumaPermissao(
+  supabase: ClientRpc,
+  userId: string | undefined,
+  chaves: string[],
+  mensagem: string,
+) {
+  for (const chave of chaves) {
+    const ok = await assertRpcPermissao(
+      await supabase.rpc("tem_permissao", { _user_id: userId, _chave: chave }),
+      "transportadoras/tem_permissao",
+      { userId, chave },
+    );
+    if (ok === true) return;
+  }
+  const isAdmin = await assertRpcPermissao(
+    await supabase.rpc("has_role", { _user_id: userId, _role: "admin" }),
+    "transportadoras/has_role",
+    { userId },
+  );
+  if (isAdmin === true) return;
+  throw new Error(mensagem);
+}
+
+const MSG_SEM_CADASTRO = "Você não tem permissão para cadastrar transportadoras.";
+const MSG_SEM_GESTAO = "Você não tem permissão para gerenciar transportadoras.";
 
 export type TransportadoraRow = {
   id: string;
@@ -70,6 +101,7 @@ export const criarTransportadora = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => dadosTransportadora.parse(d))
   .handler(async ({ data, context }) => {
+    await exigirAlgumaPermissao(context.supabase, context.userId, ["empresas.editar"], MSG_SEM_GESTAO);
     const { data: row, error } = await context.supabase
       .from("transportadoras")
       .insert(data)
@@ -88,6 +120,7 @@ export const atualizarTransportadora = createServerFn({ method: "POST" })
         .parse(d),
   )
   .handler(async ({ data, context }) => {
+    await exigirAlgumaPermissao(context.supabase, context.userId, ["empresas.editar"], MSG_SEM_GESTAO);
     const { id: _id, ...resto } = data;
     const patch = Object.fromEntries(
       Object.entries(resto).filter(([, v]) => v !== undefined),
@@ -106,6 +139,7 @@ export const excluirTransportadora = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
+    await exigirAlgumaPermissao(context.supabase, context.userId, ["empresas.editar"], MSG_SEM_GESTAO);
     const { error } = await context.supabase.from("transportadoras").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
@@ -196,8 +230,16 @@ export function validarTransportadoraRapida(d: unknown): DadosTransportadoraRapi
 export async function cadastrarTransportadoraRapida(
   supabase: { rpc: (name: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }> },
   entrada: unknown,
+  userId?: string,
 ): Promise<TransportadoraRapida> {
   const data = validarTransportadoraRapida(entrada);
+  // Financeiro não tem `clientes.criar`: o OR mantém quem trabalha hoje.
+  await exigirAlgumaPermissao(
+    supabase,
+    userId,
+    ["clientes.criar", "pedidos.movimentar", "empresas.editar"],
+    MSG_SEM_CADASTRO,
+  );
   const { data: rows, error } = await supabase.rpc("criar_transportadora_rapida", {
     _nome: data.nome,
     _cnpj: data.cnpj ?? null,
@@ -218,5 +260,6 @@ export const criarTransportadoraRapida = createServerFn({ method: "POST" })
     cadastrarTransportadoraRapida(
       context.supabase as unknown as Parameters<typeof cadastrarTransportadoraRapida>[0],
       data,
+      context.userId,
     ),
   );

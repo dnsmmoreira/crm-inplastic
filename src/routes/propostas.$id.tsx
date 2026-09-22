@@ -785,7 +785,14 @@ function PropostaDetalhe() {
           endereco: novaTranspEndereco,
         },
       }),
-    onSuccess: async (t: { id: string; nome: string; reaproveitada: boolean }) => {
+    onSuccess: async (t: { id: string; nome: string; reaproveitada: boolean; ativo: boolean }) => {
+      // Reaproveitada e desativada: não some do seletor sem aviso.
+      if (t.reaproveitada && t.ativo === false) {
+        toast.error(
+          "Essa transportadora já existe, mas está desativada. Fale com a administração antes de usá-la.",
+        );
+        return;
+      }
       await transportadorasQ.refetch();
       if (proposal) {
         updateProposal(proposal.id, {
