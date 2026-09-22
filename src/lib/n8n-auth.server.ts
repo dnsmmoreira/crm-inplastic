@@ -12,6 +12,9 @@ import { timingSafeEqual } from "@/lib/xerife/cron-auth.server";
 export async function n8nSecretValido(request: Request): Promise<boolean> {
   const expected = process.env.N8N_SECRET;
   const provided = request.headers.get("x-n8n-secret");
+  // MEDIÇÃO (não recusa): registra segredo ausente/fraco uma vez por requisição.
+  const { medirSegredo } = await import("@/lib/segredo-medidor.server");
+  await medirSegredo("n8n-auth.segredo_fraco", expected);
   if (!expected || !provided) return false;
   return timingSafeEqual(provided, expected);
 }

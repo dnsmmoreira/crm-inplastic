@@ -28,7 +28,12 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           const provided = (
             request.headers.get("x-telegram-bot-api-secret-token") ?? ""
           ).trim();
-          if (!expected || !provided || provided !== expected) return OK();
+          // MEDIÇÃO (não recusa, não muda o status devolvido).
+          const { medirSegredo } = await import("@/lib/segredo-medidor.server");
+          await medirSegredo("telegram-webhook.segredo_fraco", expected);
+          if (!expected || !provided) return OK();
+          const { timingSafeEqual } = await import("@/lib/xerife/cron-auth.server");
+          if (!(await timingSafeEqual(provided, expected))) return OK();
 
           const update = (await request.json().catch(() => null)) as TgUpdate | null;
           const msg = update?.message ?? update?.edited_message;
