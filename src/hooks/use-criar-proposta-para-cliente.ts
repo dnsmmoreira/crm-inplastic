@@ -57,11 +57,22 @@ export function useCriarPropostaParaCliente() {
     opts?: { onSuccess?: () => void },
   ) => {
     try {
-      const existente = leads.find((l) => l.clienteId === c.id);
+      // Reaproveita o lead do cliente. Se o vínculo ainda não existe, procura
+      // pelo documento — é o mesmo cadastro, só sem a ligação gravada.
+      const doc = (c.cnpj ?? "").replace(/\D/g, "");
+      const existente =
+        leads.find((l) => l.clienteId === c.id) ??
+        (doc ? leads.find((l) => (l.cnpj ?? "").replace(/\D/g, "") === doc) : undefined);
       let leadId: string;
       if (existente) {
         leadId = existente.id;
+        if (!existente.clienteId) {
+          await vincularFn({ data: { leadId, clienteId: c.id } }).catch((err) => {
+            toast.error(err instanceof Error ? err.message : "Erro ao vincular cliente ao lead");
+          });
+        }
       } else {
+
         leadId = addLead({
           company: c.razao_social,
           contactName: c.contato ?? "",
