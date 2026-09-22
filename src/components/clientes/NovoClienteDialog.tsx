@@ -16,7 +16,7 @@ import { friendlyClienteError } from "@/lib/clientes";
 import { lookupCnpj } from "@/lib/cnpj.functions";
 import { createCliente, listVendedores, reativarCliente, vincularClienteAoLead, type ClienteRow } from "@/lib/clientes.functions";
 import { consultarDonoDocumento } from "@/lib/consulta-dono.functions";
-import { mensagemDonoDuplicado, MSG_CONSULTA_INDISPONIVEL } from "@/lib/consulta-dono";
+import { mensagemDonoDuplicado, mensagemDonoTelefone, MSG_CONSULTA_INDISPONIVEL } from "@/lib/consulta-dono";
 import { ClienteFormFields, emptyCliente, type ClienteFormState } from "./ClienteFormFields";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -135,6 +135,19 @@ export function NovoClienteDialog({ open, onOpenChange, cnpjInicial, leadId, onC
 
   const handleSave = async () => {
     setSaving(true);
+    // Telefone repetido é AVISO, nunca bloqueio: o mesmo número pode atender
+    // várias empresas (central, escritório de contabilidade).
+    const tel = (state.telefone || state.telefone2 || "").replace(/\D/g, "");
+    if (tel.length >= 10) {
+      try {
+        const dono = await consultarDonoFn({ data: { telefone: tel } });
+        if (dono.existe && !dono.limiteExcedido) {
+          toast.warning(mensagemDonoTelefone(dono), { duration: 10_000 });
+        }
+      } catch {
+        // Aviso indisponível não trava o cadastro.
+      }
+    }
     try {
       const res = await createFn({ data: {
         tipo_pessoa: state.tipo_pessoa ?? "PJ",
