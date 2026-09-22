@@ -2031,6 +2031,7 @@ async function syncCollection<T>(opts: {
       }
       reportarFalhaSync(nome, "upsert", error, {
         registros: toUpsert.length,
+        ids: toUpsert.map((item) => toKey(item)),
         permanente,
         esgotado,
         tentativa,
