@@ -927,6 +927,7 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
   const [form, setForm] = useState(initial);
   const [lookingUp, setLookingUp] = useState(false);
   const lookupCnpjFn = useServerFn(lookupCnpj);
+  const consultarDonoFn = useServerFn(consultarDonoDocumento);
 
   const selectedProduct = products.find((p) => p.id === form.productId);
 
