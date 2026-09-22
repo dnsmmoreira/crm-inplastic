@@ -93,6 +93,7 @@ export const painelWhatsapp = createServerFn({ method: "POST" })
       optouts: {
         total: optouts.count ?? optouts.data?.length ?? 0,
         recentes: (optouts.data ?? []).map((o) => ({
+          phone: o.phone,
           phoneMascarado: mascararPhone(o.phone),
           motivo: o.motivo,
           created_at: o.created_at,
