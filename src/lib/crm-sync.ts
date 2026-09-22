@@ -1037,8 +1037,16 @@ function montarPropostas(
 export async function persistLeadNow(leadId: string): Promise<void> {
   const lead = useCrm.getState().leads.find((l) => l.id === leadId);
   if (!lead) throw new Error("Lead não encontrado no estado local");
+  const existe = snapshot.leads.has(lead.id);
   const payload = leadPayload(lead);
-  const { error } = await supabase.from("leads").upsert(payload, { onConflict: "id" });
+  // Existente vai por UPDATE: o payload de existente não leva `owner_id` e o
+  // upsert seria recusado pela policy de INSERT (WITH CHECK owner_id = auth.uid()).
+  const { error } = existe
+    ? await supabase
+        .from("leads")
+        .update({ ...payload, id: undefined } as never)
+        .eq("id", lead.id)
+    : await supabase.from("leads").insert(payload as never);
   if (error) {
     // Mensagem no idioma do vendedor, não o texto cru do banco.
     const { mensagemFalhaLead } = await import("@/lib/lead-falha");
