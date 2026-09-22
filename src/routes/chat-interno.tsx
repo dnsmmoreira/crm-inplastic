@@ -704,7 +704,16 @@ function ChatInternoPage() {
     dmAplicado.current = true;
     const item = itens.find((i) => i.outroUserId === dm);
     void abrir(
-      item ?? { canalId: null, outroUserId: dm, titulo: "Conversa", tipo: "direto" as ChatTipoCanal },
+      item ?? {
+        canalId: null,
+        outroUserId: dm,
+        titulo: "Conversa",
+        tipo: "direto" as ChatTipoCanal,
+        avatarColor: null,
+        ultimaMensagemEm: null,
+        ultimaMensagemTexto: null,
+        naoLidas: 0,
+      },
     );
     if (msg) setTexto(msg);
   }, [dm, msg, itens, abrir]);
