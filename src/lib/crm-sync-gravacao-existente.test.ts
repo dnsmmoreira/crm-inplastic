@@ -27,6 +27,10 @@ describe("gravação de registro existente no motor de sync", () => {
       expect(bloco).toContain('.eq("id", id)');
       expect(bloco).not.toContain("onConflict");
     });
+
+    it(`${colecao}: o update pede as linhas de volta, para enxergar a recusa da RLS`, () => {
+      expect(blocoDaColecao(colecao)).toContain('.select("id")');
+    });
   }
 
   it("persistLeadNow também não faz upsert de lead existente", () => {
