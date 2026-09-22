@@ -290,6 +290,16 @@ export async function criarClienteCore(
         | undefined;
       if (st?.existe) {
         if (st.ativo && st.mesmo_vendedor) {
+          // Mesmo dono: nunca cria outro cadastro e nunca dá erro — reaproveita
+          // o cliente que já existe para o documento (quem chamou liga ao lead).
+          const { data: existente } = await context.supabase
+            .from("clientes")
+            .select("*")
+            .eq("id", st.cliente_id ?? "")
+            .maybeSingle();
+          if (existente) {
+            return { ok: true, cliente: existente as ClienteRow, reaproveitado: true };
+          }
           return {
             ok: false,
             code: "duplicate_active",
@@ -297,6 +307,7 @@ export async function criarClienteCore(
             clienteId: st.cliente_id ?? undefined,
           };
         }
+
         if (st.ativo && !st.mesmo_vendedor) {
           return {
             ok: false,
