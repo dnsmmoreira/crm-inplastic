@@ -230,8 +230,16 @@ export function validarTransportadoraRapida(d: unknown): DadosTransportadoraRapi
 export async function cadastrarTransportadoraRapida(
   supabase: { rpc: (name: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }> },
   entrada: unknown,
+  userId?: string,
 ): Promise<TransportadoraRapida> {
   const data = validarTransportadoraRapida(entrada);
+  // Financeiro não tem `clientes.criar`: o OR mantém quem trabalha hoje.
+  await exigirAlgumaPermissao(
+    supabase,
+    userId,
+    ["clientes.criar", "pedidos.movimentar", "empresas.editar"],
+    MSG_SEM_CADASTRO,
+  );
   const { data: rows, error } = await supabase.rpc("criar_transportadora_rapida", {
     _nome: data.nome,
     _cnpj: data.cnpj ?? null,
@@ -252,5 +260,6 @@ export const criarTransportadoraRapida = createServerFn({ method: "POST" })
     cadastrarTransportadoraRapida(
       context.supabase as unknown as Parameters<typeof cadastrarTransportadoraRapida>[0],
       data,
+      context.userId,
     ),
   );
