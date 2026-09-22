@@ -215,14 +215,12 @@ export const solicitarRecuperacaoSenha = createServerFn({ method: "POST" })
           redirectTo: redirectDefinirSenha(),
         });
         // Auditoria do PEDIDO: e-mail e IP, nunca token, link ou senha.
-        const { data: perfil } = await supabaseAdmin
-          .from("profiles")
-          .select("id")
-          .ilike("email", email)
-          .maybeSingle();
+        // `profiles` não tem coluna `email`: o espelho é `email_cache`; quando
+        // ele está vazio, o e-mail é procurado direto no cadastro de acesso.
+        const alvo = await localizarUsuarioPorEmail(email);
         await auditar(
-          perfil?.id ?? null,
-          perfil?.id ?? null,
+          alvo,
+          alvo,
           "recuperacao_senha_solicitada",
           `pedido de link de recuperação para ${email} (ip ${ip})`,
         );
