@@ -11,33 +11,35 @@ import {
   Text,
 } from '@react-email/components'
 
+import { emailStyles } from './marca'
+
 interface RecoveryEmailProps {
   siteName: string
   confirmationUrl: string
 }
 
-export const RecoveryEmail = ({
-  siteName,
-  confirmationUrl,
-}: RecoveryEmailProps) => (
-  <Html lang="en" dir="ltr">
+const s = emailStyles
+
+export const RecoveryEmail = ({ siteName, confirmationUrl }: RecoveryEmailProps) => (
+  <Html lang="pt-BR" dir="ltr">
     <Head>
-      <style>{darkModeCss}</style>
+      <style>{s.darkModeCss}</style>
     </Head>
-    <Preview>Reset your password for {siteName}</Preview>
-    <Body style={main}>
-      <Container style={container}>
-        <Heading style={h1}>Reset your password</Heading>
-        <Text style={text}>
-          We received a request to reset your password for {siteName}. Click
-          the button below to choose a new password.
+    <Preview>Criar uma nova senha no {siteName}</Preview>
+    <Body style={s.main}>
+      <Container style={s.container}>
+        <Text style={s.marca}>{siteName}</Text>
+        <Heading style={s.h1}>Criar uma nova senha</Heading>
+        <Text style={s.text}>
+          Recebemos um pedido para redefinir a sua senha do {siteName}. Clique no botão abaixo
+          para escolher uma nova senha. O link é de uso único e expira em pouco tempo.
         </Text>
-        <Button className="dm-btn" style={button} href={confirmationUrl}>
-          Reset Password
+        <Button className="dm-btn" style={s.button} href={confirmationUrl}>
+          Criar nova senha
         </Button>
-        <Text style={footer}>
-          If you didn't request a password reset, you can safely ignore this
-          email. Your password will not be changed.
+        <Text style={s.footer}>
+          Se você não pediu a troca de senha, pode ignorar este e-mail com segurança: a sua
+          senha continua a mesma.
         </Text>
       </Container>
     </Body>
@@ -45,36 +47,3 @@ export const RecoveryEmail = ({
 )
 
 export default RecoveryEmail
-
-const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
-const container = { padding: '20px 25px' }
-const h1 = {
-  fontSize: '22px',
-  fontWeight: 'bold' as const,
-  color: '#000000',
-  margin: '0 0 20px',
-}
-const text = {
-  fontSize: '14px',
-  color: '#55575d',
-  lineHeight: '1.5',
-  margin: '0 0 25px',
-}
-const button = {
-  backgroundColor: '#000000',
-  color: '#ffffff',
-  fontSize: '14px',
-  border: '1px solid #000000',
-  borderRadius: '8px',
-  padding: '12px 20px',
-  textDecoration: 'none',
-}
-const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
-// Rendered as a text child, which React may HTML-escape: keep this CSS free of >, &, and quotes.
-const darkModeCss = `
-  @media (prefers-color-scheme: dark) {
-    .dm-btn { background-color: #ffffff !important; color: #000000 !important; }
-  }
-  [data-ogsc] .dm-btn { background-color: #ffffff !important; color: #000000 !important; }
-  [data-ogsb] .dm-btn { background-color: #ffffff !important; color: #000000 !important; }
-`
