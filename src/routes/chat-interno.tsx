@@ -75,6 +75,11 @@ export const Route = createFileRoute("/chat-interno")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
+  // Link direto: /chat-interno?dm=<user_id>&msg=<texto sugerido>
+  validateSearch: (search: Record<string, unknown>) => ({
+    dm: typeof search["dm"] === "string" ? (search["dm"] as string) : undefined,
+    msg: typeof search["msg"] === "string" ? (search["msg"] as string) : undefined,
+  }),
   component: ChatInternoPage,
 });
 
