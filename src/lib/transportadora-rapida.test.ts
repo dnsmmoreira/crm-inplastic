@@ -12,6 +12,9 @@ function makeSupabase(opts: { existentePorCnpj?: { cnpj: string; id: string; nom
     chamadas,
     criadas,
     rpc: async (name: string, args: Record<string, unknown>) => {
+      // Gate de permissão do cadastro rápido: usuário autorizado.
+      if (name === "tem_permissao") return { data: true, error: null };
+      if (name === "has_role") return { data: false, error: null };
       if (name !== "criar_transportadora_rapida") return { data: null, error: null };
       chamadas.push(args);
       const nome = String(args["_nome"] ?? "").trim();
@@ -70,7 +73,10 @@ describe("cadastro rápido de transportadora (a partir da proposta)", () => {
 
   it("propaga erro do banco (ex.: chamada sem sessão) sem inventar sucesso", async () => {
     const sb = {
-      rpc: async () => ({ data: null, error: { message: "Nao autenticado" } }),
+      rpc: async (name: string) =>
+        name === "tem_permissao"
+          ? { data: true, error: null }
+          : { data: null, error: { message: "Nao autenticado" } },
     };
     await expect(cadastrarTransportadoraRapida(sb, { nome: "Rodo Express" })).rejects.toThrow(
       "Nao autenticado",
