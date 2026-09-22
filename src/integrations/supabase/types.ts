@@ -788,6 +788,24 @@ export type Database = {
         }
         Relationships: []
       }
+      consulta_tentativas: {
+        Row: {
+          chave: string
+          criado_em: string
+          id: string
+        }
+        Insert: {
+          chave: string
+          criado_em?: string
+          id?: string
+        }
+        Update: {
+          chave?: string
+          criado_em?: string
+          id?: string
+        }
+        Relationships: []
+      }
       contatos: {
         Row: {
           ativo: boolean
@@ -4170,6 +4188,13 @@ export type Database = {
       reagendar_lead: {
         Args: { _lead_id: string; _motivo?: string; _quando: string }
         Returns: Json
+      }
+      registrar_tentativa: {
+        Args: { _chave: string; _janela_segundos: number; _limite: number }
+        Returns: {
+          permitido: boolean
+          usadas: number
+        }[]
       }
       sistema_mover_etapa_lead: {
         Args: {
