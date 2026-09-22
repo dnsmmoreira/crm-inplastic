@@ -22,12 +22,15 @@ const walk = (dir: string) => {
 };
 walk(join(raiz, "src"));
 
+/** Só o objeto passado ao insert — nada do tratamento de erro logo abaixo. */
 const blocosDeInsercao = (src: string): string[] => {
   const blocos: string[] = [];
   const marca = 'from("user_audit_log").insert(';
   let i = src.indexOf(marca);
   while (i >= 0) {
-    blocos.push(src.slice(i, i + 500));
+    const inicio = i + marca.length;
+    const fim = src.indexOf("});", inicio);
+    blocos.push(src.slice(inicio, fim > inicio ? fim : inicio + 300));
     i = src.indexOf(marca, i + 1);
   }
   return blocos;
