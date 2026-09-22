@@ -695,6 +695,20 @@ function ChatInternoPage() {
   /* ------------------------------------------------------------- envio */
 
   const [texto, setTexto] = useState("");
+
+  // Link direto vindo do aviso de cadastro duplicado ("Avisar o dono").
+  const { dm, msg } = Route.useSearch();
+  const dmAplicado = useRef(false);
+  useEffect(() => {
+    if (!dm || dmAplicado.current) return;
+    dmAplicado.current = true;
+    const item = itens.find((i) => i.outroUserId === dm);
+    void abrir(
+      item ?? { canalId: null, outroUserId: dm, titulo: "Conversa", tipo: "direto" as ChatTipoCanal },
+    );
+    if (msg) setTexto(msg);
+  }, [dm, msg, itens, abrir]);
+
   const [enviando, setEnviando] = useState(false);
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [progresso, setProgresso] = useState<number | null>(null);
