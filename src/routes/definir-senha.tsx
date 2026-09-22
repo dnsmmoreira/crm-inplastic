@@ -2,12 +2,18 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { KeyRound, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { avaliarSenha } from "@/components/usuarios/DefinirSenhaDialog";
+import {
+  concluirRedefinicaoSenha,
+  validarSessaoRedefinicao,
+} from "@/lib/recuperacao.functions";
+import { mensagemErroSenha } from "@/lib/senha-mensagens";
 
 export const Route = createFileRoute("/definir-senha")({
   component: DefinirSenhaPage,
@@ -33,6 +39,9 @@ export const Route = createFileRoute("/definir-senha")({
  * Página de convite/recuperação. O token do e-mail (PKCE) é trocado pelo SDK
  * por uma sessão; aqui só é possível alterar a senha do PRÓPRIO usuário
  * autenticado por esse token. Sem sessão válida, nada pode ser alterado.
+ *
+ * Conta inativa ou excluída não redefine: a checagem é feita no servidor antes
+ * da troca, e o próprio `AuthProvider` encerra qualquer sessão dessas contas.
  */
 function DefinirSenhaPage() {
   const navigate = useNavigate();
@@ -40,6 +49,8 @@ function DefinirSenhaPage() {
   const [senha, setSenha] = useState("");
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
+  const validar = useServerFn(validarSessaoRedefinicao);
+  const concluir = useServerFn(concluirRedefinicaoSenha);
 
   const forca = useMemo(() => avaliarSenha(senha), [senha]);
   const iguais = senha.length > 0 && senha === confirm;
@@ -71,13 +82,25 @@ function DefinirSenhaPage() {
     }
     setBusy(true);
     try {
+      // 1) Conta inativa/excluída não redefine (erro explícito, antes da troca).
+      await validar({ data: undefined });
+
+      // 2) Troca pelo SDK: é aqui que valem as regras de senha do sistema,
+      //    incluindo a checagem de senha vazada.
       const { error } = await supabase.auth.updateUser({ password: senha });
-      if (error) throw new Error("Link inválido ou expirado. Peça um novo convite.");
-      toast.success("Senha definida! Faça login para continuar.");
-      await supabase.auth.signOut();
-      void navigate({ to: "/auth", replace: true });
+      if (error) throw new Error(mensagemErroSenha(error.message));
+
+      // 3) Desliga a exigência de troca e registra a conclusão na auditoria.
+      await concluir({ data: undefined });
+
+      toast.success("Senha definida! Bem-vindo.");
+      void navigate({ to: "/", replace: true });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Falha ao definir a senha");
+      const msg = err instanceof Error ? err.message : "Falha ao definir a senha";
+      if (/sess|expirad|inválid|invalid|token|JWT|Unauthorized/i.test(msg)) {
+        setEstado("invalido");
+      }
+      toast.error(msg);
     } finally {
       setBusy(false);
     }
@@ -104,9 +127,16 @@ function DefinirSenhaPage() {
 
         {estado === "invalido" && (
           <div className="rounded-xl bg-card p-6 space-y-3 text-sm">
-            <p>Link inválido, já utilizado ou expirado.</p>
-            <Button className="w-full" onClick={() => navigate({ to: "/auth" })}>
-              Ir para o login
+            <p className="font-medium">Este link já foi usado ou expirou.</p>
+            <p className="text-muted-foreground">
+              Por segurança, cada link de senha vale uma única vez e por pouco tempo. Peça um
+              novo link e tente de novo.
+            </p>
+            <Button
+              className="w-full"
+              onClick={() => navigate({ to: "/auth", search: { recuperar: true } })}
+            >
+              Pedir novo link
             </Button>
           </div>
         )}
