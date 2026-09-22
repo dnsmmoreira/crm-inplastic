@@ -20,8 +20,19 @@ export default defineTool({
         auth: { persistSession: false, autoRefreshToken: false },
       },
     );
-    const { data, error } = await supabase.from("xerife_config").select("*").eq("id", 1).maybeSingle();
-    if (error) return { content: [{ type: "text", text: `Erro: ${error.message}` }], isError: true };
+    // Admin enxerga a tabela inteira (inclui os pesos do placar).
+    // Vendedor lê só os parâmetros operacionais, pela função do banco.
+    const admin = await supabase.from("xerife_config").select("*").eq("id", 1).maybeSingle();
+    let data = admin.data as Record<string, any> | null;
+    let temPesos = !!data;
+    if (!data) {
+      const oper = await supabase.rpc("xerife_config_operacional");
+      if (oper.error)
+        return { content: [{ type: "text", text: `Erro: ${oper.error.message}` }], isError: true };
+      const linhasOper = (oper.data ?? []) as Record<string, any>[];
+      data = linhasOper[0] ?? null;
+      temPesos = false;
+    }
     if (!data) return { content: [{ type: "text", text: "Configuração não encontrada." }], isError: true };
 
     const linhas = [
