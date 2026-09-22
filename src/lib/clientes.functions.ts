@@ -282,7 +282,7 @@ export async function criarClienteCore(
           return {
             ok: false,
             code: "duplicate_other",
-            message: "Já existe um cliente com este CNPJ.",
+            message: await mensagemDonoCliente(context.userId, clean.cnpj),
           };
         }
         if (!st.ativo && st.mesmo_vendedor) {
@@ -297,7 +297,7 @@ export async function criarClienteCore(
         return {
           ok: false,
           code: "duplicate_inactive",
-          message: "Já existe um cliente inativo com este CNPJ. Peça a um admin para reativar.",
+          message: `${await mensagemDonoCliente(context.userId, clean.cnpj)} Para reativar, peça a um admin.`,
         };
       }
     }
