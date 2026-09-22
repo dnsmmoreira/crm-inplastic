@@ -563,10 +563,19 @@ function NovaPropostaDialog({ open, onOpenChange }: { open: boolean; onOpenChang
     }).slice(0, 100);
   }, [leads, query]);
 
-  const clienteResults = useMemo(
-    () => clientes.filter((cliente) => !leads.some((lead) => lead.clienteId === cliente.id)),
-    [clientes, leads],
-  );
+  const clienteResults = useMemo(() => {
+    // Nada de linha repetida: some da lista de clientes quem já aparece como
+    // lead, pelo vínculo OU pelo mesmo documento (vínculo ainda não gravado).
+    const docsDeLeads = new Set(
+      leads.map((l) => (l.cnpj ?? "").replace(/\D/g, "")).filter((d) => d.length > 0),
+    );
+    return clientes.filter((cliente) => {
+      if (leads.some((lead) => lead.clienteId === cliente.id)) return false;
+      const doc = (cliente.cnpj ?? "").replace(/\D/g, "");
+      return !(doc && docsDeLeads.has(doc));
+    });
+  }, [clientes, leads]);
+
 
   const selectedLead = useMemo(
     () => (selectedLeadId ? leads.find((l) => l.id === selectedLeadId) ?? null : null),
