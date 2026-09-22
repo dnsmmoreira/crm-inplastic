@@ -113,7 +113,17 @@ export const Route = createFileRoute("/api/public/hooks/whatsapp-cloud")({
             });
           }
         } else {
+          // MEDIÇÃO: o processamento segue igual (nenhuma recusa nova); o
+          // registro existe para provar, com tráfego real, se a variável está
+          // presente em produção antes de fechar a porta.
           console.warn("[wa-cloud-webhook] META_APP_SECRET ausente — assinatura NÃO verificada");
+          await registrarFalhaSegura(
+            "wa-cloud-webhook.sem_app_secret",
+            new Error(
+              "META_APP_SECRET ausente — assinatura do webhook da Meta NÃO foi verificada; o evento foi processado mesmo assim.",
+            ),
+            { assinatura_verificada: false },
+          );
         }
 
         try {
