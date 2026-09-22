@@ -64,6 +64,13 @@ export function reportarFalhaSync(
   // Lead tem mensagem própria: o vendedor precisa saber se é dono, duplicidade
   // ou dado faltando — "falha ao salvar leads" não ajuda ninguém.
   if (colecao === "leads") {
+    // "Pertence a outro vendedor" só pode aparecer quando o dono no banco for
+    // MESMO outro. Para qualquer outra recusa: mensagem genérica + /falhas.
+    if (motivoFalhaLead(erro) === "sem_permissao") {
+      const ids = Array.isArray(extra?.["ids"]) ? (extra["ids"] as string[]) : [];
+      void avisarLeadRecusado(ids, erro);
+      return;
+    }
     toast.error(mensagemFalhaLead(erro), { duration: 12_000 });
     return;
   }
