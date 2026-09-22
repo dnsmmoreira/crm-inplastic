@@ -52,13 +52,19 @@ export function textoAuditoriaConsulta(documento: string | null | undefined, equ
   return `consulta de dono: CNPJ ${mascararDocumento(documento)} → equipe ${equipe ?? "sem equipe"}`;
 }
 
+/** "Equipe INPLASTIC" e "INPLASTIC" viram o mesmo rótulo, sem repetir a palavra. */
+export function rotuloEquipe(nome: string | null | undefined): string | null {
+  const limpo = String(nome ?? "").trim().replace(/^equipe\s+/i, "");
+  return limpo ? `Equipe ${limpo}` : null;
+}
+
 /** Mensagem exibida quando o cadastro já existe. */
 export function mensagemDonoDuplicado(info: DonoCadastro): string {
   if (!info.existe) return "";
   if (info.semDono || !info.donoNome) {
     return "Já existe cadastro deste CNPJ, sem vendedor responsável. Fale com o administrador.";
   }
-  const equipe = info.donoEquipe ? ` (Equipe ${info.donoEquipe})` : "";
+  const equipe = rotuloEquipe(info.donoEquipe) ? ` (${rotuloEquipe(info.donoEquipe)})` : "";
   const empresa = info.podeVerRegistro && info.empresa ? ` Cadastro: ${info.empresa}.` : "";
   return `Já existe cadastro deste CNPJ. Dono: ${info.donoNome}${equipe}. Fale com ele antes de seguir.${empresa}`;
 }
@@ -68,7 +74,7 @@ export function mensagemNomeParecido(info: DonoCadastro): string {
   if (info.semDono || !info.donoNome) {
     return "Já existe cadastro com nome parecido, sem vendedor responsável. Confira antes de duplicar.";
   }
-  const equipe = info.donoEquipe ? ` (Equipe ${info.donoEquipe})` : "";
+  const equipe = rotuloEquipe(info.donoEquipe) ? ` (${rotuloEquipe(info.donoEquipe)})` : "";
   const empresa = info.podeVerRegistro && info.empresa ? `: "${info.empresa}"` : "";
   return `Já existe cadastro com nome parecido${empresa}. Dono: ${info.donoNome}${equipe}. Confira antes de duplicar.`;
 }

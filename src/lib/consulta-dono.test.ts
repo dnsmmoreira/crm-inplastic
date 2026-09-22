@@ -107,3 +107,15 @@ describe("limite e auditoria no servidor", () => {
     expect(server).toContain("ator_user_id");
   });
 });
+
+describe("rótulo da equipe", () => {
+  it("não repete a palavra Equipe", async () => {
+    const { rotuloEquipe } = await import("@/lib/consulta-dono");
+    expect(rotuloEquipe("Equipe INPLASTIC")).toBe("Equipe INPLASTIC");
+    expect(rotuloEquipe("INPLASTIC")).toBe("Equipe INPLASTIC");
+    expect(rotuloEquipe(null)).toBeNull();
+    expect(mensagemDonoDuplicado({ ...base, donoEquipe: "Equipe INPLASTIC" })).toContain(
+      "(Equipe INPLASTIC)",
+    );
+  });
+});
