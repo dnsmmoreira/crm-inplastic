@@ -126,3 +126,34 @@ describe.skipIf(!rodar)("consistência lead × cliente no banco", () => {
     expect(linhas).toBeGreaterThan(0);
   });
 });
+
+describe.skipIf(!rodar)("transferências continuam livres (regra do dono único)", () => {
+  it("trocar o dono do lead leva o cliente ligado junto", () => {
+    const gatilho = consulta(
+      `select count(*) from pg_trigger where tgname = 'tg_leads_dono_propaga' and not tgisinternal`,
+    );
+    expect(gatilho).toBe("1");
+    const corpo = consulta(
+      `select pg_get_functiondef(oid) from pg_proc where proname = 'tg_leads_dono_propaga'`,
+    );
+    expect(corpo).toContain("UPDATE public.clientes");
+    // guarda contra recursão com o gatilho do cliente
+    expect(corpo).toContain("transferencia_carteira");
+  });
+
+  it("a troca de dono de um lead existente nunca é recusada", () => {
+    const corpo = consulta(
+      `select pg_get_functiondef(oid) from pg_proc where proname = 'tg_leads_vinculo_cliente'`,
+    );
+    expect(corpo).toContain("_dono_mudou");
+    expect(corpo).toContain("_ligacao_mudou");
+  });
+
+  it("a conversa atribuída registra a falha em vez de engolir", () => {
+    const corpo = consulta(
+      `select pg_get_functiondef(oid) from pg_proc where proname = 'tg_conversa_dono_para_lead'`,
+    );
+    expect(corpo).toContain("log_falha_trigger");
+    expect(corpo).not.toContain("WHEN OTHERS THEN\n    NULL");
+  });
+});
