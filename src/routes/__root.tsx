@@ -991,6 +991,8 @@ function AuthGate() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   if (pathname === "/auth") return <Outlet />;
+  // Convite e recuperação de senha: a própria página valida a sessão do link.
+  if (pathname === "/definir-senha") return <Outlet />;
   if (pathname.startsWith("/proposta-publica/")) return <Outlet />;
   if (pathname.startsWith("/ficha-coleta-publica/")) return <Outlet />;
   if (pathname.startsWith("/lovable/")) return <Outlet />;

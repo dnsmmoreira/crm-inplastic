@@ -63,8 +63,14 @@ describe("middleware de conta ativa", () => {
   it("nenhuma server function importa o middleware gerado direto", () => {
     const infratores = arquivos
       // usuarios.functions.ts usa o middleware base APENAS em concluirTrocaSenha,
-      // que precisa rodar justamente quando senha_reset_exigido está ligado.
-      .filter((p) => !/auth\.middleware\.ts$|seguranca-p0\.test\.ts$|usuarios\.functions\.ts$/.test(p))
+      // e recuperacao.functions.ts apenas na conclusão do link de recuperação:
+      // ambos precisam rodar justamente quando senha_reset_exigido está ligado.
+      .filter(
+        (p) =>
+          !/auth\.middleware\.ts$|seguranca-p0\.test\.ts$|usuarios\.functions\.ts$|recuperacao\.functions\.ts$/.test(
+            p,
+          ),
+      )
       .filter((p) =>
         readFileSync(p, "utf8").includes('from "@/integrations/supabase/auth-middleware"'),
       );
