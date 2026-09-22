@@ -1378,6 +1378,21 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
               } finally {
                 setChecando(false);
               }
+              // Telefone é AVISO, nunca bloqueio: o mesmo número pode atender
+              // várias empresas (central, escritório de contabilidade).
+              {
+                const tel = (form.phone || form.whatsapp || "").replace(/\D/g, "");
+                if (tel.length >= 10) {
+                  try {
+                    const dono = await consultarDonoFn({ data: { telefone: tel } });
+                    if (dono.existe && !dono.limiteExcedido) {
+                      toast.warning(mensagemDonoTelefone(dono), { duration: 10_000 });
+                    }
+                  } catch {
+                    // Aviso indisponível não trava o cadastro.
+                  }
+                }
+              }
               try {
                 addLead({
                   company: form.company.trim(),
