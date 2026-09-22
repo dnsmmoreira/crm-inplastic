@@ -18,7 +18,10 @@ import { mensagemFalhaLead, motivoFalhaLead, MSG_LEAD_RECUSADO_GENERICO } from "
  * e registra a recusa em /falhas. Qualquer problema no diagnóstico cai na
  * mensagem genérica — nunca na acusação.
  */
-async function avisarLeadRecusado(ids: string[], erro: unknown): Promise<void> {
+export async function mensagemLeadRecusado(ids: string[], erro: unknown): Promise<string> {
+  // Só é diagnóstico de dono quando a recusa é de permissão; os demais motivos
+  // (duplicidade, dado inválido, conexão) já têm mensagem própria.
+  if (motivoFalhaLead(erro) !== "sem_permissao") return mensagemFalhaLead(erro);
   let donoOutro = false;
   try {
     if (ids.length) {
@@ -35,10 +38,13 @@ async function avisarLeadRecusado(ids: string[], erro: unknown): Promise<void> {
   } catch (e) {
     console.error("[crm-sync] não consegui diagnosticar a recusa do lead", e);
   }
-  toast.error(donoOutro ? mensagemFalhaLead(erro) : MSG_LEAD_RECUSADO_GENERICO, {
-    duration: 12_000,
-  });
+  return donoOutro ? mensagemFalhaLead(erro) : MSG_LEAD_RECUSADO_GENERICO;
 }
+
+async function avisarLeadRecusado(ids: string[], erro: unknown): Promise<void> {
+  toast.error(await mensagemLeadRecusado(ids, erro), { duration: 12_000 });
+}
+
 
 const ROTULOS: Record<string, string> = {
   products: "produtos",
