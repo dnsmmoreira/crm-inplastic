@@ -1000,6 +1000,14 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
 
 
       toast.success("Dados do CNPJ preenchidos");
+      // Consulta por documento também avisa se o cadastro já existe e de quem é.
+      try {
+        const info = await consultarDonoFn({ data: { cnpj: digits } });
+        if (info.limiteExcedido) toast.warning(MSG_CONSULTA_INDISPONIVEL);
+        else if (info.existe) toast.warning(mensagemDonoDuplicado(info), { duration: 12_000 });
+      } catch {
+        // Consulta indisponível não trava o preenchimento.
+      }
     } catch (e) {
       toast.error(friendlyCnpjError(e));
     } finally {
