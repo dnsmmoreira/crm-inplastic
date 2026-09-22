@@ -1152,11 +1152,16 @@ export const useCrm = create<CrmState>()((set, get) => ({
     if (newCnpj) {
       const dup = get().leads.find((x) => (x.cnpj ?? "").replace(/\D/g, "") === newCnpj);
       if (dup) {
+        // Dono é a própria pessoa: nada de "solicite transferência" — o CRM
+        // reaproveita o cadastro que já existe e segue o fluxo.
+        const eu = l.ownerId ?? get().currentUserId;
+        if (dup.ownerId && eu && dup.ownerId === eu) return dup.id;
         throw new Error(
-          `CNPJ já cadastrado para "${dup.company}". Solicite ao ADM a transferência do lead.`,
+          `Já existe cadastro deste CNPJ com outro vendedor. Fale com o dono antes de seguir.`,
         );
       }
     }
+
     set((s) => ({
       leads: [
         {
