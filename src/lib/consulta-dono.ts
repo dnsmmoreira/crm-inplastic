@@ -91,3 +91,18 @@ export function mensagemProntaParaDono(documento: string | null | undefined): st
   const d = normalizarDocumento(documento);
   return `Oi, o cliente CNPJ ${d || "(sem número)"} está com você? Tenho um contato dele.`;
 }
+
+/**
+ * Aviso de TELEFONE repetido. Nunca bloqueia: o mesmo número pode atender
+ * várias empresas (central, escritório de contabilidade). Só o CNPJ/CPF é
+ * chave de duplicidade.
+ */
+export function mensagemDonoTelefone(info: DonoCadastro): string {
+  if (!info.existe) return "";
+  if (info.semDono || !info.donoNome) {
+    return "Este telefone já aparece em outro cadastro, sem vendedor responsável. Confira antes de duplicar.";
+  }
+  const equipe = rotuloEquipe(info.donoEquipe) ? ` (${rotuloEquipe(info.donoEquipe)})` : "";
+  const empresa = info.podeVerRegistro && info.empresa ? ` Cadastro: ${info.empresa}.` : "";
+  return `Este telefone já está em um cadastro de ${info.donoNome}${equipe}. Confira antes de duplicar — o número pode ser compartilhado.${empresa}`;
+}
