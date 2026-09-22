@@ -4270,6 +4270,47 @@ export type Database = {
         Returns: boolean
       }
       whatsapp_pode_atuar: { Args: { _conversa_id: string }; Returns: boolean }
+      xerife_config_operacional: {
+        Args: never
+        Returns: {
+          ativo: boolean
+          auto_atribuir_lead_orfao: boolean
+          cadencia_abandono_dias: number[]
+          cadencia_proposta_dias: number[]
+          carteira_alerta_dias: number
+          carteira_critico_dias: number
+          dias_sem_interacao_por_etapa: Json
+          dias_uteis_fim: string
+          dias_uteis_inicio: string
+          horario_comercial_fim: string
+          horario_comercial_inicio: string
+          ia_sem_resposta_horas: number
+          id: number
+          max_dias_etapa: Json
+          meta_atividades_dia: number
+          meta_template_automatico: string
+          meta_template_automatico_lang: string
+          pos_venda_dias: number[]
+          pos_venda_dias_uteis: number
+          proposta_enviada_dias: number
+          reatribuir_lead_abandonado: boolean
+          reciclagem_perdidos_dias: number
+          resumo_diario_ativo: boolean
+          resumo_hora: string
+          sla_lead_orfao_min: number
+          sla_primeiro_contato_escalar_min: number
+          sla_primeiro_contato_min: number
+          sla_resposta_whatsapp_escalar_horas: number
+          sla_resposta_whatsapp_horas: number
+          tarefa_atrasada_horas: number
+          telegram_ativo: boolean
+          updated_at: string
+          watchdog_conversa_ativo: boolean
+          watchdog_conversa_fria_min: number
+          watchdog_conversa_ia_min: number
+          whatsapp_interno_ativo: boolean
+        }[]
+      }
     }
     Enums: {
       ai_action_type:

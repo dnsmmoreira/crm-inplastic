@@ -49,13 +49,10 @@ function fallbackTemplateAutomatico(): string {
 
 /** Modelo configurado no banco para os envios automáticos (null quando vazio). */
 async function lerTemplateAutomatico(supabase: any): Promise<string | null> {
-  const { data, error } = await supabase
-    .from("xerife_config")
-    .select("meta_template_automatico")
-    .eq("id", 1)
-    .maybeSingle();
-  assertNoError(error, "frases-prontas.lerTemplateAutomatico");
-  return (data?.meta_template_automatico ?? "").trim() || null;
+  const { lerConfigOperacional } = await import("@/lib/xerife-config-operacional");
+  const { data, error } = await lerConfigOperacional(supabase);
+  assertNoError(error as { error: unknown } | null, "frases-prontas.lerTemplateAutomatico");
+  return (String(data?.["meta_template_automatico"] ?? "")).trim() || null;
 }
 
 /** Nome do template usado pelos envios automáticos (nunca expõe o token). */

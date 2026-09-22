@@ -371,12 +371,9 @@ export async function coletarResumoEquipe(
 
   const { podeAssumirPedido } = await import("@/lib/pedidos-stages");
   const { comprovacaoOk, contatoOk, diasUteisEntre } = await import("@/lib/pedido-avanco");
-  const { data: cfg } = await sb
-    .from("xerife_config")
-    .select("pos_venda_dias_uteis")
-    .eq("id", 1)
-    .maybeSingle();
-  const prazoPosVenda = Number(cfg?.pos_venda_dias_uteis ?? 5);
+  const { lerConfigOperacional } = await import("@/lib/xerife-config-operacional");
+  const { data: cfg } = await lerConfigOperacional(sb);
+  const prazoPosVenda = Number(cfg?.["pos_venda_dias_uteis"] ?? 5);
 
   // Entrada na etapa atual, lida do histórico (a tabela `pedidos` não guarda).
   const idsPedidos = ((pedidosRes.data ?? []) as Array<{ id: string }>).map((p) => String(p.id));
