@@ -36,30 +36,28 @@ describe("permissões de cadastro (leads.criar / clientes.criar)", () => {
   });
 });
 
-describe("duplicidade não vaza dados de outra equipe", () => {
+describe("duplicidade mostra o dono, nunca o registro", () => {
   const src = ler("src/lib/contato-entrada.functions.ts");
+  const server = ler("src/lib/consulta-dono.server.ts");
 
   it("usa as mesmas funções de visibilidade do resto do sistema", () => {
-    expect(src).toContain("supervisor_ve_tudo");
-    expect(src).toContain("mesma_equipe");
-    expect(src).toContain('_chave: "leads.ver_todos"');
+    expect(server).toContain("supervisor_ve_tudo");
+    expect(server).toContain("mesma_equipe");
+    expect(server).toContain('_chave: "leads.ver_todos"');
   });
 
-  it("no caso restrito devolve dono, empresa e ids vazios", () => {
-    const trecho = src.slice(src.indexOf("if (!visivel)"), src.indexOf("let vendedorNome"));
-    expect(trecho).toContain("vendedorNome: null");
-    expect(trecho).toContain("empresa: null");
-    expect(trecho).toContain("vendedorId: null");
-    expect(trecho).toContain("leadId: null");
-    expect(trecho).toContain("restrito: true");
+  it("ids do registro só saem para quem enxerga o registro", () => {
+    expect(src).toContain("dono.podeVerRegistro ? (entrada.leadId ?? null) : null");
+    expect(src).toContain("dono.podeVerRegistro ? vendedorId : null");
   });
 
-  it("a suspeita por nome também é filtrada", () => {
-    expect(src).toContain('{ situacao: "suspeita", leadId: "", empresa: null, restrito: true }');
+  it("a empresa só sai para quem enxerga o registro", () => {
+    expect(server).toContain("empresa: podeVer ? (entrada.empresa ?? null) : null");
   });
 
-  it("a mensagem genérica não cita dono nem empresa", () => {
+  it("a tela não usa mais a mensagem que escondia o dono", () => {
     const ui = ler("src/components/crm/LeadDrawer.tsx");
-    expect(ui).toContain("Já existe cadastro deste CNPJ. Fale com o administrador.");
+    expect(ui).not.toContain("Já existe cadastro deste CNPJ. Fale com o administrador.");
+    expect(ui).toContain("mensagemDonoDuplicado");
   });
 });
