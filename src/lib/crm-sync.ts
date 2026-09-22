@@ -1041,12 +1041,19 @@ export async function persistLeadNow(leadId: string): Promise<void> {
   const payload = leadPayload(lead);
   // Existente vai por UPDATE: o payload de existente não leva `owner_id` e o
   // upsert seria recusado pela policy de INSERT (WITH CHECK owner_id = auth.uid()).
-  const { error } = existe
+  // `.select("id")` no UPDATE: recusa da RLS volta sem erro e com zero linhas —
+  // sem isso a alteração sumiria em silêncio.
+  const { data, error: erroBruto } = existe
     ? await supabase
         .from("leads")
         .update({ ...payload, id: undefined } as never)
         .eq("id", lead.id)
-    : await supabase.from("leads").insert(payload as never);
+        .select("id")
+    : await supabase.from("leads").insert(payload as never).select("id");
+
+  const error =
+    erroBruto ?? (!data || data.length === 0 ? erroRecusaSilenciosa("leads", [lead.id]) : null);
+
   if (error) {
     // Mensagem no idioma do vendedor, não o texto cru do banco.
     const { mensagemFalhaLead } = await import("@/lib/lead-falha");
