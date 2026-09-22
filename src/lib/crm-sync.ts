@@ -24,7 +24,7 @@ import {
 import { ehErroColunaInexistente } from "@/lib/build-version";
 import { ehErroPermanente } from "@/lib/sync-erro-permanente";
 import { ControleRetry } from "@/lib/sync-retry";
-import { gravarNovosEExistentes } from "@/lib/sync-gravacao";
+import { gravarNovosEExistentes, erroRecusaSilenciosa } from "@/lib/sync-gravacao";
 import {
   bundleDesatualizado,
   bloquearPorBundleDesatualizado,
@@ -1041,12 +1041,19 @@ export async function persistLeadNow(leadId: string): Promise<void> {
   const payload = leadPayload(lead);
   // Existente vai por UPDATE: o payload de existente não leva `owner_id` e o
   // upsert seria recusado pela policy de INSERT (WITH CHECK owner_id = auth.uid()).
-  const { error } = existe
+  // `.select("id")` no UPDATE: recusa da RLS volta sem erro e com zero linhas —
+  // sem isso a alteração sumiria em silêncio.
+  const { data, error: erroBruto } = existe
     ? await supabase
         .from("leads")
         .update({ ...payload, id: undefined } as never)
         .eq("id", lead.id)
-    : await supabase.from("leads").insert(payload as never);
+        .select("id")
+    : await supabase.from("leads").insert(payload as never).select("id");
+
+  const error =
+    erroBruto ?? (!data || data.length === 0 ? erroRecusaSilenciosa("leads", [lead.id]) : null);
+
   if (error) {
     // Mensagem no idioma do vendedor, não o texto cru do banco.
     const { mensagemFalhaLead } = await import("@/lib/lead-falha");
@@ -1709,17 +1716,21 @@ async function doSaveInterno(userId: string) {
       toJson: (l) => JSON.stringify(leadPayload(l)),
       upsert: (items) =>
         gravarNovosEExistentes<Lead>({
+          tabela: "leads",
           itens: items,
           id: (l) => l.id,
           ehNovo: (l) => !snapshot.leads.has(l.id),
           payloadNovo: (l) => leadToInsert(l, { novo: true }) as Record<string, unknown>,
           payloadExistente: (l) => leadToInsert(l, { novo: false }) as Record<string, unknown>,
           inserir: (linhas) => supabase.from("leads").insert(linhas as never),
+          // `.select("id")` é obrigatório: UPDATE barrado pela RLS volta sem
+          // erro e com zero linhas.
           atualizar: (id, linha) =>
             supabase
               .from("leads")
               .update(linha as never)
-              .eq("id", id),
+              .eq("id", id)
+              .select("id"),
         }),
       del: (ids) => supabase.from("leads").delete().in("id", ids),
       isIntentionalDelete: isIntentionalDelete("leads"),
@@ -1741,6 +1752,7 @@ async function doSaveInterno(userId: string) {
       // desfazer trocas de dono feitas no servidor nem bater na policy de INSERT.
       upsert: (items) =>
         gravarNovosEExistentes<Task>({
+          tabela: "tarefas",
           itens: items,
           id: (t) => t.id,
           ehNovo: (t) => !snapshot.tasks.has(t.id),
@@ -1752,7 +1764,8 @@ async function doSaveInterno(userId: string) {
             supabase
               .from("tarefas")
               .update(linha as never)
-              .eq("id", id),
+              .eq("id", id)
+              .select("id"),
         }),
       del: (ids) => supabase.from("tarefas").delete().in("id", ids),
       isIntentionalDelete: isIntentionalDelete("tasks"),
@@ -1772,6 +1785,7 @@ async function doSaveInterno(userId: string) {
       toJson: (p) => JSON.stringify(proposalToInsert(p)),
       upsert: (items) =>
         gravarNovosEExistentes<Proposal>({
+          tabela: "propostas",
           itens: items,
           id: (p) => p.id,
           ehNovo: (p) => !snapshot.proposals.has(p.id),
@@ -1782,7 +1796,8 @@ async function doSaveInterno(userId: string) {
             supabase
               .from("propostas")
               .update(linha as never)
-              .eq("id", id),
+              .eq("id", id)
+              .select("id"),
         }),
       del: (ids) => supabase.from("propostas").delete().in("id", ids),
       isIntentionalDelete: isIntentionalDelete("proposals"),

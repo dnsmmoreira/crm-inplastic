@@ -27,6 +27,10 @@ describe("gravação de registro existente no motor de sync", () => {
       expect(bloco).toContain('.eq("id", id)');
       expect(bloco).not.toContain("onConflict");
     });
+
+    it(`${colecao}: o update pede as linhas de volta, para enxergar a recusa da RLS`, () => {
+      expect(blocoDaColecao(colecao)).toContain('.select("id")');
+    });
   }
 
   it("persistLeadNow também não faz upsert de lead existente", () => {
@@ -35,6 +39,9 @@ describe("gravação de registro existente no motor de sync", () => {
     expect(corpo).toContain("snapshot.leads.has(lead.id)");
     expect(corpo).toContain(".update(");
     expect(corpo).not.toContain("onConflict");
+    // zero linhas = recusa, nunca "salvo"
+    expect(corpo).toContain('.select("id")');
+    expect(corpo).toContain("erroRecusaSilenciosa");
   });
 
   it("a falha de gravação leva os ids, para o diagnóstico do dono real", () => {
