@@ -1342,7 +1342,27 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
                   },
                 });
                 if (check.situacao === "duplicado") {
-                  toast.error(mensagemDonoDuplicado(check.dono), { duration: 12_000 });
+                  // O chat interno só conversa dentro da equipe: entre equipes
+                  // fica só o nome do dono, sem o botão.
+                  const avisar =
+                    podeAvisarDono(check.dono, !check.dono.outraEquipe) && check.vendedorId
+                      ? {
+                          label: "Avisar o dono",
+                          onClick: () => {
+                            void navigate({
+                              to: "/chat-interno",
+                              search: {
+                                dm: check.vendedorId as string,
+                                msg: mensagemProntaParaDono(form.cnpj),
+                              },
+                            });
+                          },
+                        }
+                      : undefined;
+                  toast.error(mensagemDonoDuplicado(check.dono), {
+                    duration: 12_000,
+                    ...(avisar ? { action: avisar } : {}),
+                  });
                   return;
                 }
                 if (check.situacao === "suspeita") {
