@@ -189,6 +189,29 @@ function ipDoPedido(headers: Headers): string {
   return (xff.split(",")[0] ?? "").trim() || "desconhecido";
 }
 
+/**
+ * Descobre o id do usuário por e-mail, só para a auditoria.
+ * Primeiro pelo espelho `profiles.email_cache`; se não achar, pelo cadastro de
+ * acesso (admin). Devolve null sem erro — a resposta ao usuário nunca muda.
+ */
+async function localizarUsuarioPorEmail(email: string): Promise<string | null> {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: perfil } = await supabaseAdmin
+      .from("profiles")
+      .select("id")
+      .ilike("email_cache", email)
+      .maybeSingle();
+    if (perfil?.id) return perfil.id;
+
+    const { data: lista } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    const achado = lista?.users?.find((u) => (u.email ?? "").toLowerCase() === email);
+    return achado?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export const solicitarRecuperacaoSenha = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z.object({ email: z.string().trim().email().max(255) }).parse(input),
