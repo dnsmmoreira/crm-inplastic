@@ -29,6 +29,12 @@ import { listClientes, listVendedores } from "@/lib/clientes.functions";
 import { useAuth, hasPerm } from "@/hooks/use-auth";
 import { NovoClienteDialog } from "@/components/clientes/NovoClienteDialog";
 import { PERM_CLIENTES_CRIAR } from "@/lib/cadastro-permissoes";
+import { consultarDonoDocumento } from "@/lib/consulta-dono.functions";
+import {
+  mensagemDonoDuplicado,
+  normalizarDocumento,
+  MSG_CONSULTA_INDISPONIVEL,
+} from "@/lib/consulta-dono";
 
 export const Route = createFileRoute("/clientes/")({
   head: () => ({
@@ -103,6 +109,24 @@ function ClientesListPage() {
     staleTime: 5 * 60 * 1000,
   });
 
+  // Busca por documento: se o cadastro existe fora do alcance da pessoa, ela
+  // vê quem é o dono (e a equipe dele), nunca os dados do registro.
+  const consultarDonoFn = useServerFn(consultarDonoDocumento);
+  const docBuscado = normalizarDocumento(qDeb);
+  const donoQ = useQuery({
+    queryKey: ["dono-documento", docBuscado],
+    queryFn: () => consultarDonoFn({ data: { cnpj: docBuscado } }),
+    enabled: docBuscado.length === 14,
+    staleTime: 60_000,
+    retry: false,
+  });
+  const avisoDono =
+    donoQ.data?.limiteExcedido
+      ? MSG_CONSULTA_INDISPONIVEL
+      : donoQ.data?.existe && !donoQ.data.podeVerRegistro
+        ? mensagemDonoDuplicado(donoQ.data)
+        : null;
+
   const rows = clientesQ.data?.rows ?? [];
   const total = clientesQ.data?.count ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -126,6 +150,12 @@ function ClientesListPage() {
           </Button>
         )}
       </div>
+
+      {avisoDono && (
+        <Card className="border-amber-500/50 bg-amber-500/5">
+          <CardContent className="py-3 text-sm">{avisoDono}</CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardContent className="pt-4 space-y-3">
