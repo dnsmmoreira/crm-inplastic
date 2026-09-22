@@ -12,7 +12,7 @@ import { solicitarRecuperacaoSenha } from "@/lib/invites.functions";
 
 export const Route = createFileRoute("/auth")({
   component: AuthPage,
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (search: Record<string, unknown>): { recuperar?: boolean; next?: string } => ({
     recuperar: search.recuperar === true || search.recuperar === "true" ? true : undefined,
     next: typeof search.next === "string" ? search.next : undefined,
   }),
