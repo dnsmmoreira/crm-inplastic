@@ -1,66 +1,74 @@
-# Lais e Ana Claudia podem cadastrar leads e clientes
+# "Esqueci minha senha" na tela de login
 
-Objetivo: as duas passam a cadastrar leads e clientes da Maxicaixa, sem ganhar nenhuma visão nova e sem mudar nada para quem já cadastra hoje.
+## Diagnóstico primeiro: por que os convites não chegaram
 
-## 1. Levantamento — como está hoje
+Verifiquei antes de planejar qualquer tela.
 
-### Quem vê as telas (menu lateral, `src/routes/__root.tsx`)
-- Regra `vendas` = é administrador **ou** tem `propostas.editar`. Ela controla **Funil de Vendas** e **Leads**.
-- Regra `vendasOu("clientes.ver_todos")` controla **Clientes**, Contatos, Empresas, Produtos, Transportadoras.
-- Lais (Supervisor ADM) e Ana (Auditor Xerife) não têm `propostas.editar` nem `clientes.ver_todos` → hoje **não enxergam Leads, Funil nem Clientes** no menu, mesmo tendo `leads.ver_equipe` e `clientes.ver_equipe`.
+- **Quem envia hoje:** os e-mails de autenticação (convite, recuperação) saem pelo remetente padrão do Lovable, não por um domínio seu. O domínio próprio de envio **existe mas falhou**: `notify.crm.inplastic.com.br` ficou 14 dias aguardando DNS e a verificação expirou ("provisioning timed out — os registros NS não conferem").
+- **Logs de envio:** não há nenhum evento de entrega na janela visível (30 dias). Ou seja: não há prova de entrega dos convites da Maxicaixa, e o caminho de envio está em estado falho.
+- **Consequência prática:** e-mails de autenticação enviados por remetente genérico, sem SPF/DKIM no seu domínio, caem em spam ou são recusados por servidores corporativos — exatamente o que aconteceu com `@maxicaixa.com.br`.
+- **Observação:** os e-mails de proposta ao cliente usam outro caminho (Resend, `propostas@notify.inplastic.com.br`) e não dependem disso.
 
-### Onde aparecem os botões de cadastro
-| Ponto | Regra atual |
-|---|---|
-| Início (`/`) — botão "Novo lead" | **sem nenhuma regra**: aparece para todo mundo que abre o painel |
-| Funil (`/pipeline`) — botão "Novo" | sem regra própria; depende de chegar na tela (regra `vendas`) |
-| Clientes (`/clientes`) — botão "Novo cliente" | **sem nenhuma regra**; depende de chegar na tela |
-| Propostas — "Cadastrar novo lead" e "Novo cliente" dentro do fluxo da proposta | sem regra própria |
-| Ficha do lead — cadastro de cliente a partir do lead | sem regra própria |
-- Não existe tela de importação de leads/clientes no sistema.
+### O que só você pode fazer (passo a passo)
 
-### Server functions de criação
-- **Cliente:** `createCliente` / `criarClienteCore` (`src/lib/clientes.functions.ts`) — exige apenas estar autenticado. Grava `vendedor_id = quem criou` e `criado_por = quem criou`.
-- **Lead:** não há função de criação; o lead é gravado direto pelo navegador (`crm-sync.ts`, `upsert` em `leads`), protegido só pela RLS `leads owner insert`.
-- **Nenhuma** das duas recusa por papel, por `limite_leads_simultaneos = 0` ou por `xerife_isento`. Esses dois campos não são lidos em nenhum caminho de criação.
+Sem isto, o e-mail de redefinição continuará não chegando de forma confiável.
 
-### Conclusão do levantamento
-Hoje o que separa quem cadastra de quem não cadastra é **conseguir abrir a tela** — não existe permissão de cadastro. Por isso as duas não conseguem, embora o banco já aceite o insert delas.
+1. Abra **Configurações do projeto → E-mail** e veja o domínio de envio `notify.crm.inplastic.com.br`.
+2. No provedor de DNS do domínio `crm.inplastic.com.br` (hoje o DNS de `inplastic.com.br` está na Hostinger), cadastre exatamente os registros mostrados nessa tela:
+   - um registro **TXT** de verificação em `_lovable-email.crm.inplastic.com.br`;
+   - **dois registros NS** para `notify.crm.inplastic.com.br`, apontando para o par de servidores indicado na tela.
+   Copie os valores da tela — eles são exclusivos do seu projeto e não devem ser digitados de memória.
+3. Volte em Configurações → E-mail e clique em **Verificar**. A propagação pode levar algumas horas.
+4. Quando `aginext.com.br` entrar, repita o mesmo procedimento para o segundo domínio, se quiser remetente próprio também lá.
+5. **Endereços de redirecionamento do login:** confirme na configuração de autenticação que `https://crm.inplastic.com.br` e `https://crm.aginext.com.br` estão liberados como endereços de retorno. Hoje o segundo ainda não está — ele só pode ser liberado depois que o domínio for conectado ao projeto.
 
-## 2. Proposta — permissões `leads.criar` e `clientes.criar`
+Enquanto o DNS não estiver verificado, a funcionalidade funciona, mas a entrega continua no remetente padrão (risco de spam). Nada disso bloqueia a implementação.
 
-Seguir o padrão atual (chaves na tabela de permissões + perfis):
-- Criar as chaves `leads.criar` (grupo leads) e `clientes.criar` (grupo clientes).
-- Dar as duas aos perfis **Supervisor ADM** e **Auditor Xerife**.
-- Dar também a todos os perfis que hoje já cadastram, para ninguém perder nada: **Administrador**, **Gestor Comercial**, **Vendedor** (ambas) e **Operacional** (`clientes.criar`, pois hoje já alcança a tela de Clientes). Financeiro fica de fora — hoje não alcança nenhuma das telas.
-- Menu: **Leads** passa a `vendas` ou `leads.ver_equipe`/`leads.criar`; **Clientes** passa a aceitar também `clientes.ver_equipe`/`clientes.criar`. Funil, Contatos, Empresas, Produtos e Transportadoras **não mudam** — as duas seguem sem esses itens.
-- Botões: os quatro pontos de cadastro passam a exigir a chave correspondente. Como todos os perfis que hoje cadastram recebem a chave, ninguém perde botão.
-- Servidor: `createCliente` passa a exigir `clientes.criar`; o caminho de lead ganha a mesma checagem no ponto em que o lead novo é salvo. A regra de banco continua igual (dono = quem cria).
-- Testes de não-regressão: para cada perfil existente, provar que continua vendo e usando os mesmos botões de antes.
+## O que vou construir
 
-## 3. Vazamento na checagem de duplicidade
+### 1. Link na tela de login
+Em `/auth`, um link "Esqueci minha senha" abre um painel com campo de e-mail e botão "Enviar link". A resposta é **sempre** a mesma frase, exista o e-mail ou não: "Se este e-mail estiver cadastrado, você receberá um link para criar uma nova senha." Nenhuma diferença de texto, de tempo ou de erro entre e-mail existente e inexistente.
 
-**Como é hoje:** `verificarContatoEntrada` (`src/lib/contato-entrada.functions.ts`) roda com o cliente **administrativo** (ignora todas as regras de acesso) e devolve `leadId`, `clienteId`, `vendedorId`, **`vendedorNome`** e **`empresa`**. A ficha do lead mostra literalmente: *"Este contato já é de FULANO (EMPRESA X)"*. Isso expõe dados da INPLASTIC para quem é da Maxicaixa.
-Já a checagem de cliente por CNPJ usa a função de banco `cnpj_status`, que devolve só sinalizadores (existe / ativo / é do mesmo vendedor) — essa não vaza nome nem dono.
+O servidor já tem a função de recuperação genérica pronta (`solicitarRecuperacaoSenha`) — vou reaproveitá-la, apenas ajustando o texto e a auditoria.
 
-**Correção:** a resposta de duplicado passa a ser dividida em dois casos:
-- registro **da mesma equipe** (ou de quem o usuário já enxerga): mantém nome do dono e empresa, como hoje;
-- registro **de outra equipe**: devolve apenas o sinal de duplicado, sem `vendedorNome`, sem `empresa`, sem `leadId`/`clienteId`/`vendedorId`, e a mensagem vira *"Já existe cadastro deste CNPJ. Fale com o administrador."*
-O mesmo corte vale para o aviso de "nome parecido", que hoje devolve o nome da empresa encontrada.
-Teste: Ana cadastrando um CNPJ que é de um vendedor da INPLASTIC recebe só a mensagem genérica; um vendedor da INPLASTIC cadastrando um CNPJ de colega da própria equipe continua vendo o nome do dono.
+### 2. Página de redefinição
+A página `/definir-senha` já existe e já é usada pelos convites: valida o link, pede a senha duas vezes e aplica as mesmas regras de senha do sistema. Vou reaproveitá-la, com três acertos:
 
-## 4. Dono do registro, fila e Xerife
+- ao concluir, marcar `senha_reset_exigido = false` (hoje ela não faz isso, então quem tem a marca ainda cairia na tela de troca obrigatória logo depois);
+- bloquear conta inativa ou excluída (`ativo = false` ou `deleted_at`) antes de aplicar a nova senha — hoje o bloqueio existe no login e nas funções internas, mas não nessa página;
+- deixar a pessoa já entrar no CRM ao concluir, em vez de voltar para o login.
 
-- **Dono:** quem cadastra vira dono — já é assim (lead grava `owner_id` = quem salva; cliente grava `vendedor_id` e `criado_por`). Nada muda.
-- **Fila de distribuição:** a fila é uma lista à parte, alimentada só na tela de usuários. Hoje ela tem 4 pessoas (Beatriz, Bianca, Daniel, Pamela) — nenhuma da Maxicaixa. Cadastrar lead **não** inscreve ninguém na fila. Confirmado.
-- **Xerife e Ana:** o Xerife ignora tarefas de quem é isento, e Ana está marcada como isenta — ela não será cobrada. Confirmado.
-- **Xerife e Lais:** Lais **não** é isenta. Se ela cadastrar um lead, as cobranças do Xerife passam a valer para ela. Duas saídas: marcar Lais como isenta, ou deixar como está e ela ser cobrada como qualquer dono de lead. **Preciso da sua decisão** — o plano assume "deixar como está" se você não disser o contrário.
+A checagem de senha vazada continua sendo aplicada pelo provedor de autenticação (é ela que já recusou senhas fracas antes) — a mensagem de recusa passa a explicar em português que a senha apareceu em vazamentos.
 
-## 5. Nada muda para a INPLASTIC
+### 3. Endereço do link
+O link do e-mail é montado com `appUrl("/definir-senha")` do helper único — já é assim hoje. Ele acompanha automaticamente a troca para `crm.aginext.com.br`, sem endereço fixo em lugar nenhum.
 
-Nenhuma permissão é removida, nenhuma regra de visão é alterada, nenhum dado é migrado. As duas continuam enxergando só Maxicaixa, pelas regras de equipe que já existem.
+### 4. Limite de tentativas
+- O provedor de autenticação já aplica um limite próprio de e-mails por hora no projeto inteiro (baixo por padrão) e um intervalo mínimo entre envios ao mesmo endereço.
+- No nosso lado já existe limite por e-mail (3 pedidos a cada 15 minutos). Vou **acrescentar limite por IP** (ex.: 10 pedidos a cada 15 minutos) e, ao estourar, manter a mesma resposta genérica — nunca um erro que denuncie o e-mail.
+- Recomendo, depois que o domínio estiver verificado, elevar o limite horário de e-mails de autenticação para um valor compatível com o uso real.
 
-## Verificação antes de entregar
-- Provas no banco entrando como Lais, Ana, um vendedor INPLASTIC e o admin: quem vê cada botão, o que a checagem de duplicado devolve em cada caso, contagens de leads/clientes visíveis antes e depois (devem ser idênticas).
-- Saída real de `bunx tsgo --noEmit`, `bunx vitest run` e `bun run build`.
-- Nada publicado.
+### 5. Registro em auditoria
+Cada pedido de recuperação e cada redefinição concluída entram em `user_audit_log` (campo, autor, data). Nunca a senha, nunca o token, nunca o link.
+
+### 6. Texto do e-mail em português
+Os e-mails de autenticação hoje usam o texto padrão em inglês. Vou criar os modelos próprios do CRM em português, com a identidade visual do sistema (título "INPLASTIC — CRM", cor primária, botão "Criar nova senha", aviso de validade e de "ignore se não foi você"). Esses modelos passam a valer para convite, recuperação e demais e-mails de acesso. Eles só saem do remetente próprio depois do passo de DNS acima.
+
+## Detalhes técnicos
+
+- `src/routes/auth.tsx`: novo estado de "recuperação" no formulário, chamando `solicitarRecuperacaoSenha` (`src/lib/invites.functions.ts`).
+- `src/lib/invites.functions.ts`: rate limit adicional por IP, auditoria do pedido, mensagem alinhada ao texto pedido.
+- Nova server function de conclusão de redefinição (sessão de recuperação): valida `ativo`/`deleted_at`, zera `senha_reset_exigido`, registra auditoria.
+- `src/routes/definir-senha.tsx`: usar essa função ao concluir e seguir para `/` em vez de `/auth`.
+- Modelos de e-mail de autenticação em português criados pelo scaffold oficial de e-mails de autenticação, com estilo lido de `src/styles.css`.
+- Sem alteração em regras de acesso (RLS), sem alteração para a INPLASTIC nem para o fluxo de troca obrigatória em `/trocar-senha`.
+
+## Validação antes de fechar
+
+- Teste de que a resposta é idêntica para e-mail existente e inexistente.
+- Teste de que conta inativa/excluída não consegue redefinir.
+- Teste de que `senha_reset_exigido` fica falso após a redefinição.
+- Teste dos limites por e-mail e por IP.
+- Saída real de verificação de tipos, suíte completa e build.
+
+Nada será publicado.
