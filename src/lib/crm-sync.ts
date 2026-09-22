@@ -1778,6 +1778,7 @@ async function doSaveInterno(userId: string) {
       toJson: (p) => JSON.stringify(proposalToInsert(p)),
       upsert: (items) =>
         gravarNovosEExistentes<Proposal>({
+          tabela: "propostas",
           itens: items,
           id: (p) => p.id,
           ehNovo: (p) => !snapshot.proposals.has(p.id),
@@ -1788,7 +1789,8 @@ async function doSaveInterno(userId: string) {
             supabase
               .from("propostas")
               .update(linha as never)
-              .eq("id", id),
+              .eq("id", id)
+              .select("id"),
         }),
       del: (ids) => supabase.from("propostas").delete().in("id", ids),
       isIntentionalDelete: isIntentionalDelete("proposals"),
