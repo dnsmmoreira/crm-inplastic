@@ -166,3 +166,29 @@ export async function consultarDonoPorContato(
 
   return await montarDonoCadastro(sb, atorId, { vendedorId, empresa, documento });
 }
+
+/**
+ * Dono do CLIENTE já cadastrado com este CNPJ. Comparação sempre por dígitos
+ * (o banco tem cadastros antigos com máscara).
+ */
+export async function donoDoClientePorCnpj(
+  sb: SB,
+  atorId: string,
+  cnpj: string | null | undefined,
+): Promise<DonoCadastro> {
+  const digitos = normalizarDocumento(cnpj);
+  if (digitos.length !== 14) return { ...DONO_NAO_ENCONTRADO };
+  const { data } = await sb
+    .from("clientes")
+    .select("id, cnpj, vendedor_id, razao_social")
+    .ilike("cnpj", `%${digitos}%`)
+    .limit(10);
+  const linhas = (data ?? []) as { cnpj: string | null; vendedor_id: string | null; razao_social: string | null }[];
+  const achado = linhas.find((r) => normalizarDocumento(r.cnpj) === digitos);
+  if (!achado) return { ...DONO_NAO_ENCONTRADO };
+  return await montarDonoCadastro(sb, atorId, {
+    vendedorId: achado.vendedor_id ?? null,
+    empresa: achado.razao_social ?? null,
+    documento: digitos,
+  });
+}
