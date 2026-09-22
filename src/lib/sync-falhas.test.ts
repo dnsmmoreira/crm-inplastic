@@ -17,12 +17,18 @@ describe("reportarFalhaSync", () => {
     expect(vi.mocked(toast.error).mock.calls[0]?.[0]).toContain("Falha ao salvar produtos");
   });
 
-  it("lead recusado pela RLS explica que o dono é outro", () => {
-    reportarFalhaSync("leads", "upsert", {
-      code: "42501",
-      message: 'new row violates row-level security policy for table "leads"',
-    });
-    expect(vi.mocked(toast.error).mock.calls[0]?.[0]).toMatch(/outro vendedor/i);
+  it("lead recusado pela RLS NÃO acusa outro vendedor sem confirmar o dono", async () => {
+    reportarFalhaSync(
+      "leads",
+      "upsert",
+      { code: "42501", message: 'new row violates row-level security policy for table "leads"' },
+      { ids: [] },
+    );
+    // o diagnóstico é assíncrono; sem ids não há a quem perguntar
+    await new Promise((r) => setTimeout(r, 0));
+    const msg = String(vi.mocked(toast.error).mock.calls[0]?.[0]);
+    expect(msg).not.toMatch(/outro vendedor/i);
+    expect(msg).toMatch(/recusou a gravação/i);
   });
 
   it("não empilha o mesmo toast em ciclos seguidos", () => {
