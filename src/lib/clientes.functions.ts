@@ -230,7 +230,7 @@ export const getClienteByCnpj = createServerFn({ method: "GET" })
 // CREATE
 // ==========================
 export type CreateClienteResult =
-  | { ok: true; cliente: ClienteRow }
+  | { ok: true; cliente: ClienteRow; reaproveitado?: boolean }
   | {
       ok: false;
       code: "duplicate_active" | "duplicate_inactive" | "duplicate_other";
@@ -238,6 +238,7 @@ export type CreateClienteResult =
       podeReativar?: boolean;
       clienteId?: string;
     };
+
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type LooseDb = any;
