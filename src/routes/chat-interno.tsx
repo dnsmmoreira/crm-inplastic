@@ -75,6 +75,11 @@ export const Route = createFileRoute("/chat-interno")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
+  // Link direto: /chat-interno?dm=<user_id>&msg=<texto sugerido>
+  validateSearch: (search: Record<string, unknown>) => ({
+    dm: typeof search["dm"] === "string" ? (search["dm"] as string) : undefined,
+    msg: typeof search["msg"] === "string" ? (search["msg"] as string) : undefined,
+  }),
   component: ChatInternoPage,
 });
 
@@ -690,6 +695,29 @@ function ChatInternoPage() {
   /* ------------------------------------------------------------- envio */
 
   const [texto, setTexto] = useState("");
+
+  // Link direto vindo do aviso de cadastro duplicado ("Avisar o dono").
+  const { dm, msg } = Route.useSearch();
+  const dmAplicado = useRef(false);
+  useEffect(() => {
+    if (!dm || dmAplicado.current) return;
+    dmAplicado.current = true;
+    const item = itens.find((i) => i.outroUserId === dm);
+    void abrir(
+      item ?? {
+        canalId: null,
+        outroUserId: dm,
+        titulo: "Conversa",
+        tipo: "direto" as ChatTipoCanal,
+        avatarColor: null,
+        ultimaMensagemEm: null,
+        ultimaMensagemTexto: null,
+        naoLidas: 0,
+      },
+    );
+    if (msg) setTexto(msg);
+  }, [dm, msg, itens, abrir]);
+
   const [enviando, setEnviando] = useState(false);
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [progresso, setProgresso] = useState<number | null>(null);

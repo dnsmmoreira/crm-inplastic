@@ -84,6 +84,15 @@ import { sufixoCobranca } from "@/lib/tarefa-desfecho";
 import { TransferirLeadDialog } from "@/components/crm/TransferirLeadDialog";
 import { reagendarLead } from "@/lib/leads-etapa.functions";
 import { verificarContatoEntrada } from "@/lib/contato-entrada.functions";
+import { useNavigate } from "@tanstack/react-router";
+import { consultarDonoDocumento } from "@/lib/consulta-dono.functions";
+import {
+  mensagemDonoDuplicado,
+  mensagemNomeParecido,
+  mensagemProntaParaDono,
+  podeAvisarDono,
+  MSG_CONSULTA_INDISPONIVEL,
+} from "@/lib/consulta-dono";
 import { useQuery } from "@tanstack/react-query";
 import { listVendedores } from "@/lib/clientes.functions";
 
@@ -921,6 +930,8 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
   const [form, setForm] = useState(initial);
   const [lookingUp, setLookingUp] = useState(false);
   const lookupCnpjFn = useServerFn(lookupCnpj);
+  const consultarDonoFn = useServerFn(consultarDonoDocumento);
+  const navigate = useNavigate();
 
   const selectedProduct = products.find((p) => p.id === form.productId);
 
@@ -1000,6 +1011,14 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
 
 
       toast.success("Dados do CNPJ preenchidos");
+      // Consulta por documento também avisa se o cadastro já existe e de quem é.
+      try {
+        const info = await consultarDonoFn({ data: { cnpj: digits } });
+        if (info.limiteExcedido) toast.warning(MSG_CONSULTA_INDISPONIVEL);
+        else if (info.existe) toast.warning(mensagemDonoDuplicado(info), { duration: 12_000 });
+      } catch {
+        // Consulta indisponível não trava o preenchimento.
+      }
     } catch (e) {
       toast.error(friendlyCnpjError(e));
     } finally {
@@ -1327,21 +1346,31 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
                   },
                 });
                 if (check.situacao === "duplicado") {
-                  toast.error(
-                    check.restrito
-                      ? "Já existe cadastro deste CNPJ. Fale com o administrador."
-                      : `Este contato já é de ${check.vendedorNome ?? "outro vendedor"}${
-                          check.empresa ? ` (${check.empresa})` : ""
-                        }. Continue o atendimento no cadastro existente.`,
-                  );
+                  // O chat interno só conversa dentro da equipe: entre equipes
+                  // fica só o nome do dono, sem o botão.
+                  const avisar =
+                    podeAvisarDono(check.dono, !check.dono.outraEquipe) && check.vendedorId
+                      ? {
+                          label: "Avisar o dono",
+                          onClick: () => {
+                            void navigate({
+                              to: "/chat-interno",
+                              search: {
+                                dm: check.vendedorId as string,
+                                msg: mensagemProntaParaDono(form.cnpj),
+                              },
+                            });
+                          },
+                        }
+                      : undefined;
+                  toast.error(mensagemDonoDuplicado(check.dono), {
+                    duration: 12_000,
+                    ...(avisar ? { action: avisar } : {}),
+                  });
                   return;
                 }
                 if (check.situacao === "suspeita") {
-                  toast.warning(
-                    check.restrito
-                      ? "Já existe cadastro com nome parecido. Fale com o administrador."
-                      : `Existe um cadastro com nome parecido${check.empresa ? `: "${check.empresa}"` : ""}. Confira antes de duplicar.`,
-                  );
+                  toast.warning(mensagemNomeParecido(check.dono), { duration: 10_000 });
                 }
               } catch {
                 // Checagem indisponível não pode impedir o cadastro.
