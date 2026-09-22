@@ -2,7 +2,38 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
+import { assertRpcPermissao } from "@/lib/guard-erros";
 import { escolherSugestaoTransportadora, normalizarUf, type UsoTransportadora } from "@/lib/transportadoras";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ClientRpc = any;
+
+/** Fail-closed: passa quem tem QUALQUER uma das chaves, ou o papel admin. */
+async function exigirAlgumaPermissao(
+  supabase: ClientRpc,
+  userId: string | undefined,
+  chaves: string[],
+  mensagem: string,
+) {
+  for (const chave of chaves) {
+    const ok = await assertRpcPermissao(
+      await supabase.rpc("tem_permissao", { _user_id: userId, _chave: chave }),
+      "transportadoras/tem_permissao",
+      { userId, chave },
+    );
+    if (ok === true) return;
+  }
+  const isAdmin = await assertRpcPermissao(
+    await supabase.rpc("has_role", { _user_id: userId, _role: "admin" }),
+    "transportadoras/has_role",
+    { userId },
+  );
+  if (isAdmin === true) return;
+  throw new Error(mensagem);
+}
+
+const MSG_SEM_CADASTRO = "Você não tem permissão para cadastrar transportadoras.";
+const MSG_SEM_GESTAO = "Você não tem permissão para gerenciar transportadoras.";
 
 export type TransportadoraRow = {
   id: string;
