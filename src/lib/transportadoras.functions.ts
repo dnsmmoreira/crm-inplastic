@@ -101,6 +101,7 @@ export const criarTransportadora = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => dadosTransportadora.parse(d))
   .handler(async ({ data, context }) => {
+    await exigirAlgumaPermissao(context.supabase, context.userId, ["empresas.editar"], MSG_SEM_GESTAO);
     const { data: row, error } = await context.supabase
       .from("transportadoras")
       .insert(data)
@@ -119,6 +120,7 @@ export const atualizarTransportadora = createServerFn({ method: "POST" })
         .parse(d),
   )
   .handler(async ({ data, context }) => {
+    await exigirAlgumaPermissao(context.supabase, context.userId, ["empresas.editar"], MSG_SEM_GESTAO);
     const { id: _id, ...resto } = data;
     const patch = Object.fromEntries(
       Object.entries(resto).filter(([, v]) => v !== undefined),
@@ -137,6 +139,7 @@ export const excluirTransportadora = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
+    await exigirAlgumaPermissao(context.supabase, context.userId, ["empresas.editar"], MSG_SEM_GESTAO);
     const { error } = await context.supabase.from("transportadoras").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
