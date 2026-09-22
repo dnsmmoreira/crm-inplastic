@@ -20,8 +20,19 @@ export default defineTool({
         auth: { persistSession: false, autoRefreshToken: false },
       },
     );
-    const { data, error } = await supabase.from("xerife_config").select("*").eq("id", 1).maybeSingle();
-    if (error) return { content: [{ type: "text", text: `Erro: ${error.message}` }], isError: true };
+    // Admin enxerga a tabela inteira (inclui os pesos do placar).
+    // Vendedor lê só os parâmetros operacionais, pela função do banco.
+    const admin = await supabase.from("xerife_config").select("*").eq("id", 1).maybeSingle();
+    let data = admin.data as Record<string, any> | null;
+    let temPesos = !!data;
+    if (!data) {
+      const oper = await supabase.rpc("xerife_config_operacional");
+      if (oper.error)
+        return { content: [{ type: "text", text: `Erro: ${oper.error.message}` }], isError: true };
+      const linhasOper = (oper.data ?? []) as Record<string, any>[];
+      data = linhasOper[0] ?? null;
+      temPesos = false;
+    }
     if (!data) return { content: [{ type: "text", text: "Configuração não encontrada." }], isError: true };
 
     const linhas = [
@@ -34,8 +45,12 @@ export default defineTool({
       `Carteira alerta/crítico: ${data.carteira_alerta_dias}d / ${data.carteira_critico_dias}d · Reciclagem perdidos: ${data.reciclagem_perdidos_dias}d`,
       `Pós-venda (dias): [${(data.pos_venda_dias ?? []).join(", ")}]`,
       `Meta atividades/dia: ${data.meta_atividades_dia} · Resumo diário: ${data.resumo_diario_ativo ? `sim @ ${data.resumo_hora}` : "não"}`,
-      `Placar pesos → ganho:${data.placar_peso_ganho} proposta:${data.placar_peso_proposta} tarefa:${data.placar_peso_tarefa} pos_venda:${data.placar_peso_pos_venda} sla_estourado:${data.placar_peso_sla_estourado} carteira_60:${data.placar_peso_carteira_60} meta_batida:${data.placar_peso_meta_batida}`,
-      `Placar dias sem proposta (limite): ${data.placar_dias_sem_proposta_limite}d`,
+      temPesos
+        ? `Placar pesos → ganho:${data.placar_peso_ganho} proposta:${data.placar_peso_proposta} tarefa:${data.placar_peso_tarefa} pos_venda:${data.placar_peso_pos_venda} sla_estourado:${data.placar_peso_sla_estourado} carteira_60:${data.placar_peso_carteira_60} meta_batida:${data.placar_peso_meta_batida}`
+        : "Placar pesos: visível apenas para administradores.",
+      temPesos
+        ? `Placar dias sem proposta (limite): ${data.placar_dias_sem_proposta_limite}d`
+        : "Placar dias sem proposta (limite): visível apenas para administradores.",
       `Dias sem interação por etapa: ${JSON.stringify(data.dias_sem_interacao_por_etapa)}`,
       `Máx. dias por etapa: ${JSON.stringify(data.max_dias_etapa)}`,
       `Atualizado em: ${data.updated_at}`,
