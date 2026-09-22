@@ -21,3 +21,12 @@ Pendente com o Denis: senha do Luciano; catálogo/estoque/transportadoras/DIFAL 
 - [ ] Botão "Novo lead" no Início passa a exigir leads.criar (aguardando decisão sobre Renata/Bruna)
 - [ ] Corte de dados de outra equipe no aviso de duplicidade
 - [ ] Provas: contagens iguais para Lais, Ana, Pamela e admin; typecheck/suíte/build
+
+## Esqueci minha senha (set/2026)
+- [ ] Link + painel de recuperação na tela de login (resposta sempre genérica)
+- [ ] /definir-senha: bloqueio de conta inativa, limpa senha_reset_exigido, entra no CRM
+- [ ] Link usado/expirado: mensagem em português + botão "Pedir novo link"
+- [ ] Sessão de conta desativada encerrada em qualquer origem
+- [ ] Limite por e-mail e por IP + auditoria em user_audit_log
+- [ ] E-mails de autenticação em português com a marca do CRM
+- [ ] Provas: typecheck, suíte e build com saída real
