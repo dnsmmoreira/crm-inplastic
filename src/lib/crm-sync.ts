@@ -1689,6 +1689,9 @@ async function doSaveInterno(userId: string) {
   }
 
   // ---- leads (RLS filtra por owner_id) ----
+  // Registro que já existe vai por UPDATE: o payload de existente não leva
+  // `owner_id` de propósito, e num upsert isso bate no WITH CHECK do INSERT
+  // (`leads owner insert`) e recusa a gravação do próprio vendedor.
   if (precisaDiff("leads", state.leads))
     await syncCollection<Lead>({
       current: state.leads,
@@ -1696,7 +1699,19 @@ async function doSaveInterno(userId: string) {
       toKey: (l) => l.id,
       toJson: (l) => JSON.stringify(leadPayload(l)),
       upsert: (items) =>
-        supabase.from("leads").upsert(items.map(leadPayload), { onConflict: "id" }),
+        gravarNovosEExistentes<Lead>({
+          itens: items,
+          id: (l) => l.id,
+          ehNovo: (l) => !snapshot.leads.has(l.id),
+          payloadNovo: (l) => leadToInsert(l, { novo: true }) as Record<string, unknown>,
+          payloadExistente: (l) => leadToInsert(l, { novo: false }) as Record<string, unknown>,
+          inserir: (linhas) => supabase.from("leads").insert(linhas as never),
+          atualizar: (id, linha) =>
+            supabase
+              .from("leads")
+              .update(linha as never)
+              .eq("id", id),
+        }),
       del: (ids) => supabase.from("leads").delete().in("id", ids),
       isIntentionalDelete: isIntentionalDelete("leads"),
       collectionName: "leads",
@@ -1713,27 +1728,23 @@ async function doSaveInterno(userId: string) {
       snapshot: snapshot.tasks,
       toKey: (t) => t.id,
       toJson: (t) => JSON.stringify(taskPayload(t, leadOwnerMap.get(t.leadId) ?? userId)),
-      // Novas e existentes vão em lotes separados: só as novas carregam
-      // `owner_id`, para não desfazer trocas de dono feitas no servidor.
-      upsert: async (items) => {
-        const novas = items.filter((t) => !snapshot.tasks.has(t.id));
-        const existentes = items.filter((t) => snapshot.tasks.has(t.id));
-        if (novas.length) {
-          const r = await supabase
-            .from("tarefas")
-            .upsert(
-              novas.map((t) => taskToInsert(t, leadOwnerMap.get(t.leadId) ?? userId)),
-              { onConflict: "id" },
-            );
-          if (r.error) return r;
-        }
-        if (existentes.length) {
-          return await supabase
-            .from("tarefas")
-            .upsert(existentes.map(taskToUpdate), { onConflict: "id" });
-        }
-        return { error: null };
-      },
+      // Só as novas carregam `owner_id`; as existentes vão por UPDATE, para não
+      // desfazer trocas de dono feitas no servidor nem bater na policy de INSERT.
+      upsert: (items) =>
+        gravarNovosEExistentes<Task>({
+          itens: items,
+          id: (t) => t.id,
+          ehNovo: (t) => !snapshot.tasks.has(t.id),
+          payloadNovo: (t) =>
+            taskToInsert(t, leadOwnerMap.get(t.leadId) ?? userId) as Record<string, unknown>,
+          payloadExistente: (t) => taskToUpdate(t) as Record<string, unknown>,
+          inserir: (linhas) => supabase.from("tarefas").insert(linhas as never),
+          atualizar: (id, linha) =>
+            supabase
+              .from("tarefas")
+              .update(linha as never)
+              .eq("id", id),
+        }),
       del: (ids) => supabase.from("tarefas").delete().in("id", ids),
       isIntentionalDelete: isIntentionalDelete("tasks"),
       collectionName: "tasks",
@@ -1741,6 +1752,9 @@ async function doSaveInterno(userId: string) {
     });
 
   // ---- propostas ----
+  // Mesma regra: a policy de UPDATE é mais larga que a de INSERT (quem tem
+  // `propostas.ver_todas` + `propostas.editar` edita proposta de outro), e o
+  // upsert aplicava a regra estreita do INSERT.
   if (precisaDiff("proposals", state.proposals))
     await syncCollection<Proposal>({
       current: state.proposals,
@@ -1748,7 +1762,19 @@ async function doSaveInterno(userId: string) {
       toKey: (p) => p.id,
       toJson: (p) => JSON.stringify(proposalToInsert(p)),
       upsert: (items) =>
-        supabase.from("propostas").upsert(items.map(proposalToInsert), { onConflict: "id" }),
+        gravarNovosEExistentes<Proposal>({
+          itens: items,
+          id: (p) => p.id,
+          ehNovo: (p) => !snapshot.proposals.has(p.id),
+          payloadNovo: (p) => proposalToInsert(p) as Record<string, unknown>,
+          payloadExistente: (p) => proposalToInsert(p) as Record<string, unknown>,
+          inserir: (linhas) => supabase.from("propostas").insert(linhas as never),
+          atualizar: (id, linha) =>
+            supabase
+              .from("propostas")
+              .update(linha as never)
+              .eq("id", id),
+        }),
       del: (ids) => supabase.from("propostas").delete().in("id", ids),
       isIntentionalDelete: isIntentionalDelete("proposals"),
       collectionName: "proposals",
