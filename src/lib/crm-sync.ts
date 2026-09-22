@@ -1709,17 +1709,21 @@ async function doSaveInterno(userId: string) {
       toJson: (l) => JSON.stringify(leadPayload(l)),
       upsert: (items) =>
         gravarNovosEExistentes<Lead>({
+          tabela: "leads",
           itens: items,
           id: (l) => l.id,
           ehNovo: (l) => !snapshot.leads.has(l.id),
           payloadNovo: (l) => leadToInsert(l, { novo: true }) as Record<string, unknown>,
           payloadExistente: (l) => leadToInsert(l, { novo: false }) as Record<string, unknown>,
           inserir: (linhas) => supabase.from("leads").insert(linhas as never),
+          // `.select("id")` é obrigatório: UPDATE barrado pela RLS volta sem
+          // erro e com zero linhas.
           atualizar: (id, linha) =>
             supabase
               .from("leads")
               .update(linha as never)
-              .eq("id", id),
+              .eq("id", id)
+              .select("id"),
         }),
       del: (ids) => supabase.from("leads").delete().in("id", ids),
       isIntentionalDelete: isIntentionalDelete("leads"),
