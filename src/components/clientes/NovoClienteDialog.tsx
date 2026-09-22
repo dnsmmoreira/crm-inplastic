@@ -15,6 +15,8 @@ import { isValidCnpj, onlyDigitsCnpj, friendlyCnpjError } from "@/lib/cnpj";
 import { friendlyClienteError } from "@/lib/clientes";
 import { lookupCnpj } from "@/lib/cnpj.functions";
 import { createCliente, listVendedores, reativarCliente, vincularClienteAoLead, type ClienteRow } from "@/lib/clientes.functions";
+import { consultarDonoDocumento } from "@/lib/consulta-dono.functions";
+import { mensagemDonoDuplicado, MSG_CONSULTA_INDISPONIVEL } from "@/lib/consulta-dono";
 import { ClienteFormFields, emptyCliente, type ClienteFormState } from "./ClienteFormFields";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -98,6 +100,15 @@ export function NovoClienteDialog({ open, onOpenChange, cnpjInicial, leadId, onC
         suframa_numero: s.suframa_numero || suframaNumero,
       }));
       toast.success("Dados carregados da Receita");
+      // Já existe cadastro deste CNPJ? O dono aparece sempre (inclusive de
+      // outra equipe); os dados do registro, só para quem já os enxerga.
+      try {
+        const info = await consultarDonoFn({ data: { cnpj: digits } });
+        if (info.limiteExcedido) toast.warning(MSG_CONSULTA_INDISPONIVEL);
+        else if (info.existe) toast.warning(mensagemDonoDuplicado(info), { duration: 12_000 });
+      } catch {
+        // Consulta indisponível não pode travar o preenchimento.
+      }
     } catch (e) {
       const raw = e instanceof Error ? e.message : "";
       if (/não encontrado/i.test(raw)) toast.error("CNPJ não encontrado na Receita. Preencha manualmente.");
