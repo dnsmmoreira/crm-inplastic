@@ -1,0 +1,1 @@
+ALTER TABLE public.correcao_documento_backup ADD COLUMN IF NOT EXISTS owner_antigo uuid;
