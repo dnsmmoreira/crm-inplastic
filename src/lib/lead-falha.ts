@@ -64,8 +64,24 @@ export function motivoFalhaLead(erro: unknown): MotivoFalhaLead {
 export const MSG_LEAD_RECUSADO_GENERICO =
   "Este lead não foi salvo: o servidor recusou a gravação. Atualizei a tela com os dados do servidor e registrei a falha para o administrador — confira e tente de novo.";
 
+/**
+ * Recusa com texto pronto do banco (regra do dono único: lead e cliente da
+ * mesma empresa pertencem sempre ao mesmo vendedor). A mensagem já vem em
+ * português e nomeia o dono — repetir um texto genérico só atrapalharia.
+ */
+export function mensagemDoBanco(erro: unknown): string | null {
+  const bruto =
+    erro && typeof erro === "object" ? (erro as { message?: unknown }).message : null;
+  const t = typeof bruto === "string" ? bruto.trim() : "";
+  if (!t || t.length > 200 || /\n/.test(t)) return null;
+  if (/já está com|não pode ficar ligado/i.test(t)) return t;
+  return null;
+}
+
 /** Texto pronto para toast — sempre diz o que aconteceu e o próximo passo. */
 export function mensagemFalhaLead(erro: unknown): string {
+  const doBanco = mensagemDoBanco(erro);
+  if (doBanco) return doBanco;
   switch (motivoFalhaLead(erro)) {
     case "sem_permissao":
       return "Este lead não foi salvo: ele pertence a outro vendedor (ou mudou de dono). Atualizei a tela com os dados do servidor — peça a transferência para editá-lo.";

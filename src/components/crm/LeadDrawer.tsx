@@ -88,6 +88,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { consultarDonoDocumento } from "@/lib/consulta-dono.functions";
 import {
   mensagemDonoDuplicado,
+  mensagemDonoTelefone,
   mensagemNomeParecido,
   mensagemProntaParaDono,
   podeAvisarDono,
