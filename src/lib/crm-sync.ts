@@ -1745,6 +1745,7 @@ async function doSaveInterno(userId: string) {
       // desfazer trocas de dono feitas no servidor nem bater na policy de INSERT.
       upsert: (items) =>
         gravarNovosEExistentes<Task>({
+          tabela: "tarefas",
           itens: items,
           id: (t) => t.id,
           ehNovo: (t) => !snapshot.tasks.has(t.id),
@@ -1756,7 +1757,8 @@ async function doSaveInterno(userId: string) {
             supabase
               .from("tarefas")
               .update(linha as never)
-              .eq("id", id),
+              .eq("id", id)
+              .select("id"),
         }),
       del: (ids) => supabase.from("tarefas").delete().in("id", ids),
       isIntentionalDelete: isIntentionalDelete("tasks"),
