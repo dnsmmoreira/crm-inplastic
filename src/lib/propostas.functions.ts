@@ -100,6 +100,9 @@ export const getPropostaPublica = createServerFn({ method: "POST" })
       .eq("id", data.id)
       .maybeSingle();
     if (!p) return null;
+    // Rascunho é trabalho em andamento do vendedor: não abre para o cliente.
+    // Mesmo retorno de "não encontrada", para não revelar que a proposta existe.
+    if (p.status === "rascunho") return null;
 
     const [itensRes, parcelasRes, emitterRes, condRes, leadRes] = await Promise.all([
       supabaseAdmin
