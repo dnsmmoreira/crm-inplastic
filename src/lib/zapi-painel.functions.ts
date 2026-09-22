@@ -212,6 +212,13 @@ export const testarEnvioCloud = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     await exigirAdmin(supabase, userId);
 
+    // Botão de teste dispara WhatsApp real: no máximo 5 por hora, por usuário.
+    const { consumirTentativa } = await import("@/lib/rate-limit.server");
+    const limite = await consumirTentativa(`zapi.testarEnvioCloud:${userId}`, 3600, 5);
+    if (!limite.permitido) {
+      throw new Error("Limite de 5 envios de teste por hora atingido. Tente mais tarde.");
+    }
+
     const template = data.template?.trim() || "retomada_atendimento";
     const idioma = data.idioma?.trim() || "pt_BR";
     const parametro = data.parametro?.trim() || "";
