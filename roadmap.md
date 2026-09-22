@@ -31,3 +31,12 @@ Pendente com o Denis: senha do Luciano; catálogo/estoque/transportadoras/DIFAL 
 - [x] E-mails de autenticação em português com a marca do CRM
 - [x] Provas: typecheck, suíte e build com saída real
 - [ ] Pendente com o Denis: registros de DNS do remetente próprio (entrega fora do spam)
+
+## Dono do cadastro duplicado (set/2026)
+- [x] Mensagem revela dono + equipe, inclusive entre equipes; dados do registro só para quem enxerga
+- [x] Consulta de dono por documento (lead, cliente, consulta de CNPJ, busca de clientes)
+- [x] Limite de 30 consultas/min por pessoa contado no banco (consulta_tentativas)
+- [x] Auditoria só quando revela dono de OUTRA equipe, com documento mascarado
+- [x] Documento normalizado (só dígitos) dos dois lados
+- [x] Botão "Avisar o dono" (só dentro da equipe) + link direto no chat interno
+- [x] Provas: testes em transação com ROLLBACK; typecheck/suíte/build
