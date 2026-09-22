@@ -183,7 +183,13 @@ export const atualizarDadosRepresentante = createServerFn({ method: "POST" })
         valor_anterior: m.anterior,
         valor_novo: m.novo,
       });
-      if (logErr) console.error("[representantes] auditoria falhou:", logErr.message);
+      if (logErr) {
+        const { registrarFalhaSegura } = await import("@/lib/guard-erros");
+        await registrarFalhaSegura("representantes.auditoria", logErr, {
+          alvo: data.userId,
+          campo: m.campo,
+        });
+      }
     }
 
     return { ok: true };
