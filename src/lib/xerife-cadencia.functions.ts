@@ -58,11 +58,8 @@ export const getCadenciaSnapshot = createServerFn({ method: "GET" })
     const { supabase } = context;
 
     // Config: thresholds por etapa
-    const { data: cfg } = await supabase
-      .from("xerife_config")
-      .select("dias_sem_interacao_por_etapa")
-      .eq("id", 1)
-      .maybeSingle();
+    const { lerConfigOperacional } = await import("@/lib/xerife-config-operacional");
+    const { data: cfg } = await lerConfigOperacional(supabase);
     const diasEtapa =
       (cfg?.dias_sem_interacao_por_etapa as Record<string, number>) ?? {
         novo: 1,
