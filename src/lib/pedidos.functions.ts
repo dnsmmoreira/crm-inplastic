@@ -23,6 +23,7 @@ import {
   podeDevolverPedido,
   destinoDevolucao,
   podeAssumirPedido,
+  ehEtapaFinanceira,
   stageLabel,
   type PedidoStageId,
 } from "@/lib/pedidos-stages";
