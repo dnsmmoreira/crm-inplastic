@@ -51,7 +51,7 @@ function fallbackTemplateAutomatico(): string {
 async function lerTemplateAutomatico(supabase: any): Promise<string | null> {
   const { lerConfigOperacional } = await import("@/lib/xerife-config-operacional");
   const { data, error } = await lerConfigOperacional(supabase);
-  assertNoError(error, "frases-prontas.lerTemplateAutomatico");
+  assertNoError(error as { error: unknown } | null, "frases-prontas.lerTemplateAutomatico");
   return (String(data?.["meta_template_automatico"] ?? "")).trim() || null;
 }
 
