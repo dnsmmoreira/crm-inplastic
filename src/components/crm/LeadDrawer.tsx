@@ -84,6 +84,7 @@ import { sufixoCobranca } from "@/lib/tarefa-desfecho";
 import { TransferirLeadDialog } from "@/components/crm/TransferirLeadDialog";
 import { reagendarLead } from "@/lib/leads-etapa.functions";
 import { verificarContatoEntrada } from "@/lib/contato-entrada.functions";
+import { useNavigate } from "@tanstack/react-router";
 import { consultarDonoDocumento } from "@/lib/consulta-dono.functions";
 import {
   mensagemDonoDuplicado,
