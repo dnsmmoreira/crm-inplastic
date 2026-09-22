@@ -539,11 +539,8 @@ export const conversasSemRespostaAgora = createServerFn({ method: "GET" })
     if (!ator.isAdmin && !ator.podeAtender) return { emHorario: false, itens: [] as ItemSemResposta[] };
 
     const { isBusinessNow } = await import("@/lib/xerife/businessTime.server");
-    const { data: cfg } = await supabase
-      .from("xerife_config")
-      .select("dias_uteis_inicio, dias_uteis_fim")
-      .limit(1)
-      .maybeSingle();
+    const { lerConfigOperacional } = await import("@/lib/xerife-config-operacional");
+    const { data: cfg } = await lerConfigOperacional(supabase);
     const win = {
       inicio: (cfg as any)?.dias_uteis_inicio ?? "08:00",
       fim: (cfg as any)?.dias_uteis_fim ?? "18:00",
