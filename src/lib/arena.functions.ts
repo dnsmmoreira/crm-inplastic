@@ -916,6 +916,16 @@ export const solicitarAprovacaoExtraordinaria = createServerFn({ method: "POST" 
       .parse(data),
   )
   .handler(async ({ data, context }) => {
+    // A RLS de `propostas` faz o recorte de dono/equipe: se o usuário não
+    // enxerga a proposta, não pode solicitar aprovação para ela.
+    const { data: prop, error: pErr } = await context.supabase
+      .from("propostas")
+      .select("id")
+      .eq("id", data.propostaId)
+      .maybeSingle();
+    if (pErr) throw new Error(pErr.message);
+    if (!prop) throw new Error("Proposta não encontrada.");
+
     const sb = await admin();
     const { error } = await sb.from("arena_aprovacoes_extraordinarias").insert({
       proposta_id: data.propostaId,

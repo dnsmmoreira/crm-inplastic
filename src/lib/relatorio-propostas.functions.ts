@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
 import { assertNoError } from "@/lib/guard-erros";
-import { resolverEscopo, type EscopoRelatorio } from "@/lib/relatorios.functions";
+import { assertPermissao, resolverEscopo, type EscopoRelatorio } from "@/lib/relatorios.functions";
 import {
   agruparMotivos,
   resumirPorVendedor,
@@ -45,6 +45,12 @@ export const getRelatorioPropostas = createServerFn({ method: "GET" })
   .inputValidator((data: unknown) => inputSchema.parse(data ?? {}))
   .handler(async ({ data, context }): Promise<RelatorioPropostasResult> => {
     const { supabase, userId } = context;
+    await assertPermissao(
+      supabase,
+      userId,
+      "ver_relatorios",
+      "Você não tem permissão para ver relatórios.",
+    );
     // Escopo pela permissão (não por papel), igual ao resto do sistema.
     // "equipe": sem filtro de dono — a policy `propostas select ver_equipe`
     // já restringe às propostas da equipe do usuário.
