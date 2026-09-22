@@ -40,6 +40,7 @@ export function NovoClienteDialog({ open, onOpenChange, cnpjInicial, leadId, onC
   const createFn = useServerFn(createCliente);
   const listVendedoresFn = useServerFn(listVendedores);
   const vincularFn = useServerFn(vincularClienteAoLead);
+  const consultarDonoFn = useServerFn(consultarDonoDocumento);
 
   const vincularAoLead = async (clienteId: string) => {
     if (!leadId) return;
