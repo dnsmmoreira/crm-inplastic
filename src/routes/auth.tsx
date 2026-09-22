@@ -14,6 +14,7 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
   validateSearch: (search: Record<string, unknown>) => ({
     recuperar: search.recuperar === true || search.recuperar === "true" ? true : undefined,
+    next: typeof search.next === "string" ? search.next : undefined,
   }),
 });
 
@@ -21,7 +22,7 @@ function AuthPage() {
   const navigate = useNavigate();
   const { user, loading, signIn } = useAuth();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { recuperar } = Route.useSearch();
+  const { recuperar, next } = Route.useSearch();
   const [modo, setModo] = useState<"login" | "recuperar">(recuperar ? "recuperar" : "login");
 
   useEffect(() => {
@@ -30,9 +31,11 @@ function AuthPage() {
 
   useEffect(() => {
     if (!loading && user && pathname === "/auth") {
-      void navigate({ to: "/" });
+      // Só destinos internos: nunca navegar para endereço externo vindo da URL.
+      const destino = next && next.startsWith("/") && !next.startsWith("//") ? next : "/";
+      void navigate({ to: destino });
     }
-  }, [user, loading, pathname, navigate]);
+  }, [user, loading, pathname, next, navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-4">
