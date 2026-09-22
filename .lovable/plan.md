@@ -1,74 +1,59 @@
-# "Esqueci minha senha" na tela de login
+# Mostrar o dono quando o cadastro já existe
 
-## Diagnóstico primeiro: por que os convites não chegaram
+Hoje, quando alguém tenta cadastrar um CNPJ que já existe em outra equipe, a mensagem é "Fale com o administrador" e o vendedor fica sem saber com quem falar. Passa a aparecer sempre o nome do dono e a equipe dele — e nada além disso.
 
-Verifiquei antes de planejar qualquer tela.
+## Mensagens novas
 
-- **Quem envia hoje:** os e-mails de autenticação (convite, recuperação) saem pelo remetente padrão do Lovable, não por um domínio seu. O domínio próprio de envio **existe mas falhou**: `notify.crm.inplastic.com.br` ficou 14 dias aguardando DNS e a verificação expirou ("provisioning timed out — os registros NS não conferem").
-- **Logs de envio:** não há nenhum evento de entrega na janela visível (30 dias). Ou seja: não há prova de entrega dos convites da Maxicaixa, e o caminho de envio está em estado falho.
-- **Consequência prática:** e-mails de autenticação enviados por remetente genérico, sem SPF/DKIM no seu domínio, caem em spam ou são recusados por servidores corporativos — exatamente o que aconteceu com `@maxicaixa.com.br`.
-- **Observação:** os e-mails de proposta ao cliente usam outro caminho (Resend, `propostas@notify.inplastic.com.br`) e não dependem disso.
+- Existe e tem dono ativo: `Já existe cadastro deste CNPJ. Dono: DANIEL F. MOREIRA (Equipe INPLASTIC). Fale com ele antes de seguir.`
+- Existe e o dono é da mesma equipe (ou quem consulta enxerga o registro): mesma frase, acrescentando o nome da empresa cadastrada, como hoje.
+- Existe sem dono, ou o dono está inativo/excluído: `Já existe cadastro deste CNPJ, sem vendedor responsável. Fale com o administrador.`
+- Não existe: nada muda, cadastro segue livre.
+- Limite de consultas estourado: `Não foi possível verificar agora. Tente novamente em instantes.`
 
-### O que só você pode fazer (passo a passo)
+Nunca aparecem: razão social do registro de outra equipe, contatos, telefone, e-mail, valores, propostas, pedidos, histórico ou identificadores. O acesso ao registro continua exatamente como é hoje.
 
-Sem isto, o e-mail de redefinição continuará não chegando de forma confiável.
+## Onde muda
 
-1. Abra **Configurações do projeto → E-mail** e veja o domínio de envio `notify.crm.inplastic.com.br`.
-2. No provedor de DNS do domínio `crm.inplastic.com.br` (hoje o DNS de `inplastic.com.br` está na Hostinger), cadastre exatamente os registros mostrados nessa tela:
-   - um registro **TXT** de verificação em `_lovable-email.crm.inplastic.com.br`;
-   - **dois registros NS** para `notify.crm.inplastic.com.br`, apontando para o par de servidores indicado na tela.
-   Copie os valores da tela — eles são exclusivos do seu projeto e não devem ser digitados de memória.
-3. Volte em Configurações → E-mail e clique em **Verificar**. A propagação pode levar algumas horas.
-4. Quando `aginext.com.br` entrar, repita o mesmo procedimento para o segundo domínio, se quiser remetente próprio também lá.
-5. **Endereços de redirecionamento do login:** confirme na configuração de autenticação que `https://crm.inplastic.com.br` e `https://crm.aginext.com.br` estão liberados como endereços de retorno. Hoje o segundo ainda não está — ele só pode ser liberado depois que o domínio for conectado ao projeto.
+| Ponto | Hoje | Passa a ser |
+| --- | --- | --- |
+| Novo lead (Início, Funil, ficha do lead) | entre equipes: "Fale com o administrador" | nome do dono + equipe; empresa só para quem já enxerga |
+| Aviso de nome parecido | entre equipes: genérico | nome do dono + equipe; nome da empresa só para quem enxerga |
+| Novo cliente (tela de Clientes, propostas, a partir do lead) | "Já existe um cliente com este CNPJ." | acrescenta dono + equipe |
+| Cliente inativo de outra pessoa | "Peça a um admin para reativar" | acrescenta dono + equipe |
+| Consulta de CNPJ na Receita (botão "Buscar dados") | só traz os dados públicos | passa a avisar, junto, se já existe cadastro e de quem é |
+| Busca de clientes por documento | lista só o que a pessoa pode ver | acrescenta um aviso acima da lista quando o documento existe fora do alcance dela |
+| Busca por CPF (pessoa física) | mesma checagem do CNPJ | mesmo aviso |
+| Telefone e e-mail | já checados na entrada de contato (lead) | mesmo tratamento: dono + equipe |
 
-Enquanto o DNS não estiver verificado, a funcionalidade funciona, mas a entrega continua no remetente padrão (risco de spam). Nada disso bloqueia a implementação.
+O cadastro continua bloqueado em todos esses casos — mostrar o dono não libera criar duplicata. A regra que recusa a duplicata não é tocada.
 
-## O que vou construir
+## Botão "Avisar o dono"
 
-### 1. Link na tela de login
-Em `/auth`, um link "Esqueci minha senha" abre um painel com campo de e-mail e botão "Enviar link". A resposta é **sempre** a mesma frase, exista o e-mail ou não: "Se este e-mail estiver cadastrado, você receberá um link para criar uma nova senha." Nenhuma diferença de texto, de tempo ou de erro entre e-mail existente e inexistente.
+A regra atual do chat interno só permite conversa entre pessoas da mesma equipe (ou com o supervisor/gestor). Então:
 
-O servidor já tem a função de recuperação genérica pronta (`solicitarRecuperacaoSenha`) — vou reaproveitá-la, apenas ajustando o texto e a auditoria.
+- Mesma equipe: aparece o botão "Avisar o dono", que abre o chat com ele já com a mensagem pronta "Oi, o cliente CNPJ X está com você? Tenho um contato dele."
+- Equipes diferentes: o botão não aparece; fica só o nome e a equipe.
 
-### 2. Página de redefinição
-A página `/definir-senha` já existe e já é usada pelos convites: valida o link, pede a senha duas vezes e aplica as mesmas regras de senha do sistema. Vou reaproveitá-la, com três acertos:
+Sem mudar a regra de quem pode conversar com quem.
 
-- ao concluir, marcar `senha_reset_exigido = false` (hoje ela não faz isso, então quem tem a marca ainda cairia na tela de troca obrigatória logo depois);
-- bloquear conta inativa ou excluída (`ativo = false` ou `deleted_at`) antes de aplicar a nova senha — hoje o bloqueio existe no login e nas funções internas, mas não nessa página;
-- deixar a pessoa já entrar no CRM ao concluir, em vez de voltar para o login.
+## Segurança
 
-A checagem de senha vazada continua sendo aplicada pelo provedor de autenticação (é ela que já recusou senhas fracas antes) — a mensagem de recusa passa a explicar em português que a senha apareceu em vazamentos.
-
-### 3. Endereço do link
-O link do e-mail é montado com `appUrl("/definir-senha")` do helper único — já é assim hoje. Ele acompanha automaticamente a troca para `crm.aginext.com.br`, sem endereço fixo em lugar nenhum.
-
-### 4. Limite de tentativas
-- O provedor de autenticação já aplica um limite próprio de e-mails por hora no projeto inteiro (baixo por padrão) e um intervalo mínimo entre envios ao mesmo endereço.
-- No nosso lado já existe limite por e-mail (3 pedidos a cada 15 minutos). Vou **acrescentar limite por IP** (ex.: 10 pedidos a cada 15 minutos) e, ao estourar, manter a mesma resposta genérica — nunca um erro que denuncie o e-mail.
-- Recomendo, depois que o domínio estiver verificado, elevar o limite horário de e-mails de autenticação para um valor compatível com o uso real.
-
-### 5. Registro em auditoria
-Cada pedido de recuperação e cada redefinição concluída entram em `user_audit_log` (campo, autor, data). Nunca a senha, nunca o token, nunca o link.
-
-### 6. Texto do e-mail em português
-Os e-mails de autenticação hoje usam o texto padrão em inglês. Vou criar os modelos próprios do CRM em português, com a identidade visual do sistema (título "INPLASTIC — CRM", cor primária, botão "Criar nova senha", aviso de validade e de "ignore se não foi você"). Esses modelos passam a valer para convite, recuperação e demais e-mails de acesso. Eles só saem do remetente próprio depois do passo de DNS acima.
+- Resposta vinda de uma única função no servidor, com acesso privilegiado, devolvendo apenas `{ existe, dono_nome, dono_equipe, sem_dono, empresa? }` — o `empresa` só quando a pessoa já enxerga o registro pela regra de visibilidade atual.
+- Limite de 30 consultas por minuto por pessoa; acima disso a resposta é genérica e não revela dono.
+- Toda consulta que revela um dono de outra equipe fica registrada na trilha de auditoria: quem consultou, o documento e quando.
 
 ## Detalhes técnicos
 
-- `src/routes/auth.tsx`: novo estado de "recuperação" no formulário, chamando `solicitarRecuperacaoSenha` (`src/lib/invites.functions.ts`).
-- `src/lib/invites.functions.ts`: rate limit adicional por IP, auditoria do pedido, mensagem alinhada ao texto pedido.
-- Nova server function de conclusão de redefinição (sessão de recuperação): valida `ativo`/`deleted_at`, zera `senha_reset_exigido`, registra auditoria.
-- `src/routes/definir-senha.tsx`: usar essa função ao concluir e seguir para `/` em vez de `/auth`.
-- Modelos de e-mail de autenticação em português criados pelo scaffold oficial de e-mails de autenticação, com estilo lido de `src/styles.css`.
-- Sem alteração em regras de acesso (RLS), sem alteração para a INPLASTIC nem para o fluxo de troca obrigatória em `/trocar-senha`.
+- `src/lib/contato-entrada.functions.ts`: `verificarContatoEntrada` deixa de zerar o dono quando `podeVerDono` é falso — passa a devolver `donoNome` + `donoEquipe` sempre, e mantém `empresa`/`leadId`/`clienteId` só quando `podeVerDono` é verdadeiro. Novo campo `semDono` quando `owner_id` é nulo ou o perfil está `ativo=false`/`deleted_at`.
+- Nome e equipe resolvidos no servidor com service role (`profiles` + `equipes`), nunca pelo cliente.
+- `cnpj_status` (as duas versões) permanece como está — não expõe dono. A revelação do dono passa por uma nova função de servidor `consultarDonoDocumento` (CNPJ, CPF, telefone ou e-mail), reutilizada por lead, cliente, consulta de CNPJ e busca.
+- `criarClienteCore` (`src/lib/clientes.functions.ts`) chama essa função ao montar as mensagens `duplicate_other` e `duplicate_inactive`.
+- Consumidores de tela: `NewLeadDialog` em `LeadDrawer.tsx`, `NovoClienteDialog`, fluxo de propostas, `clientes.index.tsx`.
+- Limite por pessoa e auditoria dentro da função de servidor (auditoria com as colunas reais `alvo_user_id`/`ator_user_id`/`campo`/`valor_novo`).
 
-## Validação antes de fechar
+## Testes
 
-- Teste de que a resposta é idêntica para e-mail existente e inexistente.
-- Teste de que conta inativa/excluída não consegue redefinir.
-- Teste de que `senha_reset_exigido` fica falso após a redefinição.
-- Teste dos limites por e-mail e por IP.
-- Saída real de verificação de tipos, suíte completa e build.
-
-Nada será publicado.
+- Unitários: montagem da mensagem nos quatro casos (mesma equipe, outra equipe, sem dono, inexistente) e corte pelo limite.
+- Banco, tudo em transação com ROLLBACK: vendedor INPLASTIC × CNPJ de colega INPLASTIC (dono + empresa); vendedor Maxicaixa × CNPJ INPLASTIC (só dono + equipe, sem empresa nem ids); documento com dono inativo (mensagem de sem responsável); documento inexistente (livre).
+- Confirmação de que a criação continua recusada em todos os casos de duplicidade.
+- Ao final: saída real de `bunx tsgo --noEmit`, `bunx vitest run` e `bun run build`. Nada publicado.
