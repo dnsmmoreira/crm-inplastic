@@ -247,6 +247,24 @@ type LooseDb = any;
  * Extraído para poder ser reutilizado por fluxos internos do servidor
  * (ex.: promoção automática de lead → cliente ao marcar Ganho).
  */
+
+/**
+ * Duplicidade de CNPJ: a mensagem sempre revela o DONO e a equipe dele (mesmo
+ * de outra equipe), nunca os dados do registro. O cadastro segue bloqueado.
+ */
+async function mensagemDonoCliente(userId: string, cnpj: string): Promise<string> {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { donoDoClientePorCnpj } = await import("@/lib/consulta-dono.server");
+    const { mensagemDonoDuplicado } = await import("@/lib/consulta-dono");
+    const info = await donoDoClientePorCnpj(supabaseAdmin, userId, cnpj);
+    if (info.existe) return mensagemDonoDuplicado(info);
+  } catch (e) {
+    const { registrarFalhaSegura } = await import("@/lib/guard-erros");
+    await registrarFalhaSegura("clientes.mensagemDonoCliente", e, { user_id: userId });
+  }
+  return "Já existe um cliente com este CNPJ.";
+}
 export async function criarClienteCore(
   supabase: LooseDb,
   userId: string,
