@@ -53,13 +53,20 @@ export const concluirRedefinicaoSenha = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     // Auditoria: quem, quando. Nunca a senha, nunca o token, nunca o link.
-    await supabaseAdmin.from("user_audit_log").insert({
-      user_id: context.userId,
-      alterado_por: context.userId,
+    // Colunas reais: alvo_user_id / ator_user_id.
+    const audit = await supabaseAdmin.from("user_audit_log").insert({
+      alvo_user_id: context.userId,
+      ator_user_id: context.userId,
       campo: "senha",
       valor_anterior: null,
       valor_novo: "senha redefinida pelo link de recuperação",
-    } as never);
+    });
+    if (audit.error) {
+      const { registrarFalhaSegura } = await import("@/lib/guard-erros");
+      await registrarFalhaSegura("recuperacao.concluir/auditoria", audit.error, {
+        user_id: context.userId,
+      });
+    }
 
     return { ok: true as const };
   });

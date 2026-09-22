@@ -87,7 +87,10 @@ async function logAudit(
     }));
   if (rows.length === 0) return;
   const { error } = await sb.from("user_audit_log").insert(rows);
-  if (error) console.error("[perfis] auditoria falhou:", error.message);
+  if (error) {
+    const { registrarFalhaSegura } = await import("@/lib/guard-erros");
+    await registrarFalhaSegura("perfis.auditoria", error, { alvo, ator, linhas: rows.length });
+  }
 }
 
 /* ------------------------------------------------------------------ */

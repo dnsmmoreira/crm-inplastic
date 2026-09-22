@@ -145,7 +145,10 @@ async function logAudit(
     }));
   if (rows.length === 0) return 0;
   const { error } = await sb.from("user_audit_log").insert(rows);
-  if (error) console.error("[usuarios] auditoria falhou:", error.message);
+  if (error) {
+    const { registrarFalhaSegura } = await import("@/lib/guard-erros");
+    await registrarFalhaSegura("usuarios.auditoria", error, { alvo, ator, linhas: rows.length });
+  }
   return rows.length;
 }
 

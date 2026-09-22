@@ -50,13 +50,14 @@ async function auditar(
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     // REGISTRAR E SEGUIR: auditoria nunca derruba o fluxo de convite, mas a
     // perda de trilha precisa ficar visível em /falhas.
+    // Colunas reais da tabela: alvo_user_id / ator_user_id (nunca user_id / alterado_por).
     const ins = await supabaseAdmin.from("user_audit_log").insert({
-      user_id: userId,
-      alterado_por: autorId,
+      alvo_user_id: userId,
+      ator_user_id: autorId,
       campo,
       valor_anterior: null,
       valor_novo: novo,
-    } as never);
+    });
     if (ins.error) {
       await registrarFalhaSegura("invites.auditoria", ins.error, { user_id: userId, campo });
     }
@@ -188,6 +189,29 @@ function ipDoPedido(headers: Headers): string {
   return (xff.split(",")[0] ?? "").trim() || "desconhecido";
 }
 
+/**
+ * Descobre o id do usuário por e-mail, só para a auditoria.
+ * Primeiro pelo espelho `profiles.email_cache`; se não achar, pelo cadastro de
+ * acesso (admin). Devolve null sem erro — a resposta ao usuário nunca muda.
+ */
+async function localizarUsuarioPorEmail(email: string): Promise<string | null> {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: perfil } = await supabaseAdmin
+      .from("profiles")
+      .select("id")
+      .ilike("email_cache", email)
+      .maybeSingle();
+    if (perfil?.id) return perfil.id;
+
+    const { data: lista } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    const achado = lista?.users?.find((u) => (u.email ?? "").toLowerCase() === email);
+    return achado?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export const solicitarRecuperacaoSenha = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z.object({ email: z.string().trim().email().max(255) }).parse(input),
@@ -214,14 +238,12 @@ export const solicitarRecuperacaoSenha = createServerFn({ method: "POST" })
           redirectTo: redirectDefinirSenha(),
         });
         // Auditoria do PEDIDO: e-mail e IP, nunca token, link ou senha.
-        const { data: perfil } = await supabaseAdmin
-          .from("profiles")
-          .select("id")
-          .ilike("email", email)
-          .maybeSingle();
+        // `profiles` não tem coluna `email`: o espelho é `email_cache`; quando
+        // ele está vazio, o e-mail é procurado direto no cadastro de acesso.
+        const alvo = await localizarUsuarioPorEmail(email);
         await auditar(
-          perfil?.id ?? null,
-          perfil?.id ?? null,
+          alvo,
+          alvo,
           "recuperacao_senha_solicitada",
           `pedido de link de recuperação para ${email} (ip ${ip})`,
         );
