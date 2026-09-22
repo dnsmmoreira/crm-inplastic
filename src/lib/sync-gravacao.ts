@@ -19,6 +19,8 @@
  */
 
 export type ErroGravacao = { error: unknown };
+/** Resultado de UPDATE com `.select("id")`: `data` traz as linhas alteradas. */
+export type ResultadoUpdate = { error: unknown; data?: unknown[] | null };
 
 export type OpcoesGravacao<T> = {
   itens: T[];
@@ -32,16 +34,40 @@ export type OpcoesGravacao<T> = {
   payloadExistente: (item: T) => Record<string, unknown>;
   /** INSERT em lote das linhas novas. */
   inserir: (linhas: Array<Record<string, unknown>>) => PromiseLike<ErroGravacao>;
-  /** UPDATE de UMA linha existente, filtrando por id. */
-  atualizar: (id: string, linha: Record<string, unknown>) => PromiseLike<ErroGravacao>;
+  /**
+   * UPDATE de UMA linha existente, filtrando por id. DEVE usar `.select("id")`:
+   * é o retorno das linhas que revela a recusa silenciosa da RLS.
+   */
+  atualizar: (id: string, linha: Record<string, unknown>) => PromiseLike<ResultadoUpdate>;
 };
+
+/**
+ * UPDATE barrado pela RLS NÃO dá erro: o Postgres apenas não enxerga a linha e
+ * o PostgREST devolve `error: null` com zero linhas. Sem isto o motor marcaria
+ * a alteração como salva e ela sumiria sem aviso. Viramos num erro sintético
+ * com o mesmo código da recusa de permissão, para seguir o caminho já pronto:
+ * diagnóstico do dono real, mensagem certa, registro em /falhas e recarga.
+ */
+export function erroRecusaSilenciosa(tabela: string, ids: string[]): {
+  code: string;
+  message: string;
+  ids: string[];
+} {
+  return {
+    code: "42501",
+    message: `A gravação em ${tabela} foi recusada pelo servidor (nenhuma linha alterada) — sem permissão ou o registro não existe mais.`,
+    ids,
+  };
+}
 
 /**
  * Grava o lote e devolve o PRIMEIRO erro encontrado (o motor de sync já sabe
  * classificar e reagendar). Para no primeiro erro: repetir o resto às cegas
  * só empilharia falhas do mesmo motivo.
  */
-export async function gravarNovosEExistentes<T>(opts: OpcoesGravacao<T>): Promise<ErroGravacao> {
+export async function gravarNovosEExistentes<T>(
+  opts: OpcoesGravacao<T> & { tabela?: string },
+): Promise<ErroGravacao> {
   const novos = opts.itens.filter((i) => opts.ehNovo(i));
   const existentes = opts.itens.filter((i) => !opts.ehNovo(i));
 
@@ -52,8 +78,12 @@ export async function gravarNovosEExistentes<T>(opts: OpcoesGravacao<T>): Promis
 
   for (const item of existentes) {
     const { id: _idNoPayload, ...campos } = opts.payloadExistente(item);
-    const r = await opts.atualizar(opts.id(item), campos);
-    if (r?.error) return r;
+    const id = opts.id(item);
+    const r = await opts.atualizar(id, campos);
+    if (r?.error) return { error: r.error };
+    if (!r?.data || r.data.length === 0) {
+      return { error: erroRecusaSilenciosa(opts.tabela ?? "registro", [id]) };
+    }
   }
 
   return { error: null };
