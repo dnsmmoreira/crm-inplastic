@@ -178,26 +178,59 @@ export const reenviarConvite = createServerFn({ method: "POST" })
  * Endpoint público de recuperação: resposta SEMPRE genérica, com rate limit.
  * Não define senha, apenas dispara o e-mail oficial do Supabase.
  */
+/** Resposta única do "Esqueci minha senha" — nunca revela se o e-mail existe. */
+export const MSG_RECUPERACAO_GENERICA =
+  "Se este e-mail estiver cadastrado, você receberá um link para criar uma nova senha.";
+
+/** IP do chamador (cabeçalhos da borda). Usado só para o limite de tentativas. */
+function ipDoPedido(headers: Headers): string {
+  const xff = headers.get("cf-connecting-ip") ?? headers.get("x-forwarded-for") ?? "";
+  return (xff.split(",")[0] ?? "").trim() || "desconhecido";
+}
+
 export const solicitarRecuperacaoSenha = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z.object({ email: z.string().trim().email().max(255) }).parse(input),
   )
   .handler(async ({ data }) => {
-    const chave = `recuperacao:${data.email.toLowerCase()}`;
-    if (rateLimit(chave, 3, 15 * 60_000)) {
+    const email = data.email.toLowerCase();
+    let ip = "desconhecido";
+    try {
+      const { getRequest } = await import("@tanstack/react-start/server");
+      ip = ipDoPedido(getRequest().headers);
+    } catch {
+      // sem request (teste/SSR direto): segue só com o limite por e-mail
+    }
+
+    // Dois limites independentes: por e-mail (3/15min) e por IP (10/15min).
+    // Estourar qualquer um só deixa de enviar — a resposta continua a mesma.
+    const podeEmail = rateLimit(`recuperacao:${email}`, 3, 15 * 60_000);
+    const podeIp = rateLimit(`recuperacao-ip:${ip}`, 10, 15 * 60_000);
+
+    if (podeEmail && podeIp) {
       try {
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         await supabaseAdmin.auth.resetPasswordForEmail(data.email, {
           redirectTo: redirectDefinirSenha(),
         });
+        // Auditoria do PEDIDO: e-mail e IP, nunca token, link ou senha.
+        const { data: perfil } = await supabaseAdmin
+          .from("profiles")
+          .select("id")
+          .ilike("email", email)
+          .maybeSingle();
+        await auditar(
+          perfil?.id ?? null,
+          perfil?.id ?? null,
+          "recuperacao_senha_solicitada",
+          `pedido de link de recuperação para ${email} (ip ${ip})`,
+        );
       } catch {
         // silencioso de propósito: não revelar existência do e-mail
       }
     }
-    return {
-      ok: true as const,
-      mensagem: "Se o e-mail estiver cadastrado, você receberá um link para definir a senha.",
-    };
+    return { ok: true as const, mensagem: MSG_RECUPERACAO_GENERICA };
   });
 
-export const __test__ = { appBaseUrl, redirectDefinirSenha, rateLimit };
+export const __test__ = { appBaseUrl, redirectDefinirSenha, rateLimit, ipDoPedido };
+
