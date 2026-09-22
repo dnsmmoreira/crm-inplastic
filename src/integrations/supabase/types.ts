@@ -879,6 +879,7 @@ export type Database = {
           criado_em: string
           id: string
           lote: string
+          owner_antigo: string | null
           registro_id: string
           tabela: string
         }
@@ -888,6 +889,7 @@ export type Database = {
           criado_em?: string
           id?: string
           lote: string
+          owner_antigo?: string | null
           registro_id: string
           tabela: string
         }
@@ -897,6 +899,7 @@ export type Database = {
           criado_em?: string
           id?: string
           lote?: string
+          owner_antigo?: string | null
           registro_id?: string
           tabela?: string
         }

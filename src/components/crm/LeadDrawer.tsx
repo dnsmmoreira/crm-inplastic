@@ -88,6 +88,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { consultarDonoDocumento } from "@/lib/consulta-dono.functions";
 import {
   mensagemDonoDuplicado,
+  mensagemDonoTelefone,
   mensagemNomeParecido,
   mensagemProntaParaDono,
   podeAvisarDono,
@@ -1376,6 +1377,21 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
                 // Checagem indisponível não pode impedir o cadastro.
               } finally {
                 setChecando(false);
+              }
+              // Telefone é AVISO, nunca bloqueio: o mesmo número pode atender
+              // várias empresas (central, escritório de contabilidade).
+              {
+                const tel = (form.phone || form.whatsapp || "").replace(/\D/g, "");
+                if (tel.length >= 10) {
+                  try {
+                    const dono = await consultarDonoFn({ data: { telefone: tel } });
+                    if (dono.existe && !dono.limiteExcedido) {
+                      toast.warning(mensagemDonoTelefone(dono), { duration: 10_000 });
+                    }
+                  } catch {
+                    // Aviso indisponível não trava o cadastro.
+                  }
+                }
               }
               try {
                 addLead({

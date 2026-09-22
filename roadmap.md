@@ -49,3 +49,14 @@ Pendente com o Denis: senha do Luciano; catálogo/estoque/transportadoras/DIFAL 
 - [x] Correção de dados com backup (39 mascarados, 18 vínculos; 2 donos diferentes na lista do Denis)
 - [x] Seletor de proposta/pedido sem duplicata por documento
 - [x] Provas: testes em ROLLBACK, typecheck, suíte e build
+
+## Dono único de lead e cliente (set/2026)
+- [x] Banco: lead ligado a cliente só com o mesmo dono (gatilho de coerência)
+- [x] Trocar o dono do cliente leva leads, tarefas, conversas e propostas abertas, com auditoria
+- [x] Transferir o lead leva o cliente junto, sem exceção de etapa
+- [x] Cadastro novo (lead ou cliente) com CNPJ/CPF de outro vendedor é recusado nomeando o dono
+- [x] Vínculo automático por CNPJ vale sempre; criar para cliente existente herda o dono
+- [x] Telefone (10 dígitos) repetido = aviso de dono no novo lead e no novo cliente, sem bloquear
+- [x] Conflitos TRE-MG e R.F.L. corrigidos por transferência, com backup e auditoria
+- [x] Varredura final: só COSTA CRUZ (telefone), separado para o Denis decidir
+- [x] Provas: testes em ROLLBACK, typecheck, suíte e build
