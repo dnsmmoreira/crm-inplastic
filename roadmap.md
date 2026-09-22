@@ -48,6 +48,7 @@ Pendente com o Denis: senha do Luciano; catálogo/estoque/transportadoras/DIFAL 
 - [x] Auditoria de toda mudança de cliente_id em lead
 - [x] Correção de dados com backup (39 mascarados, 18 vínculos; 2 donos diferentes na lista do Denis)
 - [x] Seletor de proposta/pedido sem duplicata por documento
+- [x] Troca de dono de lead existente nunca é recusada (fila, conversa e Xerife livres); só criação/ligação indevida é barrada
 - [x] Provas: testes em ROLLBACK, typecheck, suíte e build
 
 ## Dono único de lead e cliente (set/2026)
@@ -59,4 +60,5 @@ Pendente com o Denis: senha do Luciano; catálogo/estoque/transportadoras/DIFAL 
 - [x] Telefone (10 dígitos) repetido = aviso de dono no novo lead e no novo cliente, sem bloquear
 - [x] Conflitos TRE-MG e R.F.L. corrigidos por transferência, com backup e auditoria
 - [x] Varredura final: só COSTA CRUZ (telefone), separado para o Denis decidir
+- [x] Troca de dono de lead existente nunca é recusada (fila, conversa e Xerife livres); só criação/ligação indevida é barrada
 - [x] Provas: testes em ROLLBACK, typecheck, suíte e build
