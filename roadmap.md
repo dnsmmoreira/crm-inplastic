@@ -42,10 +42,10 @@ Pendente com o Denis: senha do Luciano; catálogo/estoque/transportadoras/DIFAL 
 - [x] Provas: testes em transação com ROLLBACK; typecheck/suíte/build
 
 ## Consistência lead x cliente (set/2026)
-- [ ] Causa de A (addLead) e B (persistLeadNow sem diagnóstico) corrigidas
-- [ ] Documento só com dígitos no banco (gatilho de normalização, compatível com o site antigo)
-- [ ] Vínculo automático lead->cliente por documento + recusa de vínculo com CNPJ diferente (só quando ambos preenchidos)
-- [ ] Auditoria de toda mudança de cliente_id em lead
-- [ ] Correção de dados com backup (39 mascarados, 18 vínculos; 2 donos diferentes na lista do Denis)
-- [ ] Seletor de proposta/pedido sem duplicata por documento
-- [ ] Provas: testes em ROLLBACK, typecheck, suíte e build
+- [x] Causa de A (addLead) e B (persistLeadNow sem diagnóstico) corrigidas
+- [x] Documento só com dígitos no banco (gatilho de normalização, compatível com o site antigo)
+- [x] Vínculo automático lead->cliente por documento + recusa de vínculo com CNPJ diferente (só quando ambos preenchidos)
+- [x] Auditoria de toda mudança de cliente_id em lead
+- [x] Correção de dados com backup (39 mascarados, 18 vínculos; 2 donos diferentes na lista do Denis)
+- [x] Seletor de proposta/pedido sem duplicata por documento
+- [x] Provas: testes em ROLLBACK, typecheck, suíte e build
