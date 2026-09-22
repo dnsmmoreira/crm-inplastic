@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
-import { registrarFalhaSegura } from "@/lib/guard-erros";
+import { assertRpcPermissao, registrarFalhaSegura } from "@/lib/guard-erros";
 
 /** Mascara o telefone deixando visíveis apenas os 4 últimos dígitos. */
 function mascararPhone(phone: string) {
@@ -10,12 +10,29 @@ function mascararPhone(phone: string) {
   return `${"•".repeat(Math.max(3, p.length - 4))}${p.slice(-4)}`;
 }
 
+/**
+ * Gate do painel: `canais.configurar` OU papel admin (o OR preserva o admin
+ * sem perfil). Fail-closed — erro da RPC vira incidente e bloqueia.
+ */
 async function exigirAdmin(supabase: { rpc: Function }, userId: string) {
-  const { data: isAdmin } = await (supabase as any).rpc("has_role", {
-    _user_id: userId,
-    _role: "admin",
-  });
-  if (!isAdmin) throw new Error("Acesso restrito a administradores.");
+  const viaPerfil = await assertRpcPermissao(
+    await (supabase as any).rpc("tem_permissao", {
+      _user_id: userId,
+      _chave: "canais.configurar",
+    }),
+    "zapi-painel.tem_permissao",
+    { user_id: userId, chave: "canais.configurar" },
+  );
+  if (viaPerfil === true) return;
+
+  const isAdmin = await assertRpcPermissao(
+    await (supabase as any).rpc("has_role", { _user_id: userId, _role: "admin" }),
+    "zapi-painel.has_role",
+    { user_id: userId },
+  );
+  if (isAdmin === true) return;
+
+  throw new Error("Acesso restrito a administradores.");
 }
 
 /** Painel de saúde: envios recentes, opt-outs e alertas (somente admin). */
