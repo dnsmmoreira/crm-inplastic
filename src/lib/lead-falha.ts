@@ -56,6 +56,14 @@ export function motivoFalhaLead(erro: unknown): MotivoFalhaLead {
   return "desconhecido";
 }
 
+/**
+ * Recusa de permissão em que o dono no banco NÃO é outra pessoa. Acusar
+ * "pertence a outro vendedor" nesse caso é mentira — foi o que confundiu o
+ * Daniel no lead "ELO SOLUCAO", que era dele.
+ */
+export const MSG_LEAD_RECUSADO_GENERICO =
+  "Este lead não foi salvo: o servidor recusou a gravação. Atualizei a tela com os dados do servidor e registrei a falha para o administrador — confira e tente de novo.";
+
 /** Texto pronto para toast — sempre diz o que aconteceu e o próximo passo. */
 export function mensagemFalhaLead(erro: unknown): string {
   switch (motivoFalhaLead(erro)) {

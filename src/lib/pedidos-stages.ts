@@ -89,6 +89,16 @@ export function podeAssumirPedido(stage: string): boolean {
   return (PEDIDO_STAGES_ASSUMIVEIS as readonly string[]).includes(stage);
 }
 
+/**
+ * Etapas sob responsabilidade do FINANCEIRO. Quem aprova o financeiro precisa
+ * assumir o pedido para conseguir liberá-lo — e só nessas etapas de origem.
+ */
+export const PEDIDO_STAGES_FINANCEIRAS = ["analise_financeira", "aguardando_pagamento"] as const;
+
+export function ehEtapaFinanceira(stage: string | null | undefined): boolean {
+  return (PEDIDO_STAGES_FINANCEIRAS as readonly string[]).includes(String(stage ?? ""));
+}
+
 export type PedidoStageVisivel = (typeof PEDIDO_STAGES)[number]["id"];
 export type PedidoStageId =
   | PedidoStageVisivel

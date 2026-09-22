@@ -23,6 +23,7 @@ import {
   podeDevolverPedido,
   destinoDevolucao,
   podeAssumirPedido,
+  ehEtapaFinanceira,
   stageLabel,
   type PedidoStageId,
 } from "@/lib/pedidos-stages";
@@ -2098,10 +2099,6 @@ async function assumirPedidoImpl(
   /** Etapa de destino, quando o "assumir" acontece junto de um movimento. */
   stageAlvo?: string,
 ): Promise<AssumirPedidoResult> {
-  if (!(await podeOperarProducao(sb, userId))) {
-    throw new Error("Você não tem permissão para assumir pedidos da operação.");
-  }
-
   const { data: p, error } = await sb
     .from("pedidos")
     .select("id, number, stage, responsavel_atual_id")
@@ -2110,8 +2107,20 @@ async function assumirPedidoImpl(
   if (error) throw new Error(`Falha ao carregar pedido: ${error.message}`);
   if (!p) throw new Error("Pedido não encontrado");
 
+  // Quem aprova o financeiro precisa assumir o pedido para liberar a etapa —
+  // e SÓ nas etapas financeiras. Não ganha nada da operação com isso.
+  const naEtapaFinanceira = ehEtapaFinanceira(p.stage);
+  const aprovadorFinanceiro =
+    naEtapaFinanceira && (await temPermissao(sb, userId, "pedidos.aprovar_financeiro"));
+
+  if (!aprovadorFinanceiro && !(await podeOperarProducao(sb, userId))) {
+    throw new Error("Você não tem permissão para assumir pedidos da operação.");
+  }
+
   const stageValido =
-    podeAssumirPedido(p.stage) || (!!stageAlvo && podeAssumirPedido(String(stageAlvo)));
+    (aprovadorFinanceiro && naEtapaFinanceira) ||
+    podeAssumirPedido(p.stage) ||
+    (!!stageAlvo && podeAssumirPedido(String(stageAlvo)));
   if (!stageValido) {
     throw new Error(
       `Este pedido está em "${stageLabel(p.stage)}" — só é possível assumir em Liberado, Em Produção, Em Trânsito, Coleta ou Entrega.`,

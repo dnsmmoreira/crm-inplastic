@@ -11,7 +11,34 @@
  */
 
 import { toast } from "sonner";
-import { mensagemFalhaLead } from "./lead-falha";
+import { mensagemFalhaLead, motivoFalhaLead, MSG_LEAD_RECUSADO_GENERICO } from "./lead-falha";
+
+/**
+ * Pergunta ao servidor quem é o dono do lead antes de acusar "outro vendedor",
+ * e registra a recusa em /falhas. Qualquer problema no diagnóstico cai na
+ * mensagem genérica — nunca na acusação.
+ */
+async function avisarLeadRecusado(ids: string[], erro: unknown): Promise<void> {
+  let donoOutro = false;
+  try {
+    if (ids.length) {
+      const { diagnosticarLeadRecusado } = await import("@/lib/lead-diagnostico.functions");
+      const r = await diagnosticarLeadRecusado({
+        data: {
+          ids,
+          mensagem: String((erro as { message?: unknown })?.message ?? erro).slice(0, 1000),
+          codigo: String((erro as { code?: unknown })?.code ?? ""),
+        },
+      });
+      donoOutro = r.dono_outro === true;
+    }
+  } catch (e) {
+    console.error("[crm-sync] não consegui diagnosticar a recusa do lead", e);
+  }
+  toast.error(donoOutro ? mensagemFalhaLead(erro) : MSG_LEAD_RECUSADO_GENERICO, {
+    duration: 12_000,
+  });
+}
 
 const ROTULOS: Record<string, string> = {
   products: "produtos",
@@ -64,6 +91,13 @@ export function reportarFalhaSync(
   // Lead tem mensagem própria: o vendedor precisa saber se é dono, duplicidade
   // ou dado faltando — "falha ao salvar leads" não ajuda ninguém.
   if (colecao === "leads") {
+    // "Pertence a outro vendedor" só pode aparecer quando o dono no banco for
+    // MESMO outro. Para qualquer outra recusa: mensagem genérica + /falhas.
+    if (motivoFalhaLead(erro) === "sem_permissao") {
+      const ids = Array.isArray(extra?.["ids"]) ? (extra["ids"] as string[]) : [];
+      void avisarLeadRecusado(ids, erro);
+      return;
+    }
     toast.error(mensagemFalhaLead(erro), { duration: 12_000 });
     return;
   }
