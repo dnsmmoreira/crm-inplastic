@@ -24,7 +24,7 @@ import {
 import { ehErroColunaInexistente } from "@/lib/build-version";
 import { ehErroPermanente } from "@/lib/sync-erro-permanente";
 import { ControleRetry } from "@/lib/sync-retry";
-import { gravarNovosEExistentes } from "@/lib/sync-gravacao";
+import { gravarNovosEExistentes, erroRecusaSilenciosa } from "@/lib/sync-gravacao";
 import {
   bundleDesatualizado,
   bloquearPorBundleDesatualizado,
