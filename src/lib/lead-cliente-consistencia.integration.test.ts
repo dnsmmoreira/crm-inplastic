@@ -64,7 +64,43 @@ describe.skipIf(!rodar)("consistência lead × cliente no banco", () => {
       `select pg_get_functiondef(oid) from pg_proc where proname = 'tg_leads_vinculo_cliente'`,
     );
     expect(corpo).toContain("_doc_cliente IS NOT NULL AND _doc_cliente <> _doc");
-    expect(corpo).toContain("NEW.cliente_id IS NOT NULL AND _doc IS NOT NULL");
+    expect(corpo).toContain("_vend IS DISTINCT FROM NEW.owner_id");
+  });
+
+  it("lead e cliente da mesma empresa têm sempre o mesmo dono", () => {
+    const divergentes = consulta(
+      `select count(*) from leads l join clientes c on c.id = l.cliente_id
+        where c.vendedor_id is distinct from l.owner_id`,
+    );
+    expect(divergentes).toBe("0");
+    const porDocumento = consulta(
+      `select count(*) from leads l join clientes c
+         on nullif(regexp_replace(coalesce(c.cnpj,''),'\\D','','g'),'')
+          = nullif(regexp_replace(coalesce(l.cnpj,''),'\\D','','g'),'')
+        where c.vendedor_id is distinct from l.owner_id`,
+    );
+    expect(porDocumento).toBe("0");
+  });
+
+  it("trocar o dono do cliente propaga para leads, tarefas, conversas e propostas", () => {
+    const gatilho = consulta(
+      `select count(*) from pg_trigger where tgname = 'tg_clientes_dono_propaga' and not tgisinternal`,
+    );
+    expect(gatilho).toBe("1");
+    const corpo = consulta(
+      `select pg_get_functiondef(oid) from pg_proc where proname = 'tg_clientes_dono_propaga'`,
+    );
+    for (const alvo of ["public.leads", "public.tarefas", "public.whatsapp_conversas", "public.propostas"]) {
+      expect(corpo).toContain(alvo);
+    }
+    expect(corpo).toContain("user_audit_log");
+  });
+
+  it("cliente novo com documento de lead de outro vendedor é recusado", () => {
+    const gatilho = consulta(
+      `select count(*) from pg_trigger where tgname = 'tg_clientes_dono_coerente' and not tgisinternal`,
+    );
+    expect(gatilho).toBe("1");
   });
 
   it("toda troca de cliente no lead é auditada", () => {
