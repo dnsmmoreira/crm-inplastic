@@ -88,6 +88,8 @@ import { consultarDonoDocumento } from "@/lib/consulta-dono.functions";
 import {
   mensagemDonoDuplicado,
   mensagemNomeParecido,
+  mensagemProntaParaDono,
+  podeAvisarDono,
   MSG_CONSULTA_INDISPONIVEL,
 } from "@/lib/consulta-dono";
 import { useQuery } from "@tanstack/react-query";
@@ -928,6 +930,7 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
   const [lookingUp, setLookingUp] = useState(false);
   const lookupCnpjFn = useServerFn(lookupCnpj);
   const consultarDonoFn = useServerFn(consultarDonoDocumento);
+  const navigate = useNavigate();
 
   const selectedProduct = products.find((p) => p.id === form.productId);
 
