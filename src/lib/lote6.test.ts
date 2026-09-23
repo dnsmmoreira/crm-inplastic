@@ -2,7 +2,6 @@
  * Lote 6 — trilha do estoque, limite da porta de entrada e máscara de meta no MCP.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createMiddleware } from "@tanstack/react-start";
 import { montarLinhasPlacar, type LinhaPlacar } from "@/lib/mcp/tools/placar_atual";
 
 // ---- estado compartilhado dos fakes -------------------------------------
@@ -32,12 +31,6 @@ function clienteUsuario() {
   };
 }
 
-vi.mock("@/lib/auth.middleware", () => ({
-  requireSupabaseAuth: createMiddleware({ type: "function" }).server(({ next }) =>
-    next({ context: { userId: "u-1", supabase: clienteUsuario() } }),
-  ),
-}));
-
 vi.mock("@/integrations/supabase/client.server", () => ({ supabaseAdmin: {} }));
 
 vi.mock("@/lib/rls-monitor.server", () => ({
@@ -60,8 +53,8 @@ vi.mock("@/lib/rate-limit.server", () => ({
 
 vi.mock("@/lib/falhas.server", () => ({ registrarFalhaAdmin: async () => undefined }));
 
-const { ajustarSaldoProduto } = await import("@/lib/estoque.functions");
-const { verificarContatoEntrada } = await import("@/lib/contato-entrada.functions");
+const { ajustarSaldoCore } = await import("@/lib/estoque.functions");
+const { assertLimiteContatoEntrada } = await import("@/lib/contato-entrada.functions");
 
 beforeEach(() => {
   estado.isAdmin = true;
@@ -76,15 +69,19 @@ describe("ajuste manual de estoque", () => {
   it("recusa quem não é admin e não escreve nada", async () => {
     estado.isAdmin = false;
     await expect(
-      ajustarSaldoProduto({ data: { produtoId: "11111111-1111-4111-8111-111111111111", saldo: 5 } }),
+      ajustarSaldoCore(clienteUsuario(), "u-1", {
+        produtoId: "11111111-1111-4111-8111-111111111111",
+        saldo: 5,
+      }),
     ).rejects.toThrow(/permissão para ajustar o estoque/i);
     expect(estado.updates).toHaveLength(0);
     expect(estado.auditoria).toHaveLength(0);
   });
 
   it("admin atualiza o saldo e deixa a linha de auditoria", async () => {
-    const r = await ajustarSaldoProduto({
-      data: { produtoId: "11111111-1111-4111-8111-111111111111", saldo: 120 },
+    const r = await ajustarSaldoCore(clienteUsuario(), "u-1", {
+      produtoId: "11111111-1111-4111-8111-111111111111",
+      saldo: 120,
     });
     expect(r).toMatchObject({ ok: true, saldo: 120 });
     expect(estado.updates).toEqual([
@@ -104,9 +101,9 @@ describe("ajuste manual de estoque", () => {
 describe("limite da verificação de contato", () => {
   it("lança quando o limite estoura e nunca devolve 'livre'", async () => {
     estado.limitePermitido = false;
-    await expect(
-      verificarContatoEntrada({ data: { empresa: "ACME", cnpj: "38271645000133" } }),
-    ).rejects.toThrow(/Muitas verificações/i);
+    await expect(assertLimiteContatoEntrada("u-1")).rejects.toThrow(/Muitas verificações/i);
+    estado.limitePermitido = true;
+    await expect(assertLimiteContatoEntrada("u-1")).resolves.toBeUndefined();
   });
 });
 
