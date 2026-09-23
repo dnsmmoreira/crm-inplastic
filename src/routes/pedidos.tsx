@@ -366,7 +366,7 @@ function PedidosKanbanPage() {
   };
 
   return (
-    <div className="p-4 md:p-8 space-y-6 md:h-dvh md:flex md:flex-col md:gap-6 md:space-y-0 md:overflow-hidden">
+    <div className="p-4 md:p-8 space-y-6 md:min-h-dvh md:flex md:flex-col md:gap-6 md:space-y-0">
       <div className="flex flex-wrap items-center justify-between gap-3 shrink-0">
 
         <div>
@@ -431,7 +431,7 @@ function PedidosKanbanPage() {
         </div>
       ) : (
         <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
-          <div className="flex gap-4 overflow-x-auto overflow-y-hidden scrollbar-visible pb-4 -mx-4 md:-mx-8 px-4 md:px-8 md:h-full">
+          <div className="flex items-stretch gap-4 overflow-x-auto scrollbar-visible pb-4 -mx-4 md:-mx-8 px-4 md:px-8 md:min-h-0 md:flex-1">
 
             {PEDIDO_STAGES.map((stage) => {
               const blockedByOcorrencia =
@@ -536,7 +536,7 @@ function Column({
   const total = pedidos.reduce((s, p) => s + p.total, 0);
   const showBlocked = dragActive && !canDrop;
   return (
-    <div className="w-[300px] shrink-0 flex flex-col md:h-full">
+    <div className="w-[300px] shrink-0 flex flex-col">
       <div className="px-1 pb-2 flex items-center justify-between shrink-0">
 
         <div className="flex items-center gap-2 min-w-0">
@@ -558,7 +558,7 @@ function Column({
         title={showBlocked && blockedReason ? blockedReason : undefined}
         className={cn(
           "flex-1 rounded-xl border border-dashed p-2 space-y-2 min-h-[400px] transition-colors relative",
-          "md:min-h-0 md:overflow-y-auto scroll-gutter-stable",
+          "md:min-h-[360px] md:overflow-y-auto scroll-gutter-stable",
 
           isOver && canDrop && !isBackwardTarget && "bg-accent/40 border-primary",
           isOver && canDrop && isBackwardTarget && "bg-amber-500/10 border-amber-500",
