@@ -1,20 +1,41 @@
 /**
  * Autenticação dos webhooks do n8n (`x-n8n-secret`).
  *
- * Comparação em TEMPO CONSTANTE: strings de tamanhos diferentes não podem
- * lançar exceção nem vazar o tamanho do segredo — por isso comparamos os
- * HMACs (sempre 32 bytes) em vez dos bytes crus, exatamente como o
- * `cron-auth.server.ts` já faz para o Xerife.
+ * Mesmo padrão do `requireXerifeCronAuth`:
+ *  • 503 quando o segredo do servidor está ausente ou fraco (configuração
+ *    nossa — 5xx faz o n8n reenfileirar em vez de descartar);
+ *  • 401 quando o header está ausente ou não confere;
+ *  • comparação em TEMPO CONSTANTE (HMAC de 32 bytes), nunca dos bytes crus;
+ *  • nunca registra o valor do segredo.
  */
 import { timingSafeEqual } from "@/lib/xerife/cron-auth.server";
 
-/** `true` quando o header confere com o `N8N_SECRET` do servidor. */
-export async function n8nSecretValido(request: Request): Promise<boolean> {
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, x-n8n-secret",
+} as const;
+
+function recusa(status: number): Response {
+  return new Response(JSON.stringify({ ok: false }), {
+    status,
+    headers: { "Content-Type": "application/json", "Cache-Control": "no-store", ...CORS },
+  });
+}
+
+/** Devolve a Response de recusa, ou `null` quando a chamada é legítima. */
+export async function requireN8nAuth(request: Request): Promise<Response | null> {
   const expected = process.env.N8N_SECRET;
+
+  const { medirSegredo, segredoFraco } = await import("@/lib/segredo-medidor.server");
+  if (!expected || segredoFraco(expected)) {
+    await medirSegredo("n8n-auth.segredo_fraco", expected);
+    return recusa(503);
+  }
+
   const provided = request.headers.get("x-n8n-secret");
-  // MEDIÇÃO (não recusa): registra segredo ausente/fraco uma vez por requisição.
-  const { medirSegredo } = await import("@/lib/segredo-medidor.server");
-  await medirSegredo("n8n-auth.segredo_fraco", expected);
-  if (!expected || !provided) return false;
-  return timingSafeEqual(provided, expected);
+  if (!provided) return recusa(401);
+  if (!(await timingSafeEqual(provided, expected))) return recusa(401);
+
+  return null;
 }
