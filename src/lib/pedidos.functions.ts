@@ -634,8 +634,15 @@ export const updatePedidoStage = createServerFn({ method: "POST" })
     // Admin (diretoria/administrativo) aprova e movimenta sem precisar assumir:
     // aprovação financeira não é execução operacional.
     const ehAdmin = await isAdminUser(sb, context.userId);
+    // Aprovação financeira não é execução operacional: quem aprova libera o pedido
+    // sem virar responsável da operação — mesma isenção já dada ao admin.
+    // Amarrado à etapa de ORIGEM: fora das etapas financeiras nada muda.
+    const aprovadorFinanceiro =
+      ehEtapaFinanceira(from) &&
+      (await temPermissao(sb, context.userId, "pedidos.aprovar_financeiro"));
     if (
       !ehAdmin &&
+      !aprovadorFinanceiro &&
       (exigeResponsavel(from) || exigeResponsavel(to)) &&
       !current.responsavel_atual_id
     ) {
