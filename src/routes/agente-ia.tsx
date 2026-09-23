@@ -59,6 +59,7 @@ type Action = {
 function AgenteIaPage() {
   const { user } = useAuth();
   const isAdmin = hasPerm(user, "agente_ia.editar_prompt");
+  const podeVer = hasPerm(user, "agente_ia.editar_prompt");
 
   const listFn = useServerFn(listAiActions);
   const [openLead, setOpenLead] = useState<string | null>(null);
@@ -83,9 +84,20 @@ function AgenteIaPage() {
   };
 
   useEffect(() => {
+    if (!podeVer) return;
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [typeFilter]);
+  }, [typeFilter, podeVer]);
+
+  if (!podeVer) {
+    return (
+      <div className="p-6">
+        <div className="rounded-xl border bg-card p-6 text-sm text-muted-foreground">
+          Você não tem acesso a esta tela.
+        </div>
+      </div>
+    );
+  }
 
   const counts = actions.reduce(
     (acc, a) => {

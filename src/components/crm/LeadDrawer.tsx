@@ -1373,7 +1373,14 @@ export function NewLeadDialog({ trigger }: { trigger: React.ReactNode }) {
                 if (check.situacao === "suspeita") {
                   toast.warning(mensagemNomeParecido(check.dono), { duration: 10_000 });
                 }
-              } catch {
+              } catch (e) {
+                // Limite de verificações NUNCA pode virar "pode cadastrar".
+                const msg = e instanceof Error ? e.message : String(e);
+                if (msg.includes("Muitas verificações")) {
+                  toast.error(msg, { duration: 10_000 });
+                  setChecando(false);
+                  return;
+                }
                 // Checagem indisponível não pode impedir o cadastro.
               } finally {
                 setChecando(false);

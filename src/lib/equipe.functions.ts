@@ -5,17 +5,23 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
+import { assertRpcPermissao } from "@/lib/guard-erros";
 import type { ResumoEquipe } from "@/lib/equipe.server";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type LooseClient = any;
 
 async function contexto(sb: LooseClient, userId: string) {
-  const { data: admin } = await sb.rpc("has_role", { _user_id: userId, _role: "admin" });
-  const { data: gerencia } = await sb.rpc("tem_permissao", {
-    _user_id: userId,
-    _chave: "usuarios.gerenciar",
-  });
+  const admin = await assertRpcPermissao(
+    await sb.rpc("has_role", { _user_id: userId, _role: "admin" }),
+    "equipe.contexto/has_role",
+    { userId },
+  );
+  const gerencia = await assertRpcPermissao(
+    await sb.rpc("tem_permissao", { _user_id: userId, _chave: "usuarios.gerenciar" }),
+    "equipe.contexto/tem_permissao",
+    { userId },
+  );
   const { data: liderados, error } = await sb
     .from("profiles")
     .select("id")
