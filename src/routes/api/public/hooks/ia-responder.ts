@@ -16,13 +16,10 @@ export const Route = createFileRoute("/api/public/hooks/ia-responder")({
     handlers: {
       OPTIONS: async () => new Response(null, { status: 204, headers: CORS }),
       POST: async ({ request }) => {
-        const { n8nSecretValido } = await import("@/lib/n8n-auth.server");
-        if (!(await n8nSecretValido(request))) {
-          return new Response(JSON.stringify({ error: "unauthorized" }), {
-            status: 401,
-            headers: { "Content-Type": "application/json", ...CORS },
-          });
-        }
+        const { requireN8nAuth } = await import("@/lib/n8n-auth.server");
+        const denied = await requireN8nAuth(request);
+        if (denied) return denied;
+
 
         let body: { conversa_id?: string; mensagem?: string };
         try {

@@ -18,6 +18,11 @@ type TgUpdate = {
 };
 
 const OK = () => new Response(null, { status: 200 });
+const RECUSA = (status: number) =>
+  new Response(JSON.stringify({ ok: false }), {
+    status,
+    headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+  });
 
 export const Route = createFileRoute("/api/public/telegram/webhook")({
   server: {
@@ -28,12 +33,22 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           const provided = (
             request.headers.get("x-telegram-bot-api-secret-token") ?? ""
           ).trim();
-          // MEDIÇÃO (não recusa, não muda o status devolvido).
-          const { medirSegredo } = await import("@/lib/segredo-medidor.server");
-          await medirSegredo("telegram-webhook.segredo_fraco", expected);
-          if (!expected || !provided) return OK();
+          const { medirSegredo, segredoFraco } = await import("@/lib/segredo-medidor.server");
+          if (!expected || segredoFraco(expected)) {
+            await medirSegredo("telegram-webhook.segredo_fraco", expected);
+            return RECUSA(503);
+          }
           const { timingSafeEqual } = await import("@/lib/xerife/cron-auth.server");
-          if (!(await timingSafeEqual(provided, expected))) return OK();
+          if (!provided || !(await timingSafeEqual(provided, expected))) {
+            const { registrarFalhaSegura } = await import("@/lib/guard-erros");
+            await registrarFalhaSegura(
+              "telegram-webhook.assinatura_invalida",
+              new Error("Header secreto do Telegram ausente ou incorreto — requisição recusada."),
+              { tem_header: provided.length > 0 },
+            );
+            return RECUSA(401);
+          }
+
 
           const update = (await request.json().catch(() => null)) as TgUpdate | null;
           const msg = update?.message ?? update?.edited_message;

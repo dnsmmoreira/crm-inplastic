@@ -53,10 +53,10 @@ export const Route = createFileRoute("/api/public/hooks/lead-externo")({
     handlers: {
       OPTIONS: async () => new Response(null, { status: 204, headers: CORS }),
       POST: async ({ request }) => {
-        const { n8nSecretValido } = await import("@/lib/n8n-auth.server");
-        if (!(await n8nSecretValido(request))) {
-          return json({ error: "unauthorized" }, 401);
-        }
+        const { requireN8nAuth } = await import("@/lib/n8n-auth.server");
+        const denied = await requireN8nAuth(request);
+        if (denied) return denied;
+
 
         let body: LeadExternoBody;
         try {

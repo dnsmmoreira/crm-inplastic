@@ -199,3 +199,82 @@ describe("(c) secret inválido", () => {
     expect(res.status).toBe(401);
   });
 });
+
+describe("SEC-13: n8n e Telegram passam a recusar", () => {
+  it("requireN8nAuth sem N8N_SECRET responde 503", async () => {
+    delete process.env.N8N_SECRET;
+    const { requireN8nAuth } = await import("@/lib/n8n-auth.server");
+    const res = await requireN8nAuth(new Request("https://x/h", { method: "POST" }));
+    expect(res?.status).toBe(503);
+  });
+
+  it("requireN8nAuth com header errado responde 401", async () => {
+    const { requireN8nAuth } = await import("@/lib/n8n-auth.server");
+    const res = await requireN8nAuth(
+      new Request("https://x/h", { method: "POST", headers: { "x-n8n-secret": "errado" } }),
+    );
+    expect(res?.status).toBe(401);
+  });
+
+  it("requireN8nAuth com header certo devolve null", async () => {
+    const { requireN8nAuth } = await import("@/lib/n8n-auth.server");
+    const res = await requireN8nAuth(
+      new Request("https://x/h", {
+        method: "POST",
+        headers: { "x-n8n-secret": process.env.N8N_SECRET as string },
+      }),
+    );
+    expect(res).toBeNull();
+  });
+});
+
+describe("Telegram webhook: segredo", () => {
+  const SEGREDO = "telegram-segredo-forte-para-teste-1234567890";
+
+  it("sem segredo configurado responde 503", async () => {
+    process.env.TELEGRAM_WEBHOOK_SECRET = "";
+    sbAtual = criarSb(() => ({ data: null }));
+    const { Route } = await import("@/routes/api/public/telegram/webhook");
+    const res = await handler(Route, "POST")({
+      request: new Request("https://x/api/public/telegram/webhook", { method: "POST" }),
+    });
+    expect(res.status).toBe(503);
+  });
+
+  it("header inválido responde 401 e registra a falha", async () => {
+    process.env.TELEGRAM_WEBHOOK_SECRET = SEGREDO;
+    sbAtual = criarSb(() => ({ data: null }));
+    const { Route } = await import("@/routes/api/public/telegram/webhook");
+    const res = await handler(Route, "POST")({
+      request: new Request("https://x/api/public/telegram/webhook", {
+        method: "POST",
+        headers: { "x-telegram-bot-api-secret-token": "errado" },
+      }),
+    });
+    expect(res.status).toBe(401);
+    const origens = registrarFalhaAdmin.mock.calls.map((c) => String((c as unknown[])[0]));
+    expect(origens).toContain("telegram-webhook.assinatura_invalida");
+  });
+
+  it("header válido responde 200 e vincula o perfil", async () => {
+    process.env.TELEGRAM_WEBHOOK_SECRET = SEGREDO;
+    const updates: string[] = [];
+    sbAtual = criarSb((t, op) => {
+      if (t === "profiles" && op === "update") {
+        updates.push("update");
+        return { data: null };
+      }
+      return { data: { id: "p1" } };
+    });
+    const { Route } = await import("@/routes/api/public/telegram/webhook");
+    const res = await handler(Route, "POST")({
+      request: new Request("https://x/api/public/telegram/webhook", {
+        method: "POST",
+        headers: { "x-telegram-bot-api-secret-token": SEGREDO },
+        body: JSON.stringify({ message: { text: "/start ABC123", chat: { id: 42 } } }),
+      }),
+    });
+    expect(res.status).toBe(200);
+    expect(updates.length).toBe(1);
+  });
+});
