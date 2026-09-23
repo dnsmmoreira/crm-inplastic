@@ -42,3 +42,27 @@ describe("assumir pedido — porta do financeiro", () => {
     expect(corpo).toContain("!aprovadorFinanceiro && !(await podeOperarProducao(sb, userId))");
   });
 });
+
+describe("updatePedidoStage — isenção do aprovador financeiro", () => {
+  const fonte = readFileSync("src/lib/pedidos.functions.ts", "utf8");
+  const i = fonte.indexOf("const ehAdmin = await isAdminUser(sb, context.userId);");
+  const corpo = fonte.slice(i, i + 900);
+
+  it("combina a etapa de origem com a permissão de aprovar o financeiro", () => {
+    expect(corpo).toContain("ehEtapaFinanceira(from)");
+    expect(corpo).toContain('temPermissao(sb, context.userId, "pedidos.aprovar_financeiro")');
+  });
+
+  it("a isenção entra na guarda junto do !ehAdmin", () => {
+    expect(corpo).toContain("!ehAdmin");
+    expect(corpo).toContain("!aprovadorFinanceiro");
+  });
+
+  it("a isenção é amarrada à etapa de ORIGEM, nunca à de destino", () => {
+    const linha = corpo
+      .split("\n")
+      .find((l) => l.includes("ehEtapaFinanceira("))!;
+    expect(linha).toContain("ehEtapaFinanceira(from)");
+    expect(linha).not.toContain("ehEtapaFinanceira(to)");
+  });
+});
