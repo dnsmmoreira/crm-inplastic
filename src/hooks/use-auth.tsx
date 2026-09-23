@@ -87,6 +87,16 @@ export function hasPerm(user: AuthUser | null | undefined, chave: string): boole
   );
 }
 
+/**
+ * Quem pode abrir a tela /atendimento-ia. Fonte ÚNICA: a guarda da rota e o
+ * destino do sino de notificações usam esta mesma expressão — se mudar aqui,
+ * muda nos dois lugares. `whatsapp.atender` de propósito NÃO entra (todo
+ * vendedor tem essa chave e a guarda ficaria sem efeito).
+ */
+export function podeVerAtendimentoIa(user: AuthUser | null | undefined): boolean {
+  return hasPerm(user, "agente_ia.editar_prompt") || hasPerm(user, "whatsapp.ver_equipe");
+}
+
 type AuthContextValue = {
   user: AuthUser | null;
   session: Session | null;
