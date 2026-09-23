@@ -152,27 +152,11 @@ describe("(a) Meta: falha de escrita após aceitar o payload", () => {
       op === "insert" || op === "upsert" ? { error: { message: "boom" } } : { data: null },
     );
     const { Route } = await import("@/routes/api/public/hooks/whatsapp-cloud");
-    const corpo = JSON.stringify({
-        entry: [
-          {
-            id: "waba",
-            changes: [
-              {
-                value: {
-                  messages: [
-                    {
-                      id: "wamid.TESTE1",
-                      from: "5511999999999",
-                      type: "text",
-                      text: { body: "oi" },
-                    },
-                  ],
-                },
-              },
-            ],
-          },
-        ],
-      }),
+    const corpo = CORPO_META;
+    const req = new Request("https://x/api/public/hooks/whatsapp-cloud", {
+      method: "POST",
+      headers: { "x-hub-signature-256": await assinar(corpo) },
+      body: corpo,
     });
     const res = await handler(Route, "POST")({ request: req });
     expect(res.status).toBe(200);
