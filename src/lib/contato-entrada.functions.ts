@@ -26,6 +26,23 @@ export type ChecagemContato =
     }
   | { situacao: "suspeita"; leadId: string | null; dono: DonoCadastro };
 
+export const MSG_LIMITE_CONTATO =
+  "Muitas verificações seguidas. Espere um minuto e tente de novo.";
+
+/** Limite por pessoa: balde próprio, separado da consulta de dono. */
+export async function assertLimiteContatoEntrada(userId: string): Promise<void> {
+  const { consumirTentativa } = await import("@/lib/rate-limit.server");
+  const { CONSULTA_JANELA_SEGUNDOS, CONSULTA_LIMITE } = await import(
+    "@/lib/consulta-dono.server"
+  );
+  const limite = await consumirTentativa(
+    `contato_entrada:${userId}`,
+    CONSULTA_JANELA_SEGUNDOS,
+    CONSULTA_LIMITE,
+  );
+  if (!limite.permitido) throw new Error(MSG_LIMITE_CONTATO);
+}
+
 export const verificarContatoEntrada = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data) =>
@@ -39,19 +56,7 @@ export const verificarContatoEntrada = createServerFn({ method: "POST" })
       .parse(data),
   )
   .handler(async ({ data, context }): Promise<ChecagemContato> => {
-    // Limite por pessoa: balde próprio, separado da consulta de dono.
-    const { consumirTentativa } = await import("@/lib/rate-limit.server");
-    const { CONSULTA_JANELA_SEGUNDOS, CONSULTA_LIMITE } = await import(
-      "@/lib/consulta-dono.server"
-    );
-    const limite = await consumirTentativa(
-      `contato_entrada:${context.userId}`,
-      CONSULTA_JANELA_SEGUNDOS,
-      CONSULTA_LIMITE,
-    );
-    if (!limite.permitido) {
-      throw new Error("Muitas verificações seguidas. Espere um minuto e tente de novo.");
-    }
+    await assertLimiteContatoEntrada(context.userId);
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { resolverContatoEntrada, avisoDuplicidadePorNome } = await import(
