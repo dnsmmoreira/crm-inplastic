@@ -64,15 +64,95 @@ beforeEach(() => {
   process.env.META_ACEITAR_TESTE = "true";
 });
 
+const APP_SECRET_TESTE = "segredo-de-teste-para-hmac-do-webhook-meta-1234";
+
+async function assinar(corpo: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(APP_SECRET_TESTE),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(corpo));
+  return (
+    "sha256=" +
+    Array.from(new Uint8Array(sig))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("")
+  );
+}
+
+const CORPO_META = JSON.stringify({
+  entry: [
+    {
+      id: "waba",
+      changes: [
+        {
+          value: {
+            messages: [
+              { id: "wamid.TESTE1", from: "5511999999999", type: "text", text: { body: "oi" } },
+            ],
+          },
+        },
+      ],
+    },
+  ],
+});
+
+describe("Meta: assinatura obrigatória (SEC-04)", () => {
+  it("sem META_APP_SECRET responde 503 e registra a falha", async () => {
+    process.env.META_APP_SECRET = "";
+    sbAtual = criarSb(() => ({ data: null }));
+    const { Route } = await import("@/routes/api/public/hooks/whatsapp-cloud");
+    const res = await handler(Route, "POST")({
+      request: new Request("https://x/api/public/hooks/whatsapp-cloud", {
+        method: "POST",
+        body: CORPO_META,
+      }),
+    });
+    expect(res.status).toBe(503);
+    const origens = registrarFalhaAdmin.mock.calls.map((c) => String((c as unknown[])[0]));
+    expect(origens).toContain("wa-cloud-webhook.sem_app_secret");
+  });
+
+  it("com segredo e assinatura inválida responde 401", async () => {
+    process.env.META_APP_SECRET = APP_SECRET_TESTE;
+    sbAtual = criarSb(() => ({ data: null }));
+    const { Route } = await import("@/routes/api/public/hooks/whatsapp-cloud");
+    const res = await handler(Route, "POST")({
+      request: new Request("https://x/api/public/hooks/whatsapp-cloud", {
+        method: "POST",
+        headers: { "x-hub-signature-256": "sha256=deadbeef" },
+        body: CORPO_META,
+      }),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it("com segredo e assinatura válida responde 200", async () => {
+    process.env.META_APP_SECRET = APP_SECRET_TESTE;
+    sbAtual = criarSb(() => ({ data: null }));
+    const { Route } = await import("@/routes/api/public/hooks/whatsapp-cloud");
+    const res = await handler(Route, "POST")({
+      request: new Request("https://x/api/public/hooks/whatsapp-cloud", {
+        method: "POST",
+        headers: { "x-hub-signature-256": await assinar(CORPO_META) },
+        body: CORPO_META,
+      }),
+    });
+    expect(res.status).toBe(200);
+  });
+});
+
 describe("(a) Meta: falha de escrita após aceitar o payload", () => {
   it("responde 200 e registra a falha com o wa_message_id", async () => {
+    process.env.META_APP_SECRET = APP_SECRET_TESTE;
     sbAtual = criarSb((_t, op) =>
       op === "insert" || op === "upsert" ? { error: { message: "boom" } } : { data: null },
     );
     const { Route } = await import("@/routes/api/public/hooks/whatsapp-cloud");
-    const req = new Request("https://x/api/public/hooks/whatsapp-cloud", {
-      method: "POST",
-      body: JSON.stringify({
+    const corpo = JSON.stringify({
         entry: [
           {
             id: "waba",
