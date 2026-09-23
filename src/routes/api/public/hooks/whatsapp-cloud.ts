@@ -113,17 +113,20 @@ export const Route = createFileRoute("/api/public/hooks/whatsapp-cloud")({
             });
           }
         } else {
-          // MEDIÇÃO: o processamento segue igual (nenhuma recusa nova); o
-          // registro existe para provar, com tráfego real, se a variável está
-          // presente em produção antes de fechar a porta.
-          console.warn("[wa-cloud-webhook] META_APP_SECRET ausente — assinatura NÃO verificada");
+          // SEC-04: sem segredo não há como verificar a assinatura — recusa com
+          // 503 (problema de configuração nosso); a Meta reentrega o lote.
+          console.warn("[wa-cloud-webhook] META_APP_SECRET ausente — requisição recusada");
           await registrarFalhaSegura(
             "wa-cloud-webhook.sem_app_secret",
             new Error(
-              "META_APP_SECRET ausente — assinatura do webhook da Meta NÃO foi verificada; o evento foi processado mesmo assim.",
+              "META_APP_SECRET ausente — assinatura do webhook da Meta NÃO pôde ser verificada; a requisição foi RECUSADA com 503.",
             ),
-            { assinatura_verificada: false },
+            { assinatura_verificada: false, recusado: true },
           );
+          return new Response(JSON.stringify({ ok: false }), {
+            status: 503,
+            headers: { "Content-Type": "application/json", ...CORS },
+          });
         }
 
         try {
