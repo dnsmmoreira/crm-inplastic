@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Bell } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth, podeVerAtendimentoIa } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 
 /**
@@ -12,6 +12,9 @@ import { cn } from "@/lib/utils";
 export function NotificacoesBell({ className }: { className?: string }) {
   const { user } = useAuth();
   const userId = user?.id ?? null;
+  // Mesma condição da guarda de /atendimento-ia: sem ela, o sino levava todo
+  // vendedor para a tela de recusa.
+  const podeAtendimentoIa = podeVerAtendimentoIa(user);
   const [count, setCount] = useState(0);
   // Só quando TODAS as não lidas são de chat interno o sino leva ao chat.
   // Qualquer outro tipo mantém o destino de sempre.
@@ -57,7 +60,7 @@ export function NotificacoesBell({ className }: { className?: string }) {
 
   return (
     <Link
-      to={soChatInterno ? "/chat-interno" : "/atendimento-ia"}
+      to={soChatInterno ? "/chat-interno" : podeAtendimentoIa ? "/atendimento-ia" : "/conversas"}
       aria-label={`Notificações${count > 0 ? `: ${count} não lidas` : ""}`}
       className={cn(
         "relative flex h-8 w-8 items-center justify-center rounded-md text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",

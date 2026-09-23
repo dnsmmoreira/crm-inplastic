@@ -28,7 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useAuth, hasPerm } from "@/hooks/use-auth";
+import { useAuth, hasPerm, podeVerAtendimentoIa } from "@/hooks/use-auth";
 import { useAutoScrollMensagens } from "@/hooks/use-auto-scroll-mensagens";
 import { DistribuirConversasDialog } from "@/components/atendimento/DistribuirConversasDialog";
 import type { Database } from "@/integrations/supabase/types";
@@ -84,8 +84,7 @@ function StatusChip({ status }: { status: Status }) {
 
 function AtendimentoIAPage() {
   const { user } = useAuth();
-  const podeVer =
-    hasPerm(user, "agente_ia.editar_prompt") || hasPerm(user, "whatsapp.ver_equipe");
+  const podeVer = podeVerAtendimentoIa(user);
   const [conversas, setConversas] = useState<Conversa[]>([]);
   const [dadosLead, setDadosLead] = useState<Record<string, DadosLeadConversa>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
