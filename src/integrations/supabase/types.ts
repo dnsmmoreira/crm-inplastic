@@ -4031,7 +4031,6 @@ export type Database = {
           id: string
         }[]
       }
-      chat_supervisor_id: { Args: never; Returns: string }
       cnpj_status:
         | {
             Args: { _cnpj: string }
