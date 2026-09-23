@@ -1975,6 +1975,7 @@ export type Database = {
           created_at: string
           exige_aceite: boolean
           id: string
+          lead_id: string | null
           lida_em: string | null
           pedido_id: string | null
           proposta_id: string | null
@@ -1989,6 +1990,7 @@ export type Database = {
           created_at?: string
           exige_aceite?: boolean
           id?: string
+          lead_id?: string | null
           lida_em?: string | null
           pedido_id?: string | null
           proposta_id?: string | null
@@ -2003,6 +2005,7 @@ export type Database = {
           created_at?: string
           exige_aceite?: boolean
           id?: string
+          lead_id?: string | null
           lida_em?: string | null
           pedido_id?: string | null
           proposta_id?: string | null
@@ -2016,6 +2019,13 @@ export type Database = {
             columns: ["conversa_id"]
             isOneToOne: false
             referencedRelation: "whatsapp_conversas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notificacoes_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
             referencedColumns: ["id"]
           },
           {
