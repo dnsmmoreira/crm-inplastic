@@ -84,6 +84,8 @@ function StatusChip({ status }: { status: Status }) {
 
 function AtendimentoIAPage() {
   const { user } = useAuth();
+  const podeVer =
+    hasPerm(user, "agente_ia.editar_prompt") || hasPerm(user, "whatsapp.ver_equipe");
   const [conversas, setConversas] = useState<Conversa[]>([]);
   const [dadosLead, setDadosLead] = useState<Record<string, DadosLeadConversa>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -93,6 +95,7 @@ function AtendimentoIAPage() {
   const userId = user?.id ?? null;
 
   const load = useCallback(async () => {
+    if (!podeVer) return;
     let query = supabase
       .from("whatsapp_conversas")
       .select("*")
@@ -125,9 +128,10 @@ function AtendimentoIAPage() {
     } catch (e) {
       console.error("[atendimento-ia] rótulo de empresa indisponível", e);
     }
-  }, [isVendedor, userId]);
+  }, [isVendedor, userId, podeVer]);
 
   useEffect(() => {
+    if (!podeVer) return;
     void load();
     const channel = supabase
       .channel("atendimento-conversas")
@@ -145,12 +149,12 @@ function AtendimentoIAPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [load]);
+  }, [load, podeVer]);
 
   // UM poll por rota: a lista só é pesquisada quando não há conversa aberta;
   // com conversa aberta quem faz o tick (12s) é o painel, que também recarrega
   // a lista. `usePoll` já pausa com a aba oculta.
-  usePoll(() => void load(), 45000, selectedId === null);
+  usePoll(() => void load(), 45000, podeVer && selectedId === null);
 
   const selected = useMemo(
     () => conversas.find((c) => c.id === selectedId) ?? null,
@@ -163,6 +167,16 @@ function AtendimentoIAPage() {
     const qual = conversas.filter((c) => c.status === "qualificado").length;
     return { total: conversas.length, ia, humano, qual };
   }, [conversas]);
+
+  if (!podeVer) {
+    return (
+      <div className="p-6">
+        <div className="rounded-xl border bg-card p-6 text-sm text-muted-foreground">
+          Você não tem acesso a esta tela.
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 md:p-8 space-y-6">

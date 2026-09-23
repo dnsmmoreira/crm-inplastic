@@ -39,6 +39,20 @@ export const verificarContatoEntrada = createServerFn({ method: "POST" })
       .parse(data),
   )
   .handler(async ({ data, context }): Promise<ChecagemContato> => {
+    // Limite por pessoa: balde próprio, separado da consulta de dono.
+    const { consumirTentativa } = await import("@/lib/rate-limit.server");
+    const { CONSULTA_JANELA_SEGUNDOS, CONSULTA_LIMITE } = await import(
+      "@/lib/consulta-dono.server"
+    );
+    const limite = await consumirTentativa(
+      `contato_entrada:${context.userId}`,
+      CONSULTA_JANELA_SEGUNDOS,
+      CONSULTA_LIMITE,
+    );
+    if (!limite.permitido) {
+      throw new Error("Muitas verificações seguidas. Espere um minuto e tente de novo.");
+    }
+
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { resolverContatoEntrada, avisoDuplicidadePorNome } = await import(
       "@/lib/contato-entrada.server"
