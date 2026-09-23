@@ -2,7 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Search, Boxes, Pencil } from "lucide-react";
 import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
+import { ajustarSaldoProduto } from "@/lib/estoque.functions";
 import { useCrm } from "@/lib/crm-store";
 import { useAuth } from "@/hooks/use-auth";
 import { Input } from "@/components/ui/input";
@@ -48,11 +50,13 @@ function EstoquePage() {
   const [saldos, setSaldos] = useState<Record<string, number>>({});
   const [editing, setEditing] = useState<{ produtoId: string; nome: string; saldo: string } | null>(null);
   const [saving, setSaving] = useState(false);
+  const ajustarSaldo = useServerFn(ajustarSaldoProduto);
 
   const load = useCallback(async () => {
     const { data, error } = await supabase.from("produtos").select("id, estoque_atual");
     if (error) {
       console.error(error);
+      toast.error("Não foi possível carregar os saldos.");
       return;
     }
     const map: Record<string, number> = {};
@@ -74,18 +78,18 @@ function EstoquePage() {
   async function salvar() {
     if (!editing) return;
     setSaving(true);
-    const { error } = await supabase
-      .from("produtos")
-      .update({ estoque_atual: Number(editing.saldo) || 0 })
-      .eq("id", editing.produtoId);
-    setSaving(false);
-    if (error) {
-      toast.error(error.message);
-      return;
+    try {
+      await ajustarSaldo({
+        data: { produtoId: editing.produtoId, saldo: Number(editing.saldo) || 0 },
+      });
+      toast.success("Saldo atualizado.");
+      setEditing(null);
+      void load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Não foi possível atualizar o saldo.");
+    } finally {
+      setSaving(false);
     }
-    toast.success("Saldo atualizado.");
-    setEditing(null);
-    void load();
   }
 
   return (
