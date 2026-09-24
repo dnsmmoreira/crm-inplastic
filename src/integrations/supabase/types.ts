@@ -739,6 +739,7 @@ export type Database = {
           acrescimo_percent: number
           active: boolean
           cartao_taxa_base_percent: number
+          cartao_taxas_operadora: Json | null
           created_at: string
           id: string
           juros_compostos: boolean
@@ -756,6 +757,7 @@ export type Database = {
           acrescimo_percent?: number
           active?: boolean
           cartao_taxa_base_percent?: number
+          cartao_taxas_operadora?: Json | null
           created_at?: string
           id: string
           juros_compostos?: boolean
@@ -773,6 +775,7 @@ export type Database = {
           acrescimo_percent?: number
           active?: boolean
           cartao_taxa_base_percent?: number
+          cartao_taxas_operadora?: Json | null
           created_at?: string
           id?: string
           juros_compostos?: boolean
