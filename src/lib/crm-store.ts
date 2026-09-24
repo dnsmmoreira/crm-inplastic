@@ -768,6 +768,8 @@ export type PaymentTerm = {
   jurosCompostos?: boolean;
   /** Cartão: taxa base aplicada já na 1x, antes das parcelas adicionais. */
   cartaoTaxaBasePercent?: number;
+  /** Cartão: taxa retida pela operadora por nº de parcelas ({"1": 4.98, ...}). */
+  cartaoTaxasOperadora?: Record<string, number> | null;
   ordem?: number; // posição na lista de prazos (menor primeiro)
 };
 

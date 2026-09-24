@@ -30,6 +30,8 @@ type Props = {
   /** Taxa base da operadora, aplicada já na 1x. */
   taxaBasePercent?: number;
   parcelasAtuais?: number | null;
+  /** Tabela da operadora por nº de parcelas; quando existe, manda no cálculo. */
+  taxasOperadora?: Record<string, number> | null;
   onEscolher: (linha: SimulacaoLinha) => void;
   onCancelar: () => void;
 };
@@ -45,10 +47,12 @@ export function SimulacaoCartaoDialog({
   compostos,
   taxaBasePercent = 0,
   parcelasAtuais,
+  taxasOperadora,
   onEscolher,
   onCancelar,
 }: Props) {
-  const linhas = simularCartao({ valorBase, taxaPercent, maxParcelas, compostos, taxaBasePercent });
+  const linhas = simularCartao({ valorBase, taxaPercent, maxParcelas, compostos, taxaBasePercent, taxasOperadora });
+  const porTabela = linhas.some((l) => l.taxaOperadoraPercent != null);
 
   return (
     <Dialog
@@ -64,9 +68,18 @@ export function SimulacaoCartaoDialog({
             <CreditCard className="h-4 w-4" /> Simulação do cartão de crédito
           </DialogTitle>
           <DialogDescription>
-            Valor base (itens menos desconto): <strong>{formatBRL(valorBase)}</strong>. Taxa da
-            operadora: {pct(taxaBasePercent)} já na 1x, mais {pct(taxaPercent)} por parcela
-            adicional, {compostos ? "juros compostos" : "juros simples"}.
+            Valor base (itens menos desconto): <strong>{formatBRL(valorBase)}</strong>.{" "}
+            {porTabela ? (
+              <>
+                Acréscimo calculado pela tabela da operadora (taxa entre parênteses), repassando
+                o custo integral: o líquido após a retenção volta ao valor base.
+              </>
+            ) : (
+              <>
+                Taxa da operadora: {pct(taxaBasePercent)} já na 1x, mais {pct(taxaPercent)} por
+                parcela adicional, {compostos ? "juros compostos" : "juros simples"}.
+              </>
+            )}
           </DialogDescription>
         </DialogHeader>
 
@@ -105,7 +118,14 @@ export function SimulacaoCartaoDialog({
                     )}
                   </td>
                   <td className="p-2 text-right tabular-nums">{formatBRL(l.valorParcela)}</td>
-                  <td className="p-2 text-right tabular-nums">{pct(l.acrescimoPercent)}</td>
+                  <td className="p-2 text-right tabular-nums">
+                    {pct(l.acrescimoPercent)}
+                    {l.taxaOperadoraPercent != null && (
+                      <span className="ml-1 text-xs text-muted-foreground">
+                        ({pct(l.taxaOperadoraPercent)})
+                      </span>
+                    )}
+                  </td>
                   <td className="p-2 text-right tabular-nums">{formatBRL(l.acrescimoValor)}</td>
                   <td className="p-2 text-right font-semibold tabular-nums">{formatBRL(l.total)}</td>
                 </tr>

@@ -4,6 +4,7 @@ import {
   acrescimoEfetivo,
   ehCondicaoCartao,
   fatorCartao,
+  fatorCartaoOperadora,
   gerarParcelasCartao,
   simularCartao,
   valoresParcelasCartao,
@@ -111,5 +112,55 @@ describe("ehCondicaoCartao / acrescimoEfetivo", () => {
     expect(acrescimoEfetivo(0, 3, true)).toBe(0);
     expect(acrescimoEfetivo(9.27, 3, true)).toBe(9.27);
     expect(acrescimoEfetivo(0, 5, false)).toBe(5);
+  });
+});
+
+describe("tabela da operadora (fator = 1 / (1 − taxa))", () => {
+  const TABELA = { "1": 4.98, "2": 9.64, "3": 11.23, "4": 11.36, "5": 14.31, "6": 14.32, "7": 16.72, "8": 16.72, "9": 19.69, "10": 20.65 };
+
+  it("3x com 11,23%: fator 1/(1−0,1123) e acréscimo exibido 12,65%", () => {
+    const f = fatorCartaoOperadora(3, TABELA)!;
+    expect(f).toBeCloseTo(1 / (1 - 0.1123), 12);
+    expect(+f.toFixed(6)).toBe(1.126507);
+    const l = simularCartao({ valorBase: 100, taxaPercent: 0, maxParcelas: 10, taxasOperadora: TABELA });
+    expect(l[2].acrescimoPercent).toBe(12.65);
+    expect(l[2].taxaOperadoraPercent).toBe(11.23);
+  });
+
+  it("caso real: R$ 10.567,20 em 3x → R$ 11.904,02 e o líquido volta a R$ 10.567,20", () => {
+    const l = simularCartao({ valorBase: 10567.2, taxaPercent: 0, maxParcelas: 10, taxasOperadora: TABELA });
+    const tres = l.find((x) => x.parcelas === 3)!;
+    expect(tres.total).toBe(11904.02);
+    expect(+(tres.total * (1 - 0.1123)).toFixed(2)).toBe(10567.2);
+    // o percentual gravado na proposta reproduz o total ao centavo
+    expect(+(10567.2 * (1 + tres.acrescimoPercentExato / 100)).toFixed(2)).toBe(11904.02);
+  });
+
+  it("7x e 8x têm o mesmo fator", () => {
+    expect(fatorCartaoOperadora(7, TABELA)).toBe(fatorCartaoOperadora(8, TABELA));
+  });
+
+  it("parcela fora da tabela é recusada", () => {
+    expect(fatorCartaoOperadora(11, TABELA)).toBeNull();
+    expect(fatorCartaoOperadora(12, TABELA)).toBeNull();
+    const l = simularCartao({ valorBase: 1000, taxaPercent: 1.5, maxParcelas: 12, taxaBasePercent: 5, taxasOperadora: TABELA });
+    expect(l.map((x) => x.parcelas)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    const buraco = simularCartao({ valorBase: 1000, taxaPercent: 0, maxParcelas: 3, taxasOperadora: { "1": 5, "3": 10 } });
+    expect(buraco.map((x) => x.parcelas)).toEqual([1, 3]);
+  });
+
+  it("condição sem tabela continua na fórmula antiga, com os valores de hoje", () => {
+    for (const semTabela of [undefined, null, {}]) {
+      const l = simularCartao({ valorBase: 1000, taxaPercent: 1.5, maxParcelas: 12, taxaBasePercent: 5, taxasOperadora: semTabela });
+      expect(l).toHaveLength(12);
+      expect(l.map((x) => x.acrescimoPercent)).toEqual([5, 6.57, 8.17, 9.8, 11.44, 13.11, 14.81, 16.53, 18.28, 20.06, 21.86, 23.68]);
+      expect(l[0].taxaOperadoraPercent).toBeNull();
+    }
+    expect(fatorCartao(3, 1.5, true, 5)).toBeCloseTo(1.05 * 1.015 ** 2, 12);
+  });
+
+  it("imprime a tabela 1x–10x", () => {
+    const l = simularCartao({ valorBase: 10000, taxaPercent: 0, maxParcelas: 10, taxasOperadora: TABELA });
+    console.log("TABELA\n" + l.map((x) => `${x.parcelas}x | taxa ${x.taxaOperadoraPercent}% | acrésc ${x.acrescimoPercent}% | total ${x.total}`).join("\n"));
   });
 });
