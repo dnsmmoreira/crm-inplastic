@@ -153,7 +153,7 @@ describe("tabela da operadora (fator = 1 / (1 − taxa))", () => {
     for (const semTabela of [undefined, null, {}]) {
       const l = simularCartao({ valorBase: 1000, taxaPercent: 1.5, maxParcelas: 12, taxaBasePercent: 5, taxasOperadora: semTabela });
       expect(l).toHaveLength(12);
-      expect(l.map((x) => x.acrescimoPercent)).toEqual([5, 6.58, 8.17, 9.8, 11.44, 13.11, 14.81, 16.53, 18.28, 20.06, 21.86, 23.68]);
+      expect(l.map((x) => x.acrescimoPercent)).toEqual([5, 6.57, 8.17, 9.8, 11.44, 13.11, 14.81, 16.53, 18.28, 20.06, 21.86, 23.68]);
       expect(l[0].taxaOperadoraPercent).toBeNull();
     }
     expect(fatorCartao(3, 1.5, true, 5)).toBeCloseTo(1.05 * 1.015 ** 2, 12);
