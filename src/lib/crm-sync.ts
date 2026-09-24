@@ -1,3 +1,4 @@
+import { normalizarTaxasOperadora } from "@/lib/cartao-simulacao";
 /**
  * Ponte entre a autenticação Supabase e o store CRM (Zustand).
  *
@@ -252,6 +253,7 @@ function rowToPayTerm(r: PayTermRow): PaymentTerm {
     max_parcelas?: number | null;
     juros_compostos?: boolean | null;
     cartao_taxa_base_percent?: number | null;
+    cartao_taxas_operadora?: unknown;
     parcelas?: unknown;
     ordem?: number | null;
   };
@@ -269,6 +271,7 @@ function rowToPayTerm(r: PayTermRow): PaymentTerm {
     maxParcelas: loose.max_parcelas ?? null,
     jurosCompostos: !!loose.juros_compostos,
     cartaoTaxaBasePercent: Number(loose.cartao_taxa_base_percent ?? 0),
+    cartaoTaxasOperadora: normalizarTaxasOperadora(loose.cartao_taxas_operadora),
     ordem: Number(loose.ordem ?? 0),
   };
 }
@@ -291,6 +294,7 @@ function payTermToInsert(t: PaymentTerm): PayTermInsert {
     max_parcelas: t.maxParcelas ?? null,
     juros_compostos: !!t.jurosCompostos,
     cartao_taxa_base_percent: Number(t.cartaoTaxaBasePercent ?? 0),
+    cartao_taxas_operadora: (normalizarTaxasOperadora(t.cartaoTaxasOperadora) ?? null) as unknown as Json,
     ordem: Number(t.ordem ?? 0),
   } as PayTermInsert;
 }
@@ -677,7 +681,7 @@ const COLS_PRODUTOS =
 const COLS_EMITTERS =
   "id,brand,tagline,legal_name,cnpj,ie,address,phone,whatsapp,email,website,is_default,banco,agencia,conta,pix,contato_coleta_nome,contato_coleta_telefone,endereco_coleta";
 const COLS_TERMOS =
-  "id,label,method,splits,notes,active,permite_pf,acrescimo_percent,max_parcelas,juros_compostos,cartao_taxa_base_percent,parcelas,ordem";
+  "id,label,method,splits,notes,active,permite_pf,acrescimo_percent,max_parcelas,juros_compostos,cartao_taxa_base_percent,cartao_taxas_operadora,parcelas,ordem";
 const COLS_LEADS =
   "id,company,contact_name,email,phone,product,product_id,quantity,estimated_value,stage,tags,segment,source,created_at,last_contact,last_contact_at,next_followup,notes,owner_id,cliente_id,cnpj,razao_social,nome_fantasia,inscricao_estadual,inscricao_municipal,endereco,email_financeiro,email_nf_xml,telefone_fixo,whatsapp,site,porte,cnae_principal,faturamento_estimado,num_funcionarios,decisor_nome,decisor_cargo,data_abertura,capital_social,simples_optante,socios";
 const COLS_TAREFAS =

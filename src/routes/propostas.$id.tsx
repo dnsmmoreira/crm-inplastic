@@ -938,7 +938,7 @@ function PropostaDetalhe() {
     if (!termId) return;
     aplicarCondicao(termId, {
       parcelas: gerarParcelasCartao(linha.parcelas),
-      acrescimoPercent: linha.acrescimoPercent,
+      acrescimoPercent: linha.acrescimoPercentExato,
       cartaoParcelas: linha.parcelas,
     });
     setSimulacao({ open: false, termId: null, anterior: null });
@@ -1531,6 +1531,11 @@ function PropostaDetalhe() {
                 paymentTerms.find((t: PaymentTerm) => t.id === simulacao.termId)
                   ?.cartaoTaxaBasePercent ?? 0
 
+              }
+
+              taxasOperadora={
+                paymentTerms.find((t: PaymentTerm) => t.id === simulacao.termId)
+                  ?.cartaoTaxasOperadora ?? null
               }
 
               parcelasAtuais={proposal.cartaoParcelas ?? null}
