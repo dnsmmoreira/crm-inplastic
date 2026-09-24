@@ -71,8 +71,8 @@ export function SimulacaoCartaoDialog({
             Valor base (itens menos desconto): <strong>{formatBRL(valorBase)}</strong>.{" "}
             {porTabela ? (
               <>
-                Acréscimo calculado pela tabela da operadora (taxa entre parênteses), repassando
-                o custo integral: o líquido após a retenção volta ao valor base.
+                O acréscimo é a taxa da operadora para aquele número de parcelas (entre
+                parênteses), paga pelo cliente.
               </>
             ) : (
               <>

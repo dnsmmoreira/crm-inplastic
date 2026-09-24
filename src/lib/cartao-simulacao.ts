@@ -1,8 +1,9 @@
 /**
  * Simulação de parcelamento no cartão de crédito.
  *
- * Modelo principal: tabela da operadora por nº de parcelas; ela retém a taxa do
- * total cobrado, então o fator é 1/(1 − taxa). Reserva (condição sem tabela):
+ * Modelo principal: tabela da operadora por nº de parcelas, "parcelado com juros
+ * ao cliente": fator = 1 + taxa; parcela = arredonda(base × fator ÷ n, 2) e
+ * total = parcela × n (como a máquina). Reserva (condição sem tabela):
  * (1 + base) × (1 + taxa)^(n−1), composto ou simples.
  *
  * Tudo aqui é puro (sem banco, sem React) para ser testável e reaproveitável
@@ -49,14 +50,14 @@ export function taxaOperadora(n: number, tabela: TaxasOperadora | null | undefin
 }
 
 /**
- * Fator pelo modelo da operadora: ela retém a taxa DO TOTAL cobrado, então
- * fator = 1 / (1 − taxa). Retorna null (recusa) se `n` não existir na tabela —
- * nunca extrapola nem cai na fórmula.
+ * Fator pelo modelo da operadora (juros pagos pelo cliente): fator = 1 + taxa.
+ * Retorna null (recusa) se `n` não existir na tabela — nunca extrapola nem cai
+ * na fórmula.
  */
 export function fatorCartaoOperadora(n: number, tabela: TaxasOperadora | null | undefined): number | null {
   const t = taxaOperadora(n, tabela);
   if (t === null) return null;
-  return 1 / (1 - t / 100);
+  return 1 + t / 100;
 }
 
 const round2 = (v: number) => Math.round(v * 100) / 100;
@@ -102,16 +103,27 @@ export function simularCartao(input: {
   const tabela = normalizarTaxasOperadora(input.taxasOperadora);
   const out: SimulacaoLinha[] = [];
   for (let n = 1; n <= max; n++) {
-    let fator: number;
-    let taxaOp: number | null = null;
     if (tabela) {
       const f = fatorCartaoOperadora(n, tabela);
       if (f === null) continue; // fora da tabela: não oferece
-      fator = f;
-      taxaOp = taxaOperadora(n, tabela);
-    } else {
-      fator = fatorCartao(n, input.taxaPercent, compostos, input.taxaBasePercent ?? 0);
+      // Ordem da máquina: arredonda a parcela (meio para cima) e multiplica.
+      const parcelaCents = Math.round(Math.round(base * 100 * f * 1e6) / 1e6 / n);
+      const totalCents = parcelaCents * n;
+      const total = round2(totalCents / 100);
+      const exato = base > 0 ? (totalCents / (base * 100) - 1) * 100 : (f - 1) * 100;
+      out.push({
+        parcelas: n,
+        fator: f,
+        acrescimoPercent: round2((f - 1) * 100),
+        acrescimoValor: round2(total - base),
+        total,
+        valorParcela: round2(parcelaCents / 100),
+        acrescimoPercentExato: Math.round(exato * 1e6) / 1e6,
+        taxaOperadoraPercent: taxaOperadora(n, tabela),
+      });
+      continue;
     }
+    const fator = fatorCartao(n, input.taxaPercent, compostos, input.taxaBasePercent ?? 0);
     const acrescimoPercent = round2((fator - 1) * 100);
     const totalCents = Math.round(base * 100 * fator);
     const total = round2(totalCents / 100);
@@ -124,7 +136,7 @@ export function simularCartao(input: {
       total,
       valorParcela: round2(parcelaCents / 100),
       acrescimoPercentExato: Math.round((fator - 1) * 100 * 1e6) / 1e6,
-      taxaOperadoraPercent: taxaOp,
+      taxaOperadoraPercent: null,
     });
   }
   return out;

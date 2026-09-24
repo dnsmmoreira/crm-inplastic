@@ -115,25 +115,24 @@ describe("ehCondicaoCartao / acrescimoEfetivo", () => {
   });
 });
 
-describe("tabela da operadora (fator = 1 / (1 − taxa))", () => {
+describe("tabela da operadora (fator = 1 + taxa, juros ao cliente)", () => {
   const TABELA = { "1": 4.98, "2": 9.64, "3": 11.23, "4": 11.36, "5": 14.31, "6": 14.32, "7": 16.72, "8": 16.72, "9": 19.69, "10": 20.65 };
 
-  it("3x com 11,23%: fator 1/(1−0,1123) e acréscimo exibido 12,65%", () => {
+  it("3x com 11,23%: fator 1,1123 e acréscimo exibido 11,23%", () => {
     const f = fatorCartaoOperadora(3, TABELA)!;
-    expect(f).toBeCloseTo(1 / (1 - 0.1123), 12);
-    expect(+f.toFixed(6)).toBe(1.126507);
+    expect(f).toBeCloseTo(1.1123, 12);
     const l = simularCartao({ valorBase: 100, taxaPercent: 0, maxParcelas: 10, taxasOperadora: TABELA });
-    expect(l[2].acrescimoPercent).toBe(12.65);
+    expect(l[2].acrescimoPercent).toBe(11.23);
     expect(l[2].taxaOperadoraPercent).toBe(11.23);
   });
 
-  it("caso real: R$ 10.567,20 em 3x → R$ 11.904,02 e o líquido volta a R$ 10.567,20", () => {
+  it("caso real da operadora: R$ 10.567,20 em 3x → parcela R$ 3.917,97, total R$ 11.753,91", () => {
     const l = simularCartao({ valorBase: 10567.2, taxaPercent: 0, maxParcelas: 10, taxasOperadora: TABELA });
     const tres = l.find((x) => x.parcelas === 3)!;
-    expect(tres.total).toBe(11904.02);
-    expect(+(tres.total * (1 - 0.1123)).toFixed(2)).toBe(10567.2);
-    // o percentual gravado na proposta reproduz o total ao centavo
-    expect(+(10567.2 * (1 + tres.acrescimoPercentExato / 100)).toFixed(2)).toBe(11904.02);
+    expect(tres.valorParcela).toBe(3917.97);
+    expect(tres.total).toBe(11753.91);
+    expect(tres.acrescimoPercentExato).toBe(11.230127);
+    expect(+(10567.2 * (1 + tres.acrescimoPercentExato / 100)).toFixed(2)).toBe(11753.91);
   });
 
   it("7x e 8x têm o mesmo fator", () => {

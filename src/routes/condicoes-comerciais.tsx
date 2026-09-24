@@ -625,7 +625,7 @@ function CondicoesComerciais() {
                     ))}
                   </div>
                   <p className="text-[11px] text-muted-foreground mt-1">
-                    Com a tabela preenchida, o acréscimo vira 1 / (1 − taxa) e só são oferecidas as
+                    Com a tabela preenchida, o acréscimo é a taxa da operadora, paga pelo cliente, e só são oferecidas as
                     parcelas com taxa informada; a taxa base e a taxa por parcela deixam de valer.
                     Tabela vazia mantém o cálculo antigo.
                   </p>
