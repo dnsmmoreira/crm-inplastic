@@ -154,12 +154,15 @@ describe("tabela da operadora (fator = 1 + taxa, juros ao cliente)", () => {
       expect(l).toHaveLength(12);
       expect(l.map((x) => x.acrescimoPercent)).toEqual([5, 6.57, 8.17, 9.8, 11.44, 13.11, 14.81, 16.53, 18.28, 20.06, 21.86, 23.68]);
       expect(l[0].taxaOperadoraPercent).toBeNull();
+      // arredondamento antigo: total arredondado primeiro, parcela truncada
+      expect(l[2].total).toBe(Math.round(100000 * fatorCartao(3, 1.5, true, 5)) / 100);
+      expect(l[2].valorParcela).toBe(Math.floor(Math.round(100000 * fatorCartao(3, 1.5, true, 5)) / 3) / 100);
     }
     expect(fatorCartao(3, 1.5, true, 5)).toBeCloseTo(1.05 * 1.015 ** 2, 12);
   });
 
   it("imprime a tabela 1x–10x", () => {
-    const l = simularCartao({ valorBase: 10000, taxaPercent: 0, maxParcelas: 10, taxasOperadora: TABELA });
-    console.log("TABELA\n" + l.map((x) => `${x.parcelas}x | taxa ${x.taxaOperadoraPercent}% | acrésc ${x.acrescimoPercent}% | total ${x.total}`).join("\n"));
+    const l = simularCartao({ valorBase: 10567.2, taxaPercent: 0, maxParcelas: 10, taxasOperadora: TABELA });
+    console.log("TABELA\n" + l.map((x) => `${x.parcelas}x | taxa ${x.taxaOperadoraPercent}% | acrésc ${x.acrescimoPercent}% | exato ${x.acrescimoPercentExato}% | parcela ${x.valorParcela} | total ${x.total}`).join("\n"));
   });
 });
