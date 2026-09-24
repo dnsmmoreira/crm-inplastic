@@ -366,7 +366,7 @@ function PedidosKanbanPage() {
   };
 
   return (
-    <div className="p-4 md:p-8 space-y-6 md:min-h-dvh md:flex md:flex-col md:gap-6 md:space-y-0">
+    <div className="p-4 md:p-8 space-y-6 md:h-dvh md:min-h-[720px] md:flex md:flex-col md:gap-6 md:space-y-0">
       <div className="flex flex-wrap items-center justify-between gap-3 shrink-0">
 
         <div>
@@ -419,7 +419,7 @@ function PedidosKanbanPage() {
       />
       </div>
 
-      <div className="md:flex md:min-h-0 md:flex-1 md:flex-col">
+      <div className="md:flex md:min-h-[360px] md:flex-1 md:flex-col">
       {pedidosQ.isLoading ? (
         <div className="text-sm text-muted-foreground">Carregando pedidos…</div>
       ) : pedidosQ.isError ? (
@@ -431,7 +431,7 @@ function PedidosKanbanPage() {
         </div>
       ) : (
         <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
-          <div className="flex items-stretch gap-4 overflow-x-auto scrollbar-visible pb-4 -mx-4 md:-mx-8 px-4 md:px-8 md:min-h-0 md:flex-1">
+          <div className="flex items-stretch gap-4 overflow-auto md:overflow-y-hidden scrollbar-visible pb-4 -mx-4 md:-mx-8 px-4 md:px-8 md:min-h-0 md:flex-1">
 
             {PEDIDO_STAGES.map((stage) => {
               const blockedByOcorrencia =
@@ -536,8 +536,8 @@ function Column({
   const total = pedidos.reduce((s, p) => s + p.total, 0);
   const showBlocked = dragActive && !canDrop;
   return (
-    <div className="w-[300px] shrink-0 flex flex-col">
-      <div className="px-1 pb-2 flex items-center justify-between shrink-0">
+    <div className="w-[300px] shrink-0 flex flex-col md:h-full">
+      <div className="sticky top-0 z-20 px-1 pb-2 pt-1 flex items-center justify-between shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/70">
 
         <div className="flex items-center gap-2 min-w-0">
           <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: stage.color }} />
@@ -558,7 +558,7 @@ function Column({
         title={showBlocked && blockedReason ? blockedReason : undefined}
         className={cn(
           "flex-1 rounded-xl border border-dashed p-2 space-y-2 min-h-[400px] transition-colors relative",
-          "md:min-h-[360px] md:overflow-y-auto scroll-gutter-stable",
+          "md:min-h-0 md:overflow-y-auto scroll-gutter-stable",
 
           isOver && canDrop && !isBackwardTarget && "bg-accent/40 border-primary",
           isOver && canDrop && isBackwardTarget && "bg-amber-500/10 border-amber-500",
