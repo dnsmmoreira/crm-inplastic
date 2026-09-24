@@ -91,6 +91,8 @@ type FormValues = z.infer<typeof formSchema> & {
   jurosCompostos: boolean;
   /** Cartão: taxa base aplicada já na 1x. */
   taxaBaseRaw: string;
+  /** Cartão: taxa da operadora por nº de parcelas (texto do input, vírgula aceita). */
+  taxasOpRaw: Record<string, string>;
 };
 
 const emptyForm: FormValues = {
@@ -104,7 +106,21 @@ const emptyForm: FormValues = {
   maxParcelasRaw: "12",
   jurosCompostos: true,
   taxaBaseRaw: "0",
+  taxasOpRaw: {},
 };
+
+/** Tabela da operadora a partir do form: só linhas 1..máx preenchidas com 0 ≤ taxa < 100. */
+function taxasOperadoraDoForm(form: FormValues): Record<string, number> | null {
+  const max = Math.max(1, Math.min(24, Number(form.maxParcelasRaw) || 1));
+  const out: Record<string, number> = {};
+  for (let n = 1; n <= max; n++) {
+    const raw = (form.taxasOpRaw[String(n)] ?? "").trim();
+    if (!raw) continue;
+    const v = Number(raw.replace(",", "."));
+    if (Number.isFinite(v) && v >= 0 && v < 100) out[String(n)] = v;
+  }
+  return Object.keys(out).length > 0 ? out : null;
+}
 
 const parsePercent = (v: string) => Math.max(0, Math.min(100, Number(String(v).replace(",", ".")) || 0));
 
@@ -170,6 +186,9 @@ function CondicoesComerciais() {
       maxParcelasRaw: String(t.maxParcelas ?? 12),
       jurosCompostos: t.jurosCompostos ?? true,
       taxaBaseRaw: String(t.cartaoTaxaBasePercent ?? 0).replace(".", ","),
+      taxasOpRaw: Object.fromEntries(
+        Object.entries(t.cartaoTaxasOperadora ?? {}).map(([k, v]) => [k, String(v).replace(".", ",")]),
+      ),
     });
     setErrors({});
     setDialogOpen(true);
@@ -240,6 +259,7 @@ function CondicoesComerciais() {
             maxParcelas: Math.max(1, Math.min(24, Number(form.maxParcelasRaw) || 1)),
             jurosCompostos: form.jurosCompostos,
             cartaoTaxaBasePercent: parsePercent(form.taxaBaseRaw),
+            cartaoTaxasOperadora: taxasOperadoraDoForm(form),
           }
         : {}),
     };
@@ -583,6 +603,31 @@ function CondicoesComerciais() {
                   />
                   <p className="text-[11px] text-muted-foreground mt-1">
                     Cobrada já na 1x, antes das parcelas adicionais.
+                  </p>
+                </div>
+                <div className="sm:col-span-2">
+                  <Label>Taxas da operadora por nº de parcelas (%)</Label>
+                  <div className="mt-1 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {Array.from(
+                      { length: Math.max(1, Math.min(24, Number(form.maxParcelasRaw) || 1)) },
+                      (_, i) => String(i + 1),
+                    ).map((n) => (
+                      <div key={n} className="flex items-center gap-2">
+                        <span className="w-8 text-sm text-muted-foreground">{n}x</span>
+                        <Input
+                          value={form.taxasOpRaw[n] ?? ""}
+                          onChange={(e) =>
+                            setForm((f) => ({ ...f, taxasOpRaw: { ...f.taxasOpRaw, [n]: e.target.value } }))
+                          }
+                          placeholder="—"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Com a tabela preenchida, o acréscimo vira 1 / (1 − taxa) e só são oferecidas as
+                    parcelas com taxa informada; a taxa base e a taxa por parcela deixam de valer.
+                    Tabela vazia mantém o cálculo antigo.
                   </p>
                 </div>
                 <div>
