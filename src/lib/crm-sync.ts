@@ -600,7 +600,6 @@ function proposalToInsert(p: Proposal): ProposalInsert {
     lead_id: p.leadId,
     owner_id: p.ownerId,
     criado_por: p.criadoPor ?? null,
-    encerramento_administrativo: p.encerramentoAdministrativo ?? false,
     created_at: p.createdAt,
     status: p.status,
     validity_days: p.validityDays,
