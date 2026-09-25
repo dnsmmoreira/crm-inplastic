@@ -371,6 +371,7 @@ function TransportadorasPage() {
                 ))}
               </TableBody>
             </Table>
+            </TabelaResponsiva>
           )}
         </CardContent>
       </Card>
