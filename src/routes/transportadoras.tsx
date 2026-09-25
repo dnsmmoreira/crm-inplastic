@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Plus, Pencil, Trash2, ShieldAlert, Truck, Search, Loader2 } from "lucide-react";
+import { MoreVertical, Plus, Pencil, Trash2, ShieldAlert, Truck, Search, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { useHasPerm } from "@/hooks/use-auth";
@@ -23,6 +23,14 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { PaginaCabecalho } from "@/components/layout/PaginaCabecalho";
+import { TabelaResponsiva, LinhaLista, juntarCampos } from "@/components/layout/ListaResponsiva";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Table,
   TableBody,
