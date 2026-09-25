@@ -30,6 +30,18 @@ type Props = {
   readOnly?: boolean;
 };
 
+const SUGESTOES_CARGO = [
+  "Diretor",
+  "Gerente",
+  "Coordenador",
+  "Supervisor",
+  "Analista",
+  "Assistente",
+  "Sócio / Proprietário",
+  "Engenheiro",
+  "Comprador",
+];
+
 const emptyForm = () => ({
   nome: "",
   papel: "comprador" as string,
@@ -127,7 +139,7 @@ export function ContatosSection({ leadId, clienteId, readOnly }: Props) {
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Papel</Label>
+              <Label className="text-xs">Papel na compra</Label>
               <Select
                 value={form.papel}
                 onValueChange={(v) => setForm((f) => ({ ...f, papel: v }))}
@@ -148,8 +160,14 @@ export function ContatosSection({ leadId, clienteId, readOnly }: Props) {
               <Label className="text-xs">Cargo (opcional)</Label>
               <Input
                 value={form.cargo}
+                list="contato-cargo-sugestoes"
                 onChange={(e) => setForm((f) => ({ ...f, cargo: e.target.value }))}
               />
+              <datalist id="contato-cargo-sugestoes">
+                {SUGESTOES_CARGO.map((c) => (
+                  <option key={c} value={c} />
+                ))}
+              </datalist>
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Telefone</Label>
