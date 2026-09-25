@@ -44,8 +44,8 @@ export async function alertarAdmins(
   params: { tipo: string; titulo: string; conversaId?: string | null; mensagem?: string },
 ): Promise<void> {
   void params.mensagem;
-  const { usuariosComPermissao } = await import("@/lib/pedidos-fluxo.server");
-  const destinatarios = await usuariosComPermissao(sb, "usuarios.gerenciar");
+  const { gestoresParaAlertas } = await import("@/lib/pedidos-fluxo.server");
+  const destinatarios = await gestoresParaAlertas(sb);
   for (const userId of destinatarios) {
     await notificarUsuario(sb, {
       userId,

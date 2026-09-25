@@ -1675,7 +1675,7 @@ ${crmLeadLink(conv.lead_id)}` : ""
       );
 
       let admins: string[] | null = null;
-      const { usuariosComPermissao } = await import("@/lib/pedidos-fluxo.server");
+      const { gestoresParaAlertas } = await import("@/lib/pedidos-fluxo.server");
 
       for (const [uid, tipos] of porDono) {
         const perfil = perfilPorId.get(uid);
@@ -1694,7 +1694,7 @@ ${crmLeadLink(conv.lead_id)}` : ""
         let destinos: string[] = [];
         if (perfil.gestor_id) destinos = [perfil.gestor_id as string];
         else {
-          if (admins === null) admins = await usuariosComPermissao(sb, "usuarios.gerenciar");
+          if (admins === null) admins = await gestoresParaAlertas(sb);
           destinos = admins ?? [];
         }
         destinos = [...new Set(destinos)].filter((d) => d && d !== uid);
@@ -1781,8 +1781,8 @@ ${crmLeadLink(conv.lead_id)}` : ""
       }
 
       if (semCanal.length && !(await alreadyActed(sb, "E2_admins", null, 22))) {
-        const { usuariosComPermissao } = await import("@/lib/pedidos-fluxo.server");
-        const admins = await usuariosComPermissao(sb, "usuarios.gerenciar");
+        const { gestoresParaAlertas } = await import("@/lib/pedidos-fluxo.server");
+        const admins = await gestoresParaAlertas(sb);
         if (admins?.length) {
           const titulo = semCanal.join(" · ");
           const ins = await sb.from("notificacoes").insert(
