@@ -839,8 +839,9 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
     /** Recusa automática de rascunho morto: update direto, sem tarefa e sem tocar no lead. */
     async function autoRecusarRascunho(
       prop: any,
-      motivo: string,
+      motivo: string | null,
       detalhe: string,
+      administrativo: boolean,
     ): Promise<void> {
       if (!dryRun) {
         const up = await sb
@@ -850,6 +851,8 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
             motivo_recusa: motivo,
             recusa_detalhe: detalhe,
             recusada_em: now.toISOString(),
+            // Arrumação interna ≠ perda comercial: fica fora do relatório de perdas.
+            encerramento_administrativo: administrativo,
           })
           .eq("id", prop.id);
         if (up?.error) {
@@ -864,7 +867,7 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
         leadId: prop.lead_id ?? null,
         vendedorId: prop.owner_id ?? null,
         acao: "proposta recusada automaticamente",
-        payload: { proposta_id: prop.id, motivo, detalhe },
+        payload: { proposta_id: prop.id, motivo, detalhe, encerramento_administrativo: administrativo },
       });
       stats.p1_auto_recusado++;
     }
@@ -896,11 +899,22 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
       const { stage, company } = await infoDoLead(prop.lead_id ?? null);
 
       // Lead já ganho/perdido: rascunho morto → recusa automática, sem tarefa.
-      if (stage === "ganho" || stage === "perdido") {
+      if (stage === "ganho") {
         await autoRecusarRascunho(
           prop,
-          stage === "ganho" ? "Duplicidade" : "Demanda cancelada ou adiada",
+          null,
+          "encerrada automaticamente: o lead já foi ganho por outra proposta",
+          true,
+        );
+        continue;
+      }
+      if (stage === "perdido") {
+        // Comercial: o cliente desistiu.
+        await autoRecusarRascunho(
+          prop,
+          "Demanda cancelada ou adiada",
           "encerrada automaticamente: lead já ganho/perdido",
+          false,
         );
         continue;
       }
@@ -909,8 +923,9 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
       if (await rascunhoSemItens(prop.id)) {
         await autoRecusarRascunho(
           prop,
-          "Lead inválido",
+          null,
           "rascunho vazio, encerrado automaticamente",
+          true,
         );
         continue;
       }
