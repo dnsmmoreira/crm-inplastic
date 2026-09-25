@@ -173,7 +173,7 @@ function UsuariosPage() {
   }
 
   return (
-    <div className="p-6 md:p-8 max-w-5xl mx-auto">
+    <div className="p-4 md:p-8 max-w-5xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
         <div className="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
           <Users className="h-5 w-5" />
