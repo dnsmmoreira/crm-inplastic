@@ -23,6 +23,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
+import { PaginaCabecalho } from "@/components/layout/PaginaCabecalho";
+import { TabelaResponsiva, LinhaLista, VazioLista, juntarCampos } from "@/components/layout/ListaResponsiva";
 import { formatDocumentoCliente } from "@/lib/clientes";
 import { relativeTimeShort, displayValue } from "@/lib/format";
 import { listClientes, listVendedores } from "@/lib/clientes.functions";
@@ -134,22 +136,20 @@ function ClientesListPage() {
   const vendedorById = new Map((vendedoresQ.data ?? []).map((v) => [v.id, v] as const));
 
   return (
-    <div className="p-4 md:p-8 space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-semibold flex items-center gap-2">
-            <Building2 className="h-6 w-6 text-primary" /> Clientes
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {total} cliente(s) cadastrado(s){somenteAtivos ? " (ativos)" : ""}
-          </p>
-        </div>
-        {hasPerm(user, PERM_CLIENTES_CRIAR) && (
-          <Button onClick={() => setOpenNovo(true)} className="gap-2">
-            <Plus className="h-4 w-4" /> Novo cliente
-          </Button>
-        )}
-      </div>
+    <div className="p-4 md:p-8 space-y-4 md:space-y-6">
+      <PaginaCabecalho
+        titulo="Clientes"
+        icone={<Building2 className="h-6 w-6 text-primary" />}
+        descricao={`${total} cliente(s) cadastrado(s)${somenteAtivos ? " (ativos)" : ""}`}
+        resumoMobile={`${total} cliente(s)${somenteAtivos ? " ativos" : ""}`}
+        acoes={
+          hasPerm(user, PERM_CLIENTES_CRIAR) ? (
+            <Button onClick={() => setOpenNovo(true)} className="gap-2">
+              <Plus className="h-4 w-4" /> Novo cliente
+            </Button>
+          ) : undefined
+        }
+      />
 
       {avisoDono && (
         <Card className="border-amber-500/50 bg-amber-500/5">
@@ -195,6 +195,50 @@ function ClientesListPage() {
             </label>
           </div>
 
+          <TabelaResponsiva
+            mobile={
+              clientesQ.isLoading ? (
+                <VazioLista icone={<Loader2 className="animate-spin" />} titulo="Carregando..." />
+              ) : rows.length === 0 ? (
+                <VazioLista
+                  icone={<Building2 />}
+                  titulo="Nenhum cliente encontrado"
+                  dica={qDeb || empresa !== "all" || (isAdmin && vendedorId !== "all") ? "Tente limpar os filtros" : undefined}
+                />
+              ) : (
+                rows.map((c) => {
+                  const vend = c.vendedor_id ? vendedorById.get(c.vendedor_id) : null;
+                  const nomeFantasia = displayValue(c.nome_fantasia, "");
+                  return (
+                    <LinhaLista
+                      key={c.id}
+                      titulo={nomeFantasia || c.razao_social}
+                      subtitulo={juntarCampos(
+                        formatDocumentoCliente(c),
+                        [c.cidade, c.estado].filter(Boolean).join("/"),
+                      )}
+                      selo={
+                        c.empresa_padrao ? (
+                          <Badge variant="outline" className={EMPRESA_BADGE[c.empresa_padrao] ?? ""}>
+                            {c.empresa_padrao}
+                          </Badge>
+                        ) : undefined
+                      }
+                      abaixo={
+                        (isAdmin && vend) || !c.ativo ? (
+                          <>
+                            {isAdmin && vend && <span className="text-muted-foreground">{vend.name}</span>}
+                            {!c.ativo && <Badge variant="outline">Inativo</Badge>}
+                          </>
+                        ) : undefined
+                      }
+                      onClick={() => navigate({ to: "/clientes/$id", params: { id: c.id } })}
+                    />
+                  );
+                })
+              )
+            }
+          >
           <div className="overflow-x-auto border rounded-md">
             <Table>
               <TableHeader>
@@ -279,6 +323,7 @@ function ClientesListPage() {
               </TableBody>
             </Table>
           </div>
+          </TabelaResponsiva>
 
           {totalPages > 1 && (
             <div className="flex items-center justify-between text-sm text-muted-foreground">

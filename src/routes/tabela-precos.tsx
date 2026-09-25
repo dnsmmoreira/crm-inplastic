@@ -65,7 +65,7 @@ function TabelaPrecosPage() {
   }, [products, q, sort]);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-8 space-y-4 md:space-y-6">
       <PaginaCabecalho
         titulo="Tabela de Preços"
         icone={
@@ -81,7 +81,7 @@ function TabelaPrecosPage() {
         <CardHeader className="gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <CardTitle className="text-base">Produtos ativos</CardTitle>
-            <CardDescription>{rows.length} item(ns)</CardDescription>
+            <CardDescription className="hidden md:block">{rows.length} item(ns)</CardDescription>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
             <div className="relative">
@@ -90,7 +90,7 @@ function TabelaPrecosPage() {
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Buscar por SKU ou nome"
-                className="pl-9 sm:w-64"
+                className="pl-9 w-full sm:w-64"
               />
             </div>
             <Select value={sort} onValueChange={(v) => setSort(v as SortKey)}>

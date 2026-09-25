@@ -95,7 +95,7 @@ function EstoquePage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-8 space-y-4 md:space-y-6">
       <PaginaCabecalho
         titulo="Estoque"
         icone={
@@ -113,7 +113,7 @@ function EstoquePage() {
         <CardHeader className="gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <CardTitle className="text-base">Produtos ativos</CardTitle>
-            <CardDescription>{rows.length} item(ns) · alerta abaixo de {SALDO_BAIXO}</CardDescription>
+            <CardDescription className="hidden md:block">{rows.length} item(ns) · alerta abaixo de {SALDO_BAIXO}</CardDescription>
           </div>
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -121,7 +121,7 @@ function EstoquePage() {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Buscar por SKU ou nome"
-              className="pl-9 sm:w-64"
+              className="pl-9 w-full sm:w-64"
             />
           </div>
         </CardHeader>

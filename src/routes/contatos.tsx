@@ -17,6 +17,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { LeadDrawer } from "@/components/crm/LeadDrawer";
+import { PaginaCabecalho } from "@/components/layout/PaginaCabecalho";
+import { TabelaResponsiva, LinhaLista, VazioLista, juntarCampos } from "@/components/layout/ListaResponsiva";
 import { listTodosContatos, papelLabel } from "@/lib/contatos.functions";
 
 export const Route = createFileRoute("/contatos")({
@@ -61,17 +63,13 @@ function ContatosPage() {
   const safePage = Math.min(page, pageCount);
 
   return (
-    <div className="flex flex-col gap-4 p-4 md:p-8">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-semibold md:text-3xl">
-            <Contact className="h-6 w-6 text-muted-foreground" />
-            Contatos
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Todas as pessoas de contato cadastradas em leads e clientes.
-          </p>
-        </div>
+    <div className="p-4 md:p-8 space-y-4 md:space-y-6">
+      <PaginaCabecalho
+        titulo="Contatos"
+        icone={<Contact className="h-6 w-6 text-muted-foreground" />}
+        descricao="Todas as pessoas de contato cadastradas em leads e clientes."
+        resumoMobile={`${total} contato${total === 1 ? "" : "s"}`}
+        acoes={
         <div className="relative w-full sm:w-80">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -84,10 +82,46 @@ function ContatosPage() {
             className="pl-9"
           />
         </div>
-      </div>
+        }
+      />
 
       <Card>
         <CardContent className="p-0">
+          <TabelaResponsiva
+            mobile={
+              rows.length === 0 ? (
+                <VazioLista
+                  icone={<Contact />}
+                  titulo={isLoading ? "Carregando contatos..." : "Nenhum contato encontrado"}
+                  dica={!isLoading && q ? "Tente limpar a busca" : undefined}
+                />
+              ) : (
+                <div className="divide-y px-4">
+                  {rows.map((c) => (
+                    <LinhaLista
+                      key={c.id}
+                      titulo={c.nome}
+                      subtitulo={juntarCampos(
+                        c.telefone || c.telefone2 ? formatarTelefoneBR(c.telefone || c.telefone2) : null,
+                        c.email,
+                      )}
+                      selo={c.papel ? <Badge variant="outline">{papelLabel(c.papel)}</Badge> : undefined}
+                      abaixo={!c.ativo ? <Badge variant="outline" className="text-[10px]">Inativo</Badge> : undefined}
+                      onClick={
+                        c.lead_id || c.cliente_id
+                          ? () => {
+                              if (c.lead_id) setOpenLead(c.lead_id);
+                              else if (c.cliente_id)
+                                navigate({ to: "/clientes/$id", params: { id: c.cliente_id } });
+                            }
+                          : undefined
+                      }
+                    />
+                  ))}
+                </div>
+              )
+            }
+          >
           <Table>
             <TableHeader>
               <TableRow>
@@ -149,6 +183,7 @@ function ContatosPage() {
               )}
             </TableBody>
           </Table>
+          </TabelaResponsiva>
         </CardContent>
       </Card>
 
