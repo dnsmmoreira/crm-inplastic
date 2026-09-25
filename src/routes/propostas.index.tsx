@@ -483,6 +483,8 @@ function PropostasPage() {
                         </>
                       )}
                     </div>
+                    <span className="shrink-0 text-[15px] font-semibold tabular-nums">{formatBRL(t.total)}</span>
+                    </div>
                   </div>
                 </li>
               );
