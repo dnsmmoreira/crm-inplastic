@@ -149,7 +149,7 @@ function AgenteIaPage() {
               <div className="flex items-center gap-2">
                 <Label className="text-xs">Filtrar por tipo</Label>
                 <Select value={typeFilter} onValueChange={setTypeFilter}>
-                  <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="w-full sm:w-44"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos</SelectItem>
                     <SelectItem value="followup">Follow-up</SelectItem>

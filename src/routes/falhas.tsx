@@ -148,7 +148,7 @@ function PainelFalhas() {
         <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
           <CardTitle className="text-base">Falhas registradas</CardTitle>
           <Select value={origem} onValueChange={setOrigem}>
-            <SelectTrigger className="w-56">
+            <SelectTrigger className="w-full sm:w-56">
               <SelectValue placeholder="Origem" />
             </SelectTrigger>
             <SelectContent>

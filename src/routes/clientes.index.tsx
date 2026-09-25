@@ -180,7 +180,7 @@ function ClientesListPage() {
             </Select>
             {isAdmin && (
               <Select value={vendedorId} onValueChange={(v) => { setVendedorId(v); setPage(1); }}>
-                <SelectTrigger className="w-56"><SelectValue placeholder="Vendedor" /></SelectTrigger>
+                <SelectTrigger className="w-full sm:w-56"><SelectValue placeholder="Vendedor" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos vendedores</SelectItem>
                   {(vendedoresQ.data ?? []).map((v) => (
