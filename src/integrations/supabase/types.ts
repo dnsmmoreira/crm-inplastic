@@ -2726,6 +2726,7 @@ export type Database = {
           id: string
           limite_leads_simultaneos: number | null
           name: string
+          recebe_alertas_gestao: boolean
           senha_reset_exigido: boolean
           supervisor_escopo: string
           telefone_whatsapp: string | null
@@ -2751,6 +2752,7 @@ export type Database = {
           id: string
           limite_leads_simultaneos?: number | null
           name?: string
+          recebe_alertas_gestao?: boolean
           senha_reset_exigido?: boolean
           supervisor_escopo?: string
           telefone_whatsapp?: string | null
@@ -2776,6 +2778,7 @@ export type Database = {
           id?: string
           limite_leads_simultaneos?: number | null
           name?: string
+          recebe_alertas_gestao?: boolean
           senha_reset_exigido?: boolean
           supervisor_escopo?: string
           telefone_whatsapp?: string | null
