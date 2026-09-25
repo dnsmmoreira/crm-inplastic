@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Plus, Pencil, Trash2, ShieldAlert, Truck, Search, Loader2 } from "lucide-react";
+import { MoreVertical, Plus, Pencil, Trash2, ShieldAlert, Truck, Search, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { useHasPerm } from "@/hooks/use-auth";
@@ -23,6 +23,14 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { PaginaCabecalho } from "@/components/layout/PaginaCabecalho";
+import { TabelaResponsiva, LinhaLista, juntarCampos } from "@/components/layout/ListaResponsiva";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Table,
   TableBody,
@@ -218,22 +226,24 @@ function TransportadorasPage() {
 
   return (
     <div className="p-4 md:p-8 space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl md:text-2xl font-semibold flex items-center gap-2">
-            <Truck className="h-5 w-5 text-primary" /> Transportadoras
-          </h1>
-          <p className="text-sm text-muted-foreground">
+      <PaginaCabecalho
+        titulo="Transportadoras"
+        icone={<Truck className="h-5 w-5 text-primary" />}
+        descricao={
+          <>
             Cadastro das transportadoras que o vendedor pode escolher na proposta.{" "}
             <span className="font-medium text-foreground">{ativas}</span> de {rows.length} ativas.
-          </p>
-        </div>
-        {podeGerenciar && (
-          <Button size="sm" onClick={openNew}>
-            <Plus className="h-4 w-4 mr-2" /> Nova transportadora
-          </Button>
-        )}
-      </div>
+          </>
+        }
+        resumoMobile={`${ativas} de ${rows.length} ativas`}
+        acoes={
+          podeGerenciar ? (
+            <Button size="sm" className="h-10 md:h-8" onClick={openNew}>
+              <Plus className="h-4 w-4 mr-2" /> Nova transportadora
+            </Button>
+          ) : undefined
+        }
+      />
 
       {!podeGerenciar && (
         <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
@@ -259,6 +269,53 @@ function TransportadorasPage() {
               Nenhuma transportadora cadastrada ainda.
             </p>
           ) : (
+            <TabelaResponsiva
+              mobile={rows.map((t) => (
+                <LinhaLista
+                  key={t.id}
+                  titulo={t.nome}
+                  subtitulo={juntarCampos(t.cnpj, (t.abrangencia_ufs ?? []).join(", "))}
+                  acento={t.ativo ? "bg-success" : "bg-muted-foreground/40"}
+                  abaixo={
+                    <span className={t.ativo ? "font-medium text-success" : "font-medium text-muted-foreground"}>
+                      {t.ativo ? "Ativa" : "Inativa"}
+                    </span>
+                  }
+                  acoes={
+                    podeGerenciar ? (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-10 w-10 -mr-2" aria-label="Ações">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openEdit(t)}>
+                            <Pencil className="h-4 w-4" /> Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => mToggle.mutate(t)}>
+                            {t.ativo ? "Desativar" : "Ativar"}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={() => {
+                              if (
+                                confirm(
+                                  `Remover ${t.nome}? Propostas antigas continuam mostrando o nome escolhido na época.`,
+                                )
+                              )
+                                mExcluir.mutate(t);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" /> Remover
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    ) : undefined
+                  }
+                />
+              ))}
+            >
             <Table>
               <TableHeader>
                 <TableRow>
@@ -322,6 +379,7 @@ function TransportadorasPage() {
                 ))}
               </TableBody>
             </Table>
+            </TabelaResponsiva>
           )}
         </CardContent>
       </Card>

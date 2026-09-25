@@ -27,6 +27,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { PaginaCabecalho } from "@/components/layout/PaginaCabecalho";
+import { TabelaResponsiva, LinhaLista, VazioLista, juntarCampos } from "@/components/layout/ListaResponsiva";
 
 export const Route = createFileRoute("/estoque")({
   head: () => ({
@@ -94,18 +96,18 @@ function EstoquePage() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-          <Boxes className="h-5 w-5" />
-        </div>
-        <div>
-          <h1 className="font-display text-2xl font-semibold">Estoque</h1>
-          <p className="text-sm text-muted-foreground">
-            Saldo único por produto. Baixa automática a cada pedido.{" "}
-            {isAdmin ? "Entrada manual pelo administrador." : "Consulta somente leitura."}
-          </p>
-        </div>
-      </div>
+      <PaginaCabecalho
+        titulo="Estoque"
+        icone={
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Boxes className="h-5 w-5" />
+          </div>
+        }
+        descricao={`Saldo único por produto. Baixa automática a cada pedido. ${
+          isAdmin ? "Entrada manual pelo administrador." : "Consulta somente leitura."
+        }`}
+        resumoMobile={`${rows.length} item(ns) · alerta abaixo de ${SALDO_BAIXO}`}
+      />
 
       <Card>
         <CardHeader className="gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -124,6 +126,33 @@ function EstoquePage() {
           </div>
         </CardHeader>
         <CardContent>
+          <TabelaResponsiva
+            mobile={
+              rows.length === 0 ? (
+                <VazioLista icone={<Boxes />} titulo="Nenhum produto encontrado" dica={q ? "Tente limpar a busca" : undefined} />
+              ) : (
+                rows.map((p) => {
+                  const saldo = saldos[p.id] ?? 0;
+                  return (
+                    <LinhaLista
+                      key={p.id}
+                      titulo={p.name}
+                      subtitulo={juntarCampos(p.sku, p.unit, p.weightKg ? `${p.weightKg} kg` : null)}
+                      acento={saldo <= 0 ? "bg-destructive" : saldo < SALDO_BAIXO ? "bg-warning" : undefined}
+                      selo={
+                        saldo <= 0 ? (
+                          <span className="text-[15px] font-semibold text-destructive">Zerado</span>
+                        ) : (
+                          <span className="text-[15px] font-semibold tabular-nums">{saldo} un</span>
+                        )
+                      }
+                      onClick={isAdmin ? () => setEditing({ produtoId: p.id, nome: p.name, saldo: String(saldo) }) : undefined}
+                    />
+                  );
+                })
+              )
+            }
+          >
           <Table>
             <TableHeader>
               <TableRow>
@@ -181,6 +210,7 @@ function EstoquePage() {
               )}
             </TableBody>
           </Table>
+          </TabelaResponsiva>
         </CardContent>
       </Card>
 
