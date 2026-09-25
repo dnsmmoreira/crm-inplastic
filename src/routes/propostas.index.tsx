@@ -284,8 +284,8 @@ function PropostasPage() {
             {proposals.length} proposta(s) — geradas a partir dos leads do funil.
           </p>
         </div>
-        <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row">
-          <div className="relative">
+        <div className="grid w-full grid-cols-2 gap-2 md:flex md:w-auto md:flex-row">
+          <div className="relative col-span-2 md:col-span-1">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Número ou cliente..." className="pl-8 w-full md:w-64" />
           </div>
@@ -340,7 +340,7 @@ function PropostasPage() {
               <SelectItem value="numero:asc">Nº (menor)</SelectItem>
             </SelectContent>
           </Select>
-          <div className="grid grid-cols-2 gap-2 md:contents">
+          <div className="col-span-2 grid grid-cols-2 gap-2 md:contents">
 
           <Button variant="outline" onClick={() => setOpenNewLead(true)} className="gap-2">
             <UserPlus className="h-4 w-4" /> Cadastrar lead
@@ -415,11 +415,50 @@ function PropostasPage() {
                   onClick={() => navigate({ to: "/propostas/$id", params: { id: p.id } })}
                 >
                   <span className={cn("w-1 shrink-0 self-stretch rounded-full", s.barra)} aria-hidden />
-                  <div className="min-w-0 flex-1 space-y-0.5">
-                    <p className="truncate text-[15px] font-medium leading-tight">{lead?.company ?? "—"}</p>
-                    <p className="truncate text-xs text-muted-foreground">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start gap-2">
+                      <p className="min-w-0 flex-1 truncate text-[15px] font-medium leading-tight">
+                        {lead?.company ?? "—"}
+                      </p>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                          <Button variant="ghost" size="icon" className="-mr-2 -mt-1.5 h-9 w-9 shrink-0" aria-label="Mais ações">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenuItem
+                            disabled={duplicando}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              void duplicarProposta(p.id);
+                            }}
+                          >
+                            <Copy className="h-4 w-4" /> Duplicar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            disabled={isLocked}
+                            title={isLocked ? "Apenas administradores podem excluir pedidos aprovados" : undefined}
+                            className="text-destructive focus:text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (isLocked) return;
+                              if (confirm(`Remover proposta ${p.number}?`)) {
+                                removeProposal(p.id);
+                                toast.success("Proposta removida");
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            {isLocked ? "Excluir (só administradores)" : "Excluir"}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                    <p className="mt-0.5 truncate text-xs text-muted-foreground">
                       {p.number} · {format(new Date(p.createdAt), "dd/MM", { locale: ptBR })} · {em?.brand ?? "—"}
                     </p>
+                    <div className="mt-0.5 flex items-baseline justify-between gap-2">
                     <div className="flex min-w-0 items-center gap-1.5 text-xs">
                       <span className={cn("shrink-0 font-medium", s.cor)}>{s.label}</span>
                       {motivo && <span className="truncate text-muted-foreground">· {motivo}</span>}
@@ -444,43 +483,8 @@ function PropostasPage() {
                         </>
                       )}
                     </div>
-                  </div>
-                  <div className="flex shrink-0 flex-col items-end justify-between">
-                    <span className="text-[15px] font-semibold tabular-nums">{formatBRL(t.total)}</span>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="icon" className="-mr-2 h-9 w-9" aria-label="Mais ações">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                        <DropdownMenuItem
-                          disabled={duplicando}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            void duplicarProposta(p.id);
-                          }}
-                        >
-                          <Copy className="h-4 w-4" /> Duplicar
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          disabled={isLocked}
-                          title={isLocked ? "Apenas administradores podem excluir pedidos aprovados" : undefined}
-                          className="text-destructive focus:text-destructive"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (isLocked) return;
-                            if (confirm(`Remover proposta ${p.number}?`)) {
-                              removeProposal(p.id);
-                              toast.success("Proposta removida");
-                            }
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          {isLocked ? "Excluir (só administradores)" : "Excluir"}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <span className="shrink-0 text-[15px] font-semibold tabular-nums">{formatBRL(t.total)}</span>
+                    </div>
                   </div>
                 </li>
               );
