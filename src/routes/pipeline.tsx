@@ -658,6 +658,9 @@ function Column({
   propostasRecusadas,
   leadById,
   onOpenProposta,
+  onMover,
+  nomePorId,
+  ocultaNoCelular = false,
 }: {
   stage: (typeof STAGES)[number];
   leads: Lead[];
@@ -671,6 +674,10 @@ function Column({
   propostasRecusadas?: Proposal[];
   leadById?: Map<string, Lead>;
   onOpenProposta?: (propostaId: string) => void;
+  onMover?: (lead: Lead, stage: StageId) => void;
+  nomePorId?: Map<string, string>;
+  /** Celular mostra uma etapa por vez. */
+  ocultaNoCelular?: boolean;
 }) {
 
   const { setNodeRef, isOver } = useDroppable({ id: stage.id });
@@ -690,7 +697,7 @@ function Column({
   const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selected.has(id));
 
   return (
-    <div className="w-[300px] shrink-0 flex flex-col md:h-full">
+    <div className={cn("w-full md:w-[300px] shrink-0 flex-col md:h-full", ocultaNoCelular ? "hidden md:flex" : "flex")}>
       <div className="sticky top-0 z-20 shrink-0 px-1 pb-2 pt-1 flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/70">
 
         <div className="flex items-center gap-2">
@@ -726,6 +733,8 @@ function Column({
             isSelected={selected.has(l.id)}
             onToggleSelect={onToggleSelect}
             onTransferir={onTransferir}
+            onMover={onMover}
+            nomeDono={nomePorId?.get(l.ownerId)}
           />
         ))}
 
