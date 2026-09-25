@@ -27,6 +27,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { propostaVencida } from "@/lib/proposta-prazo";
+import {
+  casaFiltroMotivo,
+  FILTRO_MOTIVO_TODOS,
+  OPCOES_FILTRO_MOTIVO,
+  rotuloFiltroMotivo,
+  type FiltroMotivo,
+} from "@/lib/propostas-filtro";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
@@ -66,6 +73,27 @@ const STATUS_META: Record<ProposalStatus, { label: string; variant: "default" | 
 };
 
 type SortKey = "numero" | "cliente" | "empresa" | "data" | "itens" | "total" | "status";
+function SeloMotivo({ p }: { p: { status: string; motivoRecusa?: string | null; recusaDetalhe?: string | null; encerramentoAdministrativo?: boolean } }) {
+  if (p.status !== "recusada") return null;
+  if (p.encerramentoAdministrativo) {
+    return (
+      <Badge
+        variant="outline"
+        className="text-[10px] text-muted-foreground"
+        title="Encerramento administrativo — não conta como perda comercial"
+      >
+        Encerrada
+      </Badge>
+    );
+  }
+  if (!p.motivoRecusa) return null;
+  return (
+    <Badge variant="outline" className="text-[10px]" title={p.recusaDetalhe ?? undefined}>
+      {p.motivoRecusa}
+    </Badge>
+  );
+}
+
 type SortState = { key: SortKey; dir: "asc" | "desc" } | null;
 
 function SortHead({
@@ -109,6 +137,7 @@ function PropostasPage() {
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "vencida" | ProposalStatus>("all");
   const [emitterFilter, setEmitterFilter] = useState<string>("all");
+  const [motivoFilter, setMotivoFilter] = useState<FiltroMotivo>(FILTRO_MOTIVO_TODOS);
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" } | null>(null);
   const toggleSort = (key: SortKey) =>
     setSort((s) => (s?.key === key ? (s.dir === "asc" ? { key, dir: "desc" } : null) : { key, dir: "asc" }));
@@ -207,6 +236,7 @@ function PropostasPage() {
         if (!estaVencida(p)) return false;
       } else if (statusFilter !== "all" && p.status !== statusFilter) return false;
       if (emitterFilter !== "all" && p.emitterId !== emitterFilter) return false;
+      if (!casaFiltroMotivo(p, motivoFilter)) return false;
       if (!t) return true;
       const lead = leads.find((l) => l.id === p.leadId);
       return (
@@ -234,7 +264,7 @@ function PropostasPage() {
       if (typeof va === "number" && typeof vb === "number") return (va - vb) * dir;
       return String(va).localeCompare(String(vb), "pt-BR", { numeric: true }) * dir;
     });
-  }, [proposals, leads, emitters, q, statusFilter, emitterFilter, sort]);
+  }, [proposals, leads, emitters, q, statusFilter, emitterFilter, motivoFilter, sort]);
 
   return (
     <div className="p-4 md:p-8 space-y-6">
@@ -245,13 +275,13 @@ function PropostasPage() {
             {proposals.length} proposta(s) — geradas a partir dos leads do funil.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row">
           <div className="relative">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Número ou cliente..." className="pl-8 w-64" />
+            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Número ou cliente..." className="pl-8 w-full md:w-64" />
           </div>
           <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
-            <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-full md:w-40"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos os status</SelectItem>
               <SelectItem value="rascunho">Rascunho</SelectItem>
@@ -264,7 +294,7 @@ function PropostasPage() {
             </SelectContent>
           </Select>
           <Select value={emitterFilter} onValueChange={setEmitterFilter}>
-            <SelectTrigger className="w-44"><SelectValue placeholder="Empresa" /></SelectTrigger>
+            <SelectTrigger className="w-full md:w-44"><SelectValue placeholder="Empresa" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas as empresas</SelectItem>
               {emitters.map((e) => (
@@ -272,6 +302,36 @@ function PropostasPage() {
               ))}
             </SelectContent>
           </Select>
+          <Select value={motivoFilter} onValueChange={(v) => setMotivoFilter(v as FiltroMotivo)}>
+            <SelectTrigger className="w-full md:w-48"><SelectValue placeholder="Motivo" /></SelectTrigger>
+            <SelectContent>
+              {OPCOES_FILTRO_MOTIVO.map((o) => (
+                <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={sort ? `${sort.key}:${sort.dir}` : "none"}
+            onValueChange={(v) => {
+              if (v === "none") return setSort(null);
+              const [key, dir] = v.split(":") as [SortKey, "asc" | "desc"];
+              setSort({ key, dir });
+            }}
+          >
+            <SelectTrigger className="w-full md:hidden"><SelectValue placeholder="Ordenar por" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Ordenar por: padrão</SelectItem>
+              <SelectItem value="data:desc">Data (mais recente)</SelectItem>
+              <SelectItem value="data:asc">Data (mais antiga)</SelectItem>
+              <SelectItem value="cliente:asc">Cliente (A–Z)</SelectItem>
+              <SelectItem value="cliente:desc">Cliente (Z–A)</SelectItem>
+              <SelectItem value="total:desc">Total (maior)</SelectItem>
+              <SelectItem value="total:asc">Total (menor)</SelectItem>
+              <SelectItem value="numero:desc">Nº (maior)</SelectItem>
+              <SelectItem value="numero:asc">Nº (menor)</SelectItem>
+            </SelectContent>
+          </Select>
+          <div className="grid grid-cols-2 gap-2 md:contents">
 
           <Button variant="outline" onClick={() => setOpenNewLead(true)} className="gap-2">
             <UserPlus className="h-4 w-4" /> Cadastrar lead
@@ -279,6 +339,7 @@ function PropostasPage() {
           <Button onClick={() => setOpenNew(true)} className="gap-2">
             <Plus className="h-4 w-4" /> Nova proposta
           </Button>
+          </div>
         </div>
       </div>
 
@@ -319,10 +380,87 @@ function PropostasPage() {
           <CardTitle className="flex items-center gap-2">
             <FileText className="h-4 w-4 text-primary" />
             {filtered.length} proposta(s)
+            {motivoFilter !== FILTRO_MOTIVO_TODOS && (
+              <span className="text-sm font-normal text-muted-foreground">
+                · motivo: {rotuloFiltroMotivo(motivoFilter)}
+              </span>
+            )}
           </CardTitle>
         </CardHeader>
 
-        <CardContent className="overflow-x-auto">
+        <CardContent className="md:hidden">
+          <ul className="divide-y">
+            {filtered.map((p) => {
+              const lead = leads.find((l) => l.id === p.leadId);
+              const em = emitters.find((e) => e.id === p.emitterId);
+              const t = proposalTotals(p);
+              const s = STATUS_META[p.status];
+              const isLocked = (p.status === "aprovada" || p.status === "pedido") && !isAdmin;
+              return (
+                <li
+                  key={p.id}
+                  className="cursor-pointer py-3 active:bg-accent/40"
+                  onClick={() => navigate({ to: "/propostas/$id", params: { id: p.id } })}
+                >
+                  <p className="line-clamp-2 break-words font-semibold">{lead?.company ?? "—"}</p>
+                  <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                    Nº {p.number} · {format(new Date(p.createdAt), "dd/MM/yyyy", { locale: ptBR })} · {em?.brand ?? "—"}
+                  </p>
+                  <div className="mt-2 flex items-start justify-between gap-2">
+                    <span className="shrink-0 text-base font-semibold">{formatBRL(t.total)}</span>
+                    <div className="flex min-w-0 flex-wrap justify-end gap-1">
+                      <Badge variant={s.variant}>{s.label}</Badge>
+                      {estaVencida(p) && (
+                        <Badge variant="outline" className="border-destructive/50 text-destructive text-[10px]">
+                          vencida
+                        </Badge>
+                      )}
+                      <SeloMotivo p={p} />
+                    </div>
+                  </div>
+                  <div className="mt-1 flex justify-end gap-1">
+                    <Button
+                      variant="ghost"
+                      className="h-11 min-w-11 gap-1"
+                      disabled={duplicando}
+                      title="Duplicar proposta"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void duplicarProposta(p.id);
+                      }}
+                    >
+                      <Copy className="h-4 w-4" /> Duplicar
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="h-11 min-w-11 gap-1"
+                      disabled={isLocked}
+                      title={isLocked ? "Apenas administradores podem excluir pedidos aprovados" : "Excluir proposta"}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (isLocked) return;
+                        if (confirm(`Remover proposta ${p.number}?`)) {
+                          removeProposal(p.id);
+                          toast.success("Proposta removida");
+                        }
+                      }}
+                    >
+                      <Trash2 className={`h-4 w-4 ${isLocked ? "text-muted-foreground" : "text-destructive"}`} />
+                      Excluir
+                    </Button>
+                  </div>
+                </li>
+              );
+            })}
+            {filtered.length === 0 && (
+              <li className="py-8 text-center text-sm text-muted-foreground">
+                Nenhuma proposta encontrada. Crie a primeira!
+              </li>
+            )}
+          </ul>
+        </CardContent>
+
+        <CardContent className="hidden overflow-x-auto md:block">
           <Table>
             <TableHeader>
               <TableRow>
@@ -360,11 +498,7 @@ function PropostasPage() {
                             vencida
                           </Badge>
                         )}
-                        {p.status === "recusada" && p.motivoRecusa && (
-                          <Badge variant="outline" className="text-[10px]" title={p.recusaDetalhe ?? undefined}>
-                            {p.motivoRecusa}
-                          </Badge>
-                        )}
+                        <SeloMotivo p={p} />
                         {p.status === "aguardando_aprovacao" && p.approvalReason && (
                           <span className="text-[10px] text-muted-foreground max-w-[220px] truncate" title={p.approvalReason}>
                             {p.approvalReason}
