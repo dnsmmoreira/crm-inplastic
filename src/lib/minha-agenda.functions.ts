@@ -381,6 +381,7 @@ export const concluirTarefa = createServerFn({ method: "POST" })
         mensagem = r.leadPerdido
           ? `Proposta recusada e lead marcado como perdido (${desfecho.motivo}).`
           : `Proposta recusada (${desfecho.motivo}).`;
+        if (r.aviso) aviso = r.aviso;
       } else if (desfecho.tipo === "prorrogar_proposta") {
         await assertPodeAlterarStatus(supabase as any, userId, prop.owner_id as string);
         const dia = ddmm(desfecho.data!);
