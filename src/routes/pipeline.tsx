@@ -621,6 +621,7 @@ function PipelinePage() {
                   ? `Proposta recusada — ${company} → Perdido`
                   : "Proposta recusada — o lead segue com outra proposta em aberto",
               );
+              if (r.aviso) toast.warning(r.aviso);
             } catch (err) {
               toast.dismiss(t);
               toast.error("Não foi possível registrar a recusa", {

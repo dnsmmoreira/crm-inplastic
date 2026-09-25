@@ -11,6 +11,7 @@
  * Idempotente: dedupe por (regra, pedido_id) via xerife_log com janela por regra.
  * Rodar 2x seguidas nunca duplica tarefa.
  */
+import type { OrigemTarefa } from "@/lib/tarefas-origem";
 import { createFileRoute } from "@tanstack/react-router";
 import { requireXerifeCronAuth, cronJsonResponse } from "@/lib/xerife/cron-auth.server";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -278,7 +279,7 @@ async function runXerifePedidos(
       prioridade: t.prioridade,
       due_date: (t.dueDate ?? new Date(Date.now() + 2 * 3600 * 1000)).toISOString(),
       status: "pendente",
-      origem: "xerife",
+      origem: "xerife" satisfies OrigemTarefa,
     });
     if (insTarefa?.error) {
       await registrarFalhaSegura("xerife-pedidos.criarTarefa", insTarefa.error, {

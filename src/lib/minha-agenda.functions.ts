@@ -1,3 +1,4 @@
+import type { OrigemTarefa } from "@/lib/tarefas-origem";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
@@ -254,7 +255,7 @@ export const concluirTarefa = createServerFn({ method: "POST" })
         prioridade: 1,
         due_date: dataISO,
         status: "pendente",
-        origem: "manual",
+        origem: "manual" satisfies OrigemTarefa,
       });
       await assertNoError(insTarefa, "concluirTarefa.retorno.tarefa", { lead_id: leadId });
 
@@ -380,6 +381,7 @@ export const concluirTarefa = createServerFn({ method: "POST" })
         mensagem = r.leadPerdido
           ? `Proposta recusada e lead marcado como perdido (${desfecho.motivo}).`
           : `Proposta recusada (${desfecho.motivo}).`;
+        if (r.aviso) aviso = r.aviso;
       } else if (desfecho.tipo === "prorrogar_proposta") {
         await assertPodeAlterarStatus(supabase as any, userId, prop.owner_id as string);
         const dia = ddmm(desfecho.data!);

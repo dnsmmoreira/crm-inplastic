@@ -6,6 +6,7 @@
  * Nunca responde quando a IA está atendendo (o Gabriel já responde) nem em
  * conversa encerrada. Não grava interação no lead — é automático.
  */
+import type { OrigemTarefa } from "@/lib/tarefas-origem";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   deveAutoResponder,
@@ -131,7 +132,7 @@ export async function tratarMensagemForaHorario(
       prioridade: 1,
       due_date: abertura.toISOString(),
       status: "pendente",
-      origem: "xerife",
+      origem: "xerife" satisfies OrigemTarefa,
     });
     if (insT?.error) {
       const { registrarFalhaSegura } = await import("@/lib/guard-erros");
