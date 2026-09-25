@@ -75,13 +75,11 @@ import { PaginaCabecalho } from "@/components/layout/PaginaCabecalho";
 import { LinhaLista, TabelaResponsiva, juntarCampos } from "@/components/layout/ListaResponsiva";
 
 /** Botão de abrir (só ícone) usado nas linhas do celular. */
-function AbrirIcone(props: React.ComponentProps<typeof Link>) {
+function BotaoAbrir() {
   return (
-    <Link {...props}>
-      <Button variant="ghost" size="icon" className="h-10 w-10 -mr-2" aria-label="Abrir">
-        <ExternalLink className="h-4 w-4" />
-      </Button>
-    </Link>
+    <Button variant="ghost" size="icon" className="h-10 w-10 -mr-2" aria-label="Abrir">
+      <ExternalLink className="h-4 w-4" />
+    </Button>
   );
 }
 
@@ -487,7 +485,7 @@ function PendenciasPage() {
                 key={l.id}
                 titulo={displayValue(l.company, "Lead sem empresa")}
                 subtitulo={juntarCampos(l.contact_name, l.stage, l.owner, `${l.dias_parado} dias parado`)}
-                acoes={<AbrirIcone to="/leads" search={{ lead: l.id }} />}
+                acoes={<Link to="/leads" search={{ lead: l.id }}><BotaoAbrir /></Link>}
                 abaixo={
                   <div className="w-full [&>div]:w-full">
                     <CampoInline
@@ -582,7 +580,7 @@ function PendenciasPage() {
               key={l.id}
               titulo={displayValue(l.company, "Lead sem empresa")}
               subtitulo={juntarCampos(l.product, l.owner)}
-              acoes={<AbrirIcone to="/leads" search={{ lead: l.id }} />}
+              acoes={<Link to="/leads" search={{ lead: l.id }}><BotaoAbrir /></Link>}
               abaixo={
                 <Select
                   disabled={salvandoId === l.id}
@@ -692,7 +690,7 @@ function PendenciasPage() {
                   key={p.id}
                   titulo={p.name}
                   subtitulo={juntarCampos(p.sku, p.faltando.length ? `falta ${p.faltando.join(", ")}` : null)}
-                  acoes={<AbrirIcone to="/produtos" search={{ editar: p.id }} />}
+                  acoes={<Link to="/produtos" search={{ editar: p.id }}><BotaoAbrir /></Link>}
                   abaixo={
                     <div className="w-full [&>div]:w-full">
                       <CampoInline
@@ -802,7 +800,7 @@ function PendenciasPage() {
                 key={c.id}
                 titulo={displayValue(c.razao_social, "Cliente sem nome")}
                 subtitulo={juntarCampos(c.cnpj, c.vendedor)}
-                acoes={<AbrirIcone to="/clientes/$id" params={{ id: c.id }} />}
+                acoes={<Link to="/clientes/$id" params={{ id: c.id }}><BotaoAbrir /></Link>}
                 abaixo={
                   <div className="w-full [&>div]:w-full">
                     <CampoInline
