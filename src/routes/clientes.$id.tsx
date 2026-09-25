@@ -365,7 +365,40 @@ function ClienteDetailPage() {
                   })}
                 >
                 <Table>
-...
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Data</TableHead>
+                      <TableHead>Título</TableHead>
+                      <TableHead>Etapa</TableHead>
+                      <TableHead className="text-right">Valor estimado</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(leadsQ.data ?? []).map((l) => {
+                      const row = l as unknown as {
+                        id: string;
+                        company: string | null;
+                        contact_name: string | null;
+                        stage: string;
+                        estimated_value: number | null;
+                        created_at: string;
+                      };
+                      return (
+                        <TableRow key={row.id}>
+                          <TableCell className="text-sm">
+                            {format(new Date(row.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                          </TableCell>
+                          <TableCell>{row.company ?? row.contact_name ?? "—"}</TableCell>
+                          <TableCell><Badge variant="outline">{row.stage}</Badge></TableCell>
+                          <TableCell className="text-right">
+                            {row.estimated_value != null
+                              ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(row.estimated_value)
+                              : "—"}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
                 </Table>
                 </TabelaResponsiva>
               )}
