@@ -4,9 +4,11 @@ import { normalizarTexto, normalizarEmail } from "@/lib/normalizacao";
 
 export const PAPEIS_CONTATO = [
   { value: "comprador", label: "Comprador" },
-  { value: "financeiro", label: "Financeiro" },
-  { value: "nf_xml", label: "Envio de NF/XML" },
   { value: "decisor", label: "Decisor" },
+  { value: "influenciador", label: "Influenciador" },
+  { value: "usuario_final", label: "Usuário final" },
+  { value: "financeiro", label: "Financeiro" },
+  { value: "fiscal", label: "Fiscal" },
   { value: "outro", label: "Outro" },
 ] as const;
 
@@ -14,6 +16,11 @@ export type PapelContato = (typeof PAPEIS_CONTATO)[number]["value"];
 
 export function papelLabel(papel: string): string {
   return PAPEIS_CONTATO.find((p) => p.value === papel)?.label ?? papel;
+}
+
+/** Lança erro se o papel não está na lista atual (cadastro novo). */
+export function validarPapelContato(papel: string): void {
+  if (!PAPEIS_CONTATO.some((p) => p.value === papel)) throw new Error("Papel inválido");
 }
 
 export type ContatoRow = {
@@ -37,12 +44,14 @@ const SELECT_COLS =
 const ORDEM_PAPEL: Record<string, number> = {
   comprador: 0,
   decisor: 1,
-  financeiro: 2,
-  nf_xml: 3,
-  outro: 4,
+  influenciador: 2,
+  usuario_final: 3,
+  financeiro: 4,
+  fiscal: 5,
+  outro: 6,
 };
 
-function ordenar(rows: ContatoRow[]): ContatoRow[] {
+export function ordenarContatos(rows: ContatoRow[]): ContatoRow[] {
   return [...rows].sort((a, b) => {
     if (a.ativo !== b.ativo) return a.ativo ? -1 : 1;
     const pa = ORDEM_PAPEL[a.papel] ?? 99;
@@ -51,6 +60,7 @@ function ordenar(rows: ContatoRow[]): ContatoRow[] {
     return a.nome.localeCompare(b.nome, "pt-BR");
   });
 }
+const ordenar = ordenarContatos;
 
 export const listContatos = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -179,7 +189,7 @@ export const criarContato = createServerFn({ method: "POST" })
     if (!data.nome) throw new Error("Informe o nome do contato");
     if (!data.leadId && !data.clienteId)
       throw new Error("Contato precisa estar vinculado a um lead ou cliente");
-    if (!PAPEIS_CONTATO.some((p) => p.value === data.papel)) throw new Error("Papel inválido");
+    validarPapelContato(data.papel);
 
     const { data: row, error } = await context.supabase
       .from("contatos")
