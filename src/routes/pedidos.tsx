@@ -31,6 +31,7 @@ import {
   ShieldAlert,
   Timer,
   TrendingUp,
+  MoreVertical,
 } from "lucide-react";
 import { format, differenceInCalendarDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -77,6 +78,15 @@ import {
   podeAssumirPedido,
 } from "@/lib/pedidos.functions";
 import { PedidoDetailDrawer } from "@/components/pedidos/PedidoDetailDrawer";
+import { PaginaCabecalho } from "@/components/layout/PaginaCabecalho";
+import { juntarCampos } from "@/components/layout/ListaResponsiva";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export const Route = createFileRoute("/pedidos")({
   component: PedidosKanbanPage,
@@ -114,6 +124,7 @@ function PedidosKanbanPage() {
   const podeMover = hasPerm(user, PERM_PEDIDOS_MOVIMENTAR);
 
   const [search, setSearch] = useState("");
+  const [etapaMobile, setEtapaMobile] = useState<PedidoStageId | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [pendingBackward, setPendingBackward] = useState<PendingBackward | null>(null);
   const { pedido: pedidoDaUrl } = Route.useSearch();
@@ -330,6 +341,11 @@ function PedidosKanbanPage() {
     const target = String(e.over.id) as PedidoStageId;
     const pedido = filtered.find((p) => p.id === draggedId);
     if (!pedido) return;
+    moverPedido(pedido, target);
+  };
+
+  /** Regra única de mover pedido — usada pelo arraste (computador) e pelo menu (celular). */
+  const moverPedido = (pedido: PedidoRow, target: PedidoStageId) => {
     const from = pedido.stage;
     if (from === target) return;
 
@@ -365,17 +381,17 @@ function PedidosKanbanPage() {
     mutation.mutate({ pedido_id: pedido.id, stage: target });
   };
 
-  return (
-    <div className="p-4 md:p-8 space-y-6 md:h-dvh md:min-h-[720px] md:flex md:flex-col md:gap-6 md:space-y-0">
-      <div className="flex flex-wrap items-center justify-between gap-3 shrink-0">
+  const etapaSelecionada: PedidoStageId =
+    etapaMobile ?? (PEDIDO_STAGES.find((s) => byStage[s.id].length > 0) ?? PEDIDO_STAGES[0])!.id;
 
-        <div>
-          <h1 className="text-2xl md:text-3xl font-semibold">Funil Operacional</h1>
-          <p className="text-sm text-muted-foreground">
-            Kanban operacional — avanços restritos por matriz; retornos exigem motivo. Faturamento é
-            status, não etapa.
-          </p>
-        </div>
+  return (
+    <div className="p-4 md:p-8 space-y-4 md:h-dvh md:min-h-[720px] md:flex md:flex-col md:gap-6 md:space-y-0">
+      <div className="shrink-0">
+      <PaginaCabecalho
+        titulo="Funil Operacional"
+        descricao="Kanban operacional — avanços restritos por matriz; retornos exigem motivo. Faturamento é status, não etapa."
+        resumoMobile="Toque numa etapa para ver os pedidos"
+        acoes={
         <div className="relative w-full sm:w-72">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -385,6 +401,8 @@ function PedidosKanbanPage() {
             className="pl-9"
           />
         </div>
+        }
+      />
       </div>
 
       <div className="shrink-0">
@@ -430,6 +448,23 @@ function PedidosKanbanPage() {
           é criado automaticamente e aparece aqui.
         </div>
       ) : (
+        <>
+        {/* Celular: seletor de etapa (única coisa que rola de lado) */}
+        <div className="-mx-4 mb-3 flex shrink-0 gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:hidden">
+          {PEDIDO_STAGES.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => setEtapaMobile(s.id)}
+              className={cn(
+                "shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-medium",
+                etapaSelecionada === s.id ? "bg-primary text-primary-foreground" : "border bg-background",
+              )}
+            >
+              {s.label} <span className="opacity-70">{byStage[s.id].length}</span>
+            </button>
+          ))}
+        </div>
         <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
           <div className="flex items-stretch gap-4 overflow-auto md:overflow-y-hidden scrollbar-visible pb-4 -mx-4 md:-mx-8 px-4 md:px-8 md:min-h-0 md:flex-1">
 
@@ -453,12 +488,15 @@ function PedidosKanbanPage() {
                   isBackwardTarget={isBack && canDrop}
                   onOpen={setOpenPedidoId}
                   podeMover={podeMover}
+                  ocultoNoCelular={stage.id !== etapaSelecionada}
+                  onMover={moverPedido}
                 />
               );
             })}
           </div>
           <DragOverlay>{activePedido && <PedidoCard pedido={activePedido} dragging />}</DragOverlay>
         </DndContext>
+        </>
       )}
       </div>
 
@@ -522,6 +560,8 @@ function Column({
   isBackwardTarget,
   onOpen,
   podeMover,
+  ocultoNoCelular = false,
+  onMover,
 }: {
   stage: (typeof PEDIDO_STAGES)[number];
   pedidos: PedidoRow[];
@@ -531,12 +571,14 @@ function Column({
   isBackwardTarget: boolean;
   onOpen: (id: string) => void;
   podeMover: boolean;
+  ocultoNoCelular?: boolean;
+  onMover?: (pedido: PedidoRow, destino: PedidoStageId) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage.id, disabled: dragActive && !canDrop });
   const total = pedidos.reduce((s, p) => s + p.total, 0);
   const showBlocked = dragActive && !canDrop;
   return (
-    <div className="w-[300px] shrink-0 flex flex-col md:h-full">
+    <div className={cn("w-full md:w-[300px] shrink-0 flex-col md:h-full", ocultoNoCelular ? "hidden md:flex" : "flex")}>
       <div className="sticky top-0 z-20 px-1 pb-2 pt-1 flex items-center justify-between shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/70">
 
         <div className="flex items-center gap-2 min-w-0">
@@ -574,7 +616,7 @@ function Column({
           </div>
         )}
         {pedidos.map((p) => (
-          <PedidoCard key={p.id} pedido={p} onOpen={onOpen} podeMover={podeMover} />
+          <PedidoCard key={p.id} pedido={p} onOpen={onOpen} podeMover={podeMover} onMover={onMover} />
         ))}
         {pedidos.length === 0 && !showBlocked && (
           <div className="text-xs text-muted-foreground text-center py-8 italic">
@@ -591,11 +633,13 @@ function PedidoCard({
   dragging = false,
   onOpen,
   podeMover = true,
+  onMover,
 }: {
   pedido: PedidoRow;
   dragging?: boolean;
   onOpen?: (id: string) => void;
   podeMover?: boolean;
+  onMover?: (pedido: PedidoRow, destino: PedidoStageId) => void;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: pedido.id,
@@ -673,6 +717,77 @@ function PedidoCard({
         dragging && "shadow-xl rotate-2",
       )}
     >
+      {/* Celular: linha compacta */}
+      <div className="md:hidden">
+        <div className="flex items-start gap-2">
+          <div className="min-w-0 flex-1 truncate text-[15px] font-medium leading-tight">
+            {juntarCampos(pedido.number, pedido.lead_company)}
+          </div>
+          {podeMover && onMover && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-10 w-10 -mr-2 -mt-2 shrink-0"
+                  aria-label="Ações do pedido"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <DropdownMenuLabel>Mover para…</DropdownMenuLabel>
+                {PEDIDO_STAGES.filter((s) => s.id !== pedido.stage).map((s) => {
+                  const bloqueadoOcorrencia = s.id === "pos_venda" && (pedido.ocorrencias_abertas ?? 0) > 0;
+                  const permitido = isTransitionAllowed(pedido.stage, s.id) && !bloqueadoOcorrencia;
+                  return (
+                    <DropdownMenuItem
+                      key={s.id}
+                      disabled={!permitido}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onMover(pedido, s.id);
+                      }}
+                    >
+                      {s.label}
+                    </DropdownMenuItem>
+                  );
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
+        <div className="mt-0.5 truncate text-xs text-muted-foreground">
+          {juntarCampos(
+            pedido.vendedor_nome,
+            format(new Date(pedido.created_at), "dd/MM"),
+            previsao ? `prazo ${format(previsao, "dd/MM")}` : null,
+          )}
+        </div>
+        <div className="mt-1 flex items-baseline gap-2">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 text-xs">
+            {pedido.stage === "pronto" && !pedido.coleta_combinada_em && (
+              <Badge className="text-[10px] px-1.5 py-0 bg-amber-500/15 text-amber-700 border-amber-500/30">
+                Sem data de coleta
+              </Badge>
+            )}
+            {atrasado && (
+              <Badge className="text-[10px] px-1.5 py-0 bg-rose-500/15 text-rose-700 border-rose-500/30">
+                <AlertTriangle className="h-2.5 w-2.5 mr-1" /> Atrasado
+              </Badge>
+            )}
+          </div>
+          <div className="shrink-0 text-[15px] font-semibold tabular-nums">{formatBRL(pedido.total)}</div>
+        </div>
+      </div>
+
+      <div className="hidden md:block">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="font-mono text-xs text-muted-foreground">{pedido.number}</div>
@@ -818,6 +933,7 @@ function PedidoCard({
             {p}
           </Badge>
         ))}
+      </div>
       </div>
     </div>
   );
