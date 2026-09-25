@@ -702,6 +702,8 @@ export type Proposal = {
   ownerId: string;
   /** Quem clicou em criar; difere de ownerId quando criada em nome de outra pessoa. */
   criadoPor?: string | null;
+  /** Encerramento administrativo (arrumação interna) — não conta como perda comercial. */
+  encerramentoAdministrativo?: boolean;
   createdAt: string;
   status: ProposalStatus;
   validityDays: number;

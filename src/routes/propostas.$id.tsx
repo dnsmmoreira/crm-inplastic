@@ -1370,9 +1370,18 @@ function PropostaDetalhe() {
                 {proposal.recusadaEm
                   ? ` em ${format(new Date(proposal.recusadaEm), "dd/MM/yyyy", { locale: ptBR })}`
                   : ""}
-                {proposal.motivoRecusa ? ` — ${proposal.motivoRecusa}` : ""}
+                {!proposal.encerramentoAdministrativo && proposal.motivoRecusa ? ` — ${proposal.motivoRecusa}` : ""}
                 {proposal.recusaDetalhe ? `: ${proposal.recusaDetalhe}` : ""}
               </span>
+              {proposal.encerramentoAdministrativo && (
+                <Badge
+                  variant="outline"
+                  className="text-muted-foreground"
+                  title="Encerramento administrativo — não conta como perda comercial"
+                >
+                  Encerrada
+                </Badge>
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -1633,17 +1642,6 @@ function PropostaDetalhe() {
             </Button>
           )}
 
-          {!isPedido && (
-            <Button
-              variant="outline"
-              className="gap-2"
-              onClick={() => {
-                setStatus(proposal.id, "recusada");
-              }}
-            >
-              <XCircle className="h-4 w-4" /> Recusar
-            </Button>
-          )}
           <Button
             variant={dirty ? "default" : "outline"}
             className="gap-2"
