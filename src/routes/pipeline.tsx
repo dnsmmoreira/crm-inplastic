@@ -20,7 +20,7 @@ import {
 import { Plus, Package, MoreVertical, SlidersHorizontal, Calendar as CalendarIcon, Search, ArrowDownUp, X, PackageCheck, ChevronLeft, ChevronRight, CheckSquare, ArrowRightLeft } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useCrm, STAGES, formatBRL, leadTemperature, followupTemperature, proposalTotals, type Lead, type Proposal, type StageId, type FollowupLevel, useVisibleLeads, useVisibleProposals, useLeadValueMap } from "@/lib/crm-store";
+import { useCrm, STAGES, formatBRL, leadTemperature, followupTemperature, proposalTotals, type Lead, type Proposal, type StageId, type FollowupLevel, useVisibleLeads, useVisibleProposals, useLeadValueMap, useCurrentUser } from "@/lib/crm-store";
 import { useMoveLeadStage } from "@/hooks/use-move-lead-stage";
 import { TransferirLeadDialog } from "@/components/crm/TransferirLeadDialog";
 import { LostReasonDialog, type LostReasonPayload } from "@/components/crm/LostReasonDialog";
@@ -926,6 +926,7 @@ function LeadCard({
   const valueMap = useLeadValueMap();
   const effValue = valueMap.get(lead.id) ?? lead.estimatedValue;
   const followup = followupTemperature(lead);
+  const currentUser = useCurrentUser();
   // Celular: tarja pela urgência da agenda; desktop (md+): tarja pelo score, como sempre.
   const stripe = cn(
     "border-l-4",
@@ -1041,7 +1042,7 @@ function LeadCard({
       </div>
       {/* Celular: dono · último contato */}
       <div className="mt-1 truncate text-xs text-muted-foreground md:hidden">
-        {nomeDono ?? "—"} · últ. contato {format(new Date(lead.lastContact), "dd/MM")}
+        {lead.ownerId !== currentUser?.id && nomeDono ? `${nomeDono} · ` : ""}últ. contato {format(new Date(lead.lastContact), "dd/MM")}
       </div>
       <div className="mt-2 hidden items-center gap-1.5 text-xs text-muted-foreground md:flex">
         <Package className="h-3 w-3 shrink-0" />
