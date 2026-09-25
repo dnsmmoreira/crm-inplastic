@@ -351,7 +351,6 @@ export const concluirTarefa = createServerFn({ method: "POST" })
       mensagem = `Lead marcado como perdido (${desfecho.motivo}).`;
     } else if (
       desfecho.tipo === "recusar_proposta" ||
-      desfecho.tipo === "reemitir_proposta" ||
       desfecho.tipo === "prorrogar_proposta" ||
       desfecho.tipo === "excluir_rascunho"
     ) {
@@ -403,33 +402,6 @@ export const concluirTarefa = createServerFn({ method: "POST" })
         );
         detalhe = `Proposta prorrogada até ${dia}`;
         mensagem = `Proposta válida até ${dia}.`;
-      } else if (desfecho.tipo === "reemitir_proposta") {
-        await assertPodeAlterarStatus(supabase as any, userId, prop.owner_id as string);
-        const { duplicarPropostaImpl } = await import("@/lib/propostas-duplicar.server");
-        const nova = await duplicarPropostaImpl(supabase as never, propostaId, userId);
-        const upProp = await supabase
-          .from("propostas")
-          .update({
-            reemitida_como: nova.id,
-            vencida_em: new Date().toISOString(),
-            status: "recusada",
-            motivo_recusa: "Duplicidade",
-            recusa_detalhe: `reemitida como ${nova.number}`,
-            recusada_em: new Date().toISOString(),
-            recusada_por: userId,
-          })
-          .eq("id", propostaId);
-        await assertNoError(upProp, "concluirTarefa.reemitir", { proposta_id: propostaId });
-
-        await auditarProposta(
-          supabase as any,
-          userId,
-          "proposta_reemitida",
-          prop.number ?? null,
-          nova.number ?? null,
-        );
-        detalhe = `Reemitida como ${nova.number}`;
-        mensagem = `Proposta ${nova.number} criada em rascunho com os mesmos itens.`;
       } else {
         // excluir_rascunho
         const { excluirRascunhoPropostaImpl } = await import("@/lib/propostas-prazo.server");

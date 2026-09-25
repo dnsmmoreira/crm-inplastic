@@ -22,6 +22,7 @@ import {
   DETALHE_OBRIGATORIO_MSG,
   MOTIVOS_PERDA,
   MOTIVOS_PERDA_DESCRICAO,
+  MOTIVOS_RECUSA_PROPOSTA,
   detalheValido,
   recontatoDias,
   type MotivoPerda,
@@ -123,7 +124,7 @@ export function LostReasonDialog({
                 <SelectValue placeholder="Selecione o motivo" />
               </SelectTrigger>
               <SelectContent>
-                {MOTIVOS_PERDA.map((m) => (
+                {(alvo === "proposta" ? MOTIVOS_RECUSA_PROPOSTA : MOTIVOS_PERDA).map((m) => (
                   <SelectItem key={m} value={m}>
                     {m}
                   </SelectItem>

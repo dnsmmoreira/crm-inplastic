@@ -5,7 +5,7 @@ import { useDuplicarProposta } from "@/hooks/use-duplicar-proposta";
 import { propostaVencida, diasVencida, validadeYmd, ddmmProposta } from "@/lib/proposta-prazo";
 import { useAuth } from "@/hooks/use-auth";
 import { hydrateCrmForUser, salvarAgora } from "@/lib/crm-sync";
-import { prorrogarProposta, reemitirProposta } from "@/lib/propostas-prazo.functions";
+import { prorrogarProposta } from "@/lib/propostas-prazo.functions";
 import {
   ArrowLeft,
   Plus,
@@ -623,7 +623,6 @@ function PropostaDetalhe() {
   const [prorrogaAte, setProrrogaAte] = useState("");
   const [prorrogaMotivo, setProrrogaMotivo] = useState("");
   const prorrogarFn = useServerFn(prorrogarProposta);
-  const reemitirFn = useServerFn(reemitirProposta);
   const prorrogarMut = useMutation({
     mutationFn: () =>
       prorrogarFn({
@@ -638,16 +637,6 @@ function PropostaDetalhe() {
     },
     onError: (e: any) => toast.error(e?.message ?? "Não foi possível prorrogar"),
   });
-  const reemitirMut = useMutation({
-    mutationFn: () => reemitirFn({ data: { propostaId: id } }),
-    onSuccess: async (r: any) => {
-      if (user) await hydrateCrmForUser(user.id, user.role);
-      toast.success(`Proposta ${r.number} criada em rascunho`);
-      navigate({ to: "/propostas/$id", params: { id: r.id } });
-    },
-    onError: (e: any) => toast.error(e?.message ?? "Não foi possível reemitir"),
-  });
-
   const currentUser = useCurrentUser();
   const approver = proposal?.approvedByUserId
     ? USERS.find((u) => u.id === proposal.approvedByUserId)
@@ -1313,19 +1302,15 @@ function PropostaDetalhe() {
               <AlertCircle className="h-4 w-4 shrink-0" />
               <span>
                 Proposta vencida{validaAte ? ` em ${ddmmProposta(validaAte)}` : ""} (há{" "}
-                {diasVencida(prazo)} dias) — os preços podem não valer mais.
+                {diasVencida(prazo)} dias) — os preços podem não valer mais. Para mudar preços
+                ou itens, edite a proposta e prorrogue a validade.
               </span>
               <div className="ml-auto flex flex-wrap gap-2">
                 <Button size="sm" variant="outline" onClick={() => setProrrogaOpen(true)}>
                   Prorrogar validade
                 </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={reemitirMut.isPending}
-                  onClick={() => reemitirMut.mutate()}
-                >
-                  {reemitirMut.isPending ? "Reemitindo..." : "Reemitir com preço atual"}
+                <Button size="sm" variant="outline" onClick={() => setRecusaOpen(true)}>
+                  Recusar
                 </Button>
               </div>
             </div>

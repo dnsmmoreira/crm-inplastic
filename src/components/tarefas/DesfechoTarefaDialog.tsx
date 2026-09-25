@@ -18,7 +18,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { MOTIVOS_PERDA, MOTIVOS_PERDA_DESCRICAO } from "@/lib/motivos-perda";
+import { MOTIVOS_PERDA, MOTIVOS_PERDA_DESCRICAO, MOTIVOS_RECUSA_PROPOSTA } from "@/lib/motivos-perda";
 import { listVendedores } from "@/lib/clientes.functions";
 import {
   desfechosParaTipo,
@@ -226,11 +226,6 @@ export function DesfechoTarefaDialog({
           </div>
         )}
 
-        {tipo === "reemitir_proposta" && (
-          <p className="text-xs text-muted-foreground">
-            Vamos criar um novo rascunho com os mesmos itens, para você revisar os preços antes de enviar.
-          </p>
-        )}
 
 
 
@@ -261,7 +256,7 @@ export function DesfechoTarefaDialog({
             <Select value={motivo} onValueChange={setMotivo}>
               <SelectTrigger><SelectValue placeholder="Escolha o motivo…" /></SelectTrigger>
               <SelectContent>
-                {MOTIVOS_PERDA.map((m) => (
+                {(tipo === "recusar_proposta" ? MOTIVOS_RECUSA_PROPOSTA : MOTIVOS_PERDA).map((m) => (
                   <SelectItem key={m} value={m}>{m} — {MOTIVOS_PERDA_DESCRICAO[m]}</SelectItem>
                 ))}
               </SelectContent>

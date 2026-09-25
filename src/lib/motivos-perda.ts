@@ -22,6 +22,28 @@ export const MOTIVOS_PERDA = [
 
 export type MotivoPerda = (typeof MOTIVOS_PERDA)[number];
 
+/**
+ * Motivos oferecidos ao RECUSAR uma PROPOSTA — só os comerciais.
+ * "Duplicidade" e "Lead inválido" continuam válidos no banco (histórico),
+ * mas não são perda comercial de proposta e não são mais oferecidos.
+ */
+export const MOTIVOS_RECUSA_PROPOSTA = [
+  "Preço",
+  "Concorrente",
+  "Prazo de entrega",
+  "Produto não atende",
+  "Condições comerciais",
+  "Sem resposta do cliente",
+  "Sem aprovação interna",
+  "Demanda cancelada ou adiada",
+] as const satisfies readonly MotivoPerda[];
+
+export type MotivoRecusaProposta = (typeof MOTIVOS_RECUSA_PROPOSTA)[number];
+
+export function isMotivoRecusaProposta(v: unknown): v is MotivoRecusaProposta {
+  return typeof v === "string" && (MOTIVOS_RECUSA_PROPOSTA as readonly string[]).includes(v);
+}
+
 export const MOTIVOS_PERDA_DESCRICAO: Record<MotivoPerda, string> = {
   "Preço": "Perdeu por valor",
   "Concorrente": "Fechou com outro fornecedor",
