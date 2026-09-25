@@ -9,6 +9,7 @@ import {
   Loader2,
   MessagesSquare,
   Paperclip,
+  Reply,
   Search,
   Send,
   Users,
@@ -31,7 +32,10 @@ import {
   mesclarHistorico,
   prepararBusca,
   prepararTexto,
+  precisaSeparadorData,
   primeiroNome,
+  rotuloDia,
+  trechoCitado,
   validarAnexoChat,
   type ChatItemLista,
   type ChatTipoCanal,
@@ -93,10 +97,18 @@ type Mensagem = {
   anexo_nome: string | null;
   anexo_tipo: string | null;
   anexo_tamanho_bytes: number | null;
+  respondendo_a?: string | null;
+};
+
+type MensagemCitada = {
+  id: string;
+  autor_user_id: string;
+  conteudo: string;
+  anexo_nome: string | null;
 };
 
 const COLUNAS_MENSAGEM =
-  "id, canal_id, autor_user_id, conteudo, criado_em, anexo_path, anexo_nome, anexo_tipo, anexo_tamanho_bytes";
+  "id, canal_id, autor_user_id, conteudo, criado_em, anexo_path, anexo_nome, anexo_tipo, anexo_tamanho_bytes, respondendo_a";
 
 function horario(iso: string) {
   return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
@@ -488,6 +500,43 @@ function ChatInternoPage() {
   const listaRef = useRef<HTMLDivElement>(null);
   const { onScroll } = useAutoScrollMensagens(listaRef, canalId, mensagens);
 
+  // Respostas: mensagem sendo respondida no composer e mapa das citadas.
+  const [respondendo, setRespondendo] = useState<Mensagem | null>(null);
+  const [citadas, setCitadas] = useState<Record<string, MensagemCitada>>({});
+  const [destaque, setDestaque] = useState<string | null>(null);
+  const citadasRef = useRef<Record<string, MensagemCitada>>({});
+  citadasRef.current = citadas;
+  const mensagensPorId = useMemo(() => {
+    const mp = new Map<string, Mensagem>();
+    for (const m of mensagens) mp.set(m.id, m);
+    return mp;
+  }, [mensagens]);
+
+  /** Busca numa única consulta as citadas que ainda não estão no mapa. */
+  const resolverCitadas = useCallback(async (lote: readonly Mensagem[]) => {
+    const ids = [
+      ...new Set(
+        lote
+          .map((m) => m.respondendo_a)
+          .filter((id): id is string => !!id && !citadasRef.current[id]),
+      ),
+    ];
+    if (ids.length === 0) return;
+    const { data, error } = await supabase
+      .from("chat_mensagens")
+      .select("id, autor_user_id, conteudo, anexo_nome")
+      .in("id", ids);
+    if (error) {
+      console.error(error);
+      return;
+    }
+    setCitadas((prev) => {
+      const out = { ...prev };
+      for (const r of (data ?? []) as MensagemCitada[]) out[r.id] = r;
+      return out;
+    });
+  }, []);
+
   const nomePorId = useMemo(() => {
     const m = new Map<string, string>();
     for (const i of itens) if (i.outroUserId) m.set(i.outroUserId, i.titulo);
@@ -544,7 +593,8 @@ function ChatInternoPage() {
     const lote = (rows ?? []) as Mensagem[];
     setTemMaisAntigas(lote.length === PAGINA_HISTORICO_CHAT);
     setMensagens(mesclarHistorico<Mensagem>([], lote));
-  }, []);
+    void resolverCitadas(lote);
+  }, [resolverCitadas]);
 
   const carregarAntigas = useCallback(async () => {
     if (!canalId || carregandoAntigas || mensagens.length === 0) return;
@@ -568,12 +618,13 @@ function ChatInternoPage() {
     const lote = (rows ?? []) as Mensagem[];
     setTemMaisAntigas(lote.length === PAGINA_HISTORICO_CHAT);
     setMensagens((prev) => mesclarHistorico<Mensagem>(prev, lote));
+    void resolverCitadas(lote);
     // Mantém o ponto de leitura onde estava depois de inserir acima.
     requestAnimationFrame(() => {
       const atual = listaRef.current;
       if (atual) atual.scrollTop += atual.scrollHeight - alturaAntes;
     });
-  }, [canalId, carregandoAntigas, mensagens]);
+  }, [canalId, carregandoAntigas, mensagens, resolverCitadas]);
 
   useEffect(() => {
     if (!canalId) {
@@ -596,6 +647,7 @@ function ChatInternoPage() {
         (payload) => {
           const nova = payload.new as Mensagem;
           setMensagens((prev) => (prev.some((m) => m.id === nova.id) ? prev : [...prev, nova]));
+          void resolverCitadas([nova]);
           void marcarLido(canalId);
         },
       )
@@ -603,7 +655,22 @@ function ChatInternoPage() {
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [canalId, carregarThread, marcarLido]);
+  }, [canalId, carregarThread, marcarLido, resolverCitadas]);
+
+  useEffect(() => {
+    setRespondendo(null);
+  }, [canalId]);
+
+  const irParaMensagem = useCallback((id: string) => {
+    const el = document.getElementById(`chat-msg-${id}`);
+    if (!el) {
+      toast.info("A mensagem original é mais antiga — carregue as mensagens anteriores.");
+      return;
+    }
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    setDestaque(id);
+    window.setTimeout(() => setDestaque((d) => (d === id ? null : d)), 1500);
+  }, []);
 
   const abrir = useCallback(
     async (item: ChatItemLista) => {
@@ -783,7 +850,13 @@ function ChatInternoPage() {
 
     const { data: inserida, error } = await supabase
       .from("chat_mensagens")
-      .insert({ canal_id: canalId, autor_user_id: euId, conteudo: pronto ?? "", ...(anexo ?? {}) })
+      .insert({
+        canal_id: canalId,
+        autor_user_id: euId,
+        conteudo: pronto ?? "",
+        ...(anexo ?? {}),
+        ...(respondendo ? { respondendo_a: respondendo.id } : {}),
+      })
       .select(COLUNAS_MENSAGEM)
       .single();
     setEnviando(false);
@@ -799,11 +872,15 @@ function ChatInternoPage() {
     }
     setTexto("");
     setArquivo(null);
+    if (respondendo) {
+      setCitadas((prev) => ({ ...prev, [respondendo.id]: respondendo }));
+      setRespondendo(null);
+    }
     if (inputArquivoRef.current) inputArquivoRef.current.value = "";
     const nova = inserida as Mensagem;
     setMensagens((prev) => (prev.some((m) => m.id === nova.id) ? prev : [...prev, nova]));
     void marcarLido(canalId);
-  }, [euId, canalId, enviando, texto, arquivo, marcarLido]);
+  }, [euId, canalId, enviando, texto, arquivo, marcarLido, respondendo]);
 
   return (
     <div className="flex h-[calc(100dvh-8rem)] min-h-[520px] flex-col gap-3 p-4 md:p-6">
@@ -1005,22 +1082,62 @@ function ChatInternoPage() {
                 Nenhuma mensagem aqui ainda. Comece a conversa.
               </p>
             )}
-            {mensagens.map((m) => {
+            {mensagens.map((m, idx) => {
               const minha = m.autor_user_id === euId;
+              const separador = precisaSeparadorData(m.criado_em, mensagens[idx - 1]?.criado_em);
+              const temCitacao = Object.prototype.hasOwnProperty.call(m, "respondendo_a")
+                ? m.respondendo_a !== null
+                : false;
+              const citada = m.respondendo_a
+                ? (mensagensPorId.get(m.respondendo_a) ?? citadas[m.respondendo_a] ?? null)
+                : null;
               return (
-                <div key={m.id} className={cn("flex", minha ? "justify-end" : "justify-start")}>
+                <div key={m.id}>
+                  {separador && (
+                    <div className="flex justify-center py-1">
+                      <span className="rounded-full bg-muted px-2.5 py-0.5 text-[11px] text-muted-foreground">
+                        {rotuloDia(m.criado_em)}
+                      </span>
+                    </div>
+                  )}
+                  <div
+                    id={`chat-msg-${m.id}`}
+                    className={cn(
+                      "group flex items-center gap-1",
+                      minha ? "flex-row-reverse" : "flex-row",
+                    )}
+                  >
                   <div
                     className={cn(
-                      "min-w-0 max-w-[78%] rounded-2xl px-3 py-2 text-sm shadow-sm",
+                      "min-w-0 max-w-[78%] rounded-2xl px-3 py-2 text-sm shadow-sm transition-shadow",
                       minha
                         ? "rounded-br-sm bg-primary text-primary-foreground"
                         : "rounded-bl-sm bg-muted text-foreground",
+                      destaque === m.id && "ring-2 ring-ring ring-offset-2",
                     )}
                   >
                     {!minha && selecionado?.tipo !== "direto" && (
                       <div className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide opacity-70">
                         {primeiroNome(nomePorId.get(m.autor_user_id) ?? null)}
                       </div>
+                    )}
+                    {temCitacao && (
+                      <button
+                        type="button"
+                        onClick={() => m.respondendo_a && irParaMensagem(m.respondendo_a)}
+                        className="mb-1 block w-full rounded-md border-l-2 border-current bg-background/20 px-2 py-1 text-left text-xs opacity-90"
+                      >
+                        {citada ? (
+                          <>
+                            <span className="block font-semibold">
+                              {primeiroNome(nomePorId.get(citada.autor_user_id) ?? null)}
+                            </span>
+                            <span className="line-clamp-2 break-words">{trechoCitado(citada)}</span>
+                          </>
+                        ) : (
+                          <span className="italic">Mensagem indisponível</span>
+                        )}
+                      </button>
                     )}
                     {m.conteudo.trim() && (
                       <div className="whitespace-pre-wrap break-words">
@@ -1046,12 +1163,44 @@ function ChatInternoPage() {
                       {horario(m.criado_em)}
                     </div>
                   </div>
+                  <button
+                    type="button"
+                    aria-label="Responder"
+                    title="Responder"
+                    onClick={() => setRespondendo(m)}
+                    className="shrink-0 rounded-full p-1 text-muted-foreground opacity-60 hover:bg-muted hover:text-foreground focus:opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                  >
+                    <Reply className="h-3.5 w-3.5" />
+                  </button>
+                  </div>
                 </div>
               );
             })}
           </div>
 
           <div className="border-t p-3">
+            {respondendo && (
+              <div className="mb-2 flex items-start gap-2 rounded-md border-l-2 border-primary bg-muted/50 px-2 py-1.5 text-xs">
+                <Reply className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                <div className="min-w-0 flex-1">
+                  <div className="font-semibold">
+                    {respondendo.autor_user_id === euId
+                      ? "Você"
+                      : primeiroNome(nomePorId.get(respondendo.autor_user_id) ?? null)}
+                  </div>
+                  <div className="truncate text-muted-foreground">{trechoCitado(respondendo)}</div>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Cancelar resposta"
+                  disabled={enviando}
+                  onClick={() => setRespondendo(null)}
+                  className="text-muted-foreground hover:text-foreground disabled:opacity-50"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
             {arquivo && (
               <div className="mb-2 space-y-1.5 rounded-md border bg-muted/50 p-2">
                 <div className="flex items-center gap-2 text-xs">
