@@ -5,6 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import {
   AlertTriangle,
+  ArrowLeft,
   FileText,
   Loader2,
   MessagesSquare,
@@ -270,7 +271,14 @@ type Resultado = Mensagem & { canalTitulo: string };
  * uma só para ler. Nada de escrever, responder ou marcar como lida — o banco
  * também recusa quem não é o usuário supervisor.
  */
-function PainelSupervisao() {
+function PainelSupervisao({
+  oculto = false,
+  onVoltar,
+}: {
+  /** No celular, esconde o painel quando a lista principal está à vista. */
+  oculto?: boolean;
+  onVoltar?: () => void;
+}) {
   const listar = useServerFn(listarConversasSupervisao);
   const buscarMensagens = useServerFn(mensagensSupervisao);
 
@@ -338,9 +346,29 @@ function PainelSupervisao() {
   }
 
   return (
-    <section className="grid min-h-0 grid-cols-1 gap-3 rounded-lg md:grid-cols-[260px_1fr]">
-      <div className="min-h-0 overflow-y-auto rounded-lg border bg-card">
-        <header className="border-b px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+    <section
+      className={cn(
+        "grid min-h-0 grid-cols-1 gap-3 rounded-lg md:grid-cols-[260px_1fr]",
+        oculto && "hidden md:grid",
+      )}
+    >
+      <div
+        className={cn(
+          "min-h-0 overflow-y-auto rounded-lg border bg-card",
+          aberta && "hidden md:block",
+        )}
+      >
+        <header className="flex items-center gap-1 border-b px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          {onVoltar && (
+            <button
+              type="button"
+              onClick={onVoltar}
+              aria-label="Voltar para a lista"
+              className="-ml-1 rounded p-1 hover:bg-muted md:hidden"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </button>
+          )}
           Conversas do time
         </header>
         {isLoading && (
@@ -378,9 +406,19 @@ function PainelSupervisao() {
         ))}
       </div>
 
-      <div className="flex min-h-0 flex-col rounded-lg border bg-card">
+      <div
+        className={cn("flex min-h-0 flex-col rounded-lg border bg-card", !aberta && "hidden md:flex")}
+      >
         <header className="flex items-center justify-between gap-2 border-b px-4 py-2 text-sm font-medium">
-          <span className="truncate">
+          <button
+            type="button"
+            onClick={() => setAberta(null)}
+            aria-label="Voltar para as conversas do time"
+            className="-ml-2 shrink-0 rounded p-1 hover:bg-muted md:hidden"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <span className="min-w-0 flex-1 truncate md:flex-none">
             {aberta ? tituloConversaSupervisao(aberta) : "Selecione uma conversa"}
           </span>
           <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
@@ -409,7 +447,7 @@ function PainelSupervisao() {
           )}
           {!carregando && !aberta && (
             <p className="text-sm text-muted-foreground">
-              Escolha uma conversa à esquerda para acompanhar o que foi conversado.
+              Escolha uma conversa para acompanhar o que foi conversado.
             </p>
           )}
           {!carregando && aberta && mensagens.length === 0 && (
@@ -453,6 +491,38 @@ function PainelSupervisao() {
   );
 }
 
+/**
+ * Celular: altura = área realmente visível (desconta teclado e barra do
+ * navegador) menos o que fica acima do chat. Desktop: `null`, mantém a classe.
+ */
+function useAlturaVisivelMobile(ref: React.RefObject<HTMLDivElement | null>) {
+  const [altura, setAltura] = useState<number | null>(null);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const vv = window.visualViewport;
+    const calc = () => {
+      const el = ref.current;
+      if (!el || !mq.matches) {
+        setAltura(null);
+        return;
+      }
+      const topoDoc = el.getBoundingClientRect().top + window.scrollY;
+      const visivel = vv?.height ?? window.innerHeight;
+      setAltura(Math.max(240, Math.floor(visivel - topoDoc)));
+    };
+    calc();
+    mq.addEventListener("change", calc);
+    vv?.addEventListener("resize", calc);
+    window.addEventListener("resize", calc);
+    return () => {
+      mq.removeEventListener("change", calc);
+      vv?.removeEventListener("resize", calc);
+      window.removeEventListener("resize", calc);
+    };
+  }, [ref]);
+  return altura;
+}
+
 function ChatInternoPage() {
   const { user } = useAuth();
   const euId = user?.id ?? null;
@@ -473,6 +543,11 @@ function ChatInternoPage() {
     titulo: string;
     tipo: ChatTipoCanal;
   } | null>(null);
+
+  // Celular: mostra OU a lista OU a conversa. No desktop é ignorado.
+  const [mobileNaConversa, setMobileNaConversa] = useState(false);
+  const raizRef = useRef<HTMLDivElement>(null);
+  const alturaMobile = useAlturaVisivelMobile(raizRef);
 
   // Abre por padrão a primeira conversa que já existe (Geral, quando a pessoa
   // é membro; senão a DM mais recente). Quem nunca conversou começa sem nada.
@@ -883,7 +958,11 @@ function ChatInternoPage() {
   }, [euId, canalId, enviando, texto, arquivo, marcarLido, respondendo]);
 
   return (
-    <div className="flex h-[calc(100dvh-8rem)] min-h-[520px] flex-col gap-3 p-4 md:p-6">
+    <div
+      ref={raizRef}
+      style={alturaMobile ? { height: alturaMobile } : undefined}
+      className="flex h-[calc(100dvh-8rem)] flex-col gap-3 p-4 md:min-h-[520px] md:p-6"
+    >
       <div className="flex items-center gap-2">
         <MessagesSquare className="h-5 w-5 text-primary" />
         <h1 className="text-xl font-semibold">Chat Interno</h1>
@@ -891,7 +970,12 @@ function ChatInternoPage() {
 
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 md:grid-cols-[280px_1fr]">
         {/* Lista */}
-        <aside className="min-h-0 overflow-y-auto rounded-lg border bg-card">
+        <aside
+          className={cn(
+            "min-h-0 overflow-y-auto rounded-lg border bg-card",
+            mobileNaConversa && "hidden md:block",
+          )}
+        >
           {isLoading && (
             <div className="flex items-center gap-2 p-4 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" /> Carregando conversas…
@@ -905,7 +989,10 @@ function ChatInternoPage() {
               <button
                 key={item.canalId ?? item.outroUserId ?? item.titulo}
                 type="button"
-                onClick={() => void abrir(item)}
+                onClick={() => {
+                  setMobileNaConversa(true);
+                  void abrir(item);
+                }}
                 className={cn(
                   "flex w-full items-center gap-2 border-b px-3 py-2 text-left transition-colors hover:bg-muted/60",
                   ativo && "bg-muted",
@@ -938,11 +1025,29 @@ function ChatInternoPage() {
         </aside>
 
         {/* Thread (ou acompanhamento, quando o item selecionado é o "Geral") */}
-        {modoSupervisao && <PainelSupervisao />}
+        {modoSupervisao && (
+          <PainelSupervisao
+            oculto={!mobileNaConversa}
+            onVoltar={() => setMobileNaConversa(false)}
+          />
+        )}
         {!modoSupervisao && (
-        <section className="flex min-h-0 flex-col rounded-lg border bg-card">
+        <section
+          className={cn(
+            "flex min-h-0 flex-col rounded-lg border bg-card",
+            !mobileNaConversa && "hidden md:flex",
+          )}
+        >
           <header className="flex items-center justify-between gap-2 border-b px-4 py-2 text-sm font-medium">
-            <span className="truncate">{selecionado?.titulo ?? "Selecione uma conversa"}</span>
+            <button
+              type="button"
+              onClick={() => setMobileNaConversa(false)}
+              aria-label="Voltar para a lista"
+              className="-ml-2 shrink-0 rounded p-1 hover:bg-muted md:hidden"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </button>
+            <span className="min-w-0 flex-1 truncate md:flex-none">{selecionado?.titulo ?? "Selecione uma conversa"}</span>
             <Button
               type="button"
               variant={buscaAberta ? "secondary" : "ghost"}
@@ -1178,7 +1283,7 @@ function ChatInternoPage() {
             })}
           </div>
 
-          <div className="border-t p-3">
+          <div className="border-t p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:pb-3">
             {respondendo && (
               <div className="mb-2 flex items-start gap-2 rounded-md border-l-2 border-primary bg-muted/50 px-2 py-1.5 text-xs">
                 <Reply className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
