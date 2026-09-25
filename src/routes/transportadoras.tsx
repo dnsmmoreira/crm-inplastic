@@ -218,22 +218,24 @@ function TransportadorasPage() {
 
   return (
     <div className="p-4 md:p-8 space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl md:text-2xl font-semibold flex items-center gap-2">
-            <Truck className="h-5 w-5 text-primary" /> Transportadoras
-          </h1>
-          <p className="text-sm text-muted-foreground">
+      <PaginaCabecalho
+        titulo="Transportadoras"
+        icone={<Truck className="h-5 w-5 text-primary" />}
+        descricao={
+          <>
             Cadastro das transportadoras que o vendedor pode escolher na proposta.{" "}
             <span className="font-medium text-foreground">{ativas}</span> de {rows.length} ativas.
-          </p>
-        </div>
-        {podeGerenciar && (
-          <Button size="sm" onClick={openNew}>
-            <Plus className="h-4 w-4 mr-2" /> Nova transportadora
-          </Button>
-        )}
-      </div>
+          </>
+        }
+        resumoMobile={`${ativas} de ${rows.length} ativas`}
+        acoes={
+          podeGerenciar ? (
+            <Button size="sm" className="h-10 md:h-8" onClick={openNew}>
+              <Plus className="h-4 w-4 mr-2" /> Nova transportadora
+            </Button>
+          ) : undefined
+        }
+      />
 
       {!podeGerenciar && (
         <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
