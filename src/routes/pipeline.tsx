@@ -135,6 +135,20 @@ function PipelinePage() {
   const reabrirPropostaFn = useServerFn(reabrirProposta);
 
   const leadById = useMemo(() => new Map(leads.map((l) => [l.id, l])), [leads]);
+  const listVendedoresFn = useServerFn(listVendedores);
+  const vendedoresQ = useQuery({
+    queryKey: ["leads", "vendedores"],
+    queryFn: () => listVendedoresFn(),
+    staleTime: 300_000,
+  });
+  const nomePorId = useMemo(() => {
+    const m = new Map<string, string>();
+    ((vendedoresQ.data ?? []) as Array<{ id: string; name: string }>).forEach((v) => m.set(v.id, v.name));
+    return m;
+  }, [vendedoresQ.data]);
+  // Celular: uma etapa por vez. null = primeira etapa com cartões.
+  const [etapaMobile, setEtapaMobile] = useState<StageId | null>(null);
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
 
   /** Leads que já têm ao menos uma proposta fora de rascunho saem das colunas de lead. */
   const leadsComProposta = useMemo(
@@ -354,6 +368,29 @@ function PipelinePage() {
   };
 
 
+  const etapasVisiveis = BOARD_STAGES.filter((s) => s.id !== "perdido" || mostrarPerdidos);
+  const contagemEtapa = (id: StageId): number =>
+    id === "ganho"
+      ? mostrarGanhosCompletos ? propostasGanhas.length : 0
+      : id === "proposta"
+        ? propostasEnviadas.length
+        : byStage[id].length + (id === "perdido" ? propostasRecusadas.length : 0);
+  const etapaSelecionada: StageId =
+    etapaMobile && etapasVisiveis.some((s) => s.id === etapaMobile)
+      ? etapaMobile
+      : (etapasVisiveis.find((s) => contagemEtapa(s.id) > 0) ?? etapasVisiveis[0])!.id;
+  const filtroAtivo = agendaFilter.size > 0 || mostrarGanhosCompletos || mostrarPerdidos || sortMode !== "default";
+
+  /** Celular: "Mover para…" — mesmos guardas do onDragEnd para leads. */
+  const moverPeloMenu = (lead: Lead, stage: StageId) => {
+    if (lead.stage === stage) return;
+    if (PROPOSAL_STAGES.includes(stage)) {
+      toast.info("Crie e envie uma proposta para o lead avançar no funil.");
+      return;
+    }
+    runMove(lead.id, stage, lead.company);
+  };
+
   const bulkLabels = useMemo(
     () =>
       Array.from(selected)
@@ -404,40 +441,9 @@ function PipelinePage() {
     exitSelection();
   };
 
-  return (
-    <div className="flex flex-col gap-4 p-4 md:h-dvh md:overflow-hidden md:p-8">
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
-
-        <div>
-          <h1 className="text-2xl md:text-3xl font-semibold">Funil de Vendas</h1>
-          <p className="text-sm text-muted-foreground">Arraste os cards entre as etapas do processo consultivo</p>
-        </div>
-        <div className="flex gap-2 w-full sm:w-auto">
-          <div className="relative flex-1 sm:flex-none">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 sm:w-64"
-            />
-          </div>
-          {isAdmin && (
-            <Button
-              variant={selectMode ? "secondary" : "outline"}
-              className="gap-2"
-              onClick={() => (selectMode ? exitSelection() : setSelectMode(true))}
-            >
-              <CheckSquare className="h-4 w-4" />
-              {selectMode ? "Sair da seleção" : "Selecionar"}
-            </Button>
-          )}
-          <NewLeadDialog trigger={<Button className="gap-2"><Plus className="h-4 w-4" />Novo</Button>} />
-        </div>
-      </div>
-
-      <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-2">
-        <span className="text-xs font-medium text-muted-foreground px-2">Agenda:</span>
+  // Mesmos controles no bloco do desktop e na gaveta "Filtros" do celular.
+  const controlesAgenda = (
+    <>
         {AGENDA_FILTERS.map((f) => {
           const active = agendaFilter.has(f.level);
           return (
@@ -463,7 +469,10 @@ function PipelinePage() {
             <X className="h-3 w-3" /> Limpar
           </Button>
         )}
-        <div className="ml-auto flex items-center gap-2">
+    </>
+  );
+  const controlesExtras = (
+    <>
           <Toggle
             pressed={mostrarGanhosCompletos}
             onPressedChange={setMostrarGanhosCompletos}
@@ -499,7 +508,86 @@ function PipelinePage() {
               <SelectItem value="urgency-desc">Menos urgente primeiro</SelectItem>
             </SelectContent>
           </Select>
+    </>
+  );
+
+  return (
+    <div className="flex flex-col gap-4 p-4 md:h-dvh md:overflow-hidden md:p-8">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
+
+        <div>
+          <h1 className="text-xl md:text-3xl font-semibold">Funil de Vendas</h1>
+          <p className="hidden text-sm text-muted-foreground md:block">Arraste os cards entre as etapas do processo consultivo</p>
+          <p className="text-sm text-muted-foreground md:hidden">Toque numa etapa para ver os leads</p>
         </div>
+        <div className="flex gap-2 w-full sm:w-auto">
+          <div className="relative flex-1 sm:flex-none">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9 sm:w-64"
+            />
+          </div>
+          {isAdmin && (
+            <Button
+              variant={selectMode ? "secondary" : "outline"}
+              className="gap-2"
+              onClick={() => (selectMode ? exitSelection() : setSelectMode(true))}
+            >
+              <CheckSquare className="h-4 w-4" />
+              {selectMode ? "Sair da seleção" : "Selecionar"}
+            </Button>
+          )}
+          <Sheet open={filtrosAbertos} onOpenChange={setFiltrosAbertos}>
+            <SheetTrigger asChild>
+              <Button variant="outline" className="relative gap-2 md:hidden">
+                <SlidersHorizontal className="h-4 w-4" />
+                Filtros
+                {filtroAtivo && (
+                  <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-primary" aria-label="Há filtros ativos" />
+                )}
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-[85vw] max-w-sm overflow-y-auto">
+              <SheetHeader>
+                <SheetTitle>Filtros</SheetTitle>
+              </SheetHeader>
+              <div className="mt-4 flex flex-col items-start gap-3">
+                <span className="text-xs font-medium text-muted-foreground">Agenda:</span>
+                <div className="flex flex-wrap gap-2">{controlesAgenda}</div>
+                {controlesExtras}
+              </div>
+            </SheetContent>
+          </Sheet>
+          <NewLeadDialog trigger={<Button className="gap-2"><Plus className="h-4 w-4" />Novo</Button>} />
+        </div>
+      </div>
+
+      <div className="hidden shrink-0 flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-2 md:flex">
+        <span className="text-xs font-medium text-muted-foreground px-2">Agenda:</span>
+        {controlesAgenda}
+        <div className="ml-auto flex items-center gap-2">
+          {controlesExtras}
+        </div>
+      </div>
+
+      {/* Celular: seletor de etapa (única coisa que rola de lado) */}
+      <div className="-mx-4 flex shrink-0 gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:hidden">
+        {etapasVisiveis.map((s) => (
+          <button
+            key={s.id}
+            type="button"
+            onClick={() => setEtapaMobile(s.id)}
+            className={cn(
+              "shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-medium",
+              etapaSelecionada === s.id ? "bg-primary text-primary-foreground" : "border bg-background",
+            )}
+          >
+            {s.label} <span className="opacity-70">{contagemEtapa(s.id)}</span>
+          </button>
+        ))}
       </div>
 
       <DndContext
@@ -509,7 +597,7 @@ function PipelinePage() {
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
       >
-        <div className="-mx-4 min-h-0 flex-1 overflow-auto md:overflow-y-hidden scrollbar-visible px-4 md:-mx-8 md:px-8">
+        <div className="-mx-4 min-h-0 flex-1 overflow-y-auto md:overflow-auto md:overflow-y-hidden scrollbar-visible px-4 md:-mx-8 md:px-8">
           <div className="flex gap-4 pb-4 md:h-full">
 
             {BOARD_STAGES.map((stage) =>
@@ -528,6 +616,7 @@ function PipelinePage() {
                   leadById={leadById}
                   onOpen={(id) => navigate({ to: "/propostas/$id", params: { id } })}
                   onToggleNegociacao={(p) => updateProposal(p.id, { emNegociacao: !p.emNegociacao })}
+                  ocultaNoCelular={stage.id !== etapaSelecionada}
                 />
               ) : (
                 <Column
@@ -543,6 +632,9 @@ function PipelinePage() {
                   onToggleSelect={toggleSelected}
                   onSelectMany={selectMany}
                   onTransferir={(id) => setTransferirIds([id])}
+                  onMover={moverPeloMenu}
+                  nomePorId={nomePorId}
+                  ocultaNoCelular={stage.id !== etapaSelecionada}
                 />
               ),
             )}
