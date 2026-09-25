@@ -64,6 +64,26 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { MoreVertical } from "lucide-react";
+import { PaginaCabecalho } from "@/components/layout/PaginaCabecalho";
+import { LinhaLista, TabelaResponsiva, juntarCampos } from "@/components/layout/ListaResponsiva";
+
+/** Botão de abrir (só ícone) usado nas linhas do celular. */
+function AbrirIcone(props: React.ComponentProps<typeof Link>) {
+  return (
+    <Link {...props}>
+      <Button variant="ghost" size="icon" className="h-10 w-10 -mr-2" aria-label="Abrir">
+        <ExternalLink className="h-4 w-4" />
+      </Button>
+    </Link>
+  );
+}
 
 export const Route = createFileRoute("/pendencias")({
   head: () => ({
@@ -383,20 +403,16 @@ function PendenciasPage() {
   }
 
   return (
-    <div className="space-y-6 p-4 md:p-8">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-semibold md:text-3xl">
-            <ListChecks className="h-6 w-6 text-primary" /> Pendências de cadastro
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Corrija o que falta na própria linha — a lista se atualiza sozinha.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
+    <div className="space-y-4 p-4 md:space-y-6 md:p-8">
+      <PaginaCabecalho
+        titulo="Pendências de cadastro"
+        icone={<ListChecks className="h-6 w-6 text-primary" />}
+        descricao="Corrija o que falta na própria linha — a lista se atualiza sozinha."
+        acoes={
+        <div className="flex w-full flex-wrap items-center gap-2 md:w-auto">
           {isAdmin && (
             <Select value={vendedor} onValueChange={setVendedor}>
-              <SelectTrigger className="h-9 w-56">
+              <SelectTrigger className="h-10 min-w-0 flex-1 md:h-9 md:w-56 md:flex-none">
                 <SelectValue placeholder="Filtrar por vendedor" />
               </SelectTrigger>
               <SelectContent>
@@ -412,11 +428,12 @@ function PendenciasPage() {
               </SelectContent>
             </Select>
           )}
-          <Button variant="outline" size="sm" className="gap-1" disabled={isFetching} onClick={() => void refetch()}>
+          <Button variant="outline" size="sm" className="h-10 gap-1 md:h-8" disabled={isFetching} onClick={() => void refetch()}>
             <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} /> Atualizar
           </Button>
         </div>
-      </div>
+        }
+      />
 
       {isError && (
         <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
@@ -462,6 +479,36 @@ function PendenciasPage() {
         vazio={leads.length === 0}
       >
         <BuscaInput value={qLeads} onChange={setQLeads} placeholder="Buscar empresa, contato..." />
+        <TabelaResponsiva
+          mobile={leads.map((l) => {
+            const valor = rascunho(`lead-doc-${l.id}`);
+            return (
+              <LinhaLista
+                key={l.id}
+                titulo={displayValue(l.company, "Lead sem empresa")}
+                subtitulo={juntarCampos(l.contact_name, l.stage, l.owner, `${l.dias_parado} dias parado`)}
+                acoes={<AbrirIcone to="/leads" search={{ lead: l.id }} />}
+                abaixo={
+                  <div className="w-full [&>div]:w-full">
+                    <CampoInline
+                      value={valor}
+                      onChange={(v) => setRascunho(`lead-doc-${l.id}`, mascararDocumento(v))}
+                      placeholder="CNPJ ou CPF"
+                      valido={!!documentoValidoCompleto(valor)}
+                      salvando={salvandoId === l.id}
+                      className="h-10 min-w-0 flex-1"
+                      onSave={() =>
+                        void corrigir(l.id, () =>
+                          salvarDocumento({ data: { lead_id: l.id, documento: valor } }),
+                        )
+                      }
+                    />
+                  </div>
+                }
+              />
+            );
+          })}
+        >
         <Table>
           <TableHeader>
             <TableRow>
@@ -513,6 +560,7 @@ function PendenciasPage() {
             })}
           </TableBody>
         </Table>
+        </TabelaResponsiva>
       </Secao>
 
       {/* --------------------- leads com produto fora do catálogo -------------- */}
@@ -528,6 +576,43 @@ function PendenciasPage() {
           onChange={setQLeadsProduto}
           placeholder="Buscar empresa, produto..."
         />
+        <TabelaResponsiva
+          mobile={leadsProduto.map((l) => (
+            <LinhaLista
+              key={l.id}
+              titulo={displayValue(l.company, "Lead sem empresa")}
+              subtitulo={juntarCampos(l.product, l.owner)}
+              acoes={<AbrirIcone to="/leads" search={{ lead: l.id }} />}
+              abaixo={
+                <Select
+                  disabled={salvandoId === l.id}
+                  value={rascunho(`lead-prod-${l.id}`)}
+                  onValueChange={(v) => {
+                    setRascunho(`lead-prod-${l.id}`, v);
+                    const f = familias.find((x) => x.representanteId === v);
+                    if (!f) return;
+                    void corrigir(l.id, () =>
+                      salvarProdutoLead({
+                        data: { lead_id: l.id, product_id: f.representanteId, product: f.rotulo },
+                      }),
+                    );
+                  }}
+                >
+                  <SelectTrigger className="h-10 w-full">
+                    <SelectValue placeholder="Selecione o modelo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {familias.map((f) => (
+                      <SelectItem key={f.representanteId} value={f.representanteId}>
+                        {f.rotulo}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              }
+            />
+          ))}
+        >
         <Table>
           <TableHeader>
             <TableRow>
@@ -582,6 +667,7 @@ function PendenciasPage() {
             ))}
           </TableBody>
         </Table>
+        </TabelaResponsiva>
       </Secao>
 
       {/* ------------------------- produtos sem peso --------------------------- */}
@@ -598,6 +684,42 @@ function PendenciasPage() {
             onChange={setQProdutos}
             placeholder="Buscar SKU ou nome..."
           />
+          <TabelaResponsiva
+            mobile={produtos.map((p) => {
+              const valor = rascunho(`peso-${p.id}`);
+              return (
+                <LinhaLista
+                  key={p.id}
+                  titulo={p.name}
+                  subtitulo={juntarCampos(p.sku, p.faltando.length ? `falta ${p.faltando.join(", ")}` : null)}
+                  acoes={<AbrirIcone to="/produtos" search={{ editar: p.id }} />}
+                  abaixo={
+                    <div className="w-full [&>div]:w-full">
+                      <CampoInline
+                        value={valor}
+                        type="number"
+                        placeholder="Peso (kg)"
+                        className="h-10 min-w-0 flex-1"
+                        valido={pesoValido(valor)}
+                        salvando={salvandoId === p.id}
+                        onChange={(v) => setRascunho(`peso-${p.id}`, v)}
+                        onSave={() =>
+                          void corrigir(p.id, () =>
+                            salvarPeso({
+                              data: {
+                                produto_id: p.id,
+                                peso_kg: Number(valor.replace(",", ".")),
+                              },
+                            }),
+                          )
+                        }
+                      />
+                    </div>
+                  }
+                />
+              );
+            })}
+          >
           <Table>
             <TableHeader>
               <TableRow>
@@ -655,6 +777,7 @@ function PendenciasPage() {
               })}
             </TableBody>
           </Table>
+          </TabelaResponsiva>
         </Secao>
       )}
 
@@ -671,6 +794,49 @@ function PendenciasPage() {
           onChange={setQClientes}
           placeholder="Buscar razão social ou CNPJ..."
         />
+        <TabelaResponsiva
+          mobile={clientes.map((c) => {
+            const valor = rascunho(`email-${c.id}`);
+            return (
+              <LinhaLista
+                key={c.id}
+                titulo={displayValue(c.razao_social, "Cliente sem nome")}
+                subtitulo={juntarCampos(c.cnpj, c.vendedor)}
+                acoes={<AbrirIcone to="/clientes/$id" params={{ id: c.id }} />}
+                abaixo={
+                  <div className="w-full [&>div]:w-full">
+                    <CampoInline
+                      value={valor}
+                      type="email"
+                      className="h-10 min-w-0 flex-1"
+                      placeholder={c.email_sugerido ?? "nf@empresa.com.br"}
+                      valido={emailValido(valor)}
+                      salvando={salvandoId === c.id}
+                      onChange={(v) => setRascunho(`email-${c.id}`, v)}
+                      extra={
+                        c.email_sugerido ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-10 whitespace-nowrap"
+                            onClick={() => setRascunho(`email-${c.id}`, c.email_sugerido ?? "")}
+                          >
+                            Usar este
+                          </Button>
+                        ) : null
+                      }
+                      onSave={() =>
+                        void corrigir(c.id, () =>
+                          salvarEmailNf({ data: { cliente_id: c.id, email_nf: valor } }),
+                        )
+                      }
+                    />
+                  </div>
+                }
+              />
+            );
+          })}
+        >
         <Table>
           <TableHeader>
             <TableRow>
@@ -729,6 +895,7 @@ function PendenciasPage() {
             })}
           </TableBody>
         </Table>
+        </TabelaResponsiva>
       </Secao>
 
       {/* --------------------------- rascunhos parados ------------------------- */}
@@ -744,6 +911,44 @@ function PendenciasPage() {
           onChange={setQPropostas}
           placeholder="Buscar número ou cliente..."
         />
+        <TabelaResponsiva
+          mobile={propostas.map((p) => (
+            <LinhaLista
+              key={p.id}
+              titulo={displayValue(p.cliente, p.number)}
+              subtitulo={juntarCampos(p.number, p.owner, `${p.dias_parada} dias parada`)}
+              valor={formatBRL(p.total)}
+              acoes={
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-10 w-10 -mr-2" aria-label="Ações">
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem asChild>
+                      <Link to="/propostas/$id" params={{ id: p.id }}>
+                        <ExternalLink className="mr-2 h-4 w-4" /> Abrir
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive"
+                      disabled={salvandoId === p.id}
+                      onSelect={() => {
+                        if (!confirm(`Excluir o rascunho ${p.number}?`)) return;
+                        void corrigir(p.id, () =>
+                          excluirRascunho({ data: { proposta_id: p.id } }),
+                        );
+                      }}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" /> Excluir rascunho
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              }
+            />
+          ))}
+        >
         <Table>
           <TableHeader>
             <TableRow>
@@ -795,6 +1000,7 @@ function PendenciasPage() {
             ))}
           </TableBody>
         </Table>
+        </TabelaResponsiva>
       </Secao>
 
       {/* --------------------- pós-venda sem comprovação ----------------------- */}
@@ -828,6 +1034,43 @@ function PendenciasPage() {
           onChange={setQEntregas}
           placeholder="Buscar pedido, cliente ou responsável..."
         />
+        <TabelaResponsiva
+          mobile={entregas.map((p) => (
+            <LinhaLista
+              key={p.id}
+              titulo={juntarCampos(p.number, p.cliente)}
+              subtitulo={juntarCampos(p.responsavel, `${p.dias_em_pos_venda} dias em pós-venda`)}
+              abaixo={p.legado ? <Badge variant="outline" className="text-[10px]">legado</Badge> : undefined}
+              acoes={
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-10 w-10 -mr-2" aria-label="Ações">
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem asChild>
+                      <Link to="/pedidos" search={{ pedido: p.id }}>
+                        <ExternalLink className="mr-2 h-4 w-4" /> Abrir pedido
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      disabled={salvandoId === p.id}
+                      onSelect={() => {
+                        setDispensaAlvo({ id: p.id, number: p.number });
+                        setDispensaMotivo(
+                          p.legado ? "Pedido anterior à comprovação de entrega (legado)" : "",
+                        );
+                      }}
+                    >
+                      <ShieldOff className="mr-2 h-4 w-4" /> Dispensar
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              }
+            />
+          ))}
+        >
         <Table>
           <TableHeader>
             <TableRow>
@@ -879,6 +1122,7 @@ function PendenciasPage() {
             ))}
           </TableBody>
         </Table>
+        </TabelaResponsiva>
       </Secao>
 
       <Dialog
