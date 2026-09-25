@@ -69,6 +69,25 @@ export async function usuariosComPermissao(sb: SB, chave: string): Promise<strin
 }
 
 /**
+ * Destinatários dos ALERTAS DE GESTÃO.
+ *
+ * É a lista de quem tem `usuarios.gerenciar` MENOS quem pediu para não receber
+ * (profiles.recebe_alertas_gestao = false). A permissão continua valendo — o que
+ * muda é só o recebimento do aviso.
+ */
+export async function gestoresParaAlertas(sb: SB): Promise<string[]> {
+  const ids = await usuariosComPermissao(sb, "usuarios.gerenciar");
+  if (ids.length === 0) return [];
+  const { data } = await sb
+    .from("profiles")
+    .select("id")
+    .in("id", ids)
+    .eq("recebe_alertas_gestao", false);
+  const silenciados = new Set(((data ?? []) as Array<{ id: string }>).map((r) => r.id));
+  return ids.filter((id) => !silenciados.has(id));
+}
+
+/**
  * Quem responde pela APROVAÇÃO FINANCEIRA = chave `pedidos.aprovar_financeiro`.
  * Não usa `pedidos.movimentar`: essa chave é de quem OPERA o pedido (produção,
  * coleta, entrega) e inclui gente que não responde pela liberação financeira.

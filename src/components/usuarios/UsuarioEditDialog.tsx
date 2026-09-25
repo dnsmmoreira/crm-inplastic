@@ -135,6 +135,7 @@ export function UsuarioEditDialog({
   const [avatarColor, setAvatarColor] = useState("#64748b");
   const [role, setRole] = useState<"admin" | "vendedor">("vendedor");
   const [ativo, setAtivo] = useState(true);
+  const [recebeAlertas, setRecebeAlertas] = useState(true);
   const [meta, setMeta] = useState("0");
   const [metaInicial, setMetaInicial] = useState("0");
   const [metaMotivo, setMetaMotivo] = useState("");
@@ -170,6 +171,7 @@ export function UsuarioEditDialog({
     setAvatarColor(usuario.avatarColor);
     setRole(usuario.role);
     setAtivo(usuario.ativo);
+    setRecebeAlertas(usuario.recebeAlertasGestao);
     setMeta(String(usuario.metaMensal ?? 0));
     setMetaInicial(String(usuario.metaMensal ?? 0));
     setMetaMotivo("");
@@ -285,7 +287,7 @@ export function UsuarioEditDialog({
             fusoHorario: fuso,
             avatarColor,
           },
-          acesso: { ativo },
+          acesso: { ativo, recebeAlertasGestao: recebeAlertas },
           vendas: {
             metaMensal: Number(meta) || 0,
             metaMotivo: metaMotivo.trim() || undefined,
@@ -549,6 +551,16 @@ export function UsuarioEditDialog({
                 <p className="text-xs text-muted-foreground">Inativo bloqueia o login sem apagar o histórico.</p>
               </div>
               <Switch checked={ativo} disabled={isSelf} onCheckedChange={setAtivo} />
+            </div>
+
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div>
+                <div className="text-sm font-medium">Receber alertas de gestão</div>
+                <p className="text-xs text-muted-foreground">
+                  Desligado, a pessoa continua podendo gerenciar usuários, mas não recebe os avisos do Xerife e de pedidos.
+                </p>
+              </div>
+              <Switch checked={recebeAlertas} onCheckedChange={setRecebeAlertas} />
             </div>
 
             <div className="flex items-center justify-between rounded-lg border p-3">

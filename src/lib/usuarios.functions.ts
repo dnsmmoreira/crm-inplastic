@@ -52,6 +52,7 @@ export type UsuarioRow = {
   limiteLeads: number | null;
   canaisEntrada: string[];
   senhaResetExigido: boolean;
+  recebeAlertasGestao: boolean;
   createdAt: string;
   ultimoAcesso: string | null;
   role: AppRoleName;
@@ -234,6 +235,7 @@ export const listUsuarios = createServerFn({ method: "POST" })
           limiteLeads: p.limite_leads_simultaneos ?? null,
           canaisEntrada: (p.canais_entrada ?? []) as string[],
           senhaResetExigido: !!p.senha_reset_exigido,
+          recebeAlertasGestao: p.recebe_alertas_gestao !== false,
           createdAt: p.created_at,
           ultimoAcesso: auth?.lastSignInAt ?? p.ultimo_acesso_em ?? null,
           role: roleByUser.get(p.id) ?? "vendedor",
@@ -337,6 +339,7 @@ const updateSchema = z.object({
   acesso: z
     .object({
       ativo: z.boolean(),
+      recebeAlertasGestao: z.boolean().optional(),
     })
     .optional(),
 
@@ -548,6 +551,22 @@ export const updateUsuario = createServerFn({ method: "POST" })
           novo: data.acesso.ativo ? "ativo" : "inativo",
         });
         if (!data.acesso.ativo) await revokeSessions(sb, data.userId);
+      }
+      const recebeAtual = profile.recebe_alertas_gestao !== false;
+      if (
+        typeof data.acesso.recebeAlertasGestao === "boolean" &&
+        data.acesso.recebeAlertasGestao !== recebeAtual
+      ) {
+        const { error } = await sb
+          .from("profiles")
+          .update({ recebe_alertas_gestao: data.acesso.recebeAlertasGestao })
+          .eq("id", data.userId);
+        if (error) throw new Error(error.message);
+        audit.push({
+          campo: "recebe_alertas_gestao",
+          anterior: recebeAtual,
+          novo: data.acesso.recebeAlertasGestao,
+        });
       }
     }
 

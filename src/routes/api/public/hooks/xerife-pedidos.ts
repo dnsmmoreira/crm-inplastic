@@ -47,7 +47,7 @@ import {
   deveEscalarFinanceiro,
   ESCALONAMENTO_FINANCEIRO_REPETE_HORAS,
 } from "@/lib/xerife/escalonamento-financeiro";
-import { usuariosComPermissao } from "@/lib/pedidos-fluxo.server";
+import { gestoresParaAlertas } from "@/lib/pedidos-fluxo.server";
 import { assertNoError, registrarFalhaSegura } from "@/lib/guard-erros";
 
 type SB = SupabaseClient<any, any, any>;
@@ -709,7 +709,7 @@ async function runXerifePedidos(
 
     let admins: string[] | null = null;
     const getAdmins = async (): Promise<string[]> =>
-      (admins ??= await usuariosComPermissao(sb, "usuarios.gerenciar"));
+      (admins ??= await gestoresParaAlertas(sb));
 
     const gestorCache = new Map<string, string | null>();
     async function gestorDe(userId: string | null): Promise<string | null> {
@@ -1015,7 +1015,7 @@ async function runXerifePedidos(
       });
       const titulo = `Pedido ${p.number} parado em análise financeira há ${decisao.horasParado}h — ${cliente} — ${valor}`;
 
-      gestores ??= await usuariosComPermissao(sb, "usuarios.gerenciar");
+      gestores ??= await gestoresParaAlertas(sb);
 
       // Falha em um destinatário não pode impedir os outros nem derrubar o job:
       // cada inserção é isolada e apenas registrada.
