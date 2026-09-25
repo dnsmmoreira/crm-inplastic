@@ -79,6 +79,8 @@ import {
 } from "@/lib/pedidos.functions";
 import { PedidoDetailDrawer } from "@/components/pedidos/PedidoDetailDrawer";
 import { PaginaCabecalho } from "@/components/layout/PaginaCabecalho";
+import { FiltrosResponsivos } from "@/components/layout/FiltrosResponsivos";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { juntarCampos } from "@/components/layout/ListaResponsiva";
 import {
   DropdownMenu,
@@ -125,6 +127,7 @@ function PedidosKanbanPage() {
 
   const [search, setSearch] = useState("");
   const [etapaMobile, setEtapaMobile] = useState<PedidoStageId | null>(null);
+  const isMobile = useIsMobile();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [pendingBackward, setPendingBackward] = useState<PendingBackward | null>(null);
   const { pedido: pedidoDaUrl } = Route.useSearch();
@@ -384,6 +387,32 @@ function PedidosKanbanPage() {
   const etapaSelecionada: PedidoStageId =
     etapaMobile ?? (PEDIDO_STAGES.find((s) => byStage[s.id].length > 0) ?? PEDIDO_STAGES[0])!.id;
 
+  const filterBar = (
+    <FilterBar
+      options={options}
+      fVendedor={fVendedor}
+      setFVendedor={setFVendedor}
+      fResponsavel={fResponsavel}
+      setFResponsavel={setFResponsavel}
+      fStage={fStage}
+      setFStage={setFStage}
+      fForma={fForma}
+      setFForma={setFForma}
+      tAtrasados={tAtrasados}
+      setTAtrasados={setTAtrasados}
+      tBloqueados={tBloqueados}
+      setTBloqueados={setTBloqueados}
+      tOcorrencia={tOcorrencia}
+      setTOcorrencia={setTOcorrencia}
+      tReprovados={tReprovados}
+      setTReprovados={setTReprovados}
+      activeCount={activeFilterCount}
+      onClear={clearFilters}
+      totalCount={allRows.length}
+      filteredCount={filtered.length}
+    />
+  );
+
   return (
     <div className="p-4 md:p-8 space-y-4 md:h-dvh md:min-h-[720px] md:flex md:flex-col md:gap-6 md:space-y-0">
       <div className="shrink-0">
@@ -392,14 +421,19 @@ function PedidosKanbanPage() {
         descricao="Kanban operacional — avanços restritos por matriz; retornos exigem motivo. Faturamento é status, não etapa."
         resumoMobile="Toque numa etapa para ver os pedidos"
         acoes={
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por nº, cliente, proposta, NF..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
+        <div className="flex w-full gap-2 sm:w-72">
+          <div className="relative min-w-0 flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por nº, cliente, proposta, NF..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          {isMobile && (
+            <FiltrosResponsivos ativo={activeFilterCount > 0}>{filterBar}</FiltrosResponsivos>
+          )}
         </div>
         }
       />
@@ -409,33 +443,8 @@ function PedidosKanbanPage() {
         <KpiBar pedidos={filtered} />
       </div>
 
+      {!isMobile && <div className="shrink-0">{filterBar}</div>}
 
-      <div className="shrink-0">
-      <FilterBar
-
-        options={options}
-        fVendedor={fVendedor}
-        setFVendedor={setFVendedor}
-        fResponsavel={fResponsavel}
-        setFResponsavel={setFResponsavel}
-        fStage={fStage}
-        setFStage={setFStage}
-        fForma={fForma}
-        setFForma={setFForma}
-        tAtrasados={tAtrasados}
-        setTAtrasados={setTAtrasados}
-        tBloqueados={tBloqueados}
-        setTBloqueados={setTBloqueados}
-        tOcorrencia={tOcorrencia}
-        setTOcorrencia={setTOcorrencia}
-        tReprovados={tReprovados}
-        setTReprovados={setTReprovados}
-        activeCount={activeFilterCount}
-        onClear={clearFilters}
-        totalCount={allRows.length}
-        filteredCount={filtered.length}
-      />
-      </div>
 
       <div className="md:flex md:min-h-[360px] md:flex-1 md:flex-col">
       {pedidosQ.isLoading ? (
@@ -1220,13 +1229,16 @@ function KpiBar({ pedidos }: { pedidos: PedidoRow[] }) {
   };
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 xl:grid-cols-10 gap-2">
-      {cards.map((c) => {
+    <div className="grid grid-cols-3 md:grid-cols-5 xl:grid-cols-10 gap-2">
+      {cards.map((c, i) => {
         const Icon = c.icon;
         return (
           <div
             key={c.label}
-            className="rounded-lg border bg-card p-2.5 flex flex-col gap-1 min-w-0"
+            className={cn(
+              "rounded-lg border bg-card p-2.5 flex-col gap-1 min-w-0",
+              i < 3 ? "flex" : "hidden md:flex",
+            )}
           >
             <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-muted-foreground min-w-0">
               <Icon className={cn("h-3 w-3 shrink-0", toneClass[c.tone ?? "default"])} />
@@ -1300,7 +1312,7 @@ function FilterBar(props: FilterBarProps) {
   } = props;
 
   return (
-    <div className="rounded-xl border bg-card p-3 space-y-3">
+    <div className="w-full rounded-xl border bg-card p-3 space-y-3">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         <FilterSelect
           value={fVendedor}

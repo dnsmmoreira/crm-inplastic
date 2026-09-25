@@ -20,6 +20,7 @@ import {
   type PeriodoPropostas,
 } from "@/lib/relatorio-propostas.functions";
 import type { MotivoRecusaAgregado, ResumoPropostas } from "@/lib/relatorio-propostas";
+import { LinhaLista, TabelaResponsiva } from "@/components/layout/ListaResponsiva";
 
 const PERIODOS: { id: PeriodoPropostas; label: string }[] = [
   { id: "30", label: "Últimos 30 dias" },
@@ -244,6 +245,33 @@ export function PropostasReport() {
           </div>
 
           <div className="overflow-x-auto rounded-lg border bg-card">
+            <TabelaResponsiva
+              mobile={
+                vendedores.length === 0 ? (
+                  <p className="px-4 py-8 text-center text-sm text-muted-foreground">
+                    Nenhuma proposta no período.
+                  </p>
+                ) : (
+                  <div className="divide-y px-4">
+                    {vendedores.map((v) => (
+                      <LinhaLista
+                        key={v.owner_id}
+                        titulo={v.nome}
+                        subtitulo={`ticket médio ${formatBRL(v.resumo.ticket_medio)}`}
+                        valor={pct(v.resumo.conversao_pct)}
+                        legenda="conversão"
+                        abaixo={
+                          <span className="text-muted-foreground tabular-nums">
+                            {v.resumo.enviadas} enviadas · {v.resumo.viraram_pedido} pedidos ·{" "}
+                            {v.resumo.recusadas} recusadas · {v.resumo.em_aberto} em aberto
+                          </span>
+                        }
+                      />
+                    ))}
+                  </div>
+                )
+              }
+            >
             <table className="w-full text-sm">
               <thead className="bg-muted/50 text-left">
                 <tr className="border-b">
@@ -284,6 +312,7 @@ export function PropostasReport() {
                 )}
               </tbody>
             </table>
+            </TabelaResponsiva>
           </div>
         </>
       ) : null}

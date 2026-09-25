@@ -24,7 +24,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { STAGES, formatBRL, useVisibleLeads, type StageId, type Lead } from "@/lib/crm-store";
+import {
+  STAGES,
+  formatBRL,
+  leadTemperature,
+  useVisibleLeads,
+  type StageId,
+  type Lead,
+} from "@/lib/crm-store";
+import { PaginaCabecalho } from "@/components/layout/PaginaCabecalho";
+import { LinhaLista, VazioLista, juntarCampos } from "@/components/layout/ListaResponsiva";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { LeadDrawer } from "@/components/crm/LeadDrawer";
 import { listVendedores } from "@/lib/clientes.functions";
@@ -138,19 +147,15 @@ function LeadsPage() {
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="flex flex-col gap-4 p-4 md:p-8">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="flex items-center gap-2 text-2xl font-semibold md:text-3xl">
-              <Users className="h-6 w-6 text-muted-foreground" />
-              Leads
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Base de recontato — todos os leads, com filtro por etapa.
-            </p>
-          </div>
-          <div className="flex w-full gap-2 sm:w-auto">
-            <div className="relative flex-1 sm:flex-none">
+      <div className="flex flex-col space-y-4 p-4 md:space-y-6 md:p-8">
+        <PaginaCabecalho
+          titulo="Leads"
+          icone={<Users className="h-6 w-6 text-muted-foreground" />}
+          descricao="Base de recontato — todos os leads, com filtro por etapa."
+          resumoMobile={`${filtered.length} lead${filtered.length === 1 ? "" : "s"}`}
+          acoes={
+          <div className="flex w-full flex-col gap-2 sm:flex-row md:w-auto">
+            <div className="relative w-full sm:flex-1 md:flex-none">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Buscar empresa, contato ou produto..."
@@ -169,7 +174,7 @@ function LeadsPage() {
                 setPage(1);
               }}
             >
-              <SelectTrigger className="w-[200px]">
+              <SelectTrigger className="w-full sm:w-[200px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -182,10 +187,48 @@ function LeadsPage() {
               </SelectContent>
             </Select>
           </div>
-        </div>
+          }
+        />
 
         <Card>
-          <CardContent className="p-0">
+          <CardContent className="p-0 md:p-0">
+            <div className="px-4 md:hidden">
+              {rows.length === 0 ? (
+                <VazioLista
+                  icone={<Users />}
+                  titulo="Nenhum lead encontrado"
+                  dica={q || stage !== "all" ? "Tente limpar os filtros" : undefined}
+                />
+              ) : (
+                <div className="divide-y">
+                  {rows.map((l) => {
+                    const st = STAGES.find((s) => s.id === l.stage);
+                    const temp = leadTemperature(l);
+                    return (
+                      <LinhaLista
+                        key={l.id}
+                        titulo={l.company}
+                        subtitulo={juntarCampos(l.contactName, l.phone)}
+                        valor={formatBRL(l.estimatedValue)}
+                        onClick={() => setOpenLead(l.id)}
+                        abaixo={
+                          <>
+                            <Badge variant="outline" className="gap-1.5">
+                              <span className="stage-dot" style={{ background: st?.color }} />
+                              {st?.label ?? l.stage}
+                            </Badge>
+                            <Badge variant="outline" className={temp.className}>
+                              {temp.emoji} {temp.label}
+                            </Badge>
+                          </>
+                        }
+                      />
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            <div className="hidden overflow-x-auto md:block">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -286,6 +329,7 @@ function LeadsPage() {
                 )}
               </TableBody>
             </Table>
+            </div>
           </CardContent>
         </Card>
 

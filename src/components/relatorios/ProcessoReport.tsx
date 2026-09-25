@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatBRL } from "@/lib/crm-store";
 import { getRelatorioProcesso, type RelatorioProcesso } from "@/lib/relatorio-processo.functions";
 import type { ResumoDuracao } from "@/lib/relatorio-processo";
+import { LinhaLista, TabelaResponsiva, juntarCampos } from "@/components/layout/ListaResponsiva";
 
 const PERIODOS = [30, 90, 180] as const;
 
@@ -108,6 +109,32 @@ export function ProcessoReport() {
 
           {/* Tabela por vendedor */}
           <div className="rounded-lg border bg-card overflow-x-auto">
+            <TabelaResponsiva
+              mobile={
+                d.por_vendedor.length === 0 ? (
+                  <p className="px-4 py-8 text-center text-sm text-muted-foreground">
+                    Nenhum movimento no período — nada a mostrar ainda.
+                  </p>
+                ) : (
+                  <div className="divide-y px-4">
+                    {d.por_vendedor.map((v) => (
+                      <LinhaLista
+                        key={v.vendedor_id}
+                        titulo={v.nome}
+                        subtitulo={`1ª resposta ${fmtHoras(v.primeira_resposta.mediana)} · ${v.primeira_resposta.so_ia} só IA`}
+                        valor={fmtHoras(v.funil.total_ponta_a_ponta.mediana)}
+                        legenda="ponta a ponta"
+                        abaixo={
+                          <span className="text-muted-foreground tabular-nums">
+                            {v.propostas_paradas} paradas · {v.leads_sem_contato} sem contato
+                          </span>
+                        }
+                      />
+                    ))}
+                  </div>
+                )
+              }
+            >
             <table className="w-full text-sm">
               <thead className="bg-muted/50 text-left">
                 <tr className="border-b">
@@ -149,6 +176,7 @@ export function ProcessoReport() {
                 )}
               </tbody>
             </table>
+            </TabelaResponsiva>
           </div>
 
           {/* Propostas paradas */}
@@ -162,6 +190,27 @@ export function ProcessoReport() {
                 — sem resposta, registre a recusa com o motivo.
               </div>
             </div>
+            <TabelaResponsiva
+              mobile={
+                d.propostas_paradas.length === 0 ? (
+                  <p className="px-4 py-8 text-center text-sm text-muted-foreground">
+                    Nenhuma proposta parada. Bom sinal.
+                  </p>
+                ) : (
+                  <div className="divide-y px-4">
+                    {d.propostas_paradas.map((p) => (
+                      <Link key={p.id} to="/propostas/$id" params={{ id: p.id }} className="block">
+                        <LinhaLista
+                          titulo={juntarCampos(p.number, p.cliente)}
+                          subtitulo={juntarCampos(p.dono, `${p.dias} dias`)}
+                          valor={formatBRL(p.valor)}
+                        />
+                      </Link>
+                    ))}
+                  </div>
+                )
+              }
+            >
             <table className="w-full text-sm">
               <thead className="bg-muted/50 text-left">
                 <tr className="border-b">
@@ -196,6 +245,7 @@ export function ProcessoReport() {
                 )}
               </tbody>
             </table>
+            </TabelaResponsiva>
           </div>
 
           {/* Leads sem 1º contato */}
@@ -203,6 +253,23 @@ export function ProcessoReport() {
             <div className="px-3 py-2 border-b text-sm font-medium">
               Leads abertos sem 1º contato há mais de 24h
             </div>
+            <TabelaResponsiva
+              mobile={
+                d.leads_sem_contato.length === 0 ? (
+                  <p className="px-4 py-8 text-center text-sm text-muted-foreground">
+                    Todo lead do período já teve um primeiro contato.
+                  </p>
+                ) : (
+                  <div className="divide-y px-4">
+                    {d.leads_sem_contato.map((l) => (
+                      <Link key={l.id} to="/leads" search={{ lead: l.id }} className="block">
+                        <LinhaLista titulo={l.company} subtitulo={juntarCampos(l.dono)} valor={`${l.horas} h`} />
+                      </Link>
+                    ))}
+                  </div>
+                )
+              }
+            >
             <table className="w-full text-sm">
               <thead className="bg-muted/50 text-left">
                 <tr className="border-b">
@@ -233,6 +300,7 @@ export function ProcessoReport() {
                 )}
               </tbody>
             </table>
+            </TabelaResponsiva>
           </div>
         </>
       )}

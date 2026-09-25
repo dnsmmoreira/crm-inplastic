@@ -20,6 +20,8 @@ import {
 } from "@/lib/placar.functions";
 import { formatBRL } from "@/lib/crm-store";
 import { cn } from "@/lib/utils";
+import { PaginaCabecalho } from "@/components/layout/PaginaCabecalho";
+import { LinhaLista, TabelaResponsiva, juntarCampos } from "@/components/layout/ListaResponsiva";
 
 const searchSchema = z.object({
   periodo: z.enum(["semana", "mes", "trimestre"]).catch("mes"),
@@ -66,19 +68,13 @@ function PlacarPage() {
   const showMetaCol = periodo === "mes";
 
   return (
-    <div className="p-4 md:p-8 space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="font-display text-2xl md:text-3xl font-semibold flex items-center gap-2">
-            <Trophy className="h-7 w-7 text-amber-500" />
-            Placar de Vendedores
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            ARENA · Premiação e Performance comercial — fonte única de ranking, visível para todo o time
-          </p>
-
-        </div>
-        <div className="flex items-center gap-2">
+    <div className="p-4 md:p-8 space-y-4 md:space-y-6">
+      <PaginaCabecalho
+        titulo="Placar de Vendedores"
+        icone={<Trophy className="h-7 w-7 text-amber-500" />}
+        descricao="ARENA · Premiação e Performance comercial — fonte única de ranking, visível para todo o time"
+        acoes={
+        <div className="flex w-full flex-wrap items-center gap-2 md:w-auto">
           <HistoricoDialog isAdmin={isAdmin} />
           {isAdmin && <MetasAdminDialog />}
           <Tabs
@@ -92,7 +88,8 @@ function PlacarPage() {
             </TabsList>
           </Tabs>
         </div>
-      </div>
+        }
+      />
 
       {/* Minha meta (vendedor logado, período = mês) */}
       {self && showMetaCol && self.meta_valor != null && self.meta_valor > 0 && (
@@ -102,7 +99,7 @@ function PlacarPage() {
       {/* Hero do líder */}
       {lider ? (
         <Card className="relative overflow-hidden border-amber-500/40 bg-gradient-to-r from-amber-500/10 via-transparent to-transparent">
-          <CardContent className="p-6 flex items-center gap-5">
+          <CardContent className="p-4 md:p-6 flex items-center gap-4 md:gap-5">
             <div
               className="flex h-16 w-16 items-center justify-center rounded-full text-white font-display text-xl font-semibold shadow"
               style={{ background: lider.avatar_color }}
@@ -153,6 +150,37 @@ function PlacarPage() {
               <p>Fale com a gestão para entrar na ARENA e acompanhar o seu desempenho aqui.</p>
             </div>
           ) : (
+            <TabelaResponsiva
+              mobile={
+                <div className="divide-y px-4">
+                  {vendedores.map((v) => (
+                    <LinhaLista
+                      key={v.vendedor_id}
+                      acento={lider?.vendedor_id === v.vendedor_id ? "bg-primary" : undefined}
+                      titulo={
+                        <>
+                          <span className="tabular-nums">{MEDALS[v.posicao] ?? `${v.posicao}º`}</span>{" "}
+                          {v.nome}
+                          {v.meta_batida && " 🎯"}
+                        </>
+                      }
+                      subtitulo={`${v.ganhos_qtd} venda(s) · ${formatBRL(v.ganhos_valor)}`}
+                      valor={v.score.toFixed(0)}
+                      legenda="score"
+                      abaixo={
+                        <span className="text-muted-foreground tabular-nums">
+                          {juntarCampos(
+                            showMetaCol && v.meta_pct != null ? `${v.meta_pct.toFixed(0)}% da meta` : null,
+                            `${v.propostas_qtd} propostas`,
+                            `${v.perdas_qtd} perdas`,
+                          )}
+                        </span>
+                      }
+                    />
+                  ))}
+                </div>
+              }
+            >
             <table className="w-full text-sm">
               <thead className="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground">
                 <tr className="border-b">
@@ -203,6 +231,7 @@ function PlacarPage() {
                 ))}
               </tbody>
             </table>
+            </TabelaResponsiva>
           )}
         </CardContent>
       </Card>
@@ -488,6 +517,21 @@ function HistoricoDialog({ isAdmin }: { isAdmin: boolean }) {
                   <span className="font-medium">{g.nome}</span>
                 </div>
                 <div className="overflow-x-auto rounded-md border">
+                  <TabelaResponsiva
+                    mobile={
+                      <div className="divide-y px-3">
+                        {g.rows.map((r) => (
+                          <LinhaLista
+                            key={`${r.ano}-${r.mes}`}
+                            titulo={<span className="capitalize">{MESES_PT[r.mes - 1]}/{String(r.ano).slice(2)}</span>}
+                            subtitulo={`meta ${formatBRL(r.meta_valor)} · ${r.ganhos_qtd} venda(s)`}
+                            valor={formatBRL(r.ganhos_valor)}
+                            legenda={`${r.atingido_pct.toFixed(0)}% atingido${r.bateu ? " 🎯" : ""}`}
+                          />
+                        ))}
+                      </div>
+                    }
+                  >
                   <table className="w-full text-sm">
                     <thead className="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground">
                       <tr>
@@ -515,6 +559,7 @@ function HistoricoDialog({ isAdmin }: { isAdmin: boolean }) {
                       ))}
                     </tbody>
                   </table>
+                  </TabelaResponsiva>
                 </div>
               </div>
             ))}

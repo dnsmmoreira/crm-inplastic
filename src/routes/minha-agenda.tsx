@@ -105,7 +105,7 @@ function MinhaAgendaPage() {
   const hoje = tarefas.filter((t) => !atrasadas.includes(t));
 
   return (
-    <div className="p-4 md:p-8 space-y-6">
+    <div className="p-4 md:p-8 space-y-4 md:space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl md:text-3xl font-semibold flex items-center gap-2">
@@ -284,10 +284,10 @@ function AgendaGroup({
                 )}
               </div>
               <div className="flex flex-col gap-1 shrink-0">
-                <Button size="sm" onClick={() => onConcluir(t)} className="gap-1">
+                <Button size="sm" onClick={() => onConcluir(t)} className="h-10 gap-1 md:h-8">
                   <CheckCircle2 className="h-3.5 w-3.5" />Concluir
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => onAdiar(t)}>Adiar</Button>
+                <Button size="sm" variant="outline" className="h-10 md:h-8" onClick={() => onAdiar(t)}>Adiar</Button>
               </div>
             </div>
           </div>

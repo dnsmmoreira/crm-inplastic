@@ -36,6 +36,8 @@ import {
 import { ContatosSection } from "@/components/contatos/ContatosSection";
 import { TransferirLeadDialog } from "@/components/crm/TransferirLeadDialog";
 import { DocumentosSection } from "@/components/documentos/DocumentosSection";
+import { PaginaCabecalho } from "@/components/layout/PaginaCabecalho";
+import { LinhaLista, TabelaResponsiva, juntarCampos } from "@/components/layout/ListaResponsiva";
 
 
 import { format } from "date-fns";
@@ -170,7 +172,7 @@ function ClienteDetailPage() {
   };
 
   return (
-    <div className="p-4 md:p-8 space-y-4">
+    <div className="p-4 md:p-8 space-y-4 md:space-y-6">
       {dialogoEmNomeDe}
       <TransferirLeadDialog
         open={transferirAberto}
@@ -183,34 +185,38 @@ function ClienteDetailPage() {
           void qc.invalidateQueries({ queryKey: ["cliente-leads", id] });
         }}
       />
-      <div className="flex items-center justify-between gap-3 sticky top-0 bg-background/95 backdrop-blur z-10 py-2">
-        <div>
-          <Link to="/clientes" className="text-sm text-muted-foreground inline-flex items-center gap-1 hover:text-foreground">
-            <ArrowLeft className="h-3 w-3" /> Clientes
-          </Link>
-          <h1 className="text-2xl md:text-3xl font-semibold">{c.razao_social}</h1>
-          <div className="text-sm text-muted-foreground">
-            {formatDocumentoCliente(c)}{c.nome_fantasia ? ` • ${c.nome_fantasia}` : ""}
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {c.empresa_padrao && (
-            <Badge variant="outline" className={EMPRESA_BADGE[c.empresa_padrao] ?? ""}>
-              {c.empresa_padrao}
-            </Badge>
+      <div className="space-y-1 bg-background/95 backdrop-blur md:sticky md:top-0 md:z-10 md:py-2">
+        <Link to="/clientes" className="text-sm text-muted-foreground inline-flex items-center gap-1 hover:text-foreground">
+          <ArrowLeft className="h-3 w-3" /> Clientes
+        </Link>
+        <PaginaCabecalho
+          titulo={c.razao_social}
+          descricao={`${formatDocumentoCliente(c)}${c.nome_fantasia ? ` • ${c.nome_fantasia}` : ""}`}
+          resumoMobile={juntarCampos(formatDocumentoCliente(c), c.nome_fantasia)}
+          acoes={
+        <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row md:items-center [&>*]:w-full md:[&>*]:w-auto">
+          {(c.empresa_padrao || !c.ativo) && (
+            <div className="flex items-center gap-2">
+              {c.empresa_padrao && (
+                <Badge variant="outline" className={EMPRESA_BADGE[c.empresa_padrao] ?? ""}>
+                  {c.empresa_padrao}
+                </Badge>
+              )}
+              {!c.ativo && <Badge variant="outline">Inativo</Badge>}
+            </div>
           )}
-          {!c.ativo && <Badge variant="outline">Inativo</Badge>}
           {canEdit && (
-            <Button variant="outline" onClick={() => setTransferirAberto(true)}>
+            <Button variant="outline" className="h-10 md:h-9" onClick={() => setTransferirAberto(true)}>
               Transferir carteira
             </Button>
           )}
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <span>
+                <span className="block md:inline">
                   <Button
                     variant="outline"
+                    className="h-10 w-full md:h-9 md:w-auto"
                     disabled={iniciandoConversa || !temTelefone}
                     onClick={async () => {
                       setIniciandoConversa(true);
@@ -241,6 +247,7 @@ function ClienteDetailPage() {
 
           <Button
             variant="outline"
+            className="h-10 md:h-9"
             disabled={criandoProposta}
             onClick={() => {
               void criarPropostaParaCliente({
@@ -257,9 +264,9 @@ function ClienteDetailPage() {
             {criandoProposta && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             Nova proposta
           </Button>
-
-
         </div>
+          }
+        />
       </div>
 
       <Tabs defaultValue="dados">
@@ -332,6 +339,31 @@ function ClienteDetailPage() {
                   <Button onClick={() => navigate({ to: "/propostas" })}>Criar primeira proposta</Button>
                 </div>
               ) : (
+                <TabelaResponsiva
+                  mobile={(leadsQ.data ?? []).map((l) => {
+                    const row = l as unknown as {
+                      id: string;
+                      company: string | null;
+                      contact_name: string | null;
+                      stage: string;
+                      estimated_value: number | null;
+                      created_at: string;
+                    };
+                    return (
+                      <LinhaLista
+                        key={row.id}
+                        titulo={row.company ?? row.contact_name ?? "Sem título"}
+                        subtitulo={format(new Date(row.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                        valor={
+                          row.estimated_value != null
+                            ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(row.estimated_value)
+                            : undefined
+                        }
+                        abaixo={<Badge variant="outline">{row.stage}</Badge>}
+                      />
+                    );
+                  })}
+                >
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -368,6 +400,7 @@ function ClienteDetailPage() {
                     })}
                   </TableBody>
                 </Table>
+                </TabelaResponsiva>
               )}
             </CardContent>
           </Card>
