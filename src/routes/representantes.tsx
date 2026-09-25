@@ -23,7 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { PaginaCabecalho } from "@/components/layout/PaginaCabecalho";
-import { TabelaResponsiva, LinhaLista, VazioLista, juntarCampos } from "@/components/layout/ListaResponsiva";
+import { TabelaResponsiva, LinhaLista, juntarCampos } from "@/components/layout/ListaResponsiva";
 import {
   Table,
   TableBody,

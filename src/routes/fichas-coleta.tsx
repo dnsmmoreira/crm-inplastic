@@ -15,7 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PaginaCabecalho } from "@/components/layout/PaginaCabecalho";
-import { TabelaResponsiva, LinhaLista, VazioLista, juntarCampos } from "@/components/layout/ListaResponsiva";
+import { TabelaResponsiva, LinhaLista, juntarCampos } from "@/components/layout/ListaResponsiva";
 import { listarFichasColeta } from "@/lib/ficha-coleta.functions";
 import { FICHA_STATUS_LABEL, formatarCubagem, formatarPeso } from "@/lib/ficha-coleta";
 
