@@ -777,6 +777,14 @@ function Column({
   );
 }
 
+/** Tarja do cartão no celular: urgência da agenda (mesmo critério dos filtros). */
+const TARJA_URGENCIA_MOBILE: Record<FollowupLevel, string> = {
+  urgent: "border-l-red-500",
+  attention: "border-l-amber-500",
+  scheduled: "border-l-sky-500",
+  ok: "border-l-muted-foreground/30",
+};
+
 function LeadCard({
 
   lead,
@@ -786,6 +794,8 @@ function LeadCard({
   isSelected = false,
   onToggleSelect,
   onTransferir,
+  onMover,
+  nomeDono,
 }: {
   lead: Lead;
   onOpen: (id: string) => void;
@@ -794,16 +804,28 @@ function LeadCard({
   isSelected?: boolean;
   onToggleSelect?: (id: string) => void;
   onTransferir?: (id: string) => void;
+  /** Celular: "Mover para…" no lugar do arraste. */
+  onMover?: (lead: Lead, stage: StageId) => void;
+  nomeDono?: string;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: lead.id, disabled: selectMode });
   const sc = computeLeadScore(lead);
   const valueMap = useLeadValueMap();
   const effValue = valueMap.get(lead.id) ?? lead.estimatedValue;
-  const stripe =
-    sc.level === "alto" ? "border-l-4 border-l-emerald-500"
-    : sc.level === "medio" ? "border-l-4 border-l-amber-500"
-    : "border-l-4 border-l-rose-500";
+  const followup = followupTemperature(lead);
+  // Celular: tarja pela urgência da agenda; desktop (md+): tarja pelo score, como sempre.
+  const stripe = cn(
+    "border-l-4",
+    TARJA_URGENCIA_MOBILE[followup.level],
+    sc.level === "alto" ? "md:border-l-emerald-500"
+    : sc.level === "medio" ? "md:border-l-amber-500"
+    : "md:border-l-rose-500",
+  );
   const dragProps = selectMode ? {} : { ...attributes, ...listeners };
+  const pararEvento = {
+    onPointerDown: (e: React.PointerEvent) => e.stopPropagation(),
+    onClick: (e: React.MouseEvent) => e.stopPropagation(),
+  };
   return (
     <div
       ref={setNodeRef}
@@ -843,7 +865,7 @@ function LeadCard({
               type="button"
               title="Transferir responsável"
               aria-label={`Transferir responsável de ${lead.company}`}
-              className="rounded p-1 text-muted-foreground opacity-0 transition hover:bg-accent hover:text-foreground group-hover:opacity-100 focus:opacity-100"
+              className="hidden rounded p-1 text-muted-foreground opacity-0 transition hover:bg-accent hover:text-foreground group-hover:opacity-100 focus:opacity-100 md:block"
               onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation();
@@ -853,37 +875,89 @@ function LeadCard({
               <ArrowRightLeft className="h-3.5 w-3.5" />
             </button>
           )}
+          {!selectMode && !dragging && (onMover || onTransferir) && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={`Ações de ${lead.company}`}
+                  className="-mr-1 grid h-8 w-8 place-items-center rounded text-muted-foreground hover:bg-accent md:hidden"
+                  {...pararEvento}
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" {...pararEvento}>
+                {onMover && (
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger {...pararEvento}>Mover para…</DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent {...pararEvento}>
+                      {BOARD_STAGES.filter((s) => s.id !== lead.stage).map((s) => (
+                        <DropdownMenuItem
+                          key={s.id}
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onMover(lead, s.id);
+                          }}
+                        >
+                          <span className="stage-dot mr-2" style={{ background: s.color }} />
+                          {s.label}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                )}
+                {onTransferir && (
+                  <DropdownMenuItem
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onTransferir(lead.id);
+                    }}
+                  >
+                    <ArrowRightLeft className="mr-2 h-4 w-4" />
+                    Transferir responsável
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
 
       </div>
-      <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+      {/* Celular: dono · último contato */}
+      <div className="mt-1 truncate text-xs text-muted-foreground md:hidden">
+        {nomeDono ?? "—"} · últ. contato {format(new Date(lead.lastContact), "dd/MM")}
+      </div>
+      <div className="mt-2 hidden items-center gap-1.5 text-xs text-muted-foreground md:flex">
         <Package className="h-3 w-3 shrink-0" />
         <span className="truncate">{lead.product} · {lead.quantity} un.</span>
       </div>
-      <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+      <div className="mt-1 hidden items-center gap-1.5 text-xs text-muted-foreground md:flex">
         <CalendarIcon className="h-3 w-3 shrink-0" />
         <span>Último contato {format(new Date(lead.lastContact), "dd MMM", { locale: ptBR })}</span>
       </div>
       {(() => {
         const t = leadTemperature(lead);
-        const f = followupTemperature(lead);
+        const f = followup;
         return (
           <div className="mt-2 flex flex-wrap items-center gap-1">
             <Badge
               variant="outline"
-              className={`text-[10px] px-1.5 py-0 ${sc.className}`}
+              className={`hidden text-[10px] px-1.5 py-0 md:inline-flex ${sc.className}`}
               title={sc.reasons.map((r) => `${r.ok ? "✓" : "•"} ${r.text}`).join("\n")}
             >
               <span className="mr-1">{sc.emoji}</span>Score {sc.score}
             </Badge>
-            <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${t.className}`} title={t.hint}>
+            <Badge variant="outline" className={`hidden text-[10px] px-1.5 py-0 md:inline-flex ${t.className}`} title={t.hint}>
               <span className="mr-1">{t.emoji}</span>{t.label} · {t.days}d
             </Badge>
             <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${f.className}`} title={f.hint}>
               <span className="mr-1">{f.emoji}</span>{f.label}
             </Badge>
             {lead.tags.slice(0, 2).map((tag) => (
-              <Badge key={tag} variant="outline" className="text-[10px] px-1.5 py-0">{tag}</Badge>
+              <Badge key={tag} variant="outline" className="hidden text-[10px] px-1.5 py-0 md:inline-flex">{tag}</Badge>
             ))}
           </div>
         );
