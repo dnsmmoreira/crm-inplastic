@@ -36,6 +36,8 @@ import {
 import { ContatosSection } from "@/components/contatos/ContatosSection";
 import { TransferirLeadDialog } from "@/components/crm/TransferirLeadDialog";
 import { DocumentosSection } from "@/components/documentos/DocumentosSection";
+import { PaginaCabecalho } from "@/components/layout/PaginaCabecalho";
+import { LinhaLista, TabelaResponsiva, juntarCampos } from "@/components/layout/ListaResponsiva";
 
 
 import { format } from "date-fns";
@@ -337,42 +339,35 @@ function ClienteDetailPage() {
                   <Button onClick={() => navigate({ to: "/propostas" })}>Criar primeira proposta</Button>
                 </div>
               ) : (
+                <TabelaResponsiva
+                  mobile={(leadsQ.data ?? []).map((l) => {
+                    const row = l as unknown as {
+                      id: string;
+                      company: string | null;
+                      contact_name: string | null;
+                      stage: string;
+                      estimated_value: number | null;
+                      created_at: string;
+                    };
+                    return (
+                      <LinhaLista
+                        key={row.id}
+                        titulo={row.company ?? row.contact_name ?? "Sem título"}
+                        subtitulo={format(new Date(row.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                        valor={
+                          row.estimated_value != null
+                            ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(row.estimated_value)
+                            : undefined
+                        }
+                        abaixo={<Badge variant="outline">{row.stage}</Badge>}
+                      />
+                    );
+                  })}
+                >
                 <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Data</TableHead>
-                      <TableHead>Título</TableHead>
-                      <TableHead>Etapa</TableHead>
-                      <TableHead className="text-right">Valor estimado</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {(leadsQ.data ?? []).map((l) => {
-                      const row = l as unknown as {
-                        id: string;
-                        company: string | null;
-                        contact_name: string | null;
-                        stage: string;
-                        estimated_value: number | null;
-                        created_at: string;
-                      };
-                      return (
-                        <TableRow key={row.id}>
-                          <TableCell className="text-sm">
-                            {format(new Date(row.created_at), "dd/MM/yyyy", { locale: ptBR })}
-                          </TableCell>
-                          <TableCell>{row.company ?? row.contact_name ?? "—"}</TableCell>
-                          <TableCell><Badge variant="outline">{row.stage}</Badge></TableCell>
-                          <TableCell className="text-right">
-                            {row.estimated_value != null
-                              ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(row.estimated_value)
-                              : "—"}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
+...
                 </Table>
+                </TabelaResponsiva>
               )}
             </CardContent>
           </Card>
