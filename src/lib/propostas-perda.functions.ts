@@ -117,6 +117,7 @@ export const reabrirProposta = createServerFn({ method: "POST" })
         recusa_detalhe: null,
         recusada_em: null,
         recusada_por: null,
+        encerramento_administrativo: false,
         reaberta_em: new Date().toISOString(),
       })
       .eq("id", prop.id);
