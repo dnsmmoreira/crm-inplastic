@@ -2932,6 +2932,7 @@ export type Database = {
           edit_unlocked_by_user_id: string | null
           em_negociacao: boolean
           emitter_id: string
+          encerramento_administrativo: boolean
           expected_delivery_date: string | null
           forma_pagamento: string | null
           id: string
@@ -2981,6 +2982,7 @@ export type Database = {
           edit_unlocked_by_user_id?: string | null
           em_negociacao?: boolean
           emitter_id: string
+          encerramento_administrativo?: boolean
           expected_delivery_date?: string | null
           forma_pagamento?: string | null
           id?: string
@@ -3030,6 +3032,7 @@ export type Database = {
           edit_unlocked_by_user_id?: string | null
           em_negociacao?: boolean
           emitter_id?: string
+          encerramento_administrativo?: boolean
           expected_delivery_date?: string | null
           forma_pagamento?: string | null
           id?: string
