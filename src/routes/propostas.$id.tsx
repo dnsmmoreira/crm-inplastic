@@ -408,6 +408,20 @@ function PropostaDetalhe() {
       }),
   });
   const vendedor = vendedorQ.data ?? null;
+  // Auditoria: proposta criada por uma pessoa em nome de outra.
+  const criadaEmNomeDe = !!proposal?.criadoPor && proposal.criadoPor !== proposal.ownerId;
+  const autoriaQ = useQuery({
+    queryKey: ["proposta-autoria", proposal?.criadoPor ?? null, proposal?.ownerId ?? null],
+    enabled: criadaEmNomeDe,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const ids = [proposal!.criadoPor!, proposal!.ownerId];
+      const { data } = await supabase.from("profiles").select("id, name").in("id", ids);
+      const nome = (id: string) => data?.find((p) => p.id === id)?.name || "—";
+      return { criador: nome(proposal!.criadoPor!), dono: nome(proposal!.ownerId) };
+    },
+  });
   /** Nome do vendedor no documento: nunca cai em "—" quando há dono da proposta. */
   const vendedorNome =
     (vendedor?.name && vendedor.name !== "—" ? vendedor.name : null) ?? owner?.name ?? "—";
@@ -1128,6 +1142,11 @@ function PropostaDetalhe() {
                 </Badge>
               )}
             </div>
+            {criadaEmNomeDe && autoriaQ.data && (
+              <p className="text-xs text-muted-foreground print:hidden">
+                Criada por {autoriaQ.data.criador} em nome de {autoriaQ.data.dono}
+              </p>
+            )}
             {(clienteRow?.razao_social || lead.company) &&
               (clienteId ? (
                 <button
