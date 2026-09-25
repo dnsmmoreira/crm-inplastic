@@ -138,7 +138,7 @@ function RelatoriosPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-8 space-y-4 md:space-y-6">
       <style>{`
         @media print {
           @page { size: A4 landscape; margin: 12mm; }
@@ -151,13 +151,10 @@ function RelatoriosPage() {
       `}</style>
 
       <div className="no-print">
-        <h1 className="font-display text-2xl font-semibold">Relatórios</h1>
-        <p className="text-sm text-muted-foreground">
-          Relatórios operacionais do CRM.
-        </p>
+        <PaginaCabecalho titulo="Relatórios" descricao="Relatórios operacionais do CRM." />
       </div>
 
-      <Tabs defaultValue="pedidos" className="space-y-6">
+      <Tabs defaultValue="pedidos" className="space-y-4 md:space-y-6">
         <TabsList className="no-print">
           <TabsTrigger value="pedidos">Pedidos</TabsTrigger>
           {verGlobal && <TabsTrigger value="abertos">Pedidos em Aberto</TabsTrigger>}
@@ -179,16 +176,16 @@ function RelatoriosPage() {
           </TabsContent>
         )}
 
-        <TabsContent value="pedidos" className="space-y-6">
-      <div className="flex items-start justify-between gap-4 no-print">
+        <TabsContent value="pedidos" className="space-y-4 md:space-y-6">
+      <div className="flex flex-col gap-3 no-print md:flex-row md:items-start md:justify-between md:gap-4">
         <p className="text-sm text-muted-foreground">
           Relatório de pedidos operacionais (gerados a partir de propostas ganhas).
         </p>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={exportCSV} disabled={filtered.length === 0}>
+        <div className="flex gap-2 [&>*]:flex-1 md:[&>*]:flex-none">
+          <Button variant="outline" size="sm" className="h-10 md:h-8" onClick={exportCSV} disabled={filtered.length === 0}>
             <Download className="h-4 w-4 mr-2" /> Exportar CSV
           </Button>
-          <Button variant="outline" size="sm" onClick={exportPDF} disabled={filtered.length === 0}>
+          <Button variant="outline" size="sm" className="h-10 md:h-8" onClick={exportPDF} disabled={filtered.length === 0}>
             <FileDown className="h-4 w-4 mr-2" /> Exportar PDF
           </Button>
         </div>
@@ -270,6 +267,29 @@ function RelatoriosPage() {
         <div className="hidden print:block p-2 text-sm font-semibold">
           Relatório de Pedidos — {format(new Date(), "dd/MM/yyyy")}
         </div>
+        <div className="px-4 md:hidden print:hidden">
+          {isLoading ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">Carregando…</p>
+          ) : error ? (
+            <p className="py-8 text-center text-sm text-destructive">{(error as Error).message}</p>
+          ) : filtered.length === 0 ? (
+            <VazioLista titulo="Nenhum pedido encontrado" dica={hasFilters ? "Tente limpar os filtros" : undefined} />
+          ) : (
+            <div className="divide-y">
+              {filtered.map((r) => (
+                <LinhaLista
+                  key={r.id}
+                  titulo={juntarCampos(r.number, r.cliente)}
+                  subtitulo={juntarCampos(produtosTexto(r) === "—" ? null : produtosTexto(r))}
+                  valor={formatBRL(r.total)}
+                  legenda={r.previsao_entrega ? `entrega ${fmtDate(r.previsao_entrega)}` : undefined}
+                  abaixo={<Badge variant="outline" className="font-normal">{stageLabel(r.stage)}</Badge>}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="hidden md:block print:block">
         <table className="w-full text-sm">
           <thead className="bg-muted/50 text-left">
             <tr className="border-b">
@@ -314,6 +334,7 @@ function RelatoriosPage() {
             </tfoot>
           ) : null}
         </table>
+        </div>
       </div>
         </TabsContent>
       </Tabs>
