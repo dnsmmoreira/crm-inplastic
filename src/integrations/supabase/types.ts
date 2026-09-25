@@ -579,6 +579,7 @@ export type Database = {
           conteudo: string
           criado_em: string
           id: string
+          respondendo_a: string | null
         }
         Insert: {
           anexo_nome?: string | null
@@ -590,6 +591,7 @@ export type Database = {
           conteudo: string
           criado_em?: string
           id?: string
+          respondendo_a?: string | null
         }
         Update: {
           anexo_nome?: string | null
@@ -601,6 +603,7 @@ export type Database = {
           conteudo?: string
           criado_em?: string
           id?: string
+          respondendo_a?: string | null
         }
         Relationships: [
           {
@@ -608,6 +611,13 @@ export type Database = {
             columns: ["canal_id"]
             isOneToOne: false
             referencedRelation: "chat_canais"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_mensagens_respondendo_a_fkey"
+            columns: ["respondendo_a"]
+            isOneToOne: false
+            referencedRelation: "chat_mensagens"
             referencedColumns: ["id"]
           },
         ]
