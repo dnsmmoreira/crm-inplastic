@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, FileText, Search, Trash2, UserPlus, Loader2, Building2, Check, Copy, ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react";
+import { Plus, FileText, Search, Trash2, UserPlus, Loader2, Building2, Check, Copy, ArrowUp, ArrowDown, ChevronsUpDown, MoreVertical } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { lookupCnpj } from "@/lib/cnpj.functions";
 import { listClientes } from "@/lib/clientes.functions";
@@ -44,6 +44,12 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -63,13 +69,16 @@ export const Route = createFileRoute("/propostas/")({
   component: PropostasPage,
 });
 
-const STATUS_META: Record<ProposalStatus, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
-  rascunho: { label: "Rascunho", variant: "outline" },
-  enviada: { label: "Enviada", variant: "secondary" },
-  aguardando_aprovacao: { label: "Aguardando aprovação", variant: "outline" },
-  aprovada: { label: "Aprovada", variant: "default" },
-  recusada: { label: "Recusada", variant: "destructive" },
-  pedido: { label: "Pedido", variant: "default" },
+const STATUS_META: Record<
+  ProposalStatus,
+  { label: string; variant: "default" | "secondary" | "outline" | "destructive"; cor: string; barra: string }
+> = {
+  rascunho: { label: "Rascunho", variant: "outline", cor: "text-muted-foreground", barra: "bg-muted-foreground/40" },
+  enviada: { label: "Enviada", variant: "secondary", cor: "text-blue-600 dark:text-blue-400", barra: "bg-blue-500" },
+  aguardando_aprovacao: { label: "Aguardando aprovação", variant: "outline", cor: "text-amber-600 dark:text-amber-400", barra: "bg-amber-500" },
+  aprovada: { label: "Aprovada", variant: "default", cor: "text-emerald-600 dark:text-emerald-400", barra: "bg-emerald-500" },
+  recusada: { label: "Recusada", variant: "destructive", cor: "text-destructive", barra: "bg-destructive" },
+  pedido: { label: "Pedido", variant: "default", cor: "text-primary", barra: "bg-primary" },
 };
 
 type SortKey = "numero" | "cliente" | "empresa" | "data" | "itens" | "total" | "status";
@@ -270,8 +279,8 @@ function PropostasPage() {
     <div className="p-4 md:p-8 space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl md:text-3xl font-semibold">Propostas Comerciais</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-xl md:text-3xl font-semibold">Propostas Comerciais</h1>
+          <p className="hidden text-sm text-muted-foreground md:block">
             {proposals.length} proposta(s) — geradas a partir dos leads do funil.
           </p>
         </div>
@@ -388,7 +397,7 @@ function PropostasPage() {
           </CardTitle>
         </CardHeader>
 
-        <CardContent className="md:hidden">
+        <CardContent className="px-4 md:hidden">
           <ul className="divide-y">
             {filtered.map((p) => {
               const lead = leads.find((l) => l.id === p.leadId);
@@ -396,65 +405,93 @@ function PropostasPage() {
               const t = proposalTotals(p);
               const s = STATUS_META[p.status];
               const isLocked = (p.status === "aprovada" || p.status === "pedido") && !isAdmin;
+              const vencida = estaVencida(p);
+              const encerrada = p.status === "recusada" && !!p.encerramentoAdministrativo;
+              const motivo = p.status === "recusada" && !encerrada ? p.motivoRecusa : null;
               return (
                 <li
                   key={p.id}
-                  className="cursor-pointer py-3 active:bg-accent/40"
+                  className="flex cursor-pointer gap-3 py-3 active:bg-accent/40"
                   onClick={() => navigate({ to: "/propostas/$id", params: { id: p.id } })}
                 >
-                  <p className="line-clamp-2 break-words font-semibold">{lead?.company ?? "—"}</p>
-                  <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                    Nº {p.number} · {format(new Date(p.createdAt), "dd/MM/yyyy", { locale: ptBR })} · {em?.brand ?? "—"}
-                  </p>
-                  <div className="mt-2 flex items-start justify-between gap-2">
-                    <span className="shrink-0 text-base font-semibold">{formatBRL(t.total)}</span>
-                    <div className="flex min-w-0 flex-wrap justify-end gap-1">
-                      <Badge variant={s.variant}>{s.label}</Badge>
-                      {estaVencida(p) && (
-                        <Badge variant="outline" className="border-destructive/50 text-destructive text-[10px]">
-                          vencida
-                        </Badge>
+                  <span className={cn("w-1 shrink-0 self-stretch rounded-full", s.barra)} aria-hidden />
+                  <div className="min-w-0 flex-1 space-y-0.5">
+                    <p className="truncate text-[15px] font-medium leading-tight">{lead?.company ?? "—"}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {p.number} · {format(new Date(p.createdAt), "dd/MM", { locale: ptBR })} · {em?.brand ?? "—"}
+                    </p>
+                    <div className="flex min-w-0 items-center gap-1.5 text-xs">
+                      <span className={cn("shrink-0 font-medium", s.cor)}>{s.label}</span>
+                      {motivo && <span className="truncate text-muted-foreground">· {motivo}</span>}
+                      {vencida && (
+                        <>
+                          <span className="text-muted-foreground">·</span>
+                          <Badge variant="outline" className="h-4 shrink-0 border-destructive/50 px-1.5 text-[10px] text-destructive">
+                            vencida
+                          </Badge>
+                        </>
                       )}
-                      <SeloMotivo p={p} />
+                      {encerrada && (
+                        <>
+                          <span className="text-muted-foreground">·</span>
+                          <Badge
+                            variant="outline"
+                            className="h-4 shrink-0 px-1.5 text-[10px] text-muted-foreground"
+                            title="Encerramento administrativo — não conta como perda comercial"
+                          >
+                            Encerrada
+                          </Badge>
+                        </>
+                      )}
                     </div>
                   </div>
-                  <div className="mt-1 flex justify-end gap-1">
-                    <Button
-                      variant="ghost"
-                      className="h-11 min-w-11 gap-1"
-                      disabled={duplicando}
-                      title="Duplicar proposta"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        void duplicarProposta(p.id);
-                      }}
-                    >
-                      <Copy className="h-4 w-4" /> Duplicar
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      className="h-11 min-w-11 gap-1"
-                      disabled={isLocked}
-                      title={isLocked ? "Apenas administradores podem excluir pedidos aprovados" : "Excluir proposta"}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (isLocked) return;
-                        if (confirm(`Remover proposta ${p.number}?`)) {
-                          removeProposal(p.id);
-                          toast.success("Proposta removida");
-                        }
-                      }}
-                    >
-                      <Trash2 className={`h-4 w-4 ${isLocked ? "text-muted-foreground" : "text-destructive"}`} />
-                      Excluir
-                    </Button>
+                  <div className="flex shrink-0 flex-col items-end justify-between">
+                    <span className="text-[15px] font-semibold tabular-nums">{formatBRL(t.total)}</span>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                        <Button variant="ghost" size="icon" className="-mr-2 h-9 w-9" aria-label="Mais ações">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenuItem
+                          disabled={duplicando}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void duplicarProposta(p.id);
+                          }}
+                        >
+                          <Copy className="h-4 w-4" /> Duplicar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          disabled={isLocked}
+                          title={isLocked ? "Apenas administradores podem excluir pedidos aprovados" : undefined}
+                          className="text-destructive focus:text-destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (isLocked) return;
+                            if (confirm(`Remover proposta ${p.number}?`)) {
+                              removeProposal(p.id);
+                              toast.success("Proposta removida");
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          {isLocked ? "Excluir (só administradores)" : "Excluir"}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </li>
               );
             })}
             {filtered.length === 0 && (
-              <li className="py-8 text-center text-sm text-muted-foreground">
-                Nenhuma proposta encontrada. Crie a primeira!
+              <li className="flex flex-col items-center gap-2 py-10 text-center">
+                <FileText className="h-10 w-10 text-muted-foreground/40" />
+                <p className="text-sm font-medium">Nenhuma proposta encontrada</p>
+                {(q.trim() !== "" || statusFilter !== "all" || emitterFilter !== "all" || motivoFilter !== FILTRO_MOTIVO_TODOS) && (
+                  <p className="text-xs text-muted-foreground">Tente limpar os filtros</p>
+                )}
               </li>
             )}
           </ul>
