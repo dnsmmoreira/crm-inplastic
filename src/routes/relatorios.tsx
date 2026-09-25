@@ -19,6 +19,8 @@ import { formatBRL } from "@/lib/crm-store";
 import { PEDIDO_STAGES, type PedidoStageId } from "@/lib/pedidos.functions";
 import { toast } from "sonner";
 import { listPedidosRelatorio, assertPodeExportarRelatorio, type RelatorioPedidoRow } from "@/lib/relatorios.functions";
+import { PaginaCabecalho } from "@/components/layout/PaginaCabecalho";
+import { LinhaLista, VazioLista, juntarCampos } from "@/components/layout/ListaResponsiva";
 
 export const Route = createFileRoute("/relatorios")({
   component: RelatoriosPage,
