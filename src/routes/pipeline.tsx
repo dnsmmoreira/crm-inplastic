@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
   DndContext,
@@ -16,7 +17,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { Plus, Package, Calendar as CalendarIcon, Search, ArrowDownUp, X, PackageCheck, ChevronLeft, ChevronRight, CheckSquare, ArrowRightLeft } from "lucide-react";
+import { Plus, Package, MoreVertical, SlidersHorizontal, Calendar as CalendarIcon, Search, ArrowDownUp, X, PackageCheck, ChevronLeft, ChevronRight, CheckSquare, ArrowRightLeft } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useCrm, STAGES, formatBRL, leadTemperature, followupTemperature, proposalTotals, type Lead, type Proposal, type StageId, type FollowupLevel, useVisibleLeads, useVisibleProposals, useLeadValueMap } from "@/lib/crm-store";
@@ -34,6 +35,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { NewLeadDialog, LeadDrawer } from "@/components/crm/LeadDrawer";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { listVendedores } from "@/lib/clientes.functions";
 import { gerarPedidoInterno } from "@/lib/pedidos-gerar.functions";
 import { identificarCard, resolverColunaAlvo } from "@/lib/pipeline-drop";
 import { reabrirProposta, recusarProposta } from "@/lib/propostas-perda.functions";
@@ -123,6 +135,20 @@ function PipelinePage() {
   const reabrirPropostaFn = useServerFn(reabrirProposta);
 
   const leadById = useMemo(() => new Map(leads.map((l) => [l.id, l])), [leads]);
+  const listVendedoresFn = useServerFn(listVendedores);
+  const vendedoresQ = useQuery({
+    queryKey: ["leads", "vendedores"],
+    queryFn: () => listVendedoresFn(),
+    staleTime: 300_000,
+  });
+  const nomePorId = useMemo(() => {
+    const m = new Map<string, string>();
+    ((vendedoresQ.data ?? []) as Array<{ id: string; name: string }>).forEach((v) => m.set(v.id, v.name));
+    return m;
+  }, [vendedoresQ.data]);
+  // Celular: uma etapa por vez. null = primeira etapa com cartões.
+  const [etapaMobile, setEtapaMobile] = useState<StageId | null>(null);
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
 
   /** Leads que já têm ao menos uma proposta fora de rascunho saem das colunas de lead. */
   const leadsComProposta = useMemo(
@@ -342,6 +368,29 @@ function PipelinePage() {
   };
 
 
+  const etapasVisiveis = BOARD_STAGES.filter((s) => s.id !== "perdido" || mostrarPerdidos);
+  const contagemEtapa = (id: StageId): number =>
+    id === "ganho"
+      ? mostrarGanhosCompletos ? propostasGanhas.length : 0
+      : id === "proposta"
+        ? propostasEnviadas.length
+        : byStage[id].length + (id === "perdido" ? propostasRecusadas.length : 0);
+  const etapaSelecionada: StageId =
+    etapaMobile && etapasVisiveis.some((s) => s.id === etapaMobile)
+      ? etapaMobile
+      : (etapasVisiveis.find((s) => contagemEtapa(s.id) > 0) ?? etapasVisiveis[0])!.id;
+  const filtroAtivo = agendaFilter.size > 0 || mostrarGanhosCompletos || mostrarPerdidos || sortMode !== "default";
+
+  /** Celular: "Mover para…" — mesmos guardas do onDragEnd para leads. */
+  const moverPeloMenu = (lead: Lead, stage: StageId) => {
+    if (lead.stage === stage) return;
+    if (PROPOSAL_STAGES.includes(stage)) {
+      toast.info("Crie e envie uma proposta para o lead avançar no funil.");
+      return;
+    }
+    runMove(lead.id, stage, lead.company);
+  };
+
   const bulkLabels = useMemo(
     () =>
       Array.from(selected)
@@ -392,40 +441,9 @@ function PipelinePage() {
     exitSelection();
   };
 
-  return (
-    <div className="flex flex-col gap-4 p-4 md:h-dvh md:overflow-hidden md:p-8">
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
-
-        <div>
-          <h1 className="text-2xl md:text-3xl font-semibold">Funil de Vendas</h1>
-          <p className="text-sm text-muted-foreground">Arraste os cards entre as etapas do processo consultivo</p>
-        </div>
-        <div className="flex gap-2 w-full sm:w-auto">
-          <div className="relative flex-1 sm:flex-none">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 sm:w-64"
-            />
-          </div>
-          {isAdmin && (
-            <Button
-              variant={selectMode ? "secondary" : "outline"}
-              className="gap-2"
-              onClick={() => (selectMode ? exitSelection() : setSelectMode(true))}
-            >
-              <CheckSquare className="h-4 w-4" />
-              {selectMode ? "Sair da seleção" : "Selecionar"}
-            </Button>
-          )}
-          <NewLeadDialog trigger={<Button className="gap-2"><Plus className="h-4 w-4" />Novo</Button>} />
-        </div>
-      </div>
-
-      <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-2">
-        <span className="text-xs font-medium text-muted-foreground px-2">Agenda:</span>
+  // Mesmos controles no bloco do desktop e na gaveta "Filtros" do celular.
+  const controlesAgenda = (
+    <>
         {AGENDA_FILTERS.map((f) => {
           const active = agendaFilter.has(f.level);
           return (
@@ -451,7 +469,10 @@ function PipelinePage() {
             <X className="h-3 w-3" /> Limpar
           </Button>
         )}
-        <div className="ml-auto flex items-center gap-2">
+    </>
+  );
+  const controlesExtras = (
+    <>
           <Toggle
             pressed={mostrarGanhosCompletos}
             onPressedChange={setMostrarGanhosCompletos}
@@ -487,7 +508,86 @@ function PipelinePage() {
               <SelectItem value="urgency-desc">Menos urgente primeiro</SelectItem>
             </SelectContent>
           </Select>
+    </>
+  );
+
+  return (
+    <div className="flex flex-col gap-4 p-4 md:h-dvh md:overflow-hidden md:p-8">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
+
+        <div>
+          <h1 className="text-xl md:text-3xl font-semibold">Funil de Vendas</h1>
+          <p className="hidden text-sm text-muted-foreground md:block">Arraste os cards entre as etapas do processo consultivo</p>
+          <p className="text-sm text-muted-foreground md:hidden">Toque numa etapa para ver os leads</p>
         </div>
+        <div className="flex gap-2 w-full sm:w-auto">
+          <div className="relative flex-1 sm:flex-none">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9 sm:w-64"
+            />
+          </div>
+          {isAdmin && (
+            <Button
+              variant={selectMode ? "secondary" : "outline"}
+              className="gap-2"
+              onClick={() => (selectMode ? exitSelection() : setSelectMode(true))}
+            >
+              <CheckSquare className="h-4 w-4" />
+              {selectMode ? "Sair da seleção" : "Selecionar"}
+            </Button>
+          )}
+          <Sheet open={filtrosAbertos} onOpenChange={setFiltrosAbertos}>
+            <SheetTrigger asChild>
+              <Button variant="outline" className="relative gap-2 md:hidden">
+                <SlidersHorizontal className="h-4 w-4" />
+                Filtros
+                {filtroAtivo && (
+                  <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-primary" aria-label="Há filtros ativos" />
+                )}
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-[85vw] max-w-sm overflow-y-auto">
+              <SheetHeader>
+                <SheetTitle>Filtros</SheetTitle>
+              </SheetHeader>
+              <div className="mt-4 flex flex-col items-start gap-3">
+                <span className="text-xs font-medium text-muted-foreground">Agenda:</span>
+                <div className="flex flex-wrap gap-2">{controlesAgenda}</div>
+                {controlesExtras}
+              </div>
+            </SheetContent>
+          </Sheet>
+          <NewLeadDialog trigger={<Button className="gap-2"><Plus className="h-4 w-4" />Novo</Button>} />
+        </div>
+      </div>
+
+      <div className="hidden shrink-0 flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-2 md:flex">
+        <span className="text-xs font-medium text-muted-foreground px-2">Agenda:</span>
+        {controlesAgenda}
+        <div className="ml-auto flex items-center gap-2">
+          {controlesExtras}
+        </div>
+      </div>
+
+      {/* Celular: seletor de etapa (única coisa que rola de lado) */}
+      <div className="-mx-4 flex shrink-0 gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:hidden">
+        {etapasVisiveis.map((s) => (
+          <button
+            key={s.id}
+            type="button"
+            onClick={() => setEtapaMobile(s.id)}
+            className={cn(
+              "shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-medium",
+              etapaSelecionada === s.id ? "bg-primary text-primary-foreground" : "border bg-background",
+            )}
+          >
+            {s.label} <span className="opacity-70">{contagemEtapa(s.id)}</span>
+          </button>
+        ))}
       </div>
 
       <DndContext
@@ -497,7 +597,7 @@ function PipelinePage() {
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
       >
-        <div className="-mx-4 min-h-0 flex-1 overflow-auto md:overflow-y-hidden scrollbar-visible px-4 md:-mx-8 md:px-8">
+        <div className="-mx-4 min-h-0 flex-1 overflow-y-auto md:overflow-auto md:overflow-y-hidden scrollbar-visible px-4 md:-mx-8 md:px-8">
           <div className="flex gap-4 pb-4 md:h-full">
 
             {BOARD_STAGES.map((stage) =>
@@ -516,6 +616,7 @@ function PipelinePage() {
                   leadById={leadById}
                   onOpen={(id) => navigate({ to: "/propostas/$id", params: { id } })}
                   onToggleNegociacao={(p) => updateProposal(p.id, { emNegociacao: !p.emNegociacao })}
+                  ocultaNoCelular={stage.id !== etapaSelecionada}
                 />
               ) : (
                 <Column
@@ -531,6 +632,9 @@ function PipelinePage() {
                   onToggleSelect={toggleSelected}
                   onSelectMany={selectMany}
                   onTransferir={(id) => setTransferirIds([id])}
+                  onMover={moverPeloMenu}
+                  nomePorId={nomePorId}
+                  ocultaNoCelular={stage.id !== etapaSelecionada}
                 />
               ),
             )}
@@ -658,6 +762,9 @@ function Column({
   propostasRecusadas,
   leadById,
   onOpenProposta,
+  onMover,
+  nomePorId,
+  ocultaNoCelular = false,
 }: {
   stage: (typeof STAGES)[number];
   leads: Lead[];
@@ -671,6 +778,10 @@ function Column({
   propostasRecusadas?: Proposal[];
   leadById?: Map<string, Lead>;
   onOpenProposta?: (propostaId: string) => void;
+  onMover?: (lead: Lead, stage: StageId) => void;
+  nomePorId?: Map<string, string>;
+  /** Celular mostra uma etapa por vez. */
+  ocultaNoCelular?: boolean;
 }) {
 
   const { setNodeRef, isOver } = useDroppable({ id: stage.id });
@@ -690,7 +801,7 @@ function Column({
   const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selected.has(id));
 
   return (
-    <div className="w-[300px] shrink-0 flex flex-col md:h-full">
+    <div className={cn("w-full md:w-[300px] shrink-0 flex-col md:h-full", ocultaNoCelular ? "hidden md:flex" : "flex")}>
       <div className="sticky top-0 z-20 shrink-0 px-1 pb-2 pt-1 flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/70">
 
         <div className="flex items-center gap-2">
@@ -726,6 +837,8 @@ function Column({
             isSelected={selected.has(l.id)}
             onToggleSelect={onToggleSelect}
             onTransferir={onTransferir}
+            onMover={onMover}
+            nomeDono={nomePorId?.get(l.ownerId)}
           />
         ))}
 
@@ -777,6 +890,14 @@ function Column({
   );
 }
 
+/** Tarja do cartão no celular: urgência da agenda (mesmo critério dos filtros). */
+const TARJA_URGENCIA_MOBILE: Record<FollowupLevel, string> = {
+  urgent: "border-l-red-500",
+  attention: "border-l-amber-500",
+  scheduled: "border-l-sky-500",
+  ok: "border-l-muted-foreground/30",
+};
+
 function LeadCard({
 
   lead,
@@ -786,6 +907,8 @@ function LeadCard({
   isSelected = false,
   onToggleSelect,
   onTransferir,
+  onMover,
+  nomeDono,
 }: {
   lead: Lead;
   onOpen: (id: string) => void;
@@ -794,16 +917,28 @@ function LeadCard({
   isSelected?: boolean;
   onToggleSelect?: (id: string) => void;
   onTransferir?: (id: string) => void;
+  /** Celular: "Mover para…" no lugar do arraste. */
+  onMover?: (lead: Lead, stage: StageId) => void;
+  nomeDono?: string;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: lead.id, disabled: selectMode });
   const sc = computeLeadScore(lead);
   const valueMap = useLeadValueMap();
   const effValue = valueMap.get(lead.id) ?? lead.estimatedValue;
-  const stripe =
-    sc.level === "alto" ? "border-l-4 border-l-emerald-500"
-    : sc.level === "medio" ? "border-l-4 border-l-amber-500"
-    : "border-l-4 border-l-rose-500";
+  const followup = followupTemperature(lead);
+  // Celular: tarja pela urgência da agenda; desktop (md+): tarja pelo score, como sempre.
+  const stripe = cn(
+    "border-l-4",
+    TARJA_URGENCIA_MOBILE[followup.level],
+    sc.level === "alto" ? "md:border-l-emerald-500"
+    : sc.level === "medio" ? "md:border-l-amber-500"
+    : "md:border-l-rose-500",
+  );
   const dragProps = selectMode ? {} : { ...attributes, ...listeners };
+  const pararEvento = {
+    onPointerDown: (e: React.PointerEvent) => e.stopPropagation(),
+    onClick: (e: React.MouseEvent) => e.stopPropagation(),
+  };
   return (
     <div
       ref={setNodeRef}
@@ -843,7 +978,7 @@ function LeadCard({
               type="button"
               title="Transferir responsável"
               aria-label={`Transferir responsável de ${lead.company}`}
-              className="rounded p-1 text-muted-foreground opacity-0 transition hover:bg-accent hover:text-foreground group-hover:opacity-100 focus:opacity-100"
+              className="hidden rounded p-1 text-muted-foreground opacity-0 transition hover:bg-accent hover:text-foreground group-hover:opacity-100 focus:opacity-100 md:block"
               onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation();
@@ -853,37 +988,89 @@ function LeadCard({
               <ArrowRightLeft className="h-3.5 w-3.5" />
             </button>
           )}
+          {!selectMode && !dragging && (onMover || onTransferir) && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={`Ações de ${lead.company}`}
+                  className="-mr-1 grid h-8 w-8 place-items-center rounded text-muted-foreground hover:bg-accent md:hidden"
+                  {...pararEvento}
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" {...pararEvento}>
+                {onMover && (
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger {...pararEvento}>Mover para…</DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent {...pararEvento}>
+                      {BOARD_STAGES.filter((s) => s.id !== lead.stage).map((s) => (
+                        <DropdownMenuItem
+                          key={s.id}
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onMover(lead, s.id);
+                          }}
+                        >
+                          <span className="stage-dot mr-2" style={{ background: s.color }} />
+                          {s.label}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                )}
+                {onTransferir && (
+                  <DropdownMenuItem
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onTransferir(lead.id);
+                    }}
+                  >
+                    <ArrowRightLeft className="mr-2 h-4 w-4" />
+                    Transferir responsável
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
 
       </div>
-      <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+      {/* Celular: dono · último contato */}
+      <div className="mt-1 truncate text-xs text-muted-foreground md:hidden">
+        {nomeDono ?? "—"} · últ. contato {format(new Date(lead.lastContact), "dd/MM")}
+      </div>
+      <div className="mt-2 hidden items-center gap-1.5 text-xs text-muted-foreground md:flex">
         <Package className="h-3 w-3 shrink-0" />
         <span className="truncate">{lead.product} · {lead.quantity} un.</span>
       </div>
-      <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+      <div className="mt-1 hidden items-center gap-1.5 text-xs text-muted-foreground md:flex">
         <CalendarIcon className="h-3 w-3 shrink-0" />
         <span>Último contato {format(new Date(lead.lastContact), "dd MMM", { locale: ptBR })}</span>
       </div>
       {(() => {
         const t = leadTemperature(lead);
-        const f = followupTemperature(lead);
+        const f = followup;
         return (
           <div className="mt-2 flex flex-wrap items-center gap-1">
             <Badge
               variant="outline"
-              className={`text-[10px] px-1.5 py-0 ${sc.className}`}
+              className={`hidden text-[10px] px-1.5 py-0 md:inline-flex ${sc.className}`}
               title={sc.reasons.map((r) => `${r.ok ? "✓" : "•"} ${r.text}`).join("\n")}
             >
               <span className="mr-1">{sc.emoji}</span>Score {sc.score}
             </Badge>
-            <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${t.className}`} title={t.hint}>
+            <Badge variant="outline" className={`hidden text-[10px] px-1.5 py-0 md:inline-flex ${t.className}`} title={t.hint}>
               <span className="mr-1">{t.emoji}</span>{t.label} · {t.days}d
             </Badge>
             <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${f.className}`} title={f.hint}>
               <span className="mr-1">{f.emoji}</span>{f.label}
             </Badge>
             {lead.tags.slice(0, 2).map((tag) => (
-              <Badge key={tag} variant="outline" className="text-[10px] px-1.5 py-0">{tag}</Badge>
+              <Badge key={tag} variant="outline" className="hidden text-[10px] px-1.5 py-0 md:inline-flex">{tag}</Badge>
             ))}
           </div>
         );
@@ -898,12 +1085,15 @@ function ProposalColumn({
   leadById,
   onOpen,
   onToggleNegociacao,
+  ocultaNoCelular = false,
 }: {
   stage: (typeof STAGES)[number];
   proposals: Proposal[];
   leadById: Map<string, Lead>;
   onOpen: (propostaId: string) => void;
   onToggleNegociacao: (p: Proposal) => void;
+  /** Celular mostra uma etapa por vez. */
+  ocultaNoCelular?: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage.id });
   const total = proposals.reduce((s, p) => s + proposalTotals(p).total, 0);
@@ -915,7 +1105,7 @@ function ProposalColumn({
   const visible = proposals.slice(start, start + CARDS_PER_PAGE);
 
   return (
-    <div className="w-[300px] shrink-0 flex flex-col md:h-full">
+    <div className={cn("w-full md:w-[300px] shrink-0 flex-col md:h-full", ocultaNoCelular ? "hidden md:flex" : "flex")}>
       <div className="sticky top-0 z-20 shrink-0 px-1 pb-2 pt-1 flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/70">
         <div className="flex items-center gap-2">
           <span className="stage-dot" style={{ background: stage.color }} />
