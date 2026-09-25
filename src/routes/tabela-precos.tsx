@@ -3,6 +3,8 @@ import { useMemo, useState } from "react";
 import { Search, Tags } from "lucide-react";
 import { useCrm, formatBRL } from "@/lib/crm-store";
 import { Input } from "@/components/ui/input";
+import { PaginaCabecalho } from "@/components/layout/PaginaCabecalho";
+import { TabelaResponsiva, LinhaLista, VazioLista, juntarCampos } from "@/components/layout/ListaResponsiva";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   Table,
@@ -64,15 +66,16 @@ function TabelaPrecosPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-          <Tags className="h-5 w-5" />
-        </div>
-        <div>
-          <h1 className="font-display text-2xl font-semibold">Tabela de Preços</h1>
-          <p className="text-sm text-muted-foreground">Consulta somente leitura dos produtos ativos.</p>
-        </div>
-      </div>
+      <PaginaCabecalho
+        titulo="Tabela de Preços"
+        icone={
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Tags className="h-5 w-5" />
+          </div>
+        }
+        descricao="Consulta somente leitura dos produtos ativos."
+        resumoMobile={`${rows.length} item(ns)`}
+      />
 
       <Card>
         <CardHeader className="gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -104,6 +107,23 @@ function TabelaPrecosPage() {
           </div>
         </CardHeader>
         <CardContent>
+          <TabelaResponsiva
+            mobile={
+              rows.length === 0 ? (
+                <VazioLista icone={<Tags />} titulo="Nenhum produto encontrado" dica={q ? "Tente limpar a busca" : undefined} />
+              ) : (
+                rows.map((p) => (
+                  <LinhaLista
+                    key={p.id}
+                    titulo={p.name}
+                    subtitulo={juntarCampos(p.sku, p.unit)}
+                    valor={formatBRL(p.defaultPrice ?? 0)}
+                    legenda={p.unit ? `por ${p.unit}` : undefined}
+                  />
+                ))
+              )
+            }
+          >
           <Table>
             <TableHeader>
               <TableRow>
@@ -132,6 +152,7 @@ function TabelaPrecosPage() {
               )}
             </TableBody>
           </Table>
+          </TabelaResponsiva>
         </CardContent>
       </Card>
     </div>
