@@ -360,3 +360,45 @@ export function prepararTexto(bruto: string): string | null {
   if (t.length > CHAT_LIMITE_CARACTERES) return null;
   return t;
 }
+
+/* ------------------------------------------ separador de data e citação */
+
+function chaveDia(d: Date): string {
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+/** Entra separador quando é a primeira mensagem ou o dia (local) mudou. */
+export function precisaSeparadorData(atualIso: string, anteriorIso: string | null | undefined): boolean {
+  if (!anteriorIso) return true;
+  const a = new Date(atualIso);
+  const b = new Date(anteriorIso);
+  if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) return true;
+  return chaveDia(a) !== chaveDia(b);
+}
+
+/** "Hoje", "Ontem" ou dd/mm/aaaa, sempre no fuso local. */
+export function rotuloDia(iso: string, agora: Date = new Date()): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  if (chaveDia(d) === chaveDia(agora)) return "Hoje";
+  const ontem = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() - 1);
+  if (chaveDia(d) === chaveDia(ontem)) return "Ontem";
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  return `${dd}/${mm}/${d.getFullYear()}`;
+}
+
+export const LIMITE_TRECHO_CITADO = 120;
+
+/** Começo da mensagem citada: texto em uma linha, ou nome do anexo, ou "Arquivo". */
+export function trechoCitado(
+  m: { conteudo?: string | null; anexo_nome?: string | null } | null | undefined,
+  max: number = LIMITE_TRECHO_CITADO,
+): string {
+  if (!m) return "Mensagem indisponível";
+  const texto = (m.conteudo ?? "").replace(/\s+/g, " ").trim();
+  if (texto) return texto.length > max ? `${texto.slice(0, max).trimEnd()}…` : texto;
+  const nome = (m.anexo_nome ?? "").trim();
+  if (nome) return `📎 ${nome}`;
+  return "Mensagem sem texto";
+}
