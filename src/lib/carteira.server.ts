@@ -4,6 +4,7 @@
  * A carteira é a âncora: contato de cliente que já é da casa vai para o
  * vendedor dele, nunca para a fila e nunca para a IA.
  */
+import type { OrigemTarefa } from "@/lib/tarefas-origem";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { registrarFalhaSegura } from "@/lib/guard-erros";
 import type { LeadCasado } from "@/lib/carteira-match";
@@ -162,7 +163,7 @@ export async function aplicarCarteiraNaConversa(
           lead_id: leadId,
           tipo: "resposta_pendente",
           kind: "resposta_pendente",
-          origem: "xerife",
+          origem: "xerife" satisfies OrigemTarefa,
           status: "pendente",
           prioridade: 1,
           title: "Cliente da sua carteira escreveu no WhatsApp",

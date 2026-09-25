@@ -13,6 +13,7 @@
  * Horas úteis SP: SLAs em minutos/horas são úteis, não corridos.
  * A3 pula conversas com ia_ativa=true (Lucas está atendendo).
  */
+import type { OrigemTarefa } from "@/lib/tarefas-origem";
 import { createFileRoute } from "@tanstack/react-router";
 import { registrarFalhaSegura } from "@/lib/guard-erros";
 import { requireXerifeCronAuth, cronJsonResponse } from "@/lib/xerife/cron-auth.server";
@@ -261,7 +262,7 @@ async function runEngine(opts: { force?: boolean; dryRun?: boolean } = {}): Prom
       hora_sugerida: t.horaSugerida ?? null,
       due_date: (t.dueDate ?? new Date(Date.now() + 2 * 3600 * 1000)).toISOString(),
       status: "pendente",
-      origem: "xerife",
+      origem: "xerife" satisfies OrigemTarefa,
     });
     if (insTarefa?.error) {
       await registrarFalhaSegura("xerife-engine.criarTarefa", insTarefa.error, {

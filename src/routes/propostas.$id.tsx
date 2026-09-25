@@ -1460,6 +1460,7 @@ function PropostaDetalhe() {
                     ? "Proposta recusada — lead marcado como perdido"
                     : "Proposta recusada — o lead segue com outra proposta em aberto",
                 );
+                if (r.aviso) toast.warning(r.aviso);
               } catch (err) {
                 toast.dismiss(t);
                 toast.error("Não foi possível registrar a recusa", {

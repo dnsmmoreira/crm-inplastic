@@ -1,3 +1,4 @@
+import type { OrigemTarefa } from "@/lib/tarefas-origem";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/auth.middleware";
@@ -254,7 +255,7 @@ export const concluirTarefa = createServerFn({ method: "POST" })
         prioridade: 1,
         due_date: dataISO,
         status: "pendente",
-        origem: "manual",
+        origem: "manual" satisfies OrigemTarefa,
       });
       await assertNoError(insTarefa, "concluirTarefa.retorno.tarefa", { lead_id: leadId });
 

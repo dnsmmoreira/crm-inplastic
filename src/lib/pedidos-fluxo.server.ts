@@ -5,6 +5,7 @@
  *
  * NUNCA envia WhatsApp/Telegram. Apenas grava em `notificacoes` e `tarefas`.
  */
+import type { OrigemTarefa } from "@/lib/tarefas-origem";
 import {
   decidirRotaAprovacao,
   APROVACAO_PARAMS_PADRAO,
@@ -310,7 +311,7 @@ export async function criarTarefaPedido(
       prioridade: args.prioridade ?? 2,
       due_date: args.dueDate.toISOString(),
       status: "pendente",
-      origem: "pedido_fluxo",
+      origem: "pedido_fluxo" satisfies OrigemTarefa,
     })
     .select("id")
     .maybeSingle();

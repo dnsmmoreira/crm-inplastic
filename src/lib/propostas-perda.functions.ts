@@ -75,14 +75,14 @@ async function auditar(
 export const recusarProposta = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => recusaSchema.parse(data))
-  .handler(async ({ data, context }): Promise<{ ok: true; leadPerdido: boolean }> => {
+  .handler(async ({ data, context }): Promise<{ ok: true; leadPerdido: boolean; aviso?: string }> => {
     const { recusarPropostaImpl } = await import("@/lib/propostas-perda.server");
     const r = await recusarPropostaImpl(context.supabase as unknown as SB, context.userId, {
       propostaId: data.propostaId,
       motivo: data.motivo as MotivoPerda,
       observacao: data.observacao,
     });
-    return { ok: true as const, leadPerdido: r.leadPerdido };
+    return { ok: true as const, leadPerdido: r.leadPerdido, ...(r.aviso ? { aviso: r.aviso } : {}) };
   });
 
 export const reabrirProposta = createServerFn({ method: "POST" })

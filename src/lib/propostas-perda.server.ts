@@ -6,6 +6,7 @@
  */
 import { assertNoError, registrarFalhaSegura } from "@/lib/guard-erros";
 import type { MotivoPerda } from "@/lib/motivos-perda";
+import { ORIGEM_TAREFA_RECUSA_PROPOSTA } from "@/lib/tarefas-origem";
 import { dataRecontato, leadDeveIrParaPerdido } from "@/lib/proposta-perda";
 
 export const STATUS_RECUSAVEL = ["rascunho", "enviada", "aguardando_aprovacao"] as const;
@@ -59,7 +60,7 @@ export async function recusarPropostaImpl(
   sb: SB,
   userId: string,
   input: { propostaId: string; motivo: MotivoPerda; observacao: string },
-): Promise<{ ok: true; leadPerdido: boolean; number: string | null }> {
+): Promise<{ ok: true; leadPerdido: boolean; number: string | null; aviso?: string }> {
   const motivo = input.motivo;
   const detalhe = input.observacao.trim();
 
@@ -141,6 +142,7 @@ export async function recusarPropostaImpl(
     }
   }
 
+  let aviso: string | undefined;
   // Tarefa de recontato — idempotente por proposta (tag no título).
   const dueRecontato = dataRecontato(motivo, agora);
   if (dueRecontato && prop.lead_id) {
@@ -161,10 +163,12 @@ export async function recusarPropostaImpl(
         kind: "retomar_contato",
         due_date: new Date(`${dueRecontato}T12:00:00.000Z`).toISOString(),
         status: "pendente",
-        origem: "proposta_recusada",
+        origem: ORIGEM_TAREFA_RECUSA_PROPOSTA,
       });
       if (insTarefa?.error) {
-        // BAIXA: a recusa já está gravada; a tarefa é acessório.
+        // BAIXA: a recusa já está gravada; a tarefa é acessório — mas o usuário é avisado.
+        aviso =
+          "Proposta recusada, mas não foi possível criar a tarefa de retomar contato — avise o administrador.";
         await registrarFalhaSegura("propostas-perda.recusar/tarefa", insTarefa.error, {
           proposta_id: prop.id,
         });
@@ -173,5 +177,10 @@ export async function recusarPropostaImpl(
   }
 
   await auditarProposta(sb, userId, "proposta_recusada", prop.status, `${prop.number} — ${motivo}`);
-  return { ok: true as const, leadPerdido, number: (prop.number as string) ?? null };
+  return {
+    ok: true as const,
+    leadPerdido,
+    number: (prop.number as string) ?? null,
+    ...(aviso ? { aviso } : {}),
+  };
 }
