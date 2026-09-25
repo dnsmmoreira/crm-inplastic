@@ -85,7 +85,11 @@ function ClienteDetailPage() {
   const [transferirAberto, setTransferirAberto] = useState(false);
   const [iniciandoConversa, setIniciandoConversa] = useState(false);
   const iniciarConversaFn = useServerFn(iniciarConversaCliente);
-  const { criando: criandoProposta, criarPropostaParaCliente } = useCriarPropostaParaCliente();
+  const {
+    criando: criandoProposta,
+    criarPropostaParaCliente,
+    dialogoEmNomeDe,
+  } = useCriarPropostaParaCliente();
 
   useEffect(() => {
     if (clienteQ.data) setForm(fromRow(clienteQ.data));
@@ -167,6 +171,7 @@ function ClienteDetailPage() {
 
   return (
     <div className="p-4 md:p-8 space-y-4">
+      {dialogoEmNomeDe}
       <TransferirLeadDialog
         open={transferirAberto}
         onOpenChange={setTransferirAberto}

@@ -504,7 +504,7 @@ function PropostasPage() {
 function NovaPropostaDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   const leads = useVisibleLeads();
   const listClientesFn = useServerFn(listClientes);
-  const { criando, setCriando, criarPropostaDoLead, criarPropostaParaCliente } =
+  const { criando, setCriando, criarPropostaDoLead, criarPropostaParaCliente, dialogoEmNomeDe } =
     useCriarPropostaParaCliente();
 
   const [query, setQuery] = useState("");
@@ -740,6 +740,7 @@ function NovaPropostaDialog({ open, onOpenChange }: { open: boolean; onOpenChang
           void criarPropostaComClienteNovo(c);
         }}
       />
+      {dialogoEmNomeDe}
     </>
   );
 }

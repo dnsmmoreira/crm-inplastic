@@ -700,6 +700,8 @@ export type Proposal = {
   number: string; // ex: 2026-0001
   leadId: string;
   ownerId: string;
+  /** Quem clicou em criar; difere de ownerId quando criada em nome de outra pessoa. */
+  criadoPor?: string | null;
   createdAt: string;
   status: ProposalStatus;
   validityDays: number;
@@ -1471,6 +1473,7 @@ export const useCrm = create<CrmState>()((set, get) => ({
       number,
       leadId,
       ownerId: finalOwnerId,
+      criadoPor: get().currentUserId,
       createdAt: new Date().toISOString(),
       status: "rascunho",
       emNegociacao: false,
@@ -1505,6 +1508,7 @@ export const useCrm = create<CrmState>()((set, get) => ({
       number: proposal.number,
       lead_id: proposal.leadId,
       owner_id: proposal.ownerId,
+      criado_por: get().currentUserId,
       emitter_id: proposal.emitterId,
       status: proposal.status,
       validity_days: proposal.validityDays,
