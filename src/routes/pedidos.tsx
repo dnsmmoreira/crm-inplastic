@@ -79,6 +79,8 @@ import {
 } from "@/lib/pedidos.functions";
 import { PedidoDetailDrawer } from "@/components/pedidos/PedidoDetailDrawer";
 import { PaginaCabecalho } from "@/components/layout/PaginaCabecalho";
+import { FiltrosResponsivos } from "@/components/layout/FiltrosResponsivos";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { juntarCampos } from "@/components/layout/ListaResponsiva";
 import {
   DropdownMenu,
@@ -384,6 +386,32 @@ function PedidosKanbanPage() {
   const etapaSelecionada: PedidoStageId =
     etapaMobile ?? (PEDIDO_STAGES.find((s) => byStage[s.id].length > 0) ?? PEDIDO_STAGES[0])!.id;
 
+  const filterBar = (
+    <FilterBar
+      options={options}
+      fVendedor={fVendedor}
+      setFVendedor={setFVendedor}
+      fResponsavel={fResponsavel}
+      setFResponsavel={setFResponsavel}
+      fStage={fStage}
+      setFStage={setFStage}
+      fForma={fForma}
+      setFForma={setFForma}
+      tAtrasados={tAtrasados}
+      setTAtrasados={setTAtrasados}
+      tBloqueados={tBloqueados}
+      setTBloqueados={setTBloqueados}
+      tOcorrencia={tOcorrencia}
+      setTOcorrencia={setTOcorrencia}
+      tReprovados={tReprovados}
+      setTReprovados={setTReprovados}
+      activeCount={activeFilterCount}
+      onClear={clearFilters}
+      totalCount={allRows.length}
+      filteredCount={filtered.length}
+    />
+  );
+
   return (
     <div className="p-4 md:p-8 space-y-4 md:h-dvh md:min-h-[720px] md:flex md:flex-col md:gap-6 md:space-y-0">
       <div className="shrink-0">
@@ -392,14 +420,19 @@ function PedidosKanbanPage() {
         descricao="Kanban operacional — avanços restritos por matriz; retornos exigem motivo. Faturamento é status, não etapa."
         resumoMobile="Toque numa etapa para ver os pedidos"
         acoes={
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por nº, cliente, proposta, NF..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
+        <div className="flex w-full gap-2 sm:w-72">
+          <div className="relative min-w-0 flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por nº, cliente, proposta, NF..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          {isMobile && (
+            <FiltrosResponsivos ativo={activeFilterCount > 0}>{filterBar}</FiltrosResponsivos>
+          )}
         </div>
         }
       />
@@ -409,33 +442,8 @@ function PedidosKanbanPage() {
         <KpiBar pedidos={filtered} />
       </div>
 
+      {!isMobile && <div className="shrink-0">{filterBar}</div>}
 
-      <div className="shrink-0">
-      <FilterBar
-
-        options={options}
-        fVendedor={fVendedor}
-        setFVendedor={setFVendedor}
-        fResponsavel={fResponsavel}
-        setFResponsavel={setFResponsavel}
-        fStage={fStage}
-        setFStage={setFStage}
-        fForma={fForma}
-        setFForma={setFForma}
-        tAtrasados={tAtrasados}
-        setTAtrasados={setTAtrasados}
-        tBloqueados={tBloqueados}
-        setTBloqueados={setTBloqueados}
-        tOcorrencia={tOcorrencia}
-        setTOcorrencia={setTOcorrencia}
-        tReprovados={tReprovados}
-        setTReprovados={setTReprovados}
-        activeCount={activeFilterCount}
-        onClear={clearFilters}
-        totalCount={allRows.length}
-        filteredCount={filtered.length}
-      />
-      </div>
 
       <div className="md:flex md:min-h-[360px] md:flex-1 md:flex-col">
       {pedidosQ.isLoading ? (
