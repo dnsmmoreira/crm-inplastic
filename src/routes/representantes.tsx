@@ -22,6 +22,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { PaginaCabecalho } from "@/components/layout/PaginaCabecalho";
+import { TabelaResponsiva, LinhaLista, VazioLista, juntarCampos } from "@/components/layout/ListaResponsiva";
 import {
   Table,
   TableBody,
@@ -125,23 +127,20 @@ function RepresentantesPage() {
   };
 
   return (
-    <div className="space-y-4 p-4 md:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-semibold">
-            <Handshake className="h-6 w-6" /> Representantes
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Representante usa o sistema como vendedor, mas é medido por comissão — por isso fica
-            fora do placar.
-          </p>
-        </div>
-        <Button asChild>
-          <Link to="/usuarios">
-            <Plus className="mr-2 h-4 w-4" /> Novo representante
-          </Link>
-        </Button>
-      </div>
+    <div className="p-4 md:p-8 space-y-4 md:space-y-6">
+      <PaginaCabecalho
+        titulo="Representantes"
+        icone={<Handshake className="h-6 w-6" />}
+        descricao="Representante usa o sistema como vendedor, mas é medido por comissão — por isso fica fora do placar."
+        resumoMobile={rows && rows.length ? `${rows.length} representante(s)` : undefined}
+        acoes={
+          <Button asChild>
+            <Link to="/usuarios">
+              <Plus className="mr-2 h-4 w-4" /> Novo representante
+            </Link>
+          </Button>
+        }
+      />
 
       <Card>
         <CardHeader>
@@ -159,6 +158,36 @@ function RepresentantesPage() {
               Ninguém com o cargo Representante ainda. Cadastre em Usuários.
             </p>
           ) : (
+            <TabelaResponsiva
+              mobile={rows.map((r) => (
+                <LinhaLista
+                  key={r.id}
+                  titulo={r.nome}
+                  subtitulo={juntarCampos(
+                    r.regiao,
+                    r.comissaoPct === null
+                      ? null
+                      : `${r.comissaoPct.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}% comissão`,
+                  )}
+                  valor={r.carteira}
+                  legenda="na carteira"
+                  acento={r.excluido || !r.ativo ? "bg-muted-foreground/40" : undefined}
+                  abaixo={
+                    <>
+                      <span className="tabular-nums text-muted-foreground">
+                        {r.leadsAbertos} leads abertos · {r.propostasMes} propostas no mês
+                      </span>
+                      {r.excluido ? (
+                        <Badge variant="outline">Excluído</Badge>
+                      ) : !r.ativo ? (
+                        <Badge variant="outline">Inativo</Badge>
+                      ) : null}
+                    </>
+                  }
+                  onClick={() => abrir(r)}
+                />
+              ))}
+            >
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -213,6 +242,7 @@ function RepresentantesPage() {
                 </TableBody>
               </Table>
             </div>
+            </TabelaResponsiva>
           )}
         </CardContent>
       </Card>

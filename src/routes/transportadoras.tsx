@@ -225,7 +225,7 @@ function TransportadorasPage() {
   };
 
   return (
-    <div className="p-4 md:p-8 space-y-6">
+    <div className="p-4 md:p-8 space-y-4 md:space-y-6">
       <PaginaCabecalho
         titulo="Transportadoras"
         icone={<Truck className="h-5 w-5 text-primary" />}

@@ -8,7 +8,7 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Gavel, Plus, Pencil, Trash2 } from "lucide-react";
+import { Gavel, Plus, Pencil, Trash2, MoreVertical } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -24,6 +24,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { PaginaCabecalho } from "@/components/layout/PaginaCabecalho";
+import { TabelaResponsiva, LinhaLista, VazioLista, juntarCampos } from "@/components/layout/ListaResponsiva";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -250,20 +258,17 @@ function LicitacoesPage() {
   const stepIndex = form ? SITUACOES_LICITACAO.indexOf(form.situacao) : -1;
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold flex items-center gap-2">
-            <Gavel className="h-6 w-6 text-primary" /> Licitações
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Licitação não gera proposta e não passa pelo funil de vendas.
-          </p>
-        </div>
-        <Button onClick={() => setForm({ ...emptyForm })}>
-          <Plus className="h-4 w-4 mr-2" /> Nova licitação
-        </Button>
-      </header>
+    <div className="p-4 md:p-8 space-y-4 md:space-y-6">
+      <PaginaCabecalho
+        titulo="Licitações"
+        icone={<Gavel className="h-6 w-6 text-primary" />}
+        descricao="Licitação não gera proposta e não passa pelo funil de vendas."
+        acoes={
+          <Button onClick={() => setForm({ ...emptyForm })}>
+            <Plus className="h-4 w-4 mr-2" /> Nova licitação
+          </Button>
+        }
+      />
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
@@ -331,6 +336,55 @@ function LicitacoesPage() {
         )}
       </div>
 
+      <TabelaResponsiva
+        mobile={
+          <div className="divide-y rounded-lg border px-4">
+            {loading ? (
+              <VazioLista icone={<Gavel />} titulo="Carregando…" />
+            ) : erro ? (
+              <p className="py-10 text-center text-sm text-destructive">{erro}</p>
+            ) : rows.length === 0 ? (
+              <VazioLista
+                icone={<Gavel />}
+                titulo="Nenhuma licitação encontrada"
+                dica={situacao !== "todas" || de || ate ? "Tente limpar os filtros" : undefined}
+              />
+            ) : (
+              rows.map((r) => (
+                <LinhaLista
+                  key={r.id}
+                  titulo={r.orgao}
+                  subtitulo={juntarCampos(r.modalidade, r.numero, r.objeto)}
+                  valor={brl(Number(r.valor_estimado) || 0)}
+                  legenda="estimado"
+                  abaixo={<Badge variant="secondary">{r.situacao}</Badge>}
+                  onClick={() => setForm(toForm(r))}
+                  acoes={
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-10 w-10 -mr-2" aria-label="Ações">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setForm(toForm(r))}>
+                          <Pencil className="h-4 w-4" /> Editar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-destructive focus:text-destructive"
+                          onClick={() => void handleDelete(r.id)}
+                        >
+                          <Trash2 className="h-4 w-4" /> Excluir
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  }
+                />
+              ))
+            )}
+          </div>
+        }
+      >
       <div className="rounded-lg border overflow-x-auto">
         <Table>
           <TableHeader>
@@ -403,6 +457,7 @@ function LicitacoesPage() {
           </TableBody>
         </Table>
       </div>
+      </TabelaResponsiva>
 
       <Dialog open={!!form} onOpenChange={(o) => !o && setForm(null)}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">

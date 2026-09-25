@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Copy, Trash2, Package, Search } from "lucide-react";
+import { Plus, Pencil, Copy, Trash2, Package, Search, MoreVertical } from "lucide-react";
 import { toast } from "sonner";
 import {
   useCrm,
@@ -46,6 +46,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { PaginaCabecalho } from "@/components/layout/PaginaCabecalho";
+import { TabelaResponsiva, LinhaLista, VazioLista, juntarCampos } from "@/components/layout/ListaResponsiva";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export const Route = createFileRoute("/produtos")({
   // Deep-link: /produtos?editar=<id> abre o ProductDialog já com o produto.
@@ -147,17 +155,14 @@ function ProdutosPage() {
   }, [products, q, sort]);
 
   return (
-    <div className="p-4 md:p-8 space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-semibold">Catálogo de Produtos</h1>
-          <p className="text-sm text-muted-foreground">
-            Base compartilhada — usada nas propostas comerciais.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
+    <div className="p-4 md:p-8 space-y-4 md:space-y-6">
+      <PaginaCabecalho
+        titulo="Catálogo de Produtos"
+        descricao="Base compartilhada — usada nas propostas comerciais."
+        acoes={
+          <>
           <Select value={sort} onValueChange={(v) => setSort(v as SortKey)}>
-            <SelectTrigger className="w-44">
+            <SelectTrigger className="w-full md:w-44">
               <SelectValue placeholder="Ordenar" />
             </SelectTrigger>
             <SelectContent>
@@ -166,7 +171,7 @@ function ProdutosPage() {
               <SelectItem value="recent">Criados por último</SelectItem>
             </SelectContent>
           </Select>
-          <div className="relative">
+          <div className="relative hidden md:block">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               value={q}
@@ -181,8 +186,9 @@ function ProdutosPage() {
           >
             <Plus className="h-4 w-4" /> Novo produto
           </Button>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       <Card>
         <CardHeader>
@@ -193,8 +199,65 @@ function ProdutosPage() {
           <CardDescription>
             {isAdmin ? "Administradores podem editar e remover." : "Apenas admins editam o catálogo."}
           </CardDescription>
+          <div className="relative md:hidden">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Buscar SKU, nome, NCM..."
+              className="pl-8 w-full sm:w-64"
+            />
+          </div>
         </CardHeader>
         <CardContent className="overflow-x-auto">
+          <TabelaResponsiva
+            mobile={
+              filtered.length === 0 ? (
+                <VazioLista icone={<Package />} titulo="Nenhum produto encontrado" dica={q ? "Tente limpar a busca" : undefined} />
+              ) : (
+                filtered.map((p) => (
+                  <LinhaLista
+                    key={p.id}
+                    titulo={p.name}
+                    subtitulo={juntarCampos(p.sku, p.unit, p.weightKg ? `${p.weightKg} kg` : null)}
+                    valor={formatBRL(p.defaultPrice)}
+                    legenda={p.unit ? `por ${p.unit}` : undefined}
+                    abaixo={!p.active ? <Badge variant="outline">Inativo</Badge> : undefined}
+                    acoes={
+                      isAdmin ? (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-10 w-10 -mr-2" aria-label="Ações">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => { setEditing(p); setOpen(true); }}>
+                              <Pencil className="h-4 w-4" /> Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => duplicarProduto(p)}>
+                              <Copy className="h-4 w-4" /> Duplicar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onClick={() => {
+                                if (confirm(`Remover ${p.name}?`)) {
+                                  removeProduct(p.id);
+                                  toast.success("Produto removido");
+                                }
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" /> Remover
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      ) : undefined
+                    }
+                  />
+                ))
+              )
+            }
+          >
           <Table>
             <TableHeader>
               <TableRow>
@@ -276,6 +339,7 @@ function ProdutosPage() {
               )}
             </TableBody>
           </Table>
+          </TabelaResponsiva>
         </CardContent>
       </Card>
 

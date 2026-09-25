@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ClipboardList } from "lucide-react";
@@ -14,6 +14,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { PaginaCabecalho } from "@/components/layout/PaginaCabecalho";
+import { TabelaResponsiva, LinhaLista, VazioLista, juntarCampos } from "@/components/layout/ListaResponsiva";
 import { listarFichasColeta } from "@/lib/ficha-coleta.functions";
 import { FICHA_STATUS_LABEL, formatarCubagem, formatarPeso } from "@/lib/ficha-coleta";
 
@@ -47,17 +49,16 @@ function FichasColetaPage() {
   });
 
   const rows = q.data ?? [];
+  const navigate = useNavigate();
 
   return (
-    <div className="p-4 md:p-8 space-y-6">
-      <div>
-        <h1 className="text-xl md:text-2xl font-semibold flex items-center gap-2">
-          <ClipboardList className="h-5 w-5 text-primary" /> Fichas de Coleta
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Autorização de retirada da mercadoria. A ficha nasce sempre a partir de um pedido.
-        </p>
-      </div>
+    <div className="p-4 md:p-8 space-y-4 md:space-y-6">
+      <PaginaCabecalho
+        titulo="Fichas de Coleta"
+        icone={<ClipboardList className="h-5 w-5 text-primary" />}
+        descricao="Autorização de retirada da mercadoria. A ficha nasce sempre a partir de um pedido."
+        resumoMobile={rows.length ? `${rows.length} ficha(s)` : undefined}
+      />
 
       <Card>
         <CardHeader>
@@ -71,6 +72,25 @@ function FichasColetaPage() {
               Nenhuma ficha ainda. Abra um pedido e use “Gerar Ficha de Coleta”.
             </p>
           ) : (
+            <TabelaResponsiva
+              mobile={rows.map((f) => (
+                <LinhaLista
+                  key={f.id}
+                  titulo={f.numero}
+                  subtitulo={juntarCampos(
+                    f.pedidos?.number,
+                    f.transportadora_nome,
+                    f.peso_total_kg ? formatarPeso(f.peso_total_kg) : null,
+                  )}
+                  selo={
+                    <Badge variant={f.status === "cancelada" ? "outline" : "default"}>
+                      {FICHA_STATUS_LABEL[f.status]}
+                    </Badge>
+                  }
+                  onClick={() => navigate({ to: "/ficha-coleta/$id", params: { id: f.id } })}
+                />
+              ))}
+            >
             <Table>
               <TableHeader>
                 <TableRow>
@@ -107,6 +127,7 @@ function FichasColetaPage() {
                 ))}
               </TableBody>
             </Table>
+            </TabelaResponsiva>
           )}
         </CardContent>
       </Card>
