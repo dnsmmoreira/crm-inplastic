@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
   DndContext,
@@ -16,7 +17,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { Plus, Package, Calendar as CalendarIcon, Search, ArrowDownUp, X, PackageCheck, ChevronLeft, ChevronRight, CheckSquare, ArrowRightLeft } from "lucide-react";
+import { Plus, Package, MoreVertical, SlidersHorizontal, Calendar as CalendarIcon, Search, ArrowDownUp, X, PackageCheck, ChevronLeft, ChevronRight, CheckSquare, ArrowRightLeft } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useCrm, STAGES, formatBRL, leadTemperature, followupTemperature, proposalTotals, type Lead, type Proposal, type StageId, type FollowupLevel, useVisibleLeads, useVisibleProposals, useLeadValueMap } from "@/lib/crm-store";
@@ -34,6 +35,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { NewLeadDialog, LeadDrawer } from "@/components/crm/LeadDrawer";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { listVendedores } from "@/lib/clientes.functions";
 import { gerarPedidoInterno } from "@/lib/pedidos-gerar.functions";
 import { identificarCard, resolverColunaAlvo } from "@/lib/pipeline-drop";
 import { reabrirProposta, recusarProposta } from "@/lib/propostas-perda.functions";
@@ -981,12 +993,15 @@ function ProposalColumn({
   leadById,
   onOpen,
   onToggleNegociacao,
+  ocultaNoCelular = false,
 }: {
   stage: (typeof STAGES)[number];
   proposals: Proposal[];
   leadById: Map<string, Lead>;
   onOpen: (propostaId: string) => void;
   onToggleNegociacao: (p: Proposal) => void;
+  /** Celular mostra uma etapa por vez. */
+  ocultaNoCelular?: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage.id });
   const total = proposals.reduce((s, p) => s + proposalTotals(p).total, 0);
@@ -998,7 +1013,7 @@ function ProposalColumn({
   const visible = proposals.slice(start, start + CARDS_PER_PAGE);
 
   return (
-    <div className="w-[300px] shrink-0 flex flex-col md:h-full">
+    <div className={cn("w-full md:w-[300px] shrink-0 flex-col md:h-full", ocultaNoCelular ? "hidden md:flex" : "flex")}>
       <div className="sticky top-0 z-20 shrink-0 px-1 pb-2 pt-1 flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/70">
         <div className="flex items-center gap-2">
           <span className="stage-dot" style={{ background: stage.color }} />
