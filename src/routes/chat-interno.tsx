@@ -573,6 +573,16 @@ function ChatInternoPage() {
   const modoSupervisao = selecionado?.tipo === "geral";
   const canalId = modoSupervisao ? null : (selecionado?.canalId ?? null);
   const listaRef = useRef<HTMLDivElement>(null);
+  // Celular: quando o teclado abre/fecha, quem estava no fim continua no fim.
+  const alturaAnteriorRef = useRef<number | null>(null);
+  useEffect(() => {
+    const el = listaRef.current;
+    const antes = alturaAnteriorRef.current;
+    alturaAnteriorRef.current = alturaMobile;
+    if (!el || alturaMobile === null || antes === null) return;
+    const perto = el.scrollHeight - el.scrollTop - el.clientHeight < 120 + Math.abs(antes - alturaMobile);
+    if (perto) el.scrollTop = el.scrollHeight;
+  }, [alturaMobile]);
   const { onScroll } = useAutoScrollMensagens(listaRef, canalId, mensagens);
 
   // Respostas: mensagem sendo respondida no composer e mapa das citadas.
