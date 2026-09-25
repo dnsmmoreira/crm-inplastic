@@ -261,6 +261,53 @@ function TransportadorasPage() {
               Nenhuma transportadora cadastrada ainda.
             </p>
           ) : (
+            <TabelaResponsiva
+              mobile={rows.map((t) => (
+                <LinhaLista
+                  key={t.id}
+                  titulo={t.nome}
+                  subtitulo={juntarCampos(t.cnpj, (t.abrangencia_ufs ?? []).join(", "))}
+                  acento={t.ativo ? "bg-success" : "bg-muted-foreground/40"}
+                  abaixo={
+                    <span className={t.ativo ? "font-medium text-success" : "font-medium text-muted-foreground"}>
+                      {t.ativo ? "Ativa" : "Inativa"}
+                    </span>
+                  }
+                  acoes={
+                    podeGerenciar ? (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-10 w-10 -mr-2" aria-label="Ações">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openEdit(t)}>
+                            <Pencil className="h-4 w-4" /> Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => mToggle.mutate(t)}>
+                            {t.ativo ? "Desativar" : "Ativar"}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={() => {
+                              if (
+                                confirm(
+                                  `Remover ${t.nome}? Propostas antigas continuam mostrando o nome escolhido na época.`,
+                                )
+                              )
+                                mExcluir.mutate(t);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" /> Remover
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    ) : undefined
+                  }
+                />
+              ))}
+            >
             <Table>
               <TableHeader>
                 <TableRow>
