@@ -9,7 +9,9 @@
 
 import {
   MOTIVOS_PERDA,
+  MOTIVOS_RECUSA_PROPOSTA,
   isMotivoPerda,
+  isMotivoRecusaProposta,
   detalheValido,
   DETALHE_OBRIGATORIO_MSG,
 } from "@/lib/motivos-perda";
@@ -118,11 +120,6 @@ export const DESFECHOS = [
     descricao: "Recusa a proposta com motivo estruturado (entra no relatório de perdas).",
   },
   {
-    tipo: "reemitir_proposta",
-    rotulo: "Reemitir a proposta com preço atual",
-    descricao: "Cria um novo rascunho a partir desta proposta e marca a antiga como reemitida.",
-  },
-  {
     tipo: "prorrogar_proposta",
     rotulo: "Prorrogar a validade até [data]",
     descricao: "Mantém a proposta valendo até a nova data, com o motivo registrado.",
@@ -154,7 +151,16 @@ export type DesfechoTipo = (typeof DESFECHOS)[number]["tipo"];
  */
 export const DESFECHOS_SISTEMA = ["manual", "automatico"] as const;
 
-export type DesfechoRegistrado = DesfechoTipo | (typeof DESFECHOS_SISTEMA)[number];
+/**
+ * Desfechos que não são mais oferecidos, mas podem existir em tarefas antigas
+ * (o CHECK do banco continua aceitando). Ex.: "reemitir_proposta".
+ */
+export const DESFECHOS_LEGADOS = ["reemitir_proposta"] as const;
+
+export type DesfechoRegistrado =
+  | DesfechoTipo
+  | (typeof DESFECHOS_SISTEMA)[number]
+  | (typeof DESFECHOS_LEGADOS)[number];
 
 export function isDesfechoTipo(v: unknown): v is DesfechoTipo {
   return typeof v === "string" && DESFECHOS.some((d) => d.tipo === v);
@@ -180,7 +186,6 @@ export function desfechosParaTipo(
     "data_combinada",
     "contato_registrado",
     "prorrogar_proposta",
-    "reemitir_proposta",
     "recusar_proposta",
     "excluir_rascunho",
     "perdido",
@@ -229,7 +234,6 @@ export function desfechosParaTipo(
   if (tipoTarefa === "proposta_vencida") {
     return filtrar([
       "prorrogar_proposta",
-      "reemitir_proposta",
       "recusar_proposta",
       "retorno_agendado",
       "sem_pendencia",
@@ -240,7 +244,6 @@ export function desfechosParaTipo(
     (d) =>
       d.tipo !== "em_espera" &&
       d.tipo !== "encerrar_conversa" &&
-      d.tipo !== "reemitir_proposta" &&
       d.tipo !== "prorrogar_proposta" &&
       d.tipo !== "excluir_rascunho" &&
       d.tipo !== "data_combinada" &&
@@ -506,16 +509,12 @@ export function validarDesfecho(
   }
 
   if (input.tipo === "recusar_proposta") {
-    if (!isMotivoPerda(input.motivo)) {
-      return { ok: false, erro: `Escolha um motivo de recusa (${MOTIVOS_PERDA.length} opções).` };
+    if (!isMotivoRecusaProposta(input.motivo)) {
+      return { ok: false, erro: `Escolha um motivo de recusa (${MOTIVOS_RECUSA_PROPOSTA.length} opções).` };
     }
     if (!detalheValido(input.detalhe)) {
       return { ok: false, erro: DETALHE_OBRIGATORIO_MSG };
     }
-    return { ok: true };
-  }
-
-  if (input.tipo === "reemitir_proposta") {
     return { ok: true };
   }
 

@@ -14,7 +14,14 @@ export type PropostaMetricaRow = {
   recusada_em: string | null;
   order_created_at: string | null;
   motivo_recusa: string | null;
+  /** Recusa por arrumação interna — não é perda comercial. */
+  encerramento_administrativo?: boolean | null;
 };
+
+/** Recusa comercial (conta como perda). */
+function recusaComercial(r: PropostaMetricaRow): boolean {
+  return r.status === "recusada" && !r.encerramento_administrativo;
+}
 
 export type MotivoRecusaAgregado = {
   motivo: string;
@@ -34,6 +41,8 @@ export type ResumoPropostas = {
   conversao_pct: number | null;
   dias_medio_ate_pedido: number | null;
   dias_medio_ate_recusa: number | null;
+  /** Recusas administrativas (arrumação interna), fora das perdas. */
+  encerradas_admin: number;
 };
 
 const EM_ABERTO = ["rascunho", "enviada", "aguardando_aprovacao", "aprovada"];
@@ -51,7 +60,10 @@ function media(xs: number[]): number | null {
 
 export function resumirPropostas(rows: readonly PropostaMetricaRow[]): ResumoPropostas {
   const pedido = rows.filter((r) => r.status === "pedido");
-  const recusadas = rows.filter((r) => r.status === "recusada");
+  const recusadas = rows.filter(recusaComercial);
+  const encerradasAdmin = rows.filter(
+    (r) => r.status === "recusada" && !!r.encerramento_administrativo,
+  ).length;
   const abertas = rows.filter((r) => EM_ABERTO.includes(r.status));
   const enviadas = rows.filter((r) => r.sent_at !== null).length;
 
@@ -79,6 +91,7 @@ export function resumirPropostas(rows: readonly PropostaMetricaRow[]): ResumoPro
     conversao_pct: decididas > 0 ? (pedido.length / decididas) * 100 : null,
     dias_medio_ate_pedido: media(atePedido),
     dias_medio_ate_recusa: media(ateRecusa),
+    encerradas_admin: encerradasAdmin,
   };
 }
 
@@ -86,7 +99,7 @@ export function resumirPropostas(rows: readonly PropostaMetricaRow[]): ResumoPro
 export function agruparMotivos(rows: readonly PropostaMetricaRow[]): MotivoRecusaAgregado[] {
   const map = new Map<string, MotivoRecusaAgregado>();
   for (const r of rows) {
-    if (r.status !== "recusada") continue;
+    if (!recusaComercial(r)) continue;
     const motivo = r.motivo_recusa?.trim() || "Não informado";
     const cur = map.get(motivo) ?? { motivo, total: 0, valor: 0 };
     cur.total += 1;

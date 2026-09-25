@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { perdaSchema } from "./leads-perda.functions";
-import { MOTIVOS_PERDA, detalheValido, recontatoDias } from "./motivos-perda";
+import { MOTIVOS_PERDA, MOTIVOS_RECUSA_PROPOSTA, detalheValido, recontatoDias } from "./motivos-perda";
 
 const base = { leadId: "lead-1", observacao: "cliente fechou com concorrente" };
 
@@ -28,5 +28,14 @@ describe("motivos de perda", () => {
     expect(recontatoDias("Lead inválido")).toBeNull();
     expect(recontatoDias("Demanda cancelada ou adiada")).toBe(180);
     expect(recontatoDias("Preço")).toBe(90);
+  });
+
+  it("recusa de proposta: 8 motivos, sem Duplicidade e sem Lead inválido; lead segue com 10", () => {
+    expect(MOTIVOS_RECUSA_PROPOSTA).toHaveLength(8);
+    expect(MOTIVOS_RECUSA_PROPOSTA).not.toContain("Duplicidade" as never);
+    expect(MOTIVOS_RECUSA_PROPOSTA).not.toContain("Lead inválido" as never);
+    expect(MOTIVOS_PERDA).toHaveLength(10);
+    expect(MOTIVOS_PERDA).toContain("Duplicidade");
+    expect(MOTIVOS_PERDA).toContain("Lead inválido");
   });
 });

@@ -14,7 +14,7 @@ import { assertNoError, registrarFalhaSegura } from "@/lib/guard-erros";
 import {
   DETALHE_MIN_CHARS,
   DETALHE_OBRIGATORIO_MSG,
-  MOTIVOS_PERDA,
+  MOTIVOS_RECUSA_PROPOSTA,
   type MotivoPerda,
 } from "@/lib/motivos-perda";
 import { dataRecontato, leadDeveIrParaPerdido } from "@/lib/proposta-perda";
@@ -23,7 +23,7 @@ const STATUS_RECUSAVEL = ["rascunho", "enviada", "aguardando_aprovacao"] as cons
 
 const recusaSchema = z.object({
   propostaId: z.string().uuid(),
-  motivo: z.enum(MOTIVOS_PERDA),
+  motivo: z.enum(MOTIVOS_RECUSA_PROPOSTA),
   observacao: z.string().trim().min(DETALHE_MIN_CHARS, DETALHE_OBRIGATORIO_MSG),
 });
 

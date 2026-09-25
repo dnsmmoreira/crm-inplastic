@@ -60,7 +60,7 @@ export const getRelatorioPropostas = createServerFn({ method: "GET" })
     let q = supabase
       .from("propostas")
       .select(
-        "id, owner_id, status, created_at, sent_at, recusada_em, order_created_at, motivo_recusa, discount_percent, acrescimo_percent",
+        "id, owner_id, status, created_at, sent_at, recusada_em, order_created_at, motivo_recusa, encerramento_administrativo, discount_percent, acrescimo_percent",
       )
       .gte("created_at", desde);
     if (escopo === "proprio") q = q.eq("owner_id", userId);
@@ -102,6 +102,7 @@ export const getRelatorioPropostas = createServerFn({ method: "GET" })
         recusada_em: p.recusada_em,
         order_created_at: p.order_created_at,
         motivo_recusa: p.motivo_recusa,
+        encerramento_administrativo: p.encerramento_administrativo === true,
       };
     });
 

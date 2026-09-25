@@ -65,10 +65,11 @@ describe("desfechos de proposta", () => {
     expect(tipos).not.toContain("prorrogar_proposta");
   });
 
-  it("proposta vencida oferece prorrogar e reemitir", () => {
+  it("proposta vencida oferece prorrogar e recusar, sem reemitir", () => {
     const tipos = desfechosParaTipo("proposta_vencida").map((d) => d.tipo);
     expect(tipos).toContain("prorrogar_proposta");
-    expect(tipos).toContain("reemitir_proposta");
+    expect(tipos).toContain("recusar_proposta");
+    expect(tipos).not.toContain("reemitir_proposta" as never);
   });
 
   it("prorrogar exige data e motivo", () => {
