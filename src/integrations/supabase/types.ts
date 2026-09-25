@@ -2923,6 +2923,7 @@ export type Database = {
           conferencia_confirmada_em: string | null
           conferencia_confirmada_por_user_id: string | null
           created_at: string
+          criado_por: string | null
           discount_percent: number
           edit_request_reason: string | null
           edit_requested_at: string | null
@@ -2971,6 +2972,7 @@ export type Database = {
           conferencia_confirmada_em?: string | null
           conferencia_confirmada_por_user_id?: string | null
           created_at?: string
+          criado_por?: string | null
           discount_percent?: number
           edit_request_reason?: string | null
           edit_requested_at?: string | null
@@ -3019,6 +3021,7 @@ export type Database = {
           conferencia_confirmada_em?: string | null
           conferencia_confirmada_por_user_id?: string | null
           created_at?: string
+          criado_por?: string | null
           discount_percent?: number
           edit_request_reason?: string | null
           edit_requested_at?: string | null
