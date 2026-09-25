@@ -520,7 +520,7 @@ function PipelinePage() {
           <p className="hidden text-sm text-muted-foreground md:block">Arraste os cards entre as etapas do processo consultivo</p>
           <p className="text-sm text-muted-foreground md:hidden">Toque numa etapa para ver os leads</p>
         </div>
-        <div className="flex gap-2 w-full sm:w-auto">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
           <div className="relative flex-1 sm:flex-none">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -530,6 +530,7 @@ function PipelinePage() {
               className="pl-9 sm:w-64"
             />
           </div>
+          <div className={cn("grid gap-2 sm:contents", isAdmin ? "grid-cols-3" : "grid-cols-2")}>
           {isAdmin && (
             <Button
               variant={selectMode ? "secondary" : "outline"}
@@ -562,6 +563,7 @@ function PipelinePage() {
             </SheetContent>
           </Sheet>
           <NewLeadDialog trigger={<Button className="gap-2"><Plus className="h-4 w-4" />Novo</Button>} />
+          </div>
         </div>
       </div>
 
