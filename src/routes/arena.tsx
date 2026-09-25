@@ -11,6 +11,7 @@ import { ArenaEquilibrioPanel } from "@/components/arena/ArenaEquilibrioPanel";
 import { ArenaAprovacoesPanel } from "@/components/arena/ArenaAprovacoesPanel";
 import { ArenaAuditPanel } from "@/components/arena/ArenaAuditPanel";
 
+import { PaginaCabecalho } from "@/components/layout/PaginaCabecalho";
 export const Route = createFileRoute("/arena")({
   head: () => ({
     meta: [
@@ -54,20 +55,15 @@ function ArenaPage() {
   }
 
   return (
-    <div className="space-y-6 p-4 md:p-8">
-      <div className="flex items-start gap-3">
-        <Trophy className="mt-1 h-6 w-6 text-amber-500" />
-        <div>
-          <h1 className="text-xl font-semibold md:text-2xl">ARENA — Gestão Econômica Comercial</h1>
-          <p className="text-sm text-muted-foreground">
-            Parâmetros, custo comercial, margem e governança. Nenhum valor é estimado: cards sem lançamento aparecem
-            como vazios, não como zero.
-          </p>
-        </div>
-      </div>
+    <div className="p-4 md:p-8 space-y-4 md:space-y-6">
+      <PaginaCabecalho
+        titulo="ARENA — Gestão Econômica Comercial"
+        icone={<Trophy className="h-6 w-6 text-amber-500" />}
+        descricao="Parâmetros, custo comercial, margem e governança. Nenhum valor é estimado: cards sem lançamento aparecem como vazios, não como zero."
+      />
 
       <Tabs defaultValue="gestao">
-        <TabsList className="flex-wrap">
+        <TabsList>
           <TabsTrigger value="gestao">Gestão</TabsTrigger>
           <TabsTrigger value="kelly">Canal representante</TabsTrigger>
           <TabsTrigger value="equilibrio">Ponto de equilíbrio</TabsTrigger>
