@@ -50,6 +50,26 @@ describe("relatório de propostas", () => {
     expect(m[0]!.valor).toBe(500);
   });
 
+  it("recusa administrativa não conta como perda; comercial conta", () => {
+    const comAdmin = [
+      ...rows,
+      row({
+        id: "5",
+        status: "recusada",
+        total: 9000,
+        recusada_em: "2026-01-02T00:00:00Z",
+        motivo_recusa: "Duplicidade",
+        encerramento_administrativo: true,
+      }),
+    ];
+    const r = resumirPropostas(comAdmin);
+    expect(r.recusadas).toBe(2);
+    expect(r.valor_recusado).toBe(700);
+    expect(r.conversao_pct).toBeCloseTo((1 / 3) * 100);
+    expect(r.encerradas_admin).toBe(1);
+    expect(agruparMotivos(comAdmin).map((m) => m.motivo)).toEqual(["Preço", "Concorrente"]);
+  });
+
   it("agrupa por vendedor ordenando por valor de pedido", () => {
     const v = resumirPorVendedor(rows);
     expect(v[0]!.owner_id).toBe("v1");

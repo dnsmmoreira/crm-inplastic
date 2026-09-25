@@ -232,6 +232,11 @@ export function PropostasReport() {
             <Kpi label="Tempo até virar pedido" value={dias(resumo.dias_medio_ate_pedido)} />
             <Kpi label="Tempo até a recusa" value={dias(resumo.dias_medio_ate_recusa)} />
           </div>
+          {resumo.encerradas_admin > 0 && (
+            <p className="text-xs text-muted-foreground">
+              {resumo.encerradas_admin} encerradas por arrumação interna (não contam como perda)
+            </p>
+          )}
 
           <div className="rounded-lg border bg-card p-4">
             <h2 className="mb-3 text-sm font-semibold">Motivos de recusa</h2>
