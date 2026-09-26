@@ -1182,7 +1182,7 @@ function ChecklistBlock({ pedido, onChanged }: { pedido: PedidoDetalhes; onChang
             placeholder="Adicionar item…"
             value={newLabel}
             onChange={(e) => setNewLabel(e.target.value)}
-            className="h-8"
+            className="min-h-11 sm:min-h-0 sm:h-8"
           />
           <Button
             variant="outline"

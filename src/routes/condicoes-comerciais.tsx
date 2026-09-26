@@ -525,7 +525,7 @@ function CondicoesComerciais() {
                       min={0}
                       value={String(p.dias)}
                       onChange={(e) => setParcela(i, { dias: Math.max(0, Number(e.target.value) || 0) })}
-                      className="h-8"
+                      className="min-h-11 sm:min-h-0 sm:h-8"
                     />
                     <Input
                       type="number"
@@ -534,7 +534,7 @@ function CondicoesComerciais() {
                       step="0.01"
                       value={String(p.percentual)}
                       onChange={(e) => setParcela(i, { percentual: Number(e.target.value) || 0 })}
-                      className="h-8"
+                      className="min-h-11 sm:min-h-0 sm:h-8"
                     />
                     <Button
                       type="button"
