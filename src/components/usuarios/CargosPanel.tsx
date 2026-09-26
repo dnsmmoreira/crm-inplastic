@@ -115,7 +115,7 @@ export function CargosPanel() {
           <div className="divide-y">
             {rows.map((c, i) => (
               <div key={c.id} className="flex flex-wrap items-center gap-2 p-3">
-                <div className="flex flex-col">
+                <div className="flex flex-row sm:flex-col">
                   <Button
                     size="icon"
                     variant="ghost"
