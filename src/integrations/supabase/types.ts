@@ -4097,6 +4097,10 @@ export type Database = {
           reaproveitada: boolean
         }[]
       }
+      encerrar_avisos: {
+        Args: { _coluna: string; _id: string; _tipos: string[] }
+        Returns: number
+      }
       equipe_do_usuario: { Args: { _user_id: string }; Returns: string }
       equipe_dona_canal_whatsapp: { Args: never; Returns: string }
       equipe_listar_colegas: {
