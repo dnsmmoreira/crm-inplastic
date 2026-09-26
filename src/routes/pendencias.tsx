@@ -189,7 +189,7 @@ function CampoInline({
       <Button
         size="icon"
         variant="ghost"
-        className="h-8 w-8"
+        className="h-10 w-10 md:h-8 md:w-8"
         title="Salvar"
         disabled={!valido || salvando}
         onClick={onSave}

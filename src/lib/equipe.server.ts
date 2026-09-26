@@ -95,7 +95,15 @@ export type LinhaEquipe = {
   itens: { grupo: string; label: string; link: string }[];
 };
 
+export type TravadasPessoa = {
+  id: string;
+  nome: string;
+  tarefas: { id: string; titulo: string; link: string }[];
+};
+
 export type ResumoEquipe = {
+  /** Tarefas no teto de 5 rolagens, por pessoa (só leitura). */
+  travadas?: TravadasPessoa[];
   linhas: LinhaEquipe[];
   totais: {
     conversasParadas: number;
@@ -426,13 +434,35 @@ export async function coletarResumoEquipe(
     }
   }
 
-  return agregarEquipe({
+  const tarefas = (tarefasRes.data ?? []) as TarefaEquipe[];
+  const resumo = agregarEquipe({
     pessoas,
-    tarefas: (tarefasRes.data ?? []) as TarefaEquipe[],
+    tarefas,
     leads: (leadsRes.data ?? []) as LeadEquipe[],
     propostas,
     pedidos: pedidosAtribuidos,
     aceites: (aceitesRes.data ?? []) as { user_id: string }[],
     now,
   });
+  // Tarefas no teto de rolagem (5) — só mostrar, nunca alterar.
+  const travadas: TravadasPessoa[] = pessoas
+    .map((p) => ({
+      id: p.id,
+      nome: p.nome,
+      tarefas: tarefas
+        .filter(
+          (t) =>
+            t.owner_id === p.id &&
+            (t.status === "pendente" || t.status === "adiada") &&
+            Number(t.escalonamentos ?? 0) >= 5,
+        )
+        .map((t) => ({
+          id: String(t.id ?? ""),
+          titulo: t.title ?? "Tarefa sem título",
+          link: t.lead_id ? `/leads?lead=${t.lead_id}` : "/minha-agenda",
+        })),
+    }))
+    .filter((p) => p.tarefas.length > 0)
+    .sort((a, b) => b.tarefas.length - a.tarefas.length);
+  return { ...resumo, travadas };
 }
