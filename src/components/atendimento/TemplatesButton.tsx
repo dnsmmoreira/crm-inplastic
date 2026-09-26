@@ -95,7 +95,7 @@ export function TemplatesButton({
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
               placeholder="Buscar frase…"
-              className="h-8 pl-7 text-xs"
+              className="min-h-11 sm:min-h-0 sm:h-8 pl-7 text-xs"
             />
           </div>
         </div>
