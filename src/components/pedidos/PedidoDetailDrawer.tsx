@@ -1272,7 +1272,7 @@ function FiscalBlock({ pedido, onChanged }: { pedido: PedidoDetalhes; onChanged:
         <div>
           <Label className="text-xs">Status</Label>
           <Select value={status} onValueChange={setStatus}>
-            <SelectTrigger className="h-9">
+            <SelectTrigger className="min-h-11 sm:min-h-0 sm:h-9">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -1387,7 +1387,7 @@ function OcorrenciasBlock({
           <div>
             <Label className="text-xs">Tipo</Label>
             <Select value={tipo} onValueChange={setTipo}>
-              <SelectTrigger className="h-9">
+              <SelectTrigger className="min-h-11 sm:min-h-0 sm:h-9">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -1402,7 +1402,7 @@ function OcorrenciasBlock({
           <div>
             <Label className="text-xs">Severidade</Label>
             <Select value={severidade} onValueChange={(v) => setSeveridade(v as typeof severidade)}>
-              <SelectTrigger className="h-9">
+              <SelectTrigger className="min-h-11 sm:min-h-0 sm:h-9">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -1461,7 +1461,7 @@ function OcorrenciasBlock({
               </div>
               <div className="flex gap-2 items-start pt-1 border-t">
                 <Input
-                  className="h-8"
+                  className="min-h-11 sm:min-h-0 sm:h-8"
                   placeholder="Nota da resolução (opcional)"
                   value={notaResolucao[o.id] ?? ""}
                   onChange={(e) => setNotaResolucao({ ...notaResolucao, [o.id]: e.target.value })}
@@ -1592,7 +1592,7 @@ function PrazoCondicaoBlock({
             <Label className="text-xs">Prazo real de entrega</Label>
             <Input
               type="date"
-              className="h-9"
+              className="min-h-11 sm:min-h-0 sm:h-9"
               value={prazo}
               onChange={(e) => setPrazo(e.target.value)}
             />
@@ -1600,7 +1600,7 @@ function PrazoCondicaoBlock({
           <div>
             <Label className="text-xs">Motivo (opcional)</Label>
             <Input
-              className="h-9"
+              className="min-h-11 sm:min-h-0 sm:h-9"
               value={motivo}
               onChange={(e) => setMotivo(e.target.value)}
               placeholder="Ex.: renegociado com o cliente"
@@ -1621,7 +1621,7 @@ function PrazoCondicaoBlock({
           <div>
             <Label className="text-xs">Transportadora</Label>
             <Input
-              className="h-9"
+              className="min-h-11 sm:min-h-0 sm:h-9"
               value={transportadora}
               readOnly={!podeComercial}
               disabled={!podeComercial}
@@ -1631,7 +1631,7 @@ function PrazoCondicaoBlock({
           <div>
             <Label className="text-xs">Observação (opcional)</Label>
             <Input
-              className="h-9"
+              className="min-h-11 sm:min-h-0 sm:h-9"
               value={obsCondicao}
               readOnly={!podeComercial}
               disabled={!podeComercial}

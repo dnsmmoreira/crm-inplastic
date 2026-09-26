@@ -520,7 +520,7 @@ function AtribuirSelect({ conversa, onChanged }: { conversa: Conversa; onChanged
           })();
         }}
       >
-        <SelectTrigger className="h-8 w-[190px] text-xs">
+        <SelectTrigger className="min-h-11 sm:min-h-0 sm:h-8 w-[190px] text-xs">
           <SelectValue placeholder="Enviar para…" />
         </SelectTrigger>
         <SelectContent>

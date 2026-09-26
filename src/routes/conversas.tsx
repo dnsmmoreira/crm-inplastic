@@ -436,7 +436,7 @@ function MinhasConversasPage() {
             {isAdmin && (
               <div className="flex flex-wrap items-center gap-2">
                 <Select value={escopo} onValueChange={(v) => setEscopo(v as "minhas" | "todos")}>
-                  <SelectTrigger className="h-8 w-[132px] text-xs" aria-label="Escopo das conversas">
+                  <SelectTrigger className="min-h-11 sm:min-h-0 sm:h-8 w-[132px] text-xs" aria-label="Escopo das conversas">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -446,7 +446,7 @@ function MinhasConversasPage() {
                 </Select>
                 {todas && (
                   <Select value={responsavel} onValueChange={setResponsavel}>
-                    <SelectTrigger className="h-8 w-[150px] text-xs" aria-label="Filtrar por responsável">
+                    <SelectTrigger className="min-h-11 sm:min-h-0 sm:h-8 w-[150px] text-xs" aria-label="Filtrar por responsável">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -1282,7 +1282,7 @@ function ChatPanel({
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-9 gap-1"
+                className="min-h-11 sm:min-h-0 sm:h-9 gap-1"
                 disabled={sending}
                 title="Modelos aprovados pela Meta — obrigatórios fora da janela de 24h"
                 onClick={() => setModelosAberto(true)}

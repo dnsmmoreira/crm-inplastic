@@ -141,7 +141,7 @@ export function DistribuirConversasDialog({ onSaved }: { onSaved: () => void }) 
                 key={v.id}
                 size="sm"
                 variant="ghost"
-                className="h-7 text-xs"
+                className="min-h-11 sm:min-h-0 sm:h-7 text-xs"
                 onClick={() => aplicarAosRestantes(v.id)}
               >
                 {v.name}
@@ -150,7 +150,7 @@ export function DistribuirConversasDialog({ onSaved }: { onSaved: () => void }) 
             <Button
               size="sm"
               variant="ghost"
-              className="h-7 text-xs text-muted-foreground"
+              className="min-h-11 sm:min-h-0 sm:h-7 text-xs text-muted-foreground"
               onClick={() => setEscolhas({})}
             >
               Limpar escolhas
@@ -196,7 +196,7 @@ export function DistribuirConversasDialog({ onSaved }: { onSaved: () => void }) 
                   value={escolhas[c.id] ?? SEM_RESPONSAVEL}
                   onValueChange={(v) => setEscolhas((prev) => ({ ...prev, [c.id]: v }))}
                 >
-                  <SelectTrigger className="h-8 w-[190px] text-xs">
+                  <SelectTrigger className="min-h-11 sm:min-h-0 sm:h-8 w-[190px] text-xs">
                     <SelectValue placeholder="Escolher vendedor…" />
                   </SelectTrigger>
                   <SelectContent>

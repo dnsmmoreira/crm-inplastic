@@ -75,7 +75,7 @@ export function SemRespostaAgora({ onSelect }: { onSelect: (id: string) => void 
               <Button
                 size="sm"
                 variant="outline"
-                className="ml-auto h-7"
+                className="ml-auto min-h-11 sm:min-h-0 sm:h-7"
                 disabled={mAssumir.isPending}
                 onClick={() => {
                   if (!window.confirm(`Assumir o atendimento de ${i.nome}?`)) return;

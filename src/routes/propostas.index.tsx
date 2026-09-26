@@ -422,7 +422,7 @@ function PropostasPage() {
                       </p>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                          <Button variant="ghost" size="icon" className="-mr-2 -mt-1.5 h-9 w-9 shrink-0" aria-label="Mais ações">
+                          <Button variant="ghost" size="icon" className="-mr-2 -mt-1.5 min-h-11 min-w-11 sm:min-h-0 sm:min-w-0 sm:h-9 sm:w-9 shrink-0" aria-label="Mais ações">
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>

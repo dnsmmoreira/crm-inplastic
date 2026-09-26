@@ -642,7 +642,7 @@ function PendenciasPage() {
                       );
                     }}
                   >
-                    <SelectTrigger className="h-8 w-56">
+                    <SelectTrigger className="min-h-11 sm:min-h-0 sm:h-8 w-56">
                       <SelectValue placeholder="Selecione o modelo" />
                     </SelectTrigger>
                     <SelectContent>
@@ -867,7 +867,7 @@ function PendenciasPage() {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="h-8 whitespace-nowrap"
+                            className="min-h-11 sm:min-h-0 sm:h-8 whitespace-nowrap"
                             onClick={() => setRascunho(`email-${c.id}`, c.email_sugerido ?? "")}
                           >
                             Usar este

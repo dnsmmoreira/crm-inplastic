@@ -540,7 +540,7 @@ function CondicoesComerciais() {
                       type="button"
                       size="icon"
                       variant="ghost"
-                      className="h-8 w-8"
+                      className="min-h-11 min-w-11 sm:min-h-0 sm:min-w-0 sm:h-8 sm:w-8"
                       disabled={form.parcelas.length <= 1}
                       onClick={() => removeParcela(i)}
                     >

@@ -76,7 +76,7 @@ export function TemplatesButton({
         <Button
           size="sm"
           variant="outline"
-          className="h-9 gap-1"
+          className="min-h-11 sm:min-h-0 sm:h-9 gap-1"
           disabled={disabled}
           title={
             tituloBotao ?? "Frases prontas — o texto é colado aqui para você revisar antes de enviar"

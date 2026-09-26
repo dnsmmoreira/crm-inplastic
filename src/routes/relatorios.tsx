@@ -231,10 +231,10 @@ function RelatoriosPage() {
               Fase do pedido {stages.length > 0 ? `(${stages.length} selecionada${stages.length > 1 ? "s" : ""})` : "(todas)"}
             </label>
             <div className="flex gap-2">
-              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setStages(PEDIDO_STAGES.map((s) => s.id))}>
+              <Button variant="ghost" size="sm" className="min-h-11 sm:min-h-0 sm:h-7 text-xs" onClick={() => setStages(PEDIDO_STAGES.map((s) => s.id))}>
                 Selecionar todas
               </Button>
-              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setStages([])}>
+              <Button variant="ghost" size="sm" className="min-h-11 sm:min-h-0 sm:h-7 text-xs" onClick={() => setStages([])}>
                 Limpar fases
               </Button>
             </div>
@@ -257,7 +257,7 @@ function RelatoriosPage() {
             {filtered.length} de {rows.length} pedidos · Total {formatBRL(totalGeral)}
           </div>
           {hasFilters ? (
-            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={limpar}>
+            <Button variant="ghost" size="sm" className="min-h-11 sm:min-h-0 sm:h-7 text-xs" onClick={limpar}>
               <X className="h-3 w-3 mr-1" /> Limpar filtros
             </Button>
           ) : null}

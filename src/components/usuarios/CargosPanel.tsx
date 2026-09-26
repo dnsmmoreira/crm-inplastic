@@ -119,7 +119,7 @@ export function CargosPanel() {
                   <Button
                     size="icon"
                     variant="ghost"
-                    className="h-5 w-6"
+                    className="min-h-11 sm:min-h-0 sm:h-5 w-6"
                     title="Subir"
                     disabled={i === 0 || busy !== null}
                     onClick={() => void mover(i, -1)}
@@ -129,7 +129,7 @@ export function CargosPanel() {
                   <Button
                     size="icon"
                     variant="ghost"
-                    className="h-5 w-6"
+                    className="min-h-11 sm:min-h-0 sm:h-5 w-6"
                     title="Descer"
                     disabled={i === rows.length - 1 || busy !== null}
                     onClick={() => void mover(i, 1)}

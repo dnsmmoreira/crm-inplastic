@@ -972,7 +972,7 @@ export function PedidosEmAbertoReport() {
                 : ""}
             </div>
             {hasFilters ? (
-              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={limpar}>
+              <Button variant="ghost" size="sm" className="min-h-11 sm:min-h-0 sm:h-7 text-xs" onClick={limpar}>
                 <X className="h-3 w-3 mr-1" /> Limpar filtros
               </Button>
             ) : null}

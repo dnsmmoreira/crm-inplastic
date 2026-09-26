@@ -463,7 +463,7 @@ function PipelinePage() {
           <Button
             variant="ghost"
             size="sm"
-            className="h-7 gap-1 text-xs"
+            className="min-h-11 sm:min-h-0 sm:h-7 gap-1 text-xs"
             onClick={() => setAgendaFilter(new Set())}
           >
             <X className="h-3 w-3" /> Limpar
@@ -499,7 +499,7 @@ function PipelinePage() {
           </Toggle>
           <ArrowDownUp className="h-3.5 w-3.5 text-muted-foreground" />
           <Select value={sortMode} onValueChange={(v) => setSortMode(v as SortMode)}>
-            <SelectTrigger className="h-7 w-[200px] text-xs">
+            <SelectTrigger className="min-h-11 sm:min-h-0 sm:h-7 w-[200px] text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -867,7 +867,7 @@ function Column({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-6 w-6"
+                className="min-h-11 min-w-11 sm:min-h-0 sm:min-w-0 sm:h-6 sm:w-6"
                 aria-label="Página anterior"
                 disabled={safePage === 0}
                 onClick={() => setPage(Math.max(0, safePage - 1))}
@@ -877,7 +877,7 @@ function Column({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-6 w-6"
+                className="min-h-11 min-w-11 sm:min-h-0 sm:min-w-0 sm:h-6 sm:w-6"
                 aria-label="Próxima página"
                 disabled={safePage >= pageCount - 1}
                 onClick={() => setPage(Math.min(pageCount - 1, safePage + 1))}
@@ -1148,7 +1148,7 @@ function ProposalColumn({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-6 w-6"
+                className="min-h-11 min-w-11 sm:min-h-0 sm:min-w-0 sm:h-6 sm:w-6"
                 aria-label="Página anterior"
                 disabled={safePage === 0}
                 onClick={() => setPage(Math.max(0, safePage - 1))}
@@ -1158,7 +1158,7 @@ function ProposalColumn({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-6 w-6"
+                className="min-h-11 min-w-11 sm:min-h-0 sm:min-w-0 sm:h-6 sm:w-6"
                 aria-label="Próxima página"
                 disabled={safePage >= pageCount - 1}
                 onClick={() => setPage(Math.min(pageCount - 1, safePage + 1))}
