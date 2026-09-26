@@ -1717,40 +1717,33 @@ ${crmLeadLink(conv.lead_id)}` : ""
         if (destinos.length === 0) continue;
 
         if (!dryRun) {
-          // Um aviso por pessoa cobrada: o assunto é o vendedor (prefixo "Nome:").
-          const { data: jaTem } = await sb
-            .from("notificacoes")
-            .select("id, user_id, titulo")
-            .eq("tipo", "tarefas_vencidas_escalado")
-            .in("user_id", destinos)
-            .is("lida_em", null);
-          const porDestino = new Map<string, string>();
-          for (const r of (jaTem ?? []) as Array<{ id: string; user_id: string; titulo: string }>) {
-            if (String(r.titulo ?? "").startsWith(`${nome}:`)) porDestino.set(r.user_id, r.id);
-          }
+          // Um aviso por destinatário + pessoa cobrada (sobre_user_id), imune a troca de nome.
           for (const d of destinos) {
-            const idEx = porDestino.get(d);
-            if (!idEx) continue;
-            const up = await sb
+            const { data: ex } = await sb
               .from("notificacoes")
-              .update({ titulo: texto, created_at: new Date().toISOString() })
-              .eq("id", idEx);
-            if (up?.error)
-              await registrarFalhaSegura("xerife-engine.E1.notificacao", up.error, { owner_id: uid });
-          }
-          const novosDestinos = destinos.filter((d) => !porDestino.has(d));
-          const ins = novosDestinos.length
-            ? await sb.from("notificacoes").insert(
-                novosDestinos.map((d) => ({
+              .select("id")
+              .eq("tipo", "tarefas_vencidas_escalado")
+              .eq("user_id", d)
+              .eq("sobre_user_id", uid)
+              .is("lida_em", null)
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            const r = ex?.id
+              ? await sb
+                  .from("notificacoes")
+                  .update({ titulo: texto, created_at: new Date().toISOString() })
+                  .eq("id", ex.id)
+              : await sb.from("notificacoes").insert({
                   user_id: d,
                   tipo: "tarefas_vencidas_escalado",
                   titulo: texto,
                   exige_aceite: false,
-                })),
-              )
-            : { error: null };
-          if (ins?.error)
-            await registrarFalhaSegura("xerife-engine.E1.notificacao", ins.error, { owner_id: uid });
+                  sobre_user_id: uid,
+                });
+            if (r?.error)
+              await registrarFalhaSegura("xerife-engine.E1.notificacao", r.error, { owner_id: uid });
+          }
           if (perfil.gestor_id)
             await notifyOwner(perfil.gestor_id as string, `⏰ *Tarefas vencidas*\n${texto}`);
           await logAction(sb, {
@@ -1772,6 +1765,29 @@ ${crmLeadLink(conv.lead_id)}` : ""
           acao: "registrar_escalacao",
         });
         stats["e1_escalado"] = (stats["e1_escalado"] ?? 0) + 1;
+      }
+    }
+
+    // Condição de morte: quem saiu de porDono não tem mais tarefa vencida.
+    if (!dryRun && !errVenc) {
+      try {
+        const aindaVencidos = new Set(porDono.keys());
+        const { data: abertos } = await sb
+          .from("notificacoes")
+          .select("id, sobre_user_id")
+          .eq("tipo", "tarefas_vencidas_escalado")
+          .is("lida_em", null)
+          .not("sobre_user_id", "is", null);
+        const encerrar = ((abertos ?? []) as Array<{ id: string; sobre_user_id: string }>)
+          .filter((n) => !aindaVencidos.has(n.sobre_user_id))
+          .map((n) => n.id);
+        if (encerrar.length)
+          await sb
+            .from("notificacoes")
+            .update({ lida_em: new Date().toISOString() })
+            .in("id", encerrar);
+      } catch (e) {
+        await registrarFalhaSegura("xerife-engine.E1.encerrar", e);
       }
     }
   } catch (e) {
@@ -1824,19 +1840,54 @@ ${crmLeadLink(conv.lead_id)}` : ""
         const { gestoresParaAlertas } = await import("@/lib/pedidos-fluxo.server");
         const admins = await gestoresParaAlertas(sb);
         if (admins?.length) {
-          const titulo = semCanal.join(" · ");
-          const ins = await sb.from("notificacoes").insert(
-            admins.map((d: string) => ({
-              user_id: d,
-              tipo: "aceites_sem_canal",
-              titulo: titulo.slice(0, 300),
-              exige_aceite: false,
-            })),
-          );
-          if (ins?.error) await registrarFalhaSegura("xerife-engine.E2.admins", ins.error);
+          const titulo = semCanal.join(" · ").slice(0, 300);
+          // Um aviso por destinatário: atualiza o aberto em vez de empilhar.
+          for (const d of admins as string[]) {
+            const { data: ex } = await sb
+              .from("notificacoes")
+              .select("id")
+              .eq("tipo", "aceites_sem_canal")
+              .eq("user_id", d)
+              .is("lida_em", null)
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            const r = ex?.id
+              ? await sb
+                  .from("notificacoes")
+                  .update({ titulo, created_at: new Date().toISOString() })
+                  .eq("id", ex.id)
+              : await sb.from("notificacoes").insert({
+                  user_id: d,
+                  tipo: "aceites_sem_canal",
+                  titulo,
+                  exige_aceite: false,
+                });
+            if (r?.error) await registrarFalhaSegura("xerife-engine.E2.admins", r.error, { user_id: d });
+          }
           await notifyDiretoria(`⚠️ *Avisos sem aceite*\n${semCanal.join("\n")}`);
           await logAction(sb, { regra: "E2_admins", acao: "avisado", payload: { n: semCanal.length } });
         }
+      }
+    }
+
+    // Condição de morte: ninguém pendente sem canal → encerra os avisos abertos.
+    if (!dryRun) {
+      const ninguemSemCanal = await (async () => {
+        if (porUsuario.size === 0) return true;
+        const { data: perfis } = await sb
+          .from("profiles")
+          .select("id, telegram_chat_id")
+          .in("id", [...porUsuario.keys()]);
+        return !((perfis ?? []) as any[]).some((p) => !p.telegram_chat_id);
+      })();
+      if (ninguemSemCanal) {
+        const up = await sb
+          .from("notificacoes")
+          .update({ lida_em: new Date().toISOString() })
+          .eq("tipo", "aceites_sem_canal")
+          .is("lida_em", null);
+        if (up?.error) await registrarFalhaSegura("xerife-engine.E2.encerrar", up.error);
       }
     }
   } catch (e) {
