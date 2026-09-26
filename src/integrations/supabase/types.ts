@@ -1992,6 +1992,7 @@ export type Database = {
           lida_em: string | null
           pedido_id: string | null
           proposta_id: string | null
+          sobre_user_id: string | null
           tipo: string
           titulo: string | null
           user_id: string
@@ -2007,6 +2008,7 @@ export type Database = {
           lida_em?: string | null
           pedido_id?: string | null
           proposta_id?: string | null
+          sobre_user_id?: string | null
           tipo: string
           titulo?: string | null
           user_id: string
@@ -2022,6 +2024,7 @@ export type Database = {
           lida_em?: string | null
           pedido_id?: string | null
           proposta_id?: string | null
+          sobre_user_id?: string | null
           tipo?: string
           titulo?: string | null
           user_id?: string
@@ -2053,6 +2056,13 @@ export type Database = {
             columns: ["proposta_id"]
             isOneToOne: false
             referencedRelation: "propostas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notificacoes_sobre_user_id_fkey"
+            columns: ["sobre_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
