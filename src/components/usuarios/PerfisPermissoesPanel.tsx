@@ -343,7 +343,7 @@ export function PerfisPermissoesPanel() {
                           {perm.tipo === "numerica" && atual?.ativa && (
                             <Input
                               type="number"
-                              className="mt-1 h-8"
+                              className="mt-1 min-h-11 sm:min-h-0 sm:h-8"
                               value={atual.valor}
                               disabled={readOnly}
                               onChange={(e) =>

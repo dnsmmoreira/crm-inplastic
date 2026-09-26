@@ -785,7 +785,7 @@ function PainelSaudeWhatsapp() {
         <div className="flex items-center gap-2 text-sm font-medium">
           <Activity className="h-4 w-4 text-primary" /> Saúde de envios (admin)
         </div>
-        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => void load()}>
+        <Button size="icon" variant="ghost" className="min-h-11 min-w-11 sm:min-h-0 sm:min-w-0 sm:h-6 sm:w-6" onClick={() => void load()}>
           <RefreshCw className="h-3.5 w-3.5" />
         </Button>
       </div>
@@ -841,7 +841,7 @@ function PainelSaudeWhatsapp() {
           <Button
             size="sm"
             variant="outline"
-            className="h-7 text-[11px]"
+            className="min-h-11 sm:min-h-0 sm:h-7 text-[11px]"
             disabled={cloudEnviando}
             onClick={() => void handleTesteCloud()}
           >
@@ -858,7 +858,7 @@ function PainelSaudeWhatsapp() {
             <Button
               size="sm"
               variant="outline"
-              className="h-7 text-[11px]"
+              className="min-h-11 sm:min-h-0 sm:h-7 text-[11px]"
               disabled={diagCloudCarregando}
               onClick={() => void handleDiagnosticoCloud()}
             >
@@ -884,7 +884,7 @@ function PainelSaudeWhatsapp() {
             <Button
               size="sm"
               variant="outline"
-              className="h-7 text-[11px]"
+              className="min-h-11 sm:min-h-0 sm:h-7 text-[11px]"
               disabled={registrando}
               onClick={() => void handleRegistrarCloud()}
             >
@@ -900,7 +900,7 @@ function PainelSaudeWhatsapp() {
             <Button
               size="sm"
               variant="outline"
-              className="h-7 text-[11px]"
+              className="min-h-11 sm:min-h-0 sm:h-7 text-[11px]"
               disabled={wabaCarregando}
               onClick={() => void handleAssinaturaWaba("ver")}
             >
@@ -909,7 +909,7 @@ function PainelSaudeWhatsapp() {
             <Button
               size="sm"
               variant="outline"
-              className="h-7 text-[11px]"
+              className="min-h-11 sm:min-h-0 sm:h-7 text-[11px]"
               disabled={wabaCarregando}
               onClick={() => void handleAssinaturaWaba("assinar")}
             >
@@ -955,7 +955,7 @@ function PainelSaudeWhatsapp() {
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-6 px-2 text-[10px]"
+                className="min-h-11 sm:min-h-0 sm:h-6 px-2 text-[10px]"
                 onClick={() => void handleRemover(o.phone)}
               >
                 Remover
@@ -1007,7 +1007,7 @@ function PainelSaudeWhatsapp() {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="h-7 text-[11px]"
+                      className="min-h-11 sm:min-h-0 sm:h-7 text-[11px]"
                       disabled={!diag.algumPronto || testando}
                       onClick={() => void handleTeste()}
                     >

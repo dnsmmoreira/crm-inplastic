@@ -1085,7 +1085,7 @@ function ChatInternoPage() {
                     }
                   }}
                   placeholder="Buscar por texto ou nome do arquivo…"
-                  className="h-9 min-w-[180px] flex-1"
+                  className="min-h-11 sm:min-h-0 sm:h-9 min-w-[180px] flex-1"
                 />
                 <select
                   value={escopoCanal}

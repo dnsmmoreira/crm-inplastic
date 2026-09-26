@@ -1101,7 +1101,7 @@ function UserBadge({ collapsed = false }: { collapsed?: boolean }) {
       <Button
         variant="outline"
         size="sm"
-        className="w-full h-8 bg-sidebar-accent/40 border-sidebar-border text-xs text-sidebar-foreground hover:bg-sidebar-accent"
+        className="w-full min-h-11 sm:min-h-0 sm:h-8 bg-sidebar-accent/40 border-sidebar-border text-xs text-sidebar-foreground hover:bg-sidebar-accent"
         onClick={() => {
           void signOut();
         }}

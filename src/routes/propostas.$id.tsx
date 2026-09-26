@@ -2199,7 +2199,7 @@ function PropostaDetalhe() {
                           <Button
                             type="button"
                             size="sm"
-                            className="h-7 text-[11px]"
+                            className="min-h-11 sm:min-h-0 sm:h-7 text-[11px]"
                             disabled={readOnly}
                             onClick={() => {
                               updateProposal(proposal.id, {
@@ -2619,7 +2619,7 @@ function PropostaDetalhe() {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="h-7 text-[11px]"
+                      className="min-h-11 sm:min-h-0 sm:h-7 text-[11px]"
                       onClick={() =>
                         _updateProposal(proposal.id, { emitterId: emitterSuggestion.id })
                       }
@@ -2697,7 +2697,7 @@ function PropostaDetalhe() {
                       type="button"
                       size="sm"
                       variant="outline"
-                      className="h-6 px-2 text-[11px]"
+                      className="min-h-11 sm:min-h-0 sm:h-6 px-2 text-[11px]"
                       disabled={readOnly}
                       onClick={() =>
                         setSimulacao({
@@ -2864,7 +2864,7 @@ function PropostaDetalhe() {
                             <Button
                               size="sm"
                               variant="outline"
-                              className="h-7 text-[11px]"
+                              className="min-h-11 sm:min-h-0 sm:h-7 text-[11px]"
                               disabled={readOnly || !previsao}
                               onClick={() => {
                                 gerarParcelas();
@@ -2928,7 +2928,7 @@ function PropostaDetalhe() {
                                 <TableCell className="py-1.5">
                                   <Input
                                     type="date"
-                                    className="h-8"
+                                    className="min-h-11 sm:min-h-0 sm:h-8"
                                     disabled={readOnly}
                                     value={p.dueDate ?? ""}
                                     onChange={(e) =>
@@ -2941,7 +2941,7 @@ function PropostaDetalhe() {
                                     type="number"
                                     step="0.01"
                                     min={0}
-                                    className="h-8 text-right"
+                                    className="min-h-11 sm:min-h-0 sm:h-8 text-right"
                                     disabled={readOnly}
                                     value={p.amount}
                                     onChange={(e) =>

@@ -90,10 +90,10 @@ export function IAPreview({
       </div>
       <p className="whitespace-pre-wrap text-xs">{texto}</p>
       <div className="mt-2 flex gap-2">
-        <Button size="sm" className="h-7 text-xs" onClick={onUsar}>
+        <Button size="sm" className="min-h-11 sm:min-h-0 sm:h-7 text-xs" onClick={onUsar}>
           Usar
         </Button>
-        <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={onDescartar}>
+        <Button size="sm" variant="ghost" className="min-h-11 sm:min-h-0 sm:h-7 text-xs" onClick={onDescartar}>
           Descartar
         </Button>
       </div>

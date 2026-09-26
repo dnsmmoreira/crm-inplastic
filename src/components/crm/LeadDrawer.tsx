@@ -167,7 +167,7 @@ export function LeadDrawer({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-7 px-2 text-xs"
+                  className="min-h-11 sm:min-h-0 sm:h-7 px-2 text-xs"
                   onClick={() => setTransferirOpen(true)}
                 >
                   Transferir
@@ -715,7 +715,7 @@ function EditableRow({
           type={type}
           defaultValue={value}
           key={value}
-          className="h-8 mt-0.5 px-2 text-sm"
+          className="min-h-11 sm:min-h-0 sm:h-8 mt-0.5 px-2 text-sm"
           onBlur={(e) => onCommit(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") (e.target as HTMLInputElement).blur();
@@ -1505,7 +1505,7 @@ function ReagendarCobranca({ lead }: { lead: Lead }) {
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <Input
           type="date"
-          className="h-9 w-[160px]"
+          className="min-h-11 sm:min-h-0 sm:h-9 w-[160px]"
           value={data}
           onChange={(e) => setData(e.target.value)}
         />

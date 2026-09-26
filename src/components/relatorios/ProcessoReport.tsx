@@ -62,7 +62,7 @@ export function ProcessoReport() {
             key={p}
             size="sm"
             variant={periodo === p ? "default" : "outline"}
-            className="h-8"
+            className="min-h-11 sm:min-h-0 sm:h-8"
             onClick={() => setPeriodo(p)}
           >
             {p} dias

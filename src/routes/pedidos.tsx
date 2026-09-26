@@ -1371,7 +1371,7 @@ function FilterBar(props: FilterBarProps) {
             {filteredCount} de {totalCount}
           </span>
           {activeCount > 0 && (
-            <Button variant="ghost" size="sm" onClick={onClear} className="h-7 px-2 text-xs">
+            <Button variant="ghost" size="sm" onClick={onClear} className="min-h-11 sm:min-h-0 sm:h-7 px-2 text-xs">
               Limpar filtros ({activeCount})
             </Button>
           )}
@@ -1396,7 +1396,7 @@ function FilterSelect({
 }) {
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className="h-9 text-sm">
+      <SelectTrigger className="min-h-11 sm:min-h-0 sm:h-9 text-sm">
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>

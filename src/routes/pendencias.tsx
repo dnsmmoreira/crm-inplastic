@@ -179,7 +179,7 @@ function CampoInline({
         value={value}
         placeholder={placeholder}
         disabled={salvando}
-        className={className ?? "h-8 w-40"}
+        className={className ?? "min-h-11 sm:min-h-0 sm:h-8 w-40"}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === "Enter" && valido && !salvando) onSave();
@@ -189,7 +189,7 @@ function CampoInline({
       <Button
         size="icon"
         variant="ghost"
-        className="h-10 w-10 md:h-8 md:w-8"
+        className="min-h-11 min-w-11 sm:min-h-0 sm:min-w-0 sm:h-8 sm:w-8"
         title="Salvar"
         disabled={!valido || salvando}
         onClick={onSave}
@@ -494,7 +494,7 @@ function PendenciasPage() {
                       placeholder="CNPJ ou CPF"
                       valido={!!documentoValidoCompleto(valor)}
                       salvando={salvandoId === l.id}
-                      className="h-10 min-w-0 flex-1"
+                      className="min-h-11 min-w-0 flex-1"
                       onSave={() =>
                         void corrigir(l.id, () =>
                           salvarDocumento({ data: { lead_id: l.id, documento: valor } }),
@@ -538,7 +538,7 @@ function PendenciasPage() {
                       placeholder="00.000.000/0000-00"
                       valido={!!documentoValidoCompleto(valor)}
                       salvando={salvandoId === l.id}
-                      className="h-8 w-44"
+                      className="min-h-11 sm:min-h-0 sm:h-8 w-44"
                       onSave={() =>
                         void corrigir(l.id, () =>
                           salvarDocumento({ data: { lead_id: l.id, documento: valor } }),
@@ -642,7 +642,7 @@ function PendenciasPage() {
                       );
                     }}
                   >
-                    <SelectTrigger className="h-8 w-56">
+                    <SelectTrigger className="min-h-11 sm:min-h-0 sm:h-8 w-56">
                       <SelectValue placeholder="Selecione o modelo" />
                     </SelectTrigger>
                     <SelectContent>
@@ -697,7 +697,7 @@ function PendenciasPage() {
                         value={valor}
                         type="number"
                         placeholder="Peso (kg)"
-                        className="h-10 min-w-0 flex-1"
+                        className="min-h-11 min-w-0 flex-1"
                         valido={pesoValido(valor)}
                         salvando={salvandoId === p.id}
                         onChange={(v) => setRascunho(`peso-${p.id}`, v)}
@@ -747,7 +747,7 @@ function PendenciasPage() {
                         value={valor}
                         type="number"
                         placeholder="0,000"
-                        className="h-8 w-28"
+                        className="min-h-11 sm:min-h-0 sm:h-8 w-28"
                         valido={pesoValido(valor)}
                         salvando={salvandoId === p.id}
                         onChange={(v) => setRascunho(`peso-${p.id}`, v)}
@@ -806,7 +806,7 @@ function PendenciasPage() {
                     <CampoInline
                       value={valor}
                       type="email"
-                      className="h-10 min-w-0 flex-1"
+                      className="min-h-11 min-w-0 flex-1"
                       placeholder={c.email_sugerido ?? "nf@empresa.com.br"}
                       valido={emailValido(valor)}
                       salvando={salvandoId === c.id}
@@ -816,7 +816,7 @@ function PendenciasPage() {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="h-10 whitespace-nowrap"
+                            className="min-h-11 whitespace-nowrap"
                             onClick={() => setRascunho(`email-${c.id}`, c.email_sugerido ?? "")}
                           >
                             Usar este
@@ -857,7 +857,7 @@ function PendenciasPage() {
                     <CampoInline
                       value={valor}
                       type="email"
-                      className="h-8 w-56"
+                      className="min-h-11 sm:min-h-0 sm:h-8 w-56"
                       placeholder={c.email_sugerido ?? "nf@empresa.com.br"}
                       valido={emailValido(valor)}
                       salvando={salvandoId === c.id}
@@ -867,7 +867,7 @@ function PendenciasPage() {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="h-8 whitespace-nowrap"
+                            className="min-h-11 sm:min-h-0 sm:h-8 whitespace-nowrap"
                             onClick={() => setRascunho(`email-${c.id}`, c.email_sugerido ?? "")}
                           >
                             Usar este
