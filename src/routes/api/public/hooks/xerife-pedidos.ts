@@ -1023,13 +1023,28 @@ async function runXerifePedidos(
       let enviados = 0;
       for (const userId of gestores) {
         try {
-          const ins = await sb.from("notificacoes").insert({
-            user_id: userId,
-            tipo: regra,
-            titulo: titulo.slice(0, 300),
-            pedido_id: p.id,
-            exige_aceite: true,
-          });
+          // Um aviso por assunto: se já há um não lido deste pedido, atualiza.
+          const { data: jaTem } = await sb
+            .from("notificacoes")
+            .select("id")
+            .eq("user_id", userId)
+            .eq("tipo", regra)
+            .eq("pedido_id", p.id)
+            .is("lida_em", null)
+            .limit(1);
+          const idExistente = (jaTem as Array<{ id: string }> | null)?.[0]?.id;
+          const ins = idExistente
+            ? await sb
+                .from("notificacoes")
+                .update({ titulo: titulo.slice(0, 300), created_at: new Date().toISOString() })
+                .eq("id", idExistente)
+            : await sb.from("notificacoes").insert({
+                user_id: userId,
+                tipo: regra,
+                titulo: titulo.slice(0, 300),
+                pedido_id: p.id,
+                exige_aceite: true,
+              });
           await assertNoError(ins, "xerife-pedidos.escalonamento_financeiro.notificar", {
             pedido_id: p.id,
             user_id: userId,

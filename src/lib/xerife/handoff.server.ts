@@ -14,16 +14,38 @@ export type ResultadoAtribuicao = {
   erro: string | null;
 };
 
-/** Notificação in-app (sino) para um usuário específico. */
+/**
+ * Notificação in-app (sino) para um usuário específico.
+ * Um aviso por assunto: se já há aviso NÃO lido do mesmo usuário + tipo +
+ * conversa, atualiza título e data em vez de inserir outro.
+ */
 export async function notificarUsuario(
   sb: SB,
   params: { userId: string; tipo: string; titulo: string; conversaId?: string | null },
 ): Promise<void> {
+  const conversaId = params.conversaId ?? null;
+  let q = sb
+    .from("notificacoes")
+    .select("id")
+    .eq("user_id", params.userId)
+    .eq("tipo", params.tipo)
+    .is("lida_em", null);
+  q = conversaId ? q.eq("conversa_id", conversaId) : q.is("conversa_id", null);
+  const { data: existentes } = await q.order("created_at", { ascending: false }).limit(1);
+  const existente = (existentes as Array<{ id: string }> | null)?.[0];
+  if (existente?.id) {
+    const { error } = await sb
+      .from("notificacoes")
+      .update({ titulo: params.titulo, created_at: new Date().toISOString() })
+      .eq("id", existente.id);
+    if (error) console.error("[handoff] notificacoes update falhou:", error.message);
+    return;
+  }
   const { error } = await sb.from("notificacoes").insert({
     user_id: params.userId,
     tipo: params.tipo,
     titulo: params.titulo,
-    conversa_id: params.conversaId ?? null,
+    conversa_id: conversaId,
   });
   if (error) console.error("[handoff] notificacoes insert falhou:", error.message);
 }

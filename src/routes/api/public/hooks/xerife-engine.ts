@@ -1717,14 +1717,38 @@ ${crmLeadLink(conv.lead_id)}` : ""
         if (destinos.length === 0) continue;
 
         if (!dryRun) {
-          const ins = await sb.from("notificacoes").insert(
-            destinos.map((d) => ({
-              user_id: d,
-              tipo: "tarefas_vencidas_escalado",
-              titulo: texto,
-              exige_aceite: false,
-            })),
-          );
+          // Um aviso por pessoa cobrada: o assunto é o vendedor (prefixo "Nome:").
+          const { data: jaTem } = await sb
+            .from("notificacoes")
+            .select("id, user_id, titulo")
+            .eq("tipo", "tarefas_vencidas_escalado")
+            .in("user_id", destinos)
+            .is("lida_em", null);
+          const porDestino = new Map<string, string>();
+          for (const r of (jaTem ?? []) as Array<{ id: string; user_id: string; titulo: string }>) {
+            if (String(r.titulo ?? "").startsWith(`${nome}:`)) porDestino.set(r.user_id, r.id);
+          }
+          for (const d of destinos) {
+            const idEx = porDestino.get(d);
+            if (!idEx) continue;
+            const up = await sb
+              .from("notificacoes")
+              .update({ titulo: texto, created_at: new Date().toISOString() })
+              .eq("id", idEx);
+            if (up?.error)
+              await registrarFalhaSegura("xerife-engine.E1.notificacao", up.error, { owner_id: uid });
+          }
+          const novosDestinos = destinos.filter((d) => !porDestino.has(d));
+          const ins = novosDestinos.length
+            ? await sb.from("notificacoes").insert(
+                novosDestinos.map((d) => ({
+                  user_id: d,
+                  tipo: "tarefas_vencidas_escalado",
+                  titulo: texto,
+                  exige_aceite: false,
+                })),
+              )
+            : { error: null };
           if (ins?.error)
             await registrarFalhaSegura("xerife-engine.E1.notificacao", ins.error, { owner_id: uid });
           if (perfil.gestor_id)
