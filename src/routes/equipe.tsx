@@ -292,6 +292,37 @@ function EquipePage() {
         )}
       </div>
 
+      {(data?.travadas?.length ?? 0) > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">
+              Travadas — não rolam mais{" "}
+              <span className="text-muted-foreground">
+                ({data!.travadas!.reduce((a, p) => a + p.tarefas.length, 0)})
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            {data!.travadas!.map((p) => (
+              <details key={p.id} className="rounded-md border p-2">
+                <summary className="cursor-pointer font-medium">
+                  {p.nome} <span className="text-muted-foreground">({p.tarefas.length})</span>
+                </summary>
+                <ul className="mt-2 space-y-1">
+                  {p.tarefas.slice(0, 50).map((t) => (
+                    <li key={t.id} className="truncate">
+                      <a href={t.link} className="text-primary hover:underline">
+                        {t.titulo}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
       <SecaoCarteira equipeId={equipeId} />
 
       <Dialog open={!!cobranca} onOpenChange={(o) => !o && setCobranca(null)}>
